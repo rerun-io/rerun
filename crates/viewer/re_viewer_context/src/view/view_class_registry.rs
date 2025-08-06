@@ -375,4 +375,13 @@ impl ViewClassRegistry {
                 .collect(),
         }
     }
+
+    pub fn instantiate_visualizer(
+        &self,
+        visualizer_identifier: ViewSystemIdentifier,
+    ) -> Option<Box<dyn VisualizerSystem>> {
+        self.visualizers
+            .get(&visualizer_identifier)
+            .map(|entry| (entry.factory_method)())
+    }
 }

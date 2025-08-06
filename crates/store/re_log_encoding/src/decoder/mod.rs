@@ -11,19 +11,15 @@ use std::io::Read as _;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
+use crate::FileHeader;
+use crate::OLD_RRD_HEADERS;
+use crate::app_id_injector::CachingApplicationIdInjector;
 use crate::codec;
 use crate::codec::file::decoder;
-use crate::FileHeader;
-use crate::VersionPolicy;
-use crate::OLD_RRD_HEADERS;
 use crate::{EncodingOptions, Serializer};
-
 // ----------------------------------------------------------------------------
 
-fn warn_on_version_mismatch(
-    version_policy: VersionPolicy,
-    encoded_version: [u8; 4],
-) -> Result<(), DecodeError> {
+fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError> {
     // We used 0000 for all .rrd files up until 2023-02-27, post 0.2.0 release:
     let encoded_version = if encoded_version == [0, 0, 0, 0] {
         CrateVersion::new(0, 2, 0)
@@ -31,24 +27,21 @@ fn warn_on_version_mismatch(
         CrateVersion::from_bytes(encoded_version)
     };
 
-    if encoded_version.is_compatible_with(CrateVersion::LOCAL) {
+    if encoded_version.major == 0 && encoded_version.minor < 23 {
+        // We broke compatibility for 0.23 for (hopefully) the last time.
+        Err(DecodeError::IncompatibleRerunVersion {
+            file: encoded_version,
+            local: CrateVersion::LOCAL,
+        })
+    } else if encoded_version <= CrateVersion::LOCAL {
+        // Loading old files should be fine, and if it is not, the chunk migration in re_sorbet should already log a warning.
         Ok(())
     } else {
-        match version_policy {
-            VersionPolicy::Warn => {
-                re_log::warn_once!(
-                    "Found log stream with Rerun version {encoded_version}, \
-                     which is incompatible with the local Rerun version {}. \
-                     Loading will try to continue, but might fail in subtle ways.",
-                    CrateVersion::LOCAL,
-                );
-                Ok(())
-            }
-            VersionPolicy::Error => Err(DecodeError::IncompatibleRerunVersion {
-                file: encoded_version,
-                local: CrateVersion::LOCAL,
-            }),
-        }
+        re_log::warn_once!(
+            "Found data stream with Rerun version {encoded_version} which is newer than the local Rerun version ({}). This file may contain data that is not compatible with this version of Rerun. Consider updating Rerun.",
+            CrateVersion::LOCAL
+        );
+        Ok(())
     }
 }
 
@@ -63,10 +56,21 @@ pub enum DecodeError {
     #[error("Data was from an old, incompatible Rerun version")]
     OldRrdVersion,
 
-    #[error("Data from Rerun version {file}, which is incompatible with the local Rerun version {local}")]
+    #[error(
+        "Data from Rerun version {file}, which is incompatible with the local Rerun version {local}"
+    )]
     IncompatibleRerunVersion {
         file: CrateVersion,
         local: CrateVersion,
+    },
+
+    /// This is returned when `ArrowMsg` or `BlueprintActivationCommand` are received with a legacy
+    /// store id (missing the application id) before the corresponding `SetStoreInfo` message. In
+    /// that case, the best effort is to recover by dropping such message with a warning.
+    #[error("Message with an unknown application id was received.")]
+    StoreIdMissingApplicationId {
+        store_kind: re_log_types::StoreKind,
+        recording_id: re_log_types::RecordingId,
     },
 
     #[error("Failed to decode the options: {0}")]
@@ -84,6 +88,9 @@ pub enum DecodeError {
     #[error("Could not convert type from protobuf: {0}")]
     TypeConversion(#[from] re_protos::TypeConversionError),
 
+    #[error("Sorbet error: {0}")]
+    SorbetError(#[from] re_sorbet::SorbetError),
+
     #[error("Failed to read chunk: {0}")]
     Chunk(#[from] re_chunk::ChunkError),
 
@@ -94,14 +101,20 @@ pub enum DecodeError {
     Codec(#[from] codec::CodecError),
 }
 
+impl From<re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError> for DecodeError {
+    fn from(value: re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError) -> Self {
+        Self::StoreIdMissingApplicationId {
+            store_kind: value.store_kind,
+            recording_id: value.recording_id,
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 
-pub fn decode_bytes(
-    version_policy: VersionPolicy,
-    bytes: &[u8],
-) -> Result<Vec<LogMsg>, DecodeError> {
+pub fn decode_bytes(bytes: &[u8]) -> Result<Vec<LogMsg>, DecodeError> {
     re_tracing::profile_function!();
-    let decoder = Decoder::new(version_policy, std::io::Cursor::new(bytes))?;
+    let decoder = Decoder::new(std::io::Cursor::new(bytes))?;
     let mut msgs = vec![];
     for msg in decoder {
         msgs.push(msg?);
@@ -113,18 +126,16 @@ pub fn decode_bytes(
 
 /// Read encoding options from the beginning of the stream.
 pub fn read_options(
-    version_policy: VersionPolicy,
     reader: &mut impl std::io::Read,
 ) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
     let mut data = [0_u8; FileHeader::SIZE];
     reader.read_exact(&mut data).map_err(DecodeError::Read)?;
 
-    options_from_bytes(version_policy, &data)
+    options_from_bytes(&data)
 }
 
 /// Read encoding options from the beginning of the stream asynchronously.
 pub async fn read_options_async(
-    version_policy: VersionPolicy,
     reader: &mut (impl tokio::io::AsyncRead + Unpin),
 ) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
     let mut data = [0_u8; FileHeader::SIZE];
@@ -135,13 +146,10 @@ pub async fn read_options_async(
         .await
         .map_err(DecodeError::Read)?;
 
-    options_from_bytes(version_policy, &data)
+    options_from_bytes(&data)
 }
 
-pub fn options_from_bytes(
-    version_policy: VersionPolicy,
-    bytes: &[u8],
-) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
+pub fn options_from_bytes(bytes: &[u8]) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
     let mut read = std::io::Cursor::new(bytes);
 
     let FileHeader {
@@ -156,7 +164,7 @@ pub fn options_from_bytes(
         return Err(DecodeError::NotAnRrd);
     }
 
-    warn_on_version_mismatch(version_policy, version)?;
+    warn_on_version_mismatch(version)?;
 
     match options.serializer {
         Serializer::Protobuf => {}
@@ -187,6 +195,9 @@ pub struct Decoder<R: std::io::Read> {
 
     /// The size in bytes of the data that has been decoded up to now.
     size_bytes: u64,
+
+    /// The application id cache used for migrating old data.
+    app_id_cache: CachingApplicationIdInjector,
 }
 
 impl<R: std::io::Read> Decoder<R> {
@@ -200,19 +211,20 @@ impl<R: std::io::Read> Decoder<R> {
     ///
     /// See also:
     /// * [`Decoder::new_concatenated`]
-    pub fn new(version_policy: VersionPolicy, mut read: R) -> Result<Self, DecodeError> {
+    pub fn new(mut read: R) -> Result<Self, DecodeError> {
         re_tracing::profile_function!();
 
         let mut data = [0_u8; FileHeader::SIZE];
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
 
-        let (version, options) = options_from_bytes(version_policy, &data)?;
+        let (version, options) = options_from_bytes(&data)?;
 
         Ok(Self {
             version,
             options,
             read: Reader::Raw(read),
             size_bytes: FileHeader::SIZE as _,
+            app_id_cache: CachingApplicationIdInjector::default(),
         })
     }
 
@@ -222,6 +234,7 @@ impl<R: std::io::Read> Decoder<R> {
             options,
             read: Reader::Raw(read),
             size_bytes: FileHeader::SIZE as _,
+            app_id_cache: CachingApplicationIdInjector::default(),
         }
     }
 
@@ -241,22 +254,20 @@ impl<R: std::io::Read> Decoder<R> {
     ///
     /// See also:
     /// * [`Decoder::new`]
-    pub fn new_concatenated(
-        version_policy: VersionPolicy,
-        mut read: std::io::BufReader<R>,
-    ) -> Result<Self, DecodeError> {
+    pub fn new_concatenated(mut read: std::io::BufReader<R>) -> Result<Self, DecodeError> {
         re_tracing::profile_function!();
 
         let mut data = [0_u8; FileHeader::SIZE];
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
 
-        let (version, options) = options_from_bytes(version_policy, &data)?;
+        let (version, options) = options_from_bytes(&data)?;
 
         Ok(Self {
             version,
             options,
             read: Reader::Buffered(read),
             size_bytes: FileHeader::SIZE as _,
+            app_id_cache: CachingApplicationIdInjector::default(),
         })
     }
 
@@ -271,6 +282,94 @@ impl<R: std::io::Read> Decoder<R> {
     #[inline]
     pub fn size_bytes(&self) -> u64 {
         self.size_bytes
+    }
+
+    /// Returns the next message in the stream, dropping messages missing application id that cannot
+    /// be migrated (because they arrived before `SetStoreInfo`).
+    fn next<F, T>(&mut self, mut decoder: F) -> Option<Result<T, DecodeError>>
+    where
+        F: FnMut(
+            &mut CachingApplicationIdInjector,
+            &mut Reader<R>,
+        ) -> Result<(u64, Option<T>), DecodeError>,
+    {
+        //TODO(#10730): remove this if/when we remove the legacy `StoreId` migration.
+        loop {
+            let result = self.next_impl(&mut decoder);
+            if let Some(Err(DecodeError::StoreIdMissingApplicationId {
+                store_kind,
+                recording_id,
+            })) = result
+            {
+                re_log::warn_once!(
+                    "Dropping message without application id which arrived before `SetStoreInfo` \
+                    (kind: {store_kind}, recording id: {recording_id}."
+                );
+            } else {
+                return result;
+            }
+        }
+    }
+
+    /// Returns the next message in the stream.
+    fn next_impl<F, T>(&mut self, decoder: &mut F) -> Option<Result<T, DecodeError>>
+    where
+        F: FnMut(
+            &mut CachingApplicationIdInjector,
+            &mut Reader<R>,
+        ) -> Result<(u64, Option<T>), DecodeError>,
+    {
+        re_tracing::profile_function!();
+
+        if self.peek_file_header() {
+            // We've found another file header in the middle of the stream, it's time to switch
+            // gears and start over on this new file.
+
+            let mut data = [0_u8; FileHeader::SIZE];
+            if let Err(err) = self.read.read_exact(&mut data).map_err(DecodeError::Read) {
+                return Some(Err(err));
+            }
+
+            let (version, options) = match options_from_bytes(&data) {
+                Ok(opts) => opts,
+                Err(err) => return Some(Err(err)),
+            };
+
+            self.version = CrateVersion::max(self.version, version);
+            self.options = options;
+            self.size_bytes += FileHeader::SIZE as u64;
+        }
+
+        let msg = match self.options.serializer {
+            Serializer::Protobuf => match decoder(&mut self.app_id_cache, &mut self.read) {
+                Ok((read_bytes, msg)) => {
+                    self.size_bytes += read_bytes;
+                    msg
+                }
+
+                Err(err) => match err {
+                    DecodeError::Read(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => {
+                        return None;
+                    }
+                    _ => return Some(Err(err)),
+                },
+            },
+        };
+
+        let Some(msg) = msg else {
+            // we might have a concatenated stream, so we peek beyond end of file marker to see
+            if self.peek_file_header() {
+                re_log::debug!(
+                    "Reached end of stream, but it seems we have a concatenated file, continuing"
+                );
+                return self.next_impl(decoder);
+            }
+
+            re_log::trace!("Reached end of stream, iterator complete");
+            return None;
+        };
+
+        Some(Ok(msg))
     }
 
     /// Peeks ahead in search of additional `FileHeader`s in the stream.
@@ -295,68 +394,44 @@ impl<R: std::io::Read> Decoder<R> {
             }
         }
     }
+
+    /// Returns a [`RawIterator`] over the transport-level data (Protobuf).
+    pub fn into_raw_iter(self) -> RawIterator<R> {
+        RawIterator { decoder: self }
+    }
+}
+
+/// Iterator over the transport-level data (Protobuf).
+///
+/// Application-level data (Arrow) is not decoded.
+pub struct RawIterator<R: std::io::Read> {
+    decoder: Decoder<R>,
+}
+
+impl<R: std::io::Read> RawIterator<R> {
+    /// Returns the size in bytes of the data that has been decoded up to now.
+    //
+    // TODO(jan): stop returning number of read bytes, use cursors wrapping readers instead.
+    #[inline]
+    pub fn size_bytes(&self) -> u64 {
+        self.decoder.size_bytes
+    }
 }
 
 impl<R: std::io::Read> Iterator for Decoder<R> {
     type Item = Result<LogMsg, DecodeError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        re_tracing::profile_function!();
+        self.next(decoder::decode_to_app)
+    }
+}
 
-        if self.peek_file_header() {
-            // We've found another file header in the middle of the stream, it's time to switch
-            // gears and start over on this new file.
+impl<R: std::io::Read> Iterator for RawIterator<R> {
+    type Item = Result<re_protos::log_msg::v1alpha1::log_msg::Msg, DecodeError>;
 
-            let mut data = [0_u8; FileHeader::SIZE];
-            if let Err(err) = self.read.read_exact(&mut data).map_err(DecodeError::Read) {
-                return Some(Err(err));
-            }
-
-            let (version, options) = match options_from_bytes(VersionPolicy::Warn, &data) {
-                Ok(opts) => opts,
-                Err(err) => return Some(Err(err)),
-            };
-
-            self.version = CrateVersion::max(self.version, version);
-            self.options = options;
-            self.size_bytes += FileHeader::SIZE as u64;
-        }
-
-        let msg = match self.options.serializer {
-            Serializer::Protobuf => match decoder::decode(&mut self.read) {
-                Ok((read_bytes, msg)) => {
-                    self.size_bytes += read_bytes;
-                    msg
-                }
-                Err(err) => match err {
-                    DecodeError::Read(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => {
-                        return None;
-                    }
-                    _ => return Some(Err(err)),
-                },
-            },
-        };
-
-        let Some(mut msg) = msg else {
-            // we might have a concatenated stream, so we peek beyond end of file marker to see
-            if self.peek_file_header() {
-                re_log::debug!(
-                    "Reached end of stream, but it seems we have a concatenated file, continuing"
-                );
-                return self.next();
-            }
-
-            re_log::trace!("Reached end of stream, iterator complete");
-            return None;
-        };
-
-        if let LogMsg::SetStoreInfo(msg) = &mut msg {
-            // Propagate the protocol version from the header into the `StoreInfo` so that all
-            // parts of the app can easily access it.
-            msg.info.store_version = Some(self.version());
-        }
-
-        Some(Ok(msg))
+    fn next(&mut self) -> Option<Self::Item> {
+        self.decoder
+            .next(|_app_id_cache, reader| decoder::decode_to_transport(reader))
     }
 }
 
@@ -366,25 +441,21 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 mod tests {
     #![allow(clippy::unwrap_used)] // acceptable for tests
 
-    use crate::Compression;
-
-    use super::*;
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_types::{ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use re_log_types::{SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use re_protos::log_msg::v1alpha1 as proto;
+    use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 
-    // TODO(#3741): remove this once we are all in on arrow-rs
-    pub fn strip_arrow_extensions_from_log_messages(log_msg: Vec<LogMsg>) -> Vec<LogMsg> {
-        log_msg
-            .into_iter()
-            .map(LogMsg::strip_arrow_extension_types)
-            .collect()
-    }
+    use super::*;
+    use crate::Compression;
+    use crate::codec::arrow::encode_arrow;
+    use crate::encoder::DroppableEncoder;
 
     pub fn fake_log_messages() -> Vec<LogMsg> {
-        let store_id = StoreId::random(StoreKind::Blueprint);
+        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
 
-        let arrow_msg = re_chunk::Chunk::builder("test_entity".into())
+        let arrow_msg = re_chunk::Chunk::builder("test_entity")
             .with_archetype(
                 re_chunk::RowId::new(),
                 re_log_types::TimePoint::default().with(
@@ -401,11 +472,10 @@ mod tests {
             .to_arrow_msg()
             .unwrap();
 
-        strip_arrow_extensions_from_log_messages(vec![
+        vec![
             LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: *RowId::new(),
                 info: StoreInfo {
-                    application_id: ApplicationId("test".to_owned()),
                     store_id: store_id.clone(),
                     cloned_from: None,
                     store_source: StoreSource::RustSdk {
@@ -421,7 +491,95 @@ mod tests {
                 make_active: true,
                 make_default: true,
             }),
-        ])
+        ]
+    }
+
+    fn log_msg_to_proto(message: LogMsg) -> LogMsgProto {
+        use re_protos::log_msg::v1alpha1::{
+            ArrowMsg, BlueprintActivationCommand, Encoding, SetStoreInfo,
+        };
+
+        let msg: proto::log_msg::Msg = match message {
+            LogMsg::SetStoreInfo(set_store_info) => {
+                let set_store_info: SetStoreInfo = set_store_info.clone().into();
+                proto::log_msg::Msg::SetStoreInfo(set_store_info)
+            }
+            LogMsg::ArrowMsg(store_id, arrow_msg) => {
+                let payload = encode_arrow(&arrow_msg.batch, Compression::Off)
+                    .expect("compression should succeed");
+                let arrow_msg = ArrowMsg {
+                    store_id: Some(store_id.clone().into()),
+                    chunk_id: Some(arrow_msg.chunk_id.into()),
+                    compression: proto::Compression::None as i32,
+                    uncompressed_size: payload.uncompressed_size as i32,
+                    encoding: Encoding::ArrowIpc as i32,
+                    payload: payload.data.into(),
+                };
+                proto::log_msg::Msg::ArrowMsg(arrow_msg)
+            }
+            LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
+                let blueprint_activation_command: BlueprintActivationCommand =
+                    blueprint_activation_command.clone().into();
+
+                proto::log_msg::Msg::BlueprintActivationCommand(blueprint_activation_command)
+            }
+        };
+
+        LogMsgProto { msg: Some(msg) }
+    }
+
+    /// Convert the test log message to their proto version and tweak them so that:
+    /// - `StoreId` do not have an `ApplicationId`
+    /// - `StoreInfo` does have an `ApplicationId`
+    #[expect(deprecated)]
+    fn legacy_fake_log_messages() -> Vec<LogMsgProto> {
+        fake_log_messages()
+            .into_iter()
+            .map(log_msg_to_proto)
+            .map(|mut log_msg| {
+                match &mut log_msg.msg {
+                    None => panic!("Unexpected `LogMsg` without payload"),
+
+                    Some(proto::log_msg::Msg::SetStoreInfo(set_store_info)) => {
+                        if let Some(store_info) = &mut set_store_info.info {
+                            let Some(mut store_id) = store_info.store_id.clone() else {
+                                panic!("Unexpected missing `StoreId`");
+                            };
+
+                            // this should be a non-legacy proto
+                            assert_eq!(store_info.application_id, None);
+                            assert!(store_id.application_id.is_some());
+
+                            // turn this into a legacy proto
+                            store_info.application_id = store_id.application_id;
+                            store_id.application_id = None;
+                            store_info.store_id = Some(store_id);
+                        } else {
+                            panic!("Unexpected missing `store_info`")
+                        }
+                    }
+                    Some(
+                        proto::log_msg::Msg::ArrowMsg(proto::ArrowMsg { store_id, .. })
+                        | proto::log_msg::Msg::BlueprintActivationCommand(
+                            proto::BlueprintActivationCommand {
+                                blueprint_id: store_id,
+                                ..
+                            },
+                        ),
+                    ) => {
+                        let mut legacy_store_id =
+                            store_id.clone().expect("messages should have store ids");
+                        assert!(legacy_store_id.application_id.is_some());
+
+                        // make legacy
+                        legacy_store_id.application_id = None;
+                        *store_id = Some(legacy_store_id);
+                    }
+                };
+
+                log_msg
+            })
+            .collect()
     }
 
     #[test]
@@ -446,14 +604,161 @@ mod tests {
             crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
-            let decoded_messages = strip_arrow_extensions_from_log_messages(
-                Decoder::new(VersionPolicy::Error, &mut file.as_slice())
-                    .unwrap()
-                    .collect::<Result<Vec<LogMsg>, DecodeError>>()
-                    .unwrap(),
-            );
+            let decoded_messages = Decoder::new(&mut file.as_slice())
+                .unwrap()
+                .collect::<Result<Vec<LogMsg>, DecodeError>>()
+                .unwrap();
 
             similar_asserts::assert_eq!(decoded_messages, messages);
+        }
+    }
+
+    /// Test that legacy messages (aka `StoreId` without an application id) are properly decoded.
+    #[test]
+    fn test_decode_legacy() {
+        let rrd_version = CrateVersion::LOCAL;
+
+        let messages = legacy_fake_log_messages();
+
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
+        ];
+
+        for options in options {
+            let mut file = vec![];
+
+            let mut encoder = DroppableEncoder::new(rrd_version, options, &mut file).unwrap();
+            for message in messages.clone() {
+                encoder
+                    .append_proto(message)
+                    .expect("encoding should succeed");
+            }
+            drop(encoder);
+
+            let decoded_messages = Decoder::new(&mut file.as_slice())
+                .unwrap()
+                .collect::<Result<Vec<LogMsg>, DecodeError>>()
+                .unwrap();
+
+            assert_eq!(decoded_messages.len(), messages.len());
+        }
+    }
+
+    /// Test that legacy messages (aka `StoreId` without an application id) that arrive _before_
+    /// a `SetStoreInfo` are dropped without failing.
+    #[test]
+    fn test_decode_legacy_out_of_order() {
+        let rrd_version = CrateVersion::LOCAL;
+
+        let messages = legacy_fake_log_messages();
+
+        // ensure the test data is as we expect
+        let orig_message_count = messages.len();
+        assert_eq!(orig_message_count, 3);
+        assert!(matches!(
+            messages[0].msg,
+            Some(proto::log_msg::Msg::SetStoreInfo(..))
+        ));
+        assert!(matches!(
+            messages[1].msg,
+            Some(proto::log_msg::Msg::ArrowMsg(..))
+        ));
+        assert!(matches!(
+            messages[2].msg,
+            Some(proto::log_msg::Msg::BlueprintActivationCommand(..))
+        ));
+
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
+        ];
+
+        // make out-of-order messages
+        let mut out_of_order_messages = vec![messages[1].clone(), messages[2].clone()];
+        out_of_order_messages.extend(messages);
+
+        for options in options {
+            let mut file = vec![];
+
+            let mut encoder = DroppableEncoder::new(rrd_version, options, &mut file).unwrap();
+            for message in out_of_order_messages.clone() {
+                encoder
+                    .append_proto(message)
+                    .expect("encoding should succeed");
+            }
+            drop(encoder);
+
+            let decoded_messages = Decoder::new(&mut file.as_slice())
+                .unwrap()
+                .collect::<Result<Vec<LogMsg>, DecodeError>>()
+                .unwrap();
+
+            assert_eq!(decoded_messages.len(), orig_message_count);
+        }
+    }
+
+    /// Test that non-legacy message stream to no rely on the `SetStoreInfo` message to arrive
+    /// first.
+    #[test]
+    fn test_decode_out_of_order() {
+        let rrd_version = CrateVersion::LOCAL;
+
+        let messages = fake_log_messages();
+
+        // ensure the test data is as we expect
+        let orig_message_count = messages.len();
+        assert_eq!(orig_message_count, 3);
+        assert!(matches!(messages[0], LogMsg::SetStoreInfo { .. }));
+        assert!(matches!(messages[1], LogMsg::ArrowMsg { .. }));
+        assert!(matches!(
+            messages[2],
+            LogMsg::BlueprintActivationCommand { .. }
+        ));
+
+        let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::Protobuf,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::Protobuf,
+            },
+        ];
+
+        // make out-of-order messages
+        let mut out_of_order_messages = vec![messages[1].clone(), messages[2].clone()];
+        out_of_order_messages.extend(messages);
+
+        for options in options {
+            let mut file = vec![];
+            crate::encoder::encode_ref(
+                rrd_version,
+                options,
+                out_of_order_messages.iter().map(Ok),
+                &mut file,
+            )
+            .unwrap();
+
+            let decoded_messages = Decoder::new(&mut file.as_slice())
+                .unwrap()
+                .collect::<Result<Vec<LogMsg>, DecodeError>>()
+                .unwrap();
+
+            similar_asserts::assert_eq!(decoded_messages, out_of_order_messages);
         }
     }
 
@@ -495,15 +800,10 @@ mod tests {
             }
             encoder2.finish().unwrap();
 
-            let decoder = Decoder::new_concatenated(
-                VersionPolicy::Error,
-                std::io::BufReader::new(data.as_slice()),
-            )
-            .unwrap();
+            let decoder =
+                Decoder::new_concatenated(std::io::BufReader::new(data.as_slice())).unwrap();
 
-            let decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap(),
-            );
+            let decoded_messages = decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
 
             similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
         }

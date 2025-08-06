@@ -5,9 +5,9 @@ use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
-use re_log_types::{example_components::MyColor, ResolvedTimeRange};
+use re_log_types::example_components::MyPoints;
 use re_log_types::{EntityPath, TimePoint, Timeline};
-use re_types_core::Component as _;
+use re_log_types::{ResolvedTimeRange, example_components::MyColor};
 
 #[test]
 fn drop_time_range() -> anyhow::Result<()> {
@@ -23,7 +23,7 @@ fn drop_time_range() -> anyhow::Result<()> {
         ChunkStoreConfig::COMPACTION_DISABLED,
     ] {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             config,
         );
 
@@ -31,34 +31,82 @@ fn drop_time_range() -> anyhow::Result<()> {
             store.num_temporal_events_for_component_on_timeline(
                 timeline.name(),
                 &entity_path,
-                MyColor::name(),
+                &MyPoints::descriptor_colors(),
             )
         };
 
         store.insert_chunk(&Arc::new(
             Chunk::builder(entity_path.clone())
-                .with_component_batch(RowId::new(), time_point_at(0), &data)
-                .with_component_batch(RowId::new(), time_point_at(1), &data)
-                .with_component_batch(RowId::new(), time_point_at(2), &data)
-                .with_component_batch(RowId::new(), time_point_at(3), &data)
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(0),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(1),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(2),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(3),
+                    (MyPoints::descriptor_colors(), &data),
+                )
                 .build()?,
         ))?;
 
         store.insert_chunk(&Arc::new(
             Chunk::builder(entity_path.clone())
-                .with_component_batch(RowId::new(), time_point_at(2), &data)
-                .with_component_batch(RowId::new(), time_point_at(3), &data)
-                .with_component_batch(RowId::new(), time_point_at(4), &data)
-                .with_component_batch(RowId::new(), time_point_at(5), &data)
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(2),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(3),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(4),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(5),
+                    (MyPoints::descriptor_colors(), &data),
+                )
                 .build()?,
         ))?;
 
         store.insert_chunk(&Arc::new(
             Chunk::builder(entity_path.clone())
-                .with_component_batch(RowId::new(), time_point_at(4), &data)
-                .with_component_batch(RowId::new(), time_point_at(5), &data)
-                .with_component_batch(RowId::new(), time_point_at(6), &data)
-                .with_component_batch(RowId::new(), time_point_at(7), &data)
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(4),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(5),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(6),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(7),
+                    (MyPoints::descriptor_colors(), &data),
+                )
                 .build()?,
         ))?;
 

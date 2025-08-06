@@ -2,9 +2,9 @@
 
 use itertools::Itertools as _;
 use re_renderer::{
+    Color32, OutlineConfig, OutlineMaskPreference,
     renderer::GpuMeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, OutlineConfig, OutlineMaskPreference,
 };
 use winit::event::ElementState;
 
@@ -55,7 +55,7 @@ impl framework::Example for Outlines {
             TargetConfiguration {
                 name: "OutlinesDemo".into(),
                 resolution_in_pixel: resolution,
-                view_from_world: re_math::IsoTransform::look_at_rh(
+                view_from_world: macaw::IsoTransform::look_at_rh(
                     camera_position,
                     glam::Vec3::ZERO,
                     glam::Vec3::Y,

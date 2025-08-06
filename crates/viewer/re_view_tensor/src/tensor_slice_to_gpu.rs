@@ -9,8 +9,8 @@ use re_types::{
     tensor_data::{TensorCastError, TensorDataType},
 };
 use re_viewer_context::{
-    gpu_bridge::{self, colormap_to_re_renderer},
     ColormapWithRange,
+    gpu_bridge::{self, colormap_to_re_renderer},
 };
 
 use crate::{dimension_mapping::TensorSliceSelection, view_class::selected_tensor_slice};

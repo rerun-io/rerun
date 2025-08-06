@@ -1,14 +1,14 @@
 use re_types::{
+    Archetype as _,
     blueprint::{
         archetypes,
         components::{Enabled, ForceDistance, ForceIterations, ForceStrength, VisualBounds2D},
     },
     components::Position2D,
-    Archetype as _,
 };
 use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt as _};
 
-use crate::{ui::GraphViewState, GraphView};
+use crate::{GraphView, ui::GraphViewState};
 
 fn valid_bound(rect: &egui::Rect) -> bool {
     rect.is_finite() && rect.is_positive()
@@ -16,7 +16,7 @@ fn valid_bound(rect: &egui::Rect) -> bool {
 
 impl TypedComponentFallbackProvider<VisualBounds2D> for GraphView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> VisualBounds2D {
-        let Ok(state) = ctx.view_state.downcast_ref::<GraphViewState>() else {
+        let Ok(state) = ctx.view_state().downcast_ref::<GraphViewState>() else {
             return VisualBounds2D::default();
         };
 

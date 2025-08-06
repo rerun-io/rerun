@@ -1,28 +1,30 @@
 use re_log_encoding::protobuf_conversions::log_msg_from_proto;
 use re_log_types::LogMsg;
-use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_protos::sdk_comms::v1alpha1::ReadMessagesRequest;
 use re_protos::sdk_comms::v1alpha1::ReadMessagesResponse;
+use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use tokio_stream::StreamExt as _;
 
+use crate::MAX_DECODING_MESSAGE_SIZE;
 use crate::StreamError;
 use crate::TonicStatusError;
-use crate::MAX_DECODING_MESSAGE_SIZE;
 
+/// Read log messages from a proxy server.
+///
+/// This is used by the viewer to _receive_ log messages.
 pub fn stream(
-    endpoint: re_uri::ProxyEndpoint,
+    uri: re_uri::ProxyUri,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
-    re_log::debug!("Loading {endpoint} via gRPC…");
+    re_log::debug!("Loading {uri} via gRPC…");
 
-    let url = format!("{endpoint}");
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy { url: url.clone() },
-        re_smart_channel::SmartChannelSource::MessageProxy { url },
+        re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
+        re_smart_channel::SmartChannelSource::MessageProxy(uri.clone()),
     );
 
     crate::spawn_future(async move {
-        if let Err(err) = stream_async(endpoint, &tx, on_msg).await {
+        if let Err(err) = stream_async(uri, &tx, on_msg).await {
             tx.quit(Some(Box::new(err))).ok();
         }
     });
@@ -31,12 +33,12 @@ pub fn stream(
 }
 
 async fn stream_async(
-    endpoint: re_uri::ProxyEndpoint,
+    uri: re_uri::ProxyUri,
     tx: &re_smart_channel::Sender<LogMsg>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     let mut client = {
-        let url = endpoint.origin.as_url();
+        let url = uri.origin.as_url();
 
         #[cfg(target_arch = "wasm32")]
         let tonic_client = {
@@ -53,7 +55,7 @@ async fn stream_async(
             .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
     };
 
-    re_log::debug!("Streaming messages from gRPC endpoint {endpoint}");
+    re_log::debug!("Streaming messages from gRPC endpoint {uri}");
 
     let mut stream = client
         .read_messages(ReadMessagesRequest {})
@@ -61,13 +63,21 @@ async fn stream_async(
         .map_err(TonicStatusError)?
         .into_inner();
 
+    let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
     loop {
         match stream.try_next().await {
             Ok(Some(ReadMessagesResponse {
-                log_msg: Some(log_msg),
+                log_msg: Some(log_msg_proto),
             })) => {
-                let msg = log_msg_from_proto(log_msg)?;
-                if tx.send(msg).is_err() {
+                let mut log_msg = log_msg_from_proto(&mut app_id_cache, log_msg_proto)?;
+
+                // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
+                log_msg.insert_arrow_record_batch_metadata(
+                    re_sorbet::timestamp_metadata::KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
+                    re_sorbet::timestamp_metadata::now_timestamp(),
+                );
+
+                if tx.send(log_msg).is_err() {
                     re_log::debug!("gRPC stream smart channel closed");
                     break;
                 }

@@ -18,11 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
-
+  RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
 
   # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
@@ -62,7 +58,7 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.41.4
           environments: wheel-test

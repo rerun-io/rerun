@@ -7,7 +7,6 @@
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -23,6 +22,9 @@ namespace rerun::blueprint::archetypes {
     ///
     /// If no visual bounds are set, it will be determined automatically,
     /// based on the bounding-box of the data or other camera information present in the view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct VisualBounds2D {
         /// Controls the visible range of a 2D view.
         ///
@@ -30,18 +32,13 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> range;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.VisualBounds2DIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.VisualBounds2D";
 
         /// `ComponentDescriptor` for the `range` field.
         static constexpr auto Descriptor_range = ComponentDescriptor(
-            ArchetypeName, "range",
-            Loggable<rerun::blueprint::components::VisualBounds2D>::Descriptor.component_name
+            ArchetypeName, "VisualBounds2D:range",
+            Loggable<rerun::blueprint::components::VisualBounds2D>::ComponentType
         );
 
       public:

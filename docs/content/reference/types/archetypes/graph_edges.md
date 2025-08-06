@@ -7,13 +7,15 @@ A list of edges in a graph.
 
 By default, edges are undirected.
 
-## Components
+## Fields
+### Required
+* `edges`: [`GraphEdge`](../components/graph_edge.md)
 
-**Required**: [`GraphEdge`](../components/graph_edge.md)
+### Recommended
+* `graph_type`: [`GraphType`](../components/graph_type.md)
 
-**Recommended**: [`GraphType`](../components/graph_type.md)
 
-## Shown in
+## Can be shown in
 * [GraphView](../views/graph_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

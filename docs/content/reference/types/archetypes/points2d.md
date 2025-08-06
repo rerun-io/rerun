@@ -5,15 +5,23 @@ title: "Points2D"
 
 A 2D point cloud with positions and optional colors, radii, labels, etc.
 
-## Components
+## Fields
+### Required
+* `positions`: [`Position2D`](../components/position2d.md)
 
-**Required**: [`Position2D`](../components/position2d.md)
+### Recommended
+* `radii`: [`Radius`](../components/radius.md)
+* `colors`: [`Color`](../components/color.md)
 
-**Recommended**: [`Radius`](../components/radius.md), [`Color`](../components/color.md)
+### Optional
+* `labels`: [`Text`](../components/text.md)
+* `show_labels`: [`ShowLabels`](../components/show_labels.md)
+* `draw_order`: [`DrawOrder`](../components/draw_order.md)
+* `class_ids`: [`ClassId`](../components/class_id.md)
+* `keypoint_ids`: [`KeypointId`](../components/keypoint_id.md)
 
-**Optional**: [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md), [`KeypointId`](../components/keypoint_id.md)
 
-## Shown in
+## Can be shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)

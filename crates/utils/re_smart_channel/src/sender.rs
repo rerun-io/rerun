@@ -1,4 +1,4 @@
-use std::sync::{atomic::Ordering::Relaxed, Arc};
+use std::sync::{Arc, atomic::Ordering::Relaxed};
 
 use web_time::Instant;
 

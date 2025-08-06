@@ -11,7 +11,7 @@ impl From<u64> for Instance {
         if cfg!(debug_assertions) && instance == u64::MAX {
             re_log::warn!(
                 "u64::MAX is reserved to refer to all instances: {:#?}",
-                backtrace::Backtrace::new()
+                std::backtrace::Backtrace::capture()
             );
         }
         Self(instance)

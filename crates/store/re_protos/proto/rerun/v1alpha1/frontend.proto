@@ -2,9 +2,11 @@ syntax = "proto3";
 
 package rerun.frontend.v1alpha1;
 
+import "google/protobuf/timestamp.proto";
 import "rerun/v1alpha1/catalog.proto";
 import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/manifest_registry.proto";
+import "rerun/v1alpha1/tasks.proto";
 
 // TODO(cmc): I've decided to re-use the underlying response types for now, in the name of expediency.
 // This is bad in the long term (breaking changes to the internal APIs should not result in breaking
@@ -16,6 +18,8 @@ import "rerun/v1alpha1/manifest_registry.proto";
 
 // Redap's public API.
 service FrontendService {
+  rpc Version(VersionRequest) returns (VersionResponse) {}
+
   // --- Catalog ---
   // Mostly a 1:1 proxy at the moment.
 
@@ -23,9 +27,11 @@ service FrontendService {
 
   rpc DeleteEntry(rerun.catalog.v1alpha1.DeleteEntryRequest) returns (rerun.catalog.v1alpha1.DeleteEntryResponse) {}
 
-  rpc CreateDatasetEntry(rerun.catalog.v1alpha1.CreateDatasetEntryRequest) returns (rerun.catalog.v1alpha1.CreateDatasetEntryResponse) {}
+  rpc UpdateEntry(rerun.catalog.v1alpha1.UpdateEntryRequest) returns (rerun.catalog.v1alpha1.UpdateEntryResponse) {}
 
+  rpc CreateDatasetEntry(rerun.catalog.v1alpha1.CreateDatasetEntryRequest) returns (rerun.catalog.v1alpha1.CreateDatasetEntryResponse) {}
   rpc ReadDatasetEntry(rerun.catalog.v1alpha1.ReadDatasetEntryRequest) returns (rerun.catalog.v1alpha1.ReadDatasetEntryResponse) {}
+  rpc UpdateDatasetEntry(rerun.catalog.v1alpha1.UpdateDatasetEntryRequest) returns (rerun.catalog.v1alpha1.UpdateDatasetEntryResponse) {}
 
   rpc ReadTableEntry(rerun.catalog.v1alpha1.ReadTableEntryRequest) returns (rerun.catalog.v1alpha1.ReadTableEntryResponse) {}
 
@@ -37,8 +43,12 @@ service FrontendService {
   // Register new partitions with the Dataset
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (rerun.manifest_registry.v1alpha1.RegisterWithDatasetResponse) {}
 
-  // Unimplemented.
-  rpc WriteChunks(stream WriteChunksRequest) returns (stream rerun.manifest_registry.v1alpha1.WriteChunksResponse) {}
+  // Write chunks to one or more partitions.
+  //
+  // The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+  //
+  // The destination dataset must be provided in the `x-rerun-dataset-id` header.
+  rpc WriteChunks(stream rerun.manifest_registry.v1alpha1.WriteChunksRequest) returns (rerun.manifest_registry.v1alpha1.WriteChunksResponse) {}
 
   /* Query schemas */
 
@@ -94,17 +104,35 @@ service FrontendService {
   // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
   rpc GetChunks(GetChunksRequest) returns (stream rerun.manifest_registry.v1alpha1.GetChunksResponse) {}
 
-  /* HACKS */
-
-  // Fetch an entire partition from the server, without any pre- or post-processing.
-  //
-  // This is a temporary hack while we get everything up and running.
-  rpc FetchPartition(FetchPartitionRequest) returns (stream rerun.manifest_registry.v1alpha1.FetchPartitionResponse) {}
   // --- Table Apis ---
   // TODO(jleibs): This will be replaced / extended by Arrow Flight
 
+  // Register a foreign table as a new table entry in the catalog.
+  rpc RegisterTable(rerun.catalog.v1alpha1.RegisterTableRequest) returns (rerun.catalog.v1alpha1.RegisterTableResponse) {}
+
   rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse) {}
   rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
+
+  // --- Tasks service ---
+  // Query the status of submitted tasks
+  rpc QueryTasks(rerun.redap_tasks.v1alpha1.QueryTasksRequest) returns (rerun.redap_tasks.v1alpha1.QueryTasksResponse) {}
+
+  // Fetch the output of a completed task
+  rpc FetchTaskOutput(rerun.redap_tasks.v1alpha1.FetchTaskOutputRequest) returns (rerun.redap_tasks.v1alpha1.FetchTaskOutputResponse) {}
+
+  // Query the status of submitted tasks as soon as they are no longer pending
+  rpc QueryTasksOnCompletion(rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionRequest) returns (stream rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionResponse) {}
+
+  // -- Utilities --
+
+  // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
+  rpc DoMaintenance(DoMaintenanceRequest) returns (rerun.manifest_registry.v1alpha1.DoMaintenanceResponse) {}
+}
+
+message VersionRequest {}
+
+message VersionResponse {
+  rerun.common.v1alpha1.BuildInfo build_info = 1;
 }
 
 // --- Manifest Registry ---
@@ -115,10 +143,6 @@ message RegisterWithDatasetRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
   repeated rerun.manifest_registry.v1alpha1.DataSource data_sources = 2;
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
-}
-
-message WriteChunksRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
 }
 
 /* Query schemas */
@@ -143,6 +167,11 @@ message CreateIndexRequest {
 
   // List of specific partitions that will be indexed (all if left empty).
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
+
+  // List of specific partition layers that will be indexed (all if left empty).
+  //
+  // If non-empty, this must match the length of `partition_ids`.
+  repeated string partition_layers = 5;
 
   rerun.manifest_registry.v1alpha1.IndexConfig config = 3;
 
@@ -186,10 +215,45 @@ message QueryDatasetRequest {
   // all chunks that match other query parameters will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
-  // Generic parameters that will influence the behavior of the Lance scanner.
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 4;
+  // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
+  // in order to query all of them.
+  repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
 
-  rerun.manifest_registry.v1alpha1.Query query = 5;
+  // If set, the query will cover all existing entity paths.
+  //
+  // `entity_paths` must be empty, otherwise an error will be raised.
+  //
+  // Truth table:
+  // ```text
+  // select_all_entity_paths | entity_paths   | result
+  // ------------------------+----------------+--------
+  // false                   | []             | valid query, empty results (no entity paths selected)
+  // false                   | ['foo', 'bar'] | valid query, 'foo' & 'bar' selected
+  // true                    | []             | valid query, all entity paths selected
+  // true                    | ['foo', 'bar'] | invalid query, error
+  // ```
+  bool select_all_entity_paths = 7;
+
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 10;
+
+  // If set, static data will be excluded from the results.
+  bool exclude_static_data = 8;
+
+  // If set, temporal data will be excluded from the results.
+  bool exclude_temporal_data = 9;
+
+  // Generic parameters that will influence the behavior of the Lance scanner.
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
+
+  rerun.manifest_registry.v1alpha1.Query query = 6;
 }
 
 message GetChunksRequest {
@@ -203,13 +267,43 @@ message GetChunksRequest {
   // all chunks (that match other query parameters) will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
+  // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
+  // in order to query all of them.
+  repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
+
+  // If set, the query will cover all existing entity paths.
+  //
+  // `entity_paths` must be empty, otherwise an error will be raised.
+  //
+  // Truth table:
+  // ```text
+  // select_all_entity_paths | entity_paths   | result
+  // ------------------------+----------------+--------
+  // false                   | []             | valid query, empty results (no entity paths selected)
+  // false                   | ['foo', 'bar'] | valid query, 'foo' & 'bar' selected
+  // true                    | []             | valid query, all entity paths selected
+  // true                    | ['foo', 'bar'] | invalid query, error
+  // ```
+  bool select_all_entity_paths = 6;
+
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 9;
+
+  // If set, static data will be excluded from the results.
+  bool exclude_static_data = 7;
+
+  // If set, temporal data will be excluded from the results.
+  bool exclude_temporal_data = 8;
+
   // Query details
   rerun.manifest_registry.v1alpha1.Query query = 5;
-}
-
-message FetchPartitionRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-  rerun.common.v1alpha1.PartitionId partition_id = 2;
 }
 
 // --- Table Apis ---
@@ -231,4 +325,23 @@ message ScanTableRequest {
 
 message ScanTableResponse {
   rerun.common.v1alpha1.DataframePart dataframe_part = 1;
+}
+
+message DoMaintenanceRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+
+  // Create the acceleration structures for temporal queries.
+  //
+  // This will recreate all scalar indexes from scratch everytime.
+  //
+  // TODO(cmc): support incremental scalar indexing & index compaction
+  bool build_scalar_indexes = 2;
+
+  // Compact the underlying Lance fragments, for all Rerun Manifests.
+  //
+  // Hardcoded to the default (optimal) settings.
+  bool compact_fragments = 3;
+
+  // If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+  google.protobuf.Timestamp cleanup_before = 4;
 }

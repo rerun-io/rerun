@@ -8,7 +8,6 @@
 #include "../component_column.hpp"
 #include "../components/color.hpp"
 #include "../components/tensor_data.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -44,21 +43,16 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> color;
 
       public:
-        static constexpr const char IndicatorComponentName[] = "rerun.components.BarChartIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.BarChart";
 
         /// `ComponentDescriptor` for the `values` field.
         static constexpr auto Descriptor_values = ComponentDescriptor(
-            ArchetypeName, "values",
-            Loggable<rerun::components::TensorData>::Descriptor.component_name
+            ArchetypeName, "BarChart:values", Loggable<rerun::components::TensorData>::ComponentType
         );
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
-            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "BarChart:color", Loggable<rerun::components::Color>::ComponentType
         );
 
       public: // START of extensions from bar_chart_ext.cpp:

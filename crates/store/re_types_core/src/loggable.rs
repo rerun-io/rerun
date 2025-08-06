@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use nohash_hasher::IntSet;
 
 use re_byte_size::SizeBytes;
@@ -7,7 +5,7 @@ use re_byte_size::SizeBytes;
 use crate::{ComponentDescriptor, DeserializationResult, SerializationResult};
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
-use crate::{Archetype, ComponentBatch, LoggableBatch};
+use crate::{Archetype, ComponentBatch};
 
 // ---
 
@@ -19,7 +17,7 @@ use crate::{Archetype, ComponentBatch, LoggableBatch};
 /// A [`Loggable`] has no semantics (such as a name, for example): it's just data.
 /// If you want to encode semantics, then you're looking for a [`Component`], which extends [`Loggable`].
 ///
-/// Implementing the [`Loggable`] trait automatically derives the [`LoggableBatch`] implementation,
+/// Implementing the [`Loggable`] trait automatically derives the [`ComponentBatch`] implementation,
 /// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// The underlying [`arrow::datatypes::DataType`], excluding datatype extensions.
@@ -89,86 +87,38 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
 /// Implementing the [`Component`] trait automatically derives the [`ComponentBatch`] implementation,
 /// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Component: Loggable {
-    /// Returns the complete [`ComponentDescriptor`] for this [`Component`].
-    ///
-    /// Every component is uniquely identified by its [`ComponentDescriptor`].
-    //
-    // NOTE: Builtin Rerun components don't (yet) have anything but a `ComponentName` attached to
-    // them (other tags are injected at the Archetype level), therefore having a full
-    // `ComponentDescriptor` might seem overkill.
-    // It's not:
-    // * Users might still want to register Components with specific tags.
-    // * In the future, `ComponentDescriptor`s will very likely cover more than Archetype-related tags
-    //   (e.g. generics, metric units, etc).
-    fn descriptor() -> ComponentDescriptor;
-
-    /// The fully-qualified name of this component, e.g. `rerun.components.Position2D`.
-    ///
-    /// This is a trivial but useful helper for `Self::descriptor().component_name`.
-    ///
-    /// The default implementation already does the right thing: do not override unless you know
-    /// what you're doing.
-    /// `Self::name()` must exactly match the value returned by `Self::descriptor().component_name`,
-    /// or undefined behavior ensues.
-    //
-    // TODO(cmc): The only reason we keep this around is for convenience, and the only reason we need this
-    // convenience is because we're still in this weird half-way in-between state where some things
-    // are still indexed by name. Remove this entirely once we've ported everything to descriptors.
-    #[inline]
-    fn name() -> ComponentName {
-        Self::descriptor().component_name
-    }
+    /// The fully-qualified type of this component, e.g. `rerun.components.Position2D`.
+    fn name() -> ComponentType;
 }
 
 // ---
 
-pub type UnorderedComponentNameSet = IntSet<ComponentName>;
+pub type UnorderedComponentDescriptorSet = IntSet<ComponentDescriptor>;
 
-pub type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
+// TODO(#10460): Can we replace this with `BTreeSet<ComponentIdentifier>` here?
+pub type ComponentDescriptorSet = std::collections::BTreeSet<ComponentDescriptor>;
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
     #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
-    pub struct ComponentName;
+    pub struct ComponentType;
 );
 
-// TODO(cmc): The only reason this exists is for convenience, and the only reason we need this
-// convenience is because we're still in this weird half-way in-between state where some things
-// are still indexed by name. Remove this entirely once we've ported everything to descriptors.
-impl From<ComponentName> for Cow<'static, ComponentDescriptor> {
-    #[inline]
-    fn from(name: ComponentName) -> Self {
-        name.sanity_check();
-        Cow::Owned(ComponentDescriptor::new(name))
-    }
-}
-
-// TODO(cmc): The only reason this exists is for convenience, and the only reason we need this
-// convenience is because we're still in this weird half-way in-between state where some things
-// are still indexed by name. Remove this entirely once we've ported everything to descriptors.
-impl From<&ComponentName> for Cow<'static, ComponentDescriptor> {
-    #[inline]
-    fn from(name: &ComponentName) -> Self {
-        name.sanity_check();
-        Cow::Owned(ComponentDescriptor::new(*name))
-    }
-}
-
-impl ComponentName {
+impl ComponentType {
     /// Runs some asserts in debug mode to make sure the name is not weird.
     #[inline]
     #[track_caller]
     pub fn sanity_check(&self) {
-        let full_name = self.0.as_str();
+        let full_type = self.0.as_str();
         debug_assert!(
-            !full_name.starts_with("rerun.components.rerun.components.") && !full_name.contains(':'),
-            "DEBUG ASSERT: Found component with full name {full_name:?}. Maybe some bad round-tripping?"
+            !full_type.starts_with("rerun.components.rerun.components."),
+            "DEBUG ASSERT: Found component with full type {full_type:?}. Maybe some bad round-tripping?"
         );
     }
 
     /// Returns the fully-qualified name, e.g. `rerun.components.Position2D`.
     ///
-    /// This is the default `Display` implementation for [`ComponentName`].
+    /// This is the default `Display` implementation for [`ComponentType`].
     #[inline]
     pub fn full_name(&self) -> &'static str {
         self.sanity_check();
@@ -180,8 +130,8 @@ impl ComponentName {
     /// Used for most UI elements.
     ///
     /// ```
-    /// # use re_types_core::ComponentName;
-    /// assert_eq!(ComponentName::from("rerun.components.Position2D").short_name(), "Position2D");
+    /// # use re_types_core::ComponentType;
+    /// assert_eq!(ComponentType::from("rerun.components.Position2D").short_name(), "Position2D");
     /// ```
     #[inline]
     pub fn short_name(&self) -> &'static str {
@@ -200,41 +150,16 @@ impl ComponentName {
         }
     }
 
-    /// Is this an indicator component for an archetype?
-    pub fn is_indicator_component(&self) -> bool {
-        (self.starts_with("rerun.components.") || self.starts_with("rerun.blueprint.components."))
-            && self.ends_with("Indicator")
-    }
-
-    /// If this is an indicator component, for which archetype?
-    pub fn indicator_component_archetype(&self) -> Option<String> {
-        if let Some(name) = self.strip_prefix("rerun.components.") {
-            if let Some(name) = name.strip_suffix("Indicator") {
-                return Some(name.to_owned());
-            }
-        }
-        None
-    }
-
     /// Web URL to the Rerun documentation for this component.
     pub fn doc_url(&self) -> Option<String> {
-        if let Some(archetype_name_pascal_case) = self.indicator_component_archetype() {
-            // Link indicator components to their archetype.
-            // This code should be correct as long as this url passes our link checker:
-            // https://rerun.io/docs/reference/types/archetypes/line_strips3d
-
-            let archetype_name_snake_case = re_case::to_snake_case(&archetype_name_pascal_case);
-            let base_url = "https://rerun.io/docs/reference/types/archetypes";
-            Some(format!("{base_url}/{archetype_name_snake_case}"))
-        } else if let Some(component_name_pascal_case) =
-            self.full_name().strip_prefix("rerun.components.")
+        if let Some(component_type_pascal_case) = self.full_name().strip_prefix("rerun.components.")
         {
             // This code should be correct as long as this url passes our link checker:
             // https://rerun.io/docs/reference/types/components/line_strip2d
 
-            let component_name_snake_case = re_case::to_snake_case(component_name_pascal_case);
+            let component_type_snake_case = re_case::to_snake_case(component_type_pascal_case);
             let base_url = "https://rerun.io/docs/reference/types/components";
-            Some(format!("{base_url}/{component_name_snake_case}"))
+            Some(format!("{base_url}/{component_type_snake_case}"))
         } else {
             None // A user component
         }
@@ -252,7 +177,7 @@ impl ComponentName {
 
 // ---
 
-impl re_byte_size::SizeBytes for ComponentName {
+impl re_byte_size::SizeBytes for ComponentType {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

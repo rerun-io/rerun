@@ -7,7 +7,6 @@
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/view_coordinates.hpp"
-#include "../indicator_component.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
@@ -58,18 +57,13 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> xyz;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.components.ViewCoordinatesIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.ViewCoordinates";
 
         /// `ComponentDescriptor` for the `xyz` field.
         static constexpr auto Descriptor_xyz = ComponentDescriptor(
-            ArchetypeName, "xyz",
-            Loggable<rerun::components::ViewCoordinates>::Descriptor.component_name
+            ArchetypeName, "ViewCoordinates:xyz",
+            Loggable<rerun::components::ViewCoordinates>::ComponentType
         );
 
       public: // START of extensions from view_coordinates_ext.cpp:

@@ -31,7 +31,7 @@ Instead of spawning a new viewer, you can also try to connect to an already open
 
 ### Buffering
 
-As long as you haven't called `rerun::RecordingStream::save`/`rerun::RecordingStream::connect`/`rerun::RecordingStream::spawn`
+As long as you haven't called `rerun::RecordingStream::save`/`rerun::RecordingStream::connect_grpc`/`rerun::RecordingStream::spawn`
 any data will be kept in memory until you call one of these.
 
 \snippet{trimleft} readme_snippets.cpp Buffering
@@ -82,7 +82,7 @@ Note that this also what happens when you follow the CMake setup in the [quickst
 ### SDK bundle (rerun_cpp_sdk.zip)
 
 For convenience, Rerun provides a C++ SDK bundle with every release.
-(this includes our regular [Development Builds](https://github.com/rerun-io/rerun/releases/tag/prerelease)!)
+You can find the latest release artifacts [here](https://github.com/rerun-io/rerun/releases/latest).
 
 This is a simple zip archive containing the SDK from the [repository](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp)
 (excluding the `tests` folder) and a `lib` folder with prebuilt rerun_c libraries for all major desktop platforms.

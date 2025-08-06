@@ -21,7 +21,7 @@ pub struct ViewerAnalytics {
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
     // while at the same time opting-out of analytics at run-time.
     #[cfg(feature = "analytics")]
-    analytics: Option<re_analytics::Analytics>,
+    analytics: Option<&'static re_analytics::Analytics>,
 }
 
 impl ViewerAnalytics {
@@ -31,18 +31,10 @@ impl ViewerAnalytics {
 
         #[cfg(feature = "analytics")]
         {
-            let analytics = {
-                if startup_options.is_in_notebook {
-                    None
-                } else {
-                    match re_analytics::Analytics::new(std::time::Duration::from_secs(2)) {
-                        Ok(analytics) => Some(analytics),
-                        Err(err) => {
-                            re_log::error!(%err, "failed to initialize analytics SDK");
-                            None
-                        }
-                    }
-                }
+            let analytics = if startup_options.is_in_notebook {
+                None
+            } else {
+                re_analytics::Analytics::global_or_init()
             };
             Self { app_env, analytics }
         }
@@ -59,6 +51,7 @@ impl ViewerAnalytics {
     pub fn on_viewer_started(
         &self,
         build_info: re_build_info::BuildInfo,
+        egui_ctx: &egui::Context,
         adapter_backend: wgpu::Backend,
         device_tier: re_renderer::device_caps::DeviceCapabilityTier,
     ) {
@@ -77,6 +70,7 @@ impl ViewerAnalytics {
             ));
             analytics.record(event::viewer_started(
                 &self.app_env,
+                egui_ctx,
                 adapter_backend,
                 device_tier,
             ));

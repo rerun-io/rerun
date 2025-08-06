@@ -1,58 +1,97 @@
 #![allow(dead_code, unused_variables, clippy::unnecessary_wraps)]
 
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
-use re_video::{decode::FrameContent, Chunk, Frame, Time};
+use re_video::{Chunk, Frame, FrameContent, Time, VideoDataDescription};
 
 use parking_lot::Mutex;
 
 use crate::{
-    resource_managers::SourceImageDataFormat,
-    video::{
-        player::{TimedDecodingError, VideoTexture},
-        VideoPlayerError,
-    },
-    wgpu_resources::GpuTexture,
     RenderContext,
+    resource_managers::{GpuTexture2D, SourceImageDataFormat},
+    video::{
+        VideoPlayerError,
+        player::{TimedDecodingError, VideoTexture},
+    },
+    wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc},
 };
 
 #[derive(Default)]
 struct DecoderOutput {
-    frames: Vec<Frame>,
+    /// Frames sorted by PTS.
+    ///
+    /// *Almost* all decoders are outputting frames in presentation timestamp order.
+    /// However, WebCodec decoders on Firefox & Safari have been observed to output frames in decode order.
+    /// (i.e. the order in which they were submitted)
+    /// Therefore, we have to be careful not to assume that an incoming frame isn't in the past even on a freshly
+    /// reset decoder.
+    /// See also <https://github.com/rerun-io/rerun/issues/7961>
+    ///
+    /// Note that this technically a bug in their respective WebCodec implementations as the spec says
+    /// (<https://www.w3.org/TR/webcodecs/#dom-videodecoder-decode>):
+    /// `VideoDecoder` requires that frames are output in the order they expect to be presented, commonly known as presentation order.
+    /// Either way, being robust against this seems like a good idea!
+    frames_by_pts: BTreeMap<Time, Frame>,
 
     /// Set on error; reset on success.
     error: Option<TimedDecodingError>,
 }
 
+impl re_byte_size::SizeBytes for DecoderOutput {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            frames_by_pts,
+            error: _,
+        } = self;
+        frames_by_pts.heap_size_bytes()
+    }
+}
+
 /// Internal implementation detail of the [`super::player::VideoPlayer`].
-// TODO(andreas): Meld this into `super::player::VideoPlayer`.
-pub struct VideoChunkDecoder {
-    decoder: Box<dyn re_video::decode::AsyncDecoder>,
+///
+/// Expected to be reset upon backwards seeking.
+pub struct VideoSampleDecoder {
+    debug_name: String,
+    decoder: Box<dyn re_video::AsyncDecoder>,
     decoder_output: Arc<Mutex<DecoderOutput>>,
 }
 
-impl VideoChunkDecoder {
+impl re_byte_size::SizeBytes for VideoSampleDecoder {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            debug_name,
+            decoder: _, // TODO(emilk): maybe we should count this
+            decoder_output,
+        } = self;
+        debug_name.heap_size_bytes() + decoder_output.lock().heap_size_bytes()
+    }
+}
+
+impl VideoSampleDecoder {
     pub fn new(
         debug_name: String,
         make_decoder: impl FnOnce(
-            Box<dyn Fn(re_video::decode::Result<Frame>) + Send + Sync>,
-        )
-            -> re_video::decode::Result<Box<dyn re_video::decode::AsyncDecoder>>,
+            Box<dyn Fn(re_video::DecodeResult<Frame>) + Send + Sync>,
+        ) -> re_video::DecodeResult<Box<dyn re_video::AsyncDecoder>>,
     ) -> Result<Self, VideoPlayerError> {
         re_tracing::profile_function!();
 
         let decoder_output = Arc::new(Mutex::new(DecoderOutput::default()));
 
         let on_output = {
+            let debug_name = debug_name.clone();
             let decoder_output = decoder_output.clone();
-            move |frame: re_video::decode::Result<Frame>| match frame {
+            move |frame: re_video::DecodeResult<Frame>| match frame {
                 Ok(frame) => {
                     re_log::trace!(
                         "Decoded frame at PTS {:?}",
                         frame.info.presentation_timestamp
                     );
                     let mut output = decoder_output.lock();
-                    output.frames.push(frame);
+
+                    output
+                        .frames_by_pts
+                        .insert(frame.info.presentation_timestamp, frame);
                     output.error = None; // We successfully decoded a frame, reset the error state.
                 }
                 Err(err) => {
@@ -74,9 +113,14 @@ impl VideoChunkDecoder {
         let decoder = make_decoder(Box::new(on_output))?;
 
         Ok(Self {
+            debug_name,
             decoder,
             decoder_output,
         })
+    }
+
+    pub fn debug_name(&self) -> &str {
+        &self.debug_name
     }
 
     /// Start decoding the given chunk.
@@ -105,76 +149,47 @@ impl VideoChunkDecoder {
         self.decoder.min_num_samples_to_enqueue_ahead()
     }
 
-    /// Get the latest decoded frame at the given time
-    /// and copy it to the given texture.
-    ///
-    /// Drop all earlier frames to save memory.
-    ///
-    /// Returns [`VideoPlayerError::EmptyBuffer`] if the internal buffer is empty,
-    /// which it is just after startup or after a call to [`Self::reset`].
-    pub fn update_video_texture(
+    /// Returns the latest decoded frame at the given PTS and drops all earlier frames.
+    pub fn latest_decoded_frame_at_and_drop_earlier_frames(
         &self,
-        render_ctx: &RenderContext,
-        video_texture: &mut VideoTexture,
-        presentation_timestamp: Time,
-    ) -> Result<(), VideoPlayerError> {
+        pts: Time,
+    ) -> Option<parking_lot::MappedMutexGuard<'_, Frame>> {
         let mut decoder_output = self.decoder_output.lock();
-        let frames = &mut decoder_output.frames;
 
-        let Some(frame_idx) = re_video::demux::latest_at_idx(
-            frames,
-            |frame| frame.info.presentation_timestamp,
-            &presentation_timestamp,
-        ) else {
-            return Err(VideoPlayerError::EmptyBuffer);
-        };
+        // Latest-at semantics means that if `pts` doesn't land on the exact PTS of a decode frame we have,
+        // we provide the next *older* frame.
+        let latest_at_pts = decoder_output
+            .frames_by_pts
+            .range(..=pts)
+            .next_back()
+            .map_or(pts, |(k, v)| *k);
 
-        // drain up-to (but not including) the frame idx, clearing out any frames
-        // before it. this lets the video decoder output more frames.
-        drop(frames.drain(0..frame_idx));
+        // Keep everything at or after the given PTS.
+        decoder_output.frames_by_pts = decoder_output.frames_by_pts.split_off(&latest_at_pts);
 
-        // after draining all old frames, the next frame will be at index 0
-        let frame_idx = 0;
-        let frame = &frames[frame_idx];
-
-        let frame_time_range = frame.info.presentation_time_range();
-
-        let is_up_to_date = video_texture
-            .frame_info
-            .as_ref()
-            .is_some_and(|info| info.presentation_time_range() == frame_time_range);
-
-        if frame_time_range.contains(&presentation_timestamp) && !is_up_to_date {
-            #[cfg(target_arch = "wasm32")]
-            {
-                video_texture.source_pixel_format = copy_web_video_frame_to_texture(
-                    render_ctx,
-                    &frame.content,
-                    &video_texture.texture,
-                )?;
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                video_texture.source_pixel_format = copy_native_video_frame_to_texture(
-                    render_ctx,
-                    &frame.content,
-                    &video_texture.texture,
-                )?;
-            }
-
-            video_texture.frame_info = Some(frame.info.clone());
+        if !decoder_output.frames_by_pts.is_empty() {
+            Some(parking_lot::MutexGuard::map(
+                decoder_output,
+                |decoder_output| {
+                    decoder_output
+                        .frames_by_pts
+                        .first_entry()
+                        .expect("We just checked that the map is not empty")
+                        .into_mut()
+                },
+            ))
+        } else {
+            None
         }
-
-        Ok(())
     }
 
     /// Reset the video decoder and discard all frames.
-    pub fn reset(&mut self) -> Result<(), VideoPlayerError> {
-        self.decoder.reset()?;
+    pub fn reset(&mut self, video_descr: &VideoDataDescription) -> Result<(), VideoPlayerError> {
+        self.decoder.reset(video_descr)?;
 
         let mut decoder_output = self.decoder_output.lock();
         decoder_output.error = None;
-        decoder_output.frames.clear();
+        decoder_output.frames_by_pts.clear();
 
         Ok(())
     }
@@ -182,6 +197,83 @@ impl VideoChunkDecoder {
     /// Return and clear the latest error that happened during decoding.
     pub fn take_error(&self) -> Option<TimedDecodingError> {
         self.decoder_output.lock().error.take()
+    }
+}
+
+pub fn update_video_texture_with_frame(
+    render_ctx: &RenderContext,
+    target_video_texture: &mut VideoTexture,
+    source_frame: &Frame,
+) -> Result<(), VideoPlayerError> {
+    let Frame {
+        content: source_content,
+        info: source_info,
+    } = source_frame;
+
+    // Ensure that we have a texture to copy to.
+    let gpu_texture = target_video_texture.texture.get_or_insert_with(|| {
+        alloc_video_frame_texture(
+            &render_ctx.device,
+            &render_ctx.gpu_resources.textures,
+            source_content.width(),
+            source_content.height(),
+        )
+    });
+
+    let format = copy_frame_to_texture(render_ctx, source_content, gpu_texture)?;
+
+    target_video_texture.source_pixel_format = format;
+    target_video_texture.frame_info = Some(source_info.clone());
+
+    Ok(())
+}
+
+fn alloc_video_frame_texture(
+    device: &wgpu::Device,
+    pool: &GpuTexturePool,
+    width: u32,
+    height: u32,
+) -> GpuTexture2D {
+    let Some(texture) = GpuTexture2D::new(pool.alloc(
+        device,
+        &TextureDesc {
+            label: "video".into(),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            // Needs [`wgpu::TextureUsages::RENDER_ATTACHMENT`], otherwise copy of external textures will fail.
+            // Adding [`wgpu::TextureUsages::COPY_SRC`] so we can read back pixels on demand.
+            usage: wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::RENDER_ATTACHMENT,
+        },
+    )) else {
+        // We set the dimension to `2D` above, so this should never happen.
+        unreachable!();
+    };
+
+    texture
+}
+
+pub fn copy_frame_to_texture(
+    ctx: &RenderContext,
+    frame: &FrameContent,
+    target_texture: &GpuTexture,
+) -> Result<SourceImageDataFormat, VideoPlayerError> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        copy_web_video_frame_to_texture(ctx, frame, target_texture)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        copy_native_video_frame_to_texture(ctx, frame, target_texture)
     }
 }
 
@@ -229,8 +321,8 @@ fn copy_native_video_frame_to_texture(
     target_texture: &GpuTexture,
 ) -> Result<SourceImageDataFormat, VideoPlayerError> {
     use crate::resource_managers::{
-        transfer_image_data_to_texture, ImageDataDesc, SourceImageDataFormat,
-        YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+        ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+        transfer_image_data_to_texture,
     };
 
     let format = match frame.format {
@@ -268,21 +360,19 @@ fn copy_native_video_frame_to_texture(
             coefficients,
         } => SourceImageDataFormat::Yuv {
             layout: match layout {
-                re_video::decode::YuvPixelLayout::Y_U_V444 => YuvPixelLayout::Y_U_V444,
-                re_video::decode::YuvPixelLayout::Y_U_V422 => YuvPixelLayout::Y_U_V422,
-                re_video::decode::YuvPixelLayout::Y_U_V420 => YuvPixelLayout::Y_U_V420,
-                re_video::decode::YuvPixelLayout::Y400 => YuvPixelLayout::Y400,
+                re_video::YuvPixelLayout::Y_U_V444 => YuvPixelLayout::Y_U_V444,
+                re_video::YuvPixelLayout::Y_U_V422 => YuvPixelLayout::Y_U_V422,
+                re_video::YuvPixelLayout::Y_U_V420 => YuvPixelLayout::Y_U_V420,
+                re_video::YuvPixelLayout::Y400 => YuvPixelLayout::Y400,
             },
             coefficients: match coefficients {
-                re_video::decode::YuvMatrixCoefficients::Identity => {
-                    YuvMatrixCoefficients::Identity
-                }
-                re_video::decode::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
-                re_video::decode::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
+                re_video::YuvMatrixCoefficients::Identity => YuvMatrixCoefficients::Identity,
+                re_video::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
+                re_video::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
             },
             range: match range {
-                re_video::decode::YuvRange::Limited => YuvRange::Limited,
-                re_video::decode::YuvRange::Full => YuvRange::Full,
+                re_video::YuvRange::Limited => YuvRange::Limited,
+                re_video::YuvRange::Full => YuvRange::Full,
             },
         },
     };

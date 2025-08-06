@@ -1,13 +1,16 @@
-use egui::{text::TextWrapping, Align, Align2, NumExt as _, Ui};
+use std::sync::Arc;
 
-use super::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
-use crate::{DesignTokens, Icon, UiExt as _};
+use egui::{Align, Align2, NumExt as _, Ui, text::TextWrapping};
+
+use crate::{Icon, UiExt as _};
+
+use super::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent, ListVisuals};
 
 /// Closure to draw an icon left of the label.
-type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a;
+type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a;
 
 /// Closure to draw the right column of the property.
-type PropertyValueFn<'a> = dyn FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) + 'a;
+type PropertyValueFn<'a> = dyn FnOnce(&mut egui::Ui, ListVisuals) + 'a;
 
 /// [`ListItemContent`] to display property-like, two-column content.
 ///
@@ -55,8 +58,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn with_icon(self, icon: &'a Icon) -> Self {
         self.with_icon_fn(|ui, rect, visuals| {
-            let tint = visuals.fg_stroke.color;
-            icon.as_image().tint(tint).paint_at(ui, rect);
+            icon.as_image().tint(visuals.icon_tint()).paint_at(ui, rect);
         })
     }
 
@@ -64,7 +66,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn with_icon_fn<F>(mut self, icon_fn: F) -> Self
     where
-        F: FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
+        F: FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a,
     {
         self.icon_fn = Some(Box::new(icon_fn));
         self
@@ -88,39 +90,51 @@ impl<'a> PropertyContent<'a> {
 
     /// Helper to add an [`super::ItemActionButton`] to the right of the item.
     ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    ///
     /// See [`Self::button`] for more information.
     #[inline]
     pub fn action_button(
         self,
         icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
-        self.action_button_with_enabled(icon, true, on_click)
+        self.action_button_with_enabled(icon, alt_text, true, on_click)
     }
 
     /// Helper to add an enabled/disabled [`super::ItemActionButton`] to the right of the item.
+    ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
     ///
     /// See [`Self::button`] for more information.
     #[inline]
     pub fn action_button_with_enabled(
         self,
         icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
         enabled: bool,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
-        self.button(super::ItemActionButton::new(icon, on_click).enabled(enabled))
+        self.button(super::ItemActionButton::new(icon, alt_text, on_click).enabled(enabled))
     }
 
     /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
+    ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
     ///
     /// See [`Self::button`] for more information.
     #[inline]
     pub fn menu_button(
         self,
         icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
-        self.button(super::ItemMenuButton::new(icon, add_contents))
+        self.button(super::ItemMenuButton::new(icon, alt_text, add_contents))
     }
 
     /// Display value only for leaf or collapsed items.
@@ -140,7 +154,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_fn<F>(mut self, value_fn: F) -> Self
     where
-        F: FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) + 'a,
+        F: FnOnce(&mut egui::Ui, ListVisuals) + 'a,
     {
         self.value_fn = Some(Box::new(value_fn));
         self
@@ -192,6 +206,7 @@ impl<'a> PropertyContent<'a> {
     pub fn value_color(self, rgba: &'a [u8; 4]) -> Self {
         self.value_fn(|ui, _| {
             let [r, g, b, a] = rgba;
+            #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
             let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
             let response = egui::color_picker::show_color(ui, color, ui.spacing().interact_size);
             response.on_hover_text(format!("Color #{r:02x}{g:02x}{b:02x}{a:02x}"));
@@ -219,6 +234,8 @@ impl ListItemContent for PropertyContent<'_> {
             value_fn,
             button,
         } = *self;
+
+        let tokens = ui.tokens();
 
         // │                                                                              │
         // │◀─────────────────────────────get_full_span()────────────────────────────────▶│
@@ -249,18 +266,18 @@ impl ListItemContent for PropertyContent<'_> {
                 .unwrap_or_else(|| content_indent + (context.rect.width() / 2.).at_least(0.0));
 
         let icon_extra = if icon_fn.is_some() {
-            DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding()
+            tokens.small_icon_size.x + tokens.text_to_icon_padding()
         } else {
             0.0
         };
 
         // Based on egui::ImageButton::ui()
         let action_button_dimension =
-            DesignTokens::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
+            tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
         let reserve_action_button_space =
             button.is_some() || context.layout_info.reserve_action_button_space;
         let action_button_extra = if reserve_action_button_space {
-            action_button_dimension + DesignTokens::text_to_icon_padding()
+            action_button_dimension + tokens.text_to_icon_padding()
         } else {
             0.0
         };
@@ -276,16 +293,13 @@ impl ListItemContent for PropertyContent<'_> {
             context.rect.y_range(),
         );
 
-        let visuals = ui
-            .style()
-            .interact_selectable(context.response, context.list_item.selected);
+        let visuals = context.visuals;
 
         // Draw icon
         if let Some(icon_fn) = icon_fn {
             let icon_rect = egui::Rect::from_center_size(
-                context.rect.left_center()
-                    + egui::vec2(DesignTokens::small_icon_size().x / 2., 0.0),
-                DesignTokens::small_icon_size(),
+                context.rect.left_center() + egui::vec2(tokens.small_icon_size.x / 2., 0.0),
+                tokens.small_icon_size,
             );
 
             icon_fn(ui, icon_rect, visuals);
@@ -293,8 +307,11 @@ impl ListItemContent for PropertyContent<'_> {
 
         // Prepare the label galley. We first go for an un-truncated version to register our desired
         // column width. If it doesn't fit the available space, we recreate it with truncation.
-        let mut layout_job =
-            label.into_layout_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
+        let mut layout_job = Arc::unwrap_or_clone(label.into_layout_job(
+            ui.style(),
+            egui::FontSelection::Default,
+            Align::LEFT,
+        ));
         let desired_galley = ui.fonts(|fonts| fonts.layout_job(layout_job.clone()));
         let desired_width =
             (content_indent + icon_extra + desired_galley.size().x + Self::COLUMN_SPACING / 2.0)
@@ -328,13 +345,17 @@ impl ListItemContent for PropertyContent<'_> {
         let text_pos = Align2::LEFT_CENTER
             .align_size_within_rect(galley.size(), label_rect)
             .min;
-        ui.painter().galley(text_pos, galley, visuals.text_color());
+        let mut visuals_for_label = visuals;
+        visuals_for_label.interactive = false;
+        ui.painter()
+            .galley(text_pos, galley, visuals_for_label.text_color());
+
+        let mut visuals_for_value = visuals;
+        visuals_for_value.strong = true;
+        visuals_for_value.interactive = true; // interactive false would override strong
 
         // Draw value
-        let is_completely_collapsed = context
-            .list_item
-            .collapse_openness
-            .map_or(true, |o| o == 0.0);
+        let is_completely_collapsed = context.list_item.collapse_openness.is_none_or(|o| o == 0.0);
         let should_show_value = if show_only_when_collapsed {
             is_completely_collapsed
         } else {
@@ -347,7 +368,8 @@ impl ListItemContent for PropertyContent<'_> {
                         .max_rect(value_rect)
                         .layout(egui::Layout::left_to_right(egui::Align::Center)),
                 );
-                value_fn(&mut child_ui, visuals);
+                child_ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
+                value_fn(&mut child_ui, visuals_for_value);
 
                 context.layout_info.register_property_content_max_width(
                     child_ui.ctx(),
@@ -377,6 +399,7 @@ impl ListItemContent for PropertyContent<'_> {
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
         let layout_info = LayoutInfoStack::top(ui.ctx());
+        let tokens = ui.tokens();
 
         if crate::is_in_resizable_panel(ui) {
             DesiredWidth::AtLeast(self.min_desired_width)
@@ -385,11 +408,11 @@ impl ListItemContent for PropertyContent<'_> {
 
             // TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
             let action_button_dimension =
-                DesignTokens::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
+                tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
             let reserve_action_button_space =
                 self.button.is_some() || layout_info.reserve_action_button_space;
             if reserve_action_button_space {
-                desired_width += action_button_dimension + DesignTokens::text_to_icon_padding();
+                desired_width += action_button_dimension + tokens.text_to_icon_padding();
             }
 
             DesiredWidth::AtLeast(desired_width.ceil())

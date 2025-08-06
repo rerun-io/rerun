@@ -1,6 +1,6 @@
 use std::sync::{
-    atomic::{AtomicBool, Ordering::Relaxed},
     Arc,
+    atomic::{AtomicBool, Ordering::Relaxed},
 };
 
 use crate::{SharedStats, SmartChannelSource, SmartMessage, TryRecvError};

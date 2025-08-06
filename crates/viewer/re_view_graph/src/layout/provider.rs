@@ -12,10 +12,10 @@ use re_log::error_once;
 use crate::graph::{EdgeId, NodeId};
 
 use super::{
+    EdgeGeometry, EdgeTemplate, Layout, LayoutRequest, PathGeometry,
     params::ForceLayoutParams,
     request::NodeTemplate,
-    slots::{slotted_edges, Slot, SlotKind},
-    EdgeGeometry, EdgeTemplate, Layout, LayoutRequest, PathGeometry,
+    slots::{Slot, SlotKind, slotted_edges},
 };
 
 impl<'a> From<&'a NodeTemplate> for fj::Node {
@@ -347,7 +347,7 @@ impl ForceLayoutProvider {
     }
 
     pub fn is_finished(&self) -> bool {
-        self.simulation.as_ref().map_or(true, |s| s.is_finished())
+        self.simulation.as_ref().is_none_or(|s| s.is_finished())
     }
 }
 

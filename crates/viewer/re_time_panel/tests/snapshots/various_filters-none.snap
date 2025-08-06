@@ -1,6 +1,7 @@
 ---
 source: crates/viewer/re_time_panel/tests/time_panel_filter_tests.rs
 expression: streams_tree_data
+snapshot_kind: text
 ---
 children:
   - entity_path: []
@@ -91,3 +92,16 @@ children:
                     highlight_sections: []
                     default_open: false
                     children: []
+      - entity_path:
+          - __properties
+        label: __properties/
+        highlight_sections: []
+        default_open: false
+        children:
+          - entity_path:
+              - __properties
+              - episode
+            label: episode
+            highlight_sections: []
+            default_open: false
+            children: []

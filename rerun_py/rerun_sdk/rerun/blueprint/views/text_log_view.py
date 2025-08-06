@@ -22,6 +22,8 @@ class TextLogView(View):
     """
     **View**: A view of a text log, for use with [`archetypes.TextLog`][rerun.archetypes.TextLog].
 
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
     Example
     -------
     ### Use a blueprint to show a TextLogView.:

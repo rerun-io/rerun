@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../../blueprint/datatypes/filter_is_not_null.hpp"
-#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -13,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Configuration for the filter is not null feature of the dataframe view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct FilterIsNotNull {
         rerun::blueprint::datatypes::FilterIsNotNull filter_is_not_null;
 
@@ -44,7 +46,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::FilterIsNotNull> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.FilterIsNotNull";
 
         /// Returns the arrow data type this type corresponds to.

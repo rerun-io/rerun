@@ -48,12 +48,14 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         // an array with millions of values.
         if let Some(entries) = array.downcast_array_ref::<ListArray>() {
             if entries.len() == 1 {
-                return arrow_ui(ui, ui_layout, entries.values());
+                // Don't use `values` since this may contain values before and after the single blob we want to display.
+                return arrow_ui(ui, ui_layout, &entries.value(0));
             }
         }
         if let Some(entries) = array.downcast_array_ref::<LargeListArray>() {
             if entries.len() == 1 {
-                return arrow_ui(ui, ui_layout, entries.values());
+                // Don't use `values` since this may contain values before and after the single blob we want to display.
+                return arrow_ui(ui, ui_layout, &entries.value(0));
             }
         }
 
@@ -80,10 +82,40 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
                 re_format::format_bytes(instance_count as _)
             } else if let Some(dtype) = simple_datatype_string(array.data_type()) {
                 format!("{instance_count_str} items of {dtype}")
+            } else if let DataType::Struct(fields) = array.data_type() {
+                format!(
+                    "{instance_count_str} structs with {} fields: {}",
+                    fields.len(),
+                    fields
+                        .iter()
+                        .map(|f| format!("{}:{}", f.name(), f.data_type()))
+                        .join(", ")
+                )
             } else {
                 format!("{instance_count_str} items")
             };
-            ui_layout.label(ui, string);
+            ui_layout.label(ui, string).on_hover_ui(|ui| {
+                const MAX_INSTANCE: usize = 40;
+
+                let list_string = format!(
+                    "[{}{}]{}",
+                    (0..instance_count.min(MAX_INSTANCE))
+                        .map(array_formatter)
+                        .join(", "),
+                    if instance_count > MAX_INSTANCE {
+                        ", …"
+                    } else {
+                        ""
+                    },
+                    if instance_count > MAX_INSTANCE {
+                        format!(" ({} items omitted)", instance_count - MAX_INSTANCE)
+                    } else {
+                        String::new()
+                    }
+                );
+
+                UiLayout::Tooltip.data_label(ui, list_string);
+            });
         }
     });
 }

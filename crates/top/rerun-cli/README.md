@@ -15,7 +15,7 @@
 ## Rerun command-line tool
 You can install the binary with `cargo install rerun-cli --locked --features nasm`.
 
-**Note**: this requires the [`nasm`](https://www.nasm.us) CLI to be installed and available in your path.
+**Note**: this requires the [`nasm`](https://github.com/netwide-assembler/nasm) CLI to be installed and available in your path.
 Alternatively, you may skip enabling the `nasm` feature, but this may result in inferior video decoding performance.
 
 The `rerun` CLI can act either as a server, a viewer, or both, depending on which options you use when you start it.

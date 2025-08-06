@@ -1,8 +1,19 @@
 //! Communications with an Rerun Data Platform gRPC server.
 
+mod connection_client;
+mod connection_registry;
 pub mod message_proxy;
+mod redap;
 
-pub mod redap;
+pub use self::{
+    connection_client::GenericConnectionClient,
+    connection_registry::{ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle},
+    redap::{
+        Command, ConnectionError, RedapClient, channel,
+        get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
+        stream_dataset_from_redap,
+    },
+};
 
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
@@ -12,8 +23,14 @@ pub struct TonicStatusError(pub tonic::Status);
 
 impl std::fmt::Display for TonicStatusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO(emilk): duplicated in `re_grpc_server`
         let status = &self.0;
-        write!(f, "gRPC error, status: '{}'", status.code())?;
+
+        write!(f, "gRPC error")?;
+
+        if status.code() != tonic::Code::Unknown {
+            write!(f, ", code: '{}'", status.code())?;
+        }
         if !status.message().is_empty() {
             write!(f, ", message: {:?}", status.message())?;
         }
@@ -22,7 +39,7 @@ impl std::fmt::Display for TonicStatusError {
         //     write!(f, ", details: {:?}", status.details())?;
         // }
         if !status.metadata().is_empty() {
-            write!(f, ", metadata: {:?}", status.metadata())?;
+            write!(f, ", metadata: {:?}", status.metadata().as_ref())?;
         }
         Ok(())
     }
@@ -44,7 +61,7 @@ impl std::error::Error for TonicStatusError {
 pub enum StreamError {
     /// Native connection error
     #[cfg(not(target_arch = "wasm32"))]
-    #[error(transparent)]
+    #[error("connection failed: {0}")]
     Transport(#[from] tonic::transport::Error),
 
     #[error(transparent)]
@@ -52,6 +69,9 @@ pub enum StreamError {
 
     #[error(transparent)]
     TonicStatus(#[from] TonicStatusError),
+
+    #[error(transparent)]
+    Tokio(#[from] tokio::task::JoinError),
 
     #[error(transparent)]
     CodecError(#[from] re_log_encoding::codec::CodecError),
@@ -70,6 +90,18 @@ pub enum StreamError {
 
     #[error(transparent)]
     TypeConversionError(#[from] re_protos::TypeConversionError),
+
+    #[error("Chunk data missing in response")]
+    MissingChunkData,
+
+    #[error("Column '{0}' is missing from the dataframe")]
+    MissingDataframeColumn(String),
+
+    #[error("{0}")]
+    MissingData(String),
+
+    #[error("arrow error: {0}")]
+    ArrowError(#[from] arrow::error::ArrowError),
 }
 
 impl From<tonic::Status> for StreamError {

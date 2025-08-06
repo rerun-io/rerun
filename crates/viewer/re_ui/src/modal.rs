@@ -1,6 +1,7 @@
-use crate::{DesignTokens, UiExt as _};
 use eframe::emath::NumExt as _;
-use egui::Frame;
+use egui::{Frame, ModalResponse};
+
+use crate::{DesignTokens, UiExt as _, context_ext::ContextExt as _};
 
 /// Helper object to handle a [`ModalWrapper`] window.
 ///
@@ -18,7 +19,7 @@ use egui::Frame;
 ///     modal_handler.open();
 /// }
 ///
-/// modal_handler.ui(ui.ctx(), || ModalWrapper::new("Modal Window"), |ui, _| {
+/// modal_handler.ui(ui.ctx(), || ModalWrapper::new("Modal Window"), |ui| {
 ///     ui.label("Modal content");
 /// });
 /// # });
@@ -40,7 +41,7 @@ impl ModalHandler {
         &mut self,
         ctx: &egui::Context,
         make_modal: impl FnOnce() -> ModalWrapper,
-        content_ui: impl FnOnce(&mut egui::Ui, &mut bool) -> R,
+        content_ui: impl FnOnce(&mut egui::Ui) -> R,
     ) -> Option<R> {
         if self.modal.is_none() && self.should_open {
             self.modal = Some(make_modal());
@@ -48,26 +49,17 @@ impl ModalHandler {
         }
 
         if let Some(modal) = &mut self.modal {
-            let ModalWrapperResponse { inner, open } = modal.ui(ctx, content_ui);
+            let response = modal.ui(ctx, content_ui);
 
-            if !open {
+            if response.should_close() {
                 self.modal = None;
             }
 
-            Some(inner)
+            Some(response.inner)
         } else {
             None
         }
     }
-}
-
-/// Response returned by [`ModalWrapper::ui`].
-pub struct ModalWrapperResponse<R> {
-    /// What the content closure returned if it was actually run.
-    pub inner: R,
-
-    /// Whether the modal should remain open.
-    pub open: bool,
 }
 
 /// Show a modal window with Rerun style using [`egui::Modal`].
@@ -161,11 +153,10 @@ impl ModalWrapper {
     pub fn ui<R>(
         &self,
         ctx: &egui::Context,
-        content_ui: impl FnOnce(&mut egui::Ui, &mut bool) -> R,
-    ) -> ModalWrapperResponse<R> {
+        content_ui: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> ModalResponse<R> {
+        let tokens = ctx.tokens();
         let id = egui::Id::new(&self.title);
-
-        let mut open = true;
 
         let mut area = egui::Modal::default_area(id);
         if let Some(default_height) = self.default_height {
@@ -199,14 +190,17 @@ impl ModalWrapper {
                     // Title bar
                     //
 
-                    view_padding_frame(&ViewPaddingFrameParams {
-                        left_and_right: true,
-                        top: true,
-                        bottom: false,
-                    })
+                    view_padding_frame(
+                        tokens,
+                        &ViewPaddingFrameParams {
+                            left_and_right: true,
+                            top: true,
+                            bottom: false,
+                        },
+                    )
                     .show(ui, |ui| {
-                        Self::title_bar(ui, &self.title, &mut open);
-                        ui.add_space(DesignTokens::view_padding() as f32);
+                        Self::title_bar(ui, &self.title);
+                        ui.add_space(tokens.view_padding() as f32);
                         ui.full_span_separator();
                     });
 
@@ -214,31 +208,37 @@ impl ModalWrapper {
                     // Inner content
                     //
 
-                    let wrapped_content_ui = |ui: &mut egui::Ui, open: &mut bool| -> R {
+                    let wrapped_content_ui = |ui: &mut egui::Ui| -> R {
                         // We always have side margin, but these must happen _inside_ the scroll area
                         // (if any). Otherwise, the scroll bar is not snug with the right border and
                         // may interfere with the action buttons of `ListItem`s.
-                        view_padding_frame(&ViewPaddingFrameParams {
-                            left_and_right: self.set_side_margins,
-                            top: false,
-                            bottom: false,
-                        })
+                        view_padding_frame(
+                            tokens,
+                            &ViewPaddingFrameParams {
+                                left_and_right: self.set_side_margins,
+                                top: false,
+                                bottom: false,
+                            },
+                        )
                         .show(ui, |ui| {
                             if self.full_span_content {
                                 // no further spacing for the content UI
-                                content_ui(ui, open)
+                                content_ui(ui)
                             } else {
                                 // we must restore vertical spacing and add view padding at the bottom
                                 ui.add_space(item_spacing_y);
 
-                                view_padding_frame(&ViewPaddingFrameParams {
-                                    left_and_right: false,
-                                    top: false,
-                                    bottom: true,
-                                })
+                                view_padding_frame(
+                                    tokens,
+                                    &ViewPaddingFrameParams {
+                                        left_and_right: false,
+                                        top: false,
+                                        bottom: true,
+                                    },
+                                )
                                 .show(ui, |ui| {
                                     ui.spacing_mut().item_spacing.y = item_spacing_y;
-                                    content_ui(ui, open)
+                                    content_ui(ui)
                                 })
                                 .inner
                             }
@@ -259,7 +259,7 @@ impl ModalWrapper {
                             .min_scrolled_height(max_height)
                             .max_height(max_height)
                             .show(ui, |ui| {
-                                let res = wrapped_content_ui(ui, &mut open);
+                                let res = wrapped_content_ui(ui);
 
                                 if ui.min_rect().height() < min_height {
                                     ui.add_space(min_height - ui.min_rect().height());
@@ -269,24 +269,17 @@ impl ModalWrapper {
                             })
                             .inner
                     } else {
-                        wrapped_content_ui(ui, &mut open)
+                        wrapped_content_ui(ui)
                     }
                 })
                 .inner
             });
 
-        if modal_response.should_close() {
-            open = false;
-        }
-
-        ModalWrapperResponse {
-            inner: modal_response.inner,
-            open,
-        }
+        modal_response
     }
 
     /// Display a title bar in our own style.
-    fn title_bar(ui: &mut egui::Ui, title: &str, open: &mut bool) {
+    fn title_bar(ui: &mut egui::Ui, title: &str) {
         ui.horizontal(|ui| {
             ui.strong(title);
 
@@ -297,8 +290,11 @@ impl ModalWrapper {
                     .max_rect(ui.max_rect())
                     .layout(egui::Layout::right_to_left(egui::Align::Center)),
             );
-            if ui.small_icon_button(&crate::icons::CLOSE).clicked() {
-                *open = false;
+            if ui
+                .small_icon_button(&crate::icons::CLOSE, "Close")
+                .clicked()
+            {
+                ui.close();
             }
         });
     }
@@ -312,7 +308,7 @@ struct ViewPaddingFrameParams {
 
 /// Utility to produce a [`egui::Frame`] with padding on some sides.
 #[inline]
-fn view_padding_frame(params: &ViewPaddingFrameParams) -> egui::Frame {
+fn view_padding_frame(tokens: &DesignTokens, params: &ViewPaddingFrameParams) -> egui::Frame {
     let ViewPaddingFrameParams {
         left_and_right,
         top,
@@ -321,21 +317,17 @@ fn view_padding_frame(params: &ViewPaddingFrameParams) -> egui::Frame {
     egui::Frame {
         inner_margin: egui::Margin {
             left: if left_and_right {
-                DesignTokens::view_padding()
+                tokens.view_padding()
             } else {
                 0
             },
             right: if left_and_right {
-                DesignTokens::view_padding()
+                tokens.view_padding()
             } else {
                 0
             },
-            top: if top { DesignTokens::view_padding() } else { 0 },
-            bottom: if bottom {
-                DesignTokens::view_padding()
-            } else {
-                0
-            },
+            top: if top { tokens.view_padding() } else { 0 },
+            bottom: if bottom { tokens.view_padding() } else { 0 },
         },
         ..Default::default()
     }

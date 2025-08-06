@@ -33,6 +33,7 @@ def run(
 
 def set_rerun_notebook_version(pyproject_path: Path, version: str) -> None:
     pyproject: dict[str, Any] = tomlkit.parse(pyproject_path.read_text())
+    pyproject["project"]["version"] = version
     pyproject_path.write_text(tomlkit.dumps(pyproject))
 
 

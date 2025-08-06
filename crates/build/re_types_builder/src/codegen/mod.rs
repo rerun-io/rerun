@@ -25,7 +25,7 @@ pub trait CodeGenerator {
         &mut self,
         reporter: &crate::Reporter,
         objects: &crate::Objects,
-        arrow_registry: &crate::ArrowRegistry,
+        type_registry: &crate::TypeRegistry,
     ) -> crate::GeneratedFiles;
 }
 

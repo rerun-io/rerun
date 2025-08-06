@@ -1,16 +1,15 @@
-use ahash::{HashMap, HashSet};
+use ahash::HashMap;
 
-use itertools::Either;
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::{
+    ComponentDescriptor,
     components::{ImageBuffer, MediaType},
     image::{ImageKind, ImageLoadError},
-    Component as _,
 };
 
-use crate::{Cache, ImageInfo};
+use crate::{Cache, ImageInfo, cache::filter_blob_removed_events, image_info::StoredBlobCacheKey};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image
@@ -26,7 +25,7 @@ struct DecodedImageResult {
 /// Caches the results of decoding [`re_types::archetypes::EncodedImage`].
 #[derive(Default)]
 pub struct ImageDecodeCache {
-    cache: HashMap<RowId, HashMap<Hash64, DecodedImageResult>>,
+    cache: HashMap<StoredBlobCacheKey, HashMap<Hash64, DecodedImageResult>>,
     memory_used: u64,
     generation: u64,
 }
@@ -35,12 +34,13 @@ pub struct ImageDecodeCache {
 impl ImageDecodeCache {
     /// Decode some image data and cache the result.
     ///
-    /// The `row_id` should be the `RowId` of the blob.
+    /// The `RowId`, if available, may be used to generate the cache key.
     /// NOTE: images are never batched atm (they are mono-archetypes),
     /// so we don't need the instance id here.
     pub fn entry(
         &mut self,
         blob_row_id: RowId,
+        blob_component_descriptor: &ComponentDescriptor,
         image_bytes: &[u8],
         media_type: Option<&MediaType>,
     ) -> Result<ImageInfo, ImageLoadError> {
@@ -58,13 +58,22 @@ impl ImageDecodeCache {
 
         let inner_key = Hash64::hash(&media_type);
 
+        // The descriptor should always be the one in the encoded image archetype, but in the future
+        // we may allow overrides such that it is sourced from somewhere else.
+        let blob_cache_key = StoredBlobCacheKey::new(blob_row_id, blob_component_descriptor);
+
         let lookup = self
             .cache
-            .entry(blob_row_id)
+            .entry(blob_cache_key)
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
-                let result = decode_image(blob_row_id, image_bytes, media_type.as_str());
+                let result = decode_image(
+                    blob_row_id,
+                    blob_component_descriptor,
+                    image_bytes,
+                    media_type.as_str(),
+                );
                 let memory_used = result.as_ref().map_or(0, |image| image.buffer.len() as u64);
                 self.memory_used += memory_used;
                 DecodedImageResult {
@@ -80,6 +89,7 @@ impl ImageDecodeCache {
 
 fn decode_image(
     blob_row_id: RowId,
+    blob_component_descriptor: &ComponentDescriptor,
     image_bytes: &[u8],
     media_type: &str,
 ) -> Result<ImageInfo, ImageLoadError> {
@@ -97,16 +107,17 @@ fn decode_image(
 
     let (buffer, format) = ImageBuffer::from_dynamic_image(dynamic_image)?;
 
-    Ok(ImageInfo {
-        buffer_row_id: blob_row_id,
-        buffer: buffer.0,
-        format: format.0,
-        kind: ImageKind::Color,
-    })
+    Ok(ImageInfo::from_stored_blob(
+        blob_row_id,
+        blob_component_descriptor,
+        buffer.0,
+        format.0,
+        ImageKind::Color,
+    ))
 }
 
 impl Cache for ImageDecodeCache {
-    fn begin_frame(&mut self, _renderer_active_frame_idx: u64) {
+    fn begin_frame(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         let max_decode_cache_use = 4_000_000_000;
 
@@ -123,6 +134,11 @@ impl Cache for ImageDecodeCache {
         self.generation += 1;
     }
 
+    /// Total memory used by this cache, in bytes.
+    fn bytes_used(&self) -> u64 {
+        self.memory_used // we already have this pre-computed!
+    }
+
     fn purge_memory(&mut self) {
         re_tracing::profile_function!();
 
@@ -130,7 +146,7 @@ impl Cache for ImageDecodeCache {
 
         let before = self.memory_used;
 
-        self.cache.retain(|_row_id, per_key| {
+        self.cache.retain(|_cache_key, per_key| {
             per_key.retain(|_, ci| {
                 let retain = ci.last_use_generation == self.generation;
                 if !retain {
@@ -149,30 +165,12 @@ impl Cache for ImageDecodeCache {
         );
     }
 
-    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let row_ids_removed: HashSet<RowId> = events
-            .iter()
-            .flat_map(|event| {
-                let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
-                let contains_image_blob = || {
-                    event
-                        .chunk
-                        .components()
-                        .contains_key(&re_types::components::Blob::name())
-                };
-
-                if is_deletion() && contains_image_blob() {
-                    Either::Left(event.chunk.row_ids())
-                } else {
-                    Either::Right(std::iter::empty())
-                }
-            })
-            .collect();
-
+        let cache_key_removed = filter_blob_removed_events(events);
         self.cache
-            .retain(|row_id, _per_key| !row_ids_removed.contains(row_id));
+            .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

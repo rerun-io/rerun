@@ -1,32 +1,34 @@
-use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
+use egui::{Align2, NumExt as _, Vec2, epaint::TextShape};
 use ndarray::Axis;
 
 use re_data_ui::tensor_summary_ui_grid_contents;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
+use re_log_types::EntityPath;
+use re_log_types::hash::Hash64;
 use re_types::{
+    View as _, ViewClassIdentifier,
     blueprint::{
-        archetypes::{TensorScalarMapping, TensorViewFit},
+        archetypes::{self, TensorScalarMapping, TensorViewFit},
         components::ViewFit,
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
     datatypes::TensorData,
-    View as _, ViewClassIdentifier,
 };
-use re_ui::{list_item, Help, UiExt as _};
+use re_ui::{Help, UiExt as _, list_item};
 use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
-    gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities,
+    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
     MaybeVisualizableEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider,
-    ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewerContext, VisualizableEntities,
+    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
+    gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
+    TensorDimension,
     dimension_mapping::TensorSliceSelection,
     tensor_dimension_mapper::dimension_mapping_ui,
     visualizer_system::{TensorSystem, TensorVisualization},
-    TensorDimension,
 };
 
 #[derive(Default)]
@@ -64,7 +66,7 @@ impl ViewClass for TensorView {
         &re_ui::icons::VIEW_TENSOR
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+    fn help(&self, _os: egui::os::OperatingSystem) -> Help {
         Help::new("Tensor view")
             .docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
             .markdown(
@@ -133,18 +135,18 @@ Set the displayed dimensions in a selection panel.",
                 ..
             }) = &state.tensor
             {
-                let tensor_stats = ctx
-                    .store_context
-                    .caches
-                    .entry(|c: &mut TensorStatsCache| c.entry(*tensor_row_id, tensor));
+                let tensor_stats = ctx.store_context.caches.entry(|c: &mut TensorStatsCache| {
+                    c.entry(Hash64::hash(*tensor_row_id), tensor)
+                });
 
                 tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
             }
         });
 
         list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
-            view_property_ui::<TensorScalarMapping>(ctx, ui, view_id, self, state);
-            view_property_ui::<TensorViewFit>(ctx, ui, view_id, self, state);
+            let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<TensorScalarMapping>(&ctx, ui, self);
+            view_property_ui::<TensorViewFit>(&ctx, ui, self);
         });
 
         // TODO(#6075): Listitemify
@@ -195,11 +197,11 @@ Set the displayed dimensions in a selection panel.",
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // For tensors create one view for each tensor (even though we're able to stack them in one view)
-        suggest_view_for_each_entity::<TensorSystem>(ctx, self, suggested_filter)
+        suggest_view_for_each_entity::<TensorSystem>(ctx, self, include_entity)
     }
 
     fn ui(
@@ -211,28 +213,46 @@ Set the displayed dimensions in a selection panel.",
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        let tokens = ui.tokens();
+
         let state = state.downcast_mut::<ViewTensorState>()?;
         state.tensor = None;
 
         let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
 
-        if tensors.len() > 1 {
-            egui::Frame {
-                inner_margin: re_ui::DesignTokens::view_padding().into(),
-                ..egui::Frame::default()
-            }
-            .show(ui, |ui| {
-                ui.error_label(format!(
-                    "Can only show one tensor at a time; was given {}. Update the query so that it \
+        let response = {
+            let mut ui = ui.new_child(egui::UiBuilder::new().sense(egui::Sense::click()));
+
+            if tensors.len() > 1 {
+                egui::Frame {
+                    inner_margin: tokens.view_padding().into(),
+                    ..egui::Frame::default()
+                }
+                    .show(&mut ui, |ui| {
+                        ui.error_label(format!(
+                            "Can only show one tensor at a time; was given {}. Update the query so that it \
                     returns a single tensor entity and create additional views for the others.",
-                    tensors.len()
-                ));
-            });
-        } else if let Some(tensor_view) = tensors.first() {
-            state.tensor = Some(tensor_view.clone());
-            self.view_tensor(ctx, ui, state, query.view_id, &tensor_view.tensor)?;
-        } else {
-            ui.centered_and_justified(|ui| ui.label("(empty)"));
+                            tensors.len()
+                        ));
+                    });
+            } else if let Some(tensor_view) = tensors.first() {
+                state.tensor = Some(tensor_view.clone());
+                self.view_tensor(ctx, &mut ui, state, query.view_id, &tensor_view.tensor)?;
+            } else {
+                ui.centered_and_justified(|ui| ui.label("(empty)"));
+            }
+
+            ui.response()
+        };
+
+        if response.hovered() {
+            ctx.selection_state().set_hovered(Item::View(query.view_id));
+        }
+
+        if response.clicked() {
+            ctx.selection_state()
+                .set_selection(Item::View(query.view_id));
         }
 
         Ok(())
@@ -264,7 +284,7 @@ impl TensorView {
         if slice_selection
             .slider
             .as_ref()
-            .map_or(true, |s| !s.is_empty())
+            .is_none_or(|s| !s.is_empty())
         {
             egui::Frame {
                 inner_margin: egui::Margin::symmetric(16, 8),
@@ -297,9 +317,10 @@ impl TensorView {
             }),
         ];
 
-        egui::ScrollArea::both().show(ui, |ui| {
+        egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
+            let ctx = self.view_context(ctx, view_id, state);
             if let Err(err) =
-                self.tensor_slice_ui(ctx, ui, state, view_id, dimension_labels, &slice_selection)
+                self.tensor_slice_ui(&ctx, ui, state, dimension_labels, &slice_selection)
             {
                 ui.error_label(err.to_string());
             }
@@ -310,19 +331,17 @@ impl TensorView {
 
     fn tensor_slice_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
-        view_id: ViewId,
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
-        let (response, painter, image_rect) =
-            self.paint_tensor_slice(ctx, ui, state, view_id, slice_selection)?;
+        let (response, image_rect) = self.paint_tensor_slice(ctx, ui, state, slice_selection)?;
 
         if !response.hovered() {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
-            paint_axis_names(ui, &painter, image_rect, font_id, dimension_labels);
+            paint_axis_names(ui, image_rect, font_id, dimension_labels);
         }
 
         Ok(())
@@ -330,12 +349,11 @@ impl TensorView {
 
     fn paint_tensor_slice(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
-        view_id: ViewId,
         slice_selection: &TensorSliceSelection,
-    ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
+    ) -> anyhow::Result<(egui::Response, egui::Rect)> {
         re_tracing::profile_function!();
 
         let Some(tensor_view) = state.tensor.as_ref() else {
@@ -349,13 +367,24 @@ impl TensorView {
 
         let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
             ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
+            ctx.blueprint_query(),
+            ctx.view_id,
         );
-        let colormap: Colormap = scalar_mapping.component_or_fallback(ctx, self, state)?;
-        let gamma: GammaCorrection = scalar_mapping.component_or_fallback(ctx, self, state)?;
-        let mag_filter: MagnificationFilter =
-            scalar_mapping.component_or_fallback(ctx, self, state)?;
+        let colormap: Colormap = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            &TensorScalarMapping::descriptor_colormap(),
+        )?;
+        let gamma: GammaCorrection = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            &TensorScalarMapping::descriptor_gamma(),
+        )?;
+        let mag_filter: MagnificationFilter = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            &TensorScalarMapping::descriptor_mag_filter(),
+        )?;
 
         let colormap = ColormapWithRange {
             colormap,
@@ -373,10 +402,10 @@ impl TensorView {
 
         let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(
             ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
+            ctx.blueprint_query(),
+            ctx.view_id,
         )
-        .component_or_fallback(ctx, self, state)?;
+        .component_or_fallback(ctx, self, &TensorViewFit::descriptor_scaling())?;
 
         let img_size = egui::vec2(width as _, height as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
@@ -411,7 +440,7 @@ impl TensorView {
             re_renderer::DebugLabel::from("tensor_slice"),
         )?;
 
-        Ok((response, painter, image_rect))
+        Ok((response, image_rect))
     }
 }
 
@@ -447,7 +476,7 @@ pub fn selected_tensor_slice<'a, T: Copy>(
         tensor
             .view()
             .into_shape_with_order(ndarray::IxDyn(&[tensor.len(), 1]))
-            .unwrap()
+            .expect("Tensor.shape.len() is not actually 1!")
     } else {
         tensor.view()
     };
@@ -484,11 +513,13 @@ fn dimension_name(shape: &[TensorDimension], dim_idx: u32) -> String {
 
 fn paint_axis_names(
     ui: &egui::Ui,
-    painter: &egui::Painter,
     rect: egui::Rect,
     font_id: egui::FontId,
     dimension_labels: [Option<(String, bool)>; 2],
 ) {
+    let painter = ui.painter();
+    let tokens = ui.tokens();
+
     let [width, height] = dimension_labels;
     let (width_name, invert_width) =
         width.map_or((None, false), |(label, invert)| (Some(label), invert));
@@ -497,7 +528,7 @@ fn paint_axis_names(
 
     let text_color = ui.visuals().text_color();
 
-    let rounding = re_ui::DesignTokens::normal_corner_radius();
+    let rounding = tokens.normal_corner_radius();
     let inner_margin = rounding;
     let outer_margin = 8.0;
 
@@ -686,7 +717,11 @@ fn selectors_ui(
     }
 
     if changed_indices {
-        slice_property.save_blueprint_component(ctx, &indices);
+        slice_property.save_blueprint_component(
+            ctx,
+            &archetypes::TensorSliceSelection::descriptor_indices(),
+            &indices,
+        );
     }
 }
 
@@ -702,5 +737,5 @@ re_viewer_context::impl_component_fallback_provider!(TensorView => [Colormap]);
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TensorView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| TensorView.help(ctx));
 }

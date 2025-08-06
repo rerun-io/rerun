@@ -1469,29 +1469,8 @@ pub struct RangeZip1x9<
     o8_data_latest: Option<O8>,
 }
 
-impl<
-        Idx,
-        IR0,
-        R0,
-        IO0,
-        O0,
-        IO1,
-        O1,
-        IO2,
-        O2,
-        IO3,
-        O3,
-        IO4,
-        O4,
-        IO5,
-        O5,
-        IO6,
-        O6,
-        IO7,
-        O7,
-        IO8,
-        O8,
-    > Iterator
+impl<Idx, IR0, R0, IO0, O0, IO1, O1, IO2, O2, IO3, O3, IO4, O4, IO5, O5, IO6, O6, IO7, O7, IO8, O8>
+    Iterator
     for RangeZip1x9<
         Idx,
         IR0,
@@ -2954,29 +2933,8 @@ pub struct RangeZip2x8<
     o7_data_latest: Option<O7>,
 }
 
-impl<
-        Idx,
-        IR0,
-        R0,
-        IR1,
-        R1,
-        IO0,
-        O0,
-        IO1,
-        O1,
-        IO2,
-        O2,
-        IO3,
-        O3,
-        IO4,
-        O4,
-        IO5,
-        O5,
-        IO6,
-        O6,
-        IO7,
-        O7,
-    > Iterator
+impl<Idx, IR0, R0, IR1, R1, IO0, O0, IO1, O1, IO2, O2, IO3, O3, IO4, O4, IO5, O5, IO6, O6, IO7, O7>
+    Iterator
     for RangeZip2x8<
         Idx,
         IR0,
@@ -3302,30 +3260,30 @@ pub struct RangeZip2x9<
 }
 
 impl<
-        Idx,
-        IR0,
-        R0,
-        IR1,
-        R1,
-        IO0,
-        O0,
-        IO1,
-        O1,
-        IO2,
-        O2,
-        IO3,
-        O3,
-        IO4,
-        O4,
-        IO5,
-        O5,
-        IO6,
-        O6,
-        IO7,
-        O7,
-        IO8,
-        O8,
-    > Iterator
+    Idx,
+    IR0,
+    R0,
+    IR1,
+    R1,
+    IO0,
+    O0,
+    IO1,
+    O1,
+    IO2,
+    O2,
+    IO3,
+    O3,
+    IO4,
+    O4,
+    IO5,
+    O5,
+    IO6,
+    O6,
+    IO7,
+    O7,
+    IO8,
+    O8,
+> Iterator
     for RangeZip2x9<
         Idx,
         IR0,

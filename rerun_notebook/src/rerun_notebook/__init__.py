@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+import base64
 import importlib.metadata
 import logging
 import os
 import pathlib
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
-from typing import Any, Literal
+from pathlib import Path
+from typing import Any, Callable, Literal
+from uuid import uuid4
 
 import anywidget
 import jupyter_ui_poll
 import traitlets
+from ipywidgets import HTML
 
 try:
     __version__ = importlib.metadata.version("rerun_notebook")
@@ -22,8 +25,10 @@ except importlib.metadata.PackageNotFoundError:
 Panel = Literal["top", "blueprint", "selection", "time"]
 PanelState = Literal["expanded", "collapsed", "hidden"]
 
-WIDGET_PATH = pathlib.Path(__file__).parent / "static" / "widget.js"
-CSS_PATH = pathlib.Path(__file__).parent / "static" / "widget.css"
+STATIC_DIR = pathlib.Path(__file__).parent / "static"
+WIDGET_PATH = STATIC_DIR / "widget.js"
+WASM_PATH = STATIC_DIR / "re_viewer_bg.wasm"
+CSS_PATH = STATIC_DIR / "widget.css"
 
 # We need to bootstrap the value of ESM_MOD before the Viewer class is instantiated.
 # This is because AnyWidget will process the resource files during `__init_subclass__`
@@ -37,120 +42,125 @@ CSS_PATH = pathlib.Path(__file__).parent / "static" / "widget.css"
 ASSET_MAGIC_SERVE = "serve-local"
 ASSET_MAGIC_INLINE = "inline"
 
-ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", f"https://app.rerun.io/version/{__version__}/widget.js")
 
-if ASSET_ENV == ASSET_MAGIC_SERVE:
+def _buffer_to_data_url(binary: bytes) -> str:
+    import gzip
+
+    gz = gzip.compress(binary)
+    b64 = base64.b64encode(gz).decode()
+
+    return f"data:application/octet-stream;gzip;base64,{b64}"
+
+
+def _inline_widget() -> str:
+    """
+    For `RERUN_NOTEBOOK_ASSET=inline`, we need a single file to pass to `anywidget`.
+
+    This function loads both the JS and Wasm files, then inlines the Wasm into the JS.
+
+    The Wasm is stored in the JS file as a (gzipped) base64 string, from which we can
+    create a fake Response for the JS to load as a Wasm module.
+    """
+    print("Loading inline widget due to RERUN_NOTEBOOK_ASSET=inline")
+
+    wasm = WASM_PATH.read_bytes()
+    data_url = _buffer_to_data_url(wasm)
+
+    js = WIDGET_PATH.read_text()
+    fetch_viewer_wasm = f"""
+    async function compressed_data_url_to_buffer(dataUrl) {{
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+
+        let ds = new DecompressionStream("gzip");
+        let decompressedStream = blob.stream().pipeThrough(ds);
+
+        return new Response(decompressedStream).arrayBuffer();
+    }}
+    const dataUrl = "{data_url}";
+    const buffer = await compressed_data_url_to_buffer(dataUrl);
+    return new Response(buffer, {{ "headers": {{ "Content-Type": "application/wasm" }} }});
+    """
+
+    inline_marker_open = "//!<INLINE-MARKER-OPEN>"
+    inline_marker_close = "//!<INLINE-MARKER-CLOSE>"
+    inline_start = js.find(inline_marker_open) + len(inline_marker_open)
+    inline_end = js.find(inline_marker_close, inline_start)
+    js = js[:inline_start] + fetch_viewer_wasm + js[inline_end:]
+
+    return js
+
+
+ASSET_IS_URL = False
+ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", None)
+if ASSET_ENV is None:
+    # if we're in the `rerun` repository, default to `serve-local`
+    # as we don't upload widgets for `+dev` versions anywhere
+    if "RERUN_DEV_ENVIRONMENT" in os.environ:
+        ASSET_ENV = "serve-local"
+    else:
+        ASSET_ENV = f"https://app.rerun.io/version/{__version__}/notebook/widget.js"
+
+if ASSET_ENV == ASSET_MAGIC_SERVE:  # localhost widget
     from .asset_server import serve_assets
 
     bound_addr = serve_assets(background=True)
     ESM_MOD: str | pathlib.Path = f"http://localhost:{bound_addr[1]}/widget.js"
-elif ASSET_ENV == ASSET_MAGIC_INLINE:
-    ESM_MOD = WIDGET_PATH
-else:
+elif ASSET_ENV == ASSET_MAGIC_INLINE:  # inline widget
+    # in this case, `ESM_MOD` is the contents of a file, not its path.
+    ESM_MOD = _inline_widget()
+else:  # remote widget
     ESM_MOD = ASSET_ENV
+    # note that the JS expects the Wasm binary to exist at the same path as itself
     if not (ASSET_ENV.startswith(("http://", "https://"))):
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
+    if not (ASSET_ENV.endswith("widget.js")):
+        raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL pointing to a `widget.js` file. Found: {ASSET_ENV}")
+    ASSET_IS_URL = True
 
 
-# If you add a callback here, you should also update the `callbacks.ipynb` notebook to showcase it.
-class ViewerCallbacks:
-    """
-    Base class for Viewer callback definitions.
-
-    You should inherit from this class, override the callback methods you need,
-    and then pass an instance to `Viewer.register_callbacks`.
-    """
-
-    def on_selection_change(self, selection: list[SelectionItem]) -> None:
-        """
-        Fired when the selection changes.
-
-        This event is fired each time any part of the event payload changes,
-        this includes for example clicking on different parts of the same
-        entity in a 2D or 3D view.
-        """
-
-    def on_timeline_change(self, timeline: str, time: float) -> None:
-        """Fired when a different timeline is selected."""
-
-    def on_time_update(self, time: float) -> None:
-        """Fired when the timepoint changes."""
-
-
-@dataclass
-class EntitySelection:
-    """
-    Selected an entity, or an instance of an entity.
-
-    If the entity was selected within a view, then this also
-    includes the view's name.
-
-    If the entity was selected within a 2D or 3D space view,
-    then this also includes the position.
-    """
-
-    @property
-    def kind(self) -> Literal["entity"]:
-        return "entity"
-
-    entity_path: str
-    instance_id: int | None
-    view_name: str | None
-    position: tuple[int, int, int] | None
-
-
-@dataclass
-class ViewSelection:
-    """Selected a view."""
-
-    @property
-    def kind(self) -> Literal["view"]:
-        return "view"
-
-    view_id: str
-    view_name: str
-
-
-@dataclass
-class ContainerSelection:
-    """Selected a container."""
-
-    @property
-    def kind(self) -> Literal["container"]:
-        return "container"
-
-    container_id: str
-    container_name: str
-
-
-SelectionItem = EntitySelection | ViewSelection | ContainerSelection
-"""A single item in a selection."""
-
-
-def _selection_item_from_json(json: Any) -> SelectionItem:
-    if json["type"] == "entity":
-        position = json.get("position", None)
-        return EntitySelection(
-            entity_path=json["entity_path"],
-            instance_id=json.get("instance_id", None),
-            view_name=json.get("view_name", None),
-            position=(position[0], position[1], position[2]) if position is not None else None,
+class ErrorWidget:
+    def __init__(self) -> None:
+        widget_id = str(uuid4())
+        js = (
+            (Path(__file__).parent / "error_widget.js")
+            .read_text()
+            .replace("{{widget_id}}", widget_id)
+            .replace("{{widget_url}}", ASSET_ENV or "")
+            .replace("\n", "")
         )
-    if json["type"] == "view":
-        return ViewSelection(view_id=json["view_id"], view_name=json["view_name"])
-    if json["type"] == "container":
-        return ContainerSelection(container_id=json["container_id"], container_name=json["container_name"])
-    else:
-        raise NotImplementedError(f"selection item kind {json[type]} is not handled")
+        js_base64 = base64.b64encode(js.encode()).decode()
+        onload = f"eval(atob('{js_base64}'))"
+        self._html = HTML(value=f'<div id="{widget_id}"><style onload="{onload}"></style></div>')
+
+    def _ipython_display_(self) -> None:
+        from IPython.display import display
+
+        if ASSET_IS_URL:
+            display(self._html)
+
+
+_EventData = dict[str, Any]
+_Buffers = list[bytes]
+_Event = tuple[_EventData, _Buffers | None]
 
 
 class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     _esm = ESM_MOD
     _css = CSS_PATH
 
-    _width = traitlets.Int(allow_none=True).tag(sync=True)
-    _height = traitlets.Int(allow_none=True).tag(sync=True)
+    # NOTE: A property which may be set from within the Viewer should NOT be a traitlet!
+    # Use `self.send` instead, events from which are handled in `on_custom_message` in `widget.ts`.
+    # To expose it bi-directionally, add a Viewer event for it instead.
+    # This makes the asynchronous communication between the Viewer and SDK more explicit, leading to fewer surprises.
+    #
+    # Example: `set_time_ctrl` uses `self.send`, and the state of the timeline is exposed via Viewer events.
 
+    _width = traitlets.Union([traitlets.Int(), traitlets.Unicode()]).tag(sync=True)
+    _height = traitlets.Union([traitlets.Int(), traitlets.Unicode()]).tag(sync=True)
+
+    # TODO(nick): This traitlet is only used for initialization
+    # we should figure out how to pass directly and remove it
     _url = traitlets.Unicode(allow_none=True).tag(sync=True)
 
     _panel_states = traitlets.Dict(
@@ -160,25 +170,20 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     ).tag(sync=True)
 
     _ready = False
-    _data_queue: list[bytes]
+    _event_queue: list[_Event] = []
 
-    _time_ctrl = traitlets.Tuple(
-        traitlets.Unicode(allow_none=True),
-        traitlets.Int(allow_none=True),
-        traitlets.Bool(),
-        allow_none=True,
-    ).tag(sync=True)
-    _recording_id = traitlets.Unicode(allow_none=True).tag(sync=True)
+    _fallback_token = traitlets.Unicode(allow_none=True).tag(sync=True)
 
-    _callbacks: list[ViewerCallbacks] = []
+    _raw_event_callbacks: list[Callable[[str], None]] = []
 
     def __init__(
         self,
         *,
-        width: int | None = None,
-        height: int | None = None,
+        width: int | Literal["auto"],
+        height: int | Literal["auto"],
         url: str | None = None,
         panel_states: Mapping[Panel, PanelState] | None = None,
+        fallback_token: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -186,52 +191,47 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self._width = width
         self._height = height
         self._url = url
-        self._data_queue = []
-
-        from ipywidgets import widgets
-
-        self._output = widgets.Output()
 
         if panel_states:
             self.update_panel_states(panel_states)
 
+        if fallback_token:
+            self._fallback_token = fallback_token
+
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
-            if isinstance(content, str) and content == "ready":
-                self._on_ready()
-            elif not isinstance(content, str) and "event" in content:
-                # Event names here come from `widget.ts`.
-                if content["event"] == "selectionchange":
-                    selection = [_selection_item_from_json(item) for item in content["payload"]]
-                    for callback in self._callbacks:
-                        callback.on_selection_change(selection)
-                elif content["event"] == "timelinechange":
-                    timeline = content["payload"]["timeline"]
-                    time = content["payload"]["time"]
-                    for callback in self._callbacks:
-                        callback.on_timeline_change(timeline, time)
-                elif content["event"] == "timeupdate":
-                    time = content["payload"]
-                    for callback in self._callbacks:
-                        callback.on_time_update(time)
+            if isinstance(content, str):
+                if content == "ready":
+                    self._on_ready()
+                else:
+                    for callback in self._raw_event_callbacks:
+                        callback(content)
 
         self.on_msg(handle_msg)
 
     def _on_ready(self) -> None:
         self._ready = True
-        for data in self._data_queue:
-            self.send_rrd(data)
-        self._data_queue.clear()
+
+        for event, buffers in self._event_queue:
+            super().send(event, buffers)
+
+        self._event_queue.clear()
+
+    def send(self, content: _EventData, buffers: _Buffers | None = None) -> None:
+        if not self._ready:
+            self._event_queue.append((content, buffers))
+            return
+
+        super().send(content, buffers)
 
     def send_rrd(self, data: bytes) -> None:
         """Send a recording to the viewer."""
 
-        if not self._ready:
-            self._data_queue.append(data)
-            return
-
         self.send({"type": "rrd"}, buffers=[data])
 
-    def block_until_ready(self, timeout: float = 5.0) -> None:
+    def send_table(self, data: bytes) -> None:
+        self.send({"type": "table"}, buffers=[data])
+
+    def block_until_ready(self, timeout: float = 10.0) -> None:
         """Block until the viewer is ready."""
 
         start = time.time()
@@ -240,9 +240,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
             while self._ready is False:
                 if time.time() - start > timeout:
                     logging.warning(
-                        f"""Timed out waiting for viewer to become ready. Make sure: {ESM_MOD} is accessible.
-If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details.
-""",
+                        f"Timed out waiting for viewer to load. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details."
                     )
                     return
                 poll(1)
@@ -258,12 +256,18 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
         self._panel_states = new_panel_states
 
     def set_time_ctrl(self, timeline: str | None, time: int | None, play: bool) -> None:
-        self._time_ctrl = (timeline, time, play)
+        self.send({"type": "time_ctrl", "timeline": timeline, "time": time, "play": play})
 
     def set_active_recording(self, recording_id: str) -> None:
-        self._recording_id = recording_id
+        self.send({"type": "recording_id", "recording_id": recording_id})
 
-    def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
+    def open_url(self, url: str) -> None:
+        self.send({"type": "open_url", "url": url})
+
+    def close_url(self, url: str) -> None:
+        self.send({"type": "close_url", "url": url})
+
+    def _on_raw_event(self, callback: Callable[[str], None]) -> None:
         """Register a set of callbacks with this instance of the Viewer."""
         # TODO(jan): maybe allow unregister by making this a map instead
-        self._callbacks.append(callbacks)
+        self._raw_event_callbacks.append(callback)

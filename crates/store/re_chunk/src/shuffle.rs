@@ -164,7 +164,7 @@ impl Chunk {
         #[cfg(not(target_arch = "wasm32"))]
         let now = std::time::Instant::now();
 
-        use rand::{seq::SliceRandom as _, SeedableRng as _};
+        use rand::{SeedableRng as _, seq::SliceRandom as _};
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let swaps = {
@@ -192,7 +192,7 @@ impl Chunk {
     ///
     /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
     //
-    // TODO(#3741): Provide a path that only shuffles offsets instead of the data itself, using a `ListView`.
+    // TODO(apache/arrow-rs#5375): Provide a path that only shuffles offsets instead of the data itself, using a `ListView`.
     pub(crate) fn shuffle_with(&mut self, swaps: &[usize]) {
         re_tracing::profile_function!();
 
@@ -246,10 +246,7 @@ impl Chunk {
         // Reminder: these are all `ListArray`s.
         re_tracing::profile_scope!("components (offsets & data)");
         {
-            for original in components
-                .values_mut()
-                .flat_map(|per_desc| per_desc.values_mut())
-            {
+            for original in components.values_mut() {
                 let sorted_arrays = swaps
                     .iter()
                     .copied()
@@ -310,10 +307,9 @@ impl TimeColumn {
 #[cfg(test)]
 mod tests {
     use re_log_types::{
-        example_components::{MyColor, MyPoint},
         EntityPath, Timeline,
+        example_components::{MyColor, MyPoint, MyPoints},
     };
-    use re_types_core::Component as _;
 
     use crate::{ChunkId, RowId};
 
@@ -351,32 +347,32 @@ mod tests {
                     RowId::new(),
                     [(timeline1, 1000), (timeline2, 42)],
                     [
-                        (MyPoint::descriptor(), Some(&points1 as _)),
-                        (MyColor::descriptor(), Some(&colors1 as _)),
+                        (MyPoints::descriptor_points(), Some(&points1 as _)),
+                        (MyPoints::descriptor_colors(), Some(&colors1 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     RowId::new(),
                     [(timeline1, 1001), (timeline2, 43)],
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(&colors2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(&colors2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     RowId::new(),
                     [(timeline1, 1002), (timeline2, 44)],
                     [
-                        (MyPoint::descriptor(), Some(&points3 as _)),
-                        (MyColor::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(&points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     RowId::new(),
                     [(timeline1, 1003), (timeline2, 45)],
                     [
-                        (MyPoint::descriptor(), Some(&points4 as _)),
-                        (MyColor::descriptor(), Some(&colors4 as _)),
+                        (MyPoints::descriptor_points(), Some(&points4 as _)),
+                        (MyPoints::descriptor_colors(), Some(&colors4 as _)),
                     ],
                 )
                 .build()?;
@@ -452,32 +448,32 @@ mod tests {
                     row_id1,
                     [(timeline1, 1000), (timeline2, 45)],
                     [
-                        (MyPoint::descriptor(), Some(&points1 as _)),
-                        (MyColor::descriptor(), Some(&colors1 as _)),
+                        (MyPoints::descriptor_points(), Some(&points1 as _)),
+                        (MyPoints::descriptor_colors(), Some(&colors1 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id2,
                     [(timeline1, 1001), (timeline2, 44)],
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(&colors2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(&colors2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id3,
                     [(timeline1, 1002), (timeline2, 43)],
                     [
-                        (MyPoint::descriptor(), Some(&points3 as _)),
-                        (MyColor::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(&points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id4,
                     [(timeline1, 1003), (timeline2, 42)],
                     [
-                        (MyPoint::descriptor(), Some(&points4 as _)),
-                        (MyColor::descriptor(), Some(&colors4 as _)),
+                        (MyPoints::descriptor_points(), Some(&points4 as _)),
+                        (MyPoints::descriptor_colors(), Some(&colors4 as _)),
                     ],
                 )
                 .build()?;
@@ -487,27 +483,35 @@ mod tests {
             assert!(chunk_unsorted_timeline2.is_sorted());
             assert!(chunk_unsorted_timeline2.is_sorted_uncached());
 
-            assert!(chunk_unsorted_timeline2
-                .timelines()
-                .get(timeline1.name())
-                .unwrap()
-                .is_sorted());
-            assert!(chunk_unsorted_timeline2
-                .timelines()
-                .get(timeline1.name())
-                .unwrap()
-                .is_sorted_uncached());
+            assert!(
+                chunk_unsorted_timeline2
+                    .timelines()
+                    .get(timeline1.name())
+                    .unwrap()
+                    .is_sorted()
+            );
+            assert!(
+                chunk_unsorted_timeline2
+                    .timelines()
+                    .get(timeline1.name())
+                    .unwrap()
+                    .is_sorted_uncached()
+            );
 
-            assert!(!chunk_unsorted_timeline2
-                .timelines()
-                .get(timeline2.name())
-                .unwrap()
-                .is_sorted());
-            assert!(!chunk_unsorted_timeline2
-                .timelines()
-                .get(timeline2.name())
-                .unwrap()
-                .is_sorted_uncached());
+            assert!(
+                !chunk_unsorted_timeline2
+                    .timelines()
+                    .get(timeline2.name())
+                    .unwrap()
+                    .is_sorted()
+            );
+            assert!(
+                !chunk_unsorted_timeline2
+                    .timelines()
+                    .get(timeline2.name())
+                    .unwrap()
+                    .is_sorted_uncached()
+            );
 
             let chunk_sorted_timeline2 =
                 chunk_unsorted_timeline2.sorted_by_timeline_if_unsorted(timeline2.name());
@@ -517,27 +521,35 @@ mod tests {
             assert!(!chunk_sorted_timeline2.is_sorted());
             assert!(!chunk_sorted_timeline2.is_sorted_uncached());
 
-            assert!(!chunk_sorted_timeline2
-                .timelines()
-                .get(timeline1.name())
-                .unwrap()
-                .is_sorted());
-            assert!(!chunk_sorted_timeline2
-                .timelines()
-                .get(timeline1.name())
-                .unwrap()
-                .is_sorted_uncached());
+            assert!(
+                !chunk_sorted_timeline2
+                    .timelines()
+                    .get(timeline1.name())
+                    .unwrap()
+                    .is_sorted()
+            );
+            assert!(
+                !chunk_sorted_timeline2
+                    .timelines()
+                    .get(timeline1.name())
+                    .unwrap()
+                    .is_sorted_uncached()
+            );
 
-            assert!(chunk_sorted_timeline2
-                .timelines()
-                .get(timeline2.name())
-                .unwrap()
-                .is_sorted());
-            assert!(chunk_sorted_timeline2
-                .timelines()
-                .get(timeline2.name())
-                .unwrap()
-                .is_sorted_uncached());
+            assert!(
+                chunk_sorted_timeline2
+                    .timelines()
+                    .get(timeline2.name())
+                    .unwrap()
+                    .is_sorted()
+            );
+            assert!(
+                chunk_sorted_timeline2
+                    .timelines()
+                    .get(timeline2.name())
+                    .unwrap()
+                    .is_sorted_uncached()
+            );
 
             let chunk_sorted_timeline2_expected =
                 Chunk::builder_with_id(chunk_id, entity_path.clone())
@@ -545,32 +557,32 @@ mod tests {
                         row_id4,
                         [(timeline1, 1003), (timeline2, 42)],
                         [
-                            (MyPoint::descriptor(), Some(&points4 as _)),
-                            (MyColor::descriptor(), Some(&colors4 as _)),
+                            (MyPoints::descriptor_points(), Some(&points4 as _)),
+                            (MyPoints::descriptor_colors(), Some(&colors4 as _)),
                         ],
                     )
                     .with_sparse_component_batches(
                         row_id3,
                         [(timeline1, 1002), (timeline2, 43)],
                         [
-                            (MyPoint::descriptor(), Some(&points3 as _)),
-                            (MyColor::descriptor(), None),
+                            (MyPoints::descriptor_points(), Some(&points3 as _)),
+                            (MyPoints::descriptor_colors(), None),
                         ],
                     )
                     .with_sparse_component_batches(
                         row_id2,
                         [(timeline1, 1001), (timeline2, 44)],
                         [
-                            (MyPoint::descriptor(), None),
-                            (MyColor::descriptor(), Some(&colors2 as _)),
+                            (MyPoints::descriptor_points(), None),
+                            (MyPoints::descriptor_colors(), Some(&colors2 as _)),
                         ],
                     )
                     .with_sparse_component_batches(
                         row_id1,
                         [(timeline1, 1000), (timeline2, 45)],
                         [
-                            (MyPoint::descriptor(), Some(&points1 as _)),
-                            (MyColor::descriptor(), Some(&colors1 as _)),
+                            (MyPoints::descriptor_points(), Some(&points1 as _)),
+                            (MyPoints::descriptor_colors(), Some(&colors1 as _)),
                         ],
                     )
                     .build()?;

@@ -154,7 +154,6 @@ def main() -> None:
                 rrb.TimeSeriesView(
                     name="Spiral",
                     origin="/spiral",
-                    # TODO(#9022): Pluralize series line type.
                     overrides={"spiral": rr.SeriesLines.from_fields(names=["0.01t cos(0.01t)", "0.01t sin(0.01t)"])},  # type: ignore[arg-type]
                 ),
                 row_shares=[2, 1],

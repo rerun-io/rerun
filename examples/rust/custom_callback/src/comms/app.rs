@@ -1,12 +1,16 @@
+use std::{error::Error, result::Result, sync::Arc};
+
 use parking_lot::RwLock;
-use rerun::external::re_log;
-use std::error::Error;
-use std::result::Result;
-use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
-use tokio::net::{TcpListener, TcpSocket, TcpStream};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::sync::Mutex;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf},
+    net::{TcpListener, TcpSocket, TcpStream},
+    sync::{
+        Mutex,
+        mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
+    },
+};
+
+use rerun::external::{re_error, re_log};
 
 use super::protocol::Message;
 
@@ -41,7 +45,7 @@ impl ControlApp {
     pub async fn broadcast(&self, message: Message) -> tokio::io::Result<()> {
         let clients = self.clients.lock().await;
         clients.iter().for_each(|client| {
-            let _ = client.send(message.clone());
+            client.send(message.clone()).ok();
         });
 
         Ok(())
@@ -178,7 +182,7 @@ impl ControlAppHandle {
         let clients = self.app.clients.lock().await;
 
         clients.iter().for_each(|client| {
-            let _ = client.send(message.clone());
+            client.send(message.clone()).ok();
         });
     }
 }

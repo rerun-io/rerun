@@ -1,4 +1,4 @@
-use rerun::{ChunkStore, ChunkStoreConfig, ComponentDescriptor, VersionPolicy};
+use rerun::{ChunkStore, ChunkStoreConfig, ComponentDescriptor};
 
 fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
     rec.log_static(
@@ -34,62 +34,33 @@ fn check_tags(rec: &rerun::RecordingStream) {
     if let Ok(path_to_rrd) = std::env::var("_RERUN_TEST_FORCE_SAVE") {
         rec.flush_blocking();
 
-        let stores = ChunkStore::from_rrd_filepath(
-            &ChunkStoreConfig::ALL_DISABLED,
-            path_to_rrd,
-            VersionPolicy::Warn,
-        )
-        .unwrap();
+        let stores =
+            ChunkStore::from_rrd_filepath(&ChunkStoreConfig::ALL_DISABLED, path_to_rrd).unwrap();
         assert_eq!(1, stores.len());
 
         let store = stores.into_values().next().unwrap();
-        // Skip the first two chunks, as they represent the `RecordingProperties`.
-        let chunks = store.iter_chunks().skip(2).collect::<Vec<_>>();
-        assert_eq!(2, chunks.len());
+        // Skip the first chunk, as it represent the `RecordingInfo`.
+        let chunks = store.iter_chunks().skip(1).collect::<Vec<_>>();
+        assert_eq!(1, chunks.len());
 
         {
             let chunk = &chunks[0];
 
-            let mut descriptors = chunk
-                .components()
-                .values()
-                .flat_map(|per_desc| per_desc.keys())
-                .cloned()
-                .collect::<Vec<_>>();
+            let mut descriptors = chunk.components().keys().cloned().collect::<Vec<_>>();
             descriptors.sort();
 
             let expected = vec![
                 ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Points3D".into()),
-                    archetype_field_name: Some("positions".into()),
-                    component_name: "rerun.components.Position3D".into(),
+                    archetype: Some("rerun.archetypes.Points3D".into()),
+                    component: "Points3D:positions".into(),
+                    component_type: Some("rerun.components.Position3D".into()),
                 },
                 ComponentDescriptor {
-                    archetype_name: Some("rerun.archetypes.Points3D".into()),
-                    archetype_field_name: Some("radii".into()),
-                    component_name: "rerun.components.Radius".into(),
+                    archetype: Some("rerun.archetypes.Points3D".into()),
+                    component: "Points3D:radii".into(),
+                    component_type: Some("rerun.components.Radius".into()),
                 },
             ];
-
-            similar_asserts::assert_eq!(expected, descriptors);
-        }
-
-        {
-            let chunk = &chunks[1];
-
-            let mut descriptors = chunk
-                .components()
-                .values()
-                .flat_map(|per_desc| per_desc.keys())
-                .cloned()
-                .collect::<Vec<_>>();
-            descriptors.sort();
-
-            let expected = vec![ComponentDescriptor {
-                archetype_name: None,
-                archetype_field_name: None,
-                component_name: "rerun.components.Points3DIndicator".into(),
-            }];
 
             similar_asserts::assert_eq!(expected, descriptors);
         }

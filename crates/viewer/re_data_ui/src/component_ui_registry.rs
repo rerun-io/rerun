@@ -1,4 +1,4 @@
-use re_ui::{arrow_ui, UiExt as _};
+use re_ui::{UiExt as _, arrow_ui};
 use re_viewer_context::ComponentUiRegistry;
 
 use super::EntityDataUi;
@@ -23,9 +23,15 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
     registry.add_legacy_display_ui(
         C::name(),
         Box::new(
-            |ctx, ui, ui_layout, query, db, entity_path, row_id, component_raw| match C::from_arrow(
-                component_raw,
-            ) {
+            |ctx,
+             ui,
+             ui_layout,
+             query,
+             db,
+             entity_path,
+             component_descriptor,
+             row_id,
+             component_raw| match C::from_arrow(component_raw) {
                 Ok(components) => match components.len() {
                     1 => {
                         components[0].entity_data_ui(
@@ -33,6 +39,7 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
                             ui,
                             ui_layout,
                             entity_path,
+                            component_descriptor,
                             row_id,
                             query,
                             db,

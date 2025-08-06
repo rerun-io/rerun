@@ -84,11 +84,14 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Initialization functions",
         func_list=[
             "init",
+            "set_sinks",
             "connect_grpc",
             "disconnect",
             "save",
             "send_blueprint",
-            "serve_web",
+            "serve_web",  # Deprecated, but still around.
+            "serve_grpc",
+            "serve_web_viewer",
             "spawn",
             "memory_recording",
             "notebook_show",
@@ -149,6 +152,7 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=[
             "AnyValues",
             "AnyBatchValue",
+            "ComponentDescriptor",
         ],
     ),
     ################################################################################
@@ -159,7 +163,7 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=[
             "archetypes.Clear",
             "blueprint.archetypes.EntityBehavior",
-            "archetypes.RecordingProperties",
+            "archetypes.RecordingInfo",
         ],
         gen_page=False,
     ),
@@ -185,6 +189,7 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Video",
         class_list=[
+            "archetypes.VideoStream",
             "archetypes.AssetVideo",
             "archetypes.VideoFrameReference",
         ],
@@ -209,6 +214,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Boxes2D",
             "archetypes.Boxes3D",
             "archetypes.Capsules3D",
+            "archetypes.Cylinders3D",
             "archetypes.Ellipsoids3D",
             "archetypes.LineStrips2D",
             "archetypes.LineStrips3D",
@@ -257,15 +263,11 @@ SECTION_TABLE: Final[list[Section]] = [
         ],
         gen_page=False,
     ),
-    Section(
-        title="Deprecated",
-        class_list=[
-            "archetypes.Scalar",
-            "archetypes.SeriesLine",
-            "archetypes.SeriesPoint",
-        ],
-        gen_page=False,
-    ),
+    # Section(
+    #     title="Deprecated",
+    #     class_list=[],
+    #     gen_page=False,
+    # ),
     ################################################################################
     # Other referenced things
     Section(
@@ -354,7 +356,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "Schema",
             "AnyColumn",
             "AnyComponentColumn",
-            "ComponentLike",
             "ViewContentsLike",
         ],
         show_tables=True,
@@ -385,7 +386,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "thread_local_stream",
             "recording_stream_generator_ctx",
         ],
-        class_list=["LoggingHandler", "MemoryRecording"],
+        class_list=["LoggingHandler", "MemoryRecording", "GrpcSink", "FileSink"],
     ),
     Section(
         title="Utilities",

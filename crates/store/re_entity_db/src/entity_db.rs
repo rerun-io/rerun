@@ -1,35 +1,64 @@
 use std::sync::Arc;
 
 use nohash_hasher::IntMap;
-use parking_lot::Mutex;
 
-use re_chunk::{Chunk, ChunkResult, LatestAtQuery, RowId, TimeInt, Timeline, TimelineName};
+use re_chunk::{
+    Chunk, ChunkBuilder, ChunkId, ChunkResult, LatestAtQuery, RowId, TimeInt, TimePoint, Timeline,
+    TimelineName,
+};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
-    ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
+    ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    ApplicationId, EntityPath, EntityPathHash, LogMsg, RecordingId, ResolvedTimeRange,
+    ResolvedTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
     StorageEngineWriteGuard,
 };
+use re_smart_channel::SmartChannelSource;
 
-use crate::{Error, TimesPerTimeline};
+use crate::{Error, TimesPerTimeline, ingestion_statistics::IngestionStatistics};
 
 // ----------------------------------------------------------------------------
 
 /// See [`GarbageCollectionOptions::time_budget`].
 pub const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::from_micros(3500); // empirical
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------¨
+
+/// What class of [`EntityDb`] is this?
+///
+/// The class is used to semantically group recordings in the UI (e.g. in the recording panel) and
+/// to determine how to source the default blueprint. For example, `DatasetPartition` dbs might have
+/// their default blueprint sourced remotely.
+pub enum EntityDbClass<'a> {
+    /// This is a regular local recording (e.g. loaded from a `.rrd` file or logged to the viewer).
+    LocalRecording,
+
+    /// This is an official rerun example recording.
+    ExampleRecording,
+
+    /// This is a recording loaded from a remote dataset partition.
+    DatasetPartition(&'a re_uri::DatasetDataUri),
+
+    /// This is a blueprint.
+    Blueprint,
+}
+
+// ---
 
 /// An in-memory database built from a stream of [`LogMsg`]es.
 ///
 /// NOTE: all mutation is to be done via public functions!
+#[derive(Clone)] // Useful for tests
 pub struct EntityDb {
+    /// Store id associated with this [`EntityDb`]. Must be identical to the `storage_engine`'s
+    /// store id.
+    store_id: StoreId,
+
     /// Set by whomever created this [`EntityDb`].
     ///
     /// Clones of an [`EntityDb`] gets a `None` source.
@@ -93,6 +122,7 @@ impl EntityDb {
         let storage_engine = unsafe { StorageEngine::new(store, cache) };
 
         Self {
+            store_id,
             data_source: None,
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
@@ -102,7 +132,7 @@ impl EntityDb {
             tree: crate::EntityTree::root(),
             time_histogram_per_timeline: Default::default(),
             storage_engine,
-            stats: IngestionStatistics::new(store_id),
+            stats: IngestionStatistics::default(),
         }
     }
 
@@ -117,6 +147,24 @@ impl EntityDb {
         self.storage_engine.read()
     }
 
+    /// Returns a reference to the backing [`StorageEngine`].
+    ///
+    /// This can be used to obtain a clone of the [`StorageEngine`].
+    ///
+    /// # Safety
+    ///
+    /// Trying to lock the [`StorageEngine`] (whether read or write) while the computation of a viewer's
+    /// frame is already in progress will lead to data inconsistencies, livelocks and deadlocks.
+    /// The viewer runs a synchronous work-stealing scheduler (`rayon`) as well as an asynchronous
+    /// one (`tokio`): when and where locks are taken is entirely non-deterministic (even unwanted reentrancy
+    /// is a possibility).
+    ///
+    /// Don't use this unless you know what you're doing. Use [`Self::storage_engine`] instead.
+    #[expect(unsafe_code)]
+    pub unsafe fn storage_engine_raw(&self) -> &StorageEngine {
+        &self.storage_engine
+    }
+
     /// Returns a read-only guard to the backing [`StorageEngine`].
     ///
     /// That guard can be cloned at will and has a static lifetime.
@@ -128,24 +176,102 @@ impl EntityDb {
         self.storage_engine.read_arc()
     }
 
+    #[inline]
     pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
         self.set_store_info.as_ref()
     }
 
+    #[inline]
     pub fn store_info(&self) -> Option<&StoreInfo> {
         self.store_info_msg().map(|msg| &msg.info)
     }
 
-    pub fn app_id(&self) -> Option<&ApplicationId> {
-        self.store_info().map(|ri| &ri.application_id)
+    #[inline]
+    pub fn application_id(&self) -> &ApplicationId {
+        self.store_id().application_id()
     }
 
-    pub fn recording_property<C: re_types_core::Component>(&self) -> Option<C> {
+    #[inline]
+    pub fn recording_id(&self) -> &RecordingId {
+        self.store_id().recording_id()
+    }
+
+    #[inline]
+    pub fn store_kind(&self) -> StoreKind {
+        self.store_id().kind()
+    }
+
+    #[inline]
+    pub fn store_id(&self) -> &StoreId {
+        &self.store_id
+    }
+
+    /// Returns the [`EntityDbClass`] of this entity db.
+    pub fn store_class(&self) -> EntityDbClass<'_> {
+        match self.store_kind() {
+            StoreKind::Blueprint => EntityDbClass::Blueprint,
+
+            StoreKind::Recording => match &self.data_source {
+                Some(SmartChannelSource::RrdHttpStream { url, .. })
+                    if url.starts_with("https://app.rerun.io") =>
+                {
+                    EntityDbClass::ExampleRecording
+                }
+
+                Some(SmartChannelSource::RedapGrpcStream { uri, .. }) => {
+                    EntityDbClass::DatasetPartition(uri)
+                }
+
+                _ => EntityDbClass::LocalRecording,
+            },
+        }
+    }
+
+    /// Read one of the built-in `RecordingInfo` properties.
+    pub fn recording_info_property<C: re_types_core::Component>(
+        &self,
+        component_descr: &re_types_core::ComponentDescriptor,
+    ) -> Option<C> {
+        debug_assert_eq!(component_descr.component_type, Some(C::name()));
+        debug_assert!(
+            component_descr.archetype == Some("rerun.archetypes.RecordingInfo".into()),
+            "This function should only be used for built-in RecordingInfo components, which are the only recording properties at {}",
+            EntityPath::properties()
+        );
+
         self.latest_at_component::<C>(
-            &EntityPath::recording_properties(),
+            &EntityPath::properties(),
             &LatestAtQuery::latest(TimelineName::log_tick()),
+            component_descr,
         )
         .map(|(_, value)| value)
+    }
+
+    /// Use can use this both for setting the built-in `RecordingInfo` components,
+    /// and for setting custom properties on the recording.
+    pub fn set_recording_property<Component: re_types_core::Component>(
+        &mut self,
+        entity_path: EntityPath,
+        component_descr: re_types_core::ComponentDescriptor,
+        value: &Component,
+    ) -> Result<(), Error> {
+        debug_assert_eq!(component_descr.component_type, Some(Component::name()));
+        debug_assert!(entity_path.starts_with(&EntityPath::properties()));
+        debug_assert!(
+            (entity_path == EntityPath::properties())
+                == (component_descr.archetype == Some("rerun.archetypes.RecordingInfo".into())),
+            "RecordingInfo should be logged at {}. Custom properties should be under a child entity",
+            EntityPath::properties()
+        );
+
+        let chunk = ChunkBuilder::new(ChunkId::new(), entity_path)
+            .with_component(RowId::new(), TimePoint::STATIC, component_descr, value)
+            .map_err(|err| Error::Chunk(err.into()))?
+            .build()?;
+
+        self.add_chunk(&Arc::new(chunk))?;
+
+        Ok(())
     }
 
     pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
@@ -164,22 +290,22 @@ impl EntityDb {
             })
     }
 
-    /// Queries for the given `component_names` using latest-at semantics.
+    /// Queries for the given components using latest-at semantics.
     ///
     /// See [`re_query::LatestAtResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
     #[inline]
-    pub fn latest_at(
+    pub fn latest_at<'a>(
         &self,
         query: &re_chunk_store::LatestAtQuery,
         entity_path: &EntityPath,
-        component_names: impl IntoIterator<Item = re_types_core::ComponentName>,
+        component_descr: impl IntoIterator<Item = &'a re_types_core::ComponentDescriptor>,
     ) -> re_query::LatestAtResults {
         self.storage_engine
             .read()
             .cache()
-            .latest_at(query, entity_path, component_names)
+            .latest_at(query, entity_path, component_descr)
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -195,14 +321,17 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
+        component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<((TimeInt, RowId), C)> {
+        debug_assert_eq!(component_descr.component_type, Some(C::name()));
+
         let results =
             self.storage_engine
                 .read()
                 .cache()
-                .latest_at(query, entity_path, [&C::descriptor()]);
+                .latest_at(query, entity_path, [component_descr]);
         results
-            .component_mono()
+            .component_mono(component_descr)
             .map(|value| (results.index(), value))
     }
 
@@ -219,14 +348,17 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
+        component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<((TimeInt, RowId), C)> {
+        debug_assert_eq!(component_descr.component_type, Some(C::name()));
+
         let results =
             self.storage_engine
                 .read()
                 .cache()
-                .latest_at(query, entity_path, [&C::descriptor()]);
+                .latest_at(query, entity_path, [component_descr]);
         results
-            .component_mono_quiet()
+            .component_mono_quiet(component_descr)
             .map(|value| (results.index(), value))
     }
 
@@ -235,28 +367,21 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
+        component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<(EntityPath, (TimeInt, RowId), C)> {
         re_tracing::profile_function!();
 
         let mut cur_entity_path = Some(entity_path.clone());
         while let Some(entity_path) = cur_entity_path {
-            if let Some((index, value)) = self.latest_at_component(&entity_path, query) {
+            if let Some((index, value)) =
+                self.latest_at_component(&entity_path, query, component_descr)
+            {
                 return Some((entity_path, index, value));
             }
             cur_entity_path = entity_path.parent();
         }
 
         None
-    }
-
-    #[inline]
-    pub fn store_kind(&self) -> StoreKind {
-        self.store_id().kind
-    }
-
-    #[inline]
-    pub fn store_id(&self) -> StoreId {
-        self.storage_engine.read().store().id()
     }
 
     /// If this entity db is the result of a clone, which store was it cloned from?
@@ -361,7 +486,7 @@ impl EntityDb {
     pub fn add(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
         re_tracing::profile_function!();
 
-        debug_assert_eq!(*msg.store_id(), self.store_id());
+        debug_assert_eq!(msg.store_id(), self.store_id());
 
         let store_events = match &msg {
             LogMsg::SetStoreInfo(msg) => {
@@ -372,9 +497,14 @@ impl EntityDb {
             LogMsg::ArrowMsg(_, arrow_msg) => {
                 self.last_modified_at = web_time::Instant::now();
 
-                let mut chunk = re_chunk::Chunk::from_arrow_msg(arrow_msg)?;
+                let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch)
+                    .map_err(re_chunk::ChunkError::from)?;
+                let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
                 chunk.sort_if_unsorted();
-                self.add_chunk(&Arc::new(chunk))?
+                self.add_chunk_with_timestamp_metadata(
+                    &Arc::new(chunk),
+                    &chunk_batch.sorbet_schema().timestamps,
+                )?
             }
 
             LogMsg::BlueprintActivationCommand(_) => {
@@ -387,6 +517,14 @@ impl EntityDb {
     }
 
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
+        self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
+    }
+
+    fn add_chunk_with_timestamp_metadata(
+        &mut self,
+        chunk: &Arc<Chunk>,
+        timestamps: &re_sorbet::TimestampMetadata,
+    ) -> Result<Vec<ChunkStoreEvent>, Error> {
         let mut engine = self.storage_engine.write();
         let store_events = engine.store().insert_chunk(chunk)?;
         engine.cache().on_events(&store_events);
@@ -422,7 +560,7 @@ impl EntityDb {
             }
 
             // We inform the stats last, since it measures e2e latency.
-            self.stats.on_events(&store_events);
+            self.stats.on_events(timestamps, &store_events);
         }
 
         Ok(store_events)
@@ -786,86 +924,5 @@ impl re_byte_size::SizeBytes for EntityDb {
             .stats()
             .total()
             .total_size_bytes
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-pub struct IngestionStatistics {
-    store_id: StoreId,
-    e2e_latency_sec_history: Mutex<emath::History<f32>>,
-}
-
-impl ChunkStoreSubscriber for IngestionStatistics {
-    #[inline]
-    fn name(&self) -> String {
-        "rerun.testing.store_subscribers.IngestionStatistics".into()
-    }
-
-    #[inline]
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
-        for event in events {
-            if event.store_id == self.store_id {
-                for row_id in event.diff.chunk.row_ids() {
-                    self.on_new_row_id(row_id);
-                }
-            }
-        }
-    }
-}
-
-impl IngestionStatistics {
-    pub fn new(store_id: StoreId) -> Self {
-        let min_samples = 0; // 0: we stop displaying e2e latency if input stops
-        let max_samples = 1024; // don't waste too much memory on this - we just need enough to get a good average
-        let max_age = 1.0; // don't keep too long of a rolling average, or the stats get outdated.
-        Self {
-            store_id,
-            e2e_latency_sec_history: Mutex::new(emath::History::new(
-                min_samples..max_samples,
-                max_age,
-            )),
-        }
-    }
-
-    fn on_new_row_id(&self, row_id: RowId) {
-        if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
-            let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
-
-            // This only makes sense if the clocks are very good, i.e. if the recording was on the same machine!
-            if let Some(nanos_since_log) = nanos_since_epoch.checked_sub(row_id.nanos_since_epoch())
-            {
-                let now = nanos_since_epoch as f64 / 1e9;
-                let sec_since_log = nanos_since_log as f32 / 1e9;
-
-                self.e2e_latency_sec_history.lock().add(now, sec_since_log);
-            }
-        }
-    }
-
-    /// What is the mean latency between the time data was logged in the SDK and the time it was ingested?
-    ///
-    /// This is based on the clocks of the viewer and the SDK being in sync,
-    /// so if the recording was done on another machine, this is likely very inaccurate.
-    pub fn current_e2e_latency_sec(&self) -> Option<f32> {
-        let mut e2e_latency_sec_history = self.e2e_latency_sec_history.lock();
-
-        if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
-            let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
-            let now = nanos_since_epoch as f64 / 1e9;
-            e2e_latency_sec_history.flush(now); // make sure the average is up-to-date.
-        }
-
-        e2e_latency_sec_history.average()
     }
 }

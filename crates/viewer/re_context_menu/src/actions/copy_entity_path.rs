@@ -12,10 +12,13 @@ impl ContextMenuAction for CopyEntityPathToClipboard {
     fn supports_item(&self, _ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
         match item {
             Item::AppId(_)
+            | Item::TableId(_)
             | Item::DataSource(_)
             | Item::StoreId(_)
             | Item::Container(_)
-            | Item::View(_) => false,
+            | Item::View(_)
+            | Item::RedapEntry(_)
+            | Item::RedapServer(_) => false,
             Item::DataResult(..) | Item::InstancePath(_) | Item::ComponentPath(_) => true,
         }
     }

@@ -16,7 +16,6 @@
 #include "../components/radius.hpp"
 #include "../components/show_labels.hpp"
 #include "../components/text.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -27,9 +26,8 @@
 namespace rerun::archetypes {
     /// **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
     ///
-    /// Note that orienting and placing the box is handled via `[archetypes.InstancePoses3D]`.
-    /// Some of its component are repeated here for convenience.
-    /// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+    /// If there's more instance poses than half sizes, the last box's orientation will be repeated for the remaining poses.
+    /// Orienting and placing boxes forms a separate transform that is applied prior to `archetypes::InstancePoses3D` and `archetypes::Transform3D`.
     ///
     /// ## Example
     ///
@@ -72,19 +70,16 @@ namespace rerun::archetypes {
         /// Optional center positions of the boxes.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
-        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> centers;
 
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> rotation_axis_angles;
 
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> quaternions;
 
         /// Optional colors for the boxes.
@@ -102,7 +97,10 @@ namespace rerun::archetypes {
         /// Otherwise, each instance will have its own label.
         std::optional<ComponentBatch> labels;
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         std::optional<ComponentBatch> show_labels;
 
         /// Optional `components::ClassId`s for the boxes.
@@ -111,59 +109,53 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> class_ids;
 
       public:
-        static constexpr const char IndicatorComponentName[] = "rerun.components.Boxes3DIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Boxes3D";
 
         /// `ComponentDescriptor` for the `half_sizes` field.
         static constexpr auto Descriptor_half_sizes = ComponentDescriptor(
-            ArchetypeName, "half_sizes",
-            Loggable<rerun::components::HalfSize3D>::Descriptor.component_name
+            ArchetypeName, "Boxes3D:half_sizes",
+            Loggable<rerun::components::HalfSize3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `centers` field.
         static constexpr auto Descriptor_centers = ComponentDescriptor(
-            ArchetypeName, "centers",
-            Loggable<rerun::components::PoseTranslation3D>::Descriptor.component_name
+            ArchetypeName, "Boxes3D:centers",
+            Loggable<rerun::components::PoseTranslation3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `rotation_axis_angles` field.
         static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
-            ArchetypeName, "rotation_axis_angles",
-            Loggable<rerun::components::PoseRotationAxisAngle>::Descriptor.component_name
+            ArchetypeName, "Boxes3D:rotation_axis_angles",
+            Loggable<rerun::components::PoseRotationAxisAngle>::ComponentType
         );
         /// `ComponentDescriptor` for the `quaternions` field.
         static constexpr auto Descriptor_quaternions = ComponentDescriptor(
-            ArchetypeName, "quaternions",
-            Loggable<rerun::components::PoseRotationQuat>::Descriptor.component_name
+            ArchetypeName, "Boxes3D:quaternions",
+            Loggable<rerun::components::PoseRotationQuat>::ComponentType
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "Boxes3D:colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+            ArchetypeName, "Boxes3D:radii", Loggable<rerun::components::Radius>::ComponentType
         );
         /// `ComponentDescriptor` for the `fill_mode` field.
         static constexpr auto Descriptor_fill_mode = ComponentDescriptor(
-            ArchetypeName, "fill_mode",
-            Loggable<rerun::components::FillMode>::Descriptor.component_name
+            ArchetypeName, "Boxes3D:fill_mode", Loggable<rerun::components::FillMode>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+            ArchetypeName, "Boxes3D:labels", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels",
-            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+            ArchetypeName, "Boxes3D:show_labels",
+            Loggable<rerun::components::ShowLabels>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids",
-            Loggable<rerun::components::ClassId>::Descriptor.component_name
+            ArchetypeName, "Boxes3D:class_ids", Loggable<rerun::components::ClassId>::ComponentType
         );
 
       public: // START of extensions from boxes3d_ext.cpp:
@@ -239,7 +231,6 @@ namespace rerun::archetypes {
         /// Optional center positions of the boxes.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
-        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
         Boxes3D with_centers(const Collection<rerun::components::PoseTranslation3D>& _centers) && {
             centers = ComponentBatch::from_loggable(_centers, Descriptor_centers).value_or_throw();
             return std::move(*this);
@@ -248,7 +239,6 @@ namespace rerun::archetypes {
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         Boxes3D with_rotation_axis_angles(
             const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
         ) && {
@@ -263,7 +253,6 @@ namespace rerun::archetypes {
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
         Boxes3D with_quaternions(const Collection<rerun::components::PoseRotationQuat>& _quaternions
         ) && {
             quaternions = ComponentBatch::from_loggable(_quaternions, Descriptor_quaternions)
@@ -309,7 +298,10 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         Boxes3D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();

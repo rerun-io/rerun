@@ -18,7 +18,13 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+## Enable faster native video decoding with assembly.
+## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
+nasm = ["re_video/nasm"]
+
 [dependencies]
+re_byte_size.workspace = true
 re_chunk_store.workspace = true
 re_data_ui.workspace = true
 re_entity_db.workspace = true
@@ -26,7 +32,6 @@ re_error.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
-re_math = { workspace = true, features = ["serde"] }
 re_query.workspace = true
 re_renderer = { workspace = true, features = [
   "import-gltf",
@@ -53,6 +58,7 @@ image = { workspace = true, features = [
   "png",
 ] } # For loading images/icons for the gui into textures.
 itertools.workspace = true
+macaw = { workspace = true, features = ["serde"] }
 nohash-hasher.workspace = true
 once_cell.workspace = true
 ordered-float.workspace = true
@@ -65,9 +71,8 @@ web-time.workspace = true
 
 [dev-dependencies]
 re_component_ui.workspace = true
-re_viewer_context = { workspace = true, features = ["testing"] }
-re_viewport.workspace = true
-re_viewport_blueprint = { workspace = true, features = ["testing"] }
+re_test_context.workspace = true
+re_test_viewport.workspace = true
 
 insta.workspace = true
 ndarray.workspace = true

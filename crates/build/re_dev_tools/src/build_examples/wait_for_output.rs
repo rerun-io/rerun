@@ -1,5 +1,5 @@
-use std::io::stdout;
 use std::io::IsTerminal as _;
+use std::io::stdout;
 use std::process::Command;
 use std::time::Duration;
 

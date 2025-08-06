@@ -8,12 +8,12 @@ use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
 use re_log_types::{
     ResolvedTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
 };
-use re_ui::{list_item, UiExt as _};
-use re_viewer_context::ViewerContext;
+use re_ui::{UiExt as _, list_item};
+use re_viewer_context::StoreContext;
 
 use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
 use crate::chunk_ui::ChunkUi;
-use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
+use crate::sort::{SortColumn, SortDirection, sortable_column_header_ui};
 
 /// Any column that can be sorted.
 #[derive(Default, Clone, Copy, PartialEq)]
@@ -74,7 +74,7 @@ impl DatastoreUi {
     /// or `true` if the datastore UI should remain open.
     pub fn ui(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreContext<'_>,
         ui: &mut egui::Ui,
         timestamp_format: TimestampFormat,
     ) -> bool {
@@ -91,8 +91,8 @@ impl DatastoreUi {
                 self.chunk_store_ui(
                     ui,
                     match self.store_kind {
-                        StoreKind::Recording => ctx.recording_engine(),
-                        StoreKind::Blueprint => ctx.blueprint_engine(),
+                        StoreKind::Recording => ctx.recording.storage_engine(),
+                        StoreKind::Blueprint => ctx.blueprint.storage_engine(),
                     }
                     .store(),
                     &mut datastore_ui_active,
@@ -117,12 +117,16 @@ impl DatastoreUi {
         datastore_ui_active: &mut bool,
         timestamp_format: TimestampFormat,
     ) {
+        let tokens = ui.tokens();
+
         let should_copy_chunk = self.chunk_store_info_ui(ui, chunk_store, datastore_ui_active);
 
         // Each of these must be a column that contains the corresponding time range.
         let all_timelines = chunk_store.timelines();
 
         self.chunk_list_mode.ui(ui, chunk_store, timestamp_format);
+
+        let table_style = re_ui::TableStyle::Dense;
 
         //
         // Collect chunks based on query mode
@@ -133,7 +137,7 @@ impl DatastoreUi {
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_name,
+                component_descr,
                 query: ChunkListQueryMode::LatestAt(at),
                 ..
             } => Either::Right(
@@ -141,14 +145,14 @@ impl DatastoreUi {
                     .latest_at_relevant_chunks(
                         &LatestAtQuery::new(*timeline.name(), *at),
                         entity_path,
-                        *component_name,
+                        component_descr,
                     )
                     .into_iter(),
             ),
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_name,
+                component_descr,
                 query: ChunkListQueryMode::Range(range),
                 ..
             } => Either::Right(
@@ -156,7 +160,7 @@ impl DatastoreUi {
                     .range_relevant_chunks(
                         &RangeQuery::new(*timeline.name(), *range),
                         entity_path,
-                        *component_name,
+                        component_descr,
                     )
                     .into_iter(),
             ),
@@ -179,7 +183,10 @@ impl DatastoreUi {
             ui.label("component:");
             ui.text_edit_singleline(&mut self.component_filter);
 
-            if ui.small_icon_button(&re_ui::icons::CLOSE).clicked() {
+            if ui
+                .small_icon_button(&re_ui::icons::CLOSE, "Close")
+                .clicked()
+            {
                 self.entity_path_filter = String::new();
                 self.component_filter = String::new();
             }
@@ -203,10 +210,11 @@ impl DatastoreUi {
         } else {
             let component_filter = self.component_filter.to_lowercase();
             Either::Right(chunk_iterator.filter(move |chunk| {
-                chunk
-                    .components()
-                    .keys()
-                    .any(|name| name.short_name().to_lowercase().contains(&component_filter))
+                chunk.components().keys().any(|name| {
+                    name.display_name()
+                        .to_lowercase()
+                        .contains(&component_filter)
+                })
             }))
         };
 
@@ -323,7 +331,7 @@ impl DatastoreUi {
                     chunk
                         .components()
                         .keys()
-                        .map(|name| name.short_name())
+                        .map(|name| name.display_name())
                         .join(", "),
                 );
             });
@@ -346,13 +354,9 @@ impl DatastoreUi {
                     .striped(true);
 
                 table_builder
-                    .header(re_ui::DesignTokens::table_line_height(), header_ui)
+                    .header(tokens.table_row_height(table_style), header_ui)
                     .body(|body| {
-                        body.rows(
-                            re_ui::DesignTokens::table_line_height(),
-                            chunks.len(),
-                            row_ui,
-                        );
+                        body.rows(tokens.table_row_height(table_style), chunks.len(), row_ui);
                     });
             });
     }
@@ -394,9 +398,15 @@ impl DatastoreUi {
         list_item::list_item_scope(ui, "chunk store info", |ui| {
             let stats = chunk_store.stats().total();
             ui.list_item_collapsible_noninteractive_label("Info", false, |ui| {
+                // Note: no need to print the store kind, because it's selected by the top-level toggle.
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Store ID")
-                        .value_text(chunk_store.id().to_string()),
+                    list_item::PropertyContent::new("Application ID")
+                        .value_text(chunk_store.id().application_id().to_string()),
+                );
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Recording ID")
+                        .value_text(chunk_store.id().recording_id().to_string()),
                 );
 
                 ui.list_item_flat_noninteractive(

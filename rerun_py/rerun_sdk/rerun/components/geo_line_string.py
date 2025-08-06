@@ -17,7 +17,6 @@ from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 from .geo_line_string_ext import GeoLineStringExt
@@ -33,6 +32,10 @@ class GeoLineString(GeoLineStringExt, ComponentMixin):
     # __init__ can be found in geo_line_string_ext.py
 
     lat_lon: list[datatypes.DVec2D] = field()
+
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of GeoLineStringExt in geo_line_string_ext.py
+        return len(self.lat_lon)
 
 
 if TYPE_CHECKING:
@@ -52,7 +55,7 @@ class GeoLineStringBatch(BaseBatch[GeoLineStringArrayLike], ComponentBatchMixin)
             metadata={},
         )
     )
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.GeoLineString")
+    _COMPONENT_TYPE: str = "rerun.components.GeoLineString"
 
     @staticmethod
     def _native_to_pa_array(data: GeoLineStringArrayLike, data_type: pa.DataType) -> pa.Array:

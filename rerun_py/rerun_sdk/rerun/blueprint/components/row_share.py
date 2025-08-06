@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -16,7 +15,11 @@ __all__ = ["RowShare", "RowShareBatch"]
 
 
 class RowShare(datatypes.Float32, ComponentMixin):
-    """**Component**: The layout share of a row in the container."""
+    """
+    **Component**: The layout share of a row in the container.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of RowShareExt in row_share_ext.py
@@ -25,7 +28,7 @@ class RowShare(datatypes.Float32, ComponentMixin):
 
 
 class RowShareBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.RowShare")
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.RowShare"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -6,3 +6,7 @@ going through the normal deprecation cycle.
 """
 
 from __future__ import annotations
+
+from rerun_bindings import (
+    ViewerClient as ViewerClient,
+)

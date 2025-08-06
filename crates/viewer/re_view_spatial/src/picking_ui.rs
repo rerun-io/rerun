@@ -1,24 +1,25 @@
 use egui::NumExt as _;
 
-use re_data_ui::{item_ui, DataUi as _};
+use re_data_ui::{DataUi as _, item_ui};
+use re_log::ResultExt as _;
 use re_log_types::Instance;
 use re_ui::{
-    list_item::{list_item_scope, PropertyContent},
     UiExt as _,
+    list_item::{PropertyContent, list_item_scope},
 };
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
-    Item, ItemContext, UiLayout, ViewQuery, ViewSystemExecutionError, ViewerContext,
-    VisualizerCollection,
+    Item, ItemCollection, ItemContext, UiLayout, ViewQuery, ViewSystemExecutionError,
+    ViewerContext, VisualizerCollection,
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect,
     picking::{PickableUiRect, PickingContext, PickingHitType},
-    picking_ui_pixel::{textured_rect_hover_ui, PickedPixelInfo},
+    picking_ui_pixel::{PickedPixelInfo, textured_rect_hover_ui},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData},
-    PickableRectSourceData, PickableTexturedRect,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -49,16 +50,18 @@ pub fn picking(
         .at_least(8.0)
         .at_most(128.0) as u32;
 
-    let _ = view_builder.schedule_picking_rect(
-        ctx.render_ctx(),
-        re_renderer::RectInt::from_middle_and_extent(
-            picking_context.pointer_in_pixel.as_ivec2(),
-            glam::uvec2(picking_rect_size, picking_rect_size),
-        ),
-        query.view_id.gpu_readback_id(),
-        (),
-        ctx.app_options().show_picking_debug_overlay,
-    );
+    view_builder
+        .schedule_picking_rect(
+            ctx.render_ctx(),
+            re_renderer::RectInt::from_middle_and_extent(
+                picking_context.pointer_in_pixel.as_ivec2(),
+                glam::uvec2(picking_rect_size, picking_rect_size),
+            ),
+            query.view_id.gpu_readback_id(),
+            (),
+            ctx.app_options().show_picking_debug_overlay,
+        )
+        .ok_or_log_error_once();
 
     let annotations = system_output
         .context_systems
@@ -86,11 +89,6 @@ pub fn picking(
             // Entity no longer exists in db.
             continue;
         };
-
-        if response.double_clicked() {
-            // Select entire entity on double-click:
-            instance_path.instance = Instance::ALL;
-        }
 
         let query_result = ctx.lookup_query_result(query.view_id);
         let Some(data_result) = query_result
@@ -192,12 +190,10 @@ pub fn picking(
     // Associate the hovered space with the first item in the hovered item list.
     // If we were to add several, views might render unnecessary additional hints.
     // TODO(andreas): Should there be context if no item is hovered at all? There's no usecase for that today it seems.
-    let mut hovered_items = hovered_items
-        .into_iter()
-        .map(|item| (item, None))
-        .collect::<Vec<_>>();
+    let mut hovered_items =
+        ItemCollection::from_items_and_context(hovered_items.into_iter().map(|item| (item, None)));
 
-    if let Some((_, context)) = hovered_items.first_mut() {
+    if let Some((_, context)) = hovered_items.iter_mut().next() {
         *context = Some(match spatial_kind {
             SpatialViewKind::TwoD => ItemContext::TwoD {
                 space_2d: query.space_origin.clone(),
@@ -229,7 +225,7 @@ pub fn picking(
         });
     };
 
-    ctx.handle_select_hover_drag_interactions(&response, hovered_items.into_iter(), false);
+    ctx.handle_select_hover_drag_interactions(&response, hovered_items, false);
 
     Ok(response)
 }
@@ -258,10 +254,7 @@ fn get_pixel_picking_info(
         iter_pickable_rects(&system_output.view_systems)
             .find(|i| i.ent_path.hash() == hit.instance_path_hash.entity_path_hash)
             .and_then(|picked_rect| {
-                if matches!(
-                    picked_rect.source_data,
-                    PickableRectSourceData::ErrorPlaceholder
-                ) {
+                if matches!(picked_rect.source_data, PickableRectSourceData::Placeholder) {
                     return None;
                 }
 

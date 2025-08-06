@@ -13,7 +13,6 @@ from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -33,6 +32,10 @@ class AffixFuzzer7(ComponentMixin):
         self.__attrs_init__(many_optional=many_optional)
 
     many_optional: list[datatypes.AffixFuzzer1] | None = field(default=None)
+
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AffixFuzzer7Ext in affix_fuzzer7_ext.py
+        return len(self.many_optional) if self.many_optional is not None else 0
 
 
 AffixFuzzer7Like = AffixFuzzer7
@@ -81,7 +84,7 @@ class AffixFuzzer7Batch(BaseBatch[AffixFuzzer7ArrayLike], ComponentBatchMixin):
             metadata={},
         )
     )
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.testing.components.AffixFuzzer7")
+    _COMPONENT_TYPE: str = "rerun.testing.components.AffixFuzzer7"
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer7ArrayLike, data_type: pa.DataType) -> pa.Array:

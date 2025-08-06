@@ -51,7 +51,9 @@ impl Drop for ThreadLocalRecording {
             // Calling drop on `self.stream` will panic the calling thread.
             // But we want to make sure we don't loose the data in the stream.
             // So how?
-            re_log::warn!("Using thread-local RecordingStream on macOS & Windows can result in data loss because of https://github.com/rerun-io/rerun/issues/3937");
+            re_log::warn!(
+                "Using thread-local RecordingStream on macOS & Windows can result in data loss because of https://github.com/rerun-io/rerun/issues/3937"
+            );
 
             // Give the batcher and sink threads a chance to process the data.
             std::thread::sleep(std::time::Duration::from_millis(500));
@@ -368,21 +370,25 @@ mod tests {
                     let local_data = RecordingStreamBuilder::new("rerun_example_local_data")
                         .buffered()
                         .unwrap();
-                    assert!(RecordingStream::set_thread_local(
-                        StoreKind::Recording,
-                        Some(local_data.clone())
-                    )
-                    .is_none());
+                    assert!(
+                        RecordingStream::set_thread_local(
+                            StoreKind::Recording,
+                            Some(local_data.clone())
+                        )
+                        .is_none()
+                    );
 
                     let local_blueprint =
                         RecordingStreamBuilder::new("rerun_example_local_blueprint")
                             .buffered()
                             .unwrap();
-                    assert!(RecordingStream::set_thread_local(
-                        StoreKind::Blueprint,
-                        Some(local_blueprint.clone())
-                    )
-                    .is_none());
+                    assert!(
+                        RecordingStream::set_thread_local(
+                            StoreKind::Blueprint,
+                            Some(local_blueprint.clone())
+                        )
+                        .is_none()
+                    );
 
                     // locals are set for this thread -- locals win
                     check_store_id(
@@ -430,11 +436,10 @@ mod tests {
         let local_blueprint = RecordingStreamBuilder::new("rerun_example_local_blueprint")
             .buffered()
             .unwrap();
-        assert!(RecordingStream::set_thread_local(
-            StoreKind::Blueprint,
-            Some(local_blueprint.clone())
-        )
-        .is_none());
+        assert!(
+            RecordingStream::set_thread_local(StoreKind::Blueprint, Some(local_blueprint.clone()))
+                .is_none()
+        );
 
         check_store_id(
             &global_data,

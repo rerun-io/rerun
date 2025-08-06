@@ -1,14 +1,22 @@
 mod compare;
 mod filter;
 mod merge_compact;
+mod migrate;
 mod print;
+mod route;
+mod stats;
 mod verify;
 
-use self::compare::CompareCommand;
-use self::filter::FilterCommand;
-use self::merge_compact::{CompactCommand, MergeCommand};
-use self::print::PrintCommand;
-use self::verify::VerifyCommand;
+use self::{
+    compare::CompareCommand,
+    filter::FilterCommand,
+    merge_compact::{CompactCommand, MergeCommand},
+    migrate::MigrateCommand,
+    print::PrintCommand,
+    route::RouteCommand,
+    stats::StatsCommand,
+    verify::VerifyCommand,
+};
 
 // ---
 
@@ -18,24 +26,6 @@ use clap::Subcommand;
 /// Manipulate the contents of .rrd and .rbl files.
 #[derive(Debug, Clone, Subcommand)]
 pub enum RrdCommands {
-    /// Compares the data between 2 .rrd files, returning a successful shell exit code if they
-    /// match.
-    ///
-    /// This ignores the `log_time` timeline.
-    Compare(CompareCommand),
-
-    /// Print the contents of one or more .rrd/.rbl files/streams.
-    ///
-    /// Reads from standard input if no paths are specified.
-    ///
-    /// Example: `rerun rrd print /my/recordings/*.rrd`
-    Print(PrintCommand),
-
-    /// Verify the that the .rrd file can be loaded and correctly interpreted.
-    ///
-    /// Can be used to ensure that the current Rerun version can load the data.
-    Verify(VerifyCommand),
-
     /// Compacts the contents of one or more .rrd/.rbl files/streams and writes the result standard output.
     ///
     /// Reads from standard input if no paths are specified.
@@ -47,6 +37,8 @@ pub enum RrdCommands {
     ///
     /// Unless explicit flags are passed, in which case they will override environment values.
     ///
+    /// ⚠️ This will automatically migrate the data to the latest version of the RRD protocol, if needed. ⚠️
+    ///
     /// Examples:
     ///
     /// * `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun rrd compact /my/recordings/*.rrd -o output.rrd`
@@ -54,14 +46,11 @@ pub enum RrdCommands {
     /// * `rerun rrd compact --max-rows 4096 --max-bytes=1048576 /my/recordings/*.rrd > output.rrd`
     Compact(CompactCommand),
 
-    /// Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
+    /// Compares the data between 2 .rrd files, returning a successful shell exit code if they
+    /// match.
     ///
-    /// Reads from standard input if no paths are specified.
-    ///
-    /// This will not affect the chunking of the data in any way.
-    ///
-    /// Example: `rerun merge /my/recordings/*.rrd > output.rrd`
-    Merge(MergeCommand),
+    /// This ignores the `log_time` timeline.
+    Compare(CompareCommand),
 
     /// Filters out data from .rrd/.rbl files/streams, and writes the result to standard output.
     ///
@@ -69,24 +58,68 @@ pub enum RrdCommands {
     ///
     /// This will not affect the chunking of the data in any way.
     ///
-    /// Example: `rerun filter --drop-timeline log_tick /my/recordings/*.rrd > output.rrd`
+    /// Example: `rerun rrd filter --drop-timeline log_tick /my/recordings/*.rrd > output.rrd`
     Filter(FilterCommand),
+
+    /// Merges the contents of multiple .rrd/.rbl files/streams, and writes the result to standard output.
+    ///
+    /// Reads from standard input if no paths are specified.
+    ///
+    /// ⚠️ This will automatically migrate the data to the latest version of the RRD protocol, if needed. ⚠️
+    ///
+    /// Example: `rerun rrd merge /my/recordings/*.rrd > output.rrd`
+    Merge(MergeCommand),
+
+    /// Migrate one or more .rrd files to the newest Rerun version.
+    ///
+    /// Example: `rerun rrd migrate foo.rrd`
+    /// Results in a `foo.backup.rrd` (copy of the old file) and a new `foo.rrd` (migrated).
+    Migrate(MigrateCommand),
+
+    /// Print the contents of one or more .rrd/.rbl files/streams.
+    ///
+    /// Reads from standard input if no paths are specified.
+    ///
+    /// Example: `rerun rrd print /my/recordings/*.rrd`
+    Print(PrintCommand),
+
+    /// Manipulates the metadata of log message streams without decoding the payloads.
+    ///
+    /// This can be used to combine multiple .rrd files into a single recording.
+    /// Example: `rerun rrd route --recording-id my_recording /my/recordings/*.rrd > output.rrd`
+    ///
+    /// Note: Because the payload of the messages is never decoded, no migration or verification will performed.
+    Route(RouteCommand),
+
+    /// Compute important statistics for one or more .rrd/.rbl files/streams.
+    ///
+    /// Reads from standard input if no paths are specified.
+    ///
+    /// Example: `rerun rrd stats /my/recordings/*.rrd`
+    Stats(StatsCommand),
+
+    /// Verify the that the .rrd file can be loaded and correctly interpreted.
+    ///
+    /// Can be used to ensure that the current Rerun version can load the data.
+    Verify(VerifyCommand),
 }
 
 impl RrdCommands {
     pub fn run(&self) -> anyhow::Result<()> {
         match self {
-            Self::Compare(compare_command) => {
-                compare_command
-                    .run()
+            Self::Compare(cmd) => {
+                cmd.run()
                     // Print current directory, this can be useful for debugging issues with relative paths.
                     .with_context(|| format!("current directory {:?}", std::env::current_dir()))
             }
-            Self::Print(print_command) => print_command.run(),
-            Self::Verify(verify_command) => verify_command.run(),
-            Self::Compact(compact_command) => compact_command.run(),
-            Self::Merge(merge_command) => merge_command.run(),
-            Self::Filter(drop_command) => drop_command.run(),
+            Self::Compact(cmd) => cmd.run(),
+            Self::Filter(cmd) => cmd.run(),
+            Self::Merge(cmd) => cmd.run(),
+            Self::Migrate(cmd) => cmd.run(),
+            Self::Print(cmd) => cmd.run(),
+            Self::Route(cmd) => cmd.run(),
+            Self::Stats(cmd) => cmd.run(),
+            Self::Verify(cmd) => cmd.run(),
         }
     }
 }

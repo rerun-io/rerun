@@ -16,8 +16,8 @@ mod python;
 mod cpp;
 
 use camino::Utf8Path;
-use cargo_metadata::semver::Version;
 use cargo_metadata::Package;
+use cargo_metadata::semver::Version;
 use indicatif::MultiProgress;
 use indicatif::ProgressBar;
 use std::borrow::Cow;
@@ -68,6 +68,7 @@ impl Context {
     fn progress_bar(&self, prefix: impl Into<Cow<'static, str>>) -> ProgressBar {
         let bar = ProgressBar::new_spinner().with_prefix(prefix);
         bar.enable_steady_tick(Duration::from_millis(100));
+        #[expect(clippy::literal_string_with_formatting_args)]
         bar.set_style(bar.style().template("{spinner} {prefix}: {msg}").unwrap());
         self.progress.add(bar)
     }

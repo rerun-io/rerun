@@ -5,11 +5,11 @@ namespace rerun.blueprint.components;
 
 /// The layout share of a column in the container.
 table ColumnShare (
-    "attr.python.aliases": "float",
-    "attr.python.array_aliases": "npt.ArrayLike",
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default"
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default"
 ) {
-    /// The layout shares of a column in the container.
-    share: rerun.datatypes.Float32 (order: 100);
+  /// The layout shares of a column in the container.
+  share: rerun.datatypes.Float32 (order: 100);
 }

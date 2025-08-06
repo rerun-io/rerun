@@ -167,8 +167,8 @@ impl ChunkStore {
 
     /// Registers a [`PerStoreChunkSubscriber`] type so it gets automatically notified when data gets added and/or
     /// removed to/from a [`ChunkStore`].
-    pub fn register_per_store_subscriber<S: PerStoreChunkSubscriber + Default + 'static>(
-    ) -> ChunkStoreSubscriberHandle {
+    pub fn register_per_store_subscriber<S: PerStoreChunkSubscriber + Default + 'static>()
+    -> ChunkStoreSubscriberHandle {
         let mut subscribers = SUBSCRIBERS.write();
         subscribers.push(RwLock::new(Box::new(
             PerStoreStoreSubscriberWrapper::<S>::default(),
@@ -311,8 +311,8 @@ mod tests {
 
     use re_chunk::{Chunk, RowId};
     use re_log_types::{
-        example_components::{MyColor, MyIndex, MyPoint},
         StoreId, TimePoint, Timeline,
+        example_components::{MyColor, MyIndex, MyPoint, MyPoints},
     };
 
     use crate::{ChunkStore, ChunkStoreSubscriber, GarbageCollectionOptions};
@@ -362,11 +362,11 @@ mod tests {
     #[test]
     fn store_subscriber() -> anyhow::Result<()> {
         let mut store1 = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -379,7 +379,7 @@ mod tests {
         let timeline_other = Timeline::new_duration("other");
         let timeline_yet_another = Timeline::new_sequence("yet_another");
 
-        let chunk = Chunk::builder("entity_a".into())
+        let chunk = Chunk::builder("entity_a")
             .with_component_batch(
                 RowId::new(),
                 TimePoint::from_iter([
@@ -387,7 +387,7 @@ mod tests {
                     (timeline_other, 666),     //
                     (timeline_yet_another, 1), //
                 ]),
-                &MyIndex::from_iter(0..10),
+                (MyIndex::partial_descriptor(), &MyIndex::from_iter(0..10)),
             )
             .build()?;
 
@@ -399,14 +399,17 @@ mod tests {
                 .map(|i| MyPoint::new(0.0, i as f32))
                 .collect();
             let colors = vec![MyColor::from(0xFF0000FF)];
-            Chunk::builder("entity_b".into())
+            Chunk::builder("entity_b")
                 .with_component_batches(
                     RowId::new(),
                     TimePoint::from_iter([
                         (timeline_frame, 42),      //
                         (timeline_yet_another, 1), //
                     ]),
-                    [&points as _, &colors as _],
+                    [
+                        (MyPoints::descriptor_points(), &points as _),
+                        (MyPoints::descriptor_colors(), &colors as _),
+                    ],
                 )
                 .build()?
         };
@@ -416,13 +419,16 @@ mod tests {
         let chunk = {
             let num_instances = 6;
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];
-            Chunk::builder("entity_b".into())
+            Chunk::builder("entity_b")
                 .with_component_batches(
                     RowId::new(),
                     TimePoint::default(),
                     [
-                        &MyIndex::from_iter(0..num_instances as _) as _,
-                        &colors as _,
+                        (
+                            MyIndex::partial_descriptor(),
+                            &MyIndex::from_iter(0..num_instances as _) as _,
+                        ),
+                        (MyPoints::descriptor_colors(), &colors as _),
                     ],
                 )
                 .build()?

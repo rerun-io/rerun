@@ -2,16 +2,19 @@
 //!
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 use re_log_types::EntityPath;
-use re_types::ComponentName;
+use re_types::reflection::ComponentDescriptorExt as _;
+use re_types::{ComponentDescriptor, RowId};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 mod annotation_context;
 mod app_id;
 mod blob;
 mod component;
-mod component_name;
 mod component_path;
+mod component_type;
 mod component_ui_registry;
 mod data_source;
 mod entity_db;
@@ -27,18 +30,48 @@ pub mod item_ui;
 pub use crate::tensor::tensor_summary_ui_grid_contents;
 pub use component::ComponentPathLatestAtResults;
 pub use component_ui_registry::{add_to_registry, register_component_uis};
+pub use image::image_preview_ui;
+pub use instance_path::archetype_label_list_item_ui;
+use re_types_core::ArchetypeName;
+use re_types_core::reflection::Reflection;
 
-/// Sort components for display in the UI.
-pub fn sorted_component_list_for_ui<'a>(
-    iter: impl IntoIterator<Item = &'a ComponentName> + 'a,
-) -> Vec<ComponentName> {
-    let mut components: Vec<ComponentName> = iter.into_iter().copied().collect();
+pub type ArchetypeComponentMap =
+    std::collections::BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;
 
-    // Put indicator components first.
-    // We then sort by the short name, as that is what is shown in the UI.
-    components.sort_by_key(|c| (!c.is_indicator_component(), c.short_name()));
+/// Components grouped by archetype.
+pub fn sorted_component_list_by_archetype_for_ui<'a>(
+    reflection: &Reflection,
+    iter: impl IntoIterator<Item = &'a ComponentDescriptor> + 'a,
+) -> ArchetypeComponentMap {
+    let mut map = iter
+        .into_iter()
+        .fold(ArchetypeComponentMap::default(), |mut acc, descriptor| {
+            acc.entry(descriptor.archetype)
+                .or_default()
+                .push(descriptor.clone());
+            acc
+        });
 
-    components
+    for (archetype, components) in &mut map {
+        if let Some(reflection) = archetype
+            .as_ref()
+            .and_then(|a| reflection.archetypes.get(a))
+        {
+            // Sort components by their importance
+            components.sort_by_key(|c| {
+                reflection
+                    .fields
+                    .iter()
+                    .position(|field| field.name == c.archetype_field_name())
+                    .unwrap_or(usize::MAX)
+            });
+        } else {
+            // As a fallback, sort by the short name, as that is what is shown in the UI.
+            components.sort_by_key(|c| c.display_name().to_owned());
+        }
+    }
+
+    map
 }
 
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
@@ -71,7 +104,8 @@ pub trait EntityDataUi {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        row_id: Option<re_chunk_store::RowId>,
+        component_descriptor: &ComponentDescriptor,
+        row_id: Option<RowId>,
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     );
@@ -87,7 +121,8 @@ where
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        _row_id: Option<re_chunk_store::RowId>,
+        _component_descriptor: &ComponentDescriptor,
+        _row_id: Option<RowId>,
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {

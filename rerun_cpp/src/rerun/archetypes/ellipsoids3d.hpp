@@ -16,7 +16,6 @@
 #include "../components/radius.hpp"
 #include "../components/show_labels.hpp"
 #include "../components/text.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -31,9 +30,8 @@ namespace rerun::archetypes {
     /// (e.g. a bounding sphere).
     /// For points whose radii are for the sake of visualization, use `archetypes::Points3D` instead.
     ///
-    /// Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.InstancePoses3D]`.
-    /// Some of its component are repeated here for convenience.
-    /// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+    /// If there's more instance poses than half sizes, the last ellipsoid/sphere's orientation will be repeated for the remaining poses.
+    /// Orienting and placing ellipsoids/spheres forms a separate transform that is applied prior to `archetypes::InstancePoses3D` and `archetypes::Transform3D`.
     ///
     /// ## Example
     ///
@@ -98,19 +96,16 @@ namespace rerun::archetypes {
         /// Optional center positions of the ellipsoids.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
-        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> centers;
 
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> rotation_axis_angles;
 
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> quaternions;
 
         /// Optional colors for the ellipsoids.
@@ -125,7 +120,10 @@ namespace rerun::archetypes {
         /// Optional text labels for the ellipsoids.
         std::optional<ComponentBatch> labels;
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         std::optional<ComponentBatch> show_labels;
 
         /// Optional class ID for the ellipsoids.
@@ -134,61 +132,56 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> class_ids;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.components.Ellipsoids3DIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Ellipsoids3D";
 
         /// `ComponentDescriptor` for the `half_sizes` field.
         static constexpr auto Descriptor_half_sizes = ComponentDescriptor(
-            ArchetypeName, "half_sizes",
-            Loggable<rerun::components::HalfSize3D>::Descriptor.component_name
+            ArchetypeName, "Ellipsoids3D:half_sizes",
+            Loggable<rerun::components::HalfSize3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `centers` field.
         static constexpr auto Descriptor_centers = ComponentDescriptor(
-            ArchetypeName, "centers",
-            Loggable<rerun::components::PoseTranslation3D>::Descriptor.component_name
+            ArchetypeName, "Ellipsoids3D:centers",
+            Loggable<rerun::components::PoseTranslation3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `rotation_axis_angles` field.
         static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
-            ArchetypeName, "rotation_axis_angles",
-            Loggable<rerun::components::PoseRotationAxisAngle>::Descriptor.component_name
+            ArchetypeName, "Ellipsoids3D:rotation_axis_angles",
+            Loggable<rerun::components::PoseRotationAxisAngle>::ComponentType
         );
         /// `ComponentDescriptor` for the `quaternions` field.
         static constexpr auto Descriptor_quaternions = ComponentDescriptor(
-            ArchetypeName, "quaternions",
-            Loggable<rerun::components::PoseRotationQuat>::Descriptor.component_name
+            ArchetypeName, "Ellipsoids3D:quaternions",
+            Loggable<rerun::components::PoseRotationQuat>::ComponentType
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "Ellipsoids3D:colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `line_radii` field.
         static constexpr auto Descriptor_line_radii = ComponentDescriptor(
-            ArchetypeName, "line_radii",
-            Loggable<rerun::components::Radius>::Descriptor.component_name
+            ArchetypeName, "Ellipsoids3D:line_radii",
+            Loggable<rerun::components::Radius>::ComponentType
         );
         /// `ComponentDescriptor` for the `fill_mode` field.
         static constexpr auto Descriptor_fill_mode = ComponentDescriptor(
-            ArchetypeName, "fill_mode",
-            Loggable<rerun::components::FillMode>::Descriptor.component_name
+            ArchetypeName, "Ellipsoids3D:fill_mode",
+            Loggable<rerun::components::FillMode>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+            ArchetypeName, "Ellipsoids3D:labels", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels",
-            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+            ArchetypeName, "Ellipsoids3D:show_labels",
+            Loggable<rerun::components::ShowLabels>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids",
-            Loggable<rerun::components::ClassId>::Descriptor.component_name
+            ArchetypeName, "Ellipsoids3D:class_ids",
+            Loggable<rerun::components::ClassId>::ComponentType
         );
 
       public: // START of extensions from ellipsoids3d_ext.cpp:
@@ -250,7 +243,6 @@ namespace rerun::archetypes {
         /// Optional center positions of the ellipsoids.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
-        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
         Ellipsoids3D with_centers(const Collection<rerun::components::PoseTranslation3D>& _centers
         ) && {
             centers = ComponentBatch::from_loggable(_centers, Descriptor_centers).value_or_throw();
@@ -260,7 +252,6 @@ namespace rerun::archetypes {
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         Ellipsoids3D with_rotation_axis_angles(
             const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
         ) && {
@@ -275,7 +266,6 @@ namespace rerun::archetypes {
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
         Ellipsoids3D with_quaternions(
             const Collection<rerun::components::PoseRotationQuat>& _quaternions
         ) && {
@@ -321,7 +311,10 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         Ellipsoids3D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();

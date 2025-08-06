@@ -46,8 +46,11 @@ pub fn highlights_for_view(
             Item::AppId(_)
             | Item::DataSource(_)
             | Item::StoreId(_)
+            | Item::TableId(_)
             | Item::View(_)
-            | Item::Container(_) => {}
+            | Item::Container(_)
+            | Item::RedapEntry(_)
+            | Item::RedapServer(_) => {}
 
             Item::ComponentPath(component_path) => {
                 let entity_hash = component_path.entity_path.hash();
@@ -86,8 +89,11 @@ pub fn highlights_for_view(
             Item::AppId(_)
             | Item::DataSource(_)
             | Item::StoreId(_)
+            | Item::TableId(_)
             | Item::View(_)
-            | Item::Container(_) => {}
+            | Item::Container(_)
+            | Item::RedapEntry(_)
+            | Item::RedapServer(_) => {}
 
             Item::ComponentPath(component_path) => {
                 let entity_hash = component_path.entity_path.hash();

@@ -1,4 +1,4 @@
-use re_log_types::{hash::Hash64, EntityPath, EntityPathFilter};
+use re_log_types::{EntityPath, EntityPathFilter, hash::Hash64};
 use re_types::ViewClassIdentifier;
 
 /// Properties of a view that as recommended to be spawned by default via view spawn heuristics.
@@ -13,7 +13,7 @@ pub struct RecommendedView {
 /// Provides information in order to decide whether to spawn a views, putting them in relationship to others and spawning them.
 // TODO(andreas): allow bucketing decisions for 0-n buckets for recommended views.
 // TODO(andreas): Should `ViewClassLayoutPriority` be part of this struct?
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct ViewSpawnHeuristics {
     /// The recommended views to spawn
     recommended_views: Vec<RecommendedView>,

@@ -3,14 +3,20 @@
 //! This crate contains all the GUI code for the Rerun Viewer,
 //! including all 2D and 3D visualization code.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod app;
 mod app_blueprint;
 mod app_state;
 mod background_tasks;
-mod callback;
+mod default_views;
+mod docker_detection;
 pub mod env_vars;
+pub mod event;
+mod navigation;
 mod saving;
 mod screenshotter;
+mod startup_options;
 mod ui;
 mod viewer_analytics;
 
@@ -26,23 +32,26 @@ pub mod blueprint;
 
 pub(crate) use {app_state::AppState, ui::memory_panel};
 
-pub use callback::{CallbackSelectionItem, Callbacks};
+pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
 
-pub use app::{App, StartupOptions};
+pub use app::App;
+pub use startup_options::StartupOptions;
 
 pub use re_capabilities::MainThreadToken;
 
 pub use re_viewer_context::{
-    command_channel, AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand,
-    SystemCommandSender,
+    AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
+    command_channel,
 };
 
 pub mod external {
+    pub use parking_lot;
     pub use {eframe, egui};
     pub use {
         re_chunk, re_chunk::external::*, re_chunk_store, re_chunk_store::external::*, re_data_ui,
-        re_entity_db, re_log, re_log_types, re_memory, re_renderer, re_types, re_ui,
-        re_viewer_context, re_viewer_context::external::*, re_viewport, re_viewport::external::*,
+        re_entity_db, re_log, re_log_types, re_memory, re_renderer, re_smart_channel, re_types,
+        re_ui, re_view_spatial, re_viewer_context, re_viewer_context::external::*, re_viewport,
+        re_viewport::external::*,
     };
 }
 
@@ -242,6 +251,31 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
         .spawn(move || {
             while let Ok(msg) = rx.recv_with_send_time() {
                 if tx.send_at(msg.time, msg.source, msg.payload).is_ok() {
+                    ctx.request_repaint();
+                } else {
+                    break;
+                }
+            }
+            re_log::trace!("Shutting down ui_waker thread");
+        })
+        .expect("Failed to spawn UI waker thread");
+    new_rx
+}
+
+/// This wakes up the ui thread each time we receive a new message.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn wake_up_ui_thread_on_each_msg_crossbeam<T: Send + 'static>(
+    rx: crossbeam::channel::Receiver<T>,
+    ctx: egui::Context,
+) -> crossbeam::channel::Receiver<T> {
+    // We need to intercept messages to wake up the ui thread.
+    // For that, we need a new channel.
+    let (tx, new_rx) = crossbeam::channel::unbounded();
+    std::thread::Builder::new()
+        .name("ui_waker".to_owned())
+        .spawn(move || {
+            while let Ok(msg) = rx.recv() {
+                if tx.send(msg).is_ok() {
                     ctx.request_repaint();
                 } else {
                     break;

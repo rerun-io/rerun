@@ -36,7 +36,6 @@ plugins:
                 "!__attrs_clear__", # For internal use
                 "!^_[^_]", # Hide things starting with a single underscore
                 "!as_component_batches", # Inherited from AsComponents
-                "!indicator", # Inherited from Archetype
                 "!num_instances", # Inherited from AsComponents
               ]
             inherited_members: true

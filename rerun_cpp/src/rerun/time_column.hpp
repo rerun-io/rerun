@@ -9,7 +9,7 @@
 #include "timeline.hpp"
 
 // X.h (of X11) has a macro called `Unsorted`
-// See <https://codebrowser.dev/kde/include/X11/X.h.html#_M/Unsorted>
+// See <https://gitlab.freedesktop.org/xorg/proto/xorgproto/-/blob/eb28f0378fadd0d143aad7ec16f7b91814faae9a/include/X11/X.h#L540>
 // and <https://github.com/rerun-io/rerun/issues/7846>.
 #ifdef Unsorted
 #error \

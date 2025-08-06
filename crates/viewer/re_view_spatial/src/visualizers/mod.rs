@@ -7,6 +7,7 @@ mod boxes2d;
 mod boxes3d;
 mod cameras;
 mod capsules3d;
+mod cylinders3d;
 mod depth_images;
 mod ellipsoids;
 mod encoded_image;
@@ -19,14 +20,15 @@ mod points3d;
 mod segmentation_images;
 mod transform3d_arrows;
 mod utilities;
-mod videos;
+mod video;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
-pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
+use re_types::{ComponentDescriptor, archetypes};
+pub use transform3d_arrows::{AxisLengthDetector, Transform3DArrowsVisualizer, add_axis_arrows};
 pub use utilities::{
-    entity_iterator, process_labels_3d, textured_rect_from_image, SpatialViewVisualizerData,
-    UiLabel, UiLabelStyle, UiLabelTarget,
+    SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget, entity_iterator,
+    process_labels_3d, textured_rect_from_image,
 };
 
 /// Shows a loading animation in a spatial view.
@@ -50,17 +52,15 @@ use ahash::HashMap;
 use re_entity_db::EntityPath;
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_viewer_context::{
-    auto_color_egui, IdentifiedViewSystem as _, MaybeVisualizableEntities, ViewClassRegistryError,
+    Annotations, IdentifiedViewSystem as _, MaybeVisualizableEntities, ViewClassRegistryError,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizableEntities,
-    VisualizableFilterContext, VisualizerCollection,
+    VisualizableFilterContext, VisualizerCollection, auto_color_egui,
 };
 
 use re_view::clamped_or_nothing;
 
 use crate::view_2d::VisualizableFilterContext2D;
 use crate::view_3d::VisualizableFilterContext3D;
-
-use super::contexts::SpatialSceneEntityContext;
 
 /// Collection of keypoints for annotation context.
 pub type Keypoints = HashMap<(re_types::components::ClassId, i64), HashMap<KeypointId, glam::Vec3>>;
@@ -86,7 +86,8 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<videos::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoStreamVisualizer>()?;
     Ok(())
 }
 
@@ -98,9 +99,11 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
-    system_registry.register_visualizer::<capsules3d::Capsules3DVisualizer>()?;
     system_registry.register_visualizer::<cameras::CamerasVisualizer>()?;
+    system_registry.register_visualizer::<capsules3d::Capsules3DVisualizer>()?;
+    system_registry.register_visualizer::<cylinders3d::Cylinders3DVisualizer>()?;
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
+    system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<encoded_image::EncodedImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
@@ -109,25 +112,58 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
-    system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<videos::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video::VideoStreamVisualizer>()?;
     Ok(())
 }
 
-/// List of all visualizers that read [`re_types::components::DrawOrder`].
+/// List of all visualizers that read [`re_types::components::DrawOrder`] and the exact draw order component descriptor they use.
 // TODO(jan, andreas): consider adding DrawOrder to video
-pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIdentifier> {
+pub fn visualizers_processing_draw_order()
+-> impl Iterator<Item = (ViewSystemIdentifier, ComponentDescriptor)> {
     [
-        arrows2d::Arrows2DVisualizer::identifier(),
-        boxes2d::Boxes2DVisualizer::identifier(),
-        depth_images::DepthImageVisualizer::identifier(),
-        encoded_image::EncodedImageVisualizer::identifier(),
-        images::ImageVisualizer::identifier(),
-        lines2d::Lines2DVisualizer::identifier(),
-        points2d::Points2DVisualizer::identifier(),
-        segmentation_images::SegmentationImageVisualizer::identifier(),
+        (
+            arrows2d::Arrows2DVisualizer::identifier(),
+            archetypes::Arrows2D::descriptor_draw_order(),
+        ),
+        (
+            boxes2d::Boxes2DVisualizer::identifier(),
+            archetypes::Boxes2D::descriptor_draw_order(),
+        ),
+        (
+            depth_images::DepthImageVisualizer::identifier(),
+            archetypes::DepthImage::descriptor_draw_order(),
+        ),
+        (
+            encoded_image::EncodedImageVisualizer::identifier(),
+            archetypes::EncodedImage::descriptor_draw_order(),
+        ),
+        (
+            images::ImageVisualizer::identifier(),
+            archetypes::Image::descriptor_draw_order(),
+        ),
+        (
+            lines2d::Lines2DVisualizer::identifier(),
+            archetypes::LineStrips2D::descriptor_draw_order(),
+        ),
+        (
+            points2d::Points2DVisualizer::identifier(),
+            archetypes::Points2D::descriptor_draw_order(),
+        ),
+        (
+            segmentation_images::SegmentationImageVisualizer::identifier(),
+            archetypes::SegmentationImage::descriptor_draw_order(),
+        ),
+        (
+            video::VideoFrameReferenceVisualizer::identifier(),
+            archetypes::VideoFrameReference::descriptor_draw_order(),
+        ),
+        (
+            video::VideoStreamVisualizer::identifier(),
+            archetypes::VideoStream::descriptor_draw_order(),
+        ),
     ]
     .into_iter()
 }
@@ -185,7 +221,8 @@ fn process_radius(
 
 pub fn load_keypoint_connections(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
-    ent_context: &SpatialSceneEntityContext<'_>,
+    annotations: &Annotations,
+    world_from_obj: glam::Affine3A,
     ent_path: &re_entity_db::EntityPath,
     keypoints: &Keypoints,
 ) -> Result<(), ViewSystemExecutionError> {
@@ -196,8 +233,7 @@ pub fn load_keypoint_connections(
     let max_num_connections = keypoints
         .iter()
         .map(|((class_id, _time), _keypoints_in_class)| {
-            ent_context
-                .annotations
+            annotations
                 .resolved_class_description(Some(*class_id))
                 .class_description
                 .map_or(0, |d| d.keypoint_connections.len())
@@ -213,7 +249,6 @@ pub fn load_keypoint_connections(
 
     // The calling visualizer has the same issue of not knowing what do with per instance transforms
     // and should have warned already if there are multiple transforms.
-    let world_from_obj = ent_context.transform_info.single_entity_transform_silent();
     let mut line_batch = line_builder
         .batch("keypoint connections")
         .world_from_obj(world_from_obj)
@@ -223,9 +258,7 @@ pub fn load_keypoint_connections(
     let line_radius = re_renderer::Size(*re_types::components::Radius::default().0);
 
     for ((class_id, _time), keypoints_in_class) in keypoints {
-        let resolved_class_description = ent_context
-            .annotations
-            .resolved_class_description(Some(*class_id));
+        let resolved_class_description = annotations.resolved_class_description(Some(*class_id));
 
         let Some(class_description) = resolved_class_description.class_description else {
             continue;
@@ -243,8 +276,7 @@ pub fn load_keypoint_connections(
         {
             let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
                 re_log::warn_once!(
-                    "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
-                    a, b, ent_path
+                    "Keypoint connection from index {a:?} to {b:?} could not be resolved in entity {ent_path:?}"
                 );
                 continue;
             };

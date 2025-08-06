@@ -8,7 +8,6 @@
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
 #include "../../components/color.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -18,6 +17,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the background of a view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct Background {
         /// The type of the background.
         std::optional<ComponentBatch> kind;
@@ -26,22 +28,17 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> color;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.BackgroundIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.Background";
 
         /// `ComponentDescriptor` for the `kind` field.
         static constexpr auto Descriptor_kind = ComponentDescriptor(
-            ArchetypeName, "kind",
-            Loggable<rerun::blueprint::components::BackgroundKind>::Descriptor.component_name
+            ArchetypeName, "Background:kind",
+            Loggable<rerun::blueprint::components::BackgroundKind>::ComponentType
         );
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
-            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "Background:color", Loggable<rerun::components::Color>::ComponentType
         );
 
       public:

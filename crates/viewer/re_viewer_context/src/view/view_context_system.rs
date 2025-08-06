@@ -1,6 +1,6 @@
 use ahash::HashMap;
 
-use re_types::{ComponentNameSet, ViewClassIdentifier};
+use re_types::ViewClassIdentifier;
 
 use crate::{IdentifiedViewSystem, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier};
 
@@ -10,17 +10,6 @@ use super::view_context::ViewContext;
 ///
 /// Is always populated before view part systems.
 pub trait ViewContextSystem: Send + Sync {
-    /// Returns all the component sets that the system is compatible with.
-    ///
-    /// If an entity path satisfies any of these sets, then the system will automatically run for
-    /// that entity path.
-    ///
-    /// Return an empty vec to specify that the system should never run automatically for any
-    /// specific entities.
-    /// It may still run once per frame as part of the global context if it has been registered to
-    /// do so, see [`crate::ViewSystemRegistrator`].
-    fn compatible_component_sets(&self) -> Vec<ComponentNameSet>;
-
     /// Queries the chunk store and performs data conversions to make it ready for consumption by scene elements.
     fn execute(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>);
 

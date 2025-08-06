@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -16,7 +15,11 @@ __all__ = ["GridSpacing", "GridSpacingBatch"]
 
 
 class GridSpacing(datatypes.Float32, ComponentMixin):
-    """**Component**: Space between grid lines of one line to the next in scene units."""
+    """
+    **Component**: Space between grid lines of one line to the next in scene units.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of GridSpacingExt in grid_spacing_ext.py
@@ -25,7 +28,7 @@ class GridSpacing(datatypes.Float32, ComponentMixin):
 
 
 class GridSpacingBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.GridSpacing")
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.GridSpacing"
 
 
 # This is patched in late to avoid circular dependencies.

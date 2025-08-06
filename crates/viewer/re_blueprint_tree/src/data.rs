@@ -14,8 +14,8 @@ use itertools::Itertools as _;
 use smallvec::SmallVec;
 
 use re_entity_db::InstancePath;
-use re_log_types::external::re_types_core::ViewClassIdentifier;
 use re_log_types::EntityPath;
+use re_log_types::external::re_types_core::ViewClassIdentifier;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
@@ -284,7 +284,7 @@ impl ViewData {
         }
 
         let default_open = filter_matcher.is_active()
-            || origin_tree.as_ref().map_or(true, |data_result_data| {
+            || origin_tree.as_ref().is_none_or(|data_result_data| {
                 default_open_for_data_result(data_result_data.children.len())
             });
 
@@ -373,11 +373,6 @@ impl DataResultData {
         filter_matcher: &FilterMatcher,
     ) -> Option<Self> {
         re_tracing::profile_function!();
-
-        // Early out.
-        if filter_matcher.matches_nothing() {
-            return None;
-        }
 
         let entity_path = data_result_or_path.path().clone();
         let data_result_node = data_result_or_path.data_result_node();
@@ -633,8 +628,8 @@ impl BlueprintTreeItem<'_> {
         }
     }
 
-    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> Option<bool> {
-        collapse_scope.item(self.item()).map(|collapse_id| {
+    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
+        collapse_scope.item(self.item()).is_some_and(|collapse_id| {
             collapse_id
                 .is_open(ctx)
                 .unwrap_or_else(|| self.default_open())

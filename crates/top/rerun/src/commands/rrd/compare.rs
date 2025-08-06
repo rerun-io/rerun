@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Context as _;
-use itertools::{izip, Itertools as _};
+use itertools::{Itertools as _, izip};
 
 use re_chunk::Chunk;
 
@@ -27,6 +27,10 @@ pub struct CompareCommand {
     /// If specified, dumps both .rrd files as tables.
     #[clap(long, default_value_t = false)]
     full_dump: bool,
+
+    /// If specified, the comparison will ignore chunks without components.
+    #[clap(long, default_value_t = false)]
+    ignore_chunks_without_components: bool,
 }
 
 impl CompareCommand {
@@ -40,6 +44,7 @@ impl CompareCommand {
             path_to_rrd2,
             unordered,
             full_dump,
+            ignore_chunks_without_components,
         } = self;
 
         re_log::debug!("Comparing {path_to_rrd1:?} to {path_to_rrd2:?}…");
@@ -47,10 +52,10 @@ impl CompareCommand {
         let path_to_rrd1 = PathBuf::from(path_to_rrd1);
         let path_to_rrd2 = PathBuf::from(path_to_rrd2);
 
-        let (app_id1, chunks1) =
-            compute_uber_table(&path_to_rrd1).with_context(|| format!("path: {path_to_rrd1:?}"))?;
-        let (app_id2, chunks2) =
-            compute_uber_table(&path_to_rrd2).with_context(|| format!("path: {path_to_rrd2:?}"))?;
+        let (app_id1, chunks1) = load_chunks(&path_to_rrd1, *ignore_chunks_without_components)
+            .with_context(|| format!("path: {path_to_rrd1:?}"))?;
+        let (app_id2, chunks2) = load_chunks(&path_to_rrd2, *ignore_chunks_without_components)
+            .with_context(|| format!("path: {path_to_rrd2:?}"))?;
 
         if *full_dump {
             println!("{app_id1}");
@@ -83,7 +88,7 @@ impl CompareCommand {
             'outer: for chunk1 in &chunks1 {
                 for chunk2 in chunks2_opt.iter_mut().filter(|c| c.is_some()) {
                     #[allow(clippy::unwrap_used)]
-                    if re_chunk::Chunk::are_similar(chunk1, chunk2.as_ref().unwrap()) {
+                    if re_chunk::Chunk::ensure_similar(chunk1, chunk2.as_ref().unwrap()).is_ok() {
                         *chunk2 = None;
                         continue 'outer;
                     }
@@ -93,18 +98,35 @@ impl CompareCommand {
             }
         }
 
+        fn format_chunk(chunk: &Chunk) -> String {
+            re_format_arrow::format_record_batch_opts(
+                &chunk.to_record_batch().expect("Cannot fail in practice"),
+                &re_format_arrow::RecordBatchFormatOpts {
+                    transposed: false,
+                    width: Some(800),
+                    include_metadata: true,
+                    include_column_metadata: true,
+                    trim_field_names: false,
+                    trim_metadata_keys: false,
+                    trim_metadata_values: false,
+                },
+            )
+            .to_string()
+        }
+
         if !*unordered || unordered_failed {
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
-                anyhow::ensure!(
-                    re_chunk::Chunk::are_similar(&chunk1, &chunk2),
-                    "Chunks do not match:\n{}",
-                    similar_asserts::SimpleDiff::from_str(
-                        &format!("{chunk1}"),
-                        &format!("{chunk2}"),
-                        "got",
-                        "expected",
-                    ),
-                );
+                re_chunk::Chunk::ensure_similar(&chunk1, &chunk2).with_context(|| {
+                    format!(
+                        "Chunks diff:\n{}",
+                        similar_asserts::SimpleDiff::from_str(
+                            &format_chunk(&chunk1),
+                            &format_chunk(&chunk2),
+                            "got",
+                            "expected",
+                        ),
+                    )
+                })?;
             }
         }
 
@@ -118,8 +140,9 @@ impl CompareCommand {
 /// `Chunk`s.
 ///
 /// Fails if there are more than one data recordings present in the rrd file.
-fn compute_uber_table(
+fn load_chunks(
     path_to_rrd: &Path,
+    ignore_chunks_without_components: bool,
 ) -> anyhow::Result<(re_log_types::ApplicationId, Vec<Arc<re_chunk::Chunk>>)> {
     use re_entity_db::EntityDb;
     use re_log_types::StoreId;
@@ -127,9 +150,14 @@ fn compute_uber_table(
     let rrd_file = std::fs::File::open(path_to_rrd).context("couldn't open rrd file contents")?;
     let rrd_file = std::io::BufReader::new(rrd_file);
 
+    // TODO(#10730): if the legacy `StoreId` migration is removed from `Decoder`, this would break
+    // the ability of `rrd compare` pre-0.25 rrds. If we want to keep the ability to migrate here,
+    // then the pre-#10730 app id caching mechanism must somehow be ported here.
+    // TODO(ab): For pre-0.25 legacy data with `StoreId` missing their application id, the migration
+    // in `Decoder` requires `SetStoreInfo` to arrive before the corresponding `ArrowMsg`. Ideally
+    // this tool would cache orphan `ArrowMsg` until a matching `SetStoreInfo` arrives.
     let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-    let version_policy = re_log_encoding::VersionPolicy::Error;
-    let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
+    let decoder = re_log_encoding::decoder::Decoder::new(rrd_file)?;
     for msg in decoder {
         let msg = msg.context("decode rrd message")?;
         stores
@@ -162,10 +190,17 @@ fn compute_uber_table(
     let engine = store.storage_engine();
 
     Ok((
-        store
-            .app_id()
-            .cloned()
-            .unwrap_or_else(re_log_types::ApplicationId::unknown),
-        engine.store().iter_chunks().map(Arc::clone).collect_vec(),
+        store.application_id().clone(),
+        engine
+            .store()
+            .iter_chunks()
+            .filter_map(|c| {
+                if ignore_chunks_without_components {
+                    (c.num_components() > 0).then_some(c.clone())
+                } else {
+                    Some(c.clone())
+                }
+            })
+            .collect_vec(),
     ))
 }

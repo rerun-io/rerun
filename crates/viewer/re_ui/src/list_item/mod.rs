@@ -44,6 +44,9 @@ pub struct ContentContext<'a> {
 
     /// Layout information to use for rendering.
     pub layout_info: LayoutInfo,
+
+    /// The colors to use for rendering.
+    pub visuals: ListVisuals,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -85,7 +88,7 @@ pub trait ListItemContent {
 
 /// A button that can be used by a list item.
 ///
-/// The button is expected to have a size of [`crate::DesignTokens::small_icon_size`].
+/// The button is expected to have a size of [`crate::tokens.small_icon_size`].
 ///
 /// How/where the button is displayed is up to the [`crate::list_item::ListItemContent`]
 /// implementation.

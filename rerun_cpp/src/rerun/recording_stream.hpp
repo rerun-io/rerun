@@ -11,6 +11,7 @@
 #include "as_components.hpp"
 #include "component_column.hpp"
 #include "error.hpp"
+#include "log_sink.hpp"
 #include "spawn_options.hpp"
 #include "time_column.hpp"
 
@@ -62,7 +63,6 @@ namespace rerun {
         // TODO(grtlr): Ideally we'd expose more of the `EntityPath` struct to the C++ world so
         //              that we don't have to hardcode this here.
         static constexpr const char PROPERTIES_ENTITY_PATH[] = "__properties/";
-        static constexpr const char RECORDING_PROPERTIES_ENTITY_PATH[] = "__properties/recording/";
 
       public:
         /// Creates a new recording stream to log to.
@@ -139,34 +139,63 @@ namespace rerun {
         /// \details Either of these needs to be called, otherwise the stream will buffer up indefinitely.
         /// @{
 
-        /// Connect to a remote Rerun Viewer on the given HTTP(S) URL.
+        /// Stream data to multiple sinks.
+        ///
+        /// See specific sink types for more information:
+        /// * `FileSink`
+        /// * `GrpcSink`
+        template <typename... Ts>
+        Error set_sinks(const Ts&... sinks) const {
+            LogSink out_sinks[] = {sinks...};
+            uint32_t num_sinks = sizeof...(Ts);
+            return try_set_sinks(out_sinks, num_sinks);
+        }
+
+        /// Connect to a remote Rerun Viewer on the given URL.
         ///
         /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
         ///
-        /// flush_timeout_sec:
-        /// The minimum time the SDK will wait during a flush before potentially
+        /// \param url The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+        /// and the pathname must be `/proxy`. The default is `rerun+http://127.0.0.1:9876/proxy`.
+        ///
+        /// \param flush_timeout_sec The minimum time the SDK will wait during a flush before potentially
         /// dropping data if progress is not being made. Passing a negative value indicates no
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
         /// This function returns immediately.
         Error connect_grpc(
-            std::string_view url = "rerun+http://127.0.0.1:9876", float flush_timeout_sec = 2.0
+            std::string_view url = "rerun+http://127.0.0.1:9876/proxy",
+            float flush_timeout_sec = 2.0
+        ) const;
+
+        /// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
+        ///
+        /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+        /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+        /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
+        ///
+        /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+        /// on the same machine, otherwise you're potentially doubling your memory usage!
+        ///
+        /// Returns the URI of the gRPC server so you can connect to it from a viewer.
+        ///
+        /// This function returns immediately.
+        Result<std::string> serve_grpc(
+            std::string_view bind_ip = "0.0.0.0", uint16_t port = 9876,
+            std::string_view server_memory_limit = "25%"
         ) const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
         /// over gRPC.
         ///
-        /// flush_timeout_sec:
-        /// The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no
-        /// timeout, and can cause a call to `flush` to block indefinitely.
-        ///
         /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
         /// that viewer instead of starting a new one.
         ///
-        /// ## Parameters
-        /// options:
-        /// See `rerun::SpawnOptions` for more information.
+        /// \param flush_timeout_sec The minimum time the SDK will wait during a flush before potentially
+        /// dropping data if progress is not being made. Passing a negative value indicates no
+        /// timeout, and can cause a call to `flush` to block indefinitely.
+        ///
+        /// \param options See `rerun::SpawnOptions` for more information.
         Error spawn(const SpawnOptions& options = {}, float flush_timeout_sec = 2.0) const;
 
         /// @see RecordingStream::spawn
@@ -915,6 +944,8 @@ namespace rerun {
         /// @}
 
       private:
+        Error try_set_sinks(const LogSink* sinks, uint32_t num_sinks) const;
+
         // Utility function to implement `try_send_columns` variadic template.
         static void push_back_columns(
             std::vector<ComponentColumn>& component_columns, Collection<ComponentColumn> new_columns

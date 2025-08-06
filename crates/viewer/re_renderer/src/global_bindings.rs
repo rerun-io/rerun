@@ -43,8 +43,9 @@ pub struct FrameUniformBuffer {
     pub device_tier: wgpu_buffer_types::U32RowPadded,
 }
 
-pub(crate) struct GlobalBindings {
-    pub(crate) layout: GpuBindGroupLayoutHandle,
+/// Global bindings which are always available on bind group 0 for all [`crate::renderer::Renderer`].
+pub struct GlobalBindings {
+    pub layout: GpuBindGroupLayoutHandle,
     nearest_neighbor_sampler_repeat: GpuSamplerHandle,
     nearest_neighbor_sampler_clamped: GpuSamplerHandle,
     trilinear_sampler_repeat: GpuSamplerHandle,
@@ -63,7 +64,7 @@ impl GlobalBindings {
                         // The global per-frame uniform buffer.
                         wgpu::BindGroupLayoutEntry {
                             binding: 0,
-                            visibility: wgpu::ShaderStages::all(),
+                            visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::VERTEX, // TODO(gfx-rs/wgpu#7708): We want to use `all()`, but can't since it includes shader stages that aren't available on WebGPU.
                             ty: wgpu::BindingType::Buffer {
                                 ty: wgpu::BufferBindingType::Uniform,
                                 has_dynamic_offset: false,

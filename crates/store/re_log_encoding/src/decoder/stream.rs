@@ -2,15 +2,15 @@ use std::collections::VecDeque;
 use std::io::Cursor;
 use std::io::Read as _;
 
-use re_build_info::CrateVersion;
-use re_log_types::LogMsg;
-
-use crate::decoder::options_from_bytes;
 use crate::EncodingOptions;
 use crate::FileHeader;
 use crate::Serializer;
+use crate::app_id_injector::CachingApplicationIdInjector;
+use crate::decoder::options_from_bytes;
+use re_build_info::CrateVersion;
+use re_log_types::LogMsg;
 
-use super::{DecodeError, VersionPolicy};
+use super::DecodeError;
 
 /// The stream decoder is a state machine which ingests byte chunks
 /// and outputs messages once it has enough data to deserialize one.
@@ -23,9 +23,6 @@ pub struct StreamDecoder {
     /// `None` until a Rerun header has been processed.
     version: Option<CrateVersion>,
 
-    /// How to handle version mismatches
-    version_policy: VersionPolicy,
-
     options: EncodingOptions,
 
     /// Incoming chunks are stored here
@@ -33,6 +30,9 @@ pub struct StreamDecoder {
 
     /// The stream state
     state: State,
+
+    /// The application id cache used for migrating old data.
+    app_id_cache: CachingApplicationIdInjector,
 }
 
 ///
@@ -67,15 +67,16 @@ enum State {
 }
 
 impl StreamDecoder {
-    pub fn new(version_policy: VersionPolicy) -> Self {
+    #[expect(clippy::new_without_default)]
+    pub fn new() -> Self {
         Self {
             version: None,
-            version_policy,
             // Note: `options` are filled in once we read `FileHeader`,
             // so this value does not matter.
             options: EncodingOptions::PROTOBUF_UNCOMPRESSED,
             chunks: ChunkBuffer::new(),
             state: State::StreamHeader,
+            app_id_cache: CachingApplicationIdInjector::default(),
         }
     }
 
@@ -83,12 +84,34 @@ impl StreamDecoder {
         self.chunks.push(chunk);
     }
 
+    /// Read the next message in the stream, dropping messages missing application id that cannot
+    /// be migrated (because they arrived before `SetStoreInfo`).
     pub fn try_read(&mut self) -> Result<Option<LogMsg>, DecodeError> {
+        //TODO(#10730): remove this if/when we remove the legacy `StoreId` migration.
+        loop {
+            let result = self.try_read_impl();
+            if let Err(DecodeError::StoreIdMissingApplicationId {
+                store_kind,
+                recording_id,
+            }) = result
+            {
+                re_log::warn_once!(
+                    "Dropping message without application id which arrived before `SetStoreInfo` \
+                    (kind: {store_kind}, recording id: {recording_id}."
+                );
+            } else {
+                return result;
+            }
+        }
+    }
+
+    /// Read the next message in the stream.
+    fn try_read_impl(&mut self) -> Result<Option<LogMsg>, DecodeError> {
         match self.state {
             State::StreamHeader => {
                 if let Some(header) = self.chunks.try_read(FileHeader::SIZE) {
                     // header contains version and compression options
-                    let (version, options) = options_from_bytes(self.version_policy, header)?;
+                    let (version, options) = options_from_bytes(header)?;
                     self.version = Some(version);
                     self.options = options;
 
@@ -116,7 +139,11 @@ impl StreamDecoder {
             }
             State::Message(header) => {
                 if let Some(bytes) = self.chunks.try_read(header.len as usize) {
-                    let message = crate::codec::file::decoder::decode_bytes(header.kind, bytes)?;
+                    let message = crate::codec::file::decoder::decode_bytes_to_app(
+                        &mut self.app_id_cache,
+                        header.kind,
+                        bytes,
+                    )?;
                     if let Some(mut message) = message {
                         propagate_version(&mut message, self.version);
                         self.state = State::MessageHeader;
@@ -229,8 +256,8 @@ mod tests {
     use re_chunk::RowId;
     use re_log_types::{ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
-    use crate::encoder::Encoder;
     use crate::EncodingOptions;
+    use crate::encoder::Encoder;
 
     use super::*;
 
@@ -238,8 +265,7 @@ mod tests {
         LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::ZERO,
             info: StoreInfo {
-                application_id: ApplicationId::unknown(),
-                store_id: StoreId::from_string(StoreKind::Recording, "test".into()),
+                store_id: StoreId::new(StoreKind::Recording, ApplicationId::unknown(), "test"),
                 cloned_from: None,
                 store_source: StoreSource::Unknown,
                 store_version: Some(CrateVersion::LOCAL),
@@ -296,7 +322,7 @@ mod tests {
     fn stream_whole_chunks_uncompressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+        let mut decoder = StreamDecoder::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -313,7 +339,7 @@ mod tests {
     fn stream_byte_chunks_uncompressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+        let mut decoder = StreamDecoder::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -334,7 +360,7 @@ mod tests {
         let (input2, data2) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
         let input = input1.into_iter().chain(input2).collect::<Vec<_>>();
 
-        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+        let mut decoder = StreamDecoder::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -352,7 +378,7 @@ mod tests {
     fn stream_whole_chunks_compressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+        let mut decoder = StreamDecoder::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -369,7 +395,7 @@ mod tests {
     fn stream_byte_chunks_compressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+        let mut decoder = StreamDecoder::new();
 
         assert_message_incomplete!(decoder.try_read());
 
@@ -388,7 +414,7 @@ mod tests {
     fn stream_3x16_chunks_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
-        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+        let mut decoder = StreamDecoder::new();
         let mut decoded_messages = vec![];
 
         // keep pushing 3 chunks of 16 bytes at a time, and attempting to read messages
@@ -418,7 +444,7 @@ mod tests {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
         let mut data = Cursor::new(data);
 
-        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+        let mut decoder = StreamDecoder::new();
         let mut decoded_messages = vec![];
 
         // read chunks 2xN bytes at a time, where `N` comes from a regular pattern

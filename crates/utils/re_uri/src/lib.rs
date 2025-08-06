@@ -35,10 +35,28 @@
 
 mod endpoints;
 mod error;
+mod fragment;
+mod origin;
 mod redap_uri;
+mod scheme;
+mod time_range;
 
 pub use self::{
-    endpoints::{catalog::CatalogEndpoint, dataset::DatasetDataEndpoint, proxy::ProxyEndpoint},
+    endpoints::{catalog::CatalogUri, dataset::DatasetDataUri, entry::EntryUri, proxy::ProxyUri},
     error::Error,
-    redap_uri::{Origin, RedapUri, Scheme, TimeRange},
+    fragment::Fragment,
+    origin::Origin,
+    redap_uri::RedapUri,
+    scheme::Scheme,
+    time_range::TimeRange,
 };
+
+pub mod external {
+    pub use url;
+}
+
+/// The default port of a Rerun gRPC proxy server.
+pub const DEFAULT_PROXY_PORT: u16 = 9876;
+
+/// The default port of a redap server.
+pub const DEFAULT_REDAP_PORT: u16 = 51234;

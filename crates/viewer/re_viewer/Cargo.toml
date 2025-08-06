@@ -36,15 +36,21 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["analytics", "map_view"]
 
-## Enable telemetry using our analytics SDK.
-analytics = ["dep:re_analytics"]
+## Enable anonymized telemetry using our analytics SDK.
+analytics = ["dep:re_analytics", "re_ui/analytics"]
 
 ## Enable the map view
 map_view = ["dep:re_view_map"]
 
+## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+##
+## This only works on native.
+perf_telemetry = ["dep:re_perf_telemetry", "re_grpc_client/perf_telemetry"]
+
 
 [dependencies]
 # Internal:
+re_auth.workspace = true
 re_blueprint_tree.workspace = true
 re_build_info.workspace = true
 re_capabilities.workspace = true
@@ -52,6 +58,7 @@ re_redap_browser.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_component_ui.workspace = true
+re_dataframe_ui.workspace = true
 re_data_loader.workspace = true
 re_data_source.workspace = true
 re_data_ui.workspace = true
@@ -99,8 +106,10 @@ re_view_map = { workspace = true, optional = true }
 # External
 ahash.workspace = true
 anyhow.workspace = true
+arrow.workspace = true
 bytemuck.workspace = true
 cfg-if.workspace = true
+crossbeam.workspace = true
 eframe = { workspace = true, default-features = false, features = [
   "default_fonts",
   "persistence",
@@ -110,6 +119,7 @@ egui_plot.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
 ehttp.workspace = true
+emath.workspace = true
 glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
@@ -120,10 +130,14 @@ ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde-wasm-bindgen.workspace = true
+tap.workspace = true
 thiserror.workspace = true
-uuid.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -148,6 +162,11 @@ web-sys = { workspace = true, features = [
   "UrlSearchParams",
   "Window",
 ] }
+
+
+[dev-dependencies]
+egui_kittest.workspace = true
+re_test_context.workspace = true
 
 
 [build-dependencies]

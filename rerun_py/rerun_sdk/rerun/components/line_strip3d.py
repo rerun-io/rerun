@@ -17,7 +17,6 @@ from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 from .line_strip3d_ext import LineStrip3DExt
@@ -52,6 +51,10 @@ class LineStrip3D(LineStrip3DExt, ComponentMixin):
 
     points: list[datatypes.Vec3D] = field()
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of LineStrip3DExt in line_strip3d_ext.py
+        return len(self.points)
+
 
 if TYPE_CHECKING:
     LineStrip3DLike = Union[LineStrip3D, datatypes.Vec3DArrayLike, npt.NDArray[np.float32]]
@@ -70,7 +73,7 @@ class LineStrip3DBatch(BaseBatch[LineStrip3DArrayLike], ComponentBatchMixin):
             metadata={},
         )
     )
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.LineStrip3D")
+    _COMPONENT_TYPE: str = "rerun.components.LineStrip3D"
 
     @staticmethod
     def _native_to_pa_array(data: LineStrip3DArrayLike, data_type: pa.DataType) -> pa.Array:

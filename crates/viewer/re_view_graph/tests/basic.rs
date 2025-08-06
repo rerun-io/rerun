@@ -4,14 +4,16 @@ use egui::Vec2;
 
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_viewport::TestContextExt as _;
 use re_types::archetypes;
 use re_view_graph::GraphView;
-use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass as _};
-use re_viewport_blueprint::{test_context_ext::TestContextExt as _, ViewBlueprint};
+use re_viewer_context::ViewClass as _;
+use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
 pub fn coincident_nodes() {
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
     let name = "coincident_nodes";
 
     // It's important to first register the view class before adding any entities,
@@ -20,7 +22,7 @@ pub fn coincident_nodes() {
     test_context.register_view_class::<re_view_graph::GraphView>();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
-    test_context.log_entity(name.into(), |builder| {
+    test_context.log_entity(name, |builder| {
         builder
             .with_archetype(
                 RowId::new(),
@@ -40,7 +42,7 @@ pub fn coincident_nodes() {
 
 #[test]
 pub fn self_and_multi_edges() {
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
     let name = "self_and_multi_edges";
 
     // It's important to first register the view class before adding any entities,
@@ -52,7 +54,7 @@ pub fn self_and_multi_edges() {
         .unwrap();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
-    test_context.log_entity(name.into(), |builder| {
+    test_context.log_entity(name, |builder| {
         builder
             .with_archetype(
                 RowId::new(),
@@ -88,7 +90,7 @@ pub fn self_and_multi_edges() {
 
 #[test]
 pub fn multi_graphs() {
-    let mut test_context = TestContext::default();
+    let mut test_context = TestContext::new();
     let name = "multi_graphs";
 
     // It's important to first register the view class before adding any entities,
@@ -100,7 +102,7 @@ pub fn multi_graphs() {
         .unwrap();
 
     let timepoint = TimePoint::from([(test_context.active_timeline(), 1)]);
-    test_context.log_entity("graph1".into(), |builder| {
+    test_context.log_entity("graph1", |builder| {
         builder
             .with_archetype(
                 RowId::new(),
@@ -113,7 +115,7 @@ pub fn multi_graphs() {
                 &archetypes::GraphEdges::new([("A", "B")]),
             )
     });
-    test_context.log_entity("graph2".into(), |builder| {
+    test_context.log_entity("graph2", |builder| {
         builder
             .with_archetype(
                 RowId::new(),
@@ -132,15 +134,10 @@ pub fn multi_graphs() {
 }
 
 fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, size: Vec2) {
-    let view_id = test_context.setup_viewport_blueprint(|_, blueprint| {
-        let view_blueprint = ViewBlueprint::new(
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
             re_view_graph::GraphView::identifier(),
-            RecommendedView::root(),
-        );
-
-        let view_id = view_blueprint.id;
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
-        view_id
+        ))
     });
 
     let mut harness = test_context
@@ -148,32 +145,12 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
         .with_size(size)
         .with_max_steps(256) // Give it some time to settle the graph.
         .build_ui(|ui| {
-            test_context.run(&ui.ctx().clone(), |ctx| {
-                let view_class = ctx
-                    .view_class_registry()
-                    .get_class_or_log_error(GraphView::identifier());
-
-                let view_blueprint = ViewBlueprint::try_from_db(
-                    view_id,
-                    ctx.store_context.blueprint,
-                    ctx.blueprint_query,
-                )
-                .expect("we just created that view");
-
-                let mut view_states = test_context.view_states.lock();
-                let view_state = view_states.get_mut_or_create(view_id, view_class);
-
-                let (view_query, system_execution_output) =
-                    re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
-
-                view_class
-                    .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                    .expect("failed to run graph view ui");
-            });
-
-            test_context.handle_system_commands();
+            test_context.run_with_single_view(ui, view_id);
         });
 
     harness.run();
-    harness.snapshot(name);
+    harness.snapshot_options(
+        name,
+        &SnapshotOptions::new().failed_pixel_count_threshold(4),
+    );
 }

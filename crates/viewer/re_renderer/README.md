@@ -28,6 +28,9 @@ Goals & philosophy:
 
 ## Debugging
 
+### Debugging in the browser
+Start Chrome with `--enable-dawn-features=dump_shaders,disable_symbol_renaming` (see [this issue](https://github.com/rerun-io/rerun/pull/9152#issuecomment-2687996398)).
+
 ### Shader
 
 #### Iterating
@@ -60,4 +63,3 @@ Note that a single metal file maps to a single wgsl file.
 ```sh
 naga ./wgsl_dump/rectangle_fs.wgsl ./wgsl_dump/rectangle_fs.metal
 ```
-

@@ -26,6 +26,7 @@ re_types_core.workspace = true # tuid serialization
 
 arrow.workspace = true
 itertools.workspace = true
+serde_json.workspace = true
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

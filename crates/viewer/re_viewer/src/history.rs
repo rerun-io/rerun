@@ -12,18 +12,17 @@
 //!   an example, so that examples can be shared directly by just
 //!   copying the link.
 
-use crate::web_tools::{url_to_receiver, window, JsResultExt as _};
+use crate::web_tools::{JsResultExt as _, url_to_receiver, window};
 use js_sys::wasm_bindgen;
 use parking_lot::Mutex;
-use re_viewer_context::StoreHub;
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 use std::sync::Arc;
 use std::sync::OnceLock;
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsError;
 use wasm_bindgen::JsValue;
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::History;
 use web_sys::UrlSearchParams;
 
@@ -87,10 +86,11 @@ pub fn install_popstate_listener(app: &mut crate::App) -> Result<(), JsValue> {
     let egui_ctx = app.egui_ctx.clone();
     let command_sender = app.command_sender.clone();
 
+    let connection_registry = app.connection_registry().clone();
     let closure = Closure::wrap(Box::new({
         move |event: web_sys::PopStateEvent| {
             let new_state = deserialize_from_state(&event.state())?;
-            handle_popstate(&egui_ctx, &command_sender, new_state);
+            handle_popstate(&connection_registry, &egui_ctx, &command_sender, new_state);
             Ok(())
         }
     }) as Box<EventListener<_>>);
@@ -133,6 +133,7 @@ impl Drop for PopstateListener {
 }
 
 fn handle_popstate(
+    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
     egui_ctx: &egui::Context,
     command_sender: &CommandSender,
     new_state: Option<HistoryEntry>,
@@ -151,9 +152,9 @@ fn handle_popstate(
         re_log::debug!("popstate: clear recordings + go to welcome screen");
 
         // the user navigated back to the history entry where the viewer was initially opened
-        // in that case they likely expect to land back at the welcome screen:
-        command_sender.send_system(SystemCommand::CloseAllRecordings);
-        command_sender.send_system(SystemCommand::ActivateApp(StoreHub::welcome_screen_app_id()));
+        // in that case they likely expect to land back at the welcome screen.
+        // We just close all recordings, which should automatically show the welcome screen or the redap browser.
+        command_sender.send_system(SystemCommand::CloseAllEntries);
 
         set_stored_history_entry(new_state);
         egui_ctx.request_repaint();
@@ -169,6 +170,7 @@ fn handle_popstate(
     for url in &entry.urls {
         // we continue in case of errors because some receivers may be valid
         let Some(receiver) = url_to_receiver(
+            connection_registry,
             egui_ctx.clone(),
             follow_if_http,
             url.clone(),

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../../blueprint/datatypes/filter_by_range.hpp"
-#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -12,6 +11,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Configuration for a filter-by-range feature of the dataframe view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct FilterByRange {
         rerun::blueprint::datatypes::FilterByRange range;
 
@@ -41,7 +43,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::FilterByRange> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.FilterByRange";
 
         /// Returns the arrow data type this type corresponds to.

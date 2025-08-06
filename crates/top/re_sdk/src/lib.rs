@@ -10,8 +10,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
 // ----------------
@@ -26,17 +24,17 @@ mod spawn;
 // -------------
 // Public items:
 
-pub use spawn::{spawn, SpawnError, SpawnOptions};
+pub use spawn::{SpawnError, SpawnOptions, spawn};
 
 pub use self::recording_stream::{
-    forced_sink_path, RecordingStream, RecordingStreamBuilder, RecordingStreamError,
-    RecordingStreamResult,
+    RecordingStream, RecordingStreamBuilder, RecordingStreamError, RecordingStreamResult,
+    forced_sink_path,
 };
 
-/// The default port of a Rerun gRPC server.
-pub const DEFAULT_SERVER_PORT: u16 = 9876;
+/// The default port of a Rerun gRPC /proxy server.
+pub const DEFAULT_SERVER_PORT: u16 = re_uri::DEFAULT_PROXY_PORT;
 
-/// The default URL of a Rerun gRPC server.
+/// The default URL of a Rerun gRPC /proxy server.
 ///
 /// This isn't used to _host_ the server, only to _connect_ to it.
 pub const DEFAULT_CONNECT_URL: &str =
@@ -52,14 +50,14 @@ pub fn default_server_addr() -> std::net::SocketAddr {
 #[allow(clippy::unnecessary_wraps)]
 pub fn default_flush_timeout() -> Option<std::time::Duration> {
     // NOTE: This is part of the SDK and meant to be used where we accept `Option<std::time::Duration>` values.
-    Some(std::time::Duration::from_secs(2))
+    Some(std::time::Duration::from_secs(3))
 }
 
 pub use re_log_types::{
-    entity_path, ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind,
+    ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind, entity_path,
 };
 pub use re_memory::MemoryLimit;
-pub use re_types::archetypes::RecordingProperties;
+pub use re_types::archetypes::RecordingInfo;
 
 pub use global::cleanup_if_forked_child;
 
@@ -73,6 +71,10 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
     fn flush_blocking(&self) {
         Self::flush_blocking(self);
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 // ---------------
@@ -84,9 +86,12 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 /// sent over gRPC, written to file, etc.
 pub mod sink {
     pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
-    pub use crate::log_sink::{BufferedSink, CallbackSink, LogSink, MemorySink, MemorySinkStorage};
+    pub use crate::log_sink::{
+        BufferedSink, CallbackSink, IntoMultiSink, LogSink, MemorySink, MemorySinkStorage,
+        MultiSink,
+    };
 
-    pub use crate::log_sink::GrpcSink;
+    pub use crate::log_sink::{GrpcSink, GrpcSinkConnectionFailure, GrpcSinkConnectionState};
 
     #[cfg(not(target_arch = "wasm32"))]
     pub use re_log_encoding::{FileSink, FileSinkError};
@@ -109,9 +114,9 @@ pub use time::{TimeCell, TimePoint, Timeline};
 
 pub use re_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
-    ComponentName, DatatypeName, DeserializationError, DeserializationResult,
-    GenericIndicatorComponent, Loggable, LoggableBatch, NamedIndicatorComponent,
-    SerializationError, SerializationResult, SerializedComponentBatch, SerializedComponentColumn,
+    ComponentIdentifier, ComponentType, DatatypeName, DeserializationError, DeserializationResult,
+    Loggable, SerializationError, SerializationResult, SerializedComponentBatch,
+    SerializedComponentColumn,
 };
 
 pub use re_byte_size::SizeBytes;
@@ -123,6 +128,10 @@ pub use re_data_loader::{DataLoader, DataLoaderError, DataLoaderSettings, Loaded
 #[cfg(feature = "web_viewer")]
 pub mod web_viewer;
 
+/// Method for spawning a gRPC server and streaming the SDK log stream to it.
+#[cfg(feature = "server")]
+pub mod grpc_server;
+
 /// Re-exports of other crates.
 pub mod external {
     pub use re_grpc_client;
@@ -130,14 +139,18 @@ pub mod external {
     pub use re_log;
     pub use re_log_encoding;
     pub use re_log_types;
+    pub use re_uri;
 
     pub use re_chunk::external::*;
     pub use re_log::external::*;
     pub use re_log_types::external::*;
 
     #[cfg(feature = "data_loaders")]
-    pub use re_data_loader;
+    pub use re_data_loader::{self, external::*};
 }
+
+#[cfg(feature = "web_viewer")]
+pub use web_viewer::serve_web_viewer;
 
 // -----
 // Misc:
@@ -202,9 +215,10 @@ pub fn decide_logging_enabled(default_enabled: bool) -> bool {
 pub fn new_store_info(
     application_id: impl Into<re_log_types::ApplicationId>,
 ) -> re_log_types::StoreInfo {
+    let store_id = StoreId::random(StoreKind::Recording, application_id.into());
+
     re_log_types::StoreInfo {
-        application_id: application_id.into(),
-        store_id: StoreId::random(StoreKind::Recording),
+        store_id,
         cloned_from: None,
         store_source: re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),

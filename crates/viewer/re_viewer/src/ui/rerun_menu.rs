@@ -1,8 +1,11 @@
 //! The main Rerun drop-down menu found in the top panel.
 
-use egui::NumExt as _;
-
-use re_ui::UICommand;
+#[cfg(debug_assertions)]
+use egui::containers::menu;
+use egui::containers::menu::{MenuButton, MenuConfig};
+use egui::{Button, NumExt as _, ScrollArea};
+use re_ui::menu::menu_style;
+use re_ui::{UICommand, UiExt as _};
 use re_viewer_context::StoreContext;
 
 use crate::App;
@@ -16,17 +19,31 @@ impl App {
         _store_context: Option<&StoreContext<'_>>,
         ui: &mut egui::Ui,
     ) {
-        // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
-        let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
-        let desired_icon_height = desired_icon_height.at_most(28.0); // figma size 2023-02-03
+        let desired_icon_height = if ui.max_rect().height() <= 24.0 {
+            // This is a bit of a hack to produce a sharp logo on mac on low-DPI screens.
+            // At a 16x16 size, the Rerun logo SVG just happens to have all its vertical
+            // lines at even pixel positions, making it look sharp and nice.
+            16.0
+        } else {
+            ui.max_rect().height() - 4.0
+        };
+        let desired_icon_height = desired_icon_height.at_most(28.0);
 
         let image = re_ui::icons::RERUN_MENU
             .as_image()
-            .max_height(desired_icon_height);
+            .max_height(desired_icon_height)
+            .tint(ui.tokens().strong_fg_color);
 
-        ui.menu_image_button(image, |ui| {
-            self.rerun_menu_ui(ui, render_state, _store_context);
-        });
+        MenuButton::from_button(Button::image(image))
+            .config(MenuConfig::new().style(menu_style()))
+            .ui(ui, |ui| {
+                ui.set_max_height(ui.ctx().screen_rect().height());
+                ScrollArea::vertical()
+                    .max_height(ui.ctx().screen_rect().height() - 16.0)
+                    .show(ui, |ui| {
+                        self.rerun_menu_ui(ui, render_state, _store_context);
+                    });
+            });
     }
 
     fn rerun_menu_ui(
@@ -64,8 +81,12 @@ impl App {
         {
             // On the web the browser controls the zoom
             let zoom_factor = ui.ctx().zoom_factor();
-            ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
-                .on_hover_text("The UI zoom level on top of the operating system's default value");
+            re_ui::menu::align_non_button_menu_items(ui, |ui| {
+                ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
+                    .on_hover_text(
+                        "The UI zoom level on top of the operating system's default value",
+                    );
+            });
             UICommand::ZoomIn.menu_button_ui(ui, &self.command_sender);
             UICommand::ZoomOut.menu_button_ui(ui, &self.command_sender);
             ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
@@ -98,17 +119,23 @@ impl App {
         backend_menu_ui(&self.command_sender, ui, render_state);
 
         #[cfg(debug_assertions)]
-        ui.menu_button("Debug", |ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-            debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
+        menu::SubMenuButton::new("Debug")
+            .config(
+                menu::MenuConfig::new()
+                    .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+                    .style(menu_style()),
+            )
+            .ui(ui, |ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
 
-            ui.label("egui debug options:");
-            ui.weak(format!(
-                "pixels_per_point: {:?}",
-                ui.ctx().pixels_per_point()
-            ));
-            egui_debug_options_ui(ui);
-        });
+                ui.label("egui debug options:");
+                ui.weak(format!(
+                    "pixels_per_point: {:?}",
+                    ui.ctx().pixels_per_point()
+                ));
+                egui_debug_options_ui(ui);
+            });
 
         ui.add_space(SPACING);
 
@@ -134,7 +161,7 @@ impl App {
             is_in_rerun_workspace: _,
             target_triple,
             datetime,
-        } = *self.build_info();
+        } = self.build_info();
 
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
@@ -201,7 +228,7 @@ impl App {
                     .on_hover_text("Save all data to a Rerun data file (.rrd)")
                     .clicked()
                 {
-                    ui.close_menu();
+                    ui.close();
                     self.command_sender.send_ui(UICommand::SaveRecording);
                 }
 
@@ -218,7 +245,7 @@ impl App {
                     )
                     .clicked()
                 {
-                    ui.close_menu();
+                    ui.close();
                     self.command_sender
                         .send_ui(UICommand::SaveRecordingSelection);
                 }
@@ -387,7 +414,7 @@ fn debug_menu_options_ui(
                 .send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
             ui.ctx()
                 .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
-            ui.close_menu();
+            ui.close();
         }
     }
 

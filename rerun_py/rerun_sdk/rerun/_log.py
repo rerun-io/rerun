@@ -12,45 +12,6 @@ from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
 from .recording_stream import RecordingStream
 
 
-class IndicatorComponentBatch:
-    """
-    A batch of Indicator Components that can be included in a Bundle.
-
-    Indicator Components signal that a given Bundle should prefer to be interpreted as a
-    given archetype. This helps the view heuristics choose the correct view in situations
-    where multiple archetypes would otherwise be overlapping.
-
-    This implements the `ComponentBatchLike` interface.
-    """
-
-    data: pa.Array
-
-    def __init__(self, archetype_name: str) -> None:
-        """
-        Creates a new indicator component based on a given `archetype_name`.
-
-        Parameters
-        ----------
-        archetype_name:
-            The fully qualified name of the Archetype.
-
-        """
-        self.data = pa.nulls(1, type=pa.null())
-        assert not archetype_name.startswith("rerun.archetypes.rerun.archetypes."), (
-            f"Bad archetype name '{archetype_name}' in IndicatorComponentBatch"
-        )
-        self._archetype_name = archetype_name
-
-    def component_name(self) -> str:
-        return self._archetype_name.replace("archetypes", "components") + "Indicator"
-
-    def as_arrow_array(self) -> pa.Array:
-        return self.data
-
-    def component_descriptor(self) -> ComponentDescriptor:
-        return ComponentDescriptor(self.component_name())
-
-
 @catch_and_log_exceptions()
 def log(
     entity_path: str | list[object],

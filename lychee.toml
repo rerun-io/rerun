@@ -116,12 +116,15 @@ exclude = [
   'https://rerun.rs',
   'https://static.rerun.io/my_screenshot/',
   'https://your-hosted-asset-url.com/widget.js',
+  'https://your-hosted-asset-url.com/re_viewer_bg.wasm',
   'file:///path/to/file',
   'rerun://localhost:51234/recording/some-recording-id',
   'http://foo.zip',
   'https://foo.zip',
   'https://redap.rerun.io',
   'http://wrong-scheme',
+  'rerun\+http://localhost:\{grpc_port\}/proxy',
+  '.*scheme:/.*',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.
@@ -137,6 +140,8 @@ exclude = [
   'https://vimeo.com/',                                                # Gives 403 forbidden on CI.
   'https://www.reddit.com/',                                           # Gives 403 forbidden on CI.
   'https://www.tensorflow.org/',                                       # tensorflow.org apparently blocks CI.
+  'https://claude.site/artifacts/',                                    # Giving a 500, but only from CI
+  'https://fifteen-thirtyeight.rerun.io/script.js',                    # Gives 403 forbidden on CI.
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
@@ -147,11 +152,10 @@ exclude = [
   'https://eu.posthog.com/project/',                      # Requires to be logged in on PostHog.
   'https://github.com/rerun-io/internal-test-assets/\.*',
   'https://github.com/google/mediapipe/issues/5188',      # For some reason that link has always failed.
+  'https://www.figma.com/.*',
 
   # Temporarily down or not accessible.
-  'https://eigen.tuxfamily.org/',                                   # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
   'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
-  'https://pyo3.rs',                                                # Temporarily down, should remove this again once it is up again.
   'https://dl.acm.org/doi/10.1145/3638550.3643617',                 # We might be getting rate-limited here.
 
   # Works but is really slow at times:

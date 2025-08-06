@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use re_byte_size::SizeBytes;
 use re_string_interner::InternedString;
 
-use crate::{hash::Hash64, EntityPathPart};
+use crate::{EntityPathPart, hash::Hash64};
 
 // ----------------------------------------------------------------------------
 
@@ -112,19 +112,11 @@ impl EntityPath {
         Self::from(vec![])
     }
 
-    /// The reserved namespace for properties.
+    /// The reserved namespace for recording properties,
+    /// both the built-in ones (`RecordingInfo`) and user-defined ones.
     #[inline]
     pub fn properties() -> Self {
         Self::from(vec![EntityPathPart::properties()])
-    }
-
-    /// The reserved namespace for the `RecordingProperties` that are specific to the Rerun viewer.
-    #[inline]
-    pub fn recording_properties() -> Self {
-        Self::from(vec![
-            EntityPathPart::properties(),
-            EntityPathPart::recording(),
-        ])
     }
 
     /// Returns `true` if the [`EntityPath`] belongs to a reserved namespace.
@@ -206,6 +198,18 @@ impl EntityPath {
         prefix.len() <= self.len() && self.iter().zip(prefix.iter()).all(|(a, b)| a == b)
     }
 
+    /// If this path starts with the given prefix,
+    /// then return the rest of the path after the prefix.
+    #[inline]
+    pub fn strip_prefix(&self, prefix: &Self) -> Option<Self> {
+        if self.starts_with(prefix) {
+            let remaining_parts = self.parts[prefix.len()..].to_vec();
+            Some(Self::new(remaining_parts))
+        } else {
+            None
+        }
+    }
+
     /// Is this a strict descendant of the given path.
     #[inline]
     pub fn is_descendant_of(&self, other: &Self) -> bool {
@@ -255,9 +259,9 @@ impl EntityPath {
     pub fn incremental_walk<'a>(
         start: Option<&'_ Self>,
         end: &'a Self,
-    ) -> impl Iterator<Item = Self> + 'a {
+    ) -> impl Iterator<Item = Self> + 'a + use<'a> {
         re_tracing::profile_function!();
-        if start.map_or(true, |start| end.is_descendant_of(start)) {
+        if start.is_none_or(|start| end.is_descendant_of(start)) {
             let first_ind = start.map_or(0, |start| start.len() + 1);
             let parts = end.as_slice();
             itertools::Either::Left((first_ind..=end.len()).map(|i| Self::from(&parts[0..i])))
@@ -440,6 +444,66 @@ where
         &self.parts[index]
     }
 }
+
+// ----------------------------------------------------------------------------
+
+impl std::ops::Div<Self> for EntityPath {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, other: Self) -> Self::Output {
+        self.join(&other)
+    }
+}
+
+impl std::ops::Div<Self> for &EntityPath {
+    type Output = EntityPath;
+
+    #[inline]
+    fn div(self, other: Self) -> Self::Output {
+        self.join(other)
+    }
+}
+
+impl std::ops::Div<EntityPathPart> for EntityPath {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, other: EntityPathPart) -> Self::Output {
+        self.join(&Self::new(vec![other]))
+    }
+}
+
+impl std::ops::Div<EntityPathPart> for &EntityPath {
+    type Output = EntityPath;
+
+    #[inline]
+    fn div(self, other: EntityPathPart) -> Self::Output {
+        self.join(&EntityPath::new(vec![other]))
+    }
+}
+
+// Allow concatting string literals (!) with entity paths via `/`.
+// Don't do this on strings with arbitrary lifetime, since it's easy to accidentally misinterpret
+// path parts whose `/` should be escaped.
+impl std::ops::Div<&'static str> for &EntityPath {
+    type Output = EntityPath;
+
+    #[inline]
+    fn div(self, other: &'static str) -> Self::Output {
+        self.join(&EntityPath::from(other))
+    }
+}
+
+impl std::ops::Div<&'static str> for EntityPath {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, other: &'static str) -> Self::Output {
+        self.join(&Self::from(other))
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 use re_types_core::Loggable;
@@ -588,13 +652,6 @@ mod tests {
     }
 
     #[test]
-    fn test_recording_properties() {
-        let path = EntityPath::recording_properties();
-        assert_eq!(path, EntityPath::from("/__properties/recording"),);
-        assert!(path.is_reserved());
-    }
-
-    #[test]
     fn test_incremental_walk() {
         assert_eq!(
             EntityPath::incremental_walk(None, &EntityPath::root()).collect::<Vec<_>>(),
@@ -688,5 +745,55 @@ mod tests {
         // degenerate cases
         run_test(&[("/", "/"), ("/", "/")]);
         run_test(&[("a/b", "a/b"), ("a/b", "a/b")]);
+    }
+
+    #[test]
+    fn test_strip_prefix() {
+        let entity_path = EntityPath::properties() / "episode";
+        assert_eq!(entity_path.to_string(), "/__properties/episode");
+        assert_eq!(
+            entity_path.strip_prefix(&EntityPath::properties()),
+            Some(EntityPath::from("episode"))
+        );
+    }
+
+    #[test]
+    fn concat_with_div() {
+        // String literal with single part.
+        assert_eq!(EntityPath::from("foo") / "bar", EntityPath::from("foo/bar"));
+        assert_eq!(
+            &EntityPath::from("foo") / "bar",
+            EntityPath::from("foo/bar")
+        );
+
+        // String literal with multiple parts.
+        assert_eq!(
+            EntityPath::from("world") / "robot/arm",
+            EntityPath::from("world/robot/arm")
+        );
+        assert_eq!(
+            &EntityPath::from("world") / "robot/arm",
+            EntityPath::from("world/robot/arm")
+        );
+
+        // Explicit EntityPathPart without escaped slash.
+        assert_eq!(
+            EntityPath::from("foo") / EntityPathPart::new("bar"),
+            EntityPath::from("foo/bar")
+        );
+        assert_eq!(
+            &EntityPath::from("foo") / EntityPathPart::new("bar"),
+            EntityPath::from("foo/bar")
+        );
+
+        // Explicit EntityPathPart with escaped slash.
+        assert_eq!(
+            EntityPath::from("world") / EntityPathPart::new("robot/arm"),
+            EntityPath::from("world/robot\\/arm")
+        );
+        assert_eq!(
+            &EntityPath::from("world") / EntityPathPart::new("robot/arm"),
+            EntityPath::from("world/robot\\/arm")
+        );
     }
 }

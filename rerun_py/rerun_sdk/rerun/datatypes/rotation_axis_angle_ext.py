@@ -33,7 +33,7 @@ class RotationAxisAngleExt:
         radians:
             How much to rotate around the axis, in radians. Specify this instead of `degrees` or `angle`.
         degrees:
-            How much to rotate around the axis, in radians. Specify this instead of `radians` or `angle`.
+            How much to rotate around the axis, in degrees. Specify this instead of `radians` or `angle`.
 
         """
 

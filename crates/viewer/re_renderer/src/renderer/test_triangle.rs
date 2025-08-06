@@ -23,7 +23,7 @@ impl DrawData for TestTriangleDrawData {
 
 impl TestTriangleDrawData {
     pub fn new(ctx: &RenderContext) -> Self {
-        let _ = ctx.renderer::<TestTriangle>(); // TODO(andreas): This line ensures that the renderer exists. Currently this needs to be done ahead of time, but should be fully automatic!
+        std::mem::drop(ctx.renderer::<TestTriangle>()); // TODO(andreas): This line ensures that the renderer exists. Currently this needs to be done ahead of time, but should be fully automatic!
         Self {}
     }
 }

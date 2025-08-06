@@ -5,15 +5,22 @@ title: "Arrows3D"
 
 3D arrows with optional colors, radii, labels, etc.
 
-## Components
+## Fields
+### Required
+* `vectors`: [`Vector3D`](../components/vector3d.md)
 
-**Required**: [`Vector3D`](../components/vector3d.md)
+### Recommended
+* `origins`: [`Position3D`](../components/position3d.md)
 
-**Recommended**: [`Position3D`](../components/position3d.md)
+### Optional
+* `radii`: [`Radius`](../components/radius.md)
+* `colors`: [`Color`](../components/color.md)
+* `labels`: [`Text`](../components/text.md)
+* `show_labels`: [`ShowLabels`](../components/show_labels.md)
+* `class_ids`: [`ClassId`](../components/class_id.md)
 
-**Optional**: [`Radius`](../components/radius.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`ClassId`](../components/class_id.md)
 
-## Shown in
+## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 * [DataframeView](../views/dataframe_view.md)

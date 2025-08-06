@@ -1,7 +1,8 @@
 //! A channel that keeps track of latency and queue length.
 
-use std::sync::{atomic::AtomicU64, Arc};
+use std::sync::{Arc, atomic::AtomicU64};
 
+use re_uri::RedapUri;
 use web_time::Instant;
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
@@ -19,6 +20,7 @@ pub use sender::Sender;
 /// Identifies in what context this smart channel was created, and who/what is holding its
 /// receiving end.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
 pub enum SmartChannelSource {
     /// The channel was created in the context of loading a file from disk (could be
     /// `.rrd` files, or `.glb`, `.png`, …).
@@ -50,18 +52,24 @@ pub enum SmartChannelSource {
     Stdin,
 
     /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
-    RedapGrpcStream(re_uri::DatasetDataEndpoint),
+    RedapGrpcStream {
+        uri: re_uri::DatasetDataUri,
+
+        /// Switch to this recording once it has been loaded?
+        select_when_loaded: bool,
+    },
 
     /// The data is streaming in via a message proxy.
-    MessageProxy { url: String },
+    MessageProxy(re_uri::ProxyUri),
 }
 
 impl std::fmt::Display for SmartChannelSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => path.display().fmt(f),
-            Self::RrdHttpStream { url, follow: _ } | Self::MessageProxy { url } => url.fmt(f),
-            Self::RedapGrpcStream(endpoint) => endpoint.fmt(f),
+            Self::RrdHttpStream { url, follow: _ } => url.fmt(f),
+            Self::MessageProxy(uri) => uri.fmt(f),
+            Self::RedapGrpcStream { uri, .. } => uri.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
@@ -80,6 +88,85 @@ impl SmartChannelSource {
             | Self::MessageProxy { .. } => true,
         }
     }
+
+    pub fn select_when_loaded(&self) -> bool {
+        match self {
+            Self::File(_)
+            | Self::Sdk
+            | Self::RrdWebEventListener
+            | Self::Stdin
+            | Self::RrdHttpStream { .. }
+            | Self::JsChannel { .. }
+            | Self::MessageProxy { .. } => true,
+
+            Self::RedapGrpcStream {
+                select_when_loaded, ..
+            } => *select_when_loaded,
+        }
+    }
+
+    pub fn redap_uri(&self) -> Option<RedapUri> {
+        match self {
+            Self::RedapGrpcStream { uri, .. } => Some(RedapUri::DatasetData(uri.clone())),
+            Self::MessageProxy(uri) => Some(RedapUri::Proxy(uri.clone())),
+
+            Self::File(_)
+            | Self::Sdk
+            | Self::RrdWebEventListener
+            | Self::Stdin
+            | Self::RrdHttpStream { .. }
+            | Self::JsChannel { .. } => None,
+        }
+    }
+
+    /// Loading text for sources that load data from a specific source (e.g. a file or a URL).
+    ///
+    /// Returns `None` for any source that receives data dynamically through SDK calls or similar.
+    /// For a status string that applies to all sources, see [`Self::status_string`].
+    pub fn loading_string(&self) -> Option<String> {
+        match self {
+            // We only show things we know are very-soon-to-be recordings:
+            Self::File(path) => Some(format!("Loading {}…", path.display())),
+            Self::RrdHttpStream { url, .. } => Some(format!("Loading {url}…")),
+            Self::RedapGrpcStream { uri, .. } => Some(format!("Loading {uri}…")),
+
+            Self::RrdWebEventListener
+            | Self::JsChannel { .. }
+            | Self::MessageProxy { .. }
+            | Self::Sdk
+            | Self::Stdin => {
+                // For all of these esources we're not actively loading data, but rather waiting for data to be sent.
+                // These show up in the top panel - see `top_panel.rs`.
+                None
+            }
+        }
+    }
+
+    /// Status string describing waiting or loading status for a source.
+    pub fn status_string(&self) -> String {
+        match self {
+            Self::File(path) => {
+                format!("Loading {}…", path.display())
+            }
+            Self::Stdin => "Loading stdin…".to_owned(),
+            Self::RrdHttpStream { url, .. } => {
+                format!("Waiting for data on {url}…")
+            }
+            Self::MessageProxy(uri) => {
+                format!("Waiting for data on {uri}…")
+            }
+            Self::RedapGrpcStream { uri, .. } => {
+                format!(
+                    "Waiting for data on {}…",
+                    uri.clone().without_query_and_fragment()
+                )
+            }
+            Self::RrdWebEventListener | Self::JsChannel { .. } => {
+                "Waiting for logging data…".to_owned()
+            }
+            Self::Sdk => "Waiting for logging data from SDK".to_owned(),
+        }
+    }
 }
 
 /// Identifies who/what sent a particular message in a smart channel.
@@ -87,6 +174,7 @@ impl SmartChannelSource {
 /// Due to the multiplexed nature of the smart channel, every message coming in can originate
 /// from a different source.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
 pub enum SmartMessageSource {
     /// The source is unknown.
     ///
@@ -120,10 +208,15 @@ pub enum SmartMessageSource {
     Stdin,
 
     /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
-    RedapGrpcStream(re_uri::DatasetDataEndpoint),
+    RedapGrpcStream {
+        uri: re_uri::DatasetDataUri,
+
+        /// Switch to this recording once it has been loaded?
+        select_when_loaded: bool,
+    },
 
     /// A stream of messages over message proxy gRPC interface.
-    MessageProxy { url: String },
+    MessageProxy(re_uri::ProxyUri),
 }
 
 impl std::fmt::Display for SmartMessageSource {
@@ -131,8 +224,9 @@ impl std::fmt::Display for SmartMessageSource {
         f.write_str(&match self {
             Self::Unknown => "unknown".into(),
             Self::File(path) => format!("file://{}", path.to_string_lossy()),
-            Self::RrdHttpStream { url } | Self::MessageProxy { url } => url.clone(),
-            Self::RedapGrpcStream(endpoint) => endpoint.to_string(),
+            Self::RrdHttpStream { url } => url.clone(),
+            Self::MessageProxy(uri) => uri.to_string(),
+            Self::RedapGrpcStream { uri, .. } => uri.to_string(),
             Self::RrdWebEventCallback => "web_callback".into(),
             Self::JsChannelPush => "javascript".into(),
             Self::Sdk => "sdk".into(),

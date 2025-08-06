@@ -5,22 +5,21 @@ use std::sync::Arc;
 
 use re_chunk::RowId;
 use re_chunk_store::{
-    external::re_chunk::Chunk, ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery,
+    ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery, external::re_chunk::Chunk,
 };
 use re_log_types::{
-    build_frame_nr,
+    EntityPath, TimeInt, TimePoint, build_frame_nr,
     example_components::{MyColor, MyPoint, MyPoints},
-    EntityPath, TimeInt, TimePoint,
 };
 use re_query::QueryCache;
-use re_types::{Archetype as _, ComponentBatch};
+use re_types_core::{Archetype as _, ComponentBatch as _};
 
 // ---
 
 #[test]
 fn simple_query() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -32,9 +31,13 @@ fn simple_query() {
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let row_id2 = RowId::new();
     let colors2 = vec![MyColor::from_rgb(255, 0, 0)];
-    let chunk = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id1, timepoint, &points1)
-        .with_component_batch(row_id2, timepoint, &colors2)
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(row_id1, timepoint, &MyPoints::new(points1.clone()))
+        .with_archetype(
+            row_id2,
+            timepoint,
+            &MyPoints::update_fields().with_colors(colors2.clone()),
+        )
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -55,9 +58,65 @@ fn simple_query() {
 }
 
 #[test]
+fn simple_query_with_differently_tagged_components() {
+    let store = ChunkStore::new_handle(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+        Default::default(),
+    );
+    let mut caches = QueryCache::new(store.clone());
+
+    let entity_path = "point";
+    let timepoint = [build_frame_nr(123)];
+
+    let row_id1 = RowId::new();
+    let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
+    let row_id2 = RowId::new();
+    let points2 = vec![MyPoint::new(5.0, 6.0)];
+    let points2_serialized = points2
+        .serialized(re_types::ComponentDescriptor {
+            archetype: Some("MyPoints2".into()),
+            component: "points2".into(),
+            component_type: Some(<MyPoint as re_types_core::Component>::name()),
+        })
+        .unwrap();
+
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(row_id1, timepoint, &MyPoints::new(points1.clone()))
+        .with_archetype(row_id2, timepoint, &points2_serialized)
+        .build()
+        .unwrap();
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
+
+    let query = re_chunk_store::LatestAtQuery::new(*timepoint[0].0.name(), timepoint[0].1);
+    let expected_compound_index = (TimeInt::new_temporal(123), row_id1);
+    let expected_points = &points1;
+    let expected_colors = &[];
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query,
+        &entity_path.into(),
+        expected_compound_index,
+        expected_points,
+        expected_colors,
+    );
+
+    // Check that we can also reach the other re-tagged component.
+    let cached = caches.latest_at(
+        &query,
+        &entity_path.into(),
+        [&points2_serialized.descriptor],
+    );
+    let cached_points = cached
+        .component_batch::<MyPoint>(&points2_serialized.descriptor)
+        .unwrap();
+    similar_asserts::assert_eq!(points2, cached_points);
+}
+
+#[test]
 fn static_query() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -67,19 +126,19 @@ fn static_query() {
 
     let row_id1 = RowId::new();
     let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-    let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(row_id1, timepoint, [&points as &dyn ComponentBatch])
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(row_id1, timepoint, &MyPoints::new(points.clone()))
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let row_id2 = RowId::new();
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
-    let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(
             row_id2,
             TimePoint::default(),
-            [&colors as &dyn ComponentBatch],
+            &MyPoints::update_fields().with_colors(colors.clone()),
         )
         .build()
         .unwrap();
@@ -118,23 +177,31 @@ fn invalidation() {
             .unwrap_or(TimeInt::STATIC);
 
         let store = ChunkStore::new_handle(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
         let mut caches = QueryCache::new(store.clone());
 
         let row_id1 = RowId::new();
         let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-        let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id1, present_data_timepoint.clone(), [&points as _])
+        let chunk = Chunk::builder(entity_path)
+            .with_archetype(
+                row_id1,
+                present_data_timepoint.clone(),
+                &MyPoints::new(points.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
         let row_id2 = RowId::new();
         let colors = vec![MyColor::from_rgb(1, 2, 3)];
-        let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id2, present_data_timepoint.clone(), [&colors as _])
+        let chunk = Chunk::builder(entity_path)
+            .with_archetype(
+                row_id2,
+                present_data_timepoint.clone(),
+                &MyPoints::update_fields().with_colors(colors.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -157,8 +224,12 @@ fn invalidation() {
         // Modify the PoV component
         let row_id3 = RowId::new();
         let points = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
-        let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id3, present_data_timepoint.clone(), [&points as _])
+        let chunk = Chunk::builder(entity_path)
+            .with_archetype(
+                row_id3,
+                present_data_timepoint.clone(),
+                &MyPoints::new(points.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -179,8 +250,12 @@ fn invalidation() {
         // Modify the optional component
         let row_id4 = RowId::new();
         let colors = vec![MyColor::from_rgb(4, 5, 6), MyColor::from_rgb(7, 8, 9)];
-        let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id4, present_data_timepoint.clone(), [&colors as _])
+        let chunk = Chunk::builder(entity_path)
+            .with_archetype(
+                row_id4,
+                present_data_timepoint.clone(),
+                &MyPoints::update_fields().with_colors(colors.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -203,8 +278,12 @@ fn invalidation() {
         // Modify the PoV component
         let row_id5 = RowId::new();
         let points_past = vec![MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)];
-        let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id5, past_data_timepoint.clone(), [&points_past as _])
+        let chunk = Chunk::builder(entity_path)
+            .with_archetype(
+                row_id5,
+                past_data_timepoint.clone(),
+                &MyPoints::new(points_past.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -229,8 +308,12 @@ fn invalidation() {
         // Modify the optional component
         let row_id6 = RowId::new();
         let colors_past = vec![MyColor::from_rgb(10, 11, 12), MyColor::from_rgb(13, 14, 15)];
-        let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id6, past_data_timepoint.clone(), [&colors_past as _])
+        let chunk = Chunk::builder(entity_path)
+            .with_archetype(
+                row_id6,
+                past_data_timepoint.clone(),
+                &MyPoints::update_fields().with_colors(colors_past.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -255,11 +338,11 @@ fn invalidation() {
         // Modify the PoV component
         let row_id7 = RowId::new();
         let points_future = vec![MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)];
-        let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(
+        let chunk = Chunk::builder(entity_path)
+            .with_archetype(
                 row_id7,
                 future_data_timepoint.clone(),
-                [&points_future as _],
+                &MyPoints::new(points_future.clone()),
             )
             .build()
             .unwrap();
@@ -283,11 +366,11 @@ fn invalidation() {
         // Modify the optional component
         let row_id8 = RowId::new();
         let colors_future = vec![MyColor::from_rgb(16, 17, 18)];
-        let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(
+        let chunk = Chunk::builder(entity_path)
+            .with_archetype(
                 row_id8,
                 future_data_timepoint.clone(),
-                [&colors_future as _],
+                &MyPoints::update_fields().with_colors(colors_future.clone()),
             )
             .build()
             .unwrap();
@@ -357,7 +440,7 @@ fn invalidation() {
 #[test]
 fn invalidation_of_future_optionals() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -372,8 +455,8 @@ fn invalidation_of_future_optionals() {
 
     let row_id1 = RowId::new();
     let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-    let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(row_id1, static_, [&points as _])
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(row_id1, static_, &MyPoints::new(points.clone()))
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -394,8 +477,12 @@ fn invalidation_of_future_optionals() {
 
     let row_id2 = RowId::new();
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
-    let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(row_id2, frame2, [&colors as _])
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(
+            row_id2,
+            frame2,
+            &MyPoints::update_fields().with_colors(colors.clone()),
+        )
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -416,8 +503,12 @@ fn invalidation_of_future_optionals() {
 
     let row_id3 = RowId::new();
     let colors = vec![MyColor::from_rgb(0, 0, 255)];
-    let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(row_id3, frame3, [&colors as _])
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(
+            row_id3,
+            frame3,
+            &MyPoints::update_fields().with_colors(colors.clone()),
+        )
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -438,8 +529,12 @@ fn invalidation_of_future_optionals() {
 
     let row_id4 = RowId::new();
     let colors = vec![MyColor::from_rgb(0, 255, 0)];
-    let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(row_id4, frame3, [&colors as _])
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(
+            row_id4,
+            frame3,
+            &MyPoints::update_fields().with_colors(colors.clone()),
+        )
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -462,7 +557,7 @@ fn invalidation_of_future_optionals() {
 #[test]
 fn static_invalidation() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -475,8 +570,8 @@ fn static_invalidation() {
 
     let row_id1 = RowId::new();
     let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-    let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(row_id1, static_.clone(), [&points as _])
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(row_id1, static_.clone(), &MyPoints::new(points.clone()))
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -497,8 +592,12 @@ fn static_invalidation() {
 
     let row_id2 = RowId::new();
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
-    let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(row_id2, static_.clone(), [&colors as _])
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(
+            row_id2,
+            static_.clone(),
+            &MyPoints::update_fields().with_colors(colors.clone()),
+        )
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -519,8 +618,12 @@ fn static_invalidation() {
 
     let row_id3 = RowId::new();
     let colors = vec![MyColor::from_rgb(0, 0, 255)];
-    let chunk = Chunk::builder(entity_path.into())
-        .with_component_batches(row_id3, static_.clone(), [&colors as _])
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(
+            row_id3,
+            static_.clone(),
+            &MyPoints::update_fields().with_colors(colors.clone()),
+        )
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
@@ -560,9 +663,14 @@ fn query_and_compare(
     for _ in 0..3 {
         let cached = caches.latest_at(query, entity_path, MyPoints::all_components().iter());
 
-        let cached_points = cached.component_batch::<MyPoint>().unwrap();
-        let cached_colors = cached.component_batch::<MyColor>().unwrap_or_default();
+        let cached_points = cached
+            .component_batch::<MyPoint>(&MyPoints::descriptor_points())
+            .unwrap();
+        let cached_colors = cached
+            .component_batch::<MyColor>(&MyPoints::descriptor_colors())
+            .unwrap_or_default();
 
+        eprintln!("{:?}", cached.components.keys());
         eprintln!("{store}");
         eprintln!("{query:?}");
         // eprintln!("{}", store.to_data_table().unwrap());

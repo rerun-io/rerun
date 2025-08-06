@@ -3,11 +3,11 @@ use re_types::{
     components::AggregationPolicy,
     datatypes::{TimeRange, TimeRangeBoundary},
 };
-use re_viewer_context::{external::re_entity_db::InstancePath, ViewQuery, ViewerContext};
+use re_viewer_context::{ViewQuery, ViewerContext, external::re_entity_db::InstancePath};
 
 use crate::{
-    aggregation::{AverageAggregator, MinMaxAggregator},
     PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
+    aggregation::{AverageAggregator, MinMaxAggregator},
 };
 
 /// Find the number of time units per physical pixel.
@@ -40,7 +40,7 @@ pub fn determine_time_range(
         re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
         re_viewer_context::QueryRange::LatestAt => {
             re_log::error_once!(
-                "Unexexpected LatestAt query for time series data result at path {:?}",
+                "Unexpected LatestAt query for time series data result at path {:?}",
                 data_result.entity_path
             );
             TimeRange {
@@ -265,6 +265,7 @@ fn add_series_runs(
             let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
             let prev_continuous = matches!(prev_series.kind, PlotSeriesKind::Continuous);
 
+            #[allow(clippy::unwrap_used)] // prev_series.points can't be empty here
             let prev_point = *prev_series.points.last().unwrap();
             all_series.push(prev_series);
 

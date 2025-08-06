@@ -21,7 +21,11 @@ __all__ = ["MapZoom"]
 
 @define(str=False, repr=False, init=False)
 class MapZoom(Archetype):
-    """**Archetype**: Configuration of the map view zoom level."""
+    """
+    **Archetype**: Configuration of the map view zoom level.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     def __init__(self: Any, zoom: datatypes.Float64Like) -> None:
         """

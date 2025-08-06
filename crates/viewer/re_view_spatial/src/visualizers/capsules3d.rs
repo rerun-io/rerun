@@ -2,24 +2,22 @@ use std::iter;
 
 use ordered_float::NotNan;
 use re_types::{
+    Archetype as _, ArrowString,
     archetypes::Capsules3D,
-    components::{self, ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels},
 };
 use re_view::clamped_or_nothing;
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
 
 use super::{
-    filter_visualizable_3d_entities,
+    SpatialViewVisualizerData, filter_visualizable_3d_entities,
     utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
-    SpatialViewVisualizerData,
 };
 
 // ---
@@ -55,6 +53,17 @@ impl Capsules3DVisualizer {
                 .map(|&Radius(radius)| HalfSize3D::splat(clean_length(radius.0)))
                 .collect();
 
+            let subdivisions = match batch.fill_mode {
+                FillMode::DenseWireframe => 3, // Don't make it too crowded - let the user see inside the mesh.
+                FillMode::Solid => 4,          // Smooth, but not too CPU/GPU intensive
+                FillMode::MajorWireframe => 10,
+            };
+
+            let axes_only = match batch.fill_mode {
+                FillMode::MajorWireframe => true,
+                FillMode::DenseWireframe | FillMode::Solid => false,
+            };
+
             let meshes = lengths_iter
                 .zip(radii_iter)
                 .map(|(&Length(length), &Radius(radius))| {
@@ -67,21 +76,23 @@ impl Capsules3DVisualizer {
                     let ratio = (ratio / granularity).round() * granularity;
 
                     proc_mesh::ProcMeshKey::Capsule {
-                        subdivisions: 4,
-                        length: NotNan::new(ratio).unwrap(), // ok because of clean_length()
+                        subdivisions,
+                        length: NotNan::new(ratio)
+                            .expect("Ratio was not properly checked with clean_length"),
+                        axes_only,
                     }
                 });
 
             builder.add_batch(
                 query_context,
                 ent_context,
+                Capsules3D::name(),
                 glam::Affine3A::IDENTITY,
                 ProcMeshBatch {
                     half_sizes: &half_sizes,
                     meshes,
-                    // Only Solid is currently supported by proc_mesh
-                    fill_modes: iter::repeat(FillMode::Solid),
-                    line_radii: &[],
+                    fill_modes: iter::repeat(batch.fill_mode),
+                    line_radii: batch.line_radii,
                     colors: batch.colors,
                     labels: &batch.labels,
                     show_labels: batch.show_labels,
@@ -104,10 +115,12 @@ struct Capsules3DComponentData<'a> {
     // Clamped to edge
     colors: &'a [Color],
     labels: Vec<ArrowString>,
+    line_radii: &'a [Radius],
     class_ids: &'a [ClassId],
 
     // Non-repeated
     show_labels: Option<ShowLabels>,
+    fill_mode: FillMode,
 }
 
 impl IdentifiedViewSystem for Capsules3DVisualizer {
@@ -152,23 +165,25 @@ impl VisualizerSystem for Capsules3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_length_chunks) = results.get_required_chunks(&Length::name()) else {
+                let Some(all_length_chunks) =
+                    results.get_required_chunks(Capsules3D::descriptor_lengths())
+                else {
                     return Ok(());
                 };
                 let Some(all_radius_chunks) =
-                    results.get_required_chunks(&components::Radius::name())
+                    results.get_required_chunks(Capsules3D::descriptor_radii())
                 else {
                     return Ok(());
                 };
 
                 let num_lengths: usize = all_length_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f32>(Length::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<f32>())
                     .map(|lengths| lengths.len())
                     .sum();
                 let num_radii: usize = all_radius_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f32>(components::Radius::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<f32>())
                     .map(|radii| radii.len())
                     .sum();
                 let num_instances = num_lengths.max(num_radii);
@@ -177,30 +192,51 @@ impl VisualizerSystem for Capsules3DVisualizer {
                 }
 
                 let timeline = ctx.query.timeline();
-                let all_lengths_indexed =
-                    iter_slices::<f32>(&all_length_chunks, timeline, Length::name());
-                let all_radii_indexed =
-                    iter_slices::<f32>(&all_radius_chunks, timeline, components::Radius::name());
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
+                let all_lengths_indexed = iter_slices::<f32>(&all_length_chunks, timeline);
+                let all_radii_indexed = iter_slices::<f32>(&all_radius_chunks, timeline);
+                let all_colors = results.iter_as(timeline, Capsules3D::descriptor_colors());
+                let all_labels = results.iter_as(timeline, Capsules3D::descriptor_labels());
+                let all_show_labels =
+                    results.iter_as(timeline, Capsules3D::descriptor_show_labels());
+                let all_fill_modes = results.iter_as(timeline, Capsules3D::descriptor_fill_mode());
+                let all_line_radii = results.iter_as(timeline, Capsules3D::descriptor_line_radii());
+                let all_class_ids = results.iter_as(timeline, Capsules3D::descriptor_class_ids());
 
-                let data = re_query::range_zip_2x4(
+                let data = re_query::range_zip_2x6(
                     all_lengths_indexed,
                     all_radii_indexed,
                     all_colors.slice::<u32>(),
+                    all_line_radii.slice::<f32>(),
+                    all_fill_modes.slice::<u8>(),
                     all_labels.slice::<String>(),
                     all_show_labels.slice::<bool>(),
                     all_class_ids.slice::<u16>(),
                 )
                 .map(
-                    |(_index, lengths, radii, colors, labels, show_labels, class_ids)| {
+                    |(
+                        _index,
+                        lengths,
+                        radii,
+                        colors,
+                        line_radii,
+                        fill_modes,
+                        labels,
+                        show_labels,
+                        class_ids,
+                    )| {
                         Capsules3DComponentData {
                             lengths: bytemuck::cast_slice(lengths),
                             radii: bytemuck::cast_slice(radii),
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
                             labels: labels.unwrap_or_default(),
+                            line_radii: line_radii
+                                .map_or(&[], |line_radii| bytemuck::cast_slice(line_radii)),
+                            fill_mode: fill_modes
+                                .unwrap_or_default()
+                                .first()
+                                .copied()
+                                .and_then(FillMode::from_u8)
+                                .unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
                             show_labels: show_labels
@@ -242,7 +278,11 @@ impl TypedComponentFallbackProvider<Color> for Fallback {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Fallback {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<HalfSize3D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &Capsules3D::descriptor_radii(),
+            &Capsules3D::descriptor_labels(),
+        )
     }
 }
 

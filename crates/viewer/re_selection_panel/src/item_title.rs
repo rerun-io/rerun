@@ -3,25 +3,24 @@ use egui::WidgetText;
 use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
-use re_log_types::ComponentPath;
-use re_types::components::Timestamp;
+use re_log_types::{ComponentPath, TableId};
+use re_types::{archetypes::RecordingInfo, components::Timestamp};
 use re_ui::{
-    icons,
+    SyntaxHighlighting as _, icons,
     syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
-    SyntaxHighlighting as _,
 };
-use re_viewer_context::{contents_name_style, ContainerId, Contents, Item, ViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Contents, Item, ViewId, ViewerContext, contents_name_style};
 use re_viewport_blueprint::ViewportBlueprint;
 
 pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {
     let ComponentPath {
         entity_path,
-        component_name,
+        component_descriptor,
     } = component_path;
     let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
     db.storage_engine()
         .store()
-        .entity_has_static_component(entity_path, component_name)
+        .entity_has_static_component(entity_path, component_descriptor)
 }
 
 #[must_use]
@@ -47,6 +46,7 @@ impl ItemTitle {
             }
 
             Item::StoreId(store_id) => Self::from_store_id(ctx, store_id),
+            Item::TableId(table_id) => Self::from_table_id(ctx, table_id),
 
             Item::InstancePath(instance_path) => {
                 Self::from_instance_path(ctx, style, instance_path)
@@ -70,37 +70,47 @@ impl ItemTitle {
                     item_title
                 }
             }
+
+            // TODO(#10566): There should be an `EntryName` in this `Item` arm.
+            Item::RedapEntry(entry) => Self::new(entry.to_string(), &icons::DATASET),
+
+            // TODO(lucasmerlin): Icon?
+            Item::RedapServer(origin) => Self::new(origin.to_string(), &icons::DATASET),
         }
     }
 
-    pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {
-        let id_str = format!("{} ID: {}", store_id.kind, store_id);
+    pub fn from_table_id(_ctx: &ViewerContext<'_>, table_id: &TableId) -> Self {
+        Self::new(table_id.as_str(), &icons::ENTITY_RESERVED).with_tooltip(table_id.as_str())
+    }
 
-        let title = if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
-            match (
-                entity_db.app_id(),
-                entity_db.recording_property::<Timestamp>(),
-            ) {
-                (Some(application_id), Some(started)) => {
-                    let time = re_log_types::Timestamp::from(started.0)
-                        .to_jiff_zoned(ctx.app_options().timestamp_format)
-                        .strftime("%H:%M:%S")
-                        .to_string();
-                    format!("{application_id} - {time}")
-                }
-                (Some(application_id), None) => application_id.to_string(),
-                _ => id_str.clone(),
+    pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {
+        let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
+            if let Some(started) = entity_db
+                .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
+            {
+                let time = re_log_types::Timestamp::from(started.0)
+                    .to_jiff_zoned(ctx.app_options().timestamp_format)
+                    .strftime("%H:%M:%S")
+                    .to_string();
+                format!("{} - {time}", store_id.application_id())
+            } else {
+                store_id.application_id().to_string()
             }
         } else {
-            id_str.clone()
+            store_id.application_id().to_string()
         };
 
-        let icon = match store_id.kind {
+        let icon = match store_id.kind() {
             re_log_types::StoreKind::Recording => &icons::RECORDING,
             re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
         };
 
-        Self::new(title, icon).with_tooltip(id_str)
+        Self::new(title, icon).with_tooltip(format!(
+            "Store kind: {}\nApplication ID: {}\nRecording ID: {}",
+            store_id.kind(),
+            store_id.application_id(),
+            store_id.recording_id(),
+        ))
     }
 
     pub fn from_instance_path(
@@ -134,11 +144,11 @@ impl ItemTitle {
 
         let ComponentPath {
             entity_path,
-            component_name,
+            component_descriptor,
         } = component_path;
 
         Self::new(
-            component_name.short_name(),
+            component_descriptor.display_name(),
             if is_static {
                 &icons::COMPONENT_STATIC
             } else {
@@ -148,7 +158,7 @@ impl ItemTitle {
         .with_tooltip(format!(
             "{} component {} of entity '{}'",
             if is_static { "Static" } else { "Temporal" },
-            component_name.full_name(),
+            component_descriptor.display_name(),
             entity_path
         ))
     }

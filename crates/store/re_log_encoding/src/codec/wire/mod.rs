@@ -4,11 +4,14 @@ pub mod encoder;
 #[cfg(test)]
 mod tests {
     use crate::codec::{
-        wire::{decoder::Decode as _, encoder::Encode as _},
         CodecError,
+        wire::{decoder::Decode as _, encoder::Encode as _},
     };
     use re_chunk::{Chunk, RowId};
-    use re_log_types::{example_components::MyPoint, Timeline};
+    use re_log_types::{
+        Timeline,
+        example_components::{MyPoint, MyPoints},
+    };
     use re_protos::common::v1alpha1::{DataframePart, EncoderVersion};
 
     fn get_test_chunk() -> Chunk {
@@ -27,9 +30,17 @@ mod tests {
         let points1 = &[MyPoint::new(1.0, 1.0)];
         let points2 = &[MyPoint::new(2.0, 2.0)];
 
-        Chunk::builder("mypoints".into())
-            .with_component_batches(row_id1, timepoint1, [points1 as _])
-            .with_component_batches(row_id2, timepoint2, [points2 as _])
+        Chunk::builder("mypoints")
+            .with_component_batches(
+                row_id1,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id2,
+                timepoint2,
+                [(MyPoints::descriptor_points(), points2 as _)],
+            )
             .build()
             .unwrap()
     }
@@ -39,7 +50,7 @@ mod tests {
         let data = vec![2, 3, 4];
         let dataframe_part = DataframePart {
             encoder_version: EncoderVersion::V0 as i32,
-            payload: Some(data.clone()),
+            payload: Some(data.clone().into()),
         };
         let decoded = dataframe_part.decode();
 

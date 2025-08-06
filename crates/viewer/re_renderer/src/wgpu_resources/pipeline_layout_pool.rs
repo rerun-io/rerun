@@ -1,4 +1,4 @@
-use crate::{debug_label::DebugLabel, RenderContext};
+use crate::{RenderContext, debug_label::DebugLabel};
 
 use super::{
     bind_group_layout_pool::GpuBindGroupLayoutHandle,

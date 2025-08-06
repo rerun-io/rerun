@@ -8,18 +8,20 @@ import numpy.typing as npt
 import rerun as rr  # pip install rerun-sdk
 
 
-class CustomPoints3D(rr.AsComponents):
+class CustomPoints3D(rr.AsComponents):  # type: ignore[misc]
     def __init__(self: Any, positions: npt.ArrayLike, colors: npt.ArrayLike) -> None:
-        self.positions = rr.components.Position3DBatch(positions).with_descriptor(
+        self.positions = rr.components.Position3DBatch(positions).described(
             rr.ComponentDescriptor(
-                "user.CustomPosition3D",
-                archetype_name="user.CustomPoints3D",
-                archetype_field_name="custom_positions",
+                "user.CustomPoints3D:custom_positions",
+                archetype="user.CustomPoints3D",
+                component_type="user.CustomPosition3D",
             ),
         )
-        self.colors = rr.components.ColorBatch(colors).or_with_descriptor_overrides(
-            archetype_name="user.CustomPoints3D",
-            archetype_field_name="colors",
+        self.colors = rr.components.ColorBatch(colors).described(
+            rr.ComponentDescriptor("user.CustomPoints3D:colors").with_overrides(
+                archetype="user.CustomPoints3D",
+                component_type=rr.components.ColorBatch._COMPONENT_TYPE,
+            )
         )
 
     def as_component_batches(self) -> list[rr.DescribedComponentBatch]:

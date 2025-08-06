@@ -6,8 +6,8 @@ pub mod decoder;
 #[cfg(feature = "encoder")]
 pub mod encoder;
 
+mod app_id_injector;
 pub mod codec;
-
 pub mod protobuf_conversions;
 
 #[cfg(feature = "encoder")]
@@ -17,21 +17,16 @@ mod file_sink;
 #[cfg(feature = "stream_from_http")]
 pub mod stream_rrd_from_http;
 
-/// How to handle version mismatches during decoding.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum VersionPolicy {
-    /// Warn if the versions don't match, but continue loading.
-    ///
-    /// We usually use this for loading `.rrd` recordings.
-    Warn,
-
-    /// Return an error if the versions aren't compatible.
-    ///
-    /// We usually use this for tests, and for loading `.rbl` blueprint files.
-    Error,
+pub mod external {
+    #[cfg(feature = "decoder")]
+    pub use lz4_flex;
 }
 
 // ---------------------------------------------------------------------
+
+pub use app_id_injector::{
+    ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
+};
 
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]

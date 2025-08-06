@@ -20,7 +20,11 @@ __all__ = ["PlotLegend"]
 
 @define(str=False, repr=False, init=False)
 class PlotLegend(PlotLegendExt, Archetype):
-    """**Archetype**: Configuration for the legend of a plot."""
+    """
+    **Archetype**: Configuration for the legend of a plot.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     # __init__ can be found in plot_legend_ext.py
 

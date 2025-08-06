@@ -13,7 +13,6 @@ from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -32,6 +31,10 @@ class AffixFuzzer13(ComponentMixin):
 
     many_strings_optional: list[str] | None = field(default=None)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AffixFuzzer13Ext in affix_fuzzer13_ext.py
+        return len(self.many_strings_optional) if self.many_strings_optional is not None else 0
+
 
 AffixFuzzer13Like = AffixFuzzer13
 AffixFuzzer13ArrayLike = Union[
@@ -42,7 +45,7 @@ AffixFuzzer13ArrayLike = Union[
 
 class AffixFuzzer13Batch(BaseBatch[AffixFuzzer13ArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={}))
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.testing.components.AffixFuzzer13")
+    _COMPONENT_TYPE: str = "rerun.testing.components.AffixFuzzer13"
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer13ArrayLike, data_type: pa.DataType) -> pa.Array:

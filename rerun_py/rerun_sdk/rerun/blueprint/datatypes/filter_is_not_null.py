@@ -30,7 +30,11 @@ def _filter_is_not_null__active__special_field_converter_override(x: datatypes.B
 
 @define(init=False)
 class FilterIsNotNull(FilterIsNotNullExt):
-    """**Datatype**: Configuration for the filter is not null feature of the dataframe view."""
+    """
+    **Datatype**: Configuration for the filter is not null feature of the dataframe view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     def __init__(
         self: Any, active: datatypes.BoolLike, column: blueprint_datatypes.ComponentColumnSelectorLike

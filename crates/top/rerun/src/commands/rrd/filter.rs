@@ -9,7 +9,7 @@ use itertools::Either;
 
 use re_build_info::CrateVersion;
 use re_chunk::external::crossbeam;
-use re_sdk::{external::arrow, EntityPath};
+use re_sdk::{EntityPath, external::arrow};
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
 
@@ -64,10 +64,7 @@ impl FilterCommand {
             .map(|s| EntityPath::parse_forgiving(s))
             .collect();
 
-        // TODO(cmc): might want to make this configurable at some point.
-        let version_policy = re_log_encoding::VersionPolicy::Warn;
-        let (rx_decoder, rx_size_bytes) =
-            read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
+        let (rx_decoder, rx_size_bytes) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
         // TODO(cmc): might want to make this configurable at some point.
         let (tx_encoder, rx_encoder) = crossbeam::channel::bounded(100);
@@ -111,15 +108,14 @@ impl FilterCommand {
                 Ok(msg) => {
                     let msg = match msg {
                         re_log_types::LogMsg::ArrowMsg(store_id, mut msg) => {
-                            match re_sorbet::ChunkSchema::try_from(msg.batch.schema_ref().as_ref())
-                            {
-                                Ok(schema) => {
-                                    if !dropped_entity_paths.contains(schema.entity_path()) {
+                            match re_sorbet::ChunkBatch::try_from(&msg.batch) {
+                                Ok(batch) => {
+                                    if !dropped_entity_paths.contains(batch.entity_path()) {
                                         None
                                     } else {
                                         let (fields, columns): (Vec<_>, Vec<_>) = itertools::izip!(
-                                            &msg.batch.schema().fields,
-                                            msg.batch.columns()
+                                            &batch.schema().fields,
+                                            batch.columns()
                                         )
                                         .filter(|(field, _col)| {
                                             !is_field_timeline_of(field, &dropped_timelines)
@@ -130,7 +126,7 @@ impl FilterCommand {
                                         if let Ok(new_batch) = ArrowRecordBatch::try_new(
                                             ArrowSchema::new_with_metadata(
                                                 fields,
-                                                msg.batch.schema().metadata().clone(),
+                                                batch.schema().metadata().clone(),
                                             )
                                             .into(),
                                             columns,

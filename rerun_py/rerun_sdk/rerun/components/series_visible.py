@@ -8,7 +8,6 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -19,7 +18,7 @@ class SeriesVisible(datatypes.Bool, ComponentMixin):
     """
     **Component**: Like [`components.Visible`][rerun.components.Visible], but for time series.
 
-    TODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`][rerun.components.Visible] since it would conflict with the entity-wide visibility state.
+    TODO(#10632): This is a temporary workaround. Right now we can't use [`components.Visible`][rerun.components.Visible] since it would conflict with the entity-wide visibility state.
     """
 
     _BATCH_TYPE = None
@@ -29,7 +28,7 @@ class SeriesVisible(datatypes.Bool, ComponentMixin):
 
 
 class SeriesVisibleBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.SeriesVisible")
+    _COMPONENT_TYPE: str = "rerun.components.SeriesVisible"
 
 
 # This is patched in late to avoid circular dependencies.

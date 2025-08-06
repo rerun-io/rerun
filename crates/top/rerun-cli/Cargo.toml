@@ -43,7 +43,7 @@ default = ["native_viewer", "web_viewer", "map_view"]
 # Do you _really_ want to add features in `release` that are not in `default`?
 #
 # Here are some reasons not to:
-# - These features will be missing from the `cargo install rerun-cli` command our users will inevitably use.
+# - These features will be missing from the `cargo install rerun-cli --locked` command our users will inevitably use.
 # - These features will not be picked up in places where we cannot use the `release` feature set (e.g. rerun_js).
 # - This list is not exhaustive and will unexpectedly grow in the future.
 #
@@ -60,17 +60,23 @@ default = ["native_viewer", "web_viewer", "map_view"]
 ## This may enable features that require extra build tools that not everyone has.
 release = ["default", "nasm"]
 
+
+## Support the map view.
+## This adds a lot of extra dependencies.
+map_view = ["rerun/map_view"]
+
 ## Enable faster native video decoding with assembly.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
+## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["rerun/nasm"]
 
 ## Support spawning a native viewer.
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["rerun/native_viewer"]
 
-## Support the map view.
-## This adds a lot of extra dependencies.
-map_view = ["rerun/map_view"]
+## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+##
+## This only works on native.
+perf_telemetry = ["rerun/perf_telemetry"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -81,15 +87,18 @@ map_view = ["rerun/map_view"]
 # TODO(#4295): web_viewer shouldn't require rerun/sdk
 web_viewer = ["rerun/web_viewer", "rerun/sdk"]
 
+
 [dependencies]
 re_build_info.workspace = true
 re_error.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_memory.workspace = true
-rerun = { workspace = true, features = [
+rerun = { workspace = true, default-features = false, features = [
   "analytics",
+  "data_loaders",
   "glam",
   "image",
+  "log",
   "run",
   "server",
 ] }

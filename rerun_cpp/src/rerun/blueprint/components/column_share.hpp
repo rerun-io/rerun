@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/float32.hpp"
 #include "../../result.hpp"
 
@@ -12,6 +11,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: The layout share of a column in the container.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ColumnShare {
         /// The layout shares of a column in the container.
         rerun::datatypes::Float32 share;
@@ -46,7 +48,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::ColumnShare> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.components.ColumnShare";
+        static constexpr std::string_view ComponentType = "rerun.blueprint.components.ColumnShare";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

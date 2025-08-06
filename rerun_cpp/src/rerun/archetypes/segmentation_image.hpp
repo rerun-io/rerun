@@ -11,7 +11,6 @@
 #include "../components/image_format.hpp"
 #include "../components/opacity.hpp"
 #include "../image_utils.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -22,12 +21,12 @@
 namespace rerun::archetypes {
     /// **Archetype**: An image made up of integer `components::ClassId`s.
     ///
-    /// Each pixel corresponds to a `components::ClassId` that will be mapped to a color based on annotation context.
+    /// Each pixel corresponds to a `components::ClassId` that will be mapped to a color based on `archetypes::AnnotationContext`.
     ///
     /// In the case of floating point images, the label will be looked up based on rounding to the nearest
     /// integer value.
     ///
-    /// See also `archetypes::AnnotationContext` to associate each class with a color and a label.
+    /// Use `archetypes::AnnotationContext` to associate each class with a color and a label.
     ///
     /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
@@ -86,36 +85,32 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
+        /// Defaults to `0.0`.
         std::optional<ComponentBatch> draw_order;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.components.SegmentationImageIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.SegmentationImage";
 
         /// `ComponentDescriptor` for the `buffer` field.
         static constexpr auto Descriptor_buffer = ComponentDescriptor(
-            ArchetypeName, "buffer",
-            Loggable<rerun::components::ImageBuffer>::Descriptor.component_name
+            ArchetypeName, "SegmentationImage:buffer",
+            Loggable<rerun::components::ImageBuffer>::ComponentType
         );
         /// `ComponentDescriptor` for the `format` field.
         static constexpr auto Descriptor_format = ComponentDescriptor(
-            ArchetypeName, "format",
-            Loggable<rerun::components::ImageFormat>::Descriptor.component_name
+            ArchetypeName, "SegmentationImage:format",
+            Loggable<rerun::components::ImageFormat>::ComponentType
         );
         /// `ComponentDescriptor` for the `opacity` field.
         static constexpr auto Descriptor_opacity = ComponentDescriptor(
-            ArchetypeName, "opacity",
-            Loggable<rerun::components::Opacity>::Descriptor.component_name
+            ArchetypeName, "SegmentationImage:opacity",
+            Loggable<rerun::components::Opacity>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order",
-            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+            ArchetypeName, "SegmentationImage:draw_order",
+            Loggable<rerun::components::DrawOrder>::ComponentType
         );
 
       public: // START of extensions from segmentation_image_ext.cpp:
@@ -250,6 +245,7 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
+        /// Defaults to `0.0`.
         SegmentationImage with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();

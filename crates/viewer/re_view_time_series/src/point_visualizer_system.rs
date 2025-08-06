@@ -1,34 +1,36 @@
 use itertools::Itertools as _;
 
+use re_chunk_store::LatestAtQuery;
 use re_types::{
-    archetypes,
-    components::{Color, MarkerShape, MarkerSize, Name, Scalar, SeriesVisible},
-    Archetype as _, Component as _,
+    Archetype as _, archetypes,
+    components::{Color, MarkerShape, MarkerSize, Name, SeriesVisible},
 };
-use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
+use re_view::{
+    clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
+};
 use re_viewer_context::{
-    auto_color_for_entity_path, external::re_entity_db::InstancePath, IdentifiedViewSystem,
-    QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery, ViewStateExt as _,
-    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery,
+    ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, external::re_entity_db::InstancePath,
 };
 
 use crate::{
+    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
     series_query::{
         all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui,
         collect_scalars, collect_series_name, collect_series_visibility, determine_num_series,
     },
     util::{determine_time_per_pixel, determine_time_range, points_to_series},
     view_class::TimeSeriesViewState,
-    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
 /// The system for rendering [`archetypes::SeriesPoints`] archetypes.
 #[derive(Default, Debug)]
-pub struct SeriesPointSystem {
+pub struct SeriesPointsSystem {
     pub all_series: Vec<PlotSeries>,
 }
 
-impl IdentifiedViewSystem for SeriesPointSystem {
+impl IdentifiedViewSystem for SeriesPointsSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "SeriesPoints".into()
     }
@@ -38,17 +40,15 @@ impl IdentifiedViewSystem for SeriesPointSystem {
 // visible.
 const DEFAULT_MARKER_SIZE: f32 = 3.0;
 
-impl VisualizerSystem for SeriesPointSystem {
+impl VisualizerSystem for SeriesPointsSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-        query_info.queried.extend(
-            archetypes::SeriesPoints::all_components()
-                .iter()
-                .map(|descr| descr.component_name),
-        );
+        query_info
+            .queried
+            .extend(archetypes::SeriesPoints::all_components().iter().cloned());
 
-        query_info.indicators =
-            [archetypes::SeriesPoints::descriptor_indicator().component_name].into();
+        query_info.relevant_archetypes =
+            std::iter::once(archetypes::SeriesPoints::name()).collect();
 
         query_info
     }
@@ -74,21 +74,21 @@ impl VisualizerSystem for SeriesPointSystem {
     }
 }
 
-impl TypedComponentFallbackProvider<Color> for SeriesPointSystem {
+impl TypedComponentFallbackProvider<Color> for SeriesPointsSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
         auto_color_for_entity_path(ctx.target_entity_path)
     }
 }
 
-impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointSystem {
+impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointsSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> MarkerSize {
         MarkerSize::from(DEFAULT_MARKER_SIZE)
     }
 }
 
-impl TypedComponentFallbackProvider<Name> for SeriesPointSystem {
+impl TypedComponentFallbackProvider<Name> for SeriesPointsSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
-        let state = ctx.view_state.downcast_ref::<TimeSeriesViewState>();
+        let state = ctx.view_state().downcast_ref::<TimeSeriesViewState>();
 
         state
             .ok()
@@ -107,15 +107,15 @@ impl TypedComponentFallbackProvider<Name> for SeriesPointSystem {
     }
 }
 
-impl TypedComponentFallbackProvider<SeriesVisible> for SeriesPointSystem {
+impl TypedComponentFallbackProvider<SeriesVisible> for SeriesPointsSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> SeriesVisible {
         true.into()
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize, Name, SeriesVisible]);
+re_viewer_context::impl_component_fallback_provider!(SeriesPointsSystem => [Color, MarkerSize, Name, SeriesVisible]);
 
-impl SeriesPointSystem {
+impl SeriesPointsSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 
@@ -194,28 +194,22 @@ impl SeriesPointSystem {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
             let entity_path = &data_result.entity_path;
-            let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range)
-                // We must fetch data with extended bounds, otherwise the query clamping would
-                // cut-off the data early at the edge of the view.
-                .include_extended_bounds(true);
+            let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
 
             let results = range_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &query,
                 data_result,
-                [
-                    Color::name(),
-                    MarkerShape::name(),
-                    MarkerSize::name(),
-                    Name::name(),
-                    Scalar::name(),
-                    SeriesVisible::name(),
-                ],
+                archetypes::Scalars::all_components()
+                    .iter()
+                    .chain(archetypes::SeriesPoints::all_components().iter()),
             );
 
             // If we have no scalars, we can't do anything.
-            let Some(all_scalar_chunks) = results.get_required_chunks(&Scalar::name()) else {
+            let Some(all_scalar_chunks) =
+                results.get_required_chunks(archetypes::Scalars::descriptor_scalars())
+            else {
                 return;
             };
 
@@ -242,19 +236,41 @@ impl SeriesPointSystem {
                 allocate_plot_points(&query, &default_point, &all_scalar_chunks, num_series);
 
             collect_scalars(&all_scalar_chunks, &mut points_per_series);
+
+            // The plot view visualizes scalar data within a specific time range, without any kind
+            // of time-alignment / bootstrapping behavior:
+            // * For the scalar themselves, this is what you want: if you're trying to plot some
+            //   data between t=100 and t=200, you don't want to display a point from t=20 (and
+            //   _extended bounds_ will take care of lines crossing the limit).
+            // * For the secondary components (colors, radii, names, etc), this is a problem
+            //   though: you don't want your plot to change color depending on what the currently
+            //   visible time range is! Secondary components have to be bootstrapped.
+            let query_shadowed_components = false;
+            let bootstrapped_results = latest_at_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &LatestAtQuery::new(query.timeline, query.range.min()),
+                data_result,
+                archetypes::SeriesPoints::all_components().iter(),
+                query_shadowed_components,
+            );
+
             collect_colors(
                 entity_path,
                 &query,
+                &bootstrapped_results,
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
+                &archetypes::SeriesPoints::descriptor_colors(),
             );
             collect_radius_ui(
                 &query,
+                &bootstrapped_results,
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
-                MarkerSize::name(),
+                &archetypes::SeriesPoints::descriptor_marker_sizes(),
                 // `marker_size` is a radius, see NOTE above
                 1.0,
             );
@@ -264,8 +280,17 @@ impl SeriesPointSystem {
                 re_tracing::profile_scope!("fill marker shapes");
 
                 {
-                    let all_marker_shapes_chunks =
-                        results.get_optional_chunks(&MarkerShape::name());
+                    let all_marker_shapes_chunks = bootstrapped_results
+                        .get_optional_chunks(archetypes::SeriesPoints::descriptor_markers())
+                        .iter()
+                        .cloned()
+                        .chain(
+                            results
+                                .get_optional_chunks(archetypes::SeriesPoints::descriptor_markers())
+                                .iter()
+                                .cloned(),
+                        )
+                        .collect_vec();
 
                     if all_marker_shapes_chunks.len() == 1
                         && all_marker_shapes_chunks[0].is_static()
@@ -273,7 +298,9 @@ impl SeriesPointSystem {
                         re_tracing::profile_scope!("override/default fast path");
 
                         if let Some(marker_shapes) = all_marker_shapes_chunks[0]
-                            .iter_component::<MarkerShape>()
+                            .iter_component::<MarkerShape>(
+                                &archetypes::SeriesPoints::descriptor_markers(),
+                            )
                             .next()
                         {
                             for (points, marker_shape) in points_per_series
@@ -292,7 +319,11 @@ impl SeriesPointSystem {
 
                         let mut all_marker_shapes_iters = all_marker_shapes_chunks
                             .iter()
-                            .map(|chunk| chunk.iter_component::<MarkerShape>())
+                            .map(|chunk| {
+                                chunk.iter_component::<MarkerShape>(
+                                    &archetypes::SeriesPoints::descriptor_markers(),
+                                )
+                            })
                             .collect_vec();
                         let all_marker_shapes_indexed = {
                             let all_marker_shapes = all_marker_shapes_iters
@@ -302,7 +333,7 @@ impl SeriesPointSystem {
                                 all_marker_shapes_chunks.iter().flat_map(|chunk| {
                                     chunk.iter_component_indices(
                                         query.timeline(),
-                                        &MarkerShape::name(),
+                                        &archetypes::SeriesPoints::descriptor_markers(),
                                     )
                                 });
                             itertools::izip!(all_marker_shapes_indices, all_marker_shapes)
@@ -344,8 +375,21 @@ impl SeriesPointSystem {
                 }
             }
 
-            let series_visibility = collect_series_visibility(&query, &results, num_series);
-            let series_names = collect_series_name(self, &query_ctx, &results, num_series);
+            let series_visibility = collect_series_visibility(
+                &query,
+                &bootstrapped_results,
+                &results,
+                num_series,
+                archetypes::SeriesPoints::descriptor_visible_series(),
+            );
+            let series_names = collect_series_name(
+                self,
+                &query_ctx,
+                &bootstrapped_results,
+                &results,
+                num_series,
+                &archetypes::SeriesPoints::descriptor_names(),
+            );
 
             debug_assert_eq!(points_per_series.len(), series_names.len());
             for (instance, (points, label, visible)) in itertools::izip!(

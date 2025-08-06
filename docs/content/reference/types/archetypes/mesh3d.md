@@ -10,15 +10,24 @@ See also [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes
 If there are multiple [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,
 an instance of the mesh will be drawn for each transform.
 
-## Components
+## Fields
+### Required
+* `vertex_positions`: [`Position3D`](../components/position3d.md)
 
-**Required**: [`Position3D`](../components/position3d.md)
+### Recommended
+* `triangle_indices`: [`TriangleIndices`](../components/triangle_indices.md)
+* `vertex_normals`: [`Vector3D`](../components/vector3d.md)
 
-**Recommended**: [`TriangleIndices`](../components/triangle_indices.md), [`Vector3D`](../components/vector3d.md)
+### Optional
+* `vertex_colors`: [`Color`](../components/color.md)
+* `vertex_texcoords`: [`Texcoord2D`](../components/texcoord2d.md)
+* `albedo_factor`: [`AlbedoFactor`](../components/albedo_factor.md)
+* `albedo_texture_buffer`: [`ImageBuffer`](../components/image_buffer.md)
+* `albedo_texture_format`: [`ImageFormat`](../components/image_format.md)
+* `class_ids`: [`ClassId`](../components/class_id.md)
 
-**Optional**: [`Color`](../components/color.md), [`Texcoord2D`](../components/texcoord2d.md), [`AlbedoFactor`](../components/albedo_factor.md), [`ImageBuffer`](../components/image_buffer.md), [`ImageFormat`](../components/image_format.md), [`ClassId`](../components/class_id.md)
 
-## Shown in
+## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 * [DataframeView](../views/dataframe_view.md)

@@ -13,10 +13,10 @@
 use parking_lot::Mutex;
 
 use crate::{
+    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext,
     allocator::GpuReadbackError,
     texture_info::Texture2DBufferInfo,
     wgpu_resources::{GpuTexture, TextureDesc},
-    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext,
 };
 
 /// Type used as user data on the gpu readback belt.
@@ -131,11 +131,9 @@ impl ScreenshotProcessor {
         identifier: GpuReadbackIdentifier,
         on_screenshot: impl FnOnce(&[u8], glam::UVec2, T),
     ) -> Option<()> {
-        let mut screenshot_was_available = None;
-        ctx.gpu_readback_belt
-            .lock()
-            .readback_data::<ReadbackBeltMetadata<T>>(identifier, |data: &[u8], metadata| {
-                screenshot_was_available = Some(());
+        ctx.gpu_readback_belt.lock().readback_next_available(
+            identifier,
+            |data: &[u8], metadata: Box<ReadbackBeltMetadata<T>>| {
                 let buffer_info =
                     Texture2DBufferInfo::new(Self::SCREENSHOT_COLOR_FORMAT, metadata.extent);
                 let texture_data = buffer_info.remove_padding(data);
@@ -144,7 +142,7 @@ impl ScreenshotProcessor {
                     glam::uvec2(metadata.extent.width, metadata.extent.height),
                     metadata.user_data,
                 );
-            });
-        screenshot_was_available
+            },
+        )
     }
 }

@@ -19,6 +19,16 @@ pub struct ImageStats {
     pub finite_range: (f64, f64),
 }
 
+impl re_byte_size::SizeBytes for ImageStats {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl ImageStats {
     pub fn from_image(image: &ImageInfo) -> Self {
         re_tracing::profile_function!();

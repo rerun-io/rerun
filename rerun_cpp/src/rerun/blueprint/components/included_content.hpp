@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/entity_path.hpp"
 #include "../../result.hpp"
 
@@ -14,6 +13,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: All the contents in the container.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct IncludedContent {
         /// List of the contents by `datatypes::EntityPath`.
         ///
@@ -53,7 +55,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::IncludedContent> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.IncludedContent";
 
         /// Returns the arrow data type this type corresponds to.

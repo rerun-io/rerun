@@ -30,12 +30,19 @@ re_log_types.workspace = true
 re_memory.workspace = true
 re_protos.workspace = true
 re_smart_channel.workspace = true
+re_sorbet.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
+re_uri.workspace = true
 
 # External
+anyhow.workspace = true
+crossbeam.workspace = true
 parking_lot.workspace = true
-tonic = { workspace = true, default-features = false, features = ["transport"] }
+tonic = { workspace = true, default-features = false, features = [
+  "transport",
+  "router",
+] }
 tonic-web.workspace = true
 tower-http = { workspace = true, features = ["cors"] }
 

@@ -1,4 +1,7 @@
-use std::fmt::{Display, Formatter};
+use std::{
+    fmt::{Display, Formatter},
+    str::FromStr,
+};
 
 use strum::{EnumCount, EnumIter, IntoEnumIterator as _};
 
@@ -22,6 +25,21 @@ impl Display for Hue {
             Self::Blue => f.write_str("Blue"),
             Self::Purple => f.write_str("Purple"),
         }
+    }
+}
+
+impl FromStr for Hue {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "Gray" => Self::Gray,
+            "Green" => Self::Green,
+            "Red" => Self::Red,
+            "Blue" => Self::Blue,
+            "Purple" => Self::Purple,
+            _ => return Err(anyhow::anyhow!("Invalid hue: {s:?}")),
+        })
     }
 }
 
@@ -126,6 +144,57 @@ impl Display for Scale {
     }
 }
 
+impl FromStr for Scale {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "0" => Self::S0,
+            "25" => Self::S25,
+            "50" => Self::S50,
+            "75" => Self::S75,
+            "100" => Self::S100,
+            "125" => Self::S125,
+            "150" => Self::S150,
+            "175" => Self::S175,
+            "200" => Self::S200,
+            "225" => Self::S225,
+            "250" => Self::S250,
+            "275" => Self::S275,
+            "300" => Self::S300,
+            "325" => Self::S325,
+            "350" => Self::S350,
+            "375" => Self::S375,
+            "400" => Self::S400,
+            "425" => Self::S425,
+            "450" => Self::S450,
+            "475" => Self::S475,
+            "500" => Self::S500,
+            "525" => Self::S525,
+            "550" => Self::S550,
+            "575" => Self::S575,
+            "600" => Self::S600,
+            "625" => Self::S625,
+            "650" => Self::S650,
+            "675" => Self::S675,
+            "700" => Self::S700,
+            "725" => Self::S725,
+            "750" => Self::S750,
+            "775" => Self::S775,
+            "800" => Self::S800,
+            "825" => Self::S825,
+            "850" => Self::S850,
+            "875" => Self::S875,
+            "900" => Self::S900,
+            "925" => Self::S925,
+            "950" => Self::S950,
+            "975" => Self::S975,
+            "1000" => Self::S1000,
+            _ => return Err(anyhow::anyhow!("Invalid scale: {s:?}")),
+        })
+    }
+}
+
 /// A table mapping all combination of [`Hue`] and [`Scale`] to a [`egui::Color32`].
 #[derive(Debug)]
 pub struct ColorTable {
@@ -150,36 +219,9 @@ impl ColorTable {
     pub fn get(&self, token: ColorToken) -> egui::Color32 {
         self.color_lut[token.hue as usize][token.scale as usize]
     }
-
-    #[inline]
-    pub fn gray(&self, shade: Scale) -> egui::Color32 {
-        self.get(ColorToken::gray(shade))
-    }
-
-    #[inline]
-    pub fn green(&self, shade: Scale) -> egui::Color32 {
-        self.get(ColorToken::green(shade))
-    }
-
-    #[inline]
-    pub fn red(&self, shade: Scale) -> egui::Color32 {
-        self.get(ColorToken::red(shade))
-    }
-
-    #[inline]
-    pub fn blue(&self, shade: Scale) -> egui::Color32 {
-        self.get(ColorToken::blue(shade))
-    }
-
-    #[inline]
-    pub fn purple(&self, shade: Scale) -> egui::Color32 {
-        self.get(ColorToken::purple(shade))
-    }
 }
 
 /// A token representing a color in the global color table.
-///
-/// Use [`crate::DesignTokens::color`] to get the color corresponding to a token.
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct ColorToken {
     pub hue: Hue,
@@ -190,30 +232,5 @@ impl ColorToken {
     #[inline]
     pub fn new(hue: Hue, shade: Scale) -> Self {
         Self { hue, scale: shade }
-    }
-
-    #[inline]
-    pub fn gray(shade: Scale) -> Self {
-        Self::new(Hue::Gray, shade)
-    }
-
-    #[inline]
-    pub fn green(shade: Scale) -> Self {
-        Self::new(Hue::Green, shade)
-    }
-
-    #[inline]
-    pub fn red(shade: Scale) -> Self {
-        Self::new(Hue::Red, shade)
-    }
-
-    #[inline]
-    pub fn blue(shade: Scale) -> Self {
-        Self::new(Hue::Blue, shade)
-    }
-
-    #[inline]
-    pub fn purple(shade: Scale) -> Self {
-        Self::new(Hue::Purple, shade)
     }
 }

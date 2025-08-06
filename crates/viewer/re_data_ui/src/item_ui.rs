@@ -4,12 +4,15 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, TimeInt, TimeType, Timeline, TimelineName,
+use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
+use re_types::{
+    archetypes::RecordingInfo,
+    components::{Name, Timestamp},
 };
-use re_types::components::{Name, Timestamp};
-use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
-use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
+use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
+use re_viewer_context::{
+    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
+};
 
 use super::DataUi as _;
 
@@ -455,70 +458,6 @@ fn entity_tree_stats_ui(
     }
 }
 
-/// Show a component path and make it selectable.
-pub fn component_path_button(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    component_path: &ComponentPath,
-    db: &re_entity_db::EntityDb,
-) -> egui::Response {
-    component_path_button_to(
-        ctx,
-        ui,
-        component_path.component_name.short_name(),
-        component_path,
-        db,
-    )
-}
-
-/// Show a component path and make it selectable.
-pub fn component_path_button_to(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    text: impl Into<egui::WidgetText>,
-    component_path: &ComponentPath,
-    db: &re_entity_db::EntityDb,
-) -> egui::Response {
-    let item = Item::ComponentPath(component_path.clone());
-    let is_static = db.storage_engine().store().entity_has_static_component(
-        component_path.entity_path(),
-        component_path.component_name(),
-    );
-    let icon = if is_static {
-        &icons::COMPONENT_STATIC
-    } else {
-        &icons::COMPONENT_TEMPORAL
-    };
-    let response = ui.selectable_label_with_icon(
-        icon,
-        text,
-        ctx.selection().contains_item(&item),
-        re_ui::LabelStyle::Normal,
-    );
-
-    let response = response.on_hover_ui(|ui| {
-        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend); // Make tooltip as wide as needed
-
-        list_item::list_item_scope(ui, "component_path_tooltip", |ui| {
-            ui.list_item().interactive(false).show_flat(
-                ui,
-                list_item::LabelContent::new(if is_static {
-                    "Static component"
-                } else {
-                    "Temporal component"
-                })
-                .with_icon(icon),
-            );
-
-            component_path
-                .component_name
-                .data_ui_recording(ctx, ui, UiLayout::Tooltip);
-        });
-    });
-
-    cursor_interact_with_selectable(ctx, response, item)
-}
-
 pub fn data_blueprint_button_to(
     ctx: &ViewerContext<'_>,
     query: &re_chunk_store::LatestAtQuery,
@@ -648,9 +587,7 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = db.tree().subtree(&instance_path.entity_path) {
-            let typ = db.timeline_type(&query.timeline());
-            let timeline = Timeline::new(query.timeline(), typ);
-            entity_tree_stats_ui(ui, &timeline, db, subtree, include_subtree);
+            entity_tree_stats_ui(ui, &query.timeline(), db, subtree, include_subtree);
         }
     } else {
         // TODO(emilk): per-component stats
@@ -724,10 +661,12 @@ pub fn store_id_button_ui(
     store_id: &re_log_types::StoreId,
     ui_layout: UiLayout,
 ) {
-    if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
+    if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
         entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
     } else {
-        ui_layout.label(ui, store_id.to_string());
+        ui_layout.label(ui, "<unknown store>").on_hover_ui(|ui| {
+            ui.label(format!("{store_id:?}"));
+        });
     }
 }
 
@@ -748,22 +687,24 @@ pub fn entity_db_button_ui(
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
     let app_id_prefix = if include_app_id {
-        entity_db
-            .app_id()
-            .map_or(String::default(), |app_id| format!("{app_id} - "))
+        format!("{} - ", entity_db.application_id())
     } else {
         String::default()
     };
 
-    let recording_name = if let Some(recording_name) = entity_db.recording_property::<Name>() {
+    let recording_name = if let Some(recording_name) =
+        entity_db.recording_info_property::<Name>(&RecordingInfo::descriptor_name())
+    {
         Some(recording_name.to_string())
     } else {
-        entity_db.recording_property::<Timestamp>().map(|started| {
-            re_log_types::Timestamp::from(started.0)
-                .to_jiff_zoned(ctx.app_options().timestamp_format)
-                .strftime("%H:%M:%S")
-                .to_string()
-        })
+        entity_db
+            .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
+            .map(|started| {
+                re_log_types::Timestamp::from(started.0)
+                    .to_jiff_zoned(ctx.app_options().timestamp_format)
+                    .strftime("%H:%M:%S")
+                    .to_string()
+            })
     }
     .unwrap_or("<unknown>".to_owned());
 
@@ -778,22 +719,14 @@ pub fn entity_db_button_ui(
         re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
     };
 
-    let mut item_content = list_item::LabelContent::new(title).with_icon_fn(|ui, rect, visuals| {
-        // Color icon based on whether this is the active recording or not:
-        let color = if ctx.store_context.is_active(&store_id) {
-            visuals.fg_stroke.color
-        } else {
-            ui.visuals().widgets.noninteractive.fg_stroke.color
-        };
-        icon.as_image().tint(color).paint_at(ui, rect);
-    });
+    let mut item_content = list_item::LabelContent::new(title).with_icon(icon);
 
     if ui_layout.is_selection_panel() {
         item_content = item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
-                .small_icon_button(&icons::REMOVE)
-                .on_hover_text(match store_id.kind {
+                .small_icon_button(&icons::CLOSE_SMALL, "Close recording")
+                .on_hover_text(match store_id.kind() {
                     re_log_types::StoreKind::Recording => {
                         "Close this recording (unsaved data will be lost)"
                     }
@@ -803,7 +736,9 @@ pub fn entity_db_button_ui(
                 });
             if resp.clicked() {
                 ctx.command_sender()
-                    .send_system(SystemCommand::CloseStore(store_id.clone()));
+                    .send_system(SystemCommand::CloseRecordingOrTable(
+                        store_id.clone().into(),
+                    ));
             }
             resp
         });
@@ -811,6 +746,7 @@ pub fn entity_db_button_ui(
 
     let mut list_item = ui
         .list_item()
+        .active(ctx.store_context.is_active(&store_id))
         .selected(ctx.selection().contains_item(&item));
 
     if ctx.hovered().contains_item(&item) {
@@ -843,12 +779,69 @@ pub fn entity_db_button_ui(
         // blueprint.
         // TODO(jleibs): We should still have an `Activate this Blueprint` button in the selection panel
         // for the blueprint.
-        if store_id.kind == re_log_types::StoreKind::Recording {
+        if store_id.is_recording() {
             ctx.command_sender()
-                .send_system(SystemCommand::ActivateRecording(store_id.clone()));
+                .send_system(SystemCommand::ActivateRecordingOrTable(
+                    store_id.clone().into(),
+                ));
         }
-
-        ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
     }
+
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
+}
+
+pub fn table_id_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    table_id: &TableId,
+    ui_layout: UiLayout,
+) {
+    let item = re_viewer_context::Item::TableId(table_id.clone());
+
+    let mut item_content = list_item::LabelContent::new(table_id.as_str()).with_icon(&icons::TABLE);
+
+    if ui_layout.is_selection_panel() {
+        item_content = item_content.with_buttons(|ui| {
+            // Close-button:
+            let resp = ui
+                .small_icon_button(&icons::CLOSE_SMALL, "Close table")
+                .on_hover_text("Close this table (all data will be lost)");
+            if resp.clicked() {
+                ctx.command_sender()
+                    .send_system(SystemCommand::CloseRecordingOrTable(
+                        table_id.clone().into(),
+                    ));
+            }
+            resp
+        });
+    }
+
+    let mut list_item = ui
+        .list_item()
+        .selected(ctx.selection().contains_item(&item))
+        .active(ctx.active_table_id() == Some(table_id));
+
+    if ctx.hovered().contains_item(&item) {
+        list_item = list_item.force_hovered(true);
+    }
+
+    let response = list_item::list_item_scope(ui, "entity db button", |ui| {
+        list_item
+            .show_hierarchical(ui, item_content)
+            .on_hover_ui(|ui| {
+                ui.label(format!("Table: {table_id}"));
+            })
+    });
+
+    if response.hovered() {
+        ctx.selection_state().set_hovered(item.clone());
+    }
+
+    if response.clicked() {
+        ctx.command_sender()
+            .send_system(SystemCommand::ActivateRecordingOrTable(
+                table_id.clone().into(),
+            ));
+    }
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
 }

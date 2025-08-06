@@ -18,6 +18,10 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+## Enable for testing utilities.
+testing = []
+
 [dependencies]
 re_context_menu.workspace = true
 re_entity_db.workspace = true
@@ -40,3 +44,4 @@ egui_tiles.workspace = true
 egui.workspace = true
 nohash-hasher.workspace = true
 rayon.workspace = true
+web-time.workspace = true

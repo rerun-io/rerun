@@ -1,8 +1,8 @@
 use crate::AppEnvironment;
 
 use re_analytics::{
-    event::{Id, Identify, OpenRecording, StoreInfo, ViewerRuntimeInformation, ViewerStarted},
     Config, Property,
+    event::{Id, Identify, OpenRecording, StoreInfo, ViewerRuntimeInformation, ViewerStarted},
 };
 
 pub fn identify(
@@ -34,16 +34,29 @@ pub fn identify(
 
 pub fn viewer_started(
     app_env: &AppEnvironment,
+    egui_ctx: &egui::Context,
     adapter_backend: wgpu::Backend,
     device_tier: re_renderer::device_caps::DeviceCapabilityTier,
 ) -> ViewerStarted {
+    // Note that some of these things can change at runtime,
+    // but we send them only once at startup.
+    // This means if the user changes the zoom factor we won't send it
+    // until the next restart.
+    let screen_info = re_analytics::event::ScreenInfo {
+        pixels_per_point: egui_ctx.pixels_per_point(),
+        native_pixels_per_point: egui_ctx.native_pixels_per_point(),
+        zoom_factor: egui_ctx.zoom_factor(),
+    };
+
     ViewerStarted {
         url: app_env.url().cloned(),
         app_env: app_env.name(),
         runtime_info: ViewerRuntimeInformation {
+            is_docker: crate::docker_detection::is_docker(),
             is_wsl: super::wsl::is_wsl(),
             graphics_adapter_backend: adapter_backend.to_string(),
             re_renderer_device_tier: device_tier.to_string(),
+            screen_info,
         },
     }
 }
@@ -54,25 +67,27 @@ pub fn open_recording(
 ) -> Option<OpenRecording> {
     let store_info = entity_db.store_info().map(|store_info| {
         let re_log_types::StoreInfo {
-            application_id,
             store_id,
             store_source,
             store_version,
             cloned_from: _,
         } = store_info;
 
+        let application_id = store_id.application_id();
+        let recording_id = store_id.recording_id();
+
         let app_id_starts_with_rerun_example = application_id.as_str().starts_with("rerun_example");
 
         let (application_id_preprocessed, recording_id_preprocessed) =
             if app_id_starts_with_rerun_example {
                 (
-                    Id::Official(application_id.0.clone()),
-                    Id::Official(store_id.to_string()),
+                    Id::Official(application_id.to_string()),
+                    Id::Official(recording_id.to_string()),
                 )
             } else {
                 (
-                    Id::Hashed(Property::from(application_id.0.clone()).hashed()),
-                    Id::Hashed(Property::from(store_id.to_string()).hashed()),
+                    Id::Hashed(Property::from(application_id.as_str()).hashed()),
+                    Id::Hashed(Property::from(recording_id.as_str()).hashed()),
                 )
             };
 

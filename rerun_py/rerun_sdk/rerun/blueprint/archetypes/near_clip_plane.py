@@ -21,7 +21,11 @@ __all__ = ["NearClipPlane"]
 
 @define(str=False, repr=False, init=False)
 class NearClipPlane(Archetype):
-    """**Archetype**: Controls the distance to the near clip plane in 3D scene units."""
+    """
+    **Archetype**: Controls the distance to the near clip plane in 3D scene units.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     def __init__(self: Any, near_clip_plane: datatypes.Float32Like) -> None:
         """

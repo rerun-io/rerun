@@ -1,6 +1,10 @@
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
-use re_types::{self, archetypes, components, datatypes, Component as _};
+use re_types::{
+    self,
+    archetypes::{self, GraphEdges},
+    components, datatypes,
+};
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
@@ -39,7 +43,7 @@ impl VisualizerSystem for EdgesVisualizer {
         VisualizerQueryInfo::from_archetype::<archetypes::GraphEdges>()
     }
 
-    /// Populates the scene part with data from the store.
+    /// Populates the visualizer with data from the store.
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -64,8 +68,10 @@ impl VisualizerSystem for EdgesVisualizer {
                     &timeline_query,
                 );
 
-            let all_edges = results.iter_as(query.timeline, components::GraphEdge::name());
-            let graph_type = results.get_mono_with_fallback::<components::GraphType>();
+            let all_edges = results.iter_as(query.timeline, GraphEdges::descriptor_edges());
+            let graph_type = results
+                .get_mono::<components::GraphType>(&GraphEdges::descriptor_graph_type())
+                .unwrap_or_default();
 
             let sources = all_edges
                 .slice_from_struct_field::<String>(SOURCE)

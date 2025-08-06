@@ -2,7 +2,7 @@ use re_log_encoding::decoder::Decoder;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::Receiver;
-use re_log_types::{ApplicationId, StoreId};
+use re_log_types::ApplicationId;
 
 use crate::{DataLoader as _, LoadedData};
 
@@ -40,8 +40,6 @@ impl crate::DataLoader for RrdLoader {
             "Loading rrd data from filesystem…",
         );
 
-        let version_policy = re_log_encoding::VersionPolicy::Warn;
-
         match extension.as_str() {
             "rbl" => {
                 // We assume .rbl is not streamed and no retrying after seeing EOF is needed.
@@ -52,7 +50,7 @@ impl crate::DataLoader for RrdLoader {
                     .with_context(|| format!("Failed to open file {filepath:?}"))?;
                 let file = std::io::BufReader::new(file);
 
-                let decoder = Decoder::new(version_policy, file)?;
+                let decoder = Decoder::new(file)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -65,7 +63,10 @@ impl crate::DataLoader for RrdLoader {
                                 &filepath,
                                 &tx,
                                 decoder,
-                                settings.opened_application_id.as_ref(),
+                                settings
+                                    .opened_store_id
+                                    .as_ref()
+                                    .map(|store_id| store_id.application_id()),
                                 // We never want to patch blueprints' store IDs, only their app IDs.
                                 None,
                             );
@@ -80,7 +81,7 @@ impl crate::DataLoader for RrdLoader {
                 let retryable_reader = RetryableFileReader::new(&filepath).with_context(|| {
                     format!("failed to create retryable file reader for {filepath:?}")
                 })?;
-                let decoder = Decoder::new(version_policy, retryable_reader)?;
+                let decoder = Decoder::new(retryable_reader)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -118,9 +119,8 @@ impl crate::DataLoader for RrdLoader {
             return Err(crate::DataLoaderError::Incompatible(filepath));
         }
 
-        let version_policy = re_log_encoding::VersionPolicy::Warn;
         let contents = std::io::Cursor::new(contents);
-        let decoder = match re_log_encoding::decoder::Decoder::new(version_policy, contents) {
+        let decoder = match re_log_encoding::decoder::Decoder::new(contents) {
             Ok(decoder) => decoder,
             Err(err) => match err {
                 // simply not interested
@@ -133,7 +133,10 @@ impl crate::DataLoader for RrdLoader {
         // * We never want to patch blueprints' store IDs, only their app IDs.
         // * We neer use import semantics at all for .rrd files.
         let forced_application_id = if extension == "rbl" {
-            settings.opened_application_id.as_ref()
+            settings
+                .opened_store_id
+                .as_ref()
+                .map(|store_id| store_id.application_id())
         } else {
             None
         };
@@ -156,7 +159,7 @@ fn decode_and_stream<R: std::io::Read>(
     tx: &std::sync::mpsc::Sender<crate::LoadedData>,
     decoder: Decoder<R>,
     forced_application_id: Option<&ApplicationId>,
-    forced_store_id: Option<&StoreId>,
+    forced_recording_id: Option<&String>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 
@@ -169,28 +172,35 @@ fn decode_and_stream<R: std::io::Read>(
             }
         };
 
-        let msg = if forced_application_id.is_some() || forced_store_id.is_some() {
+        let msg = if forced_application_id.is_some() || forced_recording_id.is_some() {
             match msg {
                 re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
+                    let mut store_id = set_store_info.info.store_id.clone();
+                    if let Some(forced_application_id) = forced_application_id {
+                        store_id = store_id.with_application_id(forced_application_id.clone());
+                    }
+                    if let Some(forced_recording_id) = forced_recording_id {
+                        store_id = store_id.with_recording_id(forced_recording_id.clone());
+                    }
+
                     re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
                         info: re_log_types::StoreInfo {
-                            application_id: forced_application_id
-                                .cloned()
-                                .unwrap_or(set_store_info.info.application_id),
-                            store_id: forced_store_id
-                                .cloned()
-                                .unwrap_or(set_store_info.info.store_id),
+                            store_id,
                             ..set_store_info.info
                         },
                         ..set_store_info
                     })
                 }
 
-                re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
-                    re_log_types::LogMsg::ArrowMsg(
-                        forced_store_id.cloned().unwrap_or(store_id),
-                        arrow_msg,
-                    )
+                re_log_types::LogMsg::ArrowMsg(mut store_id, arrow_msg) => {
+                    if let Some(forced_application_id) = forced_application_id {
+                        store_id = store_id.with_application_id(forced_application_id.clone());
+                    }
+                    if let Some(forced_recording_id) = forced_recording_id {
+                        store_id = store_id.with_recording_id(forced_recording_id.clone());
+                    }
+
+                    re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg)
                 }
 
                 re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
@@ -275,7 +285,6 @@ impl std::io::Read for RetryableFileReader {
 #[cfg(not(target_arch = "wasm32"))]
 impl RetryableFileReader {
     fn block_until_file_changes(&self) -> std::io::Result<usize> {
-        #[allow(clippy::disallowed_methods)]
         loop {
             crossbeam::select! {
                 // Periodically check for SIGINT.
@@ -308,10 +317,8 @@ impl RetryableFileReader {
 mod tests {
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_encoding::{encoder::DroppableEncoder, VersionPolicy};
-    use re_log_types::{
-        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
-    };
+    use re_log_encoding::encoder::DroppableEncoder;
+    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     use super::*;
 
@@ -350,8 +357,7 @@ mod tests {
             LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: *RowId::new(),
                 info: StoreInfo {
-                    application_id: ApplicationId("test".to_owned()),
-                    store_id: StoreId::random(StoreKind::Recording),
+                    store_id: StoreId::random(StoreKind::Recording, "test_app"),
                     cloned_from: None,
                     store_source: StoreSource::RustSdk {
                         rustc_version: String::new(),
@@ -370,7 +376,7 @@ mod tests {
         encoder.flush_blocking().expect("failed to flush messages");
 
         let reader = RetryableFileReader::new(&rrd_file_path).unwrap();
-        let mut decoder = Decoder::new(VersionPolicy::Warn, reader).unwrap();
+        let mut decoder = Decoder::new(reader).unwrap();
 
         // we should be able to read 5 messages that we wrote
         let decoded_messages = (0..5)

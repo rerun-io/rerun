@@ -7,9 +7,9 @@
 //! ```
 
 use rerun::{
+    DataLoader as _, EntityPath, LoadedData, TimePoint,
     external::{anyhow, re_build_info, re_data_loader, re_log},
     log::{Chunk, RowId},
-    DataLoader as _, EntityPath, LoadedData, TimePoint,
 };
 
 fn main() -> anyhow::Result<std::process::ExitCode> {
@@ -78,15 +78,12 @@ fn hash_and_log(
         .with_media_type(rerun::MediaType::TEXT);
 
     let entity_path = EntityPath::from_file_path(filepath);
-    let entity_path = format!("{entity_path}/hashed").into();
+    let entity_path = format!("{entity_path}/hashed");
     let chunk = Chunk::builder(entity_path)
         .with_archetype(RowId::new(), TimePoint::default(), &doc)
         .build()?;
 
-    let store_id = settings
-        .opened_store_id
-        .clone()
-        .unwrap_or_else(|| settings.store_id.clone());
+    let store_id = settings.opened_store_id_or_recommended();
     let data = LoadedData::Chunk(HashLoader::name(&HashLoader), store_id, chunk);
     tx.send(data).ok();
 

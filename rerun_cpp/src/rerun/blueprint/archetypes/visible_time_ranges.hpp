@@ -7,7 +7,6 @@
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -25,6 +24,9 @@ namespace rerun::blueprint::archetypes {
     /// The default visual time range depends on the type of view this property applies to:
     /// - For time series views, the default is to show the entire timeline.
     /// - For any other view, the default is to apply latest-at semantics.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct VisibleTimeRanges {
         /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
         ///
@@ -32,19 +34,14 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> ranges;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.VisibleTimeRangesIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] =
             "rerun.blueprint.archetypes.VisibleTimeRanges";
 
         /// `ComponentDescriptor` for the `ranges` field.
         static constexpr auto Descriptor_ranges = ComponentDescriptor(
-            ArchetypeName, "ranges",
-            Loggable<rerun::blueprint::components::VisibleTimeRange>::Descriptor.component_name
+            ArchetypeName, "VisibleTimeRanges:ranges",
+            Loggable<rerun::blueprint::components::VisibleTimeRange>::ComponentType
         );
 
       public:

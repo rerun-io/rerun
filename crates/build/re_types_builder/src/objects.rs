@@ -10,10 +10,10 @@ use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
 
 use crate::{
-    root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
-    FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_DEPRECATED_NOTICE, ATTR_RERUN_DEPRECATED_SINCE,
-    ATTR_RERUN_OVERRIDE_TYPE, ATTR_RERUN_STATE,
+    ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED, ATTR_RERUN_COMPONENT_REQUIRED,
+    ATTR_RERUN_DEPRECATED_NOTICE, ATTR_RERUN_DEPRECATED_SINCE, ATTR_RERUN_OVERRIDE_TYPE,
+    ATTR_RERUN_STATE, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
+    FbsSchema, FbsType, Reporter, data_type::LazyDatatype, root_as_schema,
 };
 
 // ---
@@ -291,7 +291,9 @@ impl State {
                             notice: notice.clone(),
                         })
                     } else {
-                        Err(format!("Deprecated object must have {ATTR_RERUN_DEPRECATED_SINCE:?} and {ATTR_RERUN_DEPRECATED_NOTICE:?} set"))
+                        Err(format!(
+                            "Deprecated object must have {ATTR_RERUN_DEPRECATED_SINCE:?} and {ATTR_RERUN_DEPRECATED_NOTICE:?} set"
+                        ))
                     }
                 }
                 unknown => Err(format!("Unknown value for {ATTR_RERUN_STATE:?}: {unknown}")),
@@ -421,7 +423,7 @@ pub struct Object {
     ///
     /// This is lazily computed when the parent object gets registered into the Arrow registry and
     /// will be `None` until then.
-    pub datatype: Option<crate::LazyDatatype>,
+    pub datatype: Option<LazyDatatype>,
 }
 
 impl PartialEq for Object {
@@ -488,25 +490,33 @@ impl Object {
                 reporter.error(&virtpath, &fqname, &err);
                 State::Stable
             })
-        } else if kind == ObjectKind::Datatype || is_testing_fqname(&fqname) {
+        } else if is_testing_fqname(&fqname) {
             State::Stable
         } else if scope == Some("blueprint".to_owned()) {
-            if false {
-                // TODO(#9427)
-                State::Unstable // All blueprint APIs are considered unstable unless otherwise specified
-            } else {
-                State::Stable
-            }
+            State::Unstable // All blueprint APIs are considered unstable unless otherwise specified
         } else {
-            if false {
-                // TODO(#9427): make ATTR_DOCS_STATE attribute mandatory
-                reporter.error(
-                    &virtpath,
-                    &fqname,
-                    format!("Missing attribute '{ATTR_RERUN_STATE}'"),
-                );
+            match kind {
+                ObjectKind::Datatype | ObjectKind::Component => {
+                    if false {
+                        // TODO(#9427): make ATTR_RERUN_STATE attribute mandatory
+                        reporter.warn(
+                            &virtpath,
+                            &fqname,
+                            format!("Missing attribute '{ATTR_RERUN_STATE}'"),
+                        );
+                    }
+                    State::Stable
+                }
+                ObjectKind::Archetype => {
+                    reporter.error(
+                        &virtpath,
+                        &fqname,
+                        format!("Missing attribute '{ATTR_RERUN_STATE}'"),
+                    );
+                    State::Stable
+                }
+                ObjectKind::View => State::Unstable,
             }
-            State::Stable
         };
 
         let fields: Vec<_> = {
@@ -609,14 +619,20 @@ impl Object {
             State::Stable
         };
 
-        let is_enum = enm.underlying_type().base_type() != FbsBaseType::UType;
+        let class = match enm.underlying_type().base_type() {
+            FbsBaseType::UByte => ObjectClass::Enum(EnumIntegerType::U8),
+            FbsBaseType::UShort => ObjectClass::Enum(EnumIntegerType::U16),
+            FbsBaseType::UInt => ObjectClass::Enum(EnumIntegerType::U32),
+            FbsBaseType::ULong => ObjectClass::Enum(EnumIntegerType::U64),
+            _ => ObjectClass::Union,
+        };
 
         let mut fields: Vec<_> = enm
             .values()
             .iter()
             .filter(|val| {
                 // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
-                is_enum
+                class.is_enum()
                     || val
                         .union_type()
                         .filter(|utype| utype.base_type() != FbsBaseType::None)
@@ -627,7 +643,7 @@ impl Object {
             })
             .collect();
 
-        if is_enum {
+        if class.is_enum() {
             // We want to reserve the value of 0 in all of our enums as an Invalid type variant.
             //
             // The reasoning behind this is twofold:
@@ -645,10 +661,10 @@ impl Object {
             );
 
             assert!(
-                fields[0].name == "Invalid" && fields[0].enum_value == Some(0),
+                fields[0].name == "Invalid" && fields[0].enum_or_union_variant_value == Some(0),
                 "enums must start with 'Invalid' variant with value 0, but {fqname} starts with {} = {:?}",
                 fields[0].name,
-                fields[0].enum_value,
+                fields[0].enum_or_union_variant_value,
             );
 
             // Now remove the invalid variant so that it doesn't make it into our native enum definitions.
@@ -666,11 +682,7 @@ impl Object {
             state,
             attrs,
             fields,
-            class: if is_enum {
-                ObjectClass::Enum
-            } else {
-                ObjectClass::Union
-            },
+            class,
             datatype: None,
         }
     }
@@ -719,7 +731,7 @@ impl Object {
     }
 
     pub fn is_enum(&self) -> bool {
-        self.class == ObjectClass::Enum
+        self.class.is_enum()
     }
 
     pub fn is_union(&self) -> bool {
@@ -804,10 +816,45 @@ impl Object {
     pub fn is_archetype(&self) -> bool {
         self.kind == ObjectKind::Archetype
     }
+
+    pub fn enum_integer_type(&self) -> Option<EnumIntegerType> {
+        match self.class {
+            ObjectClass::Enum(enum_type) => Some(enum_type),
+            _ => None,
+        }
+    }
 }
 
 pub fn is_testing_fqname(fqname: &str) -> bool {
     fqname.contains("rerun.testing")
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EnumIntegerType {
+    U8,
+    U16,
+    U32,
+    U64,
+}
+
+impl EnumIntegerType {
+    pub fn to_type(self) -> Type {
+        match self {
+            Self::U8 => Type::UInt8,
+            Self::U16 => Type::UInt16,
+            Self::U32 => Type::UInt32,
+            Self::U64 => Type::UInt64,
+        }
+    }
+
+    pub fn format_value(&self, value: u64) -> String {
+        match self {
+            Self::U8 => format!("{value}"),
+            Self::U16 => format!("0x{:0X}", value as u16),
+            Self::U32 => format!("0x{:0X}", value as u32),
+            Self::U64 => format!("0x{value:0X}"),
+        }
+    }
 }
 
 /// Is this a struct, enum, or union?
@@ -817,15 +864,10 @@ pub enum ObjectClass {
 
     /// Dumb C-style enum.
     ///
-    /// Encoded as a sparse arrow union.
+    /// Encoded as a primitive integer arrow array.
     ///
-    /// Arrow uses a `i8` to encode the variant, forbidding negatives,
-    /// so there are 127 possible states.
     /// We reserve `0` for a special/implicit `__null_markers` variant,
-    /// which we use to encode null values.
-    /// This means we support at most 126 possible enum variants.
-    /// Therefore the enum can be backed by a simple `u8` in Rust and C++.
-    Enum,
+    Enum(EnumIntegerType),
 
     /// Proper sum-type union.
     ///
@@ -837,6 +879,12 @@ pub enum ObjectClass {
     /// which we use to encode null values.
     /// This means we support at most 126 possible union variants.
     Union,
+}
+
+impl ObjectClass {
+    pub fn is_enum(&self) -> bool {
+        matches!(self, Self::Enum(_))
+    }
 }
 
 /// A high-level representation of a flatbuffers field, which can be either a struct member or a
@@ -861,8 +909,8 @@ pub struct ObjectField {
     /// but for enums it is usually `PascalCase`.
     pub name: String,
 
-    /// The value of an enum type
-    pub enum_value: Option<u8>,
+    /// The value of the variant for enums & unions.
+    pub enum_or_union_variant_value: Option<u64>,
 
     /// The field's multiple layers of documentation.
     pub docs: Docs,
@@ -887,7 +935,7 @@ pub struct ObjectField {
     ///
     /// This is lazily computed when the parent object gets registered into the Arrow registry and
     /// will be `None` until then.
-    pub datatype: Option<crate::LazyDatatype>,
+    pub datatype: Option<LazyDatatype>,
 }
 
 impl ObjectField {
@@ -953,7 +1001,7 @@ impl ObjectField {
             fqname,
             pkg_name,
             name,
-            enum_value,
+            enum_or_union_variant_value: enum_value,
             docs,
             state,
             typ,
@@ -1021,7 +1069,7 @@ impl ObjectField {
             );
         }
 
-        let enum_value = Some(val.value() as u8);
+        let enum_value = Some(val.value() as u64);
 
         Self {
             virtpath,
@@ -1029,7 +1077,7 @@ impl ObjectField {
             fqname,
             pkg_name,
             name,
-            enum_value,
+            enum_or_union_variant_value: enum_value,
             state,
             docs,
             typ,
@@ -1099,11 +1147,25 @@ impl ObjectField {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FieldKind {
     Required,
     Recommended,
     Optional,
+}
+
+impl FieldKind {
+    pub const ALL: [Self; 3] = [Self::Required, Self::Recommended, Self::Optional];
+}
+
+impl std::fmt::Display for FieldKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Required => "Required".fmt(f),
+            Self::Recommended => "Recommended".fmt(f),
+            Self::Optional => "Optional".fmt(f),
+        }
+    }
 }
 
 /// The underlying type of an [`ObjectField`].
@@ -1136,7 +1198,9 @@ pub enum Type {
     Vector {
         elem_type: ElementType,
     },
-    Object(String), // fqname
+    Object {
+        fqname: String,
+    },
 }
 
 impl From<ElementType> for Type {
@@ -1155,7 +1219,7 @@ impl From<ElementType> for Type {
             ElementType::Float32 => Self::Float32,
             ElementType::Float64 => Self::Float64,
             ElementType::String => Self::String,
-            ElementType::Object(fqname) => Self::Object(fqname),
+            ElementType::Object { fqname } => Self::Object { fqname },
         }
     }
 }
@@ -1175,14 +1239,18 @@ impl Type {
             match (typ, type_override.as_str()) {
                 (FbsBaseType::UShort, "float16") => {
                     return Self::Float16;
-                },
+                }
                 (FbsBaseType::Array | FbsBaseType::Vector, "float16") => {}
-                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"),
+                _ => unreachable!(
+                    "UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"
+                ),
             }
         }
 
         if let Some(enum_fqname) = try_get_enum_fqname(enums, field_type, typ, virtpath) {
-            return Self::Object(enum_fqname);
+            return Self::Object {
+                fqname: enum_fqname,
+            };
         }
 
         match typ {
@@ -1205,12 +1273,16 @@ impl Type {
                 if obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
                     Self::Unit
                 } else {
-                    Self::Object(obj.name().to_owned())
+                    Self::Object {
+                        fqname: obj.name().to_owned(),
+                    }
                 }
             }
             FbsBaseType::Union => {
                 let union = &enums[field_type.index() as usize];
-                Self::Object(union.name().to_owned())
+                Self::Object {
+                    fqname: union.name().to_owned(),
+                }
             }
             FbsBaseType::Array => Self::Array {
                 elem_type: ElementType::from_raw_base_type(
@@ -1289,8 +1361,10 @@ impl Type {
             Self::String => Some(Self::Vector {
                 elem_type: ElementType::String,
             }),
-            Self::Object(obj) => Some(Self::Vector {
-                elem_type: ElementType::Object(obj.clone()),
+            Self::Object { fqname } => Some(Self::Vector {
+                elem_type: ElementType::Object {
+                    fqname: fqname.clone(),
+                },
             }),
 
             Self::Unit => None,
@@ -1325,7 +1399,7 @@ impl Type {
             | Self::Float32
             | Self::Float64
             | Self::String
-            | Self::Object(_) => None,
+            | Self::Object { .. } => None,
         }
     }
 
@@ -1337,7 +1411,7 @@ impl Type {
     /// `Some(fqname)` if this is an `Object` or an `Array`/`Vector` of `Object`s.
     pub fn fqname(&self) -> Option<&str> {
         match self {
-            Self::Object(fqname) => Some(fqname.as_str()),
+            Self::Object { fqname } => Some(fqname.as_str()),
             Self::Array {
                 elem_type,
                 length: _,
@@ -1368,12 +1442,12 @@ impl Type {
 
             Self::Array { elem_type, .. } => elem_type.has_default_destructor(objects),
 
-            Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
+            Self::Object { fqname } => objects[fqname].has_default_destructor(objects),
         }
     }
 
     pub fn is_union(&self, objects: &Objects) -> bool {
-        if let Self::Object(fqname) = self {
+        if let Self::Object { fqname } = self {
             let obj = &objects[fqname];
             if obj.is_arrow_transparent() {
                 obj.fields[0].typ.is_union(objects)
@@ -1399,8 +1473,8 @@ fn try_get_enum_fqname(
         if enum_index < enums.len() {
             // It is an enum.
             assert!(
-                typ == FbsBaseType::UByte,
-                "{virtpath}: For consistency, enums must be declared as the `ubyte` type"
+                is_uint(typ),
+                "{virtpath}: For consistency, enums must be unsigned integers, i.e. `ubyte`, `ushort`, `uint` or `ulong`"
             );
 
             let enum_ = &enums[field_type.index() as usize];
@@ -1424,6 +1498,13 @@ fn is_int(typ: FbsBaseType) -> bool {
     )
 }
 
+fn is_uint(typ: FbsBaseType) -> bool {
+    matches!(
+        typ,
+        FbsBaseType::UByte | FbsBaseType::UShort | FbsBaseType::UInt | FbsBaseType::ULong
+    )
+}
+
 /// The underlying element type for arrays/vectors/maps.
 ///
 /// Flatbuffers doesn't support directly nesting multiple layers of arrays, they
@@ -1443,7 +1524,7 @@ pub enum ElementType {
     Float32,
     Float64,
     String,
-    Object(String), // fqname
+    Object { fqname: String },
 }
 
 impl ElementType {
@@ -1456,7 +1537,9 @@ impl ElementType {
         virtpath: &str,
     ) -> Self {
         if let Some(enum_fqname) = try_get_enum_fqname(enums, outer_type, inner_type, virtpath) {
-            return Self::Object(enum_fqname);
+            return Self::Object {
+                fqname: enum_fqname,
+            };
         }
 
         // TODO(jleibs): Clean up fqname plumbing
@@ -1466,7 +1549,9 @@ impl ElementType {
                 (FbsBaseType::UShort, "float16") => {
                     return Self::Float16;
                 }
-                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"),
+                _ => unreachable!(
+                    "UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"
+                ),
             }
         }
 
@@ -1486,11 +1571,15 @@ impl ElementType {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[outer_type.index() as usize];
-                Self::Object(obj.name().to_owned())
+                Self::Object {
+                    fqname: obj.name().to_owned(),
+                }
             }
             FbsBaseType::Union => {
                 let enm = &enums[outer_type.index() as usize];
-                Self::Object(enm.name().to_owned())
+                Self::Object {
+                    fqname: enm.name().to_owned(),
+                }
             }
             FbsBaseType::None
             | FbsBaseType::UType
@@ -1505,7 +1594,7 @@ impl ElementType {
     /// `Some(fqname)` if this is an `Object`.
     pub fn fqname(&self) -> Option<&str> {
         match self {
-            Self::Object(fqname) => Some(fqname.as_str()),
+            Self::Object { fqname } => Some(fqname.as_str()),
             _ => None,
         }
     }
@@ -1528,14 +1617,14 @@ impl ElementType {
 
             Self::String => false,
 
-            Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
+            Self::Object { fqname } => objects[fqname].has_default_destructor(objects),
         }
     }
 
     /// Is this type directly backed by a native arrow `Buffer`. This means the data can
-    /// be returned using a `re_types::ArrowBuffer` which facilitates direct zero-copy access to
+    /// be returned using a `ScalarBuffer` which facilitates direct zero-copy access to
     /// a slice representation.
-    pub fn backed_by_arrow_buffer(&self) -> bool {
+    pub fn backed_by_scalar_buffer(&self) -> bool {
         match self {
             Self::UInt8
             | Self::UInt16
@@ -1548,12 +1637,12 @@ impl ElementType {
             | Self::Float16
             | Self::Float32
             | Self::Float64 => true,
-            Self::Bool | Self::Object(_) | Self::String => false,
+            Self::Bool | Self::Object { .. } | Self::String => false,
         }
     }
 
     pub fn is_union(&self, objects: &Objects) -> bool {
-        if let Self::Object(fqname) = self {
+        if let Self::Object { fqname } = self {
             let obj = &objects[fqname];
             if obj.is_arrow_transparent() {
                 obj.fields[0].typ.is_union(objects)

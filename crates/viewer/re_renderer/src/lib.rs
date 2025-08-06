@@ -10,6 +10,7 @@
 // TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
+mod allocator;
 pub mod device_caps;
 pub mod importer;
 pub mod mesh;
@@ -18,8 +19,8 @@ pub mod resource_managers;
 pub mod texture_info;
 pub mod video;
 pub mod view_builder;
+pub mod wgpu_buffer_types;
 
-mod allocator;
 mod color;
 mod colormap;
 mod context;
@@ -37,7 +38,6 @@ mod queueable_draw_data;
 mod rect;
 mod size;
 mod transform;
-mod wgpu_buffer_types;
 mod wgpu_resources;
 
 #[cfg(test)]
@@ -52,19 +52,28 @@ mod workspace_shaders;
 
 use allocator::GpuReadbackBuffer;
 
-pub use allocator::{CpuWriteGpuReadError, GpuReadbackIdentifier};
+pub use allocator::{
+    CpuWriteGpuReadError, GpuReadbackIdentifier, create_and_fill_uniform_buffer,
+    create_and_fill_uniform_buffer_batch,
+};
 pub use color::Rgba32Unmul;
 pub use colormap::{
-    colormap_cyan_to_yellow_srgb, colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb,
-    colormap_srgb, colormap_turbo_srgb, colormap_viridis_srgb, grayscale_srgb, Colormap,
+    Colormap, colormap_cyan_to_yellow_srgb, colormap_inferno_srgb, colormap_magma_srgb,
+    colormap_plasma_srgb, colormap_srgb, colormap_turbo_srgb, colormap_viridis_srgb,
+    grayscale_srgb,
 };
 pub use context::{
-    adapter_info_summary, MsaaMode, RenderConfig, RenderContext, RenderContextError,
+    MsaaMode, RenderConfig, RenderContext, RenderContextError, adapter_info_summary,
 };
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
+pub use draw_phases::{
+    DrawPhase, OutlineConfig, OutlineMaskPreference, OutlineMaskProcessor, PickingLayerId,
+    PickingLayerInstanceId, PickingLayerObjectId, PickingLayerProcessor, ScreenshotProcessor,
+};
+pub use global_bindings::GlobalBindings;
 pub use importer::{CpuMeshInstance, CpuModel, CpuModelMeshKey};
-pub use line_drawable_builder::{LineDrawableBuilder, LineStripBuilder};
+pub use line_drawable_builder::{LineBatchBuilder, LineDrawableBuilder, LineStripBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use queueable_draw_data::QueueableDrawData;
 pub use rect::{RectF32, RectInt};
@@ -72,21 +81,20 @@ pub use size::Size;
 pub use texture_info::Texture2DBufferInfo;
 pub use transform::RectTransform;
 pub use view_builder::ViewBuilder;
-pub use wgpu_resources::WgpuResourcePoolStatistics;
-
-use draw_phases::DrawPhase;
-pub use draw_phases::{
-    OutlineConfig, OutlineMaskPreference, PickingLayerId, PickingLayerInstanceId,
-    PickingLayerObjectId, PickingLayerProcessor, ScreenshotProcessor,
+pub use wgpu_resources::{
+    BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuPipelineLayoutPool, GpuRenderPipelineHandle, GpuRenderPipelinePool,
+    GpuRenderPipelinePoolAccessor, GpuShaderModuleHandle, GpuShaderModulePool, PipelineLayoutDesc,
+    RenderPipelineDesc, ShaderModuleDesc, VertexBufferLayout, WgpuResourcePoolStatistics,
 };
 
-pub use self::file_system::{get_filesystem, FileSystem};
+pub use self::file_system::{FileSystem, get_filesystem};
 #[allow(unused_imports)] // they can be handy from time to time
 use self::file_system::{MemFileSystem, OsFileSystem};
 
 pub use self::file_resolver::{
-    new_recommended as new_recommended_file_resolver, FileResolver, ImportClause,
-    RecommendedFileResolver, SearchPath,
+    FileResolver, ImportClause, RecommendedFileResolver, SearchPath,
+    new_recommended as new_recommended_file_resolver,
 };
 pub use self::file_server::FileServer;
 
@@ -94,7 +102,10 @@ pub use self::file_server::FileServer;
 pub use ecolor::{Color32, Hsva, Rgba};
 
 pub mod external {
+    pub use anyhow;
+    pub use bytemuck;
     pub use re_video;
+    pub use smallvec;
     pub use wgpu;
 }
 

@@ -1,8 +1,8 @@
 use re_types::{
+    Archetype as _,
     archetypes::Image,
-    components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
+    components::{DrawOrder, ImageFormat, Opacity},
     image::ImageKind,
-    Component as _,
 };
 use re_view::HybridResults;
 use re_viewer_context::{
@@ -13,13 +13,14 @@ use re_viewer_context::{
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect,
     contexts::SpatialSceneEntityContext,
+    ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableRectSourceData, PickableTexturedRect,
 };
 
-use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
 
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -119,71 +120,88 @@ impl ImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_buffer_chunks) = results.get_required_chunks(&ImageBuffer::name()) else {
+        let Some(all_buffer_chunks) = results.get_required_chunks(Image::descriptor_buffer())
+        else {
             return;
         };
-        let Some(all_formats_chunks) = results.get_required_chunks(&ImageFormat::name()) else {
+        let Some(all_formats_chunks) = results.get_required_chunks(Image::descriptor_format())
+        else {
             return;
         };
 
         let timeline = ctx.query.timeline();
-        let all_buffers_indexed =
-            iter_slices::<&[u8]>(&all_buffer_chunks, timeline, ImageBuffer::name());
-        let all_formats_indexed =
-            iter_component::<ImageFormat>(&all_formats_chunks, timeline, ImageFormat::name());
-        let all_opacities = results.iter_as(timeline, Opacity::name());
+        let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
+        let all_formats_indexed = iter_component::<ImageFormat>(&all_formats_chunks, timeline);
+        let all_opacities = results.iter_as(timeline, Image::descriptor_opacity());
 
         let data = re_query::range_zip_1x2(
             all_buffers_indexed,
             all_formats_indexed,
             all_opacities.slice::<f32>(),
         )
-        .filter_map(|(index, buffers, formats, opacities)| {
+        .filter_map(|((_time, row_id), buffers, formats, opacities)| {
             let buffer = buffers.first()?;
 
             Some(ImageComponentData {
-                image: ImageInfo {
-                    buffer_row_id: index.1,
-                    buffer: buffer.clone().into(),
-                    format: first_copied(formats.as_deref())?.0,
-                    kind: ImageKind::Color,
-                },
+                image: ImageInfo::from_stored_blob(
+                    row_id,
+                    &Image::descriptor_buffer(),
+                    buffer.clone().into(),
+                    first_copied(formats.as_deref())?.0,
+                    ImageKind::Color,
+                ),
                 opacity: first_copied(opacities).map(Into::into),
             })
         });
 
         for ImageComponentData { image, opacity } in data {
             let opacity = opacity.unwrap_or_else(|| self.fallback_for(ctx));
+            #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
             let colormap = None;
 
             if let Some(textured_rect) = textured_rect_from_image(
-                ctx.viewer_ctx,
+                ctx.viewer_ctx(),
                 entity_path,
                 spatial_ctx,
                 &image,
                 colormap,
                 multiplicative_tint,
-                "Image",
-                &mut self.data,
+                Image::name(),
             ) {
-                self.data.pickable_rects.push(PickableTexturedRect {
-                    ent_path: entity_path.clone(),
-                    textured_rect,
-                    source_data: PickableRectSourceData::Image {
-                        image,
-                        depth_meter: None,
+                self.data.add_pickable_rect(
+                    PickableTexturedRect {
+                        ent_path: entity_path.clone(),
+                        textured_rect,
+                        source_data: PickableRectSourceData::Image {
+                            image,
+                            depth_meter: None,
+                        },
                     },
-                });
+                    spatial_ctx.view_class_identifier,
+                );
             }
         }
     }
 }
 
 impl TypedComponentFallbackProvider<Opacity> for ImageVisualizer {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
-        1.0.into()
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
+        // Color images should be transparent whenever they're on top of other images,
+        // But fully opaque if there are no other images in the scene.
+        let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
+            return 1.0.into();
+        };
+
+        // Known cosmetic issues with this approach:
+        // * The first frame we have more than one image, the color image will be opaque.
+        //      It's too complex to do a full view query just for this here.
+        //      However, we should be able to analyze the `DataQueryResults` instead to check how many entities are fed to the Image/DepthImage visualizers.
+        // * In 3D scenes, images that are on a completely different plane will cause this to become transparent.
+        view_state
+            .fallback_opacity_for_image_kind(ImageKind::Color)
+            .into()
     }
 }
 

@@ -1,7 +1,7 @@
 use egui::NumExt as _;
 
 use re_types::{
-    blueprint::components::TensorDimensionIndexSlider,
+    blueprint::{archetypes, components::TensorDimensionIndexSlider},
     components::{TensorDimensionIndexSelection, TensorHeightDimension, TensorWidthDimension},
     datatypes::TensorDimensionSelection,
 };
@@ -37,11 +37,19 @@ impl TensorSliceSelection {
     ) -> Result<Self, re_types::DeserializationError> {
         re_tracing::profile_function!();
 
-        let mut width = slice_selection.component_or_empty::<TensorWidthDimension>()?;
-        let mut height = slice_selection.component_or_empty::<TensorHeightDimension>()?;
-        let mut indices =
-            slice_selection.component_array_or_empty::<TensorDimensionIndexSelection>()?;
-        let mut slider = slice_selection.component_array::<TensorDimensionIndexSlider>()?;
+        let mut width = slice_selection.component_or_empty::<TensorWidthDimension>(
+            &archetypes::TensorSliceSelection::descriptor_width(),
+        )?;
+        let mut height = slice_selection.component_or_empty::<TensorHeightDimension>(
+            &archetypes::TensorSliceSelection::descriptor_height(),
+        )?;
+        let mut indices = slice_selection
+            .component_array_or_empty::<TensorDimensionIndexSelection>(
+                &archetypes::TensorSliceSelection::descriptor_indices(),
+            )?;
+        let mut slider = slice_selection.component_array::<TensorDimensionIndexSlider>(
+            &archetypes::TensorSliceSelection::descriptor_slider(),
+        )?;
 
         make_width_height_valid(shape, &mut width, &mut height);
         make_indices_valid(shape, &mut indices, width, height);

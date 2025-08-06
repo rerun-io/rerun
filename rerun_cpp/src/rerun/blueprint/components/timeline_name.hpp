@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/utf8.hpp"
 #include "../../result.hpp"
 
@@ -14,6 +13,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: A timeline identified by its name.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct TimelineName {
         rerun::datatypes::Utf8 value;
 
@@ -47,7 +49,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::TimelineName> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.components.TimelineName";
+        static constexpr std::string_view ComponentType = "rerun.blueprint.components.TimelineName";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

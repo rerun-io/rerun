@@ -1,4 +1,3 @@
-use re_types::{archetypes::AnnotationContext, Archetype as _, ComponentNameSet};
 use re_viewer_context::{
     AnnotationMap, IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier,
 };
@@ -13,15 +12,6 @@ impl IdentifiedViewSystem for AnnotationSceneContext {
 }
 
 impl ViewContextSystem for AnnotationSceneContext {
-    fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
-        vec![
-            AnnotationContext::required_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(), //
-        ]
-    }
-
     fn execute(
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,

@@ -60,6 +60,8 @@ class ViewContents(Archetype):
     The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
     The last rule matching `/world` is `- /world`, so it is excluded.
     The last rule matching `/world/house` is `+ /world/**`, so it is included.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     def __init__(self: Any, query: datatypes.Utf8ArrayLike) -> None:

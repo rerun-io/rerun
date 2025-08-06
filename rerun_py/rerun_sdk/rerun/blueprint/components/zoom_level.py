@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -16,7 +15,11 @@ __all__ = ["ZoomLevel", "ZoomLevelBatch"]
 
 
 class ZoomLevel(datatypes.Float64, ComponentMixin):
-    """**Component**: A zoom level determines how much of the world is visible on a map."""
+    """
+    **Component**: A zoom level determines how much of the world is visible on a map.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ZoomLevelExt in zoom_level_ext.py
@@ -25,7 +28,7 @@ class ZoomLevel(datatypes.Float64, ComponentMixin):
 
 
 class ZoomLevelBatch(datatypes.Float64Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.ZoomLevel")
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.ZoomLevel"
 
 
 # This is patched in late to avoid circular dependencies.

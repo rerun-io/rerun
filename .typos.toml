@@ -5,12 +5,16 @@
 [files]
 extend-exclude = [
   ".typos.toml",
-  "crates/viewer/re_ui/data/design_tokens.json",
+  "*.snap",
   "crates/viewer/re_ui/src/design_tokens.rs",
   "examples/assets",
+  "rerun_cpp/src/rerun/archetypes/image.hpp",     # TODO(emilk): remove once we remove from_greyscale8
+  "rerun_cpp/src/rerun/archetypes/image_ext.cpp", # TODO(emilk): remove once we remove from_greyscale8
   "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
+  "*.png",
+  "*.mp4",
+  "*.rrd",
 ]
-
 
 [default.extend-words]
 lod = "lod"     # level-of-detail
@@ -73,6 +77,8 @@ flavour = "flavor"
 fulfil = "fufill"
 gaol = "jail"
 grey = "gray"
+greys = "grays"
+greyscale = "grayscale"
 harbour = "habor"
 honour = "honor"
 humour = "humor"
@@ -158,7 +164,11 @@ extend-ignore-re = [
   "phc_[a-zA-Z0-9]*", # Posthog public key
   "PNG.?",            # Workaround for https://github.com/crate-ci/typos/issues/967
 
-  "_LEVL_", # USed in air_traffic_data.py
+  "_LEVL_", # Used in air_traffic_data.py
 
   "thrEEone", # Used in a test
+
+  "notify_seeked", # Used in the `mcap` crate.
+
+  "muh_scalars", # Weird name introduced in `crates/viewer/re_view_time_series/tests/basic.rs` introduced in https://github.com/rerun-io/rerun/pull/10713
 ]

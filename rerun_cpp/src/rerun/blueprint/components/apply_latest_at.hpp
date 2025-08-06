@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/bool.hpp"
 #include "../../result.hpp"
 
@@ -12,6 +11,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether empty cells in a dataframe should be filled with a latest-at query.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ApplyLatestAt {
         rerun::datatypes::Bool apply_latest_at;
 
@@ -46,7 +48,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::ApplyLatestAt> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.ApplyLatestAt";
 
         /// Returns the arrow data type this type corresponds to.

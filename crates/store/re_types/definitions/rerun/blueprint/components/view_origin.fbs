@@ -2,11 +2,11 @@ namespace rerun.blueprint.components;
 
 /// The origin of a view.
 table ViewOrigin (
-    "attr.arrow.transparent",
-    "attr.rerun.scope": "blueprint",
-    "attr.python.aliases": "str",
-    "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
-    "attr.rust.repr": "transparent"
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "str",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
 ) {
-    value: rerun.datatypes.EntityPath (order: 100);
+  value: rerun.datatypes.EntityPath (order: 100);
 }

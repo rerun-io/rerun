@@ -18,6 +18,16 @@ pub struct TensorStats {
     pub finite_range: (f64, f64),
 }
 
+impl re_byte_size::SizeBytes for TensorStats {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 impl TensorStats {
     pub fn from_tensor(tensor: &re_types::datatypes::TensorData) -> Self {
         re_tracing::profile_function!();
@@ -140,7 +150,7 @@ impl TensorStats {
 
         let finite_range = if range
             .as_ref()
-            .map_or(true, |r| r.0.is_finite() && r.1.is_finite())
+            .is_none_or(|r| r.0.is_finite() && r.1.is_finite())
         {
             range
         } else {

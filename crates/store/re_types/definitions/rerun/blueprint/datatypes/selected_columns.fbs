@@ -8,6 +8,8 @@ table SelectedColumns (
   "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.rerun.scope": "blueprint"
 ) {
+  // row_id: rerun.datatypes.Bool (order: 50); // TODO(#9921): add support for showing Row ID in UI
+
   /// The time columns to include
   time_columns: [rerun.datatypes.Utf8] (order: 100);
 

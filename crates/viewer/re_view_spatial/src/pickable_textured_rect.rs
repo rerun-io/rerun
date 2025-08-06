@@ -1,5 +1,5 @@
 use re_log_types::EntityPath;
-use re_renderer::{renderer::TexturedRect, QueueableDrawData};
+use re_renderer::{QueueableDrawData, renderer::TexturedRect};
 use re_types::components::DepthMeter;
 use re_viewer_context::{ImageInfo, ViewSystemExecutionError};
 
@@ -14,8 +14,8 @@ pub enum PickableRectSourceData {
     /// The rectangle is a frame in a video.
     Video,
 
-    /// The rectangle represents an error icon.
-    ErrorPlaceholder,
+    /// The rectangle represents a placeholder icon.
+    Placeholder,
 }
 
 /// Image rectangle that can be picked in the view.

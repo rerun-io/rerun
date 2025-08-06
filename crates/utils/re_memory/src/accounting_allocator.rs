@@ -6,8 +6,8 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use crate::{
-    allocation_tracker::{AllocationTracker, CallstackStatistics, PtrHash},
     CountAndSize,
+    allocation_tracker::{AllocationTracker, CallstackStatistics, PtrHash},
 };
 
 /// Only track allocations of at least this size.

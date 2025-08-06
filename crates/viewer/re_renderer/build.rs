@@ -12,15 +12,16 @@
 
 // TODO(cmc): this should only run for release builds
 
+#![allow(clippy::disallowed_types)] // False positives for using files on Wasm
 #![allow(clippy::unwrap_used)]
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, ensure, Context as _};
+use anyhow::{Context as _, bail, ensure};
 use walkdir::{DirEntry, WalkDir};
 
 use re_build_tools::{
-    get_and_track_env_var, rerun_if_changed, write_file_if_necessary, Environment,
+    Environment, get_and_track_env_var, rerun_if_changed, write_file_if_necessary,
 };
 
 // ---
@@ -67,7 +68,7 @@ impl std::str::FromStr for ImportClause {
 
             return s
                 .parse()
-                .with_context(|| "couldn't parse {s:?} as PathBuf")
+                .with_context(|| format!("couldn't parse {s:?} as PathBuf"))
                 .map(|path| Self { path });
         }
 

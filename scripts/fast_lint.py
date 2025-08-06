@@ -8,6 +8,7 @@ import argparse
 import concurrent.futures
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -22,22 +23,35 @@ def changed_files() -> list[str]:
     current_branch = repo.active_branch
     common_ancestor = repo.merge_base(current_branch, "main")[0]
 
-    return [item.b_path for item in repo.index.diff(common_ancestor) if os.path.exists(item.b_path)]
+    changed_files = [
+        item.b_path
+        for item in repo.index.diff(common_ancestor)
+        if item.b_path is not None and os.path.exists(item.b_path)
+    ]
+    return changed_files
 
 
 @dataclass
 class LintJob:
-    command: str
+    command: str | list[str]
     extensions: list[str] | None = None
     accepts_files: bool = True
     no_filter_args: list[str] = field(default_factory=list)
     no_filter_cmd: str | None = None
     allow_no_filter: bool = True
+    filter_files: str | None = None
+    _commands: list[str] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        if isinstance(self.command, str):
+            self._commands = self.command.split()
+        else:
+            self._commands = self.command
 
     def run_cmd(self, files: list[str], skip_list: list[str], no_change_filter: bool) -> bool:
         start = time.time()
 
-        cmd = self.command
+        cmd = self._commands
 
         if self.extensions is not None:
             files = [f for f in files if any(f.endswith(e) for e in self.extensions)]
@@ -58,9 +72,14 @@ class LintJob:
                 return True
             files = self.no_filter_args
             if self.no_filter_cmd is not None:
-                cmd = self.no_filter_cmd
+                cmd = self.no_filter_cmd.split()
+        else:
+            # Apply regex filtering if filter_files is specified
+            if self.filter_files is not None:
+                pattern = re.compile(self.filter_files)
+                files = [f for f in files if not pattern.match(f)]
 
-        cmd_arr = ["pixi", "run", cmd]
+        cmd_arr = ["pixi", "run"] + cmd
 
         cmd_preview = subprocess.list2cmdline(cmd_arr + ["<FILES>"]) if files else subprocess.list2cmdline(cmd_arr)
 
@@ -150,13 +169,14 @@ def main() -> None:
             "lint-rs-files",
             extensions=[".rs"],
             no_filter_cmd="lint-rs-all",
+            filter_files=r"^crates/store/re_types(_core)?/",
         ),
         LintJob("py-fmt-check", extensions=[".py"], no_filter_args=PY_FOLDERS),
         # Even though mypy will accept a list of files, the results it generates are inconsistent
         # with running on the full project.
         LintJob("py-lint", extensions=[".py"], accepts_files=False),
         LintJob("toml-fmt-check", extensions=[".toml"]),
-        LintJob("lint-typos"),
+        LintJob("lint-typos --force-exclude"),
     ]
 
     for command in skip:

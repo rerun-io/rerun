@@ -76,7 +76,8 @@ impl Image {
         let num_expected_bytes = image_format.num_bytes();
         if buffer.len() != num_expected_bytes {
             re_log::warn_once!(
-                "Expected {width}x{height} {pixel_format:?} image to be {num_expected_bytes} B, but got {} B", buffer.len()
+                "Expected {width}x{height} {pixel_format:?} image to be {num_expected_bytes} B, but got {} B",
+                buffer.len()
             );
         }
 
@@ -98,7 +99,8 @@ impl Image {
         let num_expected_bytes = image_format.num_bytes();
         if buffer.len() != num_expected_bytes {
             re_log::warn_once!(
-                "Expected {width}x{height} {color_model:?} {datatype:?} image to be {num_expected_bytes} B, but got {} B", buffer.len()
+                "Expected {width}x{height} {color_model:?} {datatype:?} image to be {num_expected_bytes} B, but got {} B",
+                buffer.len()
             );
         }
 
@@ -114,12 +116,7 @@ impl Image {
     ) -> Self {
         let datatype = T::CHANNEL_TYPE;
         let bytes: &[u8] = bytemuck::cast_slice(elements);
-        Self::from_color_model_and_bytes(
-            re_types_core::ArrowBuffer::<u8>::from(bytes),
-            [width, height],
-            color_model,
-            datatype,
-        )
+        Self::from_color_model_and_bytes(bytes, [width, height], color_model, datatype)
     }
 
     /// From an 8-bit grayscale image.

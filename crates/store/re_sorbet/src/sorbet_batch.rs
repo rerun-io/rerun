@@ -1,17 +1,19 @@
+use std::sync::Arc;
+
 use arrow::{
     array::{
-        Array as _, ArrayRef as ArrowArrayRef, AsArray as _, ListArray as ArrowListArray,
-        RecordBatch as ArrowRecordBatch, RecordBatchOptions, StructArray as ArrowStructArray,
+        Array as _, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
     },
-    datatypes::{FieldRef as ArrowFieldRef, Fields as ArrowFields, Schema as ArrowSchema},
+    datatypes::{Fields as ArrowFields, Schema as ArrowSchema},
     error::ArrowError,
 };
 
-use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
+use itertools::Itertools as _;
+use re_log::ResultExt as _;
 
 use crate::{
-    ArrowBatchMetadata, ColumnDescriptorRef, ComponentColumnDescriptor, IndexColumnDescriptor,
-    RowIdColumnDescriptor, SorbetError, SorbetSchema,
+    ArrowBatchMetadata, ColumnDescriptor, ColumnDescriptorRef, ComponentColumnDescriptor,
+    IndexColumnDescriptor, SorbetError, SorbetSchema,
 };
 
 /// Any rerun-compatible [`ArrowRecordBatch`].
@@ -20,6 +22,11 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct SorbetBatch {
     schema: SorbetSchema,
+
+    /// This record batch contains has all the meta-data
+    /// required by a [`SorbetBatch`].
+    ///
+    /// It also has all non-Rerun metadata intact from wherever it was created from.
     batch: ArrowRecordBatch,
 }
 
@@ -74,29 +81,31 @@ impl SorbetBatch {
         &self.batch.schema_ref().metadata
     }
 
-    /// The `RowId` column, if any.
-    pub fn row_id_column(&self) -> Option<(&RowIdColumnDescriptor, &ArrowStructArray)> {
-        self.schema.columns.row_id.as_ref().map(|row_id_desc| {
-            (
-                row_id_desc,
-                self.batch.columns()[0]
-                    .as_struct_opt()
-                    .expect("Row IDs should be encoded as struct"),
-            )
-        })
+    /// All the columns along with their descriptors.
+    pub fn all_columns(&self) -> impl Iterator<Item = (&ColumnDescriptor, &ArrowArrayRef)> {
+        itertools::izip!(self.schema.columns.iter(), self.batch.columns())
     }
 
     /// All the columns along with their descriptors.
-    pub fn all_columns(&self) -> impl Iterator<Item = (ColumnDescriptorRef<'_>, &ArrowArrayRef)> {
-        self.schema.columns.descriptors().zip(self.batch.columns())
+    pub fn all_columns_ref(
+        &self,
+    ) -> impl Iterator<Item = (ColumnDescriptorRef<'_>, &ArrowArrayRef)> {
+        itertools::izip!(
+            self.schema.columns.iter().map(|x| x.into()),
+            self.batch.columns()
+        )
     }
 
     /// The columns of the indices (timelines).
     pub fn index_columns(&self) -> impl Iterator<Item = (&IndexColumnDescriptor, &ArrowArrayRef)> {
-        let num_row_id_columns = self.schema.columns.row_id.is_some() as usize;
-        itertools::izip!(
-            &self.schema.columns.indices,
-            self.batch.columns().iter().skip(num_row_id_columns)
+        itertools::izip!(self.schema.columns.iter(), self.batch.columns().iter()).filter_map(
+            |(descr, array)| {
+                if let ColumnDescriptor::Time(descr) = descr {
+                    Some((descr, array))
+                } else {
+                    None
+                }
+            },
         )
     }
 
@@ -104,14 +113,14 @@ impl SorbetBatch {
     pub fn component_columns(
         &self,
     ) -> impl Iterator<Item = (&ComponentColumnDescriptor, &ArrowArrayRef)> {
-        let num_row_id_columns = self.schema.columns.row_id.is_some() as usize;
-        let num_index_columns = self.schema.columns.indices.len();
-        itertools::izip!(
-            &self.schema.columns.components,
-            self.batch
-                .columns()
-                .iter()
-                .skip(num_row_id_columns + num_index_columns)
+        itertools::izip!(self.schema.columns.iter(), self.batch.columns().iter()).filter_map(
+            |(descr, array)| {
+                if let ColumnDescriptor::Component(descr) = descr {
+                    Some((descr, array))
+                } else {
+                    None
+                }
+            },
         )
     }
 }
@@ -154,39 +163,55 @@ impl From<&SorbetBatch> for ArrowRecordBatch {
 }
 
 impl SorbetBatch {
-    /// Will automatically wrap data columns in `ListArrays` if they are not already.
+    /// Will perform some transformations:
+    /// * Will automatically wrap data columns in `ListArrays` if they are not already
+    /// * Will migrate legacy data to more modern form
     ///
-    /// Will also migrate old types to new types.
+    /// Non-Rerun metadata will be preserved (both at batch-level and column-level).
+    /// Rerun metadata will be updated and added to the batch if needed.
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn try_from_record_batch(
         batch: &ArrowRecordBatch,
         batch_type: crate::BatchType,
     ) -> Result<Self, SorbetError> {
         re_tracing::profile_function!();
 
-        let batch = make_all_data_columns_list_arrays(batch);
-        let batch = crate::migrate_record_batch(&batch);
+        // First migrate the incoming batch to the latest format:
+        let batch = crate::migrations::migrate_record_batch(batch.clone());
 
-        let sorbet_schema = SorbetSchema::try_from(batch.schema_ref().as_ref())?;
+        let sorbet_schema =
+            SorbetSchema::try_from_migrated_arrow_schema(batch.schema_ref().as_ref())?;
 
-        for (field, column) in itertools::izip!(
+        let _span = tracing::trace_span!("extend_metadata").entered();
+
+        let new_fields = itertools::izip!(
+            batch.schema_ref().fields(),
             sorbet_schema.columns.arrow_fields(batch_type),
             batch.columns()
-        ) {
-            debug_assert_eq!(field.data_type(), column.data_type());
-        }
+        )
+        .map(|(old_field, mut new_field, column)| {
+            debug_assert_eq!(new_field.data_type(), column.data_type());
 
-        // Extend with any metadata that might have been missing:
-        let mut arrow_schema = ArrowSchema::clone(batch.schema_ref().as_ref());
-        arrow_schema
-            .metadata
-            .extend(sorbet_schema.arrow_batch_metadata());
+            let mut metadata = old_field.metadata().clone();
+            metadata.extend(new_field.metadata().clone()); // overwrite old with new
+            new_field.set_metadata(metadata);
+
+            Arc::new(new_field)
+        })
+        .collect_vec();
+
+        let mut batch_metadata = batch.schema_ref().metadata.clone();
+        batch_metadata.extend(sorbet_schema.arrow_batch_metadata()); // overwrite old with new
+
+        let arrow_schema = Arc::new(ArrowSchema::new_with_metadata(new_fields, batch_metadata));
 
         let batch = ArrowRecordBatch::try_new_with_options(
-            arrow_schema.into(),
+            arrow_schema.clone(),
             batch.columns().to_vec(),
             &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
         )
-        .expect("Can't fail");
+        .ok_or_log_error()
+        .unwrap_or_else(|| ArrowRecordBatch::new_empty(arrow_schema));
 
         Ok(Self {
             schema: sorbet_schema,
@@ -195,36 +220,96 @@ impl SorbetBatch {
     }
 }
 
-/// Make sure all data columns are `ListArrays`.
-fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
-    re_tracing::profile_function!();
+#[cfg(test)]
+mod tests {
 
-    let num_columns = batch.num_columns();
-    let mut fields: Vec<ArrowFieldRef> = Vec::with_capacity(num_columns);
-    let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(num_columns);
+    use crate::{RowIdColumnDescriptor, sorbet_batch};
 
-    for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
-        let is_list_array = array.downcast_array_ref::<ArrowListArray>().is_some();
-        let is_data_column = field
-            .metadata()
-            .get("rerun.kind")
-            .is_some_and(|kind| kind == "data");
-        if is_data_column && !is_list_array {
-            let (field, array) = re_arrow_util::wrap_in_list_array(field, array.clone());
-            fields.push(field.into());
-            columns.push(into_arrow_ref(array));
-        } else {
-            fields.push(field.clone());
-            columns.push(array.clone());
+    use super::*;
+
+    /// Test that user-provided metadata is preserved when converting to and from a [`SorbetBatch`].
+    ///
+    /// Also test that we add the proper Rerun metadata, and remove old Rerun metadata that is not relevant anymore.
+    #[test]
+    fn test_sorbet_batch_metadata() {
+        let original: ArrowRecordBatch = {
+            let mut row_id_field = RowIdColumnDescriptor::from_sorted(false).to_arrow_field();
+            row_id_field
+                .metadata_mut()
+                .remove("ARROW:extension:metadata");
+            row_id_field.metadata_mut().insert(
+                "custom_column_key".to_owned(),
+                "custom_column_value".to_owned(),
+            );
+            let fields = vec![Arc::new(row_id_field)];
+            let arrow_schema = ArrowSchema::new_with_metadata(
+                fields,
+                [
+                    (
+                        "rerun.id".to_owned(),
+                        re_types_core::ChunkId::new().to_string(),
+                    ),
+                    (
+                        "custom_batch_key".to_owned(),
+                        "custom_batch_value".to_owned(),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            );
+            ArrowRecordBatch::new_empty(arrow_schema.into())
+        };
+
+        {
+            // Check original has what we expect:
+            assert!(original.schema().metadata().contains_key("rerun.id"));
+            assert!(
+                original
+                    .schema()
+                    .metadata()
+                    .contains_key("custom_batch_key")
+            );
+            let row_id = original.schema_ref().field(0);
+            assert!(
+                !row_id.metadata().contains_key("ARROW:extension:metadata"),
+                "We intentionally omitted this from the original"
+            );
         }
+
+        let sorbet_batch = sorbet_batch::SorbetBatch::try_from_record_batch(
+            &original,
+            crate::BatchType::Dataframe,
+        )
+        .unwrap();
+
+        let ret = ArrowRecordBatch::from(sorbet_batch);
+
+        assert!(
+            !ret.schema().metadata().contains_key("rerun.id"),
+            "This should have been removed/renamed"
+        );
+        assert!(
+            ret.schema().metadata().contains_key("rerun:id"),
+            "This should have been added/renamed"
+        );
+        assert!(
+            ret.schema().metadata().contains_key("custom_batch_key"),
+            "This should remain"
+        );
+        assert!(
+            ret.schema().metadata().contains_key("sorbet:version"),
+            "This should have been added"
+        );
+
+        // Check field:
+        let row_id = ret.schema_ref().field(0);
+        assert!(
+            row_id.metadata().contains_key("custom_column_key"),
+            "This should remain"
+        );
+        assert!(
+            row_id.metadata().contains_key("ARROW:extension:metadata"),
+            "This should have been added"
+        );
     }
-
-    let schema = ArrowSchema::new_with_metadata(fields, batch.schema().metadata.clone());
-
-    ArrowRecordBatch::try_new_with_options(
-        schema.into(),
-        columns,
-        &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
-    )
-    .expect("Can't fail")
 }

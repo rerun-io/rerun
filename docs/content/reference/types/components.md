@@ -43,6 +43,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Length`](components/length.md): Length, or one-dimensional size.
 * [`LineStrip2D`](components/line_strip2d.md): A line strip in 2D space.
 * [`LineStrip3D`](components/line_strip3d.md): A line strip in 3D space.
+* [`LinearSpeed`](components/linear_speed.md): Linear speed, used for translation speed for example.
 * [`MagnificationFilter`](components/magnification_filter.md): Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.
 * [`MarkerShape`](components/marker_shape.md): The visual appearance of a point in e.g. a 2D plot.
 * [`MarkerSize`](components/marker_size.md): Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
@@ -65,7 +66,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`RotationQuat`](components/rotation_quat.md): A 3D rotation expressed as a quaternion.
 * [`Scalar`](components/scalar.md): A scalar value, encoded as a 64-bit floating point.
 * [`Scale3D`](components/scale3d.md): A 3D scale factor.
-* [`SeriesVisible`](components/series_visible.md): Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible?speculative-link), but for time series.
+* [`SeriesVisible`](components/series_visible.md): Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible), but for time series.
 * [`ShowLabels`](components/show_labels.md): Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.
 * [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.
 * [`TensorData`](components/tensor_data.md): An N-dimensional array of numbers.
@@ -83,6 +84,8 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`ValueRange`](components/value_range.md): Range of expected or valid values, specifying a lower and upper bound.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
+* [`VideoCodec`](components/video_codec.md): The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample).
+* [`VideoSample`](components/video_sample.md): Video sample data (also known as "video chunk").
 * [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 * [`Visible`](components/visible.md): Whether the container, view, entity or instance is currently visible.

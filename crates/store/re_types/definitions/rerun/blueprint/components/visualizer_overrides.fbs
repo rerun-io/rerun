@@ -4,12 +4,12 @@ namespace rerun.blueprint.components;
 ///
 /// For details see [archetypes.VisualizerOverrides].
 table VisualizerOverride (
-    "attr.python.aliases": "str, list[str]",
-    "attr.python.array_aliases": "str",
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default",
-    "attr.rust.repr": "transparent"
+  "attr.python.aliases": "str, list[str]",
+  "attr.python.array_aliases": "str",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default",
+  "attr.rust.repr": "transparent"
 ) {
-    /// Names of a visualizer that should be active.
-    visualizer: rerun.datatypes.Utf8 (order: 100);
+  /// Names of a visualizer that should be active.
+  visualizer: rerun.datatypes.Utf8 (order: 100);
 }

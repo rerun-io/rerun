@@ -52,14 +52,17 @@ fn live_bytes() -> usize {
 // ----------------------------------------------------------------------------
 
 use re_chunk::{Chunk, RowId};
-use re_log_types::{entity_path, example_components::MyPoint, StoreId, StoreKind};
+use re_log_types::{
+    StoreId, StoreKind, entity_path,
+    example_components::{MyPoint, MyPoints},
+};
 
 fn main() {
     log_messages();
 }
 
 fn log_messages() {
-    use re_log_types::{build_frame_nr, LogMsg, TimeInt, TimePoint, Timeline};
+    use re_log_types::{LogMsg, TimeInt, TimePoint, Timeline, build_frame_nr};
 
     // Note: we use Box in this function so that we also count the "static"
     // part of all the data, i.e. its `std::mem::size_of`.
@@ -78,8 +81,7 @@ fn log_messages() {
     }
 
     fn decode_log_msg(mut bytes: &[u8]) -> LogMsg {
-        let version_policy = re_log_encoding::VersionPolicy::Error;
-        let mut messages = re_log_encoding::decoder::Decoder::new(version_policy, &mut bytes)
+        let mut messages = re_log_encoding::decoder::Decoder::new(&mut bytes)
             .unwrap()
             .collect::<Result<Vec<LogMsg>, _>>()
             .unwrap();
@@ -100,7 +102,7 @@ fn log_messages() {
 
     const NUM_POINTS: usize = 1_000;
 
-    let store_id = StoreId::random(StoreKind::Recording);
+    let store_id = StoreId::random(StoreKind::Recording, "test_app");
     let timeline = Timeline::new_sequence("frame_nr");
     let mut time_point = TimePoint::default();
     time_point.insert(timeline, TimeInt::ZERO);
@@ -115,11 +117,14 @@ fn log_messages() {
 
     {
         let used_bytes_start = live_bytes();
-        let chunk = Chunk::builder("points".into())
+        let chunk = Chunk::builder("points")
             .with_component_batches(
                 RowId::new(),
                 [build_frame_nr(TimeInt::ZERO)],
-                [&MyPoint::from_iter(0..1) as _],
+                [(
+                    MyPoints::descriptor_points(),
+                    &MyPoint::from_iter(0..1) as _,
+                )],
             )
             .build()
             .unwrap();
@@ -133,17 +138,21 @@ fn log_messages() {
         let encoded = encode_log_msg(&log_msg);
         println!(
             "Arrow LogMsg containing a Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
-            size_decoded(&encoded), encoded.len()
+            size_decoded(&encoded),
+            encoded.len()
         );
     }
 
     {
         let used_bytes_start = live_bytes();
-        let chunk = Chunk::builder("points".into())
+        let chunk = Chunk::builder("points")
             .with_component_batches(
                 RowId::new(),
                 [build_frame_nr(TimeInt::ZERO)],
-                [&MyPoint::from_iter(0..NUM_POINTS as u32) as _],
+                [(
+                    MyPoints::descriptor_points(),
+                    &MyPoint::from_iter(0..NUM_POINTS as u32) as _,
+                )],
             )
             .build()
             .unwrap();
@@ -154,7 +163,8 @@ fn log_messages() {
         let encoded = encode_log_msg(&log_msg);
         println!(
             "Arrow LogMsg containing {NUM_POINTS}x Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
-            size_decoded(&encoded), encoded.len()
+            size_decoded(&encoded),
+            encoded.len()
         );
     }
 }

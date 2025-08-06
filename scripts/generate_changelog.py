@@ -34,8 +34,10 @@ OFFICIAL_RERUN_DEVS = [
     "jprochazk",
     "lucasmerlin",
     "nikolausWest",
+    "ntjohnson1",
     "oxkitsune",
     "teh-cmc",
+    "timsaucer",
     "Wumpf",
     "zehiko",
 ]

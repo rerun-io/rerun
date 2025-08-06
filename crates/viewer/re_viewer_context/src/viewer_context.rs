@@ -3,25 +3,34 @@ use arrow::array::ArrayRef;
 use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
+use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
+use re_global_context::DisplayMode;
+use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
+use re_ui::ContextExt as _;
 
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::{
-    query_context::DataQueryResult, AppOptions, ApplicationSelectionState, CommandSender,
-    ComponentUiRegistry, DragAndDropManager, IndicatedEntities, ItemCollection,
-    MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
-    ViewClassRegistry, ViewId,
+    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DragAndDropManager,
+    IndicatedEntities, ItemCollection, MaybeVisualizableEntities, PerVisualizer, StoreContext,
+    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
+    query_context::DataQueryResult,
 };
-use crate::{GlobalContext, StoreHub};
+use crate::{GlobalContext, Item, StorageContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
     /// Global context shared across all parts of the viewer.
     pub global_context: GlobalContext<'a>,
 
-    /// The current view of the store
-    pub store_context: &'a StoreContext<'a>,
+    pub storage_context: &'a StorageContext<'a>,
+
+    /// Registry of all known classes of views.
+    pub view_class_registry: &'a ViewClassRegistry,
+
+    /// How to display components.
+    pub component_ui_registry: &'a ComponentUiRegistry,
 
     /// Mapping from class and system to entities for the store
     ///
@@ -57,6 +66,11 @@ pub struct ViewerContext<'a> {
 
     /// Helper object to manage drag-and-drop operations.
     pub drag_and_drop_manager: &'a DragAndDropManager,
+
+    /// Where we are getting our data from.
+    pub connected_receivers: &'a re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
+
+    pub store_context: &'a StoreContext<'a>,
 }
 
 // Forwarding of `GlobalContext` methods to `ViewerContext`. Leaving this as a
@@ -65,6 +79,10 @@ impl ViewerContext<'_> {
     /// Global options for the whole viewer.
     pub fn app_options(&self) -> &AppOptions {
         self.global_context.app_options
+    }
+
+    pub fn tokens(&self) -> &'static re_ui::DesignTokens {
+        self.egui_ctx().tokens()
     }
 
     /// Runtime info about components and archetypes.
@@ -80,12 +98,12 @@ impl ViewerContext<'_> {
 
     /// How to display components.
     pub fn component_ui_registry(&self) -> &ComponentUiRegistry {
-        self.global_context.component_ui_registry
+        self.component_ui_registry
     }
 
     /// Registry of all known classes of views.
     pub fn view_class_registry(&self) -> &ViewClassRegistry {
-        self.global_context.view_class_registry
+        self.view_class_registry
     }
 
     /// The [`egui::Context`].
@@ -101,6 +119,11 @@ impl ViewerContext<'_> {
     /// Interface for sending commands back to the app
     pub fn command_sender(&self) -> &CommandSender {
         self.global_context.command_sender
+    }
+
+    /// The active display mode
+    pub fn display_mode(&self) -> &crate::DisplayMode {
+        self.global_context.display_mode
     }
 }
 
@@ -131,7 +154,7 @@ impl ViewerContext<'_> {
 
     /// The `StoreId` of the active recording.
     #[inline]
-    pub fn recording_id(&self) -> re_log_types::StoreId {
+    pub fn store_id(&self) -> &re_log_types::StoreId {
         self.store_context.recording.store_id()
     }
 
@@ -149,7 +172,22 @@ impl ViewerContext<'_> {
         self.selection_state
     }
 
-    /// The current time query, based on the current time control.
+    /// The current active Redap entry id, if any.
+    pub fn active_redap_entry(&self) -> Option<&EntryId> {
+        match self.display_mode() {
+            DisplayMode::RedapEntry(entry_id) => Some(entry_id),
+            _ => None,
+        }
+    }
+
+    /// The current active local table, if any.
+    pub fn active_table_id(&self) -> Option<&TableId> {
+        match self.display_mode() {
+            DisplayMode::LocalTable(table_id) => Some(table_id),
+            _ => None,
+        }
+    }
+
     pub fn current_query(&self) -> re_chunk_store::LatestAtQuery {
         self.rec_cfg.time_ctrl.read().current_query()
     }
@@ -179,7 +217,7 @@ impl ViewerContext<'_> {
         interacted_items: impl Into<ItemCollection>,
         draggable: bool,
     ) {
-        let interacted_items = interacted_items.into().into_mono_instance_path_items(self);
+        let mut interacted_items = interacted_items.into().into_mono_instance_path_items(self);
         let selection_state = self.selection_state();
 
         if response.hovered() {
@@ -219,6 +257,20 @@ impl ViewerContext<'_> {
         } else if response.clicked() {
             if response.double_clicked() {
                 if let Some(item) = interacted_items.first_item() {
+                    // Double click always selects the whole instance and nothing else.
+                    let item = if let Item::DataResult(view_id, instance) = item {
+                        interacted_items = Item::DataResult(
+                            *view_id,
+                            InstancePath::entity_all(instance.entity_path.clone()),
+                        )
+                        .into();
+                        interacted_items
+                            .first_item()
+                            .expect("That item was just added")
+                    } else {
+                        item
+                    };
+
                     self.global_context
                         .command_sender
                         .send_system(crate::SystemCommand::SetFocus(item.clone()));
@@ -245,12 +297,12 @@ impl ViewerContext<'_> {
     /// It can be set as part of the reflection information, see [`re_types_core::reflection::ComponentReflection::custom_placeholder`].
     /// Note that automatically generated placeholders ignore any extension types.
     ///
-    /// This requires the component name to be known by either datastore or blueprint store and
+    /// This requires the component type to be known by either datastore or blueprint store and
     /// will return a placeholder for a nulltype otherwise, logging an error.
-    /// The rationale is that to get into this situation, we need to know of a component name for which
+    /// The rationale is that to get into this situation, we need to know of a component type for which
     /// we don't have a datatype, meaning that we can't make any statement about what data this component should represent.
     // TODO(andreas): Are there cases where this is expected and how to handle this?
-    pub fn placeholder_for(&self, component: re_chunk::ComponentName) -> ArrayRef {
+    pub fn placeholder_for(&self, component: re_chunk::ComponentType) -> ArrayRef {
         let datatype = if let Some(reflection) = self.reflection().components.get(&component) {
             // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.
             if let Some(placeholder) = reflection.custom_placeholder.as_ref() {
@@ -263,9 +315,8 @@ impl ViewerContext<'_> {
                 .lookup_datatype(&component)
                 .or_else(|| self.blueprint_engine().store().lookup_datatype(&component))
                 .unwrap_or_else(|| {
-                    re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
-                    arrow::datatypes::DataType::Null
-                })
+                         re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                                    arrow::datatypes::DataType::Null})
         };
 
         // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
@@ -296,9 +347,7 @@ impl ViewerContext<'_> {
     ///
     /// It excludes the globally hardcoded welcome screen app ID.
     pub fn has_active_recording(&self) -> bool {
-        self.recording()
-            .app_id()
-            .is_some_and(|active_app_id| active_app_id != &StoreHub::welcome_screen_app_id())
+        self.recording().application_id() != &StoreHub::welcome_screen_app_id()
     }
 }
 

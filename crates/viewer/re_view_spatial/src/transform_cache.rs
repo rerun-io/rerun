@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 use std::collections::BTreeMap;
 
 use ahash::{HashMap, HashSet};
@@ -12,10 +14,12 @@ use re_chunk_store::{
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, TimelineName};
 use re_types::{
-    archetypes::{self},
+    Archetype as _, ArchetypeName, Component as _, ComponentDescriptor, ComponentType,
+    archetypes::{self, InstancePoses3D},
     components::{self},
-    Archetype as _, Component as _, ComponentName,
+    reflection::ComponentDescriptorExt as _,
 };
+use vec1::smallvec_v1::SmallVec1;
 
 /// Store subscriber that resolves all transform components at a given entity to an affine transform.
 ///
@@ -35,13 +39,13 @@ use re_types::{
 /// It then (in [`TransformCacheStoreSubscriber::apply_all_updates`]) performs those queries and derives transforms from them.
 pub struct TransformCacheStoreSubscriber {
     /// All components of [`archetypes::Transform3D`]
-    transform_components: IntSet<ComponentName>,
+    transform_components: IntSet<ComponentType>,
 
     /// All components of [`archetypes::InstancePoses3D`]
-    pose_components: IntSet<ComponentName>,
+    pose_components: IntSet<ComponentType>,
 
     /// All components related to pinholes (i.e. [`components::PinholeProjection`] and [`components::ViewCoordinates`]).
-    pinhole_components: IntSet<ComponentName>,
+    pinhole_components: IntSet<ComponentType>,
 
     per_timeline: HashMap<TimelineName, CachedTransformsForTimeline>,
     static_timeline: CachedTransformsForTimeline,
@@ -55,11 +59,11 @@ impl Default for TransformCacheStoreSubscriber {
         Self {
             transform_components: archetypes::Transform3D::all_components()
                 .iter()
-                .map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_type)
                 .collect(),
             pose_components: archetypes::InstancePoses3D::all_components()
                 .iter()
-                .map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_type)
                 .collect(),
             pinhole_components: [
                 components::PinholeProjection::name(),
@@ -161,7 +165,41 @@ impl CachedTransformsForTimeline {
     }
 }
 
-type PoseTransformMap = BTreeMap<TimeInt, Vec<Affine3A>>;
+/// Maps from archetype to resolved pose transform.
+///
+/// If there's a concrete archetype in here, the mapped values are the full resolved pose transform.
+///
+/// `TransformCache` doesn't do tree propgation, however (!!!) there's a mini-tree in here that we already fully apply:
+/// `InstancePose3D` are applied on top of concrete archetype poses.
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct PoseTransformArchetypeMap {
+    /// Iff there's a concrete archetype in here, the mapped values are the full resolved pose transform.
+    // TODO(andreas): use some kind of small map? Vec of tuples might already be more appropriate?
+    pub instance_from_archetype_poses_per_archetype:
+        IntMap<ArchetypeName, SmallVec1<[Affine3A; 1]>>,
+
+    /// Resolved transforms for the instance poses archetype if any.
+    pub instance_from_overall_poses: Vec<Affine3A>,
+}
+
+impl PoseTransformArchetypeMap {
+    #[cfg(test)]
+    #[inline]
+    fn get(&self, archetype: ArchetypeName) -> &[Affine3A] {
+        self.instance_from_archetype_poses_per_archetype
+            .get(&archetype)
+            .map_or(&self.instance_from_overall_poses, |v| v.as_slice())
+    }
+
+    /// Returns `true` if there are no transforms for any archetype.
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.instance_from_archetype_poses_per_archetype.is_empty()
+            && self.instance_from_overall_poses.is_empty()
+    }
+}
+
+type PoseTransformTimeMap = BTreeMap<TimeInt, PoseTransformArchetypeMap>;
 
 /// Maps from time to pinhole projection.
 ///
@@ -183,7 +221,7 @@ pub struct TransformsForEntity {
     tree_transforms: BTreeMap<TimeInt, Affine3A>,
 
     // Pose transforms and pinhole projections are typically more rare, which is why we store them as optional boxes.
-    pose_transforms: Option<Box<PoseTransformMap>>,
+    pose_transforms: Option<Box<PoseTransformTimeMap>>,
     pinhole_projections: Option<Box<PinholeProjectionMap>>,
 }
 
@@ -274,7 +312,11 @@ impl TransformsForEntity {
             .extend(times.iter().map(|time| (*time, Affine3A::IDENTITY)));
         self.pose_transforms
             .get_or_insert(Default::default())
-            .extend(times.iter().map(|time| (*time, vec![])));
+            .extend(
+                times
+                    .iter()
+                    .map(|time| (*time, PoseTransformArchetypeMap::default())),
+            );
         self.pinhole_projections
             .get_or_insert(Default::default())
             .extend(times.iter().map(|time| (*time, None)));
@@ -292,16 +334,35 @@ impl TransformsForEntity {
             .unwrap_or(Affine3A::IDENTITY)
     }
 
+    #[cfg(test)]
     #[inline]
-    pub fn latest_at_instance_poses(&self, query: &LatestAtQuery) -> &[Affine3A] {
+    pub fn latest_at_instance_poses(
+        &self,
+        query: &LatestAtQuery,
+        archetype: ArchetypeName,
+    ) -> &[Affine3A] {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
         self.pose_transforms
             .as_ref()
             .and_then(|pose_transforms| pose_transforms.range(..query.at().inc()).next_back())
-            .map(|(_time, pose_transforms)| pose_transforms.as_slice())
+            .map(|(_time, pose_transforms)| pose_transforms.get(archetype))
             .unwrap_or(&[])
+    }
+
+    #[inline]
+    pub fn latest_at_instance_poses_all(
+        &self,
+        query: &LatestAtQuery,
+    ) -> Option<&PoseTransformArchetypeMap> {
+        #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
+        debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
+
+        self.pose_transforms
+            .as_ref()
+            .and_then(|pose_transforms| pose_transforms.range(..query.at().inc()).next_back())
+            .map(|(_time, pose_transforms)| pose_transforms)
     }
 
     #[inline]
@@ -536,14 +597,11 @@ impl TransformCacheStoreSubscriber {
             if aspects.contains(TransformAspect::Clear) {
                 re_tracing::profile_scope!("check for recursive clears");
 
-                let name = re_types::components::ClearIsRecursive::name();
+                let descr = re_types::archetypes::Clear::descriptor_is_recursive();
 
                 let recursively_cleared_times = chunk
-                    .iter_component_indices(
-                        timeline,
-                        &re_types::components::ClearIsRecursive::name(),
-                    )
-                    .zip(chunk.iter_slices::<bool>(name))
+                    .iter_component_indices(timeline, &descr)
+                    .zip(chunk.iter_slices::<bool>(descr.clone()))
                     .filter_map(|((time, _row_id), bool_slice)| {
                         bool_slice
                             .values()
@@ -698,11 +756,11 @@ impl TransformCacheStoreSubscriber {
                     && per_entity
                         .pose_transforms
                         .as_ref()
-                        .map_or(true, |pose_transforms| pose_transforms.is_empty())
+                        .is_none_or(|pose_transforms| pose_transforms.is_empty())
                     && per_entity
                         .pinhole_projections
                         .as_ref()
-                        .map_or(true, |pinhole_projections| pinhole_projections.is_empty())
+                        .is_none_or(|pinhole_projections| pinhole_projections.is_empty())
                 {
                     per_timeline.per_entity.remove(entity_path);
                 }
@@ -729,17 +787,21 @@ impl PerStoreChunkSubscriber for TransformCacheStoreSubscriber {
             // within this chunk, so strictly speaking the affected "aspects" we compute here are conservative.
             // But that's fairly rare, so a few false positive entries here are fine.
             let mut aspects = TransformAspect::empty();
-            for component_name in event.chunk.component_names() {
-                if self.transform_components.contains(&component_name) {
+            for component_type in event
+                .chunk
+                .component_descriptors()
+                .filter_map(|c| c.component_type)
+            {
+                if self.transform_components.contains(&component_type) {
                     aspects |= TransformAspect::Tree;
                 }
-                if self.pose_components.contains(&component_name) {
+                if self.pose_components.contains(&component_type) {
                     aspects |= TransformAspect::Pose;
                 }
-                if self.pinhole_components.contains(&component_name) {
+                if self.pinhole_components.contains(&component_type) {
                     aspects |= TransformAspect::PinholeOrViewCoordinates;
                 }
-                if component_name == re_types::components::ClearIsRecursive::name() {
+                if component_type == re_types::components::ClearIsRecursive::name() {
                     aspects |= TransformAspect::Clear;
                 }
             }
@@ -769,9 +831,11 @@ fn query_and_resolve_tree_transform_at_entity(
     query: &LatestAtQuery,
 ) -> Option<Affine3A> {
     // TODO(andreas): Filter out styling components.
-    let components = archetypes::Transform3D::all_components();
-    let component_names = components.iter().map(|descr| descr.component_name);
-    let results = entity_db.latest_at(query, entity_path, component_names);
+    let results = entity_db.latest_at(
+        query,
+        entity_path,
+        archetypes::Transform3D::all_components().iter(),
+    );
     if results.components.is_empty() {
         return None;
     }
@@ -782,13 +846,17 @@ fn query_and_resolve_tree_transform_at_entity(
     let mono_log_level = re_log::Level::Warn;
 
     // The order of the components here is important, and checked by `debug_assert_transform_field_order`
-    if let Some(translation) =
-        results.component_mono_with_log_level::<components::Translation3D>(mono_log_level)
-    {
+    if let Some(translation) = results.component_mono_with_log_level::<components::Translation3D>(
+        &archetypes::Transform3D::descriptor_translation(),
+        mono_log_level,
+    ) {
         transform = Affine3A::from(translation);
     }
-    if let Some(axis_angle) =
-        results.component_mono_with_log_level::<components::RotationAxisAngle>(mono_log_level)
+    if let Some(axis_angle) = results
+        .component_mono_with_log_level::<components::RotationAxisAngle>(
+            &archetypes::Transform3D::descriptor_rotation_axis_angle(),
+            mono_log_level,
+        )
     {
         if let Ok(axis_angle) = Affine3A::try_from(axis_angle) {
             transform *= axis_angle;
@@ -796,26 +864,29 @@ fn query_and_resolve_tree_transform_at_entity(
             return Some(Affine3A::ZERO);
         }
     }
-    if let Some(quaternion) =
-        results.component_mono_with_log_level::<components::RotationQuat>(mono_log_level)
-    {
+    if let Some(quaternion) = results.component_mono_with_log_level::<components::RotationQuat>(
+        &archetypes::Transform3D::descriptor_quaternion(),
+        mono_log_level,
+    ) {
         if let Ok(quaternion) = Affine3A::try_from(quaternion) {
             transform *= quaternion;
         } else {
             return Some(Affine3A::ZERO);
         }
     }
-    if let Some(scale) =
-        results.component_mono_with_log_level::<components::Scale3D>(mono_log_level)
-    {
+    if let Some(scale) = results.component_mono_with_log_level::<components::Scale3D>(
+        &archetypes::Transform3D::descriptor_scale(),
+        mono_log_level,
+    ) {
         if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
             return Some(Affine3A::ZERO);
         }
         transform *= Affine3A::from(scale);
     }
-    if let Some(mat3x3) =
-        results.component_mono_with_log_level::<components::TransformMat3x3>(mono_log_level)
-    {
+    if let Some(mat3x3) = results.component_mono_with_log_level::<components::TransformMat3x3>(
+        &archetypes::Transform3D::descriptor_mat3x3(),
+        mono_log_level,
+    ) {
         let affine_transform = Affine3A::from(mat3x3);
         if affine_transform.matrix3.determinant() == 0.0 {
             return Some(Affine3A::ZERO);
@@ -823,8 +894,10 @@ fn query_and_resolve_tree_transform_at_entity(
         transform *= affine_transform;
     }
 
-    if results.component_mono_with_log_level::<components::TransformRelation>(mono_log_level)
-        == Some(components::TransformRelation::ChildFromParent)
+    if results.component_mono_with_log_level::<components::TransformRelation>(
+        &archetypes::Transform3D::descriptor_relation(),
+        mono_log_level,
+    ) == Some(components::TransformRelation::ChildFromParent)
     {
         let determinant = transform.matrix3.determinant();
         if determinant != 0.0 && determinant.is_finite() {
@@ -842,6 +915,30 @@ fn query_and_resolve_tree_transform_at_entity(
     Some(transform)
 }
 
+/// Lists all archetypes except [`archetypes::InstancePoses3D`] that have their own instance poses.
+// TODO(andreas, jleibs): Model this out as a generic extension mechanism.
+fn archetypes_with_instance_pose_transforms_and_translation_descriptor()
+-> [(ArchetypeName, ComponentDescriptor); 4] {
+    [
+        (
+            archetypes::Boxes3D::name(),
+            archetypes::Boxes3D::descriptor_centers(),
+        ),
+        (
+            archetypes::Ellipsoids3D::name(),
+            archetypes::Ellipsoids3D::descriptor_centers(),
+        ),
+        (
+            archetypes::Capsules3D::name(),
+            archetypes::Capsules3D::descriptor_translations(),
+        ),
+        (
+            archetypes::Cylinders3D::name(),
+            archetypes::Cylinders3D::descriptor_centers(),
+        ),
+    ]
+}
+
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
 ///
 /// If any of the components yields an invalid transform, returns a `glam::Affine3A::ZERO` for that instance.
@@ -851,16 +948,101 @@ fn query_and_resolve_instance_poses_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
+) -> PoseTransformArchetypeMap {
+    let instance_from_overall_poses = query_and_resolve_instance_from_pose_for_archetype_name(
+        entity_path,
+        entity_db,
+        query,
+        archetypes::InstancePoses3D::name(),
+        &archetypes::InstancePoses3D::descriptor_translations(),
+    );
+
+    // Some archetypes support their own instance poses.
+    // TODO(andreas): can we quickly determine whether this is necessary for any given archetype?
+    // TODO(andreas): Should we make all of this a single large query?
+    let mut instance_from_archetype_poses_per_archetype = IntMap::default();
+    for (archetype_name, descriptor_translations) in
+        archetypes_with_instance_pose_transforms_and_translation_descriptor()
+    {
+        if let Ok(mut instance_from_archetype_poses) =
+            SmallVec1::try_from_vec(query_and_resolve_instance_from_pose_for_archetype_name(
+                entity_path,
+                entity_db,
+                query,
+                archetype_name,
+                &descriptor_translations,
+            ))
+        {
+            // "zip" up with the overall poses.
+            let length = instance_from_archetype_poses
+                .len()
+                .max(instance_from_overall_poses.len());
+            instance_from_archetype_poses
+                .resize(length, *instance_from_archetype_poses.last()) // Components repeat.
+                .expect("Overall number of poses can't be zero.");
+
+            for (instance_from_archetype_pose, instance_from_overall_pose) in
+                instance_from_archetype_poses
+                    .iter_mut()
+                    .zip(instance_from_overall_poses.iter())
+            {
+                let overall_pose_archetype_pose = *instance_from_archetype_pose;
+                *instance_from_archetype_pose =
+                    (*instance_from_overall_pose) * overall_pose_archetype_pose;
+            }
+
+            instance_from_archetype_poses_per_archetype
+                .insert(archetype_name, instance_from_archetype_poses);
+        }
+    }
+
+    PoseTransformArchetypeMap {
+        instance_from_archetype_poses_per_archetype,
+        instance_from_overall_poses,
+    }
+}
+
+/// Queries pose transforms for a specific archetype.
+///
+/// Note that the component for translation specifically may vary.
+/// (this is technical debt, we should fix this)
+fn query_and_resolve_instance_from_pose_for_archetype_name(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+    archetype_name: ArchetypeName,
+    descriptor_translations: &ComponentDescriptor,
 ) -> Vec<Affine3A> {
-    // TODO(andreas): Filter out styling components.
-    let components = archetypes::InstancePoses3D::all_components();
-    let component_names = components.iter().map(|descr| descr.component_name);
-    let result = entity_db.latest_at(query, entity_path, component_names);
+    debug_assert_eq!(
+        descriptor_translations.component_type,
+        Some(components::PoseTranslation3D::name())
+    );
+    debug_assert_eq!(descriptor_translations.archetype, Some(archetype_name));
+    let descriptor_rotation_axis_angles =
+        InstancePoses3D::descriptor_rotation_axis_angles().with_builtin_archetype(archetype_name);
+    let descriptor_quaternions =
+        InstancePoses3D::descriptor_quaternions().with_builtin_archetype(archetype_name);
+    let descriptor_scales =
+        InstancePoses3D::descriptor_scales().with_builtin_archetype(archetype_name);
+    let descriptor_mat3x3 =
+        InstancePoses3D::descriptor_mat3x3().with_builtin_archetype(archetype_name);
+
+    let result = entity_db.latest_at(
+        query,
+        entity_path,
+        [
+            descriptor_translations,
+            &descriptor_rotation_axis_angles,
+            &descriptor_quaternions,
+            &descriptor_scales,
+            &descriptor_mat3x3,
+        ],
+    );
 
     let max_num_instances = result
         .components
         .iter()
-        .map(|(name, row)| row.num_instances(name))
+        .map(|(component_descr, row)| row.num_instances(component_descr))
         .max()
         .unwrap_or(0) as usize;
 
@@ -886,19 +1068,19 @@ fn query_and_resolve_instance_poses_at_entity(
     }
 
     let batch_translation = result
-        .component_batch::<components::PoseTranslation3D>()
+        .component_batch::<components::PoseTranslation3D>(descriptor_translations)
         .unwrap_or_default();
     let batch_rotation_quat = result
-        .component_batch::<components::PoseRotationQuat>()
+        .component_batch::<components::PoseRotationQuat>(&descriptor_quaternions)
         .unwrap_or_default();
     let batch_rotation_axis_angle = result
-        .component_batch::<components::PoseRotationAxisAngle>()
+        .component_batch::<components::PoseRotationAxisAngle>(&descriptor_rotation_axis_angles)
         .unwrap_or_default();
     let batch_scale = result
-        .component_batch::<components::PoseScale3D>()
+        .component_batch::<components::PoseScale3D>(&descriptor_scales)
         .unwrap_or_default();
     let batch_mat3x3 = result
-        .component_batch::<components::PoseTransformMat3x3>()
+        .component_batch::<components::PoseTransformMat3x3>(&descriptor_mat3x3)
         .unwrap_or_default();
 
     if batch_translation.is_empty()
@@ -954,13 +1136,69 @@ fn query_and_resolve_pinhole_projection_at_entity(
     query: &LatestAtQuery,
 ) -> Option<ResolvedPinholeProjection> {
     entity_db
-        .latest_at_component::<components::PinholeProjection>(entity_path, query)
+        .latest_at_component::<components::PinholeProjection>(
+            entity_path,
+            query,
+            &archetypes::Pinhole::descriptor_image_from_camera(),
+        )
         .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
             image_from_camera,
-            view_coordinates: entity_db
-                .latest_at_component::<components::ViewCoordinates>(entity_path, query)
-                .map_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ, |(_index, res)| res),
+            view_coordinates: {
+                query_view_coordinates(entity_path, entity_db, query)
+                    .unwrap_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ)
+            },
         })
+}
+
+/// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype.
+///
+/// Gives precedence to the `Pinhole` archetype.
+// TODO(#2663): This is confusing and should be cleaned up.
+pub fn query_view_coordinates(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Option<components::ViewCoordinates> {
+    entity_db
+        .latest_at_component::<components::ViewCoordinates>(
+            entity_path,
+            query,
+            &archetypes::Pinhole::descriptor_camera_xyz(),
+        )
+        .or_else(|| {
+            entity_db.latest_at_component::<components::ViewCoordinates>(
+                entity_path,
+                query,
+                &archetypes::ViewCoordinates::descriptor_xyz(),
+            )
+        })
+        .map(|(_index, view_coordinates)| view_coordinates)
+}
+
+/// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype
+/// at the closest ancestor of the given entity path.
+///
+/// Gives precedence to the `Pinhole` archetype.
+// TODO(#2663): This is confusing and should be cleaned up.
+pub fn query_view_coordinates_at_closest_ancestor(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Option<components::ViewCoordinates> {
+    entity_db
+        .latest_at_component_at_closest_ancestor::<components::ViewCoordinates>(
+            entity_path,
+            query,
+            &archetypes::Pinhole::descriptor_camera_xyz(),
+        )
+        .or_else(|| {
+            entity_db.latest_at_component_at_closest_ancestor::<components::ViewCoordinates>(
+                entity_path,
+                query,
+                &archetypes::ViewCoordinates::descriptor_xyz(),
+            )
+        })
+        .map(|(_path, _index, view_coordinates)| view_coordinates)
 }
 
 #[cfg(test)]
@@ -969,7 +1207,7 @@ mod tests {
 
     use re_chunk_store::{Chunk, GarbageCollectionOptions, RowId};
     use re_log_types::{TimePoint, Timeline};
-    use re_types::{archetypes, Loggable as _, SerializedComponentBatch};
+    use re_types::{archetypes, datatypes};
 
     use super::*;
 
@@ -1008,7 +1246,7 @@ mod tests {
     ];
 
     fn apply_all_updates(entity_db: &EntityDb) {
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             cache.apply_all_updates(entity_db);
         });
     }
@@ -1055,8 +1293,11 @@ mod tests {
     }
 
     fn new_entity_db_with_subscriber_registered() -> EntityDb {
-        let entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        TransformCacheStoreSubscriber::access(&entity_db.store_id(), |_| {
+        let entity_db = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+        TransformCacheStoreSubscriber::access(entity_db.store_id(), |_| {
             // Make sure the subscriber is registered.
         });
         entity_db
@@ -1088,15 +1329,19 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk0)).unwrap();
         entity_db.add_chunk(&Arc::new(chunk1)).unwrap();
 
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
-            assert!(transforms_per_timeline
-                .entity_transforms(&EntityPath::from("without_transform"))
-                .is_none());
-            assert!(transforms_per_timeline
-                .entity_transforms(&EntityPath::from("rando"))
-                .is_none());
+            assert!(
+                transforms_per_timeline
+                    .entity_transforms(&EntityPath::from("without_transform"))
+                    .is_none()
+            );
+            assert!(
+                transforms_per_timeline
+                    .entity_transforms(&EntityPath::from("rando"))
+                    .is_none()
+            );
             let transforms = transforms_per_timeline
                 .entity_transforms(&EntityPath::from("with_transform"))
                 .unwrap();
@@ -1148,7 +1393,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1235,7 +1480,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1243,24 +1488,30 @@ mod tests {
                     .unwrap();
 
                 assert_eq!(
-                    transforms.latest_at_instance_poses(&LatestAtQuery::new(
-                        *timeline.name(),
-                        TimeInt::MIN
-                    )),
+                    transforms.latest_at_instance_poses(
+                        &LatestAtQuery::new(*timeline.name(), TimeInt::MIN,),
+                        archetypes::InstancePoses3D::name()
+                    ),
                     &[
                         glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
                         glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
                     ]
                 );
                 assert_eq!(
-                    transforms.latest_at_instance_poses(&LatestAtQuery::new(
-                        *timeline.name(),
-                        TimeInt::MIN
-                    )),
-                    transforms.latest_at_instance_poses(&LatestAtQuery::new(*timeline.name(), 0)),
+                    transforms.latest_at_instance_poses(
+                        &LatestAtQuery::new(*timeline.name(), TimeInt::MIN,),
+                        archetypes::InstancePoses3D::name()
+                    ),
+                    transforms.latest_at_instance_poses(
+                        &LatestAtQuery::new(*timeline.name(), 0),
+                        archetypes::InstancePoses3D::name(),
+                    ),
                 );
                 assert_eq!(
-                    transforms.latest_at_instance_poses(&LatestAtQuery::new(*timeline.name(), 1)),
+                    transforms.latest_at_instance_poses(
+                        &LatestAtQuery::new(*timeline.name(), 1),
+                        archetypes::InstancePoses3D::name(),
+                    ),
                     &[
                         glam::Affine3A::from_scale_rotation_translation(
                             glam::Vec3::new(10.0, 20.0, 30.0),
@@ -1282,10 +1533,10 @@ mod tests {
                     .entity_transforms(&EntityPath::from("my_entity"))
                     .unwrap();
                 assert_eq!(
-                    transforms.latest_at_instance_poses(&LatestAtQuery::new(
-                        TimelineName::new("other"),
-                        123
-                    )),
+                    transforms.latest_at_instance_poses(
+                        &LatestAtQuery::new(TimelineName::new("other"), 123),
+                        archetypes::InstancePoses3D::name(),
+                    ),
                     &[
                         glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
                         glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
@@ -1344,7 +1595,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1433,7 +1684,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1495,7 +1746,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline_name = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
@@ -1539,7 +1790,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pose_transforms() {
+    fn test_pose_transforms_instance_poses_only() {
         let mut entity_db = new_entity_db_with_subscriber_registered();
 
         // Log a few tree transforms at different times.
@@ -1562,32 +1813,17 @@ mod tests {
                     .with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
                     .with_scales([[2.0, 3.0, 4.0]]),
             )
-            .with_serialized_batches(
+            .with_archetype(
                 RowId::new(),
                 [(timeline, 4)],
-                [
-                    SerializedComponentBatch::new(
-                        arrow::array::new_empty_array(&components::Translation3D::arrow_datatype()),
-                        archetypes::InstancePoses3D::descriptor_translations(),
-                    ),
-                    SerializedComponentBatch::new(
-                        arrow::array::new_empty_array(&components::Scale3D::arrow_datatype()),
-                        archetypes::InstancePoses3D::descriptor_scales(),
-                    ),
-                ],
+                &archetypes::InstancePoses3D::clear_fields(),
             )
-            // TODO(#7245): Use this instead of the above
-            // .with_archetype(
-            //     RowId::new(),
-            //     [(timeline, 4)],
-            //     &archetypes::InstancePoses3D::clear_fields(),
-            // )
             .build()
             .unwrap();
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -1596,11 +1832,17 @@ mod tests {
                 .unwrap();
 
             assert_eq!(
-                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 0)),
+                transforms.latest_at_instance_poses(
+                    &LatestAtQuery::new(timeline, 0),
+                    archetypes::InstancePoses3D::name()
+                ),
                 &[]
             );
             assert_eq!(
-                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 1)),
+                transforms.latest_at_instance_poses(
+                    &LatestAtQuery::new(timeline, 1),
+                    archetypes::InstancePoses3D::name()
+                ),
                 &[
                     glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
                     glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
@@ -1608,7 +1850,10 @@ mod tests {
                 ]
             );
             assert_eq!(
-                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 2)),
+                transforms.latest_at_instance_poses(
+                    &LatestAtQuery::new(timeline, 2),
+                    archetypes::InstancePoses3D::name()
+                ),
                 &[
                     glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
                     glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
@@ -1616,7 +1861,10 @@ mod tests {
                 ]
             );
             assert_eq!(
-                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 3)),
+                transforms.latest_at_instance_poses(
+                    &LatestAtQuery::new(timeline, 3),
+                    archetypes::InstancePoses3D::name()
+                ),
                 &[
                     glam::Affine3A::from_scale_rotation_translation(
                         glam::Vec3::new(2.0, 3.0, 4.0),
@@ -1631,12 +1879,157 @@ mod tests {
                 ]
             );
             assert_eq!(
-                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 4)),
+                transforms.latest_at_instance_poses(
+                    &LatestAtQuery::new(timeline, 4),
+                    archetypes::InstancePoses3D::name()
+                ),
                 &[]
             );
             assert_eq!(
-                transforms.latest_at_instance_poses(&LatestAtQuery::new(timeline, 123)),
+                transforms.latest_at_instance_poses(
+                    &LatestAtQuery::new(timeline, 123),
+                    archetypes::InstancePoses3D::name()
+                ),
                 &[]
+            );
+        });
+    }
+
+    #[test]
+    fn test_mixing_instance_poses() {
+        let mut entity_db = new_entity_db_with_subscriber_registered();
+
+        // Log a few tree transforms at different times.
+        let timeline = Timeline::new_sequence("t");
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 1)],
+                &archetypes::InstancePoses3D::new().with_translations([
+                    [1.0, 2.0, 3.0],
+                    [4.0, 5.0, 6.0],
+                    [7.0, 8.0, 9.0],
+                ]),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 2)],
+                // Add some "base offset", but only for the first two items.
+                &archetypes::Boxes3D::update_fields()
+                    .with_centers([[10.0, 0.0, 0.0], [0.0, 100.0, 0.0]]),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 3)],
+                // Rotate the box by 90 degrees around the Y axis.
+                &archetypes::Boxes3D::update_fields().with_rotation_axis_angles([
+                    datatypes::RotationAxisAngle::new(
+                        glam::Vec3::new(0.0, 1.0, 0.0),
+                        90.0_f32.to_radians(),
+                    ),
+                ]),
+            )
+            .build()
+            .unwrap();
+        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+
+        // Check that the transform cache has the expected transforms.
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
+            let timeline = *timeline.name();
+            cache.apply_all_updates(&entity_db);
+            let transforms_per_timeline = cache.transforms_for_timeline(timeline);
+            let transforms = transforms_per_timeline
+                .entity_transforms(&EntityPath::from("my_entity"))
+                .unwrap();
+
+            // Pose for instances poses and non-boxes are unchanged over time.
+            for t in 1..=4 {
+                for archetype in [
+                    archetypes::InstancePoses3D::name(),
+                    "made_up_archetype".into(),
+                ] {
+                    assert_eq!(
+                        transforms
+                            .latest_at_instance_poses(&LatestAtQuery::new(timeline, t), archetype),
+                        &[
+                            glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                            glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                            glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                        ]
+                    );
+                }
+            }
+
+            // Poses for boxes change over time.
+            // T1
+            assert_eq!(
+                transforms.latest_at_instance_poses(
+                    &LatestAtQuery::new(timeline, 1),
+                    archetypes::Boxes3D::name()
+                ),
+                // All from `InstancePoses3D`
+                &[
+                    glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                ]
+            );
+
+            // T2
+            assert_eq!(
+                transforms.latest_at_instance_poses(
+                    &LatestAtQuery::new(timeline, 2),
+                    archetypes::Boxes3D::name()
+                ),
+                // All from `InstancePoses3D` combined with box centers.
+                &[
+                    glam::Affine3A::from_translation(glam::Vec3::new(11.0, 2.0, 3.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(4.0, 105.0, 6.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(7.0, 108.0, 9.0)), // Affected by the last box center which is still splatted.
+                ]
+            );
+
+            // T3.
+            let query_result = transforms.latest_at_instance_poses(
+                &LatestAtQuery::new(timeline, 3),
+                archetypes::Boxes3D::name(),
+            );
+
+            // More readable sanity check on translations which aren't affected by the rotation.
+            assert_eq!(
+                query_result[0].translation,
+                glam::Vec3A::new(11.0, 2.0, 3.0)
+            );
+            // Since rotation isn't 100% accurate, we need to check for equality with a small tolerance.
+            let eps = 0.000001;
+            // Rotation on the first box affects all instances since it's splatted.
+            let rotation = glam::Affine3A::from_axis_angle(
+                glam::Vec3::new(0.0, 1.0, 0.0),
+                90.0_f32.to_radians(),
+            );
+            let expected = glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)) * // Pose
+                            glam::Affine3A::from_translation(glam::Vec3::new(10.0, 0.0, 0.0)) * rotation; // Box
+            assert!(
+                query_result[0].abs_diff_eq(expected, eps),
+                "Expected: {:?}\nGot: {:?}",
+                expected,
+                query_result[0]
+            );
+            let expected = glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)) * // Pose
+                            (glam::Affine3A::from_translation(glam::Vec3::new(0.0, 100.0, 0.0)) * rotation); // Box
+            assert!(
+                query_result[1].abs_diff_eq(expected, eps),
+                "Expected: {:?}\nGot: {:?}",
+                expected,
+                query_result[1]
+            );
+            let expected = glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)) * // Pose
+                            (glam::Affine3A::from_translation(glam::Vec3::new(0.0, 100.0, 0.0)) * rotation); // Box
+            assert!(
+                query_result[2].abs_diff_eq(expected, eps),
+                "Expected: {:?}\nGot: {:?}",
+                expected,
+                query_result[2]
             );
         });
     }
@@ -1665,26 +2058,17 @@ mod tests {
                 &archetypes::ViewCoordinates::BLU(),
             )
             // Clear out the pinhole projection (this should yield nothing then for the remaining view coordinates.)
-            .with_serialized_batch(
+            .with_archetype(
                 RowId::new(),
                 [(timeline, 4)],
-                SerializedComponentBatch::new(
-                    arrow::array::new_empty_array(&components::PinholeProjection::arrow_datatype()),
-                    archetypes::Pinhole::descriptor_image_from_camera(),
-                ),
+                &archetypes::Pinhole::clear_fields(),
             )
-            // TODO(#7245): Use this instead
-            // .with_archetype(
-            //     RowId::new(),
-            //     [(timeline, 4)],
-            //     &archetypes::Pinhole::clear_fields(),
-            // )
             .build()
             .unwrap();
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -1751,7 +2135,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -1783,7 +2167,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected changed transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -1858,7 +2242,7 @@ mod tests {
                 entity_db.add_chunk(&Arc::new(chunk)).unwrap();
             }
 
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 let timeline = *timeline.name();
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -1935,7 +2319,7 @@ mod tests {
                 }
             }
 
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 let timeline = *timeline.name();
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -1974,7 +2358,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Apply some updates to the transform before GC pass.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             cache.apply_all_updates(&entity_db);
         });
 
@@ -1992,7 +2376,7 @@ mod tests {
 
         entity_db.gc(&GarbageCollectionOptions::gc_everything());
 
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             assert!(
                 cache.transforms_for_timeline(*timeline.name()).per_entity
                     == cache.static_timeline.per_entity

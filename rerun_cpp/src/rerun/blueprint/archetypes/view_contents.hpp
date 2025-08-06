@@ -7,7 +7,6 @@
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -54,6 +53,9 @@ namespace rerun::blueprint::archetypes {
     /// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
     /// The last rule matching `/world` is `- /world`, so it is excluded.
     /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ViewContents {
         /// The `QueryExpression` that populates the contents for the view.
         ///
@@ -61,18 +63,13 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> query;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.ViewContentsIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ViewContents";
 
         /// `ComponentDescriptor` for the `query` field.
         static constexpr auto Descriptor_query = ComponentDescriptor(
-            ArchetypeName, "query",
-            Loggable<rerun::blueprint::components::QueryExpression>::Descriptor.component_name
+            ArchetypeName, "ViewContents:query",
+            Loggable<rerun::blueprint::components::QueryExpression>::ComponentType
         );
 
       public:

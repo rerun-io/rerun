@@ -10,26 +10,29 @@ use itertools::Itertools as _;
 use unindent::unindent;
 
 use crate::{
+    ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, CodeGenerator, Docs, ElementType,
+    GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
     codegen::{
-        autogen_warning,
-        common::{collect_snippets_for_api_docs, Example},
-        StringExt as _,
+        StringExt as _, autogen_warning,
+        common::{Example, collect_snippets_for_api_docs},
     },
+    data_type::{AtomicDataType, DataType, Field, UnionMode},
     format_path,
     objects::{ObjectClass, State},
-    ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
-    ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 use self::views::code_for_view;
 
-use super::{common::ExampleInfo, Target};
+use super::{Target, common::ExampleInfo};
 
 /// The standard python init method.
 const INIT_METHOD: &str = "__init__";
 
 /// The standard numpy interface for converting to an array type
 const ARRAY_METHOD: &str = "__array__";
+
+/// The standard python len method
+const LEN_METHOD: &str = "__len__";
 
 /// The method used to convert a native type into a pyarrow array
 const NATIVE_TO_PA_ARRAY_METHOD: &str = "native_to_pa_array_override";
@@ -71,7 +74,7 @@ trait PythonObjectExt {
 
 impl PythonObjectExt for Object {
     fn is_delegating_component(&self) -> bool {
-        self.kind == ObjectKind::Component && matches!(self.fields[0].typ, Type::Object(_))
+        self.kind == ObjectKind::Component && matches!(self.fields[0].typ, Type::Object { .. })
     }
 
     fn is_non_delegating_component(&self) -> bool {
@@ -81,8 +84,8 @@ impl PythonObjectExt for Object {
     fn delegate_datatype<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
         self.is_delegating_component()
             .then(|| {
-                if let Type::Object(name) = &self.fields[0].typ {
-                    Some(&objects[name])
+                if let Type::Object { fqname } = &self.fields[0].typ {
+                    Some(&objects[fqname])
                 } else {
                     None
                 }
@@ -110,7 +113,7 @@ impl CodeGenerator for PythonCodeGenerator {
         &mut self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
+        type_registry: &TypeRegistry,
     ) -> GeneratedFiles {
         let mut files_to_write = GeneratedFiles::default();
 
@@ -118,7 +121,7 @@ impl CodeGenerator for PythonCodeGenerator {
             self.generate_folder(
                 reporter,
                 objects,
-                arrow_registry,
+                type_registry,
                 object_kind,
                 &mut files_to_write,
             );
@@ -200,6 +203,12 @@ struct ExtensionClass {
 
     /// Whether the `ObjectExt` contains a `deferred_patch_class()` method
     has_deferred_patch_class: bool,
+
+    /// Whether the `ObjectExt` contains __len__()
+    ///
+    /// If the `ExtensionClass` contains its own `__len__` then we avoid generating
+    /// a default implementation.
+    has_len: bool,
 }
 
 impl ExtensionClass {
@@ -248,6 +257,7 @@ impl ExtensionClass {
 
             let has_init = methods.contains(&INIT_METHOD);
             let has_array = methods.contains(&ARRAY_METHOD);
+            let has_len = methods.contains(&LEN_METHOD);
             let has_native_to_pa_array = methods.contains(&NATIVE_TO_PA_ARRAY_METHOD);
             let has_deferred_patch_class = methods.contains(&DEFERRED_PATCH_CLASS_METHOD);
             let field_converter_overrides: Vec<String> = methods
@@ -286,6 +296,7 @@ impl ExtensionClass {
                 has_array,
                 has_native_to_pa_array,
                 has_deferred_patch_class,
+                has_len,
             }
         } else {
             Self {
@@ -298,6 +309,7 @@ impl ExtensionClass {
                 has_array: false,
                 has_native_to_pa_array: false,
                 has_deferred_patch_class: false,
+                has_len: false,
             }
         }
     }
@@ -308,7 +320,7 @@ impl PythonCodeGenerator {
         &self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
+        type_registry: &TypeRegistry,
         object_kind: ObjectKind,
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
     ) {
@@ -480,14 +492,14 @@ impl PythonCodeGenerator {
                     if obj.kind == ObjectKind::View {
                         code_for_view(reporter, objects, &ext_class, obj)
                     } else {
-                        code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
+                        code_for_struct(reporter, type_registry, &ext_class, objects, obj)
                     }
                 }
-                crate::objects::ObjectClass::Enum => {
-                    code_for_enum(reporter, arrow_registry, &ext_class, objects, obj)
+                crate::objects::ObjectClass::Enum(_) => {
+                    code_for_enum(reporter, type_registry, &ext_class, objects, obj)
                 }
                 crate::objects::ObjectClass::Union => {
-                    code_for_union(reporter, arrow_registry, &ext_class, objects, obj)
+                    code_for_union(reporter, type_registry, &ext_class, objects, obj)
                 }
             };
 
@@ -573,7 +585,7 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 
 fn code_for_struct(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
@@ -805,6 +817,7 @@ fn code_for_struct(
 
         code.push_indented(1, quote_array_method_from_obj(ext_class, objects, obj), 1);
         code.push_indented(1, quote_native_types_method_from_obj(objects, obj), 1);
+        code.push_indented(1, quote_len_method_from_obj(ext_class, obj), 1);
 
         if *kind != ObjectKind::Archetype {
             code.push_indented(0, quote_aliases_from_object(obj), 1);
@@ -816,7 +829,7 @@ fn code_for_struct(
         ObjectKind::Component => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
 
@@ -832,7 +845,7 @@ fn code_for_struct(
         ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -846,12 +859,12 @@ fn code_for_struct(
 
 fn code_for_enum(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
 ) -> String {
-    assert_eq!(obj.class, ObjectClass::Enum);
+    assert!(obj.class.is_enum());
     assert!(matches!(
         obj.kind,
         ObjectKind::Datatype | ObjectKind::Component
@@ -882,7 +895,14 @@ fn code_for_enum(
     code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     for variant in &obj.fields {
-        let enum_value = variant.enum_value.unwrap();
+        let enum_value = obj
+            .enum_integer_type()
+            .expect("enums must have an integer type")
+            .format_value(
+                variant
+                    .enum_or_union_variant_value
+                    .expect("enums fields must have values"),
+            );
 
         // NOTE: we keep the casing of the enum variants exactly as specified in the .fbs file,
         // or else `RGBA` would become `Rgba` and so on.
@@ -990,7 +1010,7 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
         ObjectKind::Component | ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -1004,7 +1024,7 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
 
 fn code_for_union(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
@@ -1156,7 +1176,7 @@ fn code_for_union(
         ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -1417,6 +1437,37 @@ fn quote_array_method_from_obj(
     ))
 }
 
+fn quote_len_method_from_obj(ext_class: &ExtensionClass, obj: &Object) -> String {
+    // allow overriding the __len__ function
+    if ext_class.has_len {
+        return format!("# __len__ can be found in {}", ext_class.file_name);
+    }
+
+    // exclude archetypes, objects which don't have a single field, and anything that isn't plural
+    if obj.kind == ObjectKind::Archetype || obj.fields.len() != 1 || !obj.fields[0].typ.is_plural()
+    {
+        return String::new();
+    }
+
+    let field_name = &obj.fields[0].name;
+
+    let null_string = if obj.fields[0].is_nullable {
+        // If the field is optional, we return 0 if it is None.
+        format!(" if self.{field_name} is not None else 0")
+    } else {
+        String::new()
+    };
+
+    unindent(&format!(
+        "
+        def __len__(self) -> int:
+            # You can define your own __len__ function as a member of {} in {}
+            return len(self.{field_name}){null_string}
+        ",
+        ext_class.name, ext_class.file_name
+    ))
+}
+
 /// Automatically implement `__str__`, `__int__`, or `__float__` as well as `__hash__` methods if the object has a single
 /// field of the corresponding type that is not optional.
 ///
@@ -1543,10 +1594,10 @@ fn quote_import_clauses_from_field(
             length: _,
         }
         | Type::Vector { elem_type } => match elem_type {
-            ElementType::Object(fqname) => Some(fqname),
+            ElementType::Object { fqname } => Some(fqname),
             _ => None,
         },
-        Type::Object(fqname) => Some(fqname),
+        Type::Object { fqname } => Some(fqname),
         _ => None,
     };
 
@@ -1642,7 +1693,7 @@ fn quote_field_type_from_field(
             ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
             ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
             ElementType::String => "list[str]".to_owned(),
-            ElementType::Object(_) => {
+            ElementType::Object { .. } => {
                 let typ = quote_type_from_element_type(elem_type);
                 if unwrap {
                     unwrapped = true;
@@ -1652,7 +1703,9 @@ fn quote_field_type_from_field(
                 }
             }
         },
-        Type::Object(fqname) => quote_type_from_element_type(&ElementType::Object(fqname.clone())),
+        Type::Object { fqname } => quote_type_from_element_type(&ElementType::Object {
+            fqname: fqname.clone(),
+        }),
     };
 
     (typ, unwrapped)
@@ -1726,8 +1779,10 @@ fn quote_field_converter_from_field(
             ElementType::Float64 => "to_np_float64".to_owned(),
             _ => String::new(),
         },
-        Type::Object(fqname) => {
-            let typ = quote_type_from_element_type(&ElementType::Object(fqname.clone()));
+        Type::Object { fqname } => {
+            let typ = quote_type_from_element_type(&ElementType::Object {
+                fqname: fqname.clone(),
+            });
             let field_obj = &objects[fqname];
 
             // we generate a default converter only if the field's type can be constructed with a
@@ -1815,7 +1870,7 @@ fn quote_type_from_type(typ: &Type) -> String {
         Type::Bool => "bool".to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
         Type::String => "str".to_owned(),
-        Type::Object(fqname) => fqname_to_type(fqname),
+        Type::Object { fqname } => fqname_to_type(fqname),
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
             format!(
                 "list[{}]",
@@ -1835,7 +1890,7 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
 /// delegate to the Datatype's arrow support.
 fn quote_arrow_support_from_obj(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
@@ -1873,14 +1928,14 @@ fn quote_arrow_support_from_obj(
         batch_superclasses.push("ComponentBatchMixin".to_owned());
     }
 
-    let datatype = quote_arrow_datatype(&arrow_registry.get(fqname));
+    let datatype = quote_arrow_datatype(&type_registry.get(fqname));
     let extension_batch = format!("{name}Batch");
 
     let native_to_pa_array_impl = match quote_arrow_serialization(
         reporter,
         objects,
         obj,
-        arrow_registry,
+        type_registry,
     ) {
         Ok(automatic_arrow_serialization) => {
             if ext_class.has_native_to_pa_array {
@@ -1938,7 +1993,7 @@ fn quote_arrow_support_from_obj(
             r#"
             class {extension_batch}{batch_superclass_decl}:
                 _ARROW_DATATYPE = {datatype}
-                _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("{fqname}")
+                _COMPONENT_TYPE: str = "{fqname}"
 
                 @staticmethod
                 def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
@@ -1951,7 +2006,7 @@ fn quote_arrow_support_from_obj(
         unindent(&format!(
             r#"
             class {extension_batch}{batch_superclass_decl}:
-                _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("{fqname}")
+                _COMPONENT_TYPE: str = "{fqname}"
             "#
         ))
     }
@@ -1971,9 +2026,11 @@ fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
         Type::Float16 => Some("np.float16"),
         Type::Float32 => Some("np.float32"),
         Type::Float64 => Some("np.float64"),
-        Type::Unit | Type::String | Type::Array { .. } | Type::Vector { .. } | Type::Object(_) => {
-            None
-        }
+        Type::Unit
+        | Type::String
+        | Type::Array { .. }
+        | Type::Vector { .. }
+        | Type::Object { .. } => None,
     }
 }
 
@@ -1982,7 +2039,7 @@ fn quote_arrow_serialization(
     reporter: &Reporter,
     objects: &Objects,
     obj: &Object,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
 ) -> Result<String, String> {
     let Object { name, .. } = obj;
 
@@ -2033,7 +2090,11 @@ fn quote_arrow_serialization(
             let mut code = String::new();
 
             code.push_indented(0, "from typing import cast", 1);
-            code.push_indented(0, quote_local_batch_type_imports(&obj.fields), 2);
+            code.push_indented(
+                0,
+                quote_local_batch_type_imports(&obj.fields, obj.is_testing()),
+                2,
+            );
             code.push_indented(0, format!("if isinstance(data, {name}):"), 1);
             code.push_indented(1, "data = [data]", 2);
 
@@ -2067,7 +2128,9 @@ fn quote_arrow_serialization(
                             "We lack codegen for arrow-serialization of general structs".to_owned()
                         );
                     }
-                    Type::Object(field_fqname) => {
+                    Type::Object {
+                        fqname: field_fqname,
+                    } => {
                         let field_obj = &objects[field_fqname];
                         let field_type_name = &field_obj.name;
 
@@ -2075,8 +2138,9 @@ fn quote_arrow_serialization(
 
                         // Type checker struggles with this occasionally, exact pattern is unclear.
                         // Tried casting the array earlier via `cast(Sequence[{name}], data)` but to no avail.
-                        let field_fwd =
-                            format!("{field_batch_type}({field_array}).as_arrow_array(),  # type: ignore[misc, arg-type]");
+                        let field_fwd = format!(
+                            "{field_batch_type}({field_array}).as_arrow_array(),  # type: ignore[misc, arg-type]"
+                        );
                         code.push_indented(2, &field_fwd, 1);
                     }
                 }
@@ -2088,7 +2152,7 @@ fn quote_arrow_serialization(
             Ok(code)
         }
 
-        ObjectClass::Enum => Ok(unindent(&format!(
+        ObjectClass::Enum(_) => Ok(unindent(&format!(
             r##"
 if isinstance(data, ({name}, int, str)):
     data = [data]
@@ -2167,7 +2231,7 @@ return pa.array(pa_data, type=data_type)
 
                 // Converting the variant list to a pa array.
                 let variant_list_to_pa_array = match &field.typ {
-                    Type::Object(fqname) => {
+                    Type::Object { fqname } => {
                         let field_type_name = &objects[fqname].name;
                         format!("{field_type_name}Batch({variant_kind_list}).as_arrow_array()")
                     }
@@ -2187,7 +2251,7 @@ return pa.array(pa_data, type=data_type)
                     | Type::Float32
                     | Type::Float64
                     | Type::String => {
-                        let datatype = quote_arrow_datatype(&arrow_registry.get(&field.fqname));
+                        let datatype = quote_arrow_datatype(&type_registry.get(&field.fqname));
                         format!("pa.array({variant_kind_list}, type={datatype})")
                     }
                     Type::Array { .. } | Type::Vector { .. } => {
@@ -2214,14 +2278,12 @@ return pa.array(pa_data, type=data_type)
                 })
                 .join(", ");
 
-            let batch_type_imports = quote_local_batch_type_imports(&obj.fields);
+            let batch_type_imports = quote_local_batch_type_imports(&obj.fields, obj.is_testing());
             Ok(format!(
                 r##"
 {batch_type_imports}
 from typing import cast
 
-# TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
-# If we can call iter, it may be that one of the variants implements __iter__.
 if not hasattr(data, "__iter__") or isinstance(data, ({singular_checks})): # type: ignore[arg-type]
     data = [data] # type: ignore[list-item]
 data = cast(Sequence[{name}Like], data) # type: ignore[redundant-cast]
@@ -2264,18 +2326,40 @@ return pa.UnionArray.from_buffers(
     }
 }
 
-fn quote_local_batch_type_imports(fields: &[ObjectField]) -> String {
+fn quote_local_batch_type_imports(fields: &[ObjectField], current_obj_is_testing: bool) -> String {
     let mut code = String::new();
 
     for field in fields {
-        let Type::Object(field_fqname) = &field.typ else {
+        let Type::Object {
+            fqname: field_fqname,
+        } = &field.typ
+        else {
             continue;
         };
         if let Some(last_dot) = field_fqname.rfind('.') {
             let mod_path = &field_fqname[..last_dot];
             let field_type_name = &field_fqname[last_dot + 1..];
 
-            code.push_unindented(format!("from {mod_path} import {field_type_name}Batch"), 1);
+            // If both the current object and the field object are testing types,
+            // use relative imports instead of absolute ones
+            let is_field_testing = crate::objects::is_testing_fqname(field_fqname);
+            let import_path = if current_obj_is_testing && is_field_testing {
+                // Extract the relative path within the testing namespace
+                if let Some(testing_prefix) = mod_path.strip_prefix("rerun.testing.datatypes") {
+                    format!(".{testing_prefix}")
+                } else if mod_path == "rerun.testing" {
+                    ".".to_owned()
+                } else {
+                    mod_path.to_owned()
+                }
+            } else {
+                mod_path.to_owned()
+            };
+
+            code.push_unindented(
+                format!("from {import_path} import {field_type_name}Batch"),
+                1,
+            );
         }
     }
     code
@@ -2516,6 +2600,17 @@ fn quote_kwargs(obj: &Object) -> String {
         .join(",\n")
 }
 
+fn quote_component_field_mapping(obj: &Object) -> String {
+    obj.fields
+        .iter()
+        .map(|field| {
+            let field_name = field.snake_case_name();
+            format!("'{}:{field_name}': {field_name}", obj.name)
+        })
+        .collect_vec()
+        .join(",\n")
+}
+
 fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
     let name = &obj.name;
 
@@ -2633,7 +2728,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     };
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
-    let kwargs = quote_kwargs(obj);
+    let kwargs = quote_component_field_mapping(obj);
     let kwargs = indent::indent_by(12, kwargs);
 
     // NOTE: Calling `update_fields` is not an option: we need to be able to pass
@@ -2654,7 +2749,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
                     {init_args},
                 )
 
-            batches = inst.as_component_batches(include_indicators=False)
+            batches = inst.as_component_batches()
             if len(batches) == 0:
                 return ComponentColumnList([])
 
@@ -2668,12 +2763,13 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
 
                 # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
                 if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                    param = kwargs[batch.component_descriptor().archetype_field_name] # type: ignore[index]
+                    param = kwargs[batch.component_descriptor().component] # type: ignore[index]
                     shape = np.shape(param)  # type: ignore[arg-type]
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
-                    if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) <= 2:
-                        # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
-                        # `shape[1]` should be the length of the fixed sized list.
+                    if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
+                        # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # we have `num_rows` single element batches (each element is a fixed sized list).
                         # (This should have been already validated by conversion to the arrow_array)
                         batch_length = 1
                     else:
@@ -2687,37 +2783,33 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
 
                 columns.append(batch.partition(sizes))
 
-            indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-            return ComponentColumnList([indicator_column] + columns)
+            return ComponentColumnList(columns)
         "#,
         extra_decorators = classmethod_decorators(obj)
     ))
 }
 
 // --- Arrow registry code generators ---
-use arrow2::datatypes::{DataType, Field, UnionMode};
 
 fn quote_arrow_datatype(datatype: &DataType) -> String {
     match datatype {
-        DataType::Null => "pa.null()".to_owned(),
-        DataType::Boolean => "pa.bool_()".to_owned(),
-        DataType::Int8 => "pa.int8()".to_owned(),
-        DataType::Int16 => "pa.int16()".to_owned(),
-        DataType::Int32 => "pa.int32()".to_owned(),
-        DataType::Int64 => "pa.int64()".to_owned(),
-        DataType::UInt8 => "pa.uint8()".to_owned(),
-        DataType::UInt16 => "pa.uint16()".to_owned(),
-        DataType::UInt32 => "pa.uint32()".to_owned(),
-        DataType::UInt64 => "pa.uint64()".to_owned(),
-        DataType::Float16 => "pa.float16()".to_owned(),
-        DataType::Float32 => "pa.float32()".to_owned(),
-        DataType::Float64 => "pa.float64()".to_owned(),
-        DataType::Date32 => "pa.date32()".to_owned(),
-        DataType::Date64 => "pa.date64()".to_owned(),
+        DataType::Atomic(AtomicDataType::Null) => "pa.null()".to_owned(),
+        DataType::Atomic(AtomicDataType::Boolean) => "pa.bool_()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int8) => "pa.int8()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int16) => "pa.int16()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int32) => "pa.int32()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int64) => "pa.int64()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt8) => "pa.uint8()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt16) => "pa.uint16()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt32) => "pa.uint32()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt64) => "pa.uint64()".to_owned(),
+        DataType::Atomic(AtomicDataType::Float16) => "pa.float16()".to_owned(),
+        DataType::Atomic(AtomicDataType::Float32) => "pa.float32()".to_owned(),
+        DataType::Atomic(AtomicDataType::Float64) => "pa.float64()".to_owned(),
+
         DataType::Binary => "pa.binary()".to_owned(),
-        DataType::LargeBinary => "pa.large_binary()".to_owned(),
+
         DataType::Utf8 => "pa.utf8()".to_owned(),
-        DataType::LargeUtf8 => "pa.large_utf8()".to_owned(),
 
         DataType::List(field) => {
             let field = quote_arrow_field(field);
@@ -2729,7 +2821,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
             format!("pa.list_({field}, {length})")
         }
 
-        DataType::Union(fields, _, mode) => {
+        DataType::Union(fields, mode) => {
             let fields = fields
                 .iter()
                 .map(quote_arrow_field)
@@ -2750,9 +2842,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
             format!("pa.struct([{fields}])")
         }
 
-        DataType::Extension(_, datatype, _) => quote_arrow_datatype(datatype),
-
-        _ => unimplemented!("{datatype:#?}"),
+        DataType::Object { datatype, .. } => quote_arrow_datatype(datatype),
     }
 }
 

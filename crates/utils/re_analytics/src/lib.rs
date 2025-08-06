@@ -35,11 +35,16 @@ pub mod event;
 
 // ----------------------------------------------------------------------------
 
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::io::Error as IoError;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    io::Error as IoError,
+    sync::{
+        OnceLock,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::Duration,
+};
 
 use jiff::Timestamp;
 
@@ -141,6 +146,13 @@ impl From<i64> for Property {
     }
 }
 
+impl From<f32> for Property {
+    #[inline]
+    fn from(value: f32) -> Self {
+        Self::Float(value as _)
+    }
+}
+
 impl From<f64> for Property {
     #[inline]
     fn from(value: f64) -> Self {
@@ -211,6 +223,14 @@ pub struct Analytics {
     event_id: AtomicU64,
 }
 
+impl Drop for Analytics {
+    fn drop(&mut self) {
+        if let Some(pipeline) = self.pipeline.as_ref() {
+            pipeline.flush_blocking();
+        }
+    }
+}
+
 fn load_config() -> Result<Config, ConfigError> {
     let config = match Config::load() {
         Ok(config) => config,
@@ -255,9 +275,39 @@ fn load_config() -> Result<Config, ConfigError> {
     }
 }
 
+static GLOBAL_ANALYTICS: OnceLock<Option<Analytics>> = OnceLock::new();
+
 impl Analytics {
+    /// Get the global analytics instance, initializing it if it's not already initialized.
+    ///
+    /// Return `None` if analytics is disabled or some error occurred.
+    pub fn global_or_init() -> Option<&'static Self> {
+        GLOBAL_ANALYTICS
+            .get_or_init(|| match Self::new(Duration::from_secs(2)) {
+                Ok(analytics) => Some(analytics),
+                Err(err) => {
+                    re_log::error!("Failed to initialize analytics: {err}");
+                    None
+                }
+            })
+            .as_ref()
+    }
+
+    /// Get the global analytics instance, but only if it has already been initialized with [`Self::global_or_init`].
+    ///
+    /// Return `None` if analytics is disabled or some error occurred during initialization.
+    ///
+    /// Usually it is better to use [`Self::global_or_init`] instead.
+    pub fn global_get() -> Option<&'static Self> {
+        GLOBAL_ANALYTICS.get()?.as_ref()
+    }
+
     /// Initialize an analytics pipeline which flushes events every `tick`.
-    pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
+    ///
+    /// Usually it is better to use [`Self::global_or_init`] instead of calling this directly,
+    /// but there are cases where you might want to create a separate instance,
+    /// e.g. for testing purposes, or when you want to use a different tick duration.
+    fn new(tick: Duration) -> Result<Self, AnalyticsError> {
         let config = load_config()?;
         let pipeline = Pipeline::new(&config, tick)?;
         re_log::trace!("initialized analytics pipeline");
@@ -286,6 +336,15 @@ impl Analytics {
         let mut e = AnalyticsEvent::new(E::NAME, E::KIND);
         event.serialize(&mut e);
         self.record_raw(e);
+    }
+
+    /// Tries to flush all pending events to the sink.
+    ///
+    /// It blocks until either the flush completed, or it failed.
+    pub fn flush_blocking(&self) {
+        if let Some(pipeline) = self.pipeline.as_ref() {
+            pipeline.flush_blocking();
+        }
     }
 
     /// Record an event.
@@ -354,13 +413,13 @@ impl Properties for re_build_info::BuildInfo {
             datetime,
         } = self;
 
-        event.insert("features", features);
+        event.insert("features", features.to_string());
         event.insert("git_hash", git_hash);
         event.insert("rerun_version", version.to_string());
-        event.insert("rust_version", rustc_version);
-        event.insert("llvm_version", llvm_version);
-        event.insert("target", target_triple);
-        event.insert("build_date", datetime);
+        event.insert("rust_version", rustc_version.to_string());
+        event.insert("llvm_version", llvm_version.to_string());
+        event.insert("target", target_triple.to_string());
+        event.insert("build_date", datetime.to_string());
         event.insert("debug", cfg!(debug_assertions)); // debug-build?
         event.insert("rerun_workspace", is_in_rerun_workspace);
     }

@@ -1,5 +1,7 @@
 //! The UI for the selection panel.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod defaults_ui;
 mod item_heading_no_breadcrumbs;
 mod item_heading_with_breadcrumbs;
@@ -16,7 +18,7 @@ pub use selection_panel::SelectionPanel;
 mod test {
     use super::*;
     use re_chunk_store::LatestAtQuery;
-    use re_viewer_context::{blueprint_timeline, Item, ViewId};
+    use re_viewer_context::{Item, ViewId, blueprint_timeline};
     use re_viewport_blueprint::ViewportBlueprint;
 
     /// This test mainly serve to demonstrate that non-trivial UI code can be executed with a "fake"
@@ -26,13 +28,13 @@ mod test {
     fn test_selection_panel() {
         re_log::setup_logging();
 
-        let test_ctx = re_viewer_context::test_context::TestContext::default();
+        let test_ctx = re_test_context::TestContext::new();
         test_ctx.edit_selection(|selection_state| {
             selection_state.set_selection(Item::View(ViewId::random()));
         });
 
         test_ctx.run_in_egui_central_panel(|ctx, ui| {
-            let blueprint = ViewportBlueprint::try_from_db(
+            let blueprint = ViewportBlueprint::from_db(
                 ctx.store_context.blueprint,
                 &LatestAtQuery::latest(blueprint_timeline()),
             );

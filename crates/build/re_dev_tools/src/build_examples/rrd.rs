@@ -1,4 +1,4 @@
-use super::{wait_for_output, Channel, Example};
+use super::{Channel, Example, wait_for_output};
 use indicatif::MultiProgress;
 use rayon::prelude::IntoParallelIterator as _;
 use rayon::prelude::ParallelIterator as _;

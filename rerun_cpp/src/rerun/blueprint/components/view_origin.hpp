@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/entity_path.hpp"
 #include "../../result.hpp"
 
@@ -14,6 +13,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: The origin of a view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ViewOrigin {
         rerun::datatypes::EntityPath value;
 
@@ -49,7 +51,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::ViewOrigin> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.components.ViewOrigin";
+        static constexpr std::string_view ComponentType = "rerun.blueprint.components.ViewOrigin";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

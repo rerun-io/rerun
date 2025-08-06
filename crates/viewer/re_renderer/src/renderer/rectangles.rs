@@ -10,10 +10,11 @@
 //! Since we're not allowed to bind many textures at once (no widespread bindless support!),
 //! we are forced to have individual bind groups per rectangle and thus a draw call per rectangle.
 
-use itertools::{izip, Itertools as _};
+use itertools::{Itertools as _, izip};
 use smallvec::smallvec;
 
 use crate::{
+    Colormap, OutlineMaskPreference, PickingLayerProcessor, Rgba,
     allocator::create_and_fill_uniform_buffer_batch,
     depth_offset::DepthOffset,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
@@ -25,7 +26,6 @@ use crate::{
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
         RenderPipelineDesc,
     },
-    Colormap, OutlineMaskPreference, PickingLayerProcessor, Rgba,
 };
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
@@ -47,7 +47,7 @@ pub enum TextureFilterMin {
 }
 
 /// Describes how the color information is encoded in the texture.
-// TODO(#7608): to be replaced by re_renderer based on-input conversion.
+// TODO(#10648): to be replaced by re_renderer based on-input conversion.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ShaderDecoding {
     /// Do BGR(A)->RGB(A) conversion is in the shader.
@@ -164,6 +164,25 @@ pub struct TexturedRect {
     pub options: RectangleOptions,
 }
 
+impl TexturedRect {
+    /// Returns axis aligned bounding box for this rectangle.
+    pub fn bounding_box(&self) -> macaw::BoundingBox {
+        let left_top = self.top_left_corner_position;
+        let extent_u = self.extent_u;
+        let extent_v = self.extent_v;
+
+        macaw::BoundingBox::from_points(
+            [
+                left_top,
+                left_top + extent_u,
+                left_top + extent_v,
+                left_top + extent_v + extent_u,
+            ]
+            .into_iter(),
+        )
+    }
+}
+
 #[derive(Clone)]
 pub struct RectangleOptions {
     pub texture_filter_magnification: TextureFilterMag,
@@ -198,7 +217,9 @@ pub enum RectangleError {
     #[error("Texture format not supported: {0:?} - use float or integer textures instead.")]
     TextureFormatNotSupported(wgpu::TextureFormat),
 
-    #[error("Color mapping cannot be applied to a four-component RGBA image, but only to a single-component image.")]
+    #[error(
+        "Color mapping cannot be applied to a four-component RGBA image, but only to a single-component image."
+    )]
     ColormappingRgbaTexture,
 
     #[error("Only 1 and 4 component textures are supported, got {0} components")]

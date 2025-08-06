@@ -3,25 +3,25 @@
 use std::borrow::Cow;
 
 use anyhow::Context as _;
-use egui::{util::hash, Rangef};
+use egui::{Rangef, util::hash};
 use wgpu::TextureFormat;
 
 use re_renderer::{
+    RenderContext,
     device_caps::DeviceCaps,
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
     resource_managers::{
         ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
     },
-    RenderContext,
 };
 use re_types::components::ClassId;
 use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 use re_types::image::ImageKind;
 
 use crate::{
-    gpu_bridge::colormap::colormap_to_re_renderer, image_info::ColormapWithRange, Annotations,
-    ImageInfo, ImageStats,
+    Annotations, ImageInfo, ImageStats, gpu_bridge::colormap::colormap_to_re_renderer,
+    image_info::ColormapWithRange,
 };
 
 use super::get_or_create_texture;
@@ -32,16 +32,16 @@ use super::get_or_create_texture;
 ///
 /// If the key changes, we upload a new texture.
 fn generate_texture_key(image: &ImageInfo) -> u64 {
-    // We need to inclde anything that, if changes, should result in a new texture being uploaded.
+    // We need to include anything that, if changes, should result in a new texture being uploaded.
     let ImageInfo {
-        buffer_row_id: blob_row_id,
+        buffer_content_hash,
         buffer: _, // we hash `blob_row_id` instead; much faster!
 
         format,
         kind,
     } = image;
 
-    hash((blob_row_id, format, kind))
+    hash((buffer_content_hash, format, kind))
 }
 
 /// `colormap` is currently only used for depth images.
@@ -246,18 +246,19 @@ pub fn texture_creation_desc_from_color_image<'a>(
 ) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
 
-    // TODO(#7608): All image data ingestion conversions should all be handled by re_renderer!
+    // TODO(#10648): All image data ingestion conversions should all be handled by re_renderer!
 
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
-        let data = cast_slice_to_cow(image.buffer.as_slice());
+        let data = cast_slice_to_cow(&image.buffer);
         let coefficients = match pixel_format.yuv_matrix_coefficients() {
             re_types::image::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
             re_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
         };
 
-        let range = match pixel_format.is_limited_yuv_range() {
-            true => YuvRange::Limited,
-            false => YuvRange::Full,
+        let range = if pixel_format.is_limited_yuv_range() {
+            YuvRange::Limited
+        } else {
+            YuvRange::Full
         };
 
         let format = match pixel_format {

@@ -4,8 +4,8 @@
 #![cfg(test)]
 
 use std::sync::{
-    atomic::{AtomicUsize, Ordering::Relaxed},
     Arc,
+    atomic::{AtomicUsize, Ordering::Relaxed},
 };
 
 static LIVE_BYTES_GLOBAL: AtomicUsize = AtomicUsize::new(0);
@@ -69,31 +69,37 @@ fn memory_use<R>(run: impl Fn() -> R) -> (usize, usize) {
 // ----------------------------------------------------------------------------
 
 use re_chunk::{
-    external::crossbeam::channel::TryRecvError, ChunkBatcher, ChunkBatcherConfig, PendingRow,
+    BatcherHooks, ChunkBatcher, ChunkBatcherConfig, PendingRow,
+    external::crossbeam::channel::TryRecvError,
 };
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
 use re_log_types::{TimePoint, Timeline};
-use re_types::{components::Scalar, Component as _, Loggable as _};
+use re_types::{Loggable as _, archetypes, components::Scalar};
 
 /// The memory overhead of storing many scalars in the store.
 #[test]
 fn scalar_memory_overhead() {
     re_log::setup_logging();
 
-    re_log::warn!("THIS TEST HAS TO ACCOUNT FOR THE MEMORY OF ALL RUNNING THREADS -- IT MUST BE RUN ON ITS OWN, WITH NO OTHER TESTS RUNNING IN PARALLEL: `cargo t --all-features -p re_chunk_store memory_tests -- scalar_memory_overhead`");
+    re_log::warn!(
+        "THIS TEST HAS TO ACCOUNT FOR THE MEMORY OF ALL RUNNING THREADS -- IT MUST BE RUN ON ITS OWN, WITH NO OTHER TESTS RUNNING IN PARALLEL: `cargo t --all-features -p re_chunk_store memory_tests -- scalar_memory_overhead`"
+    );
 
     const NUM_SCALARS: usize = 1024 * 1024;
 
     let (total_mem_use_global, _total_mem_use_local) = memory_use(|| {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             ChunkStoreConfig::default(),
         );
 
-        let batcher = ChunkBatcher::new(ChunkBatcherConfig {
-            flush_num_rows: 1000,
-            ..ChunkBatcherConfig::NEVER
-        })
+        let batcher = ChunkBatcher::new(
+            ChunkBatcherConfig {
+                flush_num_rows: 1000,
+                ..ChunkBatcherConfig::NEVER
+            },
+            BatcherHooks::NONE,
+        )
         .unwrap();
 
         for i in 0..NUM_SCALARS {
@@ -103,7 +109,7 @@ fn scalar_memory_overhead() {
 
             let row = PendingRow::new(
                 timepoint,
-                std::iter::once((Scalar::descriptor(), scalars)).collect(),
+                std::iter::once((archetypes::Scalars::descriptor_scalars(), scalars)).collect(),
             );
 
             batcher.push_row(entity_path.clone(), row);

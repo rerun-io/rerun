@@ -21,7 +21,11 @@ __all__ = ["ContainerBlueprint"]
 
 @define(str=False, repr=False, init=False)
 class ContainerBlueprint(Archetype):
-    """**Archetype**: The description of a container."""
+    """
+    **Archetype**: The description of a container.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     def __init__(
         self: Any,

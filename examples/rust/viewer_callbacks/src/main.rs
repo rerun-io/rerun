@@ -1,9 +1,14 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 
-use re_viewer::external::{eframe, egui, egui::mutex::Mutex, re_log, re_memory};
-use re_viewer::AsyncRuntimeHandle;
+use rerun::external::{
+    eframe, egui,
+    parking_lot::Mutex,
+    re_crash_handler, re_grpc_server, re_log, re_memory,
+    re_viewer::{self, ViewerEvent, ViewerEventKind},
+    tokio,
+};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -25,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let rx = re_grpc_server::spawn_with_recv(
+    let (rx, _) = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9876".parse()?,
         "75%".parse()?,
         re_grpc_server::shutdown::never(),
@@ -39,31 +44,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let shared_state: Arc<Mutex<SharedState>> = Default::default();
 
     let startup_options = re_viewer::StartupOptions {
-        callbacks: Some(
-            re_viewer::Callbacks::builder()
-                .on_selection_change({
-                    let shared_state = shared_state.clone();
-                    move |items| {
-                        shared_state.lock().current_selection = items;
-                    }
-                })
-                .on_timeline_change({
-                    let shared_state = shared_state.clone();
-                    move |timeline, time| {
-                        let mut shared_state = shared_state.lock();
-                        shared_state.current_timeline = timeline.name().as_str().to_owned();
+        on_event: Some({
+            let shared_state = shared_state.clone();
+            Rc::new(move |event: ViewerEvent| {
+                let mut shared_state = shared_state.lock();
+                match event.kind {
+                    ViewerEventKind::Play | ViewerEventKind::Pause => {}
+                    ViewerEventKind::TimeUpdate { time } => {
                         shared_state.current_time = time.as_f64();
                     }
-                })
-                .on_time_update({
-                    let shared_state = shared_state.clone();
-                    move |time| {
-                        let mut shared_state = shared_state.lock();
+                    ViewerEventKind::TimelineChange {
+                        timeline_name,
+                        time,
+                    } => {
+                        shared_state.current_timeline = timeline_name.as_str().to_owned();
                         shared_state.current_time = time.as_f64();
                     }
-                })
-                .build(),
-        ),
+                    ViewerEventKind::SelectionChange { items } => {
+                        shared_state.current_selection = items;
+                    }
+                    ViewerEventKind::RecordingOpen { .. } => {}
+                }
+            })
+        }),
         ..Default::default()
     };
 
@@ -83,9 +86,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
-                AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
+                None,
+                re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
-            rerun_app.add_receiver(rx);
+            rerun_app.add_log_receiver(rx);
             Ok(Box::new(MyApp {
                 rerun_app,
                 shared_state,
@@ -98,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[derive(Default)]
 struct SharedState {
-    current_selection: Vec<re_viewer::CallbackSelectionItem>,
+    current_selection: Vec<re_viewer::event::SelectionChangeItem>,
     current_time: f64,
     current_timeline: String,
 }
@@ -156,9 +160,9 @@ impl MyApp {
     }
 }
 
-fn selection_item_ui(ui: &mut egui::Ui, item: &re_viewer::CallbackSelectionItem) {
+fn selection_item_ui(ui: &mut egui::Ui, item: &re_viewer::SelectionChangeItem) {
     match item {
-        re_viewer::CallbackSelectionItem::Entity {
+        re_viewer::SelectionChangeItem::Entity {
             entity_path,
             instance_id,
             view_name,
@@ -180,14 +184,14 @@ fn selection_item_ui(ui: &mut egui::Ui, item: &re_viewer::CallbackSelectionItem)
                 });
             });
         }
-        re_viewer::CallbackSelectionItem::View { view_id, view_name } => {
+        re_viewer::SelectionChangeItem::View { view_id, view_name } => {
             ui.label(format!("View {view_name}"));
             ui.horizontal(|ui| {
                 ui.add_space(16.0);
                 ui.label(format!("View ID: {}", view_id.uuid()));
             });
         }
-        re_viewer::CallbackSelectionItem::Container {
+        re_viewer::SelectionChangeItem::Container {
             container_id,
             container_name,
         } => {

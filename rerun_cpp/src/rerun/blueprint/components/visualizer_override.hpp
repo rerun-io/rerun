@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/utf8.hpp"
 #include "../../result.hpp"
 
@@ -16,6 +15,9 @@ namespace rerun::blueprint::components {
     /// **Component**: Single visualizer override the visualizers for an entity.
     ///
     /// For details see `archetypes::VisualizerOverrides`.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct VisualizerOverride {
         /// Names of a visualizer that should be active.
         rerun::datatypes::Utf8 visualizer;
@@ -53,7 +55,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::VisualizerOverride> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.VisualizerOverride";
 
         /// Returns the arrow data type this type corresponds to.

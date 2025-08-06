@@ -15,11 +15,12 @@ Meaning that in practice clears are ineffective when making use of visible time 
 Scalar plots are an exception: they track clears and use them to represent holes in the
 data (i.e. discontinuous lines).
 
-## Components
+## Fields
+### Required
+* `is_recursive`: [`ClearIsRecursive`](../components/clear_is_recursive.md)
 
-**Required**: [`ClearIsRecursive`](../components/clear_is_recursive.md)
 
-## Shown in
+## Can be shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md)
 * [TimeSeriesView](../views/time_series_view.md)

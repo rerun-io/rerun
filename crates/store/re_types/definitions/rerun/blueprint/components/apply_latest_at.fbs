@@ -4,12 +4,12 @@ namespace rerun.blueprint.components;
 
 /// Whether empty cells in a dataframe should be filled with a latest-at query.
 struct ApplyLatestAt (
-    "attr.arrow.transparent",
-    "attr.rerun.scope": "blueprint",
-    "attr.python.aliases": "bool",
-    "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
-    "attr.rust.repr": "transparent",
-    "attr.rust.tuple_struct"
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "bool",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
 ) {
-    apply_latest_at: rerun.datatypes.Bool (order: 100);
+  apply_latest_at: rerun.datatypes.Bool (order: 100);
 }

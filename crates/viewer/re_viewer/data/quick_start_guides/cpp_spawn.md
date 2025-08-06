@@ -7,7 +7,7 @@ If you need to install the viewer, follow the [installation guide](https://www.r
 * Via cargo: `cargo install rerun-cli --locked --features nasm` (see note below)
 * Via pip: `pip install rerun-sdk`
 
-**Note**: the `nasm` Cargo feature requires the [`nasm`](https://www.nasm.us) CLI to be installed and available in your path.
+**Note**: the `nasm` Cargo feature requires the [`nasm`](https://github.com/netwide-assembler/nasm) CLI to be installed and available in your path.
 Alternatively, you may skip enabling this feature, but this may result in inferior video decoding performance.
 
 After you have installed it, you should be able to type `rerun` in your terminal to start the viewer.

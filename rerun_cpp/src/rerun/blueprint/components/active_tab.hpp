@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/entity_path.hpp"
 #include "../../result.hpp"
 
@@ -14,6 +13,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: The active tab in a tabbed container.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ActiveTab {
         /// Which tab is currently active.
         ///
@@ -50,7 +52,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::ActiveTab> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.components.ActiveTab";
+        static constexpr std::string_view ComponentType = "rerun.blueprint.components.ActiveTab";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

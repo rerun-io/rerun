@@ -6,9 +6,9 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::{
-    codegen::{autogen_warning, Target},
-    ObjectKind, Objects, Reporter, ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE,
-    ATTR_RUST_DERIVE_ONLY,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ObjectKind, Objects,
+    Reporter,
+    codegen::{Target, autogen_warning},
 };
 
 use super::util::{append_tokens, doc_as_lines};
@@ -47,10 +47,10 @@ pub fn generate_reflection(
     let quoted_reflection = quote! {
         use re_types_core::{
             ArchetypeName,
-            ComponentName,
+            ComponentType,
             Component,
             Loggable as _,
-            LoggableBatch as _,
+            ComponentBatch as _,
             reflection::{
                 ArchetypeFieldReflection,
                 ArchetypeReflection,
@@ -111,7 +111,7 @@ fn generate_component_reflection(
         } else {
             // Works too
             let fqname = &obj.fqname;
-            quote!( ComponentName::new(#fqname) )
+            quote!( ComponentType::new(#fqname) )
         };
 
         let docstring_md = doc_as_lines(
@@ -126,11 +126,16 @@ fn generate_component_reflection(
         .join("\n");
 
         // Emit custom placeholder if there's a default implementation
-        let auto_derive_default = obj.is_enum() // All enums have default values currently!
-            || obj
-                .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
-                .or_else(|| obj.try_get_attr::<String>(ATTR_RUST_DERIVE))
-                .is_some_and(|derives| derives.contains("Default"));
+        let is_enum_with_default = obj.is_enum()
+            && obj
+                .fields
+                .iter()
+                .any(|field| field.attrs.has(crate::ATTR_DEFAULT));
+        let has_default_attr = obj
+            .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
+            .or_else(|| obj.try_get_attr::<String>(ATTR_RUST_DERIVE))
+            .is_some_and(|derives| derives.contains("Default"));
+        let auto_derive_default = is_enum_with_default || has_default_attr;
         let has_custom_default_impl =
             extension_contents_for_fqname
                 .get(&obj.fqname)
@@ -185,7 +190,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
         .filter(|obj| !obj.is_testing())
     {
         let quoted_field_reflections = obj.fields.iter().map(|field| {
-            let Some(component_name) = field.typ.fqname() else {
+            let Some(component_type) = field.typ.fqname() else {
                 reporter.error(
                     &field.virtpath,
                     &field.fqname,
@@ -211,7 +216,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                 ArchetypeFieldReflection {
                     name: #name,
                     display_name: #display_name,
-                    component_name: #component_name.into(),
+                    component_type: #component_type.into(),
                     docstring_md: #docstring_md,
                     is_required: #required,
                 }

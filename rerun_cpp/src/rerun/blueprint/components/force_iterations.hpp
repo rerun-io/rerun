@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/uint64.hpp"
 #include "../../result.hpp"
 
@@ -14,6 +13,9 @@ namespace rerun::blueprint::components {
     /// **Component**: Specifies how often this force should be applied per iteration.
     ///
     /// Increasing this parameter can lead to better results at the cost of longer computation time.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ForceIterations {
         rerun::datatypes::UInt64 distance;
 
@@ -49,7 +51,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::ForceIterations> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.ForceIterations";
 
         /// Returns the arrow data type this type corresponds to.

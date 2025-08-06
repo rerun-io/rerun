@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -16,7 +15,11 @@ __all__ = ["ViewOrigin", "ViewOriginBatch"]
 
 
 class ViewOrigin(datatypes.EntityPath, ComponentMixin):
-    """**Component**: The origin of a view."""
+    """
+    **Component**: The origin of a view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ViewOriginExt in view_origin_ext.py
@@ -25,7 +28,7 @@ class ViewOrigin(datatypes.EntityPath, ComponentMixin):
 
 
 class ViewOriginBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.ViewOrigin")
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.ViewOrigin"
 
 
 # This is patched in late to avoid circular dependencies.

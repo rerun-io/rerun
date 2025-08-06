@@ -16,10 +16,10 @@ use std::{collections::HashSet, f32::consts::TAU};
 
 use itertools::Itertools as _;
 use rerun::{
+    EntityPath, RecordingStream, TransformRelation,
     archetypes::{Clear, SegmentationImage, TextLog},
     datatypes::Quaternion,
     external::{re_log, re_types::components::TextLogLevel},
-    EntityPath, RecordingStream, TransformRelation,
 };
 
 // --- Rerun logging ---
@@ -130,7 +130,7 @@ fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
                 Text(i.to_string().into()),
                 Position3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
                 Radius::from(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
-                Color::from_rgb(rng.gen(), rng.gen(), rng.gen()),
+                Color::from_rgb(rng.r#gen(), rng.r#gen(), rng.r#gen()),
             )
         }))
     }
@@ -156,7 +156,7 @@ fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
 
 fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     use ndarray::prelude::*;
-    use ndarray_rand::{rand_distr::Uniform, RandomExt as _};
+    use ndarray_rand::{RandomExt as _, rand_distr::Uniform};
 
     use rerun::{
         archetypes::{Boxes2D, Tensor},
@@ -378,9 +378,9 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
     let points = std::iter::from_fn(|| {
-        let radius = rng.gen::<f32>() * planet_to_moon_distance * 0.5;
-        let angle = rng.gen::<f32>() * TAU;
-        let height = rng.gen::<f32>().powf(0.2) * 0.5 - 0.5;
+        let radius = rng.r#gen::<f32>() * planet_to_moon_distance * 0.5;
+        let angle = rng.r#gen::<f32>() * TAU;
+        let height = rng.r#gen::<f32>().powf(0.2) * 0.5 - 0.5;
         Some(Position3D::new(
             radius * angle.sin(),
             radius * angle.cos(),

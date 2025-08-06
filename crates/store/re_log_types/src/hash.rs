@@ -17,7 +17,7 @@ impl re_byte_size::SizeBytes for Hash64 {
 impl Hash64 {
     pub const ZERO: Self = Self(0);
 
-    pub fn hash(value: impl std::hash::Hash + Copy) -> Self {
+    pub fn hash(value: impl std::hash::Hash) -> Self {
         Self(hash(value))
     }
 

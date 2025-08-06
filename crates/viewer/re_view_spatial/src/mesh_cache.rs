@@ -3,11 +3,15 @@ use std::sync::Arc;
 use ahash::{HashMap, HashSet};
 
 use itertools::Either;
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_entity_db::VersionedInstancePathHash;
 use re_log_types::hash::Hash64;
 use re_renderer::RenderContext;
-use re_types::{components::MediaType, Component as _};
+use re_types::{
+    archetypes::{Asset3D, Mesh3D},
+    components::MediaType,
+};
 use re_viewer_context::Cache;
 
 use crate::mesh_loader::{LoadedMesh, NativeAsset3D, NativeMesh3D};
@@ -27,6 +31,17 @@ pub struct MeshCacheKey {
     pub versioned_instance_path_hash: VersionedInstancePathHash,
     pub query_result_hash: Hash64,
     pub media_type: Option<MediaType>,
+}
+
+impl re_byte_size::SizeBytes for MeshCacheKey {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            versioned_instance_path_hash: _,
+            query_result_hash: _,
+            media_type,
+        } = self;
+        media_type.heap_size_bytes()
+    }
 }
 
 /// Caches meshes based on their [`MeshCacheKey`].
@@ -82,7 +97,11 @@ impl Cache for MeshCache {
         self.0.clear();
     }
 
-    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+    fn bytes_used(&self) -> u64 {
+        self.0.total_size_bytes()
+    }
+
+    fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let row_ids_removed: HashSet<RowId> = events
@@ -93,12 +112,12 @@ impl Cache for MeshCache {
                     let contains_asset_blob = event
                         .chunk
                         .components()
-                        .contains_key(&re_types::components::Blob::name());
+                        .contains_component(&Asset3D::descriptor_blob());
 
                     let contains_vertex_positions = event
                         .chunk
                         .components()
-                        .contains_key(&re_types::components::Position3D::name());
+                        .contains_component(&Mesh3D::descriptor_vertex_positions());
 
                     contains_asset_blob || contains_vertex_positions
                 };

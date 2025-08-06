@@ -27,7 +27,7 @@ features = [
     "Update rows",
     [
       "archetypes/arrows3d_row_updates",
-      "archetypes/scalar_row_updates",
+      "archetypes/scalars_row_updates",
       "archetypes/points3d_row_updates",
       "archetypes/transform3d_row_updates",
     ],
@@ -36,10 +36,16 @@ features = [
     "Update columns",
     [
       "archetypes/arrows3d_row_columns",
-      "archetypes/scalar_column_updates",
+      "archetypes/scalars_column_updates",
       "archetypes/points3d_column_updates",
       "archetypes/transform3d_column_updates",
       "archetypes/image_column_updates",       # bonus!
+    ],
+  ],
+  [
+    "Micro batching",
+    [
+      "howto/micro_batching",
     ],
   ],
   [
@@ -72,6 +78,12 @@ features = [
       "reference/dataframe_view_query",
     ],
   ],
+  [
+    "Host web viewer and connect it to a gRPC server",
+    [
+      "howto/serve_web_viewer",
+    ],
+  ],
 ]
 
 
@@ -98,6 +110,11 @@ features = [
   "py",
   "cpp",
   "rust",
+]
+"concepts/send_recording" = [
+  "py",   # Requires context (an RRD file to be exported by the user)
+  "cpp",  # Not implemented for C++
+  "rust", # Requires context (an RRD file to be exported by the user)
 ]
 "concepts/static/log_static" = [ # pseudo-code
   "py",
@@ -131,18 +148,33 @@ features = [
   "cpp",  # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
-"concepts/viscomp-visualizer-override-multiple" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
-  "rust", # Blueprint API doesn't exist for C++/Rust
-]
-"concepts/viscomp-visualizer-override" = [
-  "cpp",  # Blueprint API doesn't exist for C++/Rust
-  "rust", # Blueprint API doesn't exist for C++/Rust
-]
 "concepts/app-model" = [ # Uses a non-standard logging workflow
   "py",
   "cpp",
   "rust",
+]
+"howto/check_connection_status" = [
+  "py",   # TODO(#2353): Doesn't exist
+  "cpp",  # TODO(#2353): Doesn't exist
+  "rust", # Runs indefinitely.
+]
+"howto/micro_batching" = [
+  "cpp", # TODO(#10661): Doesn't exist
+]
+"howto/send_table" = [
+  "py",   # Requires a server to connect to
+  "cpp",  # Doesn't exist
+  "rust", # Doesn't exist
+]
+"howto/serve_web_viewer" = [
+  "py",   # Runs indefinitely.
+  "cpp",  # TODO(#4638): Doesn't exist.
+  "rust", # Runs indefinitely.
+]
+"howto/set_sinks" = [
+  "py",   # Requires a server to connect to
+  "cpp",  # Doesn't exist
+  "rust", # Doesn't exist
 ]
 "views" = [
   "cpp",  # TODO(#5520): C++ views are not yet implemented
@@ -155,6 +187,15 @@ features = [
 "archetypes/entity_behavior" = [
   "cpp",  # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"archetypes/video_stream_synthetic" = [
+  "cpp",  # Not implemented
+  "rust", # Not implemented
+]
+"archetypes/video_stream_query_and_mux" = [
+  "py",   # Doesn't produce an rrd file.
+  "cpp",  # Not implemented
+  "rust", # Not implemented
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
@@ -270,24 +311,15 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "archetypes/arrows3d_simple" = [
-  "py",  # Python uses doubles
-  "cpp", # Trigonometry doesn't work out the same with all C++ toolchains (*some* Windows machines yield a different result)
+  "py", # Python has different colors. TODO(emilk): fix that
 ]
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
-]
-"archetypes/capsules3d_batch" = [ # TODO(#3235): Degree to radian conversion is slightly different.
-  "cpp",
-  "py",
-  "rust",
 ]
 "archetypes/ellipsoids3d_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
-]
-"archetypes/mesh3d_partial_updates" = [ # Python uses doubles
-  "py",
 ]
 "archetypes/pinhole_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
@@ -304,9 +336,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/scalar_multiple_plots" = [ # trigonometric functions have slightly different outcomes
-  "cpp",
-]
 "archetypes/tensor_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
@@ -317,50 +346,12 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/transform3d_axes" = [ # TODO(#3235): Degree to radian conversion is slightly different.
-  "cpp",
-  "py",
-  "rust",
-]
-"archetypes/transform3d_hierarchy" = [ # Uses a lot of trigonometry which is surprisingly easy to get the same on Rust & C++, but not on Python/Numpy
-  "py",
-]
-"archetypes/instance_poses3d_combined" = [ # TODO(#3235): Slight floating point differences in point grid.
-  "cpp",
-  "py",
-  "rust",
-]
-"archetypes/mesh3d_instancing" = [ # Python uses doubles
-  "py",
-]
-"archetypes/series_line_style" = [
-  "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
-]
-"archetypes/series_point_style" = [
-  "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
-]
-
-"archetypes/scalars_multiple_plots" = [ # TODO(#3235): Slight floating point differences
-  "cpp",
-  "py",
-  "rust",
-]
-"archetypes/series_lines_style" = [ # TODO(#3235): Slight floating point differences
-  "cpp",
-  "py",
-  "rust",
-]
-"archetypes/series_points_style" = [ # TODO(#3235): Slight floating point differences
-  "cpp",
-  "py",
-  "rust",
-]
-
 
 # -----------------------------------------------------------------------------
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]
+"concepts/send_recording" = ["$config_dir/../../tests/assets/rrd/dna.rrd"]
 "archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
 "archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]
 "archetypes/video_auto_frames" = [

@@ -2,13 +2,10 @@ use glam::Vec3;
 
 use re_log_types::EntityPath;
 use re_renderer::renderer;
-use re_viewer_context::{
-    gpu_bridge, ColormapWithRange, ImageInfo, ImageStatsCache, ViewClass as _, ViewerContext,
-};
+use re_types::ArchetypeName;
+use re_viewer_context::{ColormapWithRange, ImageInfo, ImageStatsCache, ViewerContext, gpu_bridge};
 
-use crate::{contexts::SpatialSceneEntityContext, SpatialView2D};
-
-use super::SpatialViewVisualizerData;
+use crate::contexts::SpatialSceneEntityContext;
 
 #[allow(clippy::too_many_arguments)]
 pub fn textured_rect_from_image(
@@ -18,8 +15,7 @@ pub fn textured_rect_from_image(
     image: &ImageInfo,
     colormap: Option<&ColormapWithRange>,
     multiplicative_tint: egui::Rgba,
-    visualizer_name: &'static str,
-    visualizer_data: &mut SpatialViewVisualizerData,
+    archetype_name: ArchetypeName,
 ) -> Option<renderer::TexturedRect> {
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx
@@ -55,7 +51,7 @@ pub fn textured_rect_from_image(
 
             let world_from_entity = ent_context
                 .transform_info
-                .single_entity_transform_required(ent_path, visualizer_name);
+                .single_entity_transform_required(ent_path, archetype_name);
 
             let textured_rect = renderer::TexturedRect {
                 top_left_corner_position: world_from_entity.transform_point3(Vec3::ZERO),
@@ -73,18 +69,6 @@ pub fn textured_rect_from_image(
                 },
             };
 
-            // Only update the bounding box if this is a 2D view.
-            // This is avoids a cyclic relationship where the image plane grows
-            // the bounds which in turn influence the size of the image plane.
-            // See: https://github.com/rerun-io/rerun/issues/3728
-            if ent_context.view_class_identifier == SpatialView2D::identifier() {
-                visualizer_data.add_bounding_box(
-                    ent_path.hash(),
-                    bounding_box_for_textured_rect(&textured_rect),
-                    world_from_entity,
-                );
-            }
-
             Some(textured_rect)
         }
 
@@ -93,20 +77,4 @@ pub fn textured_rect_from_image(
             None
         }
     }
-}
-
-fn bounding_box_for_textured_rect(textured_rect: &renderer::TexturedRect) -> re_math::BoundingBox {
-    let left_top = textured_rect.top_left_corner_position;
-    let extent_u = textured_rect.extent_u;
-    let extent_v = textured_rect.extent_v;
-
-    re_math::BoundingBox::from_points(
-        [
-            left_top,
-            left_top + extent_u,
-            left_top + extent_v,
-            left_top + extent_v + extent_u,
-        ]
-        .into_iter(),
-    )
 }

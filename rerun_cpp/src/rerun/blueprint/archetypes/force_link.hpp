@@ -9,7 +9,6 @@
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -19,6 +18,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Aims to achieve a target distance between two nodes that are connected by an edge.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ForceLink {
         /// Whether the link force is enabled.
         ///
@@ -34,28 +36,23 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> iterations;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.ForceLinkIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ForceLink";
 
         /// `ComponentDescriptor` for the `enabled` field.
         static constexpr auto Descriptor_enabled = ComponentDescriptor(
-            ArchetypeName, "enabled",
-            Loggable<rerun::blueprint::components::Enabled>::Descriptor.component_name
+            ArchetypeName, "ForceLink:enabled",
+            Loggable<rerun::blueprint::components::Enabled>::ComponentType
         );
         /// `ComponentDescriptor` for the `distance` field.
         static constexpr auto Descriptor_distance = ComponentDescriptor(
-            ArchetypeName, "distance",
-            Loggable<rerun::blueprint::components::ForceDistance>::Descriptor.component_name
+            ArchetypeName, "ForceLink:distance",
+            Loggable<rerun::blueprint::components::ForceDistance>::ComponentType
         );
         /// `ComponentDescriptor` for the `iterations` field.
         static constexpr auto Descriptor_iterations = ComponentDescriptor(
-            ArchetypeName, "iterations",
-            Loggable<rerun::blueprint::components::ForceIterations>::Descriptor.component_name
+            ArchetypeName, "ForceLink:iterations",
+            Loggable<rerun::blueprint::components::ForceIterations>::ComponentType
         );
 
       public:

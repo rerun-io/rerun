@@ -2,29 +2,28 @@ use egui::{Context, Modifiers, NumExt as _, Rect, Response};
 use re_view::AnnotationSceneContext;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
-use re_data_ui::{item_ui, DataUi as _};
+use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
+use re_log_types::EntityPath;
 use re_renderer::{RenderContext, ViewBuilder};
 use re_types::{
+    View as _, ViewClassIdentifier,
     blueprint::{
         archetypes::{MapBackground, MapZoom},
-        components::MapProvider,
-        components::ZoomLevel,
+        components::{MapProvider, ZoomLevel},
     },
-    View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help};
+use re_ui::{Help, IconText, icons, list_item};
 use re_viewer_context::{
-    gpu_bridge, IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
+    IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext,
+    ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::map_overlays;
-use crate::visualizers::{update_span, GeoLineStringsVisualizer, GeoPointsVisualizer};
+use crate::visualizers::{GeoLineStringsVisualizer, GeoPointsVisualizer, update_span};
 
 pub struct MapViewState {
     tiles: Option<HttpTiles>,
@@ -102,15 +101,15 @@ impl ViewClass for MapView {
         &re_ui::icons::VIEW_MAP
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
         Help::new("Map view")
             .docs_link("https://rerun.io/docs/reference/types/views/map_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
+            .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Zoom",
-                shortcut_with_icon(egui_ctx, Modifiers::COMMAND, icons::SCROLL),
+                IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
             )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(
@@ -145,7 +144,7 @@ impl ViewClass for MapView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -159,18 +158,13 @@ impl ViewClass for MapView {
             // TODO(grtlr): This looks slow.
             ctx.indicated_entities_per_visualizer
                 .get(system_id)
-                .is_some_and(|indicated_entities| {
-                    !indicated_entities.is_empty()
-                        && !indicated_entities
-                            .iter()
-                            .all(|e| suggested_filter.matches(e))
-                })
+                .is_some_and(|indicated_entities| indicated_entities.iter().any(include_entity))
         });
 
         if any_map_entity {
             ViewSpawnHeuristics::root()
         } else {
-            ViewSpawnHeuristics::default()
+            ViewSpawnHeuristics::empty()
         }
     }
 
@@ -183,8 +177,9 @@ impl ViewClass for MapView {
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         re_ui::list_item::list_item_scope(ui, "map_selection_ui", |ui| {
-            re_view::view_property_ui::<MapZoom>(ctx, ui, view_id, self, state);
-            re_view::view_property_ui::<MapBackground>(ctx, ui, view_id, self, state);
+            let ctx = self.view_context(ctx, view_id, state);
+            re_view::view_property_ui::<MapZoom>(&ctx, ui, self);
+            re_view::view_property_ui::<MapBackground>(&ctx, ui, self);
         });
 
         Ok(())
@@ -220,7 +215,12 @@ impl ViewClass for MapView {
         // Map Provider
         //
 
-        let map_provider = map_background.component_or_fallback::<MapProvider>(ctx, self, state)?;
+        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let map_provider = map_background.component_or_fallback(
+            &view_ctx,
+            self,
+            &MapBackground::descriptor_provider(),
+        )?;
         if state.selected_provider != map_provider {
             state.tiles = None;
             state.selected_provider = map_provider;
@@ -252,7 +252,7 @@ impl ViewClass for MapView {
         let default_center_position = state.last_center_position;
 
         let blueprint_zoom_level = map_zoom
-            .component_or_empty::<ZoomLevel>()?
+            .component_or_empty::<ZoomLevel>(&MapZoom::descriptor_zoom())?
             .map(|zoom| **zoom);
         let default_zoom_level = span.and_then(|span| {
             span.zoom_for_screen_size(
@@ -289,7 +289,7 @@ impl ViewClass for MapView {
         if map_response.double_clicked() {
             map_memory.follow_my_position();
             if let Some(zoom_level) = default_zoom_level {
-                let _ = map_memory.set_zoom(zoom_level);
+                map_memory.set_zoom(zoom_level).ok();
             }
         }
 
@@ -300,6 +300,7 @@ impl ViewClass for MapView {
         if Some(map_memory.zoom()) != blueprint_zoom_level {
             map_zoom.save_blueprint_component(
                 ctx,
+                &MapZoom::descriptor_zoom(),
                 &ZoomLevel(re_types::datatypes::Float64(map_memory.zoom())),
             );
         }
@@ -372,7 +373,7 @@ fn create_view_builder(
             resolution_in_pixel,
 
             // Camera looking at a ui coordinate world.
-            view_from_world: re_math::IsoTransform::from_translation(-glam::vec3(
+            view_from_world: macaw::IsoTransform::from_translation(-glam::vec3(
                 view_rect.left(),
                 view_rect.top(),
                 0.0,
@@ -576,14 +577,10 @@ fn picking_gpu(
 ) -> Option<InstancePathHash> {
     re_tracing::profile_function!();
 
-    // Only look at newest available result, discard everything else.
-    let mut gpu_picking_result = None;
-    while let Some(picking_result) = re_renderer::PickingLayerProcessor::next_readback_result::<()>(
+    let gpu_picking_result = re_renderer::PickingLayerProcessor::readback_result::<()>(
         render_ctx,
         gpu_readback_identifier,
-    ) {
-        gpu_picking_result = Some(picking_result);
-    }
+    );
 
     if let Some(gpu_picking_result) = gpu_picking_result {
         // TODO(ab, andreas): the block inside this particular branch is so reusable, it should probably live on re_renderer! (on picking result?)
@@ -637,5 +634,5 @@ fn picking_gpu(
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| MapView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| MapView.help(ctx));
 }

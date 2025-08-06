@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     collections::{BTreeMap, BTreeSet},
     sync::Arc,
 };
@@ -13,8 +12,8 @@ use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::{
-    components::ClearIsRecursive, external::arrow::array::ArrayRef, Component, ComponentDescriptor,
-    ComponentName,
+    Component, ComponentDescriptor, archetypes, components::ClearIsRecursive,
+    external::arrow::array::ArrayRef,
 };
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
@@ -39,16 +38,16 @@ fn compare_indices(lhs: (TimeInt, RowId), rhs: (TimeInt, RowId)) -> std::cmp::Or
 }
 
 impl QueryCache {
-    /// Queries for the given `component_names` using latest-at semantics.
+    /// Queries for the given [`ComponentDescriptor`]s using latest-at semantics.
     ///
     /// See [`LatestAtResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
-    pub fn latest_at<'d>(
+    pub fn latest_at<'a>(
         &self,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
-        component_descrs: impl IntoIterator<Item = impl Into<Cow<'d, ComponentDescriptor>>>,
+        component_descrs: impl IntoIterator<Item = &'a ComponentDescriptor>,
     ) -> LatestAtResults {
         // This is called very frequently, don't put a profile scope here.
 
@@ -59,15 +58,8 @@ impl QueryCache {
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_names = component_descrs.into_iter().filter_map(|component_descr| {
-            let component_descr = component_descr.into();
-            store
-                .entity_has_component_on_timeline(
-                    &query.timeline(),
-                    entity_path,
-                    &component_descr.component_name,
-                )
-                .then_some(component_descr.component_name)
+        let component_descrs = component_descrs.into_iter().filter(|component_descr| {
+            store.entity_has_component_on_timeline(&query.timeline(), entity_path, component_descr)
         });
 
         // Query-time clears
@@ -105,26 +97,28 @@ impl QueryCache {
                     continue;
                 }
 
+                let component_descr = archetypes::Clear::descriptor_is_recursive();
                 let key = QueryCacheKey::new(
                     clear_entity_path.clone(),
                     query.timeline(),
-                    ClearIsRecursive::name(),
+                    component_descr.clone(),
                 );
 
                 let cache = Arc::clone(
                     self.latest_at_per_cache_key
                         .write()
                         .entry(key.clone())
-                        .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key.clone())))),
+                        .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key)))),
                 );
 
                 let mut cache = cache.write();
                 cache.handle_pending_invalidation();
                 if let Some(cached) =
-                    cache.latest_at(&store, query, &clear_entity_path, ClearIsRecursive::name())
+                    cache.latest_at(&store, query, &clear_entity_path, &component_descr)
                 {
+                    // TODO(andreas): Should clear also work if the component is not fully tagged?
                     let found_recursive_clear = cached
-                        .component_mono::<ClearIsRecursive>()
+                        .component_mono::<ClearIsRecursive>(&component_descr)
                         .and_then(Result::ok)
                         == Some(ClearIsRecursive(true.into()));
                     // When checking the entity itself, any kind of `Clear` component
@@ -152,27 +146,31 @@ impl QueryCache {
             }
         }
 
-        for component_name in component_names {
-            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
+        for component_descr in component_descrs {
+            let key = QueryCacheKey::new(
+                entity_path.clone(),
+                query.timeline(),
+                component_descr.clone(),
+            );
 
             let cache = Arc::clone(
                 self.latest_at_per_cache_key
                     .write()
                     .entry(key.clone())
-                    .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key.clone())))),
+                    .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key)))),
             );
 
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
-            if let Some(cached) = cache.latest_at(&store, query, entity_path, component_name) {
+            if let Some(cached) = cache.latest_at(&store, query, entity_path, component_descr) {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
                 if let Some(index) = cached.index(&query.timeline()) {
-                    if component_name == ClearIsRecursive::name()
+                    if component_descr == &archetypes::Clear::descriptor_is_recursive()
                         || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
                     {
-                        results.add(component_name, index, cached);
+                        results.add(component_descr.clone(), index, cached);
                     }
                 }
             }
@@ -228,7 +226,7 @@ pub struct LatestAtResults {
     /// Results for each individual component.
     ///
     /// Each [`UnitChunkShared`] MUST always contain the corresponding component.
-    pub components: IntMap<ComponentName, UnitChunkShared>,
+    pub components: IntMap<ComponentDescriptor, UnitChunkShared>,
 }
 
 impl LatestAtResults {
@@ -244,26 +242,23 @@ impl LatestAtResults {
 }
 
 impl LatestAtResults {
-    #[inline]
-    pub fn contains(&self, component_name: &ComponentName) -> bool {
-        self.components.contains_key(component_name)
-    }
-
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
-    #[inline]
-    pub fn get(&self, component_name: &ComponentName) -> Option<&UnitChunkShared> {
-        self.components.get(component_name)
+    pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&UnitChunkShared> {
+        self.components.get(component_descr)
     }
 
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     ///
     /// Returns an error if the component is not present.
     #[inline]
-    pub fn get_required(&self, component_name: &ComponentName) -> crate::Result<&UnitChunkShared> {
-        if let Some(component) = self.get(component_name) {
+    pub fn get_required(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> crate::Result<&UnitChunkShared> {
+        if let Some(component) = self.components.get(component_descr) {
             Ok(component)
         } else {
-            Err(QueryError::PrimaryNotFound(*component_name))
+            Err(QueryError::PrimaryNotFound(component_descr.clone()))
         }
     }
 
@@ -279,7 +274,7 @@ impl LatestAtResults {
     #[inline]
     pub fn add(
         &mut self,
-        component_name: ComponentName,
+        component_descriptor: ComponentDescriptor,
         index: (TimeInt, RowId),
         chunk: UnitChunkShared,
     ) {
@@ -292,7 +287,7 @@ impl LatestAtResults {
             self.compound_index = index;
         }
 
-        self.components.insert(component_name, chunk);
+        self.components.insert(component_descriptor, chunk);
     }
 }
 
@@ -307,18 +302,18 @@ impl LatestAtResults {
 
     /// Returns the `RowId` for the specified component.
     #[inline]
-    pub fn component_row_id(&self, component_name: &ComponentName) -> Option<RowId> {
+    pub fn component_row_id(&self, component_descr: &ComponentDescriptor) -> Option<RowId> {
         self.components
-            .get(component_name)
+            .get(component_descr)
             .and_then(|unit| unit.row_id())
     }
 
     /// Returns the raw data for the specified component.
     #[inline]
-    pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrayRef> {
+    pub fn component_batch_raw(&self, component_descr: &ComponentDescriptor) -> Option<ArrayRef> {
         self.components
-            .get(component_name)?
-            .component_batch_raw(component_name)
+            .get(component_descr)?
+            .component_batch_raw(component_descr)
     }
 
     /// Returns the deserialized data for the specified component.
@@ -328,26 +323,37 @@ impl LatestAtResults {
     pub fn component_batch_with_log_level<C: Component>(
         &self,
         log_level: re_log::Level,
+        component_descr: &ComponentDescriptor,
     ) -> Option<Vec<C>> {
-        self.components
-            .get(&C::name())
-            .and_then(|unit| self.ok_or_log_err(log_level, C::name(), unit.component_batch()?))
+        self.components.get(component_descr).and_then(|unit| {
+            self.ok_or_log_err(
+                log_level,
+                component_descr,
+                unit.component_batch(component_descr)?,
+            )
+        })
     }
 
     /// Returns the deserialized data for the specified component.
     ///
     /// Logs an error if the data cannot be deserialized.
     #[inline]
-    pub fn component_batch<C: Component>(&self) -> Option<Vec<C>> {
-        self.component_batch_with_log_level(re_log::Level::Error)
+    pub fn component_batch<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<Vec<C>> {
+        self.component_batch_with_log_level(re_log::Level::Error, component_descr)
     }
 
     /// Returns the deserialized data for the specified component.
     #[inline]
-    pub fn component_batch_quiet<C: Component>(&self) -> Option<Vec<C>> {
+    pub fn component_batch_quiet<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<Vec<C>> {
         self.components
-            .get(&C::name())
-            .and_then(|unit| unit.component_batch()?.ok())
+            .get(component_descr)
+            .and_then(|unit| unit.component_batch(component_descr)?.ok())
     }
 
     // --- Instance ---
@@ -359,14 +365,14 @@ impl LatestAtResults {
     pub fn component_instance_raw_with_log_level(
         &self,
         log_level: re_log::Level,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
-        self.components.get(component_name).and_then(|unit| {
+        self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
-                *component_name,
-                unit.component_instance_raw(component_name, instance_index)?,
+                component_descr,
+                unit.component_instance_raw(component_descr, instance_index)?,
             )
         })
     }
@@ -377,12 +383,12 @@ impl LatestAtResults {
     #[inline]
     pub fn component_instance_raw(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
         self.component_instance_raw_with_log_level(
             re_log::Level::Error,
-            component_name,
+            component_descr,
             instance_index,
         )
     }
@@ -391,11 +397,11 @@ impl LatestAtResults {
     #[inline]
     pub fn component_instance_raw_quiet(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
-        self.components.get(component_name).and_then(|unit| {
-            unit.component_instance_raw(component_name, instance_index)?
+        self.components.get(component_descr).and_then(|unit| {
+            unit.component_instance_raw(component_descr, instance_index)?
                 .ok()
         })
     }
@@ -409,12 +415,13 @@ impl LatestAtResults {
         &self,
         log_level: re_log::Level,
         instance_index: usize,
+        component_descr: &ComponentDescriptor,
     ) -> Option<C> {
-        self.components.get(&C::name()).and_then(|unit| {
+        self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
-                C::name(),
-                unit.component_instance(instance_index)?,
+                component_descr,
+                unit.component_instance(component_descr, instance_index)?,
             )
         })
     }
@@ -423,18 +430,32 @@ impl LatestAtResults {
     ///
     /// Logs an error if the data cannot be deserialized, or if the instance index is out of bounds.
     #[inline]
-    pub fn component_instance<C: Component>(&self, instance_index: usize) -> Option<C> {
-        self.component_instance_with_log_level(re_log::Level::Error, instance_index)
+    pub fn component_instance<C: Component>(
+        &self,
+        instance_index: usize,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<C> {
+        debug_assert_eq!(component_descr.component_type, Some(C::name()));
+        self.component_instance_with_log_level(
+            re_log::Level::Error,
+            instance_index,
+            component_descr,
+        )
     }
 
     /// Returns the deserialized data for the specified component at the given instance index.
     ///
     /// Returns an error if the data cannot be deserialized, or if the instance index is out of bounds.
     #[inline]
-    pub fn component_instance_quiet<C: Component>(&self, instance_index: usize) -> Option<C> {
-        self.components
-            .get(&C::name())
-            .and_then(|unit| unit.component_instance(instance_index)?.ok())
+    pub fn component_instance_quiet<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+        instance_index: usize,
+    ) -> Option<C> {
+        self.components.get(component_descr).and_then(|unit| {
+            unit.component_instance(component_descr, instance_index)?
+                .ok()
+        })
     }
 
     // --- Mono ---
@@ -446,13 +467,13 @@ impl LatestAtResults {
     pub fn component_mono_raw_with_log_level(
         &self,
         log_level: re_log::Level,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Option<ArrowArrayRef> {
-        self.components.get(component_name).and_then(|unit| {
+        self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
-                *component_name,
-                unit.component_mono_raw(component_name)?,
+                component_descr,
+                unit.component_mono_raw(component_descr)?,
             )
         })
     }
@@ -461,8 +482,11 @@ impl LatestAtResults {
     ///
     /// Returns an error if the underlying batch is not of unit length.
     #[inline]
-    pub fn component_mono_raw(&self, component_name: &ComponentName) -> Option<ArrowArrayRef> {
-        self.component_mono_raw_with_log_level(re_log::Level::Error, component_name)
+    pub fn component_mono_raw(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<ArrowArrayRef> {
+        self.component_mono_raw_with_log_level(re_log::Level::Error, component_descr)
     }
 
     /// Returns the raw data for the specified component, assuming a mono-batch.
@@ -471,11 +495,11 @@ impl LatestAtResults {
     #[inline]
     pub fn component_mono_raw_quiet(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Option<ArrowArrayRef> {
         self.components
-            .get(component_name)
-            .and_then(|unit| unit.component_mono_raw(component_name)?.ok())
+            .get(component_descr)
+            .and_then(|unit| unit.component_mono_raw(component_descr)?.ok())
     }
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
@@ -485,29 +509,37 @@ impl LatestAtResults {
     #[inline]
     pub fn component_mono_with_log_level<C: Component>(
         &self,
+        component_descr: &ComponentDescriptor,
         log_level: re_log::Level,
     ) -> Option<C> {
-        self.components
-            .get(&C::name())
-            .and_then(|unit| self.ok_or_log_err(log_level, C::name(), unit.component_mono()?))
+        self.components.get(component_descr).and_then(|unit| {
+            self.ok_or_log_err(
+                log_level,
+                component_descr,
+                unit.component_mono(component_descr)?,
+            )
+        })
     }
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
     ///
     /// Logs an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
     #[inline]
-    pub fn component_mono<C: Component>(&self) -> Option<C> {
-        self.component_mono_with_log_level(re_log::Level::Error)
+    pub fn component_mono<C: Component>(&self, component_descr: &ComponentDescriptor) -> Option<C> {
+        self.component_mono_with_log_level(component_descr, re_log::Level::Error)
     }
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
     ///
     /// Returns none if the data cannot be deserialized, or if the underlying batch is not of unit length.
     #[inline]
-    pub fn component_mono_quiet<C: Component>(&self) -> Option<C> {
+    pub fn component_mono_quiet<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<C> {
         self.components
-            .get(&C::name())
-            .and_then(|unit| unit.component_mono()?.ok())
+            .get(component_descr)
+            .and_then(|unit| unit.component_mono(component_descr)?.ok())
     }
 
     // ---
@@ -515,7 +547,7 @@ impl LatestAtResults {
     fn ok_or_log_err<T>(
         &self,
         log_level: re_log::Level,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
         res: re_chunk::ChunkResult<T>,
     ) -> Option<T> {
         match res {
@@ -531,7 +563,7 @@ impl LatestAtResults {
                 let err = re_error::format_ref(&err);
                 re_log::log_once!(
                     log_level,
-                    "Couldn't read {entity_path}:{component_name} @ ({index:?}): {err}",
+                    "Couldn't read {entity_path}:{component_descr} @ ({index:?}): {err}",
                 );
                 None
             }
@@ -649,10 +681,10 @@ impl LatestAtCache {
         store: &ChunkStore,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Option<UnitChunkShared> {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
-        //re_tracing::profile_scope!("latest_at", format!("{component_name} @ {query:?}"));
+        //re_tracing::profile_scope!("latest_at", format!("{component_type} @ {query:?}"));
 
         debug_assert_eq!(query.timeline(), self.cache_key.timeline_name);
 
@@ -667,11 +699,11 @@ impl LatestAtCache {
         }
 
         let ((data_time, _row_id), unit) = store
-            .latest_at_relevant_chunks(query, entity_path, component_name)
+            .latest_at_relevant_chunks(query, entity_path, component_descr)
             .into_iter()
             .filter_map(|chunk| {
                 chunk
-                    .latest_at(query, component_name)
+                    .latest_at(query, component_descr)
                     .into_unit()
                     .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
             })
@@ -726,7 +758,7 @@ impl LatestAtCache {
             pending_invalidations.retain(|data_time| {
                 let is_reference = discarded
                     .get(data_time)
-                    .map_or(true, |chunk| chunk.is_reference);
+                    .is_none_or(|chunk| chunk.is_reference);
                 !is_reference
             });
         }

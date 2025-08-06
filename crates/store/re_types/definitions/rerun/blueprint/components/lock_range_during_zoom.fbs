@@ -6,10 +6,10 @@ namespace rerun.blueprint.components;
 ///
 /// Default is `false`, i.e. zoom will change the visualized range.
 struct LockRangeDuringZoom (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
-    "attr.rust.repr": "transparent",
-    "attr.rust.tuple_struct"
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
 ) {
-    lock_range: rerun.datatypes.Bool (order: 100);
+  lock_range: rerun.datatypes.Bool (order: 100);
 }

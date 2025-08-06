@@ -2,6 +2,10 @@
 
 use std::sync::atomic::AtomicIsize;
 
+// This can be useful to enable to figure out what is causing a log message.
+#[cfg(not(target_arch = "wasm32"))]
+const LOG_FILE_LINE: bool = false;
+
 /// Sets up logging for the current process using default log filter as defined in `crate::default_log_filter`.
 ///
 /// Automatically does the right thing depending on target environment (native vs. web).
@@ -32,7 +36,12 @@ pub fn setup_logging_with_filter(log_filter: &str) {
 
             // `RUST_BACKTRACE` also turns on printing backtraces for `anyhow::Error`s that
             // are returned from `main` (i.e. if `main` returns `anyhow::Result`).
-            std::env::set_var("RUST_BACKTRACE", "1");
+
+            // SAFETY: the chances of this causing problems are slim
+            #[expect(unsafe_code)]
+            unsafe {
+                std::env::set_var("RUST_BACKTRACE", "1"); // TODO(emilk): There should be a better way to do this.
+            }
         }
 
         crate::multi_logger::init().expect("Failed to set logger");
@@ -40,9 +49,7 @@ pub fn setup_logging_with_filter(log_filter: &str) {
 
         log::set_max_level(max_level);
 
-        // This can be useful to enable to figure out what is causing a log message.
-        let log_file_line = false;
-        if log_file_line {
+        if LOG_FILE_LINE {
             stderr_logger.format(|buf, record| {
                 use std::io::Write as _;
                 writeln!(

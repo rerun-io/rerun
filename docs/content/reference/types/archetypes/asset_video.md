@@ -5,20 +5,21 @@ title: "AssetVideo"
 
 A video binary.
 
-Only MP4 containers with AV1 are generally supported,
-though the web viewer supports more video codecs, depending on browser.
+Only MP4 containers are currently supported.
 
-See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
+See <https://rerun.io/docs/reference/video> for codec support and more general information.
 
 In order to display a video, you also need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference) for each frame.
 
-## Components
+## Fields
+### Required
+* `blob`: [`Blob`](../components/blob.md)
 
-**Required**: [`Blob`](../components/blob.md)
+### Recommended
+* `media_type`: [`MediaType`](../components/media_type.md)
 
-**Recommended**: [`MediaType`](../components/media_type.md)
 
-## Shown in
+## Can be shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)

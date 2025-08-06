@@ -4,9 +4,9 @@ use std::hint::black_box;
 use std::sync::Arc;
 use std::time::Duration;
 
-use criterion::measurement::WallTime;
 use criterion::Bencher;
 use criterion::Criterion;
+use criterion::measurement::WallTime;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::ResolvedTimeRange;
@@ -14,7 +14,7 @@ use re_log_types::StoreId;
 use re_log_types::StoreKind;
 use re_log_types::Timeline;
 use re_time_panel::__bench::{
-    build_density_graph, DensityGraphBuilderConfig, TimePanelItem, TimeRangesUi,
+    DensityGraphBuilderConfig, TimePanelItem, TimeRangesUi, build_density_graph,
 };
 
 fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: ChunkEntry) {
@@ -24,7 +24,7 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
             assert!(row_rect.width() > 100.0 && row_rect.height() > 100.0);
 
             let mut db = EntityDb::with_store_config(
-                StoreId::from_string(StoreKind::Recording, "test".into()),
+                StoreId::new(StoreKind::Recording, "test-app", "test"),
                 ChunkStoreConfig::COMPACTION_DISABLED,
             );
             let entity_path = re_log_types::EntityPath::parse_strict("/data").unwrap();
@@ -43,11 +43,11 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
 
             let item = TimePanelItem {
                 entity_path,
-                component_name: None,
+                component_descr: None,
             };
 
             let time_range = db
-                .time_range_for(&timeline)
+                .time_range_for(timeline.name())
                 .unwrap_or(ResolvedTimeRange::EMPTY);
             let time_ranges_ui =
                 TimeRangesUi::new(row_rect.x_range(), time_range.into(), &[time_range]);
@@ -92,7 +92,7 @@ fn add_data(
         log_times.push(time);
 
         if !sorted {
-            use rand::{seq::SliceRandom as _, SeedableRng as _};
+            use rand::{SeedableRng as _, seq::SliceRandom as _};
             let mut rng = rand::rngs::StdRng::seed_from_u64(0xbadf00d);
             log_times.shuffle(&mut rng);
         }

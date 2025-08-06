@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../../blueprint/datatypes/selected_columns.hpp"
-#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -13,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Describe a component column to be selected in the dataframe view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct SelectedColumns {
         rerun::blueprint::datatypes::SelectedColumns selected_columns;
 
@@ -43,7 +45,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::SelectedColumns> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.SelectedColumns";
 
         /// Returns the arrow data type this type corresponds to.

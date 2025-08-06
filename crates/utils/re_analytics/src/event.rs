@@ -61,6 +61,9 @@ pub struct ViewerStarted {
 
 /// Some sparse information about the runtime environment the viewer is running in.
 pub struct ViewerRuntimeInformation {
+    /// Does it look like the viewer is running inside a Docker container?
+    pub is_docker: bool,
+
     /// Whether the viewer is started directly from within Windows Subsystem for Linux (WSL).
     pub is_wsl: bool,
 
@@ -77,21 +80,61 @@ pub struct ViewerRuntimeInformation {
     /// it's too detailed (could be used for fingerprinting which we don't want) and not as useful
     /// anyways since it's hard to learn about the typically identified capabilities.
     pub re_renderer_device_tier: String,
+
+    pub screen_info: ScreenInfo,
 }
 
 impl Properties for ViewerRuntimeInformation {
     fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
+            is_docker,
             is_wsl,
             graphics_adapter_backend,
             re_renderer_device_tier,
+            screen_info,
         } = self;
 
+        event.insert("is_docker", is_docker);
         event.insert("is_wsl", is_wsl);
         event.insert("graphics_adapter_backend", graphics_adapter_backend);
         event.insert("re_renderer_device_tier", re_renderer_device_tier);
+        screen_info.serialize(event);
     }
 }
+
+// -----------------------------------------------
+
+/// Information about the user's monitor.
+pub struct ScreenInfo {
+    //// zoom_factor * native_pixels_per_point
+    ///
+    /// Is it usually 1.0 or 2.0, but could be anything.
+    pub pixels_per_point: f32,
+
+    /// OS pixel density
+    pub native_pixels_per_point: Option<f32>,
+
+    /// Chosen zoom, with cmd +/-.
+    ///
+    /// Default is 1.0, but the user can change it.
+    pub zoom_factor: f32,
+}
+
+impl Properties for ScreenInfo {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            pixels_per_point,
+            native_pixels_per_point,
+            zoom_factor,
+        } = self;
+
+        event.insert("pixels_per_point", pixels_per_point);
+        event.insert_opt("native_pixels_per_point", native_pixels_per_point);
+        event.insert("zoom_factor", zoom_factor);
+    }
+}
+
+// -----------------------------------------------
 
 /// Sent when a new recording is opened.
 ///
@@ -343,6 +386,40 @@ impl Properties for CrashSignal {
     }
 }
 
+// -----------------------------------------------
+
+/// Sent the first time a `?` help button is clicked.
+///
+/// Is used to track how many users find the help button.
+pub struct HelpButtonFirstClicked {}
+
+impl Event for HelpButtonFirstClicked {
+    const NAME: &'static str = "help-button-clicked";
+}
+
+impl Properties for HelpButtonFirstClicked {
+    fn serialize(self, _event: &mut AnalyticsEvent) {
+        let Self {} = self;
+    }
+}
+
+// -----------------------------------------------
+
+/// The user opened the settings screen.
+pub struct SettingsOpened {}
+
+impl Event for SettingsOpened {
+    const NAME: &'static str = "settings-opened";
+}
+
+impl Properties for SettingsOpened {
+    fn serialize(self, _event: &mut AnalyticsEvent) {
+        let Self {} = self;
+    }
+}
+
+// -----------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -363,7 +440,9 @@ mod tests {
             Some("rerun.io".to_owned())
         );
         assert_eq!(
-            extract_root_domain("https://www.rerun.io/viewer?url=https://app.rerun.io/version/0.15.1/examples/detect_and_track_objects.rrd"),
+            extract_root_domain(
+                "https://www.rerun.io/viewer?url=https://app.rerun.io/version/0.15.1/examples/detect_and_track_objects.rrd"
+            ),
             Some("rerun.io".to_owned())
         );
 

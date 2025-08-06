@@ -1,6 +1,7 @@
-use re_grpc_client::message_proxy;
-use re_log_types::LogMsg;
+use re_grpc_client::{ConnectionRegistryHandle, message_proxy};
+use re_log_types::{LogMsg, RecordingId};
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
+use re_uri::RedapUri;
 
 use crate::FileContents;
 
@@ -12,10 +13,13 @@ use anyhow::Context as _;
 pub enum DataSource {
     /// A remote RRD file, served over http.
     ///
-    /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
-    ///
     /// Could be either an `.rrd` recording or a `.rbl` blueprint.
-    RrdHttpUrl { url: String, follow: bool },
+    RrdHttpUrl {
+        uri: String,
+
+        /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
+        follow: bool,
+    },
 
     /// A path to a local file.
     #[cfg(not(target_arch = "wasm32"))]
@@ -31,13 +35,19 @@ pub enum DataSource {
     Stdin,
 
     /// A `rerun://` URI pointing to a recording or catalog.
-    RerunGrpcStream(re_uri::RedapUri),
+    RerunGrpcStream {
+        uri: RedapUri,
+
+        /// Switch to this recording once it has been loaded?
+        select_when_loaded: bool,
+    },
 }
 
 // TODO(#9058): Temporary hack, see issue for how to fix this.
 pub enum StreamSource {
     LogMessages(Receiver<LogMsg>),
-    CatalogData { endpoint: re_uri::CatalogEndpoint },
+    CatalogUri(re_uri::CatalogUri),
+    EntryUri(re_uri::EntryUri),
 }
 
 impl DataSource {
@@ -102,20 +112,20 @@ impl DataSource {
             }
         }
 
-        if let Ok(endpoint) = re_uri::RedapUri::try_from(uri.as_str()) {
-            return Self::RerunGrpcStream(endpoint);
+        if let Ok(uri) = uri.as_str().parse::<RedapUri>() {
+            return Self::RerunGrpcStream {
+                uri,
+                select_when_loaded: true,
+            };
         }
 
         // by default, we just assume an rrd over http
-        Self::RrdHttpUrl {
-            url: uri,
-            follow: false,
-        }
+        Self::RrdHttpUrl { uri, follow: false }
     }
 
     pub fn file_name(&self) -> Option<String> {
         match self {
-            Self::RrdHttpUrl { url, .. } => url.split('/').last().map(|r| r.to_owned()),
+            Self::RrdHttpUrl { uri: url, .. } => url.split('/').last().map(|r| r.to_owned()),
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(_, path) => path.file_name().map(|s| s.to_string_lossy().to_string()),
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
@@ -139,13 +149,14 @@ impl DataSource {
     /// `on_msg` can be used to wake up the UI thread on Wasm.
     pub fn stream(
         self,
+        connection_registry: &ConnectionRegistryHandle,
         on_cmd: Box<dyn Fn(DataSourceCommand) + Send + Sync>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<StreamSource> {
         re_tracing::profile_function!();
 
         match self {
-            Self::RrdHttpUrl { url, follow } => Ok(StreamSource::LogMessages(
+            Self::RrdHttpUrl { uri: url, follow } => Ok(StreamSource::LogMessages(
                 re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                     url, follow, on_msg,
                 ),
@@ -158,16 +169,14 @@ impl DataSource {
                     SmartChannelSource::File(path.clone()),
                 );
 
-                // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
+                // This recording will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
                 // or not.
-                let shared_store_id =
-                    re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+                let shared_recording_id = RecordingId::random();
                 let settings = re_data_loader::DataLoaderSettings {
-                    opened_application_id: file_source.recommended_application_id().cloned(),
-                    opened_store_id: file_source.recommended_recording_id().cloned(),
+                    opened_store_id: file_source.recommended_store_id().cloned(),
                     force_store_info: file_source.force_store_info(),
-                    ..re_data_loader::DataLoaderSettings::recommended(shared_store_id)
+                    ..re_data_loader::DataLoaderSettings::recommended(shared_recording_id)
                 };
                 re_data_loader::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
@@ -190,13 +199,11 @@ impl DataSource {
                 // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
                 // or not.
-                let shared_store_id =
-                    re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+                let shared_recording_id = RecordingId::random();
                 let settings = re_data_loader::DataLoaderSettings {
-                    opened_application_id: file_source.recommended_application_id().cloned(),
-                    opened_store_id: file_source.recommended_recording_id().cloned(),
+                    opened_store_id: file_source.recommended_store_id().cloned(),
                     force_store_info: file_source.force_store_info(),
-                    ..re_data_loader::DataLoaderSettings::recommended(shared_store_id)
+                    ..re_data_loader::DataLoaderSettings::recommended(shared_recording_id)
                 };
                 re_data_loader::load_from_file_contents(
                     &settings,
@@ -229,14 +236,23 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RerunGrpcStream(re_uri::RedapUri::DatasetData(endpoint)) => {
+            Self::RerunGrpcStream {
+                uri: RedapUri::DatasetData(uri),
+                select_when_loaded,
+            } => {
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::RedapGrpcStream(endpoint.clone()),
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint.clone()),
+                    re_smart_channel::SmartMessageSource::RedapGrpcStream {
+                        uri: uri.clone(),
+                        select_when_loaded,
+                    },
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream {
+                        uri: uri.clone(),
+                        select_when_loaded,
+                    },
                 );
 
-                let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
-                    re_grpc_client::redap::Command::SetLoopSelection {
+                let on_cmd = Box::new(move |cmd: re_grpc_client::Command| match cmd {
+                    re_grpc_client::Command::SetLoopSelection {
                         recording_id,
                         timeline,
                         time_range,
@@ -247,17 +263,20 @@ impl DataSource {
                     }),
                 });
 
-                spawn_future(async move {
-                    if let Err(err) = re_grpc_client::redap::stream_partition_async(
-                        tx,
-                        endpoint.clone(),
-                        on_cmd,
-                        on_msg,
+                let connection_registry = connection_registry.clone();
+                let uri_clone = uri.clone();
+                let stream_partition = async move {
+                    let client = connection_registry.client(uri_clone.origin.clone()).await?;
+                    re_grpc_client::stream_blueprint_and_partition_from_server(
+                        client, tx, uri_clone, on_cmd, on_msg,
                     )
                     .await
-                    {
+                };
+
+                spawn_future(async move {
+                    if let Err(err) = stream_partition.await {
                         re_log::warn!(
-                            "Error while streaming {endpoint}: {}",
+                            "Error while streaming {uri}: {}",
                             re_error::format_ref(&err)
                         );
                     }
@@ -265,13 +284,22 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Catalog(endpoint)) => {
-                Ok(StreamSource::CatalogData { endpoint })
-            }
+            Self::RerunGrpcStream {
+                uri: RedapUri::Catalog(uri),
+                ..
+            } => Ok(StreamSource::CatalogUri(uri)),
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Ok(
-                StreamSource::LogMessages(message_proxy::stream(endpoint, on_msg)),
-            ),
+            Self::RerunGrpcStream {
+                uri: re_uri::RedapUri::Entry(uri),
+                ..
+            } => Ok(StreamSource::EntryUri(uri)),
+
+            Self::RerunGrpcStream {
+                uri: re_uri::RedapUri::Proxy(uri),
+                ..
+            } => Ok(StreamSource::LogMessages(message_proxy::stream(
+                uri, on_msg,
+            ))),
         }
     }
 }
@@ -336,8 +364,7 @@ fn test_data_source_from_uri() {
     ];
 
     let file_source = FileSource::DragAndDrop {
-        recommended_application_id: None,
-        recommended_recording_id: None,
+        recommended_store_id: None,
         force_store_info: false,
     };
 

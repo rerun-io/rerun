@@ -5,7 +5,8 @@ use std::sync::Arc;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes;
 use re_types_core::{
-    Component, ComponentDescriptor, DeserializationError, Loggable, SerializedComponentBatch,
+    Component, ComponentDescriptor, ComponentType, DeserializationError, Loggable,
+    SerializedComponentBatch,
 };
 
 // ----------------------------------------------------------------------------
@@ -22,28 +23,39 @@ impl MyPoints {
 }
 
 impl MyPoints {
+    pub fn new(points: impl IntoIterator<Item = impl Into<MyPoint>>) -> Self {
+        Self {
+            points: re_types_core::try_serialize_field(Self::descriptor_points(), points),
+            ..Self::default()
+        }
+    }
+
     pub fn descriptor_points() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: Some("points".into()),
-            component_name: MyPoint::name(),
+            archetype: Some("example.MyPoints".into()),
+            component: ("example.MyPoints:points".into()),
+            component_type: Some(MyPoint::name()),
         }
     }
 
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: Some("colors".into()),
-            component_name: MyColor::name(),
+            archetype: Some("example.MyPoints".into()),
+            component: ("example.MyPoints:colors".into()),
+            component_type: Some(MyColor::name()),
         }
     }
 
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: Some("labels".into()),
-            component_name: MyLabel::name(),
+            archetype: Some("example.MyPoints".into()),
+            component: ("example.MyPoints:labels".into()),
+            component_type: Some(MyLabel::name()),
         }
+    }
+
+    pub fn update_fields() -> Self {
+        Self::default()
     }
 
     pub fn clear_fields() -> Self {
@@ -68,18 +80,15 @@ impl MyPoints {
         self.labels = re_types_core::try_serialize_field(Self::descriptor_labels(), labels);
         self
     }
+
+    #[inline]
+    pub fn with_colors(mut self, colors: impl IntoIterator<Item = impl Into<MyColor>>) -> Self {
+        self.colors = re_types_core::try_serialize_field(Self::descriptor_colors(), colors);
+        self
+    }
 }
 
 impl re_types_core::Archetype for MyPoints {
-    type Indicator = re_types_core::GenericIndicatorComponent<Self>;
-
-    fn indicator() -> SerializedComponentBatch {
-        use re_types_core::ComponentBatch as _;
-        // These is no such thing as failing to serialized an indicator.
-        #[allow(clippy::unwrap_used)]
-        Self::Indicator::default().serialized().unwrap()
-    }
-
     fn name() -> re_types_core::ArchetypeName {
         "example.MyPoints".into()
     }
@@ -89,25 +98,18 @@ impl re_types_core::Archetype for MyPoints {
     }
 
     fn required_components() -> ::std::borrow::Cow<'static, [re_types_core::ComponentDescriptor]> {
-        vec![MyPoint::descriptor()].into()
+        vec![Self::descriptor_points()].into()
     }
 
     fn recommended_components() -> std::borrow::Cow<'static, [re_types_core::ComponentDescriptor]> {
-        vec![
-            re_types_core::ComponentBatch::descriptor(&Self::Indicator::default()).into_owned(),
-            MyColor::descriptor(),
-            MyLabel::descriptor(),
-        ]
-        .into()
+        vec![Self::descriptor_colors(), Self::descriptor_labels()].into()
     }
 }
 
 impl ::re_types_core::AsComponents for MyPoints {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        use ::re_types_core::Archetype as _;
         [
-            Some(Self::indicator()),
             self.colors.clone(),
             self.labels.clone(),
             self.points.clone(),
@@ -229,8 +231,8 @@ impl Loggable for MyPoint {
 }
 
 impl Component for MyPoint {
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("example.MyPoint")
+    fn name() -> ComponentType {
+        "example.MyPoint".into()
     }
 }
 
@@ -250,6 +252,11 @@ impl MyPoint64 {
         it.into_iter()
             .map(|i| Self::new(i as f64, i as f64))
             .collect()
+    }
+
+    #[inline]
+    pub fn partial_descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::partial("my_point_64")
     }
 }
 
@@ -345,8 +352,8 @@ impl Loggable for MyPoint64 {
 }
 
 impl Component for MyPoint64 {
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("example.MyPoint64")
+    fn name() -> ComponentType {
+        "example.MyPoint64".into()
     }
 }
 
@@ -419,8 +426,8 @@ impl Loggable for MyColor {
 }
 
 impl Component for MyColor {
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("example.MyColor")
+    fn name() -> ComponentType {
+        "example.MyColor".into()
     }
 }
 
@@ -470,8 +477,8 @@ impl Loggable for MyLabel {
 }
 
 impl Component for MyLabel {
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("example.MyLabel")
+    fn name() -> ComponentType {
+        "example.MyLabel".into()
     }
 }
 
@@ -487,6 +494,15 @@ impl MyIndex {
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u64>) -> Vec<Self> {
         it.into_iter().map(Self).collect()
+    }
+
+    #[inline]
+    pub fn partial_descriptor() -> ComponentDescriptor {
+        ComponentDescriptor {
+            component: "my_index".into(),
+            archetype: None,
+            component_type: Some(Self::name()),
+        }
     }
 }
 
@@ -530,7 +546,7 @@ impl Loggable for MyIndex {
 }
 
 impl Component for MyIndex {
-    fn descriptor() -> re_types_core::ComponentDescriptor {
-        ComponentDescriptor::new("example.MyIndex")
+    fn name() -> re_types_core::ComponentType {
+        "example.MyIndex".into()
     }
 }

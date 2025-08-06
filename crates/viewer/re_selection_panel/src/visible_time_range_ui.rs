@@ -3,13 +3,13 @@ use egui::{NumExt as _, Ui};
 use re_chunk::Timeline;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimelineName};
 use re_types::{
-    blueprint::components::VisibleTimeRange,
-    datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
     Archetype as _,
+    blueprint::{archetypes as blueprint_archetypes, components::VisibleTimeRange},
+    datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
 };
-use re_ui::UiExt as _;
-use re_viewer_context::{QueryRange, TimeDragValue, ViewClass, ViewState, ViewerContext};
-use re_viewport_blueprint::{entity_path_for_view_property, ViewBlueprint};
+use re_ui::{TimeDragValue, UiExt as _};
+use re_viewer_context::{QueryRange, ViewClass, ViewState, ViewerContext};
+use re_viewport_blueprint::{ViewBlueprint, entity_path_for_view_property};
 
 pub fn visible_time_range_ui_for_view(
     ctx: &ViewerContext<'_>,
@@ -58,16 +58,16 @@ fn visible_time_range_ui(
     time_range_override_path: &EntityPath,
     is_view: bool,
 ) {
-    use re_types::Component as _;
-
     let visible_time_ranges = ctx
         .blueprint_db()
         .latest_at(
             ctx.blueprint_query,
             time_range_override_path,
-            std::iter::once(VisibleTimeRange::name()),
+            [&blueprint_archetypes::VisibleTimeRanges::descriptor_ranges()],
         )
-        .component_batch::<VisibleTimeRange>()
+        .component_batch::<VisibleTimeRange>(
+            &blueprint_archetypes::VisibleTimeRanges::descriptor_ranges(),
+        )
         .unwrap_or_default();
 
     let timeline_name = *ctx.rec_cfg.time_ctrl.read().timeline().name();
@@ -98,7 +98,7 @@ fn visible_time_range_ui(
             &timeline_name,
             has_individual_range,
             resolved_query_range,
-            time_range_override_path,
+            time_range_override_path.clone(),
             visible_time_ranges,
         );
     }
@@ -109,7 +109,7 @@ fn save_visible_time_ranges(
     timeline_name: &TimelineName,
     has_individual_range: bool,
     query_range: QueryRange,
-    property_path: &EntityPath,
+    property_path: EntityPath,
     mut visible_time_range_list: Vec<VisibleTimeRange>,
 ) {
     if has_individual_range {
@@ -142,7 +142,11 @@ fn save_visible_time_ranges(
         visible_time_range_list.retain(|r| r.timeline.as_str() != timeline_name.as_str());
     }
 
-    ctx.save_blueprint_component(property_path, &visible_time_range_list);
+    ctx.save_blueprint_component(
+        property_path,
+        &blueprint_archetypes::VisibleTimeRanges::descriptor_ranges(),
+        &visible_time_range_list,
+    );
 }
 
 /// Draws ui for showing and configuring a query range.
@@ -162,7 +166,7 @@ fn query_range_ui(
 This feature controls the time range used to display data in the view.
 
 Notes:
-- The settings are inherited from the parent entity or enclosing view if not overridden.
+- The settings are inherited from the enclosing view if not overridden.
 - Visible time range properties are stored on a per-timeline basis.
 - The data current as of the time range starting time is included.";
 
@@ -176,8 +180,7 @@ Notes:
                     .on_hover_text(if is_view {
                         "Default query range settings for this kind of view"
                     } else {
-                        "Query range settings inherited from parent entity or enclosing \
-                        view"
+                        "Query range settings inherited from enclosing view"
                     });
                 ui.re_radio_value(has_individual_time_range, true, "Override")
                     .on_hover_text(if is_view {
@@ -250,7 +253,7 @@ Notes:
 
     if should_display_visible_time_range {
         if let Some(current_time) = time_ctrl.time_int() {
-            if let QueryRange::TimeRange(ref time_range) = &query_range {
+            if let QueryRange::TimeRange(time_range) = &query_range {
                 let absolute_time_range =
                     ResolvedTimeRange::from_relative_time_range(time_range, current_time);
                 ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(absolute_time_range);

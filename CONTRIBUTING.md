@@ -145,7 +145,7 @@ These tests work by rendering an image and then comparing it with a checked-in r
 They run as part of the regular Rust test suite, no extra action is required to include them in a test run.
 
 Comparison tests are driven by [egui_kittest](https://github.com/emilk/egui/tree/master/crates/egui_kittest)'s `Harness::snapshot` method.
-Typically, we use [TestContext](./crates/viewer/re_viewer_context/src/test_context.rs) in order to mock
+Typically, we use [TestContext](./crates/viewer/re_test_context/src/lib.rs?speculative-link) in order to mock
 relevant parts of the Rerun viewer.
 
 ##### Comparing results & updating images
@@ -202,7 +202,7 @@ Makes sure all of the snippets in the [snippets/](./docs/snippets/) folder are w
 ### "Roundtrip" tests
 
 ```sh
-pixi run ./tests/roundtrips.py
+pixi run -e py ./tests/roundtrips.py
 ```
 
 A set of cross SDK language tests that makes sure that the same logging commands for a select group of archetypes
@@ -240,6 +240,10 @@ For details see [the test section above](#tests).
 
 It is not strictly required, but we recommend [`cargo nextest`](https://nexte.st/) for running Rust tests as it is significantly faster than `cargo test` and yields much more readable output.
 Note however, that as of writing `cargo nextest` does not yet support doc tests, those need to be run with `cargo test`.
+
+<!-- TODO(#9849): remove this paragraph when this issue is fixed -->
+
+To build the Wasm target on macOS, you will need to install LLVM/clang 18 or later (e.g. using MacPorts or Homebrew), because the Apple-provided toolchain fails compilation ("LLVM error: section too large"). See [this issue](https://github.com/rerun-io/rerun/issues/9849)
 
 ### Linting
 Prior to pushing changes to a PR, at a minimum, you should always run `pixi run fast-lint`. This is designed to run

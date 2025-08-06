@@ -1,10 +1,9 @@
 use std::ops::RangeInclusive;
 
-use re_chunk_store::external::re_chunk::ComponentName;
 use re_chunk_store::ChunkStore;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline, TimestampFormat};
-use re_ui::UiExt as _;
-use re_viewer_context::TimeDragValue;
+use re_types::ComponentDescriptor;
+use re_ui::{TimeDragValue, UiExt as _};
 
 #[derive(Debug)]
 pub(crate) enum ChunkListQueryMode {
@@ -22,7 +21,7 @@ pub(crate) enum ChunkListMode {
     Query {
         timeline: Timeline,
         entity_path: EntityPath,
-        component_name: ComponentName,
+        component_descr: ComponentDescriptor,
         query: ChunkListQueryMode,
     },
 }
@@ -47,8 +46,10 @@ impl ChunkListMode {
             Self::Query { entity_path, .. } => entity_path.clone(),
         };
         let current_component = match self {
-            Self::All => all_components.first().copied()?,
-            Self::Query { component_name, .. } => *component_name,
+            Self::All => all_components.iter().next()?.clone(),
+            Self::Query {
+                component_descr, ..
+            } => component_descr.clone(),
         };
 
         ui.horizontal(|ui| {
@@ -78,7 +79,7 @@ impl ChunkListMode {
                     *self = Self::Query {
                         timeline: current_timeline,
                         entity_path: current_entity.clone(),
-                        component_name: current_component,
+                        component_descr: current_component.clone(),
                         query: ChunkListQueryMode::LatestAt(TimeInt::MAX),
                     };
                 }
@@ -101,14 +102,14 @@ impl ChunkListMode {
                         timeline: current_timeline,
                         query: ChunkListQueryMode::Range(ResolvedTimeRange::EVERYTHING),
                         entity_path: current_entity.clone(),
-                        component_name: current_component,
+                        component_descr: current_component.clone(),
                     };
                 }
             });
 
             let Self::Query {
                 timeline: query_timeline,
-                component_name: query_component,
+                component_descr: query_component,
                 entity_path: query_entity,
                 query,
             } = self
@@ -142,13 +143,13 @@ impl ChunkListMode {
 
                 ui.label("component:");
                 //TODO(ab): this should be a text edit with auto-complete (like view origin)
-                egui::ComboBox::new("component_name", "")
-                    .selected_text(current_component.short_name())
+                egui::ComboBox::new("component_type", "")
+                    .selected_text(current_component.display_name())
                     .height(500.0)
                     .show_ui(ui, |ui| {
-                        for component_name in all_components {
-                            if ui.button(component_name.short_name()).clicked() {
-                                *query_component = component_name;
+                        for component_type in all_components {
+                            if ui.button(component_type.display_name()).clicked() {
+                                *query_component = component_type;
                             }
                         }
                     });

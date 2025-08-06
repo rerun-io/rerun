@@ -1,9 +1,9 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
-use re_viewer::external::{
-    arrow, eframe, egui, re_chunk_store, re_entity_db, re_log, re_log_types, re_memory, re_types,
+use rerun::external::{
+    arrow, eframe, egui, re_chunk_store, re_crash_handler, re_entity_db, re_grpc_server, re_log,
+    re_log_types, re_memory, re_types, re_viewer, tokio,
 };
-use re_viewer::AsyncRuntimeHandle;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let rx = re_grpc_server::spawn_with_recv(
+    let (rx, _) = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9876".parse()?,
         "75%".parse()?,
         re_grpc_server::shutdown::never(),
@@ -54,9 +54,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
-                AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
+                None,
+                re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
-            rerun_app.add_receiver(rx);
+            rerun_app.add_log_receiver(rx);
             Ok(Box::new(MyApp { rerun_app }))
         }),
     )?;
@@ -107,7 +108,7 @@ impl MyApp {
 /// Show the content of the log database.
 fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
     if let Some(store_info) = entity_db.store_info() {
-        ui.label(format!("Application ID: {}", store_info.application_id));
+        ui.label(format!("Application ID: {}", store_info.application_id()));
     }
 
     // There can be many timelines, but the `log_time` timeline is always there:
@@ -140,7 +141,7 @@ fn entity_ui(
         .store()
         .all_components_on_timeline_sorted(&timeline, entity_path)
     {
-        for component in components {
+        for component in &components {
             ui.collapsing(component.to_string(), |ui| {
                 component_ui(ui, entity_db, timeline, entity_path, component);
             });
@@ -153,7 +154,7 @@ fn component_ui(
     entity_db: &re_entity_db::EntityDb,
     timeline: re_log_types::TimelineName,
     entity_path: &re_log_types::EntityPath,
-    component_name: re_types::ComponentName,
+    component_descriptor: &re_types::ComponentDescriptor,
 ) {
     // You can query the data for any time point, but for now
     // just show the last value logged for each component:
@@ -163,9 +164,9 @@ fn component_ui(
         entity_db
             .storage_engine()
             .cache()
-            .latest_at(&query, entity_path, [component_name]);
+            .latest_at(&query, entity_path, [component_descriptor]);
 
-    if let Some(data) = results.component_batch_raw(&component_name) {
+    if let Some(data) = results.component_batch_raw(component_descriptor) {
         egui::ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {

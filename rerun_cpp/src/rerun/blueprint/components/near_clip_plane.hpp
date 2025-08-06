@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/float32.hpp"
 #include "../../result.hpp"
 
@@ -12,6 +11,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Distance to the near clip plane used for `Spatial2DView`.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct NearClipPlane {
         /// Distance to the near clip plane in 3D scene units.
         rerun::datatypes::Float32 near_clip_plane;
@@ -49,7 +51,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::NearClipPlane> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.NearClipPlane";
 
         /// Returns the arrow data type this type corresponds to.

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../../blueprint/datatypes/tensor_dimension_index_slider.hpp"
-#include "../../component_descriptor.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -12,6 +11,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Show a slider for the index of some dimension of a slider.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct TensorDimensionIndexSlider {
         rerun::blueprint::datatypes::TensorDimensionIndexSlider selection;
 
@@ -53,7 +55,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::TensorDimensionIndexSlider> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.TensorDimensionIndexSlider";
 
         /// Returns the arrow data type this type corresponds to.

@@ -21,7 +21,9 @@ impl CError {
         let mut bytes_next = 0;
         for c in message.chars() {
             if bytes_next + c.len_utf8() >= message_c.len() {
-                re_log::warn_once!("Error message was too long for C error description buffer. Full message\n{message}");
+                re_log::warn_once!(
+                    "Error message was too long for C error description buffer. Full message\n{message}"
+                );
                 break;
             }
 
@@ -81,7 +83,7 @@ impl CError {
 
 #[cfg(test)]
 mod tests {
-    use std::ffi::{c_char, CStr};
+    use std::ffi::{CStr, c_char};
 
     use crate::{CError, CErrorCode};
 

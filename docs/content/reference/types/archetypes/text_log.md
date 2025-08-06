@@ -5,15 +5,18 @@ title: "TextLog"
 
 A log entry in a text log, comprised of a text body and its log level.
 
-## Components
+## Fields
+### Required
+* `text`: [`Text`](../components/text.md)
 
-**Required**: [`Text`](../components/text.md)
+### Recommended
+* `level`: [`TextLogLevel`](../components/text_log_level.md)
 
-**Recommended**: [`TextLogLevel`](../components/text_log_level.md)
+### Optional
+* `color`: [`Color`](../components/color.md)
 
-**Optional**: [`Color`](../components/color.md)
 
-## Shown in
+## Can be shown in
 * [TextLogView](../views/text_log_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

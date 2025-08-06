@@ -2,7 +2,8 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::{
-    allocator::{create_and_fill_uniform_buffer, GpuReadbackIdentifier},
+    DebugLabel, MsaaMode, RectInt, RenderConfig, Rgba,
+    allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer},
     context::{RenderContext, Renderers},
     draw_phases::{
         DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
@@ -15,7 +16,6 @@ use crate::{
     wgpu_resources::{
         GpuBindGroup, GpuRenderPipelinePoolAccessor, GpuTexture, PoolError, TextureDesc,
     },
-    DebugLabel, MsaaMode, RectInt, RenderConfig, Rgba,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -195,7 +195,7 @@ pub struct TargetConfiguration {
 
     /// The viewport resolution in physical pixels.
     pub resolution_in_pixel: [u32; 2],
-    pub view_from_world: re_math::IsoTransform,
+    pub view_from_world: macaw::IsoTransform,
     pub projection_from_view: Projection,
 
     /// Defines a viewport transformation from the projected space to the final image space.
@@ -795,7 +795,7 @@ impl ViewBuilder {
     ///
     /// Note that the picking layer will not be created in the first place if this isn't called.
     ///
-    /// Data from the picking rect needs to be retrieved via [`crate::PickingLayerProcessor::next_readback_result`].
+    /// Data from the picking rect needs to be retrieved via [`crate::PickingLayerProcessor::readback_result`].
     /// To do so, you need to pass the exact same `identifier` and type of user data as you've done here:
     /// ```no_run
     /// use re_renderer::{view_builder::ViewBuilder, RectInt, PickingLayerProcessor, RenderContext};
@@ -809,7 +809,7 @@ impl ViewBuilder {
     ///     );
     /// }
     /// fn receive_screenshots(ctx: &RenderContext) {
-    ///     while let Some(result) = PickingLayerProcessor::next_readback_result::<String>(ctx, 42) {
+    ///     while let Some(result) = PickingLayerProcessor::readback_result::<String>(ctx, 42) {
     ///         re_log::info!("Received picking_data {}", result.user_data);
     ///     }
     /// }

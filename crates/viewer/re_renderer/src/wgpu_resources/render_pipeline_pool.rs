@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::{debug_label::DebugLabel, RenderContext};
+use crate::{RenderContext, debug_label::DebugLabel};
 
 use super::{
     pipeline_layout_pool::{GpuPipelineLayoutHandle, GpuPipelineLayoutPool},

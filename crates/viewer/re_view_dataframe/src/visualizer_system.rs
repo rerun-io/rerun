@@ -40,7 +40,7 @@ impl ComponentFallbackProvider for EmptySystem {
     fn try_provide_fallback(
         &self,
         _ctx: &re_viewer_context::QueryContext<'_>,
-        _component: re_types_core::ComponentName,
+        _component: re_types_core::ComponentType,
     ) -> re_viewer_context::ComponentFallbackProviderResult {
         re_viewer_context::ComponentFallbackProviderResult::ComponentNotHandled
     }

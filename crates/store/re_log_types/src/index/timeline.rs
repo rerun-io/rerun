@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::{ResolvedTimeRange, TimeType, TimestampFormat};
 
 re_string_interner::declare_new_type!(
@@ -166,23 +164,5 @@ impl std::hash::Hash for Timeline {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.name.hash() ^ self.typ.hash());
-    }
-}
-
-// TODO(#9084): Remove this crutch
-impl std::borrow::Borrow<TimelineName> for Timeline {
-    #[inline]
-    fn borrow(&self) -> &TimelineName {
-        &self.name
-    }
-}
-
-// TODO(#9084): Remove this crutch
-impl Deref for Timeline {
-    type Target = TimelineName;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.name
     }
 }

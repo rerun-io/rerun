@@ -20,7 +20,11 @@ __all__ = ["DataframeQuery"]
 
 @define(str=False, repr=False, init=False)
 class DataframeQuery(DataframeQueryExt, Archetype):
-    """**Archetype**: The query for the dataframe view."""
+    """
+    **Archetype**: The query for the dataframe view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     # __init__ can be found in dataframe_query_ext.py
 

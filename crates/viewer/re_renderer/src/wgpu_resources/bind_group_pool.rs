@@ -5,12 +5,12 @@ use smallvec::SmallVec;
 use crate::debug_label::DebugLabel;
 
 use super::{
+    WgpuResourcePools,
     bind_group_layout_pool::GpuBindGroupLayoutHandle,
     buffer_pool::{GpuBuffer, GpuBufferHandle, GpuBufferPool},
     dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc},
     sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
     texture_pool::{GpuTexture, GpuTextureHandle, GpuTexturePool},
-    WgpuResourcePools,
 };
 
 slotmap::new_key_type! { pub struct GpuBindGroupHandle; }

@@ -3,14 +3,13 @@
 use rerun::{demo_util::grid, external::glam};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let open_browser = true;
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal_serve").serve_web(
-        "0.0.0.0",
-        Default::default(),
-        Default::default(),
-        rerun::MemoryLimit::from_fraction_of_total(0.25),
-        open_browser,
-    )?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal_serve").serve_grpc()?;
+
+    rerun::serve_web_viewer(rerun::web_viewer::WebViewerConfig {
+        connect_to: Some("localhost/proxy".to_owned()),
+        ..Default::default()
+    })?
+    .detach();
 
     let points = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10);
     let colors = grid(glam::Vec3::ZERO, glam::Vec3::splat(255.0), 10)

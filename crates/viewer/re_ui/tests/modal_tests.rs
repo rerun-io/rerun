@@ -1,7 +1,7 @@
 use egui::Vec2;
 
 use re_ui::modal::{ModalHandler, ModalWrapper};
-use re_ui::{list_item, UiExt as _};
+use re_ui::{UiExt as _, list_item};
 
 #[test]
 pub fn test_modal_normal_should_match_snapshot() {
@@ -36,7 +36,7 @@ pub fn test_modal_list_item_should_match_snapshot() {
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Property content")
                         .value_color(&egui::Color32::RED.to_array())
-                        .action_button(&re_ui::icons::EDIT, || {}),
+                        .action_button(&re_ui::icons::EDIT, "Edit", || {}),
                 );
             });
         },
@@ -57,7 +57,7 @@ fn run_modal_test(
         .build_ui(|ui| {
             re_ui::apply_style_and_install_loaders(ui.ctx());
 
-            modal_handler.ui(ui.ctx(), &mut make_modal, |ui, _| content_ui(ui));
+            modal_handler.ui(ui.ctx(), &mut make_modal, |ui| content_ui(ui));
         });
 
     harness.run();

@@ -183,7 +183,7 @@ use std::{
 };
 
 use ahash::{HashMap, HashSet, HashSetExt as _};
-use anyhow::{anyhow, bail, ensure, Context as _};
+use anyhow::{Context as _, anyhow, bail, ensure};
 use clean_path::Clean as _;
 
 use crate::FileSystem;
@@ -312,7 +312,7 @@ impl std::str::FromStr for ImportClause {
 
             return s
                 .parse()
-                .with_context(|| "couldn't parse {s:?} as PathBuf")
+                .with_context(|| format!("couldn't parse {s:?} as PathBuf"))
                 .map(|path| Self { path });
         }
 
@@ -467,7 +467,9 @@ pub type RecommendedFileResolver = FileResolver<&'static crate::MemFileSystem>;
 
 /// Returns the recommended `FileResolver` for the current platform/target.
 pub fn new_recommended() -> RecommendedFileResolver {
-    FileResolver::with_search_path(crate::get_filesystem(), SearchPath::from_env())
+    let mut search_path = SearchPath::from_env();
+    search_path.push("crates/viewer/re_renderer/shader");
+    FileResolver::with_search_path(crate::get_filesystem(), search_path)
 }
 
 #[derive(Clone, Debug, Default)]

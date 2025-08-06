@@ -1,40 +1,39 @@
 use egui::ahash::{HashMap, HashSet};
-use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
+use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
+use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_nanos;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimeInt};
+use re_log_types::{EntityPath, TimeInt};
 use re_types::{
+    ComponentBatch as _, View as _, ViewClassIdentifier,
     archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
-        archetypes::{PlotLegend, ScalarAxis},
-        components::{Corner2D, LockRangeDuringZoom},
+        archetypes::{PlotLegend, ScalarAxis, TimeAxis},
+        components::{Corner2D, LinkAxis, LockRangeDuringZoom},
     },
     components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
-    ComponentBatch as _, View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help, MouseButtonText, UiExt as _};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::{
-    controls::{
-        self, ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
-        ZOOM_SCROLL_MODIFIER,
-    },
+    controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON},
     view_property_ui,
 };
 use re_viewer_context::{
-    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, IndicatedEntities,
-    MaybeVisualizableEntities, PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet,
-    SystemExecutionOutput, TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError,
+    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
+    TypedComponentFallbackProvider, ViewClass, ViewClassExt as _, ViewClassRegistryError,
     ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    external::re_entity_db::InstancePath,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    line_visualizer_system::SeriesLineSystem, point_visualizer_system::SeriesPointSystem,
-    PlotSeriesKind,
+    PlotSeriesKind, line_visualizer_system::SeriesLinesSystem,
+    point_visualizer_system::SeriesPointsSystem,
 };
 
 // ---
@@ -117,37 +116,54 @@ impl ViewClass for TimeSeriesView {
         &re_ui::icons::VIEW_TIMESERIES
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        let egui::InputOptions {
+            zoom_modifier,
+            horizontal_scroll_modifier,
+            vertical_scroll_modifier,
+            ..
+        } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change these modifiers.
+
         Help::new("Time series view")
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
-            .control("Pan", icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag"))
+            .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
-                "Zoom",
-                shortcut_with_icon(egui_ctx, ZOOM_SCROLL_MODIFIER, icons::SCROLL),
+                "Horizontal pan",
+                IconText::from_modifiers_and(os, horizontal_scroll_modifier, icons::SCROLL),
             )
             .control(
-                "Zoom only x-axis",
-                shortcut_with_icon(egui_ctx, ASPECT_SCROLL_MODIFIER, icons::SCROLL),
+                "Zoom",
+                IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
+            )
+            .control(
+                "Zoom X-axis",
+                IconText::from_modifiers_and(
+                    os,
+                    zoom_modifier | horizontal_scroll_modifier,
+                    icons::SCROLL,
+                ),
+            )
+            .control(
+                "Zoom Y-axis",
+                IconText::from_modifiers_and(
+                    os,
+                    zoom_modifier | vertical_scroll_modifier,
+                    icons::SCROLL,
+                ),
             )
             .control(
                 "Zoom to selection",
-                icon_text!(MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
+                (MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
             )
-            .control(
-                "Move time cursor",
-                icon_text!(MouseButtonText(MOVE_TIME_CURSOR_BUTTON)),
-            )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+            .control("Move time cursor", MouseButtonText(MOVE_TIME_CURSOR_BUTTON))
+            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
             .control_separator()
-            .control(
-                "Hide/show series",
-                icon_text!(icons::LEFT_MOUSE_CLICK, "legend"),
-            )
+            .control("Hide/show series", (icons::LEFT_MOUSE_CLICK, "legend"))
             .control(
                 "Hide/show other series",
-                icon_text!(
-                    shortcut_with_icon(egui_ctx, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
-                    "legend"
+                (
+                    IconText::from_modifiers_and(os, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
+                    "legend",
                 ),
             )
     }
@@ -156,8 +172,8 @@ impl ViewClass for TimeSeriesView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_visualizer::<SeriesLineSystem>()?;
-        system_registry.register_visualizer::<SeriesPointSystem>()?;
+        system_registry.register_visualizer::<SeriesLinesSystem>()?;
+        system_registry.register_visualizer::<SeriesPointsSystem>()?;
         Ok(())
     }
 
@@ -192,8 +208,10 @@ impl ViewClass for TimeSeriesView {
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            view_property_ui::<PlotLegend>(ctx, ui, view_id, self, state);
-            view_property_ui::<ScalarAxis>(ctx, ui, view_id, self, state);
+            let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<PlotLegend>(&ctx, ui, self);
+            view_property_ui::<TimeAxis>(&ctx, ui, self);
+            view_property_ui::<ScalarAxis>(&ctx, ui, self);
         });
 
         Ok(())
@@ -202,7 +220,7 @@ impl ViewClass for TimeSeriesView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -210,8 +228,8 @@ impl ViewClass for TimeSeriesView {
         let mut indicated_entities = IndicatedEntities::default();
 
         for indicated in [
-            SeriesLineSystem::identifier(),
-            SeriesPointSystem::identifier(),
+            SeriesLinesSystem::identifier(),
+            SeriesPointsSystem::identifier(),
         ]
         .iter()
         .filter_map(|&system_id| ctx.indicated_entities_per_visualizer.get(&system_id))
@@ -219,40 +237,45 @@ impl ViewClass for TimeSeriesView {
             indicated_entities.0.extend(indicated.0.iter().cloned());
         }
 
-        // Because SeriesLine is our fallback visualizer, also include any entities for which
-        // SeriesLine is visualizable, even if not indicated.
+        // Because SeriesLines is our fallback visualizer, also include any entities for which
+        // SeriesLines is visualizable, even if not indicated.
         if let Some(maybe_visualizable) = ctx
             .maybe_visualizable_entities_per_visualizer
-            .get(&SeriesLineSystem::identifier())
+            .get(&SeriesLinesSystem::identifier())
         {
             indicated_entities
                 .0
                 .extend(maybe_visualizable.iter().cloned());
         }
 
-        // Ensure we don't modify this list anymore before we check the `suggested_filter`.
+        // Ensure we don't modify this list anymore before we check the `include_entity`.
         let indicated_entities = indicated_entities;
-        if indicated_entities
-            .iter()
-            .all(|e| suggested_filter.matches(e))
-        {
-            return ViewSpawnHeuristics::default();
+
+        if !indicated_entities.iter().any(include_entity) {
+            return ViewSpawnHeuristics::empty();
         }
 
-        if indicated_entities.0.is_empty() {
-            return ViewSpawnHeuristics::default();
-        }
-
-        // Spawn time series data at the root if there's time series data either
-        // directly at the root or one of its children.
+        // Spawn time series data at the root if theres 'either:
+        // * time series data directly at the root
+        // * all time series data are direct children of the root
+        //
+        // This heuristic was last edited in 2015-04-11 by @emilk,
+        // because it was triggering too often (https://github.com/rerun-io/rerun/pull/9587).
+        // Maybe we should remove it completely?
+        // I have a feeling it was added to handle the case many scalars of the form `/x`, `/y`, `/z` etc,
+        // but we now support logging multiple scalars in one entity.
         //
         // This is the last hold out of "child of root" spawning, which we removed otherwise
         // (see https://github.com/rerun-io/rerun/issues/4926)
-        let subtree_of_root_entity = &ctx.recording().tree().children;
+        let root_entities: IntSet<EntityPath> = ctx
+            .recording()
+            .tree()
+            .children
+            .values()
+            .map(|subtree| subtree.path.clone())
+            .collect();
         if indicated_entities.contains(&EntityPath::root())
-            || subtree_of_root_entity
-                .iter()
-                .any(|(_, subtree)| indicated_entities.contains(&subtree.path))
+            || indicated_entities.is_subset(&root_entities)
         {
             return ViewSpawnHeuristics::root();
         }
@@ -260,6 +283,7 @@ impl ViewClass for TimeSeriesView {
         // If there's other entities that have the right indicator & didn't match the above,
         // spawn a time series view for each child of the root that has any entities with the right indicator.
         let mut child_of_root_entities = HashSet::default();
+        #[expect(clippy::iter_over_hash_type)]
         for entity in indicated_entities.iter() {
             if let Some(child_of_root) = entity.iter().next() {
                 child_of_root_entities.insert(child_of_root);
@@ -307,9 +331,10 @@ impl ViewClass for TimeSeriesView {
             .collect();
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
-        if visualizers.is_empty() && available_visualizers.contains(&SeriesLineSystem::identifier())
+        if visualizers.is_empty()
+            && available_visualizers.contains(&SeriesLinesSystem::identifier())
         {
-            visualizers.insert(0, SeriesLineSystem::identifier());
+            visualizers.insert(0, SeriesLinesSystem::identifier());
         }
 
         visualizers
@@ -330,19 +355,43 @@ impl ViewClass for TimeSeriesView {
         let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;
 
+        let view_ctx = self.view_context(ctx, view_id, state);
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
-        let legend_visible = plot_legend.component_or_fallback::<Visible>(ctx, self, state)?;
-        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(ctx, self, state)?;
+        let legend_visible = plot_legend.component_or_fallback::<Visible>(
+            &view_ctx,
+            self,
+            &PlotLegend::descriptor_visible(),
+        )?;
+        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(
+            &view_ctx,
+            self,
+            &PlotLegend::descriptor_corner(),
+        )?;
+
+        let time_axis =
+            ViewProperty::from_archetype::<TimeAxis>(blueprint_db, ctx.blueprint_query, view_id);
+        let link_x_axis = time_axis.component_or_fallback::<LinkAxis>(
+            &view_ctx,
+            self,
+            &TimeAxis::descriptor_link(),
+        )?;
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
-        let y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
+        let y_range = scalar_axis.component_or_fallback::<Range1D>(
+            &view_ctx,
+            self,
+            &ScalarAxis::descriptor_range(),
+        )?;
         let y_range = make_range_sane(y_range);
 
-        let y_zoom_lock =
-            scalar_axis.component_or_fallback::<LockRangeDuringZoom>(ctx, self, state)?;
-        let y_zoom_lock = y_zoom_lock.0 .0;
+        let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
+            &view_ctx,
+            self,
+            &ScalarAxis::descriptor_zoom_lock(),
+        )?;
+        let y_zoom_lock = y_zoom_lock.0.0;
 
         let (current_time, time_type, timeline) = {
             // Avoid holding the lock for long
@@ -355,8 +404,8 @@ impl ViewClass for TimeSeriesView {
 
         let timeline_name = timeline.name().to_string();
 
-        let line_series = system_output.view_systems.get::<SeriesLineSystem>()?;
-        let point_series = system_output.view_systems.get::<SeriesPointSystem>()?;
+        let line_series = system_output.view_systems.get::<SeriesLinesSystem>()?;
+        let point_series = system_output.view_systems.get::<SeriesPointsSystem>()?;
 
         let all_plot_series: Vec<_> = std::iter::empty()
             .chain(line_series.all_series.iter())
@@ -402,8 +451,7 @@ impl ViewClass for TimeSeriesView {
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let lock_y_during_zoom =
-            y_zoom_lock || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
+        let lock_y_during_zoom = y_zoom_lock;
 
         // We don't want to allow vertical when y is locked or else the view "bounces" when we scroll and
         // then reset to the locked range.
@@ -418,18 +466,28 @@ impl ViewClass for TimeSeriesView {
 
         set_plot_visibility_from_store(ui.ctx(), &all_plot_series, plot_id);
 
+        let min_axis_thickness = ui.tokens().small_icon_size.y;
+
         let mut plot = Plot::new(plot_id_src)
             .id(plot_id)
             .auto_bounds(state.saved_auto_bounds) // Note that this only sets the initial default.
             .allow_zoom([true, !lock_y_during_zoom])
-            .x_axis_formatter(move |time, _| {
-                re_log_types::TimeCell::new(
-                    time_type,
-                    (time.value as i64).saturating_add(time_offset),
-                )
-                .format_compact(timestamp_format)
-            })
-            .y_axis_formatter(move |mark, _| format_y_axis(mark))
+            .custom_x_axes(vec![
+                egui_plot::AxisHints::new_x()
+                    .min_thickness(min_axis_thickness)
+                    .formatter(move |time, _| {
+                        re_log_types::TimeCell::new(
+                            time_type,
+                            (time.value as i64).saturating_add(time_offset),
+                        )
+                        .format_compact(timestamp_format)
+                    }),
+            ])
+            .custom_y_axes(vec![
+                egui_plot::AxisHints::new_y()
+                    .min_thickness(min_axis_thickness)
+                    .formatter(move |mark, _| format_y_axis(mark)),
+            ])
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(
@@ -449,8 +507,26 @@ impl ViewClass for TimeSeriesView {
                 }
             });
 
+        if state.reset_bounds_next_frame {
+            plot = plot.reset();
+        }
+
+        match link_x_axis {
+            LinkAxis::Independent => {}
+            LinkAxis::LinkToGlobal => {
+                plot = plot.link_axis(timeline.name().as_str(), [true, false]);
+            }
+        }
+
+        // Sharing the same cursor is always nice:
+        plot = plot.link_cursor(timeline.name().as_str(), [true, false]);
+
         if *legend_visible.0 {
-            plot = plot.legend(Legend::default().position(legend_corner.into()));
+            plot = plot.legend(
+                Legend::default()
+                    .position(legend_corner.into())
+                    .color_conflict_handling(ColorConflictHandling::PickFirst),
+            );
         }
 
         match timeline.typ() {
@@ -469,22 +545,18 @@ impl ViewClass for TimeSeriesView {
             hovered_plot_item,
         } = plot.show(ui, |plot_ui| {
             if plot_ui.response().secondary_clicked() {
-                let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
-                let timeline = *time_ctrl_write.timeline();
-                time_ctrl_write.set_timeline_and_time(
-                    timeline,
-                    plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
-                );
-                time_ctrl_write.pause();
+                if let Some(pointer) = plot_ui.pointer_coordinate() {
+                    let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
+                    let timeline = *time_ctrl_write.timeline();
+                    time_ctrl_write.set_timeline_and_time(timeline, pointer.x as i64 + time_offset);
+                    time_ctrl_write.pause();
+                }
             }
 
             plot_double_clicked = plot_ui.response().double_clicked();
 
-            let current_bounds = plot_ui.plot_bounds();
-            plot_ui.set_plot_bounds(egui_plot::PlotBounds::from_min_max(
-                [current_bounds.min()[0], y_range.start()],
-                [current_bounds.max()[0], y_range.end()],
-            ));
+            // Let the user pick y_range from the blueprint:
+            plot_ui.set_plot_bounds_y(y_range);
 
             // Needed by for the visualizers' fallback provider.
             state.default_names_for_entities = EntityPath::short_names_with_disambiguation(
@@ -506,7 +578,8 @@ impl ViewClass for TimeSeriesView {
             } else {
                 plot_ui.set_auto_bounds([
                     // X bounds are handled by egui plot - either to auto or manually controlled.
-                    plot_ui.auto_bounds()[0] || state.reset_bounds_next_frame,
+                    state.reset_bounds_next_frame
+                        || (plot_ui.auto_bounds().x && link_x_axis == LinkAxis::Independent),
                     // Y bounds are always handled by the blueprint.
                     false,
                 ]);
@@ -528,12 +601,7 @@ impl ViewClass for TimeSeriesView {
         let hovered_data_result = hovered_plot_item
             .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
             .map(|instance_path| {
-                let mut instance_path = instance_path.clone();
-                if response.double_clicked() {
-                    // Select entire entity on double-click:
-                    instance_path.instance = re_log_types::Instance::ALL;
-                }
-                re_viewer_context::Item::DataResult(query.view_id, instance_path)
+                re_viewer_context::Item::DataResult(query.view_id, instance_path.clone())
             });
         if let Some(hovered) = hovered_data_result.clone().or_else(|| {
             if response.hovered() {
@@ -551,11 +619,15 @@ impl ViewClass for TimeSeriesView {
         // Write new y_range if it has changed.
         let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
         if is_resetting {
-            scalar_axis.reset_blueprint_component::<Range1D>(ctx);
+            scalar_axis.reset_blueprint_component(ctx, ScalarAxis::descriptor_range());
             state.reset_bounds_next_frame = true;
             ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
         } else if new_y_range != y_range {
-            scalar_axis.save_blueprint_component(ctx, &new_y_range);
+            scalar_axis.save_blueprint_component(
+                ctx,
+                &ScalarAxis::descriptor_range(),
+                &new_y_range,
+            );
             ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
         }
 
@@ -696,12 +768,13 @@ fn update_series_visibility_overrides_from_plot(
             .map(SeriesVisible::from)
             .collect::<Vec<_>>();
 
-        if let Some(serialized_component_batch) = descriptor.and_then(|descriptor| {
-            component_array
-                .serialized()
-                .map(|serialized| serialized.with_descriptor_override(descriptor))
-        }) {
-            ctx.save_serialized_blueprint_component(override_path, serialized_component_batch);
+        if let Some(serialized_component_batch) =
+            descriptor.and_then(|descriptor| component_array.serialized(descriptor))
+        {
+            ctx.save_serialized_blueprint_component(
+                override_path.clone(),
+                serialized_component_batch,
+            );
         }
     }
 }
@@ -839,20 +912,21 @@ fn nanos_grid_spacer(
 
 fn round_nanos_to_start_of_day(ns: i64) -> i64 {
     let nanos_per_day = 24 * 60 * 60 * 1_000_000_000;
-    (ns + nanos_per_day / 2) / nanos_per_day * nanos_per_day
+    (ns.saturating_add(nanos_per_day / 2)) / nanos_per_day * nanos_per_day
 }
 
 impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesView {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
-        // Explicitly pick RightCorner2D::RightBottom, we don't want to make this dependent on the (arbitrary)
-        // default of Corner2D
-        Corner2D::RightBottom
+        // Explicitly pick RightCorner2D::LeftBottom, we don't want to make this dependent on the (arbitrary)
+        // default of Corner2D.
+        // We put it on the left side by default so that it does not cover the newest data coming n on the right side.
+        Corner2D::LeftBottom
     }
 }
 
 impl TypedComponentFallbackProvider<Range1D> for TimeSeriesView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Range1D {
-        ctx.view_state
+        ctx.view_state()
             .as_any()
             .downcast_ref::<TimeSeriesViewState>()
             .map(|s| make_range_sane(s.scalar_range))
@@ -887,5 +961,5 @@ re_viewer_context::impl_component_fallback_provider!(TimeSeriesView => [Corner2D
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| TimeSeriesView.help(ctx));
 }

@@ -1,0 +1,15 @@
+---
+source: crates/viewer/re_view_spatial/tests/spawn_heuristics.rs
+expression: recommended_views
+snapshot_kind: text
+---
+ViewSpawnHeuristics {
+    recommended_views: [
+        RecommendedView {
+            origin: /image,
+            query_filter: [
+                "+ $origin/**",
+            ],
+        },
+    ],
+}

@@ -10,7 +10,7 @@ pub mod clamped_zip;
 pub mod range_zip;
 
 pub use self::cache::{QueryCache, QueryCacheHandle, QueryCacheKey};
-pub use self::cache_stats::{CacheStats, CachesStats};
+pub use self::cache_stats::{QueryCacheStats, QueryCachesStats};
 pub use self::clamped_zip::*;
 pub use self::latest_at::LatestAtResults;
 pub use self::range::RangeResults;
@@ -31,7 +31,7 @@ pub mod external {
 // ---
 
 #[derive(Debug, Clone, Copy)]
-pub struct ComponentNotFoundError(pub re_types_core::ComponentName);
+pub struct ComponentNotFoundError(pub re_types_core::ComponentType);
 
 impl std::fmt::Display for ComponentNotFoundError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -47,15 +47,15 @@ pub enum QueryError {
     BadAccess,
 
     #[error("Could not find primary component: {0}")]
-    PrimaryNotFound(re_types_core::ComponentName),
+    PrimaryNotFound(re_types_core::ComponentDescriptor),
 
     #[error(transparent)]
     ComponentNotFound(#[from] ComponentNotFoundError),
 
     #[error("Tried to access component of type '{actual:?}' using component '{requested:?}'")]
     TypeMismatch {
-        actual: re_types_core::ComponentName,
-        requested: re_types_core::ComponentName,
+        actual: re_types_core::ComponentType,
+        requested: re_types_core::ComponentType,
     },
 
     #[error("Error deserializing: {0}")]
@@ -67,7 +67,7 @@ pub enum QueryError {
     #[error("Not implemented")]
     NotImplemented,
 
-    #[error(transparent)]
+    #[error("{}", re_error::format(.0))]
     Other(#[from] anyhow::Error),
 }
 

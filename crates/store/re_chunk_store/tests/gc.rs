@@ -3,43 +3,42 @@ use std::sync::Arc;
 use arrow::array::ArrayRef;
 use rand::Rng as _;
 
-use re_chunk::{
-    Chunk, ChunkId, ComponentName, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName,
-};
+use re_chunk::{Chunk, ChunkId, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreDiffKind, GarbageCollectionOptions,
     GarbageCollectionTarget,
 };
 use re_log_types::{
-    build_frame_nr, build_log_time,
-    example_components::{MyColor, MyIndex, MyPoint},
-    EntityPath, ResolvedTimeRange, Timestamp,
+    EntityPath, ResolvedTimeRange, Timestamp, build_frame_nr, build_log_time,
+    example_components::{MyColor, MyIndex, MyPoint, MyPoints},
 };
-use re_types::testing::build_some_large_structs;
-use re_types_core::Component as _;
+use re_types::{
+    ComponentDescriptor,
+    testing::{build_some_large_structs, large_struct_descriptor},
+};
 
 // ---
 
 fn query_latest_array(
     store: &ChunkStore,
     entity_path: &EntityPath,
-    component_name: ComponentName,
+    component_descr: &ComponentDescriptor,
     query: &LatestAtQuery,
 ) -> Option<(TimeInt, RowId, ArrayRef)> {
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component_name)
+        .latest_at_relevant_chunks(query, entity_path, component_descr)
         .into_iter()
         .filter_map(|chunk| {
             chunk
-                .latest_at(query, component_name)
+                .latest_at(query, component_descr)
                 .into_unit()
                 .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
         })
         .max_by_key(|(index, _chunk)| *index)?;
 
-    unit.component_batch_raw(&component_name)
+    unit.component_batch_raw(component_descr)
         .map(|array| (data_time, row_id, array))
 }
 
@@ -52,7 +51,7 @@ fn simple() -> anyhow::Result<()> {
     let mut rng = rand::thread_rng();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -62,14 +61,17 @@ fn simple() -> anyhow::Result<()> {
             let entity_path = EntityPath::from(format!("this/that/{i}"));
 
             let num_frames = rng.gen_range(0..=100);
-            let frames = (0..num_frames).filter(|_| rand::thread_rng().gen());
+            let frames = (0..num_frames).filter(|_| rand::thread_rng().r#gen());
             for frame_nr in frames {
                 let num_instances = rng.gen_range(0..=1_000);
                 let chunk = Chunk::builder(entity_path.clone())
                     .with_component_batch(
                         RowId::new(),
                         [build_frame_nr(frame_nr)],
-                        &build_some_large_structs(num_instances),
+                        (
+                            large_struct_descriptor(),
+                            &build_some_large_structs(num_instances),
+                        ),
                     )
                     .build()?;
                 store.insert_chunk(&Arc::new(chunk))?;
@@ -108,7 +110,7 @@ fn simple_static() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
 
@@ -126,7 +128,10 @@ fn simple_static() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id1,
                 [build_frame_nr(frame1)],
-                [&indices1 as _, &colors1 as _],
+                [
+                    (MyIndex::partial_descriptor(), &indices1 as _),
+                    (MyPoints::descriptor_colors(), &colors1 as _),
+                ],
             )
             .build()?,
     );
@@ -138,19 +143,30 @@ fn simple_static() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id2,
                 [build_frame_nr(frame2)],
-                [&indices1 as _, &points2 as _],
+                [
+                    (MyIndex::partial_descriptor(), &indices1 as _),
+                    (MyPoints::descriptor_points(), &points2 as _),
+                ],
             )
             .build()?,
     );
 
     let points3 = MyPoint::from_iter(0..10);
     let chunk3 = Chunk::builder(entity_path.clone())
-        .with_component_batches(RowId::new(), [build_frame_nr(frame3)], [&points3 as _])
+        .with_component_batches(
+            RowId::new(),
+            [build_frame_nr(frame3)],
+            [(MyPoints::descriptor_points(), &points3 as _)],
+        )
         .build()?;
 
     let colors4 = MyColor::from_iter(0..5);
     let chunk4 = Chunk::builder(entity_path.clone())
-        .with_component_batches(RowId::new(), [build_frame_nr(frame4)], [&colors4 as _])
+        .with_component_batches(
+            RowId::new(),
+            [build_frame_nr(frame4)],
+            [(MyPoints::descriptor_colors(), &colors4 as _)],
+        )
         .build()?;
 
     store.insert_chunk(&chunk1)?;
@@ -175,19 +191,19 @@ fn simple_static() -> anyhow::Result<()> {
         ..GarbageCollectionOptions::gc_everything()
     });
 
-    let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, RowId)]| {
+    let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentDescriptor, RowId)]| {
         let timeline_frame_nr = TimelineName::new("frame_nr");
 
-        for (component_name, expected_row_id) in rows {
+        for (component_descr, expected_row_id) in rows {
             let (_data_time, row_id, _array) = query_latest_array(
                 &store,
                 &entity_path,
-                *component_name,
+                component_descr,
                 &LatestAtQuery::new(timeline_frame_nr, frame_nr),
             )
             .unwrap();
 
-            assert_eq!(*expected_row_id, row_id, "{component_name}");
+            assert_eq!(*expected_row_id, row_id, "{component_descr}");
         }
     };
 
@@ -196,9 +212,9 @@ fn simple_static() -> anyhow::Result<()> {
     assert_latest_components(
         TimeInt::MAX,
         &[
-            (MyIndex::name(), row_id2_static),
-            (MyColor::name(), row_id1_static),
-            (MyPoint::name(), row_id2_static),
+            (MyIndex::partial_descriptor(), row_id2_static),
+            (MyPoints::descriptor_colors(), row_id1_static),
+            (MyPoints::descriptor_points(), row_id2_static),
         ],
     );
 
@@ -210,7 +226,7 @@ fn protected() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -227,7 +243,10 @@ fn protected() -> anyhow::Result<()> {
         .with_component_batches(
             row_id1,
             [build_frame_nr(frame1)],
-            [&indices1 as _, &colors1 as _],
+            [
+                (MyIndex::partial_descriptor(), &indices1 as _),
+                (MyPoints::descriptor_colors(), &colors1 as _),
+            ],
         )
         .build()?;
 
@@ -237,20 +256,31 @@ fn protected() -> anyhow::Result<()> {
         .with_component_batches(
             row_id2,
             [build_frame_nr(frame2)],
-            [&indices1 as _, &points2 as _],
+            [
+                (MyIndex::partial_descriptor(), &indices1 as _),
+                (MyPoints::descriptor_points(), &points2 as _),
+            ],
         )
         .build()?;
 
     let row_id3 = RowId::new();
     let points3 = MyPoint::from_iter(0..10);
     let chunk3 = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id3, [build_frame_nr(frame3)], [&points3 as _])
+        .with_component_batches(
+            row_id3,
+            [build_frame_nr(frame3)],
+            [(MyPoints::descriptor_points(), &points3 as _)],
+        )
         .build()?;
 
     let row_id4 = RowId::new();
     let colors4 = MyColor::from_iter(0..5);
     let chunk4 = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id4, [build_frame_nr(frame4)], [&colors4 as _])
+        .with_component_batches(
+            row_id4,
+            [build_frame_nr(frame4)],
+            [(MyPoints::descriptor_colors(), &colors4 as _)],
+        )
         .build()?;
 
     store.insert_chunk(&Arc::new(chunk1))?;
@@ -263,57 +293,58 @@ fn protected() -> anyhow::Result<()> {
         ..GarbageCollectionOptions::gc_everything()
     });
 
-    let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, Option<RowId>)]| {
-        let timeline_frame_nr = TimelineName::new("frame_nr");
+    let assert_latest_components =
+        |frame_nr: TimeInt, rows: &[(ComponentDescriptor, Option<RowId>)]| {
+            let timeline_frame_nr = TimelineName::new("frame_nr");
 
-        for (component_name, expected_row_id) in rows {
-            let row_id = query_latest_array(
-                &store,
-                &entity_path,
-                *component_name,
-                &LatestAtQuery::new(timeline_frame_nr, frame_nr),
-            )
-            .map(|(_data_time, row_id, _array)| row_id);
+            for (component_descr, expected_row_id) in rows {
+                let row_id = query_latest_array(
+                    &store,
+                    &entity_path,
+                    component_descr,
+                    &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+                )
+                .map(|(_data_time, row_id, _array)| row_id);
 
-            assert_eq!(*expected_row_id, row_id, "{component_name}");
-        }
-    };
+                assert_eq!(*expected_row_id, row_id, "{component_descr}");
+            }
+        };
 
     eprintln!("{store}");
 
     assert_latest_components(
         frame1,
         &[
-            (MyIndex::name(), None),
-            (MyColor::name(), None),
-            (MyPoint::name(), None),
+            (MyIndex::partial_descriptor(), None),
+            (MyPoints::descriptor_colors(), None),
+            (MyPoints::descriptor_points(), None),
         ],
     );
 
     assert_latest_components(
         frame2,
         &[
-            (MyIndex::name(), Some(row_id2)),
-            (MyColor::name(), None),
-            (MyPoint::name(), Some(row_id2)),
+            (MyIndex::partial_descriptor(), Some(row_id2)),
+            (MyPoints::descriptor_colors(), None),
+            (MyPoints::descriptor_points(), Some(row_id2)),
         ],
     );
 
     assert_latest_components(
         frame3,
         &[
-            (MyIndex::name(), Some(row_id2)),
-            (MyColor::name(), None),
-            (MyPoint::name(), Some(row_id3)),
+            (MyIndex::partial_descriptor(), Some(row_id2)),
+            (MyPoints::descriptor_colors(), None),
+            (MyPoints::descriptor_points(), Some(row_id3)),
         ],
     );
 
     assert_latest_components(
         frame4,
         &[
-            (MyIndex::name(), Some(row_id2)),
-            (MyColor::name(), Some(row_id4)),
-            (MyPoint::name(), Some(row_id3)),
+            (MyIndex::partial_descriptor(), Some(row_id2)),
+            (MyPoints::descriptor_colors(), Some(row_id4)),
+            (MyPoints::descriptor_points(), Some(row_id3)),
         ],
     );
 
@@ -325,7 +356,7 @@ fn protected_time_ranges() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
@@ -342,7 +373,10 @@ fn protected_time_ranges() -> anyhow::Result<()> {
         .with_component_batches(
             row_id1,
             [build_frame_nr(frame1)],
-            [&indices1 as _, &colors1 as _],
+            [
+                (MyIndex::partial_descriptor(), &indices1 as _),
+                (MyPoints::descriptor_colors(), &colors1 as _),
+            ],
         )
         .build()?;
 
@@ -352,20 +386,31 @@ fn protected_time_ranges() -> anyhow::Result<()> {
         .with_component_batches(
             row_id2,
             [build_frame_nr(frame2)],
-            [&indices1 as _, &points2 as _],
+            [
+                (MyIndex::partial_descriptor(), &indices1 as _),
+                (MyPoints::descriptor_points(), &points2 as _),
+            ],
         )
         .build()?;
 
     let row_id3 = RowId::new();
     let points3 = MyPoint::from_iter(0..10);
     let chunk3 = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id3, [build_frame_nr(frame3)], [&points3 as _])
+        .with_component_batches(
+            row_id3,
+            [build_frame_nr(frame3)],
+            [(MyPoints::descriptor_points(), &points3 as _)],
+        )
         .build()?;
 
     let row_id4 = RowId::new();
     let colors4 = MyColor::from_iter(0..5);
     let chunk4 = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id4, [build_frame_nr(frame4)], [&colors4 as _])
+        .with_component_batches(
+            row_id4,
+            [build_frame_nr(frame4)],
+            [(MyPoints::descriptor_colors(), &colors4 as _)],
+        )
         .build()?;
 
     let chunk1 = Arc::new(chunk1);
@@ -409,7 +454,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
 
@@ -420,7 +465,11 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     let indices1 = MyIndex::from_iter(0..3);
     let chunk1 = Arc::new(
         Chunk::builder(entity_path1.clone())
-            .with_component_batches(row_id1, [build_frame_nr(10)], [&indices1 as _])
+            .with_component_batches(
+                row_id1,
+                [build_frame_nr(10)],
+                [(MyIndex::partial_descriptor(), &indices1 as _)],
+            )
             .build()?,
     );
 
@@ -431,7 +480,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id2,
                 [build_log_time(Timestamp::now())],
-                [&indices2 as _],
+                [(MyIndex::partial_descriptor(), &indices2 as _)],
             )
             .build()?,
     );
@@ -440,7 +489,11 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     let indices3 = MyIndex::from_iter(0..3);
     let chunk3 = Arc::new(
         Chunk::builder(entity_path1.clone())
-            .with_component_batches(row_id3, TimePoint::default(), [&indices3 as _])
+            .with_component_batches(
+                row_id3,
+                TimePoint::default(),
+                [(MyIndex::partial_descriptor(), &indices3 as _)],
+            )
             .build()?,
     );
 
@@ -451,7 +504,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id4,
                 [build_frame_nr(42), build_log_time(Timestamp::now())],
-                [&indices4 as _],
+                [(MyIndex::partial_descriptor(), &indices4 as _)],
             )
             .build()?,
     );
@@ -465,7 +518,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
                                entity_path: &EntityPath,
                                query: &LatestAtQuery,
                                expected_row_id: Option<RowId>| {
-        let row_id = query_latest_array(store, entity_path, MyIndex::name(), query)
+        let row_id = query_latest_array(store, entity_path, &MyIndex::partial_descriptor(), query)
             .map(|(_data_time, row_id, _array)| row_id);
 
         assert_eq!(expected_row_id, row_id);

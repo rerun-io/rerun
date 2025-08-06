@@ -7,13 +7,15 @@ A bar chart.
 
 The x values will be the indices of the array, and the bar heights will be the provided values.
 
-## Components
+## Fields
+### Required
+* `values`: [`TensorData`](../components/tensor_data.md)
 
-**Required**: [`TensorData`](../components/tensor_data.md)
+### Optional
+* `color`: [`Color`](../components/color.md)
 
-**Optional**: [`Color`](../components/color.md)
 
-## Shown in
+## Can be shown in
 * [BarChartView](../views/bar_chart_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

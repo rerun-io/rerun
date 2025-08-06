@@ -1,7 +1,6 @@
-use custom_callback::{comms::viewer::ControlViewer, panel::Control};
+use rerun::external::{eframe, re_crash_handler, re_grpc_server, re_log, re_memory, re_viewer};
 
-use rerun::external::re_viewer::AsyncRuntimeHandle;
-use rerun::external::{eframe, re_log, re_memory, re_viewer};
+use custom_callback::{comms::viewer::ControlViewer, panel::Control};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -25,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let rx = re_grpc_server::spawn_with_recv(
+    let (rx_log, rx_table) = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9877".parse()?,
         "75%".parse()?,
         re_grpc_server::shutdown::never(),
@@ -63,10 +62,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
-                AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
+                None,
+                re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
 
-            rerun_app.add_receiver(rx);
+            rerun_app.add_log_receiver(rx_log);
+            rerun_app.add_table_receiver(rx_table);
 
             Ok(Box::new(Control::new(rerun_app, handle)))
         }),

@@ -20,7 +20,11 @@ __all__ = ["MapBackground"]
 
 @define(str=False, repr=False, init=False)
 class MapBackground(Archetype):
-    """**Archetype**: Configuration for the background map of the map view."""
+    """
+    **Archetype**: Configuration for the background map of the map view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     def __init__(self: Any, provider: blueprint_components.MapProviderLike) -> None:
         """

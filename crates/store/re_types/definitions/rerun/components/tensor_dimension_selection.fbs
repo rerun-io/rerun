@@ -2,27 +2,27 @@ namespace rerun.components;
 
 /// Specifies which dimension to use for height.
 struct TensorHeightDimension (
-    "attr.arrow.transparent",
-    "attr.rust.derive": "Hash, Copy, PartialEq, Eq, Default",
-    "attr.rust.repr": "transparent"
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Hash, Copy, PartialEq, Eq, Default",
+  "attr.rust.repr": "transparent"
 ) {
-    dimension: rerun.datatypes.TensorDimensionSelection (order: 100);
+  dimension: rerun.datatypes.TensorDimensionSelection (order: 100);
 }
 
 /// Specifies which dimension to use for width.
 struct TensorWidthDimension (
-    "attr.arrow.transparent",
-    "attr.rust.derive": "Hash, Copy, PartialEq, Eq, Default",
-    "attr.rust.repr": "transparent"
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Hash, Copy, PartialEq, Eq, Default",
+  "attr.rust.repr": "transparent"
 ) {
-    dimension: rerun.datatypes.TensorDimensionSelection (order: 100);
+  dimension: rerun.datatypes.TensorDimensionSelection (order: 100);
 }
 
 /// Specifies a concrete index on a tensor dimension.
 struct TensorDimensionIndexSelection (
-    "attr.arrow.transparent",
-    "attr.rust.derive": "Hash, Copy, PartialEq, Eq, Default",
-    "attr.rust.repr": "transparent"
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Hash, Copy, PartialEq, Eq, Default",
+  "attr.rust.repr": "transparent"
 ) {
-    selection: rerun.datatypes.TensorDimensionIndexSelection (order: 100);
+  selection: rerun.datatypes.TensorDimensionIndexSelection (order: 100);
 }

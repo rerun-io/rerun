@@ -1,22 +1,27 @@
-use egui::Rangef;
-use nohash_hasher::IntMap;
+use egui::{Rangef, RichText};
+use std::collections::BTreeMap;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
-use re_log_types::{debug_assert_archetype_has_components, ComponentPath};
+use re_log_types::ComponentPath;
 use re_types::{
-    archetypes, components,
+    ArchetypeName, Component, ComponentDescriptor, archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    Component as _, ComponentName,
+    reflection::ComponentDescriptorExt as _,
 };
-use re_ui::UiExt as _;
+use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_viewer_context::{
-    gpu_bridge::image_data_range_heuristic, ColormapWithRange, HoverHighlight, ImageInfo,
-    ImageStatsCache, Item, UiLayout, ViewerContext,
+    ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout,
+    VideoStreamCache, ViewerContext, gpu_bridge::image_data_range_heuristic,
+    video_stream_time_from_query,
 };
 
-use crate::{blob::blob_preview_and_save_ui, image::image_preview_ui};
+use crate::{
+    blob::blob_preview_and_save_ui,
+    image::image_preview_ui,
+    video::{show_decoded_frame_info, video_stream_result_ui},
+};
 
 use super::DataUi;
 
@@ -34,6 +39,7 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
+        // NOTE: the passed in `db` is usually the recording; NOT the blueprint.
         let component = if ctx.recording().is_known_entity(entity_path) {
             // We are looking at an entity in the recording
             ctx.recording_engine()
@@ -49,27 +55,46 @@ impl DataUi for InstancePath {
             ui.error_label(format!("Unknown entity: {entity_path:?}"));
             return;
         };
-        let Some(components) = component else {
+        let Some(unordered_components) = component else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
             ui_layout.label(
                 ui,
                 format!(
-                    "{self} has no components on timeline {:?}",
+                    "{self} has no own components on timeline {:?}, but its children do",
                     query.timeline()
                 ),
             );
             return;
         };
 
-        let components = crate::sorted_component_list_for_ui(&components);
-        let indicator_count = components
-            .iter()
-            .filter(|c| c.is_indicator_component())
-            .count();
+        let components_by_archetype = crate::sorted_component_list_by_archetype_for_ui(
+            ctx.reflection(),
+            &unordered_components,
+        );
 
-        let mut components = latest_at(db, query, entity_path, &components);
+        let mut query_results =
+            db.storage_engine()
+                .cache()
+                .latest_at(query, entity_path, &unordered_components);
 
-        if components.is_empty() {
+        // Keep previously established order.
+        let mut components_by_archetype: BTreeMap<
+            Option<ArchetypeName>,
+            Vec<(ComponentDescriptor, UnitChunkShared)>,
+        > = components_by_archetype
+            .into_iter()
+            .map(|(archetype, components)| {
+                (
+                    archetype,
+                    components
+                        .into_iter()
+                        .filter_map(|c| query_results.components.remove(&c).map(|chunk| (c, chunk)))
+                        .collect(),
+                )
+            })
+            .collect();
+
+        if components_by_archetype.is_empty() {
             let typ = db.timeline_type(&query.timeline());
             ui_layout.label(
                 ui,
@@ -83,14 +108,16 @@ impl DataUi for InstancePath {
         }
 
         if ui_layout.is_single_line() {
+            let archetype_count = components_by_archetype.len();
+            let component_count = unordered_components.len();
             ui_layout.label(
                 ui,
                 format!(
-                    "{} component{} (including {} indicator component{})",
-                    components.len(),
-                    if components.len() > 1 { "s" } else { "" },
-                    indicator_count,
-                    if indicator_count > 1 { "s" } else { "" }
+                    "{} archetype{} with {} total component{}",
+                    archetype_count,
+                    if archetype_count > 1 { "s" } else { "" },
+                    component_count,
+                    if component_count > 1 { "s" } else { "" }
                 ),
             );
         } else {
@@ -104,8 +131,11 @@ impl DataUi for InstancePath {
             // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
             // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
             if !self.is_all() {
-                components
-                    .retain(|(component, _chunk)| component != &components::GraphEdge::name());
+                for components in components_by_archetype.values_mut() {
+                    components.retain(|(component, _chunk)| {
+                        component.component_type != Some(components::GraphEdge::name())
+                    });
+                }
             }
 
             component_list_ui(
@@ -116,40 +146,24 @@ impl DataUi for InstancePath {
                 db,
                 entity_path,
                 instance,
-                &components,
+                &components_by_archetype,
             );
         }
 
         if instance.is_all() {
-            let component_map = components.into_iter().collect();
-            preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, &component_map);
-            preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, &component_map);
+            // There are some examples where we need to combine several archetypes for a single preview.
+            // For instance `VideoFrameReference` and `VideoAsset` are used together for a single preview.
+            let components = components_by_archetype
+                .values()
+                .flatten()
+                .cloned()
+                .collect::<Vec<_>>();
+
+            preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, &components);
+            preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, &components);
+            preview_if_video_stream_ui(ctx, ui, ui_layout, query, entity_path, &components);
         }
     }
-}
-
-fn latest_at(
-    db: &re_entity_db::EntityDb,
-    query: &re_chunk_store::LatestAtQuery,
-    entity_path: &re_log_types::EntityPath,
-    components: &[ComponentName],
-) -> Vec<(ComponentName, UnitChunkShared)> {
-    let components: Vec<(ComponentName, UnitChunkShared)> = components
-        .iter()
-        .filter_map(|&component_name| {
-            let mut results =
-                db.storage_engine()
-                    .cache()
-                    .latest_at(query, entity_path, [component_name]);
-
-            // We ignore components that are unset at this point in time
-            results
-                .components
-                .remove(&component_name)
-                .map(|unit| (component_name, unit))
-        })
-        .collect();
-    components
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -161,178 +175,201 @@ fn component_list_ui(
     db: &re_entity_db::EntityDb,
     entity_path: &re_log_types::EntityPath,
     instance: &re_log_types::Instance,
-    components: &[(ComponentName, UnitChunkShared)],
+    components_by_archetype: &BTreeMap<
+        Option<ArchetypeName>,
+        Vec<(ComponentDescriptor, UnitChunkShared)>,
+    >,
 ) {
-    let indicator_count = components
-        .iter()
-        .filter(|(c, _)| c.is_indicator_component())
-        .count();
-
-    let show_indicator_comps = match ui_layout {
-        UiLayout::Tooltip => {
-            // Skip indicator components in hover ui (unless there are no other
-            // types of components).
-            indicator_count == components.len()
-        }
-        UiLayout::SelectionPanel => true,
-        UiLayout::List => false, // unreachable
-    };
-
     let interactive = ui_layout != UiLayout::Tooltip;
 
     re_ui::list_item::list_item_scope(
         ui,
         egui::Id::from("component list").with(entity_path),
         |ui| {
-            for (component_name, unit) in components {
-                let component_name = *component_name;
-                if !show_indicator_comps && component_name.is_indicator_component() {
-                    continue;
-                }
-
-                let component_path = ComponentPath::new(entity_path.clone(), component_name);
-                let is_static = db
-                    .storage_engine()
-                    .store()
-                    .entity_has_static_component(entity_path, &component_name);
-                let icon = if is_static {
-                    &re_ui::icons::COMPONENT_STATIC
+            for (archetype, components) in components_by_archetype {
+                if archetype.is_none() && components_by_archetype.len() == 1 {
+                    // They are all without archetype, so we can skip the label.
                 } else {
-                    &re_ui::icons::COMPONENT_TEMPORAL
-                };
-                let item = Item::ComponentPath(component_path);
-
-                let mut list_item = ui.list_item().interactive(interactive);
-
-                if interactive {
-                    let is_hovered = ctx.selection_state().highlight_for_ui_element(&item)
-                        == HoverHighlight::Hovered;
-                    list_item = list_item.force_hovered(is_hovered);
+                    archetype_label_list_item_ui(ui, archetype);
                 }
 
-                let response = if component_name.is_indicator_component() {
-                    list_item.show_flat(
-                        ui,
-                        re_ui::list_item::LabelContent::new(component_name.short_name())
-                            .with_icon(icon),
+                for (component_descr, unit) in components {
+                    let component_path =
+                        ComponentPath::new(entity_path.clone(), component_descr.clone());
+
+                    let is_static = db
+                        .storage_engine()
+                        .store()
+                        .entity_has_static_component(entity_path, component_descr);
+                    let icon = if is_static {
+                        &re_ui::icons::COMPONENT_STATIC
+                    } else {
+                        &re_ui::icons::COMPONENT_TEMPORAL
+                    };
+                    let item = Item::ComponentPath(component_path);
+
+                    let mut list_item = ui.list_item().interactive(interactive);
+
+                    if interactive {
+                        let is_hovered = ctx.selection_state().highlight_for_ui_element(&item)
+                            == HoverHighlight::Hovered;
+                        list_item = list_item.force_hovered(is_hovered);
+                    }
+
+                    let content = re_ui::list_item::PropertyContent::new(
+                        component_descr.archetype_field_name(),
                     )
-                } else {
-                    let content =
-                        re_ui::list_item::PropertyContent::new(component_name.short_name())
-                            .with_icon(icon)
-                            .value_fn(|ui, _| {
-                                if instance.is_all() {
-                                    crate::ComponentPathLatestAtResults {
-                                        component_path: ComponentPath::new(
-                                            entity_path.clone(),
-                                            component_name,
-                                        ),
-                                        unit,
-                                    }
-                                    .data_ui(
-                                        ctx,
-                                        ui,
-                                        UiLayout::List,
-                                        query,
-                                        db,
-                                    );
-                                } else {
-                                    ctx.component_ui_registry().ui(
-                                        ctx,
-                                        ui,
-                                        UiLayout::List,
-                                        query,
-                                        db,
-                                        entity_path,
-                                        component_name,
-                                        unit,
-                                        instance,
-                                    );
-                                }
+                    .with_icon(icon)
+                    .value_fn(|ui, _| {
+                        if instance.is_all() {
+                            crate::ComponentPathLatestAtResults {
+                                component_path: ComponentPath::new(
+                                    entity_path.clone(),
+                                    component_descr.clone(),
+                                ),
+                                unit,
+                            }
+                            .data_ui(
+                                ctx,
+                                ui,
+                                UiLayout::List,
+                                query,
+                                db,
+                            );
+                        } else {
+                            ctx.component_ui_registry().component_ui(
+                                ctx,
+                                ui,
+                                UiLayout::List,
+                                query,
+                                db,
+                                entity_path,
+                                component_descr,
+                                unit,
+                                instance,
+                            );
+                        }
+                    });
+
+                    let response = list_item.show_flat(ui, content).on_hover_ui(|ui| {
+                        if let Some(component_type) = component_descr.component_type {
+                            component_type.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                        }
+
+                        if let Some(data) = unit.component_batch_raw(component_descr) {
+                            re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
+                                ui.list_item_flat_noninteractive(
+                                    re_ui::list_item::PropertyContent::new("Data type").value_text(
+                                        re_arrow_util::format_data_type(data.data_type()),
+                                    ),
+                                );
                             });
+                        }
+                    });
 
-                    list_item.show_flat(ui, content)
-                };
-
-                let response = response.on_hover_ui(|ui| {
-                    component_name.data_ui_recording(ctx, ui, UiLayout::Tooltip);
-                });
-
-                if interactive {
-                    ctx.handle_select_hover_drag_interactions(&response, item, false);
+                    if interactive {
+                        ctx.handle_select_hover_drag_interactions(&response, item, false);
+                    }
                 }
             }
         },
     );
 }
 
+pub fn archetype_label_list_item_ui(ui: &mut egui::Ui, archetype: &Option<ArchetypeName>) {
+    ui.list_item()
+        .with_y_offset(1.0)
+        .with_height(20.0)
+        .interactive(false)
+        .show_flat(
+            ui,
+            list_item::LabelContent::new(
+                RichText::new(
+                    archetype
+                        .map(|a| a.short_name())
+                        .unwrap_or("Without archetype"),
+                )
+                .size(10.0)
+                .color(design_tokens_of_visuals(ui.visuals()).list_item_strong_text),
+            ),
+        );
+}
+
 /// If this entity is an image, show it together with buttons to download and copy the image.
+///
+/// Expected to get a list of all components on the entity, not just the blob.
 fn preview_if_image_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    component_map: &IntMap<ComponentName, UnitChunkShared>,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
+) {
+    // There might be several image buffers!
+    for (image_buffer_descr, image_buffer_chunk) in components
+        .iter()
+        .filter(|(descr, _chunk)| descr.component_type == Some(components::ImageBuffer::name()))
+    {
+        preview_single_image(
+            ctx,
+            ui,
+            ui_layout,
+            query,
+            entity_path,
+            components,
+            image_buffer_descr,
+            image_buffer_chunk,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn preview_single_image(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    query: &re_chunk_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
+    image_buffer_descr: &ComponentDescriptor,
+    image_buffer_chunk: &UnitChunkShared,
 ) -> Option<()> {
-    // First check assumptions:
-    debug_assert_archetype_has_components!(
-        archetypes::Image,
-        buffer: components::ImageBuffer,
-        format: components::ImageFormat
-    );
-    debug_assert_archetype_has_components!(
-        archetypes::DepthImage,
-        buffer: components::ImageBuffer,
-        format: components::ImageFormat
-    );
-    debug_assert_archetype_has_components!(
-        archetypes::SegmentationImage,
-        buffer: components::ImageBuffer,
-        format: components::ImageFormat
-    );
-
-    let image_buffer = component_map.get(&components::ImageBuffer::name())?;
-    let buffer_row_id = image_buffer.row_id()?;
-    let image_buffer = image_buffer
-        .component_mono::<components::ImageBuffer>()?
+    let blob_row_id = image_buffer_chunk.row_id()?;
+    let image_buffer = image_buffer_chunk
+        .component_mono::<components::ImageBuffer>(image_buffer_descr)?
         .ok()?;
 
-    let image_format = component_map
-        .get(&components::ImageFormat::name())?
-        .component_mono::<components::ImageFormat>()?
+    let (image_format_descr, image_format_chunk) = components.iter().find(|(descr, _chunk)| {
+        descr.component_type == Some(components::ImageFormat::name())
+            && descr.archetype == image_buffer_descr.archetype
+    })?;
+    let image_format = image_format_chunk
+        .component_mono::<components::ImageFormat>(image_format_descr)?
         .ok()?;
 
-    // TODO(#8129): it's ugly but indicators are going away next anyway.
-    let kind = if component_map
-        .contains_key(&archetypes::DepthImage::descriptor_indicator().component_name)
-    {
-        ImageKind::Depth
-    } else if component_map
-        .contains_key(&archetypes::SegmentationImage::descriptor_indicator().component_name)
-    {
-        ImageKind::Segmentation
-    } else {
-        ImageKind::Color
-    };
-
-    let image = ImageInfo {
-        buffer_row_id,
-        buffer: image_buffer.0,
-        format: image_format.0,
+    let kind = ImageKind::from_archetype_name(image_format_descr.archetype);
+    let image = ImageInfo::from_stored_blob(
+        blob_row_id,
+        image_buffer_descr,
+        image_buffer.0,
+        image_format.0,
         kind,
-    };
+    );
     let image_stats = ctx
         .store_context
         .caches
         .entry(|c: &mut ImageStatsCache| c.entry(&image));
 
-    let colormap = component_map
-        .get(&components::Colormap::name())
-        .and_then(|colormap| colormap.component_mono::<components::Colormap>()?.ok());
-    let value_range = component_map
-        .get(&components::Range1D::name())
-        .and_then(|colormap| colormap.component_mono::<components::ValueRange>()?.ok());
+    let colormap = find_and_deserialize_archetype_mono_component::<components::Colormap>(
+        components,
+        image_buffer_descr.archetype,
+    );
+    let value_range = find_and_deserialize_archetype_mono_component::<components::ValueRange>(
+        components,
+        image_buffer_descr.archetype,
+    );
+
     let colormap_with_range = colormap.map(|colormap| ColormapWithRange {
         colormap,
         value_range: value_range
@@ -358,7 +395,7 @@ fn preview_if_image_ui(
     );
 
     if ui_layout.is_single_line() || ui_layout == UiLayout::Tooltip {
-        return Some(()); // no more ui
+        return Some(());
     }
 
     let data_range = value_range.map_or_else(
@@ -482,26 +519,69 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
         .response
 }
 
-/// If this entity has a blob, preview it and show a download button
+/// If this entity has a blob, preview it and show a download button.
 fn preview_if_blob_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    component_map: &IntMap<ComponentName, UnitChunkShared>,
-) -> Option<()> {
-    let blob = component_map.get(&components::Blob::name())?;
-    let blob_row_id = blob.row_id();
-    let blob = blob.component_mono::<components::Blob>()?.ok()?;
-    let media_type = component_map
-        .get(&components::MediaType::name())
-        .and_then(|unit| unit.component_mono::<components::MediaType>()?.ok())
-        .or_else(|| components::MediaType::guess_from_data(&blob));
+    components: &[(ComponentDescriptor, UnitChunkShared)],
+) {
+    // There might be several blobs, all with different meanings.
+    for (blob_descr, blob_chunk) in components
+        .iter()
+        .filter(|(descr, _chunk)| descr.component_type == Some(components::Blob::name()))
+    {
+        preview_single_blob(
+            ctx,
+            ui,
+            ui_layout,
+            query,
+            entity_path,
+            components,
+            blob_descr,
+            blob_chunk,
+        );
+    }
+}
 
-    let video_timestamp = component_map
-        .get(&components::VideoTimestamp::name())
-        .and_then(|unit| unit.component_mono::<components::VideoTimestamp>()?.ok());
+#[allow(clippy::too_many_arguments)]
+fn preview_single_blob(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    query: &re_chunk_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
+    blob_descr: &ComponentDescriptor,
+    blob_chunk: &UnitChunkShared,
+) -> Option<()> {
+    let blob = blob_chunk
+        .component_mono::<components::Blob>(blob_descr)?
+        .ok()?;
+
+    // Media type comes typically alongside the blob in various different archetypes.
+    // Look for the one that matches the blob's archetype.
+    let media_type = find_and_deserialize_archetype_mono_component::<components::MediaType>(
+        components,
+        blob_descr.archetype,
+    )
+    .or_else(|| components::MediaType::guess_from_data(&blob));
+
+    // Video timestamp is only relevant here if it comes from a VideoFrameReference archetype.
+    // It doesn't show up in the blob's archetype.
+    let video_timestamp_descr = archetypes::VideoFrameReference::descriptor_timestamp();
+    let video_timestamp = components
+        .iter()
+        .find_map(|(descr, chunk)| {
+            (descr == &video_timestamp_descr).then(|| {
+                chunk
+                    .component_mono::<components::VideoTimestamp>(&video_timestamp_descr)
+                    .and_then(|r| r.ok())
+            })
+        })
+        .flatten();
 
     blob_preview_and_save_ui(
         ctx,
@@ -509,11 +589,56 @@ fn preview_if_blob_ui(
         ui_layout,
         query,
         entity_path,
-        blob_row_id,
+        blob_descr,
+        blob_chunk.row_id(),
         &blob,
         media_type.as_ref(),
         video_timestamp,
     );
 
     Some(())
+}
+
+fn preview_if_video_stream_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    query: &re_chunk_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
+) {
+    if components
+        .iter()
+        .all(|(descr, _chunk)| descr != &archetypes::VideoStream::descriptor_sample())
+    {
+        return;
+    }
+
+    let video_stream_result = ctx.store_context.caches.entry(|c: &mut VideoStreamCache| {
+        c.entry(
+            ctx.recording(),
+            entity_path,
+            query.timeline(),
+            ctx.app_options().video_decoder_settings(),
+        )
+    });
+    video_stream_result_ui(ui, ui_layout, &video_stream_result);
+    if let Ok(video) = video_stream_result {
+        let video = video.read();
+        let time = video_stream_time_from_query(query);
+        let buffers = video.sample_buffers();
+        show_decoded_frame_info(ctx, ui, ui_layout, &video.video_renderer, time, &buffers);
+    }
+}
+
+/// Finds and deserializes the given component type if its descriptor matches the given archetype name.
+fn find_and_deserialize_archetype_mono_component<C: Component>(
+    components: &[(ComponentDescriptor, UnitChunkShared)],
+    archetype_name: Option<ArchetypeName>,
+) -> Option<C> {
+    components.iter().find_map(|(descr, chunk)| {
+        (descr.component_type == Some(C::name()) && descr.archetype == archetype_name)
+            .then(|| chunk.component_mono::<C>(descr).and_then(|r| r.ok()))
+            .flatten()
+    })
 }

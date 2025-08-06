@@ -3,9 +3,9 @@ use std::ops::ControlFlow;
 use egui::{Key, NumExt as _, Ui};
 
 use re_log_types::EntityPath;
-use re_ui::{list_item, SyntaxHighlighting as _, UiExt as _};
+use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item};
 use re_viewer_context::ViewerContext;
-use re_viewport_blueprint::{default_created_views, ViewBlueprint};
+use re_viewport_blueprint::{ViewBlueprint, default_created_views};
 
 /// State of the space origin widget.
 #[derive(Default, Clone)]
@@ -174,7 +174,7 @@ fn view_space_origin_widget_editing_ui(
     //
 
     if output.response.has_focus() {
-        ui.memory_mut(|mem| mem.open_popup(popup_id));
+        egui::Popup::open_id(ui.ctx(), popup_id);
     }
 
     let suggestions_ui = |ui: &mut egui::Ui| {
@@ -208,9 +208,9 @@ fn view_space_origin_widget_editing_ui(
         }
     };
 
-    ui.list_item_popup(popup_id, &output.response, 4.0, suggestions_ui);
+    ui.list_item_popup(popup_id, &output.response, suggestions_ui);
 
-    if control_flow.is_continue() && !ui.memory(|mem| mem.is_popup_open(popup_id)) {
+    if control_flow.is_continue() && !egui::Popup::is_id_open(ui.ctx(), popup_id) {
         control_flow = ControlFlow::Break(None);
     };
 

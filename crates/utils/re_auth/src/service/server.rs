@@ -1,10 +1,10 @@
 use tonic::{
+    Request, Status,
     metadata::{Ascii, MetadataValue},
     service::Interceptor,
-    Request, Status,
 };
 
-use crate::{provider::VerificationOptions, Error, Jwt, RedapProvider};
+use crate::{Error, Jwt, RedapProvider, provider::VerificationOptions};
 
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
 
@@ -43,13 +43,16 @@ impl Interceptor for Authenticator {
         let mut req = req;
 
         if let Some(token_metadata) = req.metadata().get(AUTHORIZATION_KEY) {
-            let token = Jwt::try_from(token_metadata)
-                .map_err(|_err| Status::unauthenticated("malformed auth token"))?;
+            let token = Jwt::try_from(token_metadata).map_err(|_err| {
+                Status::unauthenticated(crate::ERROR_MESSAGE_MALFORMED_CREDENTIALS)
+            })?;
 
             let claims = self
                 .secret_key
                 .verify(&token, VerificationOptions::default())
-                .map_err(|_err| Status::unauthenticated("invalid credentials"))?;
+                .map_err(|_err| {
+                    Status::unauthenticated(crate::ERROR_MESSAGE_INVALID_CREDENTIALS)
+                })?;
 
             req.extensions_mut().insert(UserContext {
                 user_id: claims.sub,

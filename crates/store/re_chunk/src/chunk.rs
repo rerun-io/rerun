@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
+use anyhow::Context as _;
 use arrow::{
     array::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
@@ -8,16 +9,17 @@ use arrow::{
     },
     buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
 };
-use itertools::{izip, Either, Itertools as _};
+use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
-    EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+    EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
-    ComponentDescriptor, ComponentName, DeserializationError, Loggable as _, SerializationError,
+    ArchetypeName, ComponentDescriptor, ComponentType, DeserializationError, Loggable as _,
+    SerializationError, SerializedComponentColumn,
 };
 
 use crate::{ChunkId, RowId};
@@ -31,7 +33,7 @@ pub enum ChunkError {
     #[error("Detected malformed Chunk: {reason}")]
     Malformed { reason: String },
 
-    #[error(transparent)]
+    #[error("Arrow: {0}")]
     Arrow(#[from] arrow::error::ArrowError),
 
     #[error("{kind} index out of bounds: {index} (len={len})")]
@@ -65,75 +67,56 @@ pub type ChunkResult<T> = Result<T, ChunkError>;
 // ---
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct ChunkComponents(
-    // TODO(#6576): support non-list based columns?
-    //
-    // NOTE: The extra `ComponentName` layer is needed because it is very common to want to look
-    // for anything matching a `ComponentName`, without any further tags specified.
-    pub IntMap<ComponentName, IntMap<ComponentDescriptor, ArrowListArray>>,
-);
+pub struct ChunkComponents(pub IntMap<ComponentDescriptor, ArrowListArray>);
 
 impl ChunkComponents {
-    /// Like `Self::insert`, but automatically infers the [`ComponentName`] layer.
-    #[inline]
-    pub fn insert_descriptor(
-        &mut self,
-        component_desc: ComponentDescriptor,
-        list_array: ArrowListArray,
-    ) -> Option<ArrowListArray> {
-        self.0
-            .entry(component_desc.component_name)
-            .or_default()
-            .insert(component_desc, list_array)
-    }
-
-    /// Returns all list arrays for the given component name.
+    /// Returns all list arrays for the given component type.
     ///
     /// I.e semantically equivalent to `get("MyComponent:*.*")`
     #[inline]
-    pub fn get_by_component_name<'a>(
-        &'a self,
-        component_name: &ComponentName,
-    ) -> impl Iterator<Item = &'a ArrowListArray> {
-        self.get(component_name).map_or_else(
-            || itertools::Either::Left(std::iter::empty()),
-            |per_desc| itertools::Either::Right(per_desc.values()),
-        )
-    }
-
-    #[inline]
-    pub fn get_by_descriptor(
+    pub fn get_by_component_type(
         &self,
-        component_desc: &ComponentDescriptor,
-    ) -> Option<&ArrowListArray> {
-        self.get(&component_desc.component_name)
-            .and_then(|per_desc| per_desc.get(component_desc))
+        component_type: ComponentType,
+    ) -> impl Iterator<Item = &ArrowListArray> {
+        self.0.iter().filter_map(move |(desc, array)| {
+            (desc.component_type == Some(component_type)).then_some(array)
+        })
     }
 
-    #[inline]
-    pub fn get_by_descriptor_mut(
-        &mut self,
-        component_desc: &ComponentDescriptor,
-    ) -> Option<&mut ArrowListArray> {
-        self.get_mut(&component_desc.component_name)
-            .and_then(|per_desc| per_desc.get_mut(component_desc))
+    /// Approximate equal, that ignores small numeric differences.
+    ///
+    /// Returns `Ok` if similar.
+    /// If there is a difference, a description of that difference is returned in `Err`.
+    /// We use [`anyhow`] to provide context.
+    ///
+    /// Useful for tests.
+    pub fn ensure_similar(left: &Self, right: &Self) -> anyhow::Result<()> {
+        anyhow::ensure!(left.len() == right.len());
+        for (descr, left_array) in left.iter() {
+            let Some(right_array) = right.get(descr) else {
+                anyhow::bail!("rhs is missing {descr:?}");
+            };
+            re_arrow_util::ensure_similar(&left_array.to_data(), &right_array.to_data())
+                .with_context(|| format!("Component {descr:?}"))?;
+        }
+        Ok(())
     }
 
-    #[inline]
-    pub fn iter_flattened(&self) -> impl Iterator<Item = (&ComponentDescriptor, &ArrowListArray)> {
-        self.0.values().flatten()
+    /// Whether any of the components in this chunk has the given name.
+    pub fn contains_component(&self, component_descr: &ComponentDescriptor) -> bool {
+        self.0.contains_key(component_descr)
     }
 
-    #[inline]
-    pub fn into_iter_flattened(
-        self,
-    ) -> impl Iterator<Item = (ComponentDescriptor, ArrowListArray)> {
-        self.0.into_values().flatten()
+    /// Whether any of the components in this chunk is tagged with the given archetype name.
+    pub fn has_component_with_archetype(&self, archetype_name: ArchetypeName) -> bool {
+        self.0
+            .keys()
+            .any(|desc| desc.archetype == Some(archetype_name))
     }
 }
 
 impl std::ops::Deref for ChunkComponents {
-    type Target = IntMap<ComponentName, IntMap<ComponentDescriptor, ArrowListArray>>;
+    type Target = IntMap<ComponentDescriptor, ArrowListArray>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -154,24 +137,23 @@ impl FromIterator<(ComponentDescriptor, ArrowListArray)> for ChunkComponents {
         let mut this = Self::default();
         {
             for (component_desc, list_array) in iter {
-                this.insert_descriptor(component_desc, list_array);
+                this.insert(component_desc, list_array);
             }
         }
         this
     }
 }
 
-// TODO(cmc): Kinda disgusting but it makes our lives easier during the interim, as long as we're
-// in this weird halfway in-between state where we still have a bunch of things indexed by name only.
-impl FromIterator<(ComponentName, ArrowListArray)> for ChunkComponents {
+impl FromIterator<SerializedComponentColumn> for ChunkComponents {
     #[inline]
-    fn from_iter<T: IntoIterator<Item = (ComponentName, ArrowListArray)>>(iter: T) -> Self {
-        iter.into_iter()
-            .map(|(component_name, list_array)| {
-                let component_desc = ComponentDescriptor::new(component_name);
-                (component_desc, list_array)
-            })
-            .collect()
+    fn from_iter<T: IntoIterator<Item = SerializedComponentColumn>>(iter: T) -> Self {
+        let mut this = Self::default();
+        {
+            for serialized in iter {
+                this.insert(serialized.descriptor, serialized.list_array);
+            }
+        }
+        this
     }
 }
 
@@ -240,21 +222,6 @@ impl PartialEq for Chunk {
 }
 
 impl Chunk {
-    /// Returns any list-array that matches the given [`ComponentName`].
-    ///
-    /// This is undefined behavior if there are more than one component with that name.
-    //
-    // TODO(cmc): Kinda disgusting but it makes our lives easier during the interim, as long as we're
-    // in this weird halfway in-between state where we still have a bunch of things indexed by name only.
-    #[inline]
-    pub fn get_first_component(&self, component_name: &ComponentName) -> Option<&ArrowListArray> {
-        self.components
-            .get(component_name)
-            .and_then(|per_desc| per_desc.values().next())
-    }
-}
-
-impl Chunk {
     /// Returns a version of us with a new [`ChunkId`].
     ///
     /// Reminder:
@@ -267,12 +234,16 @@ impl Chunk {
         self
     }
 
-    /// Returns `true` is two [`Chunk`]s are similar, although not byte-for-byte equal.
+    /// Returns `Ok` if two [`Chunk`]s are _similar_, although not byte-for-byte equal.
     ///
     /// In particular, this ignores chunks and row IDs, as well as `log_time` timestamps.
+    /// It also forgives small numeric inaccuracies in floating point buffers.
+    ///
+    /// If there is a difference, a description of that difference is returned in `Err`.
+    /// We use [`anyhow`] to provide context.
     ///
     /// Useful for tests.
-    pub fn are_similar(lhs: &Self, rhs: &Self) -> bool {
+    pub fn ensure_similar(lhs: &Self, rhs: &Self) -> anyhow::Result<()> {
         let Self {
             id: _,
             entity_path,
@@ -283,73 +254,58 @@ impl Chunk {
             components,
         } = lhs;
 
-        if *entity_path != rhs.entity_path {
-            return false;
-        }
+        anyhow::ensure!(*entity_path == rhs.entity_path);
 
-        if timelines.keys().collect_vec() != rhs.timelines.keys().collect_vec() {
-            return false;
-        }
+        anyhow::ensure!(timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec());
 
-        let timelines: IntMap<_, _> = timelines
-            .iter()
-            .map(|(timeline, time_column)| (*timeline, time_column))
-            .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
-            .collect();
-        let rhs_timelines: IntMap<_, _> = rhs
-            .timelines
-            .iter()
-            .map(|(timeline, time_column)| (*timeline, time_column))
-            .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
-            .collect();
-        if timelines != rhs_timelines {
-            return false;
+        for (timeline, left_time_col) in timelines {
+            let right_time_col = rhs
+                .timelines
+                .get(timeline)
+                .ok_or_else(|| anyhow::format_err!("right is missing timeline {timeline:?}"))?;
+            if timeline == &TimelineName::log_time() {
+                continue; // We expect this to differ
+            }
+            if timeline == "sim_time" {
+                continue; // Small numeric differences
+            }
+            anyhow::ensure!(
+                left_time_col == right_time_col,
+                "Timeline differs: {timeline:?}"
+            );
         }
 
         // Handle edge case: recording time on partition properties should ignore start time.
-        if entity_path == &EntityPath::recording_properties() {
+        if entity_path == &EntityPath::properties() {
             // We're going to filter out some components on both lhs and rhs.
             // Therefore, it's important that we first check that the number of components is the same.
-            if components.len() != rhs.components.len() {
-                return false;
-            }
+            anyhow::ensure!(components.len() == rhs.components.len());
 
-            // Copied from `rerun.archetypes.RecordingProperties`.
+            // Copied from `rerun.archetypes.RecordingInfo`.
             let recording_time_descriptor = ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
-                archetype_field_name: Some("start_time".into()),
-                component_name: "rerun.components.Timestamp".into(),
+                archetype: Some("rerun.archetypes.RecordingInfo".into()),
+                component: "RecordingInfo:start_time".into(),
+                component_type: Some("rerun.components.Timestamp".into()),
             };
 
             // Filter out the recording time component from both lhs and rhs.
             let lhs_components = components
-                .values() // `keys` is `ComponentName`, don't care since we use full descriptors directly.
-                .cloned()
-                .flat_map(|per_desc| {
-                    per_desc
-                        .into_iter()
-                        .filter(|(desc, _)| desc != &recording_time_descriptor)
-                })
+                .iter()
+                .filter(|&(desc, _list_array)| (desc != &recording_time_descriptor))
+                .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
                 .collect::<IntMap<_, _>>();
             let rhs_components = rhs
                 .components
-                .values() // `keys` is `ComponentName`, don't care since we use full descriptors directly.
-                .cloned()
-                .flat_map(|per_desc| {
-                    per_desc
-                        .into_iter()
-                        .filter(|(desc, _)| desc != &recording_time_descriptor)
-                })
+                .iter()
+                .filter(|&(desc, _list_array)| (desc != &recording_time_descriptor))
+                .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
                 .collect::<IntMap<_, _>>();
 
-            if lhs_components != rhs_components {
-                return false;
-            }
-        } else if *components != rhs.components {
-            return false;
+            anyhow::ensure!(lhs_components == rhs_components);
+            Ok(())
+        } else {
+            ChunkComponents::ensure_similar(components, &rhs.components)
         }
-
-        true
     }
 
     // Only used for tests atm
@@ -365,22 +321,14 @@ impl Chunk {
         } = self;
 
         let my_components: IntMap<_, _> = components
-            .values()
-            .flat_map(|per_desc| {
-                per_desc
-                    .iter()
-                    .map(|(descr, list_array)| (descr.clone(), list_array))
-            })
+            .iter()
+            .map(|(descr, list_array)| (descr.clone(), list_array))
             .collect();
 
         let other_components: IntMap<_, _> = other
             .components
-            .values()
-            .flat_map(|per_desc| {
-                per_desc
-                    .iter()
-                    .map(|(descr, list_array)| (descr.clone(), list_array))
-            })
+            .iter()
+            .map(|(descr, list_array)| (descr.clone(), list_array))
             .collect();
 
         *id == other.id
@@ -461,8 +409,7 @@ impl Chunk {
     #[inline]
     pub fn time_range_per_component(
         &self,
-    ) -> IntMap<TimelineName, IntMap<ComponentName, IntMap<ComponentDescriptor, ResolvedTimeRange>>>
-    {
+    ) -> IntMap<TimelineName, IntMap<ComponentDescriptor, ResolvedTimeRange>> {
         re_tracing::profile_function!();
 
         self.timelines
@@ -486,7 +433,6 @@ impl Chunk {
         // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
         self.components
             .values()
-            .flat_map(|per_desc| per_desc.values())
             .map(|list_array| {
                 list_array.nulls().map_or_else(
                     || list_array.len() as u64,
@@ -528,10 +474,12 @@ impl Chunk {
             self.num_events_cumulative_per_unique_time_unsorted(time_column)
         };
 
-        debug_assert!(counts
-            .iter()
-            .tuple_windows::<(_, _)>()
-            .all(|((time1, _), (time2, _))| time1 < time2));
+        debug_assert!(
+            counts
+                .iter()
+                .tuple_windows::<(_, _)>()
+                .all(|((time1, _), (time2, _))| time1 < time2)
+        );
 
         counts
     }
@@ -550,19 +498,16 @@ impl Chunk {
         // Raw, potentially duplicated counts (because timestamps aren't necessarily unique).
         let mut counts_raw = vec![0u64; self.num_rows()];
         {
-            self.components
-                .values()
-                .flat_map(|per_desc| per_desc.values())
-                .for_each(|list_array| {
-                    if let Some(validity) = list_array.nulls() {
-                        validity
-                            .iter()
-                            .enumerate()
-                            .for_each(|(i, is_valid)| counts_raw[i] += is_valid as u64);
-                    } else {
-                        counts_raw.iter_mut().for_each(|count| *count += 1);
-                    }
-                });
+            self.components.values().for_each(|list_array| {
+                if let Some(validity) = list_array.nulls() {
+                    validity
+                        .iter()
+                        .enumerate()
+                        .for_each(|(i, is_valid)| counts_raw[i] += is_valid as u64);
+                } else {
+                    counts_raw.iter_mut().for_each(|count| *count += 1);
+                }
+            });
         }
 
         let mut counts = Vec::with_capacity(counts_raw.len());
@@ -598,26 +543,25 @@ impl Chunk {
 
         // NOTE: This is used on some very hot paths (time panel rendering).
 
-        let result_unordered = self
-            .components
-            .values()
-            .flat_map(|per_desc| per_desc.values())
-            .fold(HashMap::default(), |acc, list_array| {
-                if let Some(validity) = list_array.nulls() {
-                    time_column.times().zip(validity.iter()).fold(
-                        acc,
-                        |mut acc, (time, is_valid)| {
-                            *acc.entry(time).or_default() += is_valid as u64;
+        let result_unordered =
+            self.components
+                .values()
+                .fold(HashMap::default(), |acc, list_array| {
+                    if let Some(validity) = list_array.nulls() {
+                        time_column.times().zip(validity.iter()).fold(
+                            acc,
+                            |mut acc, (time, is_valid)| {
+                                *acc.entry(time).or_default() += is_valid as u64;
+                                acc
+                            },
+                        )
+                    } else {
+                        time_column.times().fold(acc, |mut acc, time| {
+                            *acc.entry(time).or_default() += 1;
                             acc
-                        },
-                    )
-                } else {
-                    time_column.times().fold(acc, |mut acc, time| {
-                        *acc.entry(time).or_default() += 1;
-                        acc
-                    })
-                }
-            });
+                        })
+                    }
+                });
 
         let mut result = result_unordered.into_iter().collect_vec();
         result.sort_by_key(|val| val.0);
@@ -630,9 +574,12 @@ impl Chunk {
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
     #[inline]
-    pub fn num_events_for_component(&self, component_name: ComponentName) -> Option<u64> {
+    pub fn num_events_for_component(
+        &self,
+        component_descriptor: &ComponentDescriptor,
+    ) -> Option<u64> {
         // Reminder: component columns are sparse, we must check validity bitmap.
-        self.get_first_component(&component_name).map(|list_array| {
+        self.components.get(component_descriptor).map(|list_array| {
             list_array.nulls().map_or_else(
                 || list_array.len() as u64,
                 |validity| validity.len() as u64 - validity.null_count() as u64,
@@ -648,9 +595,7 @@ impl Chunk {
     /// This is crucial for indexing and queries to work properly.
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
-    pub fn row_id_range_per_component(
-        &self,
-    ) -> IntMap<ComponentName, IntMap<ComponentDescriptor, (RowId, RowId)>> {
+    pub fn row_id_range_per_component(&self) -> IntMap<ComponentDescriptor, (RowId, RowId)> {
         re_tracing::profile_function!();
 
         let row_ids = self.row_ids().collect_vec();
@@ -658,59 +603,43 @@ impl Chunk {
         if self.is_sorted() {
             self.components
                 .iter()
-                .map(|(component_name, per_desc)| {
-                    (
-                        *component_name,
-                        per_desc
-                            .iter()
-                            .filter_map(|(component_desc, list_array)| {
-                                let mut row_id_min = None;
-                                let mut row_id_max = None;
+                .filter_map(|(component_desc, list_array)| {
+                    let mut row_id_min = None;
+                    let mut row_id_max = None;
 
-                                for (i, &row_id) in row_ids.iter().enumerate() {
-                                    if list_array.is_valid(i) {
-                                        row_id_min = Some(row_id);
-                                    }
-                                }
-                                for (i, &row_id) in row_ids.iter().enumerate().rev() {
-                                    if list_array.is_valid(i) {
-                                        row_id_max = Some(row_id);
-                                    }
-                                }
+                    for (i, &row_id) in row_ids.iter().enumerate() {
+                        if list_array.is_valid(i) {
+                            row_id_min = Some(row_id);
+                        }
+                    }
+                    for (i, &row_id) in row_ids.iter().enumerate().rev() {
+                        if list_array.is_valid(i) {
+                            row_id_max = Some(row_id);
+                        }
+                    }
 
-                                Some((component_desc.clone(), (row_id_min?, row_id_max?)))
-                            })
-                            .collect(),
-                    )
+                    Some((component_desc.clone(), (row_id_min?, row_id_max?)))
                 })
                 .collect()
         } else {
             self.components
                 .iter()
-                .map(|(component_name, per_desc)| {
-                    (
-                        *component_name,
-                        per_desc
-                            .iter()
-                            .filter_map(|(component_desc, list_array)| {
-                                let mut row_id_min = Some(RowId::MAX);
-                                let mut row_id_max = Some(RowId::ZERO);
+                .filter_map(|(component_desc, list_array)| {
+                    let mut row_id_min = Some(RowId::MAX);
+                    let mut row_id_max = Some(RowId::ZERO);
 
-                                for (i, &row_id) in row_ids.iter().enumerate() {
-                                    if list_array.is_valid(i) && Some(row_id) > row_id_min {
-                                        row_id_min = Some(row_id);
-                                    }
-                                }
-                                for (i, &row_id) in row_ids.iter().enumerate().rev() {
-                                    if list_array.is_valid(i) && Some(row_id) < row_id_max {
-                                        row_id_max = Some(row_id);
-                                    }
-                                }
+                    for (i, &row_id) in row_ids.iter().enumerate() {
+                        if list_array.is_valid(i) && Some(row_id) > row_id_min {
+                            row_id_min = Some(row_id);
+                        }
+                    }
+                    for (i, &row_id) in row_ids.iter().enumerate().rev() {
+                        if list_array.is_valid(i) && Some(row_id) < row_id_max {
+                            row_id_max = Some(row_id);
+                        }
+                    }
 
-                                Some((component_desc.clone(), (row_id_min?, row_id_max?)))
-                            })
-                            .collect(),
-                    )
+                    Some((component_desc.clone(), (row_id_min?, row_id_max?)))
                 })
                 .collect()
         }
@@ -719,7 +648,7 @@ impl Chunk {
 
 // ---
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TimeColumn {
     pub(crate) timeline: Timeline,
 
@@ -828,7 +757,7 @@ impl Chunk {
         components: ChunkComponents,
     ) -> ChunkResult<Self> {
         let count = components
-            .iter_flattened()
+            .iter()
             .next()
             .map_or(0, |(_, list_array)| list_array.len());
 
@@ -892,8 +821,7 @@ impl Chunk {
         component_desc: ComponentDescriptor,
         list_array: ArrowListArray,
     ) -> ChunkResult<()> {
-        self.components
-            .insert_descriptor(component_desc, list_array);
+        self.components.insert(component_desc, list_array);
         self.sanity_check()
     }
 
@@ -1234,13 +1162,13 @@ impl Chunk {
     /// Returns an iterator over the [`RowId`]s of a [`Chunk`], for a given component.
     ///
     /// This is different than [`Self::row_ids`]: it will only yield `RowId`s for rows at which
-    /// there is data for the specified `component_name`.
+    /// there is data for the specified `component_descriptor`.
     #[inline]
     pub fn component_row_ids(
         &self,
-        component_name: &ComponentName,
-    ) -> impl Iterator<Item = RowId> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
+        component_descriptor: &ComponentDescriptor,
+    ) -> impl Iterator<Item = RowId> + '_ + use<'_> {
+        let Some(list_array) = self.components.get(component_descriptor) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -1295,31 +1223,13 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn component_names(&self) -> impl Iterator<Item = ComponentName> + '_ {
-        self.components.keys().copied()
-    }
-
-    #[inline]
     pub fn component_descriptors(&self) -> impl Iterator<Item = ComponentDescriptor> + '_ {
-        self.components
-            .values()
-            .flat_map(|per_desc| per_desc.keys())
-            .cloned()
+        self.components.keys().cloned()
     }
 
     #[inline]
     pub fn components(&self) -> &ChunkComponents {
         &self.components
-    }
-
-    /// Computes the maximum value for each and every timeline present across this entire chunk,
-    /// and returns the corresponding [`TimePoint`].
-    #[inline]
-    pub fn timepoint_max(&self) -> TimePoint {
-        self.timelines
-            .values()
-            .map(|info| (info.timeline, info.time_range.max()))
-            .collect()
     }
 }
 
@@ -1404,56 +1314,48 @@ impl TimeColumn {
     pub fn time_range_per_component(
         &self,
         components: &ChunkComponents,
-    ) -> IntMap<ComponentName, IntMap<ComponentDescriptor, ResolvedTimeRange>> {
+    ) -> IntMap<ComponentDescriptor, ResolvedTimeRange> {
         let times = self.times_raw();
         components
             .iter()
-            .map(|(component_name, per_desc)| {
-                (
-                    *component_name,
-                    per_desc
-                        .iter()
-                        .filter_map(|(component_desc, list_array)| {
-                            if let Some(validity) = list_array.nulls() {
-                                // Potentially sparse
+            .filter_map(|(component_desc, list_array)| {
+                if let Some(validity) = list_array.nulls() {
+                    // Potentially sparse
 
-                                if validity.is_empty() {
-                                    return None;
-                                }
+                    if validity.is_empty() {
+                        return None;
+                    }
 
-                                let is_dense = validity.null_count() == 0;
-                                if is_dense {
-                                    return Some((component_desc.clone(), self.time_range));
-                                }
+                    let is_dense = validity.null_count() == 0;
+                    if is_dense {
+                        return Some((component_desc.clone(), self.time_range));
+                    }
 
-                                let mut time_min = TimeInt::MAX;
-                                for (i, time) in times.iter().copied().enumerate() {
-                                    if validity.is_valid(i) {
-                                        time_min = TimeInt::new_temporal(time);
-                                        break;
-                                    }
-                                }
+                    let mut time_min = TimeInt::MAX;
+                    for (i, time) in times.iter().copied().enumerate() {
+                        if validity.is_valid(i) {
+                            time_min = TimeInt::new_temporal(time);
+                            break;
+                        }
+                    }
 
-                                let mut time_max = TimeInt::MIN;
-                                for (i, time) in times.iter().copied().enumerate().rev() {
-                                    if validity.is_valid(i) {
-                                        time_max = TimeInt::new_temporal(time);
-                                        break;
-                                    }
-                                }
+                    let mut time_max = TimeInt::MIN;
+                    for (i, time) in times.iter().copied().enumerate().rev() {
+                        if validity.is_valid(i) {
+                            time_max = TimeInt::new_temporal(time);
+                            break;
+                        }
+                    }
 
-                                Some((
-                                    component_desc.clone(),
-                                    ResolvedTimeRange::new(time_min, time_max),
-                                ))
-                            } else {
-                                // Dense
+                    Some((
+                        component_desc.clone(),
+                        ResolvedTimeRange::new(time_min, time_max),
+                    ))
+                } else {
+                    // Dense
 
-                                Some((component_desc.clone(), self.time_range))
-                            }
-                        })
-                        .collect(),
-                )
+                    Some((component_desc.clone(), self.time_range))
+                }
             })
             .collect()
     }
@@ -1572,7 +1474,8 @@ impl Chunk {
                     reason: format!(
                         "All timelines in a chunk must have the same number of timestamps, matching the number of row IDs. \
                          Found {} row IDs but {} timestamps for timeline '{timeline_name}'",
-                        row_ids.len(), time_column.times.len(),
+                        row_ids.len(),
+                        time_column.times.len(),
                     ),
                 });
             }
@@ -1581,44 +1484,45 @@ impl Chunk {
         }
 
         // Components
-        for (component_name, per_desc) in components.iter() {
-            component_name.sanity_check();
-            for (component_desc, list_array) in per_desc {
-                component_desc.component_name.sanity_check();
-                // Ensure that each cell is a list (we don't support mono-components yet).
-                if let arrow::datatypes::DataType::List(_field) = list_array.data_type() {
-                    // We don't check `field.is_nullable()` here because we support both.
-                    // TODO(#6819): Remove support for inner nullability.
-                } else {
-                    return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "The inner array in a chunked component batch must be a list, got {:?}",
-                            list_array.data_type(),
-                        ),
-                    });
-                }
 
-                if list_array.len() != row_ids.len() {
-                    return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
+        for (component_desc, list_array) in components.iter() {
+            if let Some(c) = component_desc.component_type {
+                c.sanity_check();
+            }
+            // Ensure that each cell is a list (we don't support mono-components yet).
+            if let arrow::datatypes::DataType::List(_field) = list_array.data_type() {
+                // We don't check `field.is_nullable()` here because we support both.
+                // TODO(#6819): Remove support for inner nullability.
+            } else {
+                return Err(ChunkError::Malformed {
+                    reason: format!(
+                        "The inner array in a chunked component batch must be a list, got {:?}",
+                        list_array.data_type(),
+                    ),
+                });
+            }
+
+            if list_array.len() != row_ids.len() {
+                return Err(ChunkError::Malformed {
+                    reason: format!(
+                        "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
                              Found {} row IDs but {} rows for component batch {component_desc}",
-                            row_ids.len(), list_array.len(),
-                        ),
-                    });
-                }
+                        row_ids.len(),
+                        list_array.len(),
+                    ),
+                });
+            }
 
-                let validity_is_empty = list_array
-                    .nulls()
-                    .is_some_and(|validity| validity.is_empty());
-                if !self.is_empty() && validity_is_empty {
-                    return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "All component batches in a chunk must contain at least one non-null entry.\
+            let validity_is_empty = list_array
+                .nulls()
+                .is_some_and(|validity| validity.is_empty());
+            if !self.is_empty() && validity_is_empty {
+                return Err(ChunkError::Malformed {
+                    reason: format!(
+                        "All component batches in a chunk must contain at least one non-null entry.\
                              Found a completely empty column for {component_desc}",
-                        ),
-                    });
-                }
+                    ),
+                });
             }
         }
 

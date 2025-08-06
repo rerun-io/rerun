@@ -84,7 +84,9 @@ impl MemoryLimit {
                 return Some((counted_use - max_bytes) as f32 / counted_use as f32);
             }
         } else if let Some(resident_use) = mem_use.resident {
-            re_log::warn_once!("Using resident memory use (RSS) for memory limiting, because a memory tracker was not available.");
+            re_log::warn_once!(
+                "Using resident memory use (RSS) for memory limiting, because a memory tracker was not available."
+            );
             if max_bytes < resident_use {
                 return Some((resident_use - max_bytes) as f32 / resident_use as f32);
             }

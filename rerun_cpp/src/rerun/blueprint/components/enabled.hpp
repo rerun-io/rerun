@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/bool.hpp"
 #include "../../result.hpp"
 
@@ -12,6 +11,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether a procedure is enabled.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct Enabled {
         rerun::datatypes::Bool visible;
 
@@ -45,7 +47,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::Enabled> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.components.Enabled";
+        static constexpr std::string_view ComponentType = "rerun.blueprint.components.Enabled";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

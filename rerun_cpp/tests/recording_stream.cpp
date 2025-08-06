@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 
+#include <arrow/array/array_base.h>
 #include <arrow/buffer.h>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
@@ -17,6 +18,14 @@ namespace fs = std::filesystem;
 #define TEST_TAG "[recording_stream]"
 
 struct BadComponent {};
+
+// Not making this static makes lsan_suppressions.supp miss this.
+// Output of use counter for this shared_ptr indicates that we're not leaking the shared ptr itself.
+// If we do leak it, it's very unclear how that would be happening - somewhere in the FFI transition?
+// But then why would it not show up for anything else? More likely a false positive.
+static std::shared_ptr<arrow::Array> null_arrow_array() {
+    return std::make_shared<arrow::NullArray>(1);
+}
 
 template <>
 struct rerun::Loggable<BadComponent> {
@@ -148,10 +157,13 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
 
                 GIVEN("component batches") {
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
-                                      {{1.0, 2.0}, {4.0, 5.0}}
-                    ).value_or_throw();
+                                      {{1.0, 2.0}, {4.0, 5.0}},
+                                      rerun::Points2D::Descriptor_positions
+                    )
+                                      .value_or_throw();
                     auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
-                                      {rerun::Color(0xFF0000FF)}
+                                      {rerun::Color(0xFF0000FF)},
+                                      rerun::Points2D::Descriptor_colors
                     )
                                       .value_or_throw();
                     THEN("single component batch can be logged") {
@@ -170,10 +182,12 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 }
                 GIVEN("component batches wrapped in `rerun::Result`") {
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
-                        {{1.0, 2.0}, {4.0, 5.0}}
+                        {{1.0, 2.0}, {4.0, 5.0}},
+                        rerun::Points2D::Descriptor_positions
                     );
                     auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
-                        {rerun::Color(0xFF0000FF)}
+                        {rerun::Color(0xFF0000FF)},
+                        rerun::Points2D::Descriptor_colors
                     );
                     THEN("single component batch can be logged") {
                         stream.log("log_archetype-splat", batch0);
@@ -331,6 +345,59 @@ void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStre
     }
 }
 
+SCENARIO("RecordingStream can construct LogSinks", TEST_TAG) {
+    const char* url = "rerun+http://127.0.0.1:9876/proxy";
+    const char* invalid_url = "definitely not valid!";
+    const char* test_path = "build/test_output";
+    fs::create_directories(test_path);
+
+    std::string test_rrd0 = std::string(test_path) + "test-file-log-sink-0.rrd";
+
+    fs::remove(test_rrd0);
+
+    GIVEN("a new RecordingStream") {
+        rerun::RecordingStream stream("test-local");
+
+        AND_GIVEN("valid save path" << test_rrd0) {
+            AND_GIVEN("a directory already existing at this path") {
+                fs::create_directory(test_rrd0);
+                THEN("set_sinks(FileSink) call fails") {
+                    CHECK(
+                        stream.set_sinks(rerun::FileSink{test_rrd0}).code ==
+                        rerun::ErrorCode::RecordingStreamSaveFailure
+                    );
+                }
+            }
+            THEN("set_sinks(FileSink) call returns no error") {
+                CHECK(stream.set_sinks(rerun::FileSink{test_rrd0}).code == rerun::ErrorCode::Ok);
+            }
+        }
+
+        AND_GIVEN("an invalid url" << invalid_url) {
+            THEN("set_sinks(GrpcSink) call fails") {
+                CHECK(
+                    stream.set_sinks(rerun::GrpcSink{invalid_url}).code ==
+                    rerun::ErrorCode::InvalidServerUrl
+                );
+            }
+        }
+        AND_GIVEN("a valid url" << url) {
+            THEN("set_sinks(GrpcSink) call returns no error") {
+                CHECK(stream.set_sinks(rerun::GrpcSink{url}).code == rerun::ErrorCode::Ok);
+            }
+        }
+
+        AND_GIVEN("both a url" << url << "and a save path" << test_rrd0) {
+            THEN("set_sinks(GrpcSink, FileSink) call returns no error") {
+                CHECK(
+                    stream.set_sinks(rerun::GrpcSink{url}, rerun::FileSink{test_rrd0}).code ==
+                    rerun::ErrorCode::Ok
+                );
+            }
+        }
+    }
+}
+
 SCENARIO("RecordingStream can connect over grpc", TEST_TAG) {
     const char* url = "rerun+http://127.0.0.1:9876/proxy";
     GIVEN("a new RecordingStream") {
@@ -344,6 +411,18 @@ SCENARIO("RecordingStream can connect over grpc", TEST_TAG) {
         }
         GIVEN("the current recording stream") {
             test_logging_to_grpc_connection(url, rerun::RecordingStream::current());
+        }
+    }
+}
+
+SCENARIO("RecordingStream can serve grpc", TEST_TAG) {
+    GIVEN("a new serving RecordingStream") {
+        rerun::RecordingStream stream("test-local");
+        THEN("serve_grpc call succeeds") {
+            CHECK(
+                stream.serve_grpc("0.0.0.0", 21521).value_or_throw() ==
+                "rerun+http://0.0.0.0:21521/proxy"
+            );
         }
     }
 }
@@ -369,7 +448,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             AND_GIVEN("a cell with an invalid component type") {
                 rerun::ComponentBatch cell = {};
                 cell.component_type = RR_COMPONENT_TYPE_HANDLE_INVALID;
-                cell.array = rerun::components::indicator_arrow_array();
+                cell.array = null_arrow_array();
 
                 THEN("try_log_data_row fails with InvalidComponentTypeHandle") {
                     CHECK(
@@ -394,7 +473,10 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
             expected_error.code =
                 GENERATE(rerun::ErrorCode::Unknown, rerun::ErrorCode::ArrowStatusCode_TypeError);
 
-            auto batch_result = rerun::ComponentBatch::from_loggable(component);
+            auto batch_result = rerun::ComponentBatch::from_loggable(
+                component,
+                rerun::Loggable<BadComponent>::Descriptor
+            );
 
             THEN("calling log with that batch logs the serialization error") {
                 check_logged_error([&] { stream.log(path, batch_result); }, expected_error.code);

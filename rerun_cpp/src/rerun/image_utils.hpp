@@ -165,13 +165,13 @@ namespace rerun {
             // 422 formats.
             case datatypes::PixelFormat::Y_U_V16_FullRange:
             case datatypes::PixelFormat::Y_U_V16_LimitedRange:
-            case datatypes::PixelFormat::NV12:
+            case datatypes::PixelFormat::YUY2:
                 return 16 * num_pixels / 8;
 
             // 420 formats.
             case datatypes::PixelFormat::Y_U_V12_FullRange:
             case datatypes::PixelFormat::Y_U_V12_LimitedRange:
-            case datatypes::PixelFormat::YUY2:
+            case datatypes::PixelFormat::NV12:
                 return 12 * num_pixels / 8;
 
             // Monochrome formats.

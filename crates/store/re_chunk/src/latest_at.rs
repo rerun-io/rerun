@@ -1,7 +1,7 @@
 use arrow::array::Array as _;
 
 use re_log_types::{TimeInt, TimelineName};
-use re_types_core::ComponentName;
+use re_types_core::ComponentDescriptor;
 
 use crate::{Chunk, RowId};
 
@@ -71,14 +71,14 @@ impl Chunk {
     /// information by inspecting the data, for examples timestamps on other timelines.
     /// See [`Self::timeline_sliced`] and [`Self::component_sliced`] if you do want to filter this
     /// extra data.
-    pub fn latest_at(&self, query: &LatestAtQuery, component_name: ComponentName) -> Self {
+    pub fn latest_at(&self, query: &LatestAtQuery, component_descr: &ComponentDescriptor) -> Self {
         if self.is_empty() {
             return self.clone();
         }
 
         re_tracing::profile_function!(format!("{query:?}"));
 
-        let Some(component_list_array) = self.get_first_component(&component_name) else {
+        let Some(component_list_array) = self.components.get(component_descr) else {
             return self.emptied();
         };
 

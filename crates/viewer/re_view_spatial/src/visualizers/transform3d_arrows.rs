@@ -1,12 +1,12 @@
-use egui::Color32;
 use nohash_hasher::IntSet;
+
 use re_log_types::{EntityPath, Instance};
 use re_types::{
+    Archetype as _, ComponentType,
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
-    Archetype as _, Component as _, ComponentName,
 };
-use re_view::{latest_at_with_blueprint_resolved_data, DataResultQuery as _};
+use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
     ViewContext, ViewContextCollection, ViewQuery, ViewStateExt as _, ViewSystemExecutionError,
@@ -15,7 +15,7 @@ use re_viewer_context::{
 
 use crate::{contexts::TransformTreeContext, ui::SpatialViewState, view_kind::SpatialViewKind};
 
-use super::{filter_visualizable_3d_entities, CamerasVisualizer, SpatialViewVisualizerData};
+use super::{CamerasVisualizer, SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
 pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 
@@ -34,7 +34,7 @@ impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
 }
 
 struct Transform3DVisualizabilityFilter {
-    visualizability_trigger_components: IntSet<ComponentName>,
+    visualizability_trigger_components: IntSet<ComponentType>,
 }
 
 impl re_viewer_context::DataBasedVisualizabilityFilter for Transform3DVisualizabilityFilter {
@@ -44,10 +44,15 @@ impl re_viewer_context::DataBasedVisualizabilityFilter for Transform3DVisualizab
         // But today, this notion messes with a lot of things:
         // * it means everything can be visualized in a 3D view!
         // * if there's no indicated visualizer, we show any visualizer that is visualizable (that would be this one always then)
-        event.diff.chunk.component_names().any(|component_name| {
-            self.visualizability_trigger_components
-                .contains(&component_name)
-        })
+        event
+            .diff
+            .chunk
+            .component_descriptors()
+            .filter_map(|c| c.component_type)
+            .any(|component_type| {
+                self.visualizability_trigger_components
+                    .contains(&component_type)
+            })
     }
 }
 
@@ -62,7 +67,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         Some(Box::new(Transform3DVisualizabilityFilter {
             visualizability_trigger_components: Transform3D::all_components()
                 .iter()
-                .map(|descr| descr.component_name)
+                .filter_map(|descr| descr.component_type)
                 .collect(),
         }))
     }
@@ -113,7 +118,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 }
             } else {
                 transform_info
-                    .single_entity_transform_required(&data_result.entity_path, "Transform3DArrows")
+                    .single_entity_transform_required(&data_result.entity_path, Transform3D::name())
             };
 
             // Note, we use this interface instead of `data_result.latest_at_with_blueprint_resolved_data` to avoid querying
@@ -124,11 +129,13 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 None,
                 &latest_at_query,
                 data_result,
-                std::iter::once(AxisLength::name()),
+                [&Transform3D::descriptor_axis_length()],
                 false,
             );
 
-            let axis_length: f32 = results.get_mono_with_fallback::<AxisLength>().into();
+            let axis_length: f32 = results
+                .get_mono_with_fallback::<AxisLength>(&Transform3D::descriptor_axis_length(), self)
+                .into();
 
             if axis_length == 0.0 {
                 // Don't draw axis and don't add to the bounding box!
@@ -138,11 +145,12 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
             self.0.add_bounding_box(
                 data_result.entity_path.hash(),
-                re_math::BoundingBox::ZERO,
+                macaw::BoundingBox::ZERO,
                 world_from_obj,
             );
 
             add_axis_arrows(
+                ctx.tokens(),
                 &mut line_builder,
                 world_from_obj,
                 Some(&data_result.entity_path),
@@ -170,11 +178,8 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
     }
 }
 
-const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
-const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
-const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
-
 pub fn add_axis_arrows(
+    tokens: &re_ui::DesignTokens,
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     world_from_obj: glam::Affine3A,
     ent_path: Option<&EntityPath>,
@@ -201,54 +206,55 @@ pub fn add_axis_arrows(
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)
         .radius(line_radius)
-        .color(AXIS_COLOR_X)
+        .color(tokens.axis_color_x)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y * axis_length)
         .radius(line_radius)
-        .color(AXIS_COLOR_Y)
+        .color(tokens.axis_color_y)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z * axis_length)
         .radius(line_radius)
-        .color(AXIS_COLOR_Z)
+        .color(tokens.axis_color_z)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
 }
 
 impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> AxisLength {
-        if let Some(view_ctx) = ctx.view_ctx {
-            let query_result = ctx.viewer_ctx.lookup_query_result(view_ctx.view_id);
+        let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
 
-            // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
-            if let Some(length) = query_result
-                .tree
-                .lookup_result_by_path(ctx.target_entity_path)
-                .cloned()
-                .and_then(|data_result| {
-                    if data_result
-                        .visualizers
-                        .contains(&CamerasVisualizer::identifier())
-                    {
-                        let results = data_result
-                            .latest_at_with_blueprint_resolved_data::<Pinhole>(view_ctx, ctx.query);
+        // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
+        if let Some(length) = query_result
+            .tree
+            .lookup_result_by_path(ctx.target_entity_path)
+            .cloned()
+            .and_then(|data_result| {
+                if data_result
+                    .visualizers
+                    .contains(&CamerasVisualizer::identifier())
+                {
+                    let results = data_result
+                        .latest_at_with_blueprint_resolved_data::<Pinhole>(ctx.view_ctx, ctx.query);
 
-                        Some(results.get_mono_with_fallback::<ImagePlaneDistance>())
-                    } else {
-                        None
-                    }
-                })
-            {
-                let length: f32 = length.into();
-                return (length * 0.5).into();
-            }
+                    Some(results.get_mono_with_fallback::<ImagePlaneDistance>(
+                        &Pinhole::descriptor_image_plane_distance(),
+                        &CamerasVisualizer::default(),
+                    ))
+                } else {
+                    None
+                }
+            })
+        {
+            let length: f32 = length.into();
+            return (length * 0.5).into();
         }
 
         // If there is a finite bounding box, use the scene size to determine the axis length.
-        if let Ok(state) = ctx.view_state.downcast_ref::<SpatialViewState>() {
+        if let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() {
             let scene_size = state.bounding_boxes.smoothed.size().length();
 
             if scene_size.is_finite() && scene_size > 0.0 {
@@ -283,9 +289,11 @@ impl IdentifiedViewSystem for AxisLengthDetector {
 impl VisualizerSystem for AxisLengthDetector {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<Transform3D>();
+        query_info.relevant_archetypes = Default::default();
 
-        query_info.required.insert(AxisLength::name());
-        query_info.indicators = Default::default();
+        query_info
+            .required
+            .insert(Transform3D::descriptor_axis_length());
 
         query_info
     }

@@ -3,9 +3,9 @@ use std::sync::Arc;
 use slotmap::{SecondaryMap, SlotMap};
 
 use crate::{
+    RenderContext,
     mesh::{CpuMesh, GpuMesh, MeshError},
     renderer::GpuMeshInstance,
-    RenderContext,
 };
 
 slotmap::new_key_type! {
@@ -52,8 +52,8 @@ impl CpuModel {
         });
     }
 
-    pub fn calculate_bounding_box(&self) -> re_math::BoundingBox {
-        re_math::BoundingBox::from_points(
+    pub fn calculate_bounding_box(&self) -> macaw::BoundingBox {
+        macaw::BoundingBox::from_points(
             self.instances
                 .iter()
                 .filter_map(|mesh_instance| {

@@ -14,7 +14,6 @@
 #include "../components/radius.hpp"
 #include "../components/show_labels.hpp"
 #include "../components/text.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -120,12 +119,16 @@ namespace rerun::archetypes {
         /// Otherwise, each instance will have its own label.
         std::optional<ComponentBatch> labels;
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         std::optional<ComponentBatch> show_labels;
 
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
+        /// Defaults to `30.0`.
         std::optional<ComponentBatch> draw_order;
 
         /// Optional class Ids for the points.
@@ -144,49 +147,44 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> keypoint_ids;
 
       public:
-        static constexpr const char IndicatorComponentName[] = "rerun.components.Points2DIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Points2D";
 
         /// `ComponentDescriptor` for the `positions` field.
         static constexpr auto Descriptor_positions = ComponentDescriptor(
-            ArchetypeName, "positions",
-            Loggable<rerun::components::Position2D>::Descriptor.component_name
+            ArchetypeName, "Points2D:positions",
+            Loggable<rerun::components::Position2D>::ComponentType
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+            ArchetypeName, "Points2D:radii", Loggable<rerun::components::Radius>::ComponentType
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "Points2D:colors", Loggable<rerun::components::Color>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+            ArchetypeName, "Points2D:labels", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels",
-            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+            ArchetypeName, "Points2D:show_labels",
+            Loggable<rerun::components::ShowLabels>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order",
-            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+            ArchetypeName, "Points2D:draw_order",
+            Loggable<rerun::components::DrawOrder>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids",
-            Loggable<rerun::components::ClassId>::Descriptor.component_name
+            ArchetypeName, "Points2D:class_ids", Loggable<rerun::components::ClassId>::ComponentType
         );
         /// `ComponentDescriptor` for the `keypoint_ids` field.
         static constexpr auto Descriptor_keypoint_ids = ComponentDescriptor(
-            ArchetypeName, "keypoint_ids",
-            Loggable<rerun::components::KeypointId>::Descriptor.component_name
+            ArchetypeName, "Points2D:keypoint_ids",
+            Loggable<rerun::components::KeypointId>::ComponentType
         );
 
       public:
@@ -236,7 +234,10 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         Points2D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();
@@ -257,6 +258,7 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
+        /// Defaults to `30.0`.
         Points2D with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();

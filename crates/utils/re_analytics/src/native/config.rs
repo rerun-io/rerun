@@ -64,7 +64,7 @@ impl Config {
         let config_path = dirs.config_dir().join("analytics.json");
         let data_path = dirs.data_local_dir().join("analytics");
         Ok(Self {
-            analytics_id: Uuid::new_v4().to_string(),
+            analytics_id: Uuid::new_v4().simple().to_string(),
             analytics_enabled: true,
             opt_in_metadata: Default::default(),
             session_id: Uuid::new_v4(),

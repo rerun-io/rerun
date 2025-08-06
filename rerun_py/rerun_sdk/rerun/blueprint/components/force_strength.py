@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -20,6 +19,8 @@ class ForceStrength(datatypes.Float64, ComponentMixin):
     **Component**: The strength of a given force.
 
     Allows to assign different weights to the individual forces, prioritizing one over the other.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     _BATCH_TYPE = None
@@ -29,7 +30,7 @@ class ForceStrength(datatypes.Float64, ComponentMixin):
 
 
 class ForceStrengthBatch(datatypes.Float64Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.ForceStrength")
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.ForceStrength"
 
 
 # This is patched in late to avoid circular dependencies.

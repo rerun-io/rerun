@@ -7,13 +7,16 @@ Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/
 
 Also known as "line strips" or "polylines".
 
-## Components
+## Fields
+### Required
+* `line_strings`: [`GeoLineString`](../components/geo_line_string.md)
 
-**Required**: [`GeoLineString`](../components/geo_line_string.md)
+### Recommended
+* `radii`: [`Radius`](../components/radius.md)
+* `colors`: [`Color`](../components/color.md)
 
-**Recommended**: [`Radius`](../components/radius.md), [`Color`](../components/color.md)
 
-## Shown in
+## Can be shown in
 * [MapView](../views/map_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

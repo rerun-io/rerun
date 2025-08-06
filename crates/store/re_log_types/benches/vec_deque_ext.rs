@@ -3,7 +3,7 @@
 
 use std::collections::VecDeque;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use itertools::Itertools as _;
 
 use re_log_types::{VecDequeInsertionExt as _, VecDequeRemovalExt as _};

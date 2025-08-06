@@ -1,18 +1,17 @@
 use re_log_types::{EntityPath, Instance};
 use re_renderer::{
-    renderer::{LineDrawDataError, LineStripFlags},
     PickingLayerInstanceId,
+    renderer::{LineDrawDataError, LineStripFlags},
 };
 use re_types::{
     archetypes::GeoLineStrings,
-    components::{Color, GeoLineString, Radius},
-    Component as _,
+    components::{Color, Radius},
 };
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 #[derive(Debug, Default)]
@@ -23,7 +22,7 @@ struct GeoLineStringsBatch {
     instance_id: Vec<PickingLayerInstanceId>,
 }
 
-/// Visualizer for [`GeoLineString`].
+/// Visualizer for [`GeoLineStrings`].
 #[derive(Default)]
 pub struct GeoLineStringsVisualizer {
     batches: Vec<(EntityPath, GeoLineStringsBatch)>,
@@ -54,9 +53,9 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
 
             // gather all relevant chunks
             let timeline = view_query.timeline;
-            let all_lines = results.iter_as(timeline, GeoLineString::name());
-            let all_colors = results.iter_as(timeline, Color::name());
-            let all_radii = results.iter_as(timeline, Radius::name());
+            let all_lines = results.iter_as(timeline, GeoLineStrings::descriptor_line_strings());
+            let all_colors = results.iter_as(timeline, GeoLineStrings::descriptor_colors());
+            let all_radii = results.iter_as(timeline, GeoLineStrings::descriptor_radii());
 
             // fallback component values
             let fallback_color: Color =
@@ -78,8 +77,8 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 let radii = radii.unwrap_or(&[]);
 
                 // optional components values to be used for instance clamping semantics
-                let last_color = colors.last().copied().unwrap_or(fallback_color.0 .0);
-                let last_radii = radii.last().copied().unwrap_or(fallback_radius.0 .0);
+                let last_color = colors.last().copied().unwrap_or(fallback_color.0.0);
+                let last_radii = radii.last().copied().unwrap_or(fallback_radius.0.0);
 
                 // iterate over all instances
                 for (instance_index, (line, color, radius)) in itertools::izip!(

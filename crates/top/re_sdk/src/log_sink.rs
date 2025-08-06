@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use parking_lot::Mutex;
+use re_chunk::ChunkBatcherConfig;
 use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, Options};
-use re_log_encoding::encoder::encode_as_bytes_local;
-use re_log_encoding::encoder::{local_raw_encoder, EncodeError};
+use re_log_encoding::encoder::{EncodeError, encode_as_bytes_local, local_raw_encoder};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 use crate::RecordingStream;
@@ -63,14 +63,157 @@ pub trait LogSink: Send + Sync + 'static {
                 self.send(activation_cmd.into());
             } else {
                 re_log::warn!(
-                    "Blueprint ID mismatch when sending blueprint: {} != {}. Ignoring activation.",
+                    "Blueprint ID mismatch when sending blueprint: {:?} != {:?}. Ignoring activation.",
                     blueprint_id,
                     activation_cmd.blueprint_id
                 );
             }
         }
     }
+
+    /// The default batcher configuration used for new (!) [`RecordingStream`]s with this sink.
+    fn default_batcher_config(&self) -> ChunkBatcherConfig {
+        ChunkBatcherConfig::DEFAULT
+    }
+
+    /// As [`std::any::Any`] for dynamic downcasting.
+    fn as_any(&self) -> &dyn std::any::Any;
 }
+
+// ----------------------------------------------------------------------------
+
+/// Stream to multiple sinks at the same time.
+pub struct MultiSink(parking_lot::Mutex<Vec<Box<dyn LogSink>>>);
+
+impl MultiSink {
+    /// Combine multiple sinks into one.
+    ///
+    /// Messages will be cloned to each sink.
+    #[inline]
+    pub fn new(sinks: Vec<Box<dyn LogSink>>) -> Self {
+        Self(parking_lot::Mutex::new(sinks))
+    }
+}
+
+impl LogSink for MultiSink {
+    #[inline]
+    fn send(&self, msg: LogMsg) {
+        for sink in self.0.lock().iter() {
+            sink.send(msg.clone());
+        }
+    }
+
+    #[inline]
+    fn send_all(&self, messages: Vec<LogMsg>) {
+        for sink in self.0.lock().iter() {
+            sink.send_all(messages.clone());
+        }
+    }
+
+    #[inline]
+    fn flush_blocking(&self) {
+        for sink in self.0.lock().iter() {
+            sink.flush_blocking();
+        }
+    }
+
+    // NOTE: this is only really used for BufferedSink,
+    //       and by the time you `set_sink` you probably don't have
+    //       a buffered sink anymore
+    #[inline]
+    fn drain_backlog(&self) -> Vec<LogMsg> {
+        Vec::new()
+    }
+
+    fn default_batcher_config(&self) -> ChunkBatcherConfig {
+        let ChunkBatcherConfig {
+            mut flush_tick,
+            mut flush_num_bytes,
+            mut flush_num_rows,
+            mut chunk_max_rows_if_unsorted,
+            mut max_commands_in_flight,
+            mut max_chunks_in_flight,
+        } = ChunkBatcherConfig::DEFAULT;
+
+        // Use a mix of the existing sinks thus that we flush *less* often.
+        // Prefer less flushing since it leads to better chunks.
+        for sink in self.0.lock().iter() {
+            let config = sink.default_batcher_config();
+
+            flush_tick = flush_tick.max(config.flush_tick);
+            flush_num_bytes = flush_num_bytes.max(config.flush_num_bytes);
+            flush_num_rows = flush_num_rows.max(config.flush_num_rows);
+            chunk_max_rows_if_unsorted =
+                chunk_max_rows_if_unsorted.max(config.chunk_max_rows_if_unsorted);
+            max_commands_in_flight = max_commands_in_flight.max(config.max_commands_in_flight);
+            max_chunks_in_flight = max_chunks_in_flight.max(config.max_chunks_in_flight);
+        }
+
+        ChunkBatcherConfig {
+            flush_tick,
+            flush_num_bytes,
+            flush_num_rows,
+            chunk_max_rows_if_unsorted,
+            max_commands_in_flight,
+            max_chunks_in_flight,
+        }
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+mod private {
+    pub trait Sealed {}
+}
+
+/// Marker trait for [`LogSink`] implementors which may be added
+/// to a [`MultiSink`].
+pub trait MultiSinkCompatible: private::Sealed {}
+
+/// Conversion trait implemented for tuples of sinks.
+pub trait IntoMultiSink {
+    /// Convert self into a [`MultiSink`].
+    fn into_multi_sink(self) -> MultiSink;
+}
+
+macro_rules! impl_multi_sink_tuple {
+    ($($T:ident),*) => {
+        impl<$($T),*> IntoMultiSink for ($($T,)*)
+        where
+            $($T: LogSink + MultiSinkCompatible,)*
+        {
+            #[allow(non_snake_case)] // so that we only need one metavar
+            #[inline]
+            fn into_multi_sink(self) -> MultiSink {
+                let ($($T,)*) = self;
+                MultiSink::new(vec![$(Box::new($T)),*])
+            }
+        }
+    };
+}
+
+impl_multi_sink_tuple!(A);
+impl_multi_sink_tuple!(A, B);
+impl_multi_sink_tuple!(A, B, C);
+impl_multi_sink_tuple!(A, B, C, D);
+impl_multi_sink_tuple!(A, B, C, D, E);
+impl_multi_sink_tuple!(A, B, C, D, E, F);
+
+impl IntoMultiSink for Vec<Box<dyn LogSink>> {
+    fn into_multi_sink(self) -> MultiSink {
+        MultiSink::new(self)
+    }
+}
+
+impl private::Sealed for crate::sink::FileSink {}
+
+impl MultiSinkCompatible for crate::sink::FileSink {}
+
+impl private::Sealed for crate::sink::GrpcSink {}
+
+impl MultiSinkCompatible for crate::sink::GrpcSink {}
 
 // ----------------------------------------------------------------------------
 
@@ -118,6 +261,10 @@ impl LogSink for BufferedSink {
 
     #[inline]
     fn flush_blocking(&self) {}
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl fmt::Debug for BufferedSink {
@@ -170,6 +317,10 @@ impl LogSink for MemorySink {
         // a flush of the batcher. Queueing a second flush here seems to lead to a deadlock
         // at shutdown.
         std::mem::take(&mut (self.0.write()))
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -329,6 +480,10 @@ impl LogSink for CallbackSink {
 
     #[inline]
     fn flush_blocking(&self) {}
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -337,6 +492,12 @@ impl LogSink for CallbackSink {
 pub struct GrpcSink {
     client: MessageProxyClient,
 }
+
+/// The connection state of the underlying gRPC connection of a [`GrpcSink`].
+pub type GrpcSinkConnectionState = re_grpc_client::message_proxy::write::ClientConnectionState;
+
+/// The reason why a [`GrpcSink`] was disconnected.
+pub type GrpcSinkConnectionFailure = re_grpc_client::message_proxy::write::ClientConnectionFailure;
 
 impl GrpcSink {
     /// Connect to the in-memory storage node over HTTP.
@@ -351,14 +512,33 @@ impl GrpcSink {
     /// GrpcSink::new("rerun+http://127.0.0.1:9434/proxy");
     /// ```
     #[inline]
-    pub fn new(endpoint: re_uri::ProxyEndpoint, flush_timeout: Option<Duration>) -> Self {
+    pub fn new(uri: re_uri::ProxyUri, flush_timeout: Option<Duration>) -> Self {
         let options = Options {
             flush_timeout,
             ..Default::default()
         };
         Self {
-            client: MessageProxyClient::new(endpoint, options),
+            client: MessageProxyClient::new(uri, options),
         }
+    }
+
+    /// The connection state of underlying Grpc connection of this sink.
+    ///
+    /// # Experimental
+    ///
+    /// This API is experimental and may change in future releases.
+    pub fn status(&self) -> GrpcSinkConnectionState {
+        self.client.status()
+    }
+}
+
+impl Default for GrpcSink {
+    fn default() -> Self {
+        use std::str::FromStr as _;
+        Self::new(
+            re_uri::ProxyUri::from_str(crate::DEFAULT_CONNECT_URL).expect("failed to parse uri"),
+            crate::default_flush_timeout(),
+        )
     }
 }
 
@@ -369,5 +549,14 @@ impl LogSink for GrpcSink {
 
     fn flush_blocking(&self) {
         self.client.flush();
+    }
+
+    fn default_batcher_config(&self) -> ChunkBatcherConfig {
+        // The GRPC sink is typically used for live streams.
+        ChunkBatcherConfig::LOW_LATENCY
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }

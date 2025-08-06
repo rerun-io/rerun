@@ -1,7 +1,7 @@
 use egui::{NumExt as _, Ui};
 
 use re_log_types::TimestampFormat;
-use re_ui::UiExt as _;
+use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::AppOptions;
 
 pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
@@ -42,14 +42,17 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             egui::RichText::new("Settings")
                 .strong()
                 .line_height(Some(32.0))
-                .text_style(re_ui::DesignTokens::welcome_screen_h2()),
+                .text_style(DesignTokens::welcome_screen_h2()),
         ));
 
         ui.allocate_ui_with_layout(
             egui::Vec2::X * ui.available_width(),
             egui::Layout::right_to_left(egui::Align::Center),
             |ui| {
-                if ui.small_icon_button(&re_ui::icons::CLOSE).clicked() {
+                if ui
+                    .small_icon_button(&re_ui::icons::CLOSE, "Close")
+                    .clicked()
+                {
                     *keep_open = false;
                 }
             },
@@ -64,9 +67,14 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.strong("General");
 
+    ui.horizontal(|ui| {
+        ui.label("Theme:");
+        egui::global_theme_preference_buttons(ui);
+    });
+
     ui.re_checkbox(
-        &mut app_options.include_welcome_screen_button_in_recordings_panel,
-        "Show 'Welcome screen' button",
+        &mut app_options.include_rerun_examples_button_in_recordings_panel,
+        "Show 'Rerun examples' button",
     );
 
     ui.re_checkbox(&mut app_options.show_metrics, "Show performance metrics")
@@ -178,7 +186,7 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
     // This affects only the web target, so we don't need to show it on native.
     #[cfg(target_arch = "wasm32")]
     {
-        use re_video::decode::DecodeHardwareAcceleration;
+        use re_video::DecodeHardwareAcceleration;
 
         let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
         ui.horizontal(|ui| {
@@ -210,43 +218,41 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
-    use re_video::decode::{FFmpegVersion, FFmpegVersionParseError};
+    use re_video::{FFmpegVersion, FFmpegVersionParseError};
     use std::task::Poll;
 
     let path = app_options
         .video_decoder_override_ffmpeg_path
         .then(|| std::path::Path::new(&app_options.video_decoder_ffmpeg_path));
 
-    if path.is_some_and(|path| !path.is_file()) {
-        ui.error_label("The specified FFmpeg binary path does not exist or is not a file.");
-    } else {
-        let res = FFmpegVersion::for_executable_poll(path);
+    match FFmpegVersion::for_executable_poll(path) {
+        Poll::Pending => {
+            ui.spinner();
+        }
 
-        match res {
-            Poll::Pending => {
-                ui.spinner();
-            }
-
-            Poll::Ready(Ok(version)) => {
-                if version.is_compatible() {
-                    ui.success_label(format!("FFmpeg found (version {version})"));
-                } else {
-                    ui.error_label(format!("Incompatible FFmpeg version: {version}"));
-                }
-            }
-            Poll::Ready(Err(FFmpegVersionParseError::ParseVersion { raw_version })) => {
-                // We make this one a warning instead of an error because version parsing is flaky, and
-                // it might end up still working.
-                ui.warning_label(format!(
-                    "FFmpeg binary found but unable to parse version: {raw_version}"
-                ));
-            }
-
-            Poll::Ready(Err(err)) => {
-                ui.error_label(format!("Unable to check FFmpeg version: {err}"));
+        Poll::Ready(Ok(version)) => {
+            if version.is_compatible() {
+                ui.success_label(format!("FFmpeg found (version {version})"));
+            } else {
+                ui.error_label(format!("Incompatible FFmpeg version: {version}"));
             }
         }
-    };
+        Poll::Ready(Err(FFmpegVersionParseError::ParseVersion { raw_version })) => {
+            // We make this one a warning instead of an error because version parsing is flaky, and
+            // it might end up still working.
+            ui.warning_label(format!(
+                "FFmpeg binary found but unable to parse version: {raw_version}"
+            ));
+        }
+
+        Poll::Ready(Err(FFmpegVersionParseError::FFmpegNotFound(_path))) => {
+            ui.error_label("The specified FFmpeg binary path does not exist or is not a file.");
+        }
+
+        Poll::Ready(Err(err)) => {
+            ui.error_label(err.to_string());
+        }
+    }
 }
 
 fn separator_with_some_space(ui: &mut egui::Ui) {

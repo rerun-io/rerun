@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/float64.hpp"
 #include "../../result.hpp"
 
@@ -14,6 +13,9 @@ namespace rerun::blueprint::components {
     /// **Component**: The target distance between two nodes.
     ///
     /// This is helpful to scale the layout, for example if long labels are involved.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ForceDistance {
         rerun::datatypes::Float64 distance;
 
@@ -49,7 +51,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::ForceDistance> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.ForceDistance";
 
         /// Returns the arrow data type this type corresponds to.

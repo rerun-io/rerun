@@ -45,7 +45,9 @@ pub fn try_char_ptr_as_str(
     if let Some(null_terminator_position) = byte_slice.iter().position(|b| *b == b'\0') {
         return Err(CError::new(
             CErrorCode::InvalidStringArgument,
-            &format!("Argument {argument_name:?} was specified to be a string with length {string_length_in_bytes}, but there is an unexpected null-terminator at position {null_terminator_position}."),
+            &format!(
+                "Argument {argument_name:?} was specified to be a string with length {string_length_in_bytes}, but there is an unexpected null-terminator at position {null_terminator_position}."
+            ),
         ));
     }
 

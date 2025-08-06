@@ -46,11 +46,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
-
+  RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
 
   # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
@@ -87,15 +83,15 @@ jobs:
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
-              runner="buildjet-8vcpu-ubuntu-2204-arm"
+              runner="buildjet-16vcpu-ubuntu-2204-arm"
               target="aarch64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.15.0'"
+              container="'rerunio/ci_docker:0.16.0'"
               lib_name="librerun_c.a"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.15.0'"
+              container="'rerunio/ci_docker:0.16.0'"
               lib_name="librerun_c.a"
               ;;
             windows-x64)
@@ -105,13 +101,13 @@ jobs:
               lib_name="rerun_c.lib"
               ;;
             macos-arm64)
-              runner="macos-latest" # Small runners, because building rerun_c is fast
+              runner="macos-15" # Small runners, because building rerun_c is fast
               target="aarch64-apple-darwin"
               container="null"
               lib_name="librerun_c.a"
               ;;
             macos-x64)
-              runner="macos-latest" # Small runners, because building rerun_c is fast
+              runner="macos-15" # Small runners, because building rerun_c is fast
               target="x86_64-apple-darwin"
               container="null"
               lib_name="librerun_c.a"

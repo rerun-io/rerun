@@ -27,7 +27,7 @@
 //!    visual feedback. This includes:
 //!    - Calling [`DragAndDropManager::set_feedback`] with the appropriate feedback.
 //!    - Drawing a frame around the target container with
-//!      [`re_ui::DesignTokens::drop_target_container_stroke`].
+//!      [`tokens.drop_target_container_stroke`].
 //!    - Optionally provide more feedback, e.g., where exactly the payload will be inserted within
 //!      the container.
 //!
@@ -41,11 +41,7 @@ use itertools::Itertools as _;
 
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
-use re_ui::{
-    ColorToken, Hue,
-    Scale::{S325, S375},
-    UiExt as _,
-};
+use re_ui::UiExt as _;
 
 use crate::{Contents, Item, ItemCollection};
 
@@ -225,7 +221,7 @@ impl DragAndDropManager {
                 }
 
                 let payload_is_currently_droppable = feedback == DragAndDropFeedback::Accept;
-                let response = drag_pill_frame(payload_is_currently_droppable)
+                let response = drag_pill_frame(ui.tokens(), payload_is_currently_droppable)
                     .show(&mut ui, |ui| {
                         let text_color = ui.visuals().widgets.inactive.text_color();
 
@@ -245,14 +241,20 @@ impl DragAndDropManager {
     }
 }
 
-fn drag_pill_frame(droppable: bool) -> egui::Frame {
-    let hue = if droppable { Hue::Blue } else { Hue::Gray };
-
+fn drag_pill_frame(tokens: &re_ui::DesignTokens, droppable: bool) -> egui::Frame {
     egui::Frame {
-        fill: re_ui::design_tokens().color(ColorToken::new(hue, S325)),
+        fill: if droppable {
+            tokens.drag_pill_droppable_fill
+        } else {
+            tokens.drag_pill_nondroppable_fill
+        },
         stroke: egui::Stroke::new(
             1.0,
-            re_ui::design_tokens().color(ColorToken::new(hue, S375)),
+            if droppable {
+                tokens.drag_pill_droppable_stroke
+            } else {
+                tokens.drag_pill_nondroppable_stroke
+            },
         ),
         corner_radius: 2.into(),
         inner_margin: egui::Margin {
@@ -273,11 +275,14 @@ struct ItemCounter {
     container_cnt: u32,
     view_cnt: u32,
     app_cnt: u32,
+    table_cnt: u32,
     data_source_cnt: u32,
     store_cnt: u32,
     entity_cnt: u32,
     instance_cnt: u32,
     component_cnt: u32,
+    redap_server_cnt: u32,
+    redap_entry_cnt: u32,
 }
 
 impl ItemCounter {
@@ -286,6 +291,7 @@ impl ItemCounter {
             Item::Container(_) => self.container_cnt += 1,
             Item::View(_) => self.view_cnt += 1,
             Item::AppId(_) => self.app_cnt += 1,
+            Item::TableId(_) => self.table_cnt += 1,
             Item::DataSource(_) => self.data_source_cnt += 1,
             Item::StoreId(_) => self.store_cnt += 1,
             Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
@@ -296,6 +302,8 @@ impl ItemCounter {
                 }
             }
             Item::ComponentPath(_) => self.component_cnt += 1,
+            Item::RedapServer(_) => self.redap_server_cnt += 1,
+            Item::RedapEntry(_) => self.redap_entry_cnt += 1,
         }
     }
 }

@@ -86,7 +86,7 @@ fn arrow_array_builder_type_and_declaration(
             declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
             ident
         }
-        Type::Object(fqname) => {
+        Type::Object { fqname } => {
             arrow_array_builder_type_object(&objects[fqname], objects, declarations)
         }
     }
@@ -99,13 +99,13 @@ pub fn arrow_array_builder_type_object(
 ) -> Ident {
     if obj.is_arrow_transparent() {
         arrow_array_builder_type_and_declaration(&obj.fields[0].typ, objects, declarations)
-    } else if obj.class == ObjectClass::Enum {
-        arrow_array_builder_type_and_declaration(&Type::UInt8, objects, declarations)
+    } else if let Some(enum_type) = obj.enum_integer_type() {
+        arrow_array_builder_type_and_declaration(&enum_type.to_type(), objects, declarations)
     } else {
         let class_ident = match obj.class {
             ObjectClass::Struct => format_ident!("StructBuilder"),
             ObjectClass::Union => format_ident!("DenseUnionBuilder"),
-            ObjectClass::Enum => unreachable!(),
+            ObjectClass::Enum(_) => unreachable!(),
         };
 
         declarations.insert("arrow", ForwardDecl::Class(class_ident.clone()));

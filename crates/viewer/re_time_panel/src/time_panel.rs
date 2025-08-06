@@ -1,34 +1,32 @@
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use egui::emath::Rangef;
 use egui::{
-    pos2, Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response,
-    Shape, Ui, Vec2,
+    Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
+    Shape, Ui, Vec2, pos2, scroll_area::ScrollSource,
 };
-
-use re_context_menu::{context_menu_ui_for_item_with_context, SelectionUpdateBehavior};
-use re_data_ui::item_ui::guess_instance_path_icon;
+use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
+use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
     ApplicationId, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, TimeReal,
 };
 use re_types::blueprint::components::PanelState;
-use re_types_core::ComponentName;
-use re_ui::filter_widget::format_matching_text;
-use re_ui::{
-    filter_widget, icon_text, icons, list_item, maybe_plus, modifiers_text, ContextExt as _,
-    DesignTokens, Help, UiExt as _,
-};
+use re_types::reflection::ComponentDescriptorExt as _;
+use re_types_core::ComponentDescriptor;
+use re_ui::{ContextExt as _, DesignTokens, Help, UiExt as _, filter_widget, icons, list_item};
+use re_ui::{IconText, filter_widget::format_matching_text};
 use re_viewer_context::{
-    CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
-    UiLayout, ViewerContext, VisitorControlFlow,
+    CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig, TimeControl,
+    TimeView, UiLayout, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::{
     recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
-    streams_tree_data::{components_for_entity, EntityData, StreamsTreeData},
+    streams_tree_data::{EntityData, StreamsTreeData, components_for_entity},
     time_axis::TimelineAxis,
     time_control_ui::TimeControlUi,
     time_ranges_ui::TimeRangesUi,
@@ -38,36 +36,28 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct TimePanelItem {
     pub entity_path: EntityPath,
-    pub component_name: Option<ComponentName>,
+    pub component_descr: Option<ComponentDescriptor>,
 }
 
 impl TimePanelItem {
     pub fn entity_path(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            component_name: None,
-        }
-    }
-
-    pub fn component_path(component_path: ComponentPath) -> Self {
-        let ComponentPath {
-            entity_path,
-            component_name,
-        } = component_path;
-        Self {
-            entity_path,
-            component_name: Some(component_name),
+            component_descr: None,
         }
     }
 
     pub fn to_item(&self) -> Item {
         let Self {
             entity_path,
-            component_name,
+            component_descr,
         } = self;
 
-        if let Some(component_name) = component_name {
-            Item::ComponentPath(ComponentPath::new(entity_path.clone(), *component_name))
+        if let Some(component_descr) = component_descr.as_ref() {
+            Item::ComponentPath(ComponentPath::new(
+                entity_path.clone(),
+                component_descr.clone(),
+            ))
         } else {
             Item::InstancePath(InstancePath::entity_all(entity_path.clone()))
         }
@@ -142,6 +132,12 @@ pub struct TimePanel {
     #[serde(skip)]
     range_selection_anchor_item: Option<Item>,
 
+    /// Used when the selection is modified using key navigation.
+    ///
+    /// IMPORTANT: Always make sure that the item will be drawn this or next frame when setting this
+    /// to `Some`, so that this flag is immediately consumed.
+    scroll_to_me_item: Option<Item>,
+
     /// If the timestamp is being edited, the current value.
     ///
     /// It is applied only after removing focus.
@@ -163,6 +159,7 @@ impl Default for TimePanel {
             filter_state: Default::default(),
             filter_state_app_id: None,
             range_selection_anchor_item: None,
+            scroll_to_me_item: None,
             time_edit_string: None,
         }
     }
@@ -204,10 +201,12 @@ impl TimePanel {
             return;
         }
 
+        let tokens = ui.tokens();
+
         // Invalidate the filter widget if the store id has changed.
-        if self.filter_state_app_id.as_ref() != Some(&ctx.store_context.app_id) {
+        if self.filter_state_app_id.as_ref() != Some(ctx.store_context.application_id()) {
             self.filter_state = Default::default();
-            self.filter_state_app_id = Some(ctx.store_context.app_id.clone());
+            self.filter_state_app_id = Some(ctx.store_context.application_id().clone());
         }
 
         self.data_density_graph_painter.begin_frame(ui.ctx());
@@ -258,8 +257,7 @@ impl TimePanel {
                 if expansion < 1.0 {
                     // Collapsed or animating
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size =
-                            Vec2::splat(re_ui::DesignTokens::top_bar_height());
+                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
                         ui.visuals_mut().button_frame = true;
                         self.collapsed_ui(ctx, entity_db, ui, &mut time_ctrl_after);
                     });
@@ -293,17 +291,19 @@ impl TimePanel {
         time_ctrl_after: &mut TimeControl,
         ui: &mut Ui,
     ) {
+        let tokens = ui.tokens();
+
         ui.vertical(|ui| {
+            ui.spacing_mut().item_spacing.y = 0.5;
             // Add back the margin we removed from the panel:
             let mut top_row_frame = egui::Frame::default();
-            let margin = DesignTokens::bottom_panel_margin();
+            let margin = tokens.bottom_panel_margin();
             top_row_frame.inner_margin.right = margin.right;
             top_row_frame.inner_margin.bottom = margin.bottom;
             let top_row_rect = top_row_frame
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size =
-                            Vec2::splat(re_ui::DesignTokens::top_bar_height());
+                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
                         ui.visuals_mut().button_frame = true;
                         self.top_row_ui(ctx, entity_db, ui, time_ctrl_after);
                     });
@@ -433,14 +433,12 @@ impl TimePanel {
             ),
             time_ctrl.time_view(),
         );
-        let full_y_range = Rangef::new(ui.min_rect().bottom(), ui.max_rect().bottom());
+        let full_y_range = Rangef::new(ui.max_rect().top(), ui.max_rect().bottom());
 
         let timeline_rect = {
             let top = ui.min_rect().bottom();
 
-            ui.add_space(-4.0); // hack to vertically center the text
-
-            let size = egui::vec2(self.prev_col_width, 27.0);
+            let size = egui::vec2(self.prev_col_width, DesignTokens::list_item_height());
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.set_min_size(size);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -490,7 +488,7 @@ impl TimePanel {
         }
 
         ui.painter().hline(
-            0.0..=ui.max_rect().right(),
+            timeline_rect.left()..=ui.max_rect().right(),
             timeline_rect.bottom(),
             ui.visuals().widgets.noninteractive.bg_stroke,
         );
@@ -598,10 +596,10 @@ impl TimePanel {
 
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
-            // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
+            // We turn off `ScrollSource::DRAG` so that the `ScrollArea` don't steal input from
             // the earlier `interact_with_time_area`.
             // We implement drag-to-scroll manually instead!
-            .drag_to_scroll(false)
+            .scroll_source(ScrollSource::MOUSE_WHEEL | ScrollSource::SCROLL_BAR)
             .show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0; // no spacing needed for ListItems
 
@@ -666,7 +664,8 @@ impl TimePanel {
             .as_ref()
             .and_then(|item| item.entity_path());
 
-        if focused_entity_path.is_some_and(|entity_path| entity_path.is_descendant_of(entity_path))
+        if focused_entity_path
+            .is_some_and(|focused_entity_path| focused_entity_path.is_descendant_of(entity_path))
         {
             collapse_scope
                 .entity(entity_path.clone())
@@ -830,153 +829,174 @@ impl TimePanel {
         let engine = entity_db.storage_engine();
         let store = engine.store();
 
-        for component_name in components_for_entity(store, entity_path) {
-            let is_static = store.entity_has_static_component(entity_path, &component_name);
+        let components_by_archetype = components_for_entity(ctx, store, entity_path);
+        let num_archetypes = components_by_archetype.len();
+        for (archetype, components) in components_by_archetype {
+            if archetype.is_none() && num_archetypes == 1 {
+                // They are all without archetype, so we can skip the label.
+            } else {
+                let response = archetype_label_ui(ui, archetype);
+                self.next_col_right = self.next_col_right.max(response.rect.right());
+            }
 
-            let component_path = ComponentPath::new(entity_path.clone(), component_name);
-            let short_component_name = component_path.component_name.short_name();
-            let item = TimePanelItem::component_path(component_path.clone());
-            let timeline = time_ctrl.timeline();
+            for component_descr in components {
+                let is_static = store.entity_has_static_component(entity_path, &component_descr);
 
-            let response = ui
-                .list_item()
-                .render_offscreen(false)
-                .selected(ctx.selection().contains_item(&item.to_item()))
-                .force_hovered(
-                    ctx.selection_state()
-                        .highlight_for_ui_element(&item.to_item())
-                        == HoverHighlight::Hovered,
-                )
-                .show_hierarchical(
-                    ui,
-                    list_item::LabelContent::new(short_component_name)
-                        .with_icon(if is_static {
-                            &re_ui::icons::COMPONENT_STATIC
-                        } else {
-                            &re_ui::icons::COMPONENT_TEMPORAL
-                        })
-                        .truncate(false),
-                );
+                let component_path = ComponentPath::new(entity_path.clone(), component_descr);
+                let component_descr = &component_path.component_descriptor;
+                let item = TimePanelItem {
+                    entity_path: entity_path.clone(),
+                    component_descr: Some(component_descr.clone()),
+                };
+                let timeline = time_ctrl.timeline();
 
-            self.handle_interactions_for_item(
-                ctx,
-                viewport_blueprint,
-                streams_tree_data,
-                entity_db,
-                item.to_item(),
-                &response,
-                false,
-            );
-
-            let response_rect = response.rect;
-
-            response.on_hover_ui(|ui| {
-                let num_static_messages =
-                    store.num_static_events_for_component(entity_path, component_name);
-                let num_temporal_messages = store.num_temporal_events_for_component_on_timeline(
-                    time_ctrl.timeline().name(),
-                    entity_path,
-                    component_name,
-                );
-                let total_num_messages = num_static_messages + num_temporal_messages;
-
-                if total_num_messages == 0 {
-                    ui.label(ui.ctx().warning_text(format!(
-                        "No event logged on timeline {:?}",
-                        timeline.name()
-                    )));
-                } else {
-                    list_item::list_item_scope(ui, "hover tooltip", |ui| {
-                        let kind = if is_static { "Static" } else { "Temporal" };
-
-                        let num_messages = if is_static {
-                            num_static_messages
-                        } else {
-                            num_temporal_messages
-                        };
-
-                        let num_messages = if num_messages == 1 {
-                            "once".to_owned()
-                        } else {
-                            format!("{} times", re_format::format_uint(num_messages))
-                        };
-
-                        ui.list_item()
-                            .interactive(false)
-                            .render_offscreen(false)
-                            .show_flat(
-                                ui,
-                                list_item::LabelContent::new(format!(
-                                    "{kind} component, logged {num_messages}"
-                                ))
-                                .truncate(false)
-                                .with_icon(if is_static {
-                                    &re_ui::icons::COMPONENT_STATIC
-                                } else {
-                                    &re_ui::icons::COMPONENT_TEMPORAL
-                                }),
-                            );
-
-                        // Static components are not displayed at all on the timeline, so cannot be
-                        // previewed there. So we display their content in this tooltip instead.
-                        // Conversely, temporal components change over time, and so showing a specific instance here
-                        // can be confusing.
-                        if is_static {
-                            let query = re_chunk_store::LatestAtQuery::new(
-                                *time_ctrl.timeline().name(),
-                                TimeInt::MAX,
-                            );
-                            let ui_layout = UiLayout::Tooltip;
-                            component_path.data_ui(ctx, ui, ui_layout, &query, entity_db);
-                        }
-                    });
-                }
-            });
-
-            self.next_col_right = self.next_col_right.max(response_rect.right());
-
-            // From the left of the label, all the way to the right-most of the time panel
-            let full_width_rect = Rect::from_x_y_ranges(
-                response_rect.left()..=ui.max_rect().right(),
-                response_rect.y_range(),
-            );
-
-            let is_visible = ui.is_rect_visible(full_width_rect);
-
-            if is_visible {
-                let component_has_data_in_current_timeline = store
-                    .entity_has_component_on_timeline(
-                        time_ctrl.timeline().name(),
-                        entity_path,
-                        &component_name,
-                    );
-
-                if component_has_data_in_current_timeline {
-                    // show the data in the time area:
-                    let row_rect = Rect::from_x_y_ranges(
-                        time_area_response.rect.x_range(),
-                        response_rect.y_range(),
-                    );
-
-                    highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
-
-                    let db = match self.source {
-                        TimePanelSource::Recording => ctx.recording(),
-                        TimePanelSource::Blueprint => ctx.store_context.blueprint,
-                    };
-
-                    data_density_graph::data_density_graph_ui(
-                        &mut self.data_density_graph_painter,
-                        ctx,
-                        time_ctrl,
-                        db,
-                        time_area_painter,
+                let response = ui
+                    .list_item()
+                    .render_offscreen(false)
+                    .selected(ctx.selection().contains_item(&item.to_item()))
+                    .force_hovered(
+                        ctx.selection_state()
+                            .highlight_for_ui_element(&item.to_item())
+                            == HoverHighlight::Hovered,
+                    )
+                    .show_hierarchical(
                         ui,
-                        &self.time_ranges_ui,
-                        row_rect,
-                        &item,
-                        true,
+                        list_item::LabelContent::new(component_descr.archetype_field_name())
+                            .with_icon(if is_static {
+                                &re_ui::icons::COMPONENT_STATIC
+                            } else {
+                                &re_ui::icons::COMPONENT_TEMPORAL
+                            })
+                            .truncate(false),
                     );
+
+                self.handle_interactions_for_item(
+                    ctx,
+                    viewport_blueprint,
+                    streams_tree_data,
+                    entity_db,
+                    item.to_item(),
+                    &response,
+                    false,
+                );
+
+                let response_rect = response.rect;
+
+                response.on_hover_ui(|ui| {
+                    let num_static_messages =
+                        store.num_static_events_for_component(entity_path, component_descr);
+                    let num_temporal_messages = store
+                        .num_temporal_events_for_component_on_timeline(
+                            time_ctrl.timeline().name(),
+                            entity_path,
+                            component_descr,
+                        );
+                    let total_num_messages = num_static_messages + num_temporal_messages;
+
+                    if total_num_messages == 0 {
+                        ui.label(ui.ctx().warning_text(format!(
+                            "No event logged on timeline {:?}",
+                            timeline.name()
+                        )));
+                    } else {
+                        list_item::list_item_scope(ui, "hover tooltip", |ui| {
+                            let kind = if is_static { "Static" } else { "Temporal" };
+
+                            let num_messages = if is_static {
+                                num_static_messages
+                            } else {
+                                num_temporal_messages
+                            };
+
+                            let num_messages = if num_messages == 1 {
+                                "once".to_owned()
+                            } else {
+                                format!("{} times", re_format::format_uint(num_messages))
+                            };
+
+                            ui.list_item()
+                                .interactive(false)
+                                .render_offscreen(false)
+                                .show_flat(
+                                    ui,
+                                    list_item::LabelContent::new(format!(
+                                        "{kind} {component_descr} component, logged {num_messages}",
+                                    ))
+                                    .truncate(false)
+                                    .with_icon(if is_static {
+                                        &re_ui::icons::COMPONENT_STATIC
+                                    } else {
+                                        &re_ui::icons::COMPONENT_TEMPORAL
+                                    }),
+                                );
+
+                            // Static components are not displayed at all on the timeline, so cannot be
+                            // previewed there. So we display their content in this tooltip instead.
+                            // Conversely, temporal components change over time, and so showing a specific instance here
+                            // can be confusing.
+                            if is_static {
+                                let query = re_chunk_store::LatestAtQuery::new(
+                                    *time_ctrl.timeline().name(),
+                                    TimeInt::MAX,
+                                );
+                                let ui_layout = UiLayout::Tooltip;
+                                component_path.data_ui(ctx, ui, ui_layout, &query, entity_db);
+                            }
+                        });
+                    }
+                });
+
+                self.next_col_right = self.next_col_right.max(response_rect.right());
+
+                // From the left of the label, all the way to the right-most of the time panel
+                let full_width_rect = Rect::from_x_y_ranges(
+                    response_rect.left()..=ui.max_rect().right(),
+                    response_rect.y_range(),
+                );
+
+                let is_visible = ui.is_rect_visible(full_width_rect);
+
+                if is_visible {
+                    let component_has_data_in_current_timeline = store
+                        .entity_has_component_on_timeline(
+                            time_ctrl.timeline().name(),
+                            entity_path,
+                            component_descr,
+                        );
+
+                    if component_has_data_in_current_timeline {
+                        // show the data in the time area:
+                        let row_rect = Rect::from_x_y_ranges(
+                            time_area_response.rect.x_range(),
+                            response_rect.y_range(),
+                        );
+
+                        highlight_timeline_row(
+                            ui,
+                            ctx,
+                            time_area_painter,
+                            &item.to_item(),
+                            &row_rect,
+                        );
+
+                        let db = match self.source {
+                            TimePanelSource::Recording => ctx.recording(),
+                            TimePanelSource::Blueprint => ctx.store_context.blueprint,
+                        };
+
+                        data_density_graph::data_density_graph_ui(
+                            &mut self.data_density_graph_painter,
+                            ctx,
+                            time_ctrl,
+                            db,
+                            time_area_painter,
+                            ui,
+                            &self.time_ranges_ui,
+                            row_rect,
+                            &item,
+                            true,
+                        );
+                    }
                 }
             }
         }
@@ -1007,7 +1027,112 @@ impl TimePanel {
         );
         ctx.handle_select_hover_drag_interactions(response, item.clone(), is_draggable);
 
-        self.handle_range_selection(ctx, streams_tree_data, entity_db, item, response);
+        self.handle_range_selection(ctx, streams_tree_data, entity_db, item.clone(), response);
+
+        self.handle_key_navigation(ctx, streams_tree_data, entity_db, &item);
+
+        if Some(item) == self.scroll_to_me_item {
+            response.scroll_to_me(None);
+            self.scroll_to_me_item = None;
+        }
+    }
+
+    fn handle_key_navigation(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        streams_tree_data: &StreamsTreeData,
+        entity_db: &re_entity_db::EntityDb,
+        item: &Item,
+    ) {
+        if ctx.selection_state().selected_items().single_item() != Some(item) {
+            return;
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
+        {
+            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
+                collapse_id.set_open(ctx.egui_ctx(), true);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
+        {
+            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
+                collapse_id.set_open(ctx.egui_ctx(), false);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
+        {
+            let mut found_current = false;
+
+            let result = streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
+                let tree_item = entity_or_component.item();
+                let is_item_collapsed =
+                    !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
+
+                if &tree_item == item {
+                    found_current = true;
+
+                    return if is_item_collapsed {
+                        VisitorControlFlow::SkipBranch
+                    } else {
+                        VisitorControlFlow::Continue
+                    };
+                }
+
+                if found_current {
+                    VisitorControlFlow::Break(Some(tree_item))
+                } else if is_item_collapsed {
+                    VisitorControlFlow::SkipBranch
+                } else {
+                    VisitorControlFlow::Continue
+                }
+            });
+
+            if let ControlFlow::Break(Some(item)) = result {
+                ctx.selection_state().set_selection(item.clone());
+                self.scroll_to_me_item = Some(item.clone());
+                self.range_selection_anchor_item = Some(item);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
+        {
+            let mut last_item = None;
+
+            let result = streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
+                let tree_item = entity_or_component.item();
+                let is_item_collapsed =
+                    !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
+
+                if &tree_item == item {
+                    return VisitorControlFlow::Break(last_item.clone());
+                }
+
+                last_item = Some(tree_item);
+
+                if is_item_collapsed {
+                    VisitorControlFlow::SkipBranch
+                } else {
+                    VisitorControlFlow::Continue
+                }
+            });
+
+            if let ControlFlow::Break(Some(item)) = result {
+                ctx.selection_state().set_selection(item.clone());
+                self.scroll_to_me_item = Some(item.clone());
+                self.range_selection_anchor_item = Some(item);
+            }
+        }
     }
 
     /// Handle setting/extending the selection based on shift-clicking.
@@ -1042,19 +1167,21 @@ impl TimePanel {
                     // the user switched to another recording. In either case, we invalidate it.
                     self.range_selection_anchor_item = None;
                 } else {
-                    let items_iterator = items_in_range.into_iter().map(|item| {
-                        (
-                            item,
-                            Some(ItemContext::BlueprintTree {
-                                filter_session_id: self.filter_state.session_id(),
-                            }),
-                        )
-                    });
+                    let items = ItemCollection::from_items_and_context(
+                        items_in_range.into_iter().map(|item| {
+                            (
+                                item,
+                                Some(ItemContext::BlueprintTree {
+                                    filter_session_id: self.filter_state.session_id(),
+                                }),
+                            )
+                        }),
+                    );
 
                     if modifiers.command {
-                        ctx.selection_state.extend_selection(items_iterator);
+                        ctx.selection_state.extend_selection(items);
                     } else {
-                        ctx.selection_state.set_selection(items_iterator);
+                        ctx.selection_state.set_selection(items);
                     }
                 }
             }
@@ -1080,15 +1207,8 @@ impl TimePanel {
         let mut found_last_clicked_items = false;
         let mut found_shift_clicked_items = false;
 
-        streams_tree_data.visit(entity_db, |entity_data, component_name| {
-            let item = if let Some(component_name) = component_name {
-                Item::ComponentPath(ComponentPath::new(
-                    entity_data.entity_path.clone(),
-                    component_name,
-                ))
-            } else {
-                entity_data.item()
-            };
+        streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
+            let item = entity_or_component.item();
 
             if &item == anchor_item {
                 found_last_clicked_items = true;
@@ -1106,9 +1226,7 @@ impl TimePanel {
                 return VisitorControlFlow::Break(());
             }
 
-            let is_expanded = entity_data
-                .is_open(ctx.egui_ctx(), collapse_scope)
-                .unwrap_or(false);
+            let is_expanded = entity_or_component.is_open(ctx.egui_ctx(), collapse_scope);
 
             if is_expanded {
                 VisitorControlFlow::Continue
@@ -1309,6 +1427,24 @@ impl TimePanel {
     }
 }
 
+fn archetype_label_ui(ui: &mut Ui, archetype: Option<re_types::ArchetypeName>) -> egui::Response {
+    ui.list_item()
+        .with_y_offset(1.0)
+        .with_height(20.0)
+        .interactive(false)
+        .show_hierarchical(
+            ui,
+            list_item::LabelContent::new(
+                RichText::new(
+                    archetype
+                        .map(|a| a.short_name())
+                        .unwrap_or("Without archetype"),
+                )
+                .size(10.0),
+            ),
+        )
+}
+
 /// Draw the hovered/selected highlight background for a timeline row.
 fn highlight_timeline_row(
     ui: &Ui,
@@ -1354,40 +1490,33 @@ fn paint_range_highlight(
         painter.rect_filled(
             visible_history_area_rect,
             0.0,
-            egui::Color32::WHITE.gamma_multiply(0.1),
+            painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1),
         );
     }
 }
 
-fn help(ctx: &egui::Context) -> Help {
+fn help(os: egui::os::OperatingSystem) -> Help {
     Help::new("Timeline")
         .control("Play/Pause", "Space")
         .control(
             "Move time cursor",
-            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
+            (icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
         )
         .control(
             "Select time segment",
-            icon_text!(icons::SHIFT, "+", "drag time scale"),
+            (icons::SHIFT, "+", "drag time scale"),
         )
-        .control(
-            "Pan",
-            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"),
-        )
+        .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"))
         .control(
             "Zoom",
-            icon_text!(
-                modifiers_text(Modifiers::COMMAND, ctx),
-                maybe_plus(ctx),
-                icons::SCROLL
-            ),
+            IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
         )
-        .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+        .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
 }
 
 fn help_button(ui: &mut egui::Ui) {
-    ui.help_hover_button().on_hover_ui(|ui| {
-        help(ui.ctx()).ui(ui);
+    ui.help_button(|ui| {
+        help(ui.ctx().os()).ui(ui);
     });
 }
 
@@ -1526,8 +1655,7 @@ fn paint_time_ranges_gaps(
             mesh.colored_vertex(right_pos, fill_color);
 
             shadow_mesh.colored_vertex(pos2(right - shadow_width, y), Color32::TRANSPARENT);
-            shadow_mesh
-                .colored_vertex(right_pos, re_ui::design_tokens().shadow_gradient_dark_start);
+            shadow_mesh.colored_vertex(right_pos, ui.tokens().shadow_gradient_dark_start);
 
             left_line_strip.push(left_pos);
             right_line_strip.push(right_pos);
@@ -1551,11 +1679,13 @@ fn paint_time_ranges_gaps(
         let gap_edge = *segment.x.start() as f32;
 
         if zig_zag_first_and_last_edges {
+            // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
             // Left side of first segment - paint as a very wide gap that we only see the right side of
-            paint_time_gap(gap_edge - 100_000.0, gap_edge);
+            paint_time_gap(gap_edge - 10_000.0, gap_edge);
         } else {
+            // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
             painter.rect_filled(
-                Rect::from_min_max(pos2(gap_edge - 100_000.0, top), pos2(gap_edge, bottom)),
+                Rect::from_min_max(pos2(gap_edge - 10_000.0, top), pos2(gap_edge, bottom)),
                 0.0,
                 fill_color,
             );
@@ -1655,14 +1785,12 @@ fn copy_time_properties_context_menu(
             let time = format!("{}", time.floor().as_i64());
             re_log::info!("Copied hovered timestamp: {}", time);
             ui.ctx().copy_text(time);
-            ui.close_menu();
         };
     } else if let Some(time) = time_ctrl.time_int() {
         if ui.button("Copy current timestamp").clicked() {
             let time = format!("{}", time.as_i64());
             re_log::info!("Copied current timestamp: {}", time);
             ui.ctx().copy_text(time);
-            ui.close_menu();
         };
     }
 
@@ -1670,7 +1798,6 @@ fn copy_time_properties_context_menu(
         let timeline = format!("{}", time_ctrl.timeline().name());
         re_log::info!("Copied current timeline: {}", timeline);
         ui.ctx().copy_text(timeline);
-        ui.close_menu();
     }
 }
 
@@ -1802,5 +1929,5 @@ fn time_marker_ui(
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(help);
+    re_test_context::TestContext::test_help_view(help);
 }

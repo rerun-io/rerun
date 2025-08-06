@@ -1,6 +1,6 @@
 namespace python.attributes;
 
-/// Defines the type aliases for a component or view property archetype, e.g. the types that make up `ComponentLike`.
+/// Defines the type aliases for a component or view property archetype.
 attribute "attr.python.aliases";
 
 /// Defines the array type aliases for a component, e.g. the types that make up `ComponentArrayLike`.

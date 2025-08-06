@@ -9,9 +9,9 @@ use re_byte_size::SizeBytes;
 use re_chunk_store::Chunk;
 use re_log_types::{Timeline, TimestampFormat};
 use re_types::datatypes::TimeInt;
-use re_ui::{list_item, UiExt as _};
+use re_ui::{UiExt as _, list_item};
 
-use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
+use crate::sort::{SortColumn, SortDirection, sortable_column_header_ui};
 
 /// Any column that can be sorted
 #[derive(Default, Clone, Copy, PartialEq)]
@@ -49,6 +49,9 @@ impl ChunkUi {
 
     // Return `true` if the user wants to exit the chunk viewer.
     pub(crate) fn ui(&mut self, ui: &mut egui::Ui, timestamp_format: TimestampFormat) -> bool {
+        let tokens = ui.tokens();
+
+        let table_style = re_ui::TableStyle::Dense;
         let should_exit = self.chunk_info_ui(ui);
 
         //
@@ -76,7 +79,7 @@ impl ChunkUi {
 
         let components = chunk
             .components()
-            .iter_flattened()
+            .iter()
             .map(|(component_desc, list_array)| {
                 (
                     component_desc.clone(),
@@ -101,7 +104,7 @@ impl ChunkUi {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
                     let response = ui
-                        .button(component_desc.component_name.short_name())
+                        .button(component_desc.component.as_str())
                         .on_hover_ui(|ui| {
                             ui.label(format!("{datatype}\n\nClick header to copy"));
                         });
@@ -145,8 +148,7 @@ impl ChunkUi {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    let component_data =
-                        chunk.component_batch_raw(&component_desc.component_name, row_index);
+                    let component_data = chunk.component_batch_raw(component_desc, row_index);
                     match component_data {
                         Some(Ok(data)) => {
                             re_ui::arrow_ui(ui, re_ui::UiLayout::List, &*data);
@@ -179,13 +181,9 @@ impl ChunkUi {
                     .striped(true);
 
                 table_builder
-                    .header(re_ui::DesignTokens::table_line_height(), header_ui)
+                    .header(tokens.table_row_height(table_style), header_ui)
                     .body(|body| {
-                        body.rows(
-                            re_ui::DesignTokens::table_line_height(),
-                            row_ids.len(),
-                            row_ui,
-                        );
+                        body.rows(tokens.table_row_height(table_style), row_ids.len(), row_ui);
                     });
             });
 
@@ -289,7 +287,7 @@ impl ChunkUi {
                 }
                 Err(err) => {
                     ui.error_with_details_on_hover(format!(
-                        "Failed to convert to tqransport: {err}"
+                        "Failed to convert to transport: {err}"
                     ));
                 }
             }

@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/range2d.hpp"
 #include "../../result.hpp"
 
@@ -12,6 +11,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Visual bounds in 2D space used for `Spatial2DView`.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct VisualBounds2D {
         /// X and y ranges that should be visible.
         rerun::datatypes::Range2D range2d;
@@ -41,7 +43,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::VisualBounds2D> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.VisualBounds2D";
 
         /// Returns the arrow data type this type corresponds to.

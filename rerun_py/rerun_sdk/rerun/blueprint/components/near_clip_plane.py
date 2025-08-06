@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -16,7 +15,11 @@ __all__ = ["NearClipPlane", "NearClipPlaneBatch"]
 
 
 class NearClipPlane(datatypes.Float32, ComponentMixin):
-    """**Component**: Distance to the near clip plane used for `Spatial2DView`."""
+    """
+    **Component**: Distance to the near clip plane used for `Spatial2DView`.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of NearClipPlaneExt in near_clip_plane_ext.py
@@ -25,7 +28,7 @@ class NearClipPlane(datatypes.Float32, ComponentMixin):
 
 
 class NearClipPlaneBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.NearClipPlane")
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.NearClipPlane"
 
 
 # This is patched in late to avoid circular dependencies.

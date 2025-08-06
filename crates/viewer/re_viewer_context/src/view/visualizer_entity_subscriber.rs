@@ -1,10 +1,11 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
+use re_chunk::ArchetypeName;
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
-use re_types::{ComponentName, ComponentNameSet};
+use re_types::ComponentDescriptor;
 
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, ViewSystemIdentifier,
@@ -29,11 +30,11 @@ pub struct VisualizerEntitySubscriber {
     /// Visualizer type this subscriber is associated with.
     visualizer: ViewSystemIdentifier,
 
-    /// See [`crate::VisualizerQueryInfo::indicators`]
-    indicator_components: ComponentNameSet,
+    /// See [`crate::VisualizerQueryInfo::relevant_archetypes`]
+    relevant_archetypes: IntSet<ArchetypeName>,
 
     /// Assigns each required component an index.
-    required_components_indices: IntMap<ComponentName, usize>,
+    required_components_indices: IntMap<ComponentDescriptor, usize>,
 
     per_store_mapping: HashMap<StoreId, VisualizerEntityMapping>,
 
@@ -98,7 +99,7 @@ impl VisualizerEntitySubscriber {
 
         Self {
             visualizer: T::identifier(),
-            indicator_components: visualizer_query_info.indicators,
+            relevant_archetypes: visualizer_query_info.relevant_archetypes,
             required_components_indices: visualizer_query_info
                 .required
                 .into_iter()
@@ -171,9 +172,13 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
             let entity_path = event.diff.chunk.entity_path();
 
             // Update indicator component tracking:
-            if self.indicator_components.is_empty()
-                || self.indicator_components.iter().any(|component_name| {
-                    event.diff.chunk.components().contains_key(component_name)
+            if self.relevant_archetypes.is_empty()
+                || self.relevant_archetypes.iter().any(|archetype| {
+                    event
+                        .diff
+                        .chunk
+                        .components()
+                        .has_component_with_archetype(*archetype)
                 })
             {
                 store_mapping
@@ -195,11 +200,9 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                 continue;
             }
 
-            for (component_desc, list_array) in event.diff.chunk.components().iter_flattened() {
-                if let Some(index) = self
-                    .required_components_indices
-                    .get(&component_desc.component_name)
-                {
+            #[expect(clippy::iter_over_hash_type)]
+            for (component_desc, list_array) in event.diff.chunk.components().iter() {
+                if let Some(index) = self.required_components_indices.get(component_desc) {
                     // The component might be present, but logged completely empty.
                     // That shouldn't count towards filling "having the required component present"!
                     // (Note: This happens frequently now with `Transform3D`'s component which always get logged, thus tripping of the `AxisLengthDetector`!)` )

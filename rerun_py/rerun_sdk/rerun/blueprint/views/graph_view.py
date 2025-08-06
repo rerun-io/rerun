@@ -23,6 +23,8 @@ class GraphView(View):
     """
     **View**: A graph view to display time-variying, directed or undirected graph visualization.
 
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
     Example
     -------
     ### Use a blueprint to create a graph view.:

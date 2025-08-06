@@ -40,9 +40,7 @@ impl PrintCommand {
             continue_on_error,
         } = self;
 
-        // TODO(cmc): might want to make this configurable at some point.
-        let version_policy = re_log_encoding::VersionPolicy::Warn;
-        let (rx, _) = read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
+        let (rx, _) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
         for (_source, res) in rx {
             let mut is_success = true;
@@ -50,13 +48,13 @@ impl PrintCommand {
             match res {
                 Ok(msg) => {
                     if let Err(err) = print_msg(*verbose, msg) {
-                        re_log::error!(err = re_error::format(err));
+                        re_log::error_once!("{}", re_error::format(err));
                         is_success = false;
                     }
                 }
 
                 Err(err) => {
-                    re_log::error!(err = re_error::format(err));
+                    re_log::error_once!("{}", re_error::format(err));
                     is_success = false;
                 }
             }
@@ -79,7 +77,7 @@ fn print_msg(verbose: u8, msg: LogMsg) -> anyhow::Result<()> {
             println!("{info:#?}");
         }
 
-        LogMsg::ArrowMsg(_row_id, arrow_msg) => {
+        LogMsg::ArrowMsg(_store_id, arrow_msg) => {
             let mut chunk =
                 re_sorbet::ChunkBatch::try_from(&arrow_msg.batch).context("corrupt chunk")?;
 
@@ -94,7 +92,7 @@ fn print_msg(verbose: u8, msg: LogMsg) -> anyhow::Result<()> {
             if verbose == 0 {
                 let column_names = chunk
                     .component_columns()
-                    .map(|(descr, _)| descr.component_name.short_name())
+                    .map(|(descr, _)| descr.column_name(re_sorbet::BatchType::Dataframe))
                     .join(" ");
                 println!("columns: [{column_names}]");
             } else if verbose == 1 {
@@ -132,7 +130,9 @@ fn print_msg(verbose: u8, msg: LogMsg) -> anyhow::Result<()> {
             make_active,
             make_default,
         }) => {
-            println!("BlueprintActivationCommand({blueprint_id}, make_active: {make_active}, make_default: {make_default})");
+            println!(
+                "BlueprintActivationCommand({blueprint_id:?}, make_active: {make_active}, make_default: {make_default})"
+            );
         }
     }
 

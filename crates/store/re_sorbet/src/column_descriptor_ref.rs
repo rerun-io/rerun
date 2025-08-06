@@ -1,22 +1,46 @@
+use re_log_types::EntityPath;
+
 use crate::{
-    ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor,
+    BatchType, ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor,
+    RowIdColumnDescriptor,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ColumnDescriptorRef<'a> {
     RowId(&'a RowIdColumnDescriptor),
+    //TODO(ab): this should be renamed Index!
     Time(&'a IndexColumnDescriptor),
     Component(&'a ComponentColumnDescriptor),
 }
 
 impl ColumnDescriptorRef<'_> {
-    /// Human-readable name for the column.
     #[inline]
-    pub fn name(&self) -> String {
+    pub fn column_name(&self, batch_type: BatchType) -> String {
         match self {
             Self::RowId(descr) => descr.name().to_owned(),
             Self::Time(descr) => descr.column_name().to_owned(),
-            Self::Component(descr) => descr.component_name.short_name().to_owned(),
+            Self::Component(descr) => descr.column_name(batch_type),
+        }
+    }
+
+    pub fn to_owned(&self) -> ColumnDescriptor {
+        match self {
+            Self::RowId(descr) => ColumnDescriptor::RowId((*descr).clone()),
+            Self::Time(descr) => ColumnDescriptor::Time((*descr).clone()),
+            Self::Component(descr) => ColumnDescriptor::Component((*descr).clone()),
+        }
+    }
+
+    /// Short human-readable name for the column.
+    #[inline]
+    pub fn display_name(&self) -> String {
+        self.to_owned().display_name()
+    }
+
+    pub fn entity_path(&self) -> Option<&EntityPath> {
+        match self {
+            Self::RowId(_) | Self::Time(_) => None,
+            Self::Component(descr) => Some(&descr.entity_path),
         }
     }
 }
@@ -24,6 +48,7 @@ impl ColumnDescriptorRef<'_> {
 impl<'a> From<&'a ColumnDescriptor> for ColumnDescriptorRef<'a> {
     fn from(desc: &'a ColumnDescriptor) -> Self {
         match desc {
+            ColumnDescriptor::RowId(desc) => Self::RowId(desc),
             ColumnDescriptor::Time(desc) => Self::Time(desc),
             ColumnDescriptor::Component(desc) => Self::Component(desc),
         }

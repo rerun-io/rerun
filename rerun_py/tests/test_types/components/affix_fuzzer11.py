@@ -15,7 +15,6 @@ from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 from rerun._converters import (
@@ -41,6 +40,10 @@ class AffixFuzzer11(ComponentMixin):
         # You can define your own __array__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
         return np.asarray(self.many_floats_optional, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
+        return len(self.many_floats_optional) if self.many_floats_optional is not None else 0
+
 
 AffixFuzzer11Like = AffixFuzzer11
 AffixFuzzer11ArrayLike = Union[
@@ -51,7 +54,7 @@ AffixFuzzer11ArrayLike = Union[
 
 class AffixFuzzer11Batch(BaseBatch[AffixFuzzer11ArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}))
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.testing.components.AffixFuzzer11")
+    _COMPONENT_TYPE: str = "rerun.testing.components.AffixFuzzer11"
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer11ArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -20,7 +20,7 @@ README = """\
 All images should look roughly the same except for some chroma artifacts
 and slight color differences due to different yuv conversion matrix coefficients.
 
-Naturally, Y8 formats are greyscale.
+Naturally, Y8 formats are grayscale.
 """
 
 
@@ -77,7 +77,7 @@ def bgra2y8(bgra: npt.NDArray[np.uint8], full_range: bool) -> npt.NDArray[np.uin
 
 
 def bgra2nv12(bgra: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
-    yuv: npt.NDArray[np.uint8] = cv2.cvtColor(bgra, cv2.COLOR_BGRA2YUV_I420)
+    yuv: npt.NDArray[np.uint8] = cv2.cvtColor(bgra, cv2.COLOR_BGRA2YUV_I420).astype(np.uint8)
     uv_row_cnt = yuv.shape[0] // 3
     uv_plane = np.transpose(yuv[uv_row_cnt * 2 :].reshape(2, -1), [1, 0])
     yuv[uv_row_cnt * 2 :] = uv_plane.reshape(uv_row_cnt, -1)
@@ -121,7 +121,7 @@ def log_data() -> None:
     # Make sure you use a colorful image!
     dir_path = os.path.dirname(os.path.realpath(__file__))
     img_path = f"{dir_path}/../../../crates/viewer/re_ui/data/logo_dark_mode.png"
-    img_bgra = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+    img_bgra = cv2.imread(img_path, cv2.IMREAD_UNCHANGED).astype(np.uint8)
 
     img_rgb = cv2.cvtColor(img_bgra, cv2.COLOR_BGRA2RGB)
     rr.log("img_reference", rr.Image(img_rgb, "rgb"))

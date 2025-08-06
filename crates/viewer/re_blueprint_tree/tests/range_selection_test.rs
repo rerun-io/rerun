@@ -1,36 +1,29 @@
 #![cfg(feature = "testing")]
 
-use egui::Vec2;
-use egui_kittest::kittest::{Key, Queryable as _};
+use egui::{Modifiers, Vec2};
+use egui_kittest::{OsThreshold, SnapshotOptions, kittest::Queryable as _};
 use re_blueprint_tree::BlueprintTree;
-use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::RowId;
-use re_log_types::{build_frame_nr, Timeline};
+use re_chunk_store::external::re_chunk::ChunkBuilder;
+use re_log_types::{Timeline, build_frame_nr};
+use re_test_context::TestContext;
+use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Points3D;
-use re_viewer_context::test_context::TestContext;
-use re_viewer_context::{Contents, RecommendedView, ViewClass as _, VisitorControlFlow};
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
+use re_viewer_context::{Contents, ViewClass as _, VisitorControlFlow};
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 #[test]
 fn test_range_selection_in_blueprint_tree() {
-    let mut test_context = TestContext::default();
-
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     for i in 0..=10 {
-        test_context.log_entity(format!("/entity{i}").into(), add_point_to_chunk_builder);
+        test_context.log_entity(format!("/entity{i}"), add_point_to_chunk_builder);
     }
 
-    test_context.setup_viewport_blueprint(|_, blueprint| {
-        blueprint.add_views(
-            std::iter::once(ViewBlueprint::new(
-                re_view_spatial::SpatialView3D::identifier(),
-                RecommendedView::root(),
-            )),
-            None,
-            None,
-        );
+    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            re_view_spatial::SpatialView3D::identifier(),
+        ))
     });
 
     let mut blueprint_tree = BlueprintTree::default();
@@ -48,7 +41,7 @@ fn test_range_selection_in_blueprint_tree() {
                 .default_width(400.0)
                 .show(ctx, |ui| {
                     test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                        let blueprint = ViewportBlueprint::try_from_db(
+                        let blueprint = ViewportBlueprint::from_db(
                             viewer_ctx.store_context.blueprint,
                             viewer_ctx.blueprint_query,
                         );
@@ -83,27 +76,26 @@ fn test_range_selection_in_blueprint_tree() {
 
     harness.run();
     let node2 = harness.get_by_label("entity2");
-    node2.key_down(Key::Shift);
-    node2.click();
-    node2.key_up(Key::Shift);
+    node2.click_modifiers(Modifiers::SHIFT);
     harness.run();
 
     let node5 = harness.get_by_label("entity5");
-    node5.key_down(Key::Command);
-    node5.click();
-    node5.key_up(Key::Command);
+    node5.click_modifiers(Modifiers::COMMAND);
     harness.run();
 
     let node10 = harness.get_by_label("entity10");
-    node10.key_down(Key::Command);
-    node10.key_down(Key::Shift);
-    node10.click();
-    node10.key_up(Key::Command);
-    node10.key_up(Key::Shift);
+    node10.click_modifiers(Modifiers::SHIFT | Modifiers::COMMAND);
 
     harness.run();
 
-    harness.snapshot("range_selection_in_blueprint_tree");
+    harness.snapshot_options(
+        "range_selection_in_blueprint_tree",
+        // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
+        // (Software Rasterizer on CI seems fine with the default).
+        &SnapshotOptions::new()
+            .threshold(OsThreshold::new(SnapshotOptions::default().threshold).windows(0.8))
+            .failed_pixel_count_threshold(OsThreshold::new(0).windows(10)),
+    );
 }
 
 fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {

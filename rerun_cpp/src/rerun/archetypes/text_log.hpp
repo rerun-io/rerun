@@ -9,7 +9,6 @@
 #include "../components/color.hpp"
 #include "../components/text.hpp"
 #include "../components/text_log_level.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -91,25 +90,20 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> color;
 
       public:
-        static constexpr const char IndicatorComponentName[] = "rerun.components.TextLogIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.TextLog";
 
         /// `ComponentDescriptor` for the `text` field.
         static constexpr auto Descriptor_text = ComponentDescriptor(
-            ArchetypeName, "text", Loggable<rerun::components::Text>::Descriptor.component_name
+            ArchetypeName, "TextLog:text", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `level` field.
         static constexpr auto Descriptor_level = ComponentDescriptor(
-            ArchetypeName, "level",
-            Loggable<rerun::components::TextLogLevel>::Descriptor.component_name
+            ArchetypeName, "TextLog:level", Loggable<rerun::components::TextLogLevel>::ComponentType
         );
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
-            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "TextLog:color", Loggable<rerun::components::Color>::ComponentType
         );
 
       public:

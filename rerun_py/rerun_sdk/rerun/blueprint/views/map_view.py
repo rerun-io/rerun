@@ -23,6 +23,8 @@ class MapView(View):
     """
     **View**: A 2D map view to display geospatial primitives.
 
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
     Example
     -------
     ### Use a blueprint to create a map view.:

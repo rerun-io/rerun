@@ -51,7 +51,7 @@ def script_add_args(parser: ArgumentParser) -> None:
         action="store_true",
         help="Serve a web viewer (WARNING: experimental feature)",
     )
-    parser.add_argument("--url", type=str, default=None, help="Connect to this HTTP(S) URL")
+    parser.add_argument("--url", type=str, default=None, help="Connect to this Rerun URL")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
         "-o",
@@ -107,7 +107,8 @@ def script_setup(
     if args.stdout:
         rec.stdout(default_blueprint=default_blueprint)
     elif args.serve:
-        rec.serve_web(default_blueprint=default_blueprint)
+        connect_to = rec.serve_grpc(default_blueprint=default_blueprint)
+        rr.serve_web_viewer(open_browser=True, connect_to=connect_to)
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default URL.

@@ -12,11 +12,12 @@
 //! The bread crumbs hierarchy should be identical to the hierarchy in the
 //! either the blueprint tree panel, or the streams/time panel.
 
+use egui::Color32;
 use re_chunk::EntityPath;
 use re_data_ui::item_ui::{cursor_interact_with_selectable, guess_instance_path_icon};
 use re_entity_db::InstancePath;
 use re_log_types::EntityPathPart;
-use re_ui::{icons, list_item, DesignTokens, SyntaxHighlighting as _, UiExt as _};
+use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::{Contents, Item, ViewId, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -31,8 +32,10 @@ pub fn item_heading_with_breadcrumbs(
 ) {
     re_tracing::profile_function!();
 
+    let tokens = ui.tokens();
+
     ui.list_item()
-        .with_height(DesignTokens::title_bar_height())
+        .with_height(tokens.title_bar_height())
         .interactive(false)
         .selected(true)
         .show_flat(
@@ -40,23 +43,30 @@ pub fn item_heading_with_breadcrumbs(
             list_item::CustomContent::new(|ui, _| {
                 ui.spacing_mut().item_spacing.x = 4.0;
 
-                {
-                    // No background rectangles, even for hovered items
-                    let visuals = ui.visuals_mut();
-                    visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
-                    visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
-                    visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
-                    visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-                }
+                let tokens = ui.tokens();
 
                 // First the C>R>U>M>B>S>
+                // where icon color follows text color:
                 {
-                    let previous_style = ui.style().clone();
-                    // Dimmer colors for breadcrumbs
                     let visuals = ui.visuals_mut();
-                    visuals.widgets.inactive.fg_stroke.color = egui::hex_color!("#6A8CD0"); // TODO(#3133): use design tokens
-                    item_bread_crumbs_ui(ctx, viewport, ui, item);
-                    ui.set_style(previous_style);
+                    visuals.widgets.noninteractive.weak_bg_fill = Color32::TRANSPARENT;
+                    visuals.widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
+                    visuals.widgets.active.weak_bg_fill = tokens.surface_on_primary_hovered;
+                    visuals.widgets.hovered.weak_bg_fill = tokens.surface_on_primary_hovered;
+
+                    visuals.widgets.noninteractive.fg_stroke.color = tokens.icon_color_on_primary;
+                    visuals.widgets.inactive.fg_stroke.color = tokens.icon_color_on_primary;
+                    visuals.widgets.active.fg_stroke.color = tokens.icon_color_on_primary_hovered;
+                    visuals.widgets.hovered.fg_stroke.color = tokens.icon_color_on_primary_hovered;
+                }
+
+                item_bread_crumbs_ui(ctx, viewport, ui, item);
+                {
+                    let visuals = ui.visuals_mut();
+                    visuals.widgets.noninteractive.fg_stroke.color = tokens.text_color_on_primary;
+                    visuals.widgets.inactive.fg_stroke.color = tokens.text_color_on_primary;
+                    visuals.widgets.active.fg_stroke.color = tokens.text_color_on_primary_hovered;
+                    visuals.widgets.hovered.fg_stroke.color = tokens.text_color_on_primary_hovered;
                 }
 
                 // Then the full name of the main item:
@@ -73,7 +83,12 @@ fn item_bread_crumbs_ui(
     item: &Item,
 ) {
     match item {
-        Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => {
+        Item::AppId(_)
+        | Item::DataSource(_)
+        | Item::StoreId(_)
+        | Item::RedapEntry(_)
+        | Item::RedapServer(_)
+        | Item::TableId(_) => {
             // These have no bread crumbs, at least not currently.
             // I guess one could argue that the `StoreId` should have the `AppId` as its ancestor?
         }
@@ -138,7 +153,7 @@ fn item_bread_crumbs_ui(
                 let relative = &entity_path.as_slice()[common_ancestor.len()..];
 
                 let is_projection = !entity_path.starts_with(&view.space_origin);
-                // TODO(#4491): the projection breadcrumbs are wrong for nuscenes (but correct for arkit!),
+                // TODO(#10649): the projection breadcrumbs are wrong for nuscenes (but correct for arkit!),
                 // at least if we consider the blueprint tree panel as "correct".
                 // I fear we need to use the undocumented `DataResultNodeOrPath` and friends to match the
                 // hierarchy of the blueprint tree panel.
@@ -192,7 +207,10 @@ fn last_part_of_item_heading(
         | Item::DataSource { .. }
         | Item::Container { .. }
         | Item::View { .. }
-        | Item::StoreId { .. } => true,
+        | Item::TableId { .. }
+        | Item::StoreId { .. }
+        | Item::RedapEntry(_)
+        | Item::RedapServer(_) => true,
 
         Item::InstancePath { .. } | Item::DataResult { .. } | Item::ComponentPath { .. } => false,
     };
@@ -230,8 +248,7 @@ fn viewport_breadcrumbs(
         tooltip,
     } = ItemTitle::from_contents(ctx, viewport, &contents);
 
-    let mut response =
-        ui.add(egui::Button::image(icon.as_image()).image_tint_follows_text_color(true));
+    let mut response = ui.add(icon.as_button());
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
@@ -244,7 +261,7 @@ pub fn separator_icon_ui(ui: &mut egui::Ui) {
     ui.add(
         icons::BREADCRUMBS_SEPARATOR
             .as_image()
-            .tint(ui.visuals().text_color().gamma_multiply(0.65)),
+            .tint(ui.tokens().icon_color_on_primary),
     );
 }
 
@@ -285,7 +302,7 @@ fn entity_path_breadcrumbs(
             // just to make it clear that this is a different kind of hierarchy.
             &icons::RECORDING // streams hierarchy
         };
-        egui::Button::image(icon.as_image()).image_tint_follows_text_color(true)
+        icon.as_button()
     };
 
     let response = ui.add(button);

@@ -18,16 +18,39 @@ pub fn compare(a: &str, b: &str) -> Ordering {
     )
 }
 
+// ------------------------------------------------------------------------
+
+/// Helper for ordering strings
+pub struct OrderedString(pub String);
+
+impl PartialEq for OrderedString {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for OrderedString {}
+
+impl PartialOrd for OrderedString {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for OrderedString {
+    fn cmp(&self, other: &Self) -> Ordering {
+        compare(&self.0, &other.0)
+    }
+}
+
+// ------------------------------------------------------------------------
+
 // Ignore case when ordering, so that `a < B < b < c`
 fn compare_chars(a: char, b: char) -> Ordering {
     let al = a.to_ascii_lowercase();
     let bl = b.to_ascii_lowercase();
 
-    if al == bl {
-        a.cmp(&b)
-    } else {
-        al.cmp(&bl)
-    }
+    if al == bl { a.cmp(&b) } else { al.cmp(&bl) }
 }
 
 #[test]
@@ -50,6 +73,12 @@ fn test_natural_ordering() {
                     "Got {x:?} {} {y:?}; expected {x:?} {} {y:?}",
                     ordering_str(actual_ordering),
                     ordering_str(expected_ordering),
+                );
+
+                assert_eq!(
+                    OrderedString(x.to_owned()).cmp(&OrderedString(y.to_owned())),
+                    expected_ordering,
+                    "OrderedString should work the same"
                 );
             }
         }

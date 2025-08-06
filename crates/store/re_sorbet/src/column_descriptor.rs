@@ -1,4 +1,4 @@
-// TODO(#6889): At some point all these descriptors needs to be interned and have handles or
+// TODO(#10460): At some point all these descriptors needs to be interned and have handles or
 // something. And of course they need to be codegen. But we'll get there once we're back to
 // natively tagged components.
 
@@ -8,30 +8,42 @@ use arrow::datatypes::{
 };
 
 use re_log_types::EntityPath;
+use re_types_core::{ArchetypeName, ComponentType};
 
-use crate::{ComponentColumnDescriptor, IndexColumnDescriptor, MetadataExt as _};
+use crate::{ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ColumnError {
     #[error(transparent)]
     MissingFieldMetadata(#[from] crate::MissingFieldMetadata),
 
-    #[error("Unsupported column rerun.kind: {kind:?}. Expected one of: index, data")]
-    UnsupportedColumnKind { kind: String },
+    #[error(transparent)]
+    UnknownColumnKind(#[from] crate::UnknownColumnKind),
+
+    #[error("Unsupported column rerun:kind: {kind:?}. Expected one of: index, data")]
+    UnsupportedColumnKind { kind: ColumnKind },
 
     #[error(transparent)]
     UnsupportedTimeType(#[from] crate::UnsupportedTimeType),
 }
 
-// Describes any kind of column.
-//
-// See:
-// * [`IndexColumnDescriptor`]
-// * [`ComponentColumnDescriptor`]
-//TODO(#9034): This should support RowId as well, but this has ramifications on the dataframe API.
+/// Describes any kind of column.
+///
+/// See:
+/// * [`RowIdColumnDescriptor`]
+/// * [`IndexColumnDescriptor`]
+/// * [`ComponentColumnDescriptor`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ColumnDescriptor {
+    /// The primary row id column.
+    ///
+    /// There should usually only be one of these.
+    RowId(RowIdColumnDescriptor),
+
+    /// Index columns (timelines).
     Time(IndexColumnDescriptor),
+
+    /// The actual component data
     Component(ComponentColumnDescriptor),
 }
 
@@ -41,7 +53,7 @@ impl ColumnDescriptor {
     #[track_caller]
     pub fn sanity_check(&self) {
         match self {
-            Self::Time(_) => {}
+            Self::RowId(_) | Self::Time(_) => {}
             Self::Component(descr) => descr.sanity_check(),
         }
     }
@@ -49,23 +61,33 @@ impl ColumnDescriptor {
     #[inline]
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
-            Self::Time(_) => None,
+            Self::RowId(_) | Self::Time(_) => None,
             Self::Component(descr) => Some(&descr.entity_path),
         }
     }
 
     #[inline]
-    pub fn short_name(&self) -> String {
+    pub fn component_type(&self) -> Option<&ComponentType> {
         match self {
+            Self::RowId(_) | Self::Time(_) => None,
+            Self::Component(descr) => descr.component_type.as_ref(),
+        }
+    }
+
+    /// Short and usually unique, used in UI.
+    #[inline]
+    pub fn display_name(&self) -> String {
+        match self {
+            Self::RowId(descr) => descr.short_name(),
             Self::Time(descr) => descr.column_name().to_owned(),
-            Self::Component(descr) => descr.component_name.short_name().to_owned(),
+            Self::Component(descr) => descr.display_name().to_owned(),
         }
     }
 
     #[inline]
     pub fn is_static(&self) -> bool {
         match self {
-            Self::Time(_) => false,
+            Self::RowId(_) | Self::Time(_) => false,
             Self::Component(descr) => descr.is_static,
         }
     }
@@ -73,6 +95,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn arrow_datatype(&self) -> ArrowDatatype {
         match self {
+            Self::RowId(descr) => descr.datatype(),
             Self::Time(descr) => descr.datatype().clone(),
             Self::Component(descr) => descr.returned_datatype(),
         }
@@ -81,6 +104,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn to_arrow_field(&self, batch_type: crate::BatchType) -> ArrowField {
         match self {
+            Self::RowId(descr) => descr.to_arrow_field(),
             Self::Time(descr) => descr.to_arrow_field(),
             Self::Component(descr) => descr.to_arrow_field(batch_type),
         }
@@ -105,6 +129,13 @@ impl ColumnDescriptor {
             .map(|field| Self::try_from_arrow_field(chunk_entity_path, field.as_ref()))
             .collect()
     }
+
+    pub fn archetype_name(&self) -> Option<ArchetypeName> {
+        match self {
+            Self::Component(component) => component.archetype,
+            _ => None,
+        }
+    }
 }
 
 impl ColumnDescriptor {
@@ -114,17 +145,16 @@ impl ColumnDescriptor {
         chunk_entity_path: Option<&EntityPath>,
         field: &ArrowField,
     ) -> Result<Self, ColumnError> {
-        let kind = field.get_or_err("rerun.kind")?;
-        match kind {
-            "index" | "time" => Ok(Self::Time(IndexColumnDescriptor::try_from(field)?)),
+        match ColumnKind::try_from(field)? {
+            ColumnKind::RowId => Err(ColumnError::UnsupportedColumnKind {
+                kind: ColumnKind::RowId,
+            }),
 
-            "data" => Ok(Self::Component(
+            ColumnKind::Index => Ok(Self::Time(IndexColumnDescriptor::try_from(field)?)),
+
+            ColumnKind::Component => Ok(Self::Component(
                 ComponentColumnDescriptor::from_arrow_field(chunk_entity_path, field),
             )),
-
-            _ => Err(ColumnError::UnsupportedColumnKind {
-                kind: kind.to_owned(),
-            }),
         }
     }
 }
@@ -140,14 +170,13 @@ fn test_schema_over_ipc() {
         )),
         ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: re_log_types::EntityPath::from("/some/path"),
-            archetype_name: Some("archetype".to_owned().into()),
-            archetype_field_name: Some("field".to_owned().into()),
-            component_name: re_types_core::ComponentName::new("component"),
+            archetype: Some("archetype".to_owned().into()),
+            component: "component".to_owned().into(),
+            component_type: Some(re_types_core::ComponentType::new("component_type")),
             store_datatype: arrow::datatypes::DataType::Int64,
             is_static: true,
             is_tombstone: false,
             is_semantically_empty: false,
-            is_indicator: true,
         }),
     ];
 

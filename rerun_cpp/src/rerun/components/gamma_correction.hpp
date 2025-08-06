@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../component_descriptor.hpp"
 #include "../datatypes/float32.hpp"
 #include "../result.hpp"
 
@@ -16,7 +15,7 @@ namespace rerun::components {
     /// Used to adjust the gamma of a color or scalar value between 0 and 1 before rendering.
     /// `new_value = old_value ^ gamma`
     ///
-    /// Valid range is from 0 (excluding) to max float.
+    /// Must be a positive number.
     /// Defaults to 1.0 unless otherwise specified.
     struct GammaCorrection {
         rerun::datatypes::Float32 gamma;
@@ -51,7 +50,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::GammaCorrection> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.components.GammaCorrection";
+        static constexpr std::string_view ComponentType = "rerun.components.GammaCorrection";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

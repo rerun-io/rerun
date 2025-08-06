@@ -30,6 +30,8 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
     The default visual time range depends on the type of view this property applies to:
     - For time series views, the default is to show the entire timeline.
     - For any other view, the default is to apply latest-at semantics.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     # __init__ can be found in visible_time_ranges_ext.py

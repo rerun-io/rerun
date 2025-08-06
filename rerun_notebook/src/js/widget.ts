@@ -3,7 +3,8 @@ import {
   type Panel,
   type PanelState,
   WebViewer,
-} from "@rerun-io/web-viewer/inlined.js";
+  type WebViewerOptions,
+} from "@rerun-io/web-viewer";
 
 import type { AnyModel, Render } from "@anywidget/types";
 import "./widget.css";
@@ -14,124 +15,84 @@ const PANELS = ["top", "blueprint", "selection", "time"] as const;
 
 /* Specifies attributes defined with traitlets in ../rerun_notebook/__init__.py */
 interface WidgetModel {
-  _width?: number;
-  _height?: number;
+  _width: number | string;
+  _height: number | string;
 
   _url?: string;
   _panel_states?: PanelStates;
-  _time_ctrl: [timeline: string | null, time: number | null, play: boolean];
-  _recording_id?: string;
+
+  _fallback_token?: string;
 }
 
 type Opt<T> = T | null | undefined;
+
+function _resize(el: HTMLElement, width: number | string, height: number | string) {
+  const style = el.style;
+
+  if (typeof width === "string" && width === "auto") {
+    style.width = "100%";
+  } else if (typeof width === "number") {
+    style.width = `${Math.max(200, width)}px`;
+  } else {
+    style.width = "640px";
+  }
+
+  if (typeof height === "string" && height === "auto") {
+    style.height = "auto";
+    style.aspectRatio = "16 / 9";
+  } else if (typeof height === "number") {
+    style.height = `${Math.max(200, height)}px`;
+    style.aspectRatio = "";
+  } else {
+    style.height = "640px";
+    style.aspectRatio = "";
+  }
+}
 
 class ViewerWidget {
   viewer: WebViewer = new WebViewer();
   url: Opt<string> = null;
   panel_states: Opt<PanelStates> = null;
-  options = { hide_welcome_screen: true };
+  options: WebViewerOptions = {
+    hide_welcome_screen: true,
+    width: "100%",
+    height: "100%",
+  };
 
   channel: LogChannel | null = null;
 
-  constructor(model: AnyModel<WidgetModel>) {
+  constructor(model: AnyModel<WidgetModel>, el: HTMLElement) {
     this.url = model.get("_url");
-    model.on("change:_url", this.on_change_url);
 
     this.panel_states = model.get("_panel_states");
     model.on("change:_panel_states", this.on_change_panel_states);
 
-    model.on("change:_width", (_, width) => this.on_resize(null, { width }));
-    model.on("change:_height", (_, height) => this.on_resize(null, { height }));
+    model.on("change:_width", (_, width) => this.on_resize(el, width, model.get("_height")));
+    model.on("change:_height", (_, height) => this.on_resize(el, model.get("_width"), height));
 
     model.on("msg:custom", this.on_custom_message);
 
-    model.on("change:_time_ctrl", (_, [timeline, time, play]) =>
-      this.on_time_ctrl(null, timeline, time, play),
-    );
-    model.on("change:_recording_id", this.on_set_recording_id);
+    this.options.fallback_token = model.get("_fallback_token");
 
-    // The entire object passed to `model.send` must be JSON-serializable.
-    // The shape is:
-    //   {
-    //     event: string;
-    //     payload: any;
-    //   }
-
-    this.viewer.on("selectionchange", (items) => {
-      model.send({
-        event: "selectionchange",
-        payload: items,
-      });
-    });
-    this.viewer.on("timelinechange", (timeline, time) => {
-      model.send({
-        event: "timelinechange",
-        payload: { timeline, time },
-      });
-    });
-    this.viewer.on("timeupdate", (time) => {
-      model.send({
-        event: "timeupdate",
-        payload: time,
-      });
-    });
+    (this.viewer as any)._on_raw_event((event: string) => model.send(event));
 
     this.viewer.on("ready", () => {
       this.channel = this.viewer.open_channel("temp");
-
-      this.on_resize(null, {
-        width: model.get("_width"),
-        height: model.get("_height"),
-      });
+      this.on_change_panel_states(null, this.panel_states);
 
       model.send("ready");
     });
-  }
 
-  async start(el: HTMLElement) {
-    await this.viewer.start(this.url ?? null, el, this.options);
-
-    this.on_change_panel_states(null, this.panel_states);
+    this.viewer.start(this.url ?? null, el, this.options);
+    this.on_resize(el, model.get("_width"), model.get("_height"));
   }
 
   stop() {
     this.viewer.stop();
   }
 
-  on_resize = (_: unknown, new_size: { width?: number; height?: number }) => {
-    const canvas = this.viewer.canvas;
-    if (!canvas) throw new Error("on_resize called before viewer ready");
-
-    const MIN_WIDTH = 200;
-    const MIN_HEIGHT = 200;
-
-    if (new_size.width) {
-      const newWidth = Math.max(new_size.width, MIN_WIDTH);
-      canvas.style.width = `${newWidth}px`;
-      canvas.style.minWidth = "none";
-      canvas.style.maxWidth = "none";
-    } else {
-      canvas.style.width = "";
-      canvas.style.minWidth = "";
-      canvas.style.maxWidth = "";
-    }
-
-    if (new_size.height) {
-      const newHeight = Math.max(new_size.height, MIN_HEIGHT);
-      canvas.style.height = `${newHeight}px`;
-      canvas.style.minHeight = "none";
-      canvas.style.maxHeight = "none";
-    } else {
-      canvas.style.height = "";
-      canvas.style.minHeight = "";
-      canvas.style.maxHeight = "";
-    }
-  };
-
-  on_change_url = (_: unknown, new_url?: Opt<string>) => {
-    if (this.url) this.viewer.close(this.url);
-    if (new_url) this.viewer.open(new_url);
-    this.url = new_url;
+  on_resize(parent: HTMLElement, width: number | string, height: number | string) {
+    _resize(parent, width, height)
   };
 
   on_change_panel_states = (
@@ -146,21 +107,47 @@ class ViewerWidget {
   };
 
   on_custom_message = (msg: any, buffers: DataView[]) => {
-    if (msg?.type === "rrd") {
-      if (!this.channel)
-        throw new Error("on_custom_message called before channel init");
-      this.channel.send_rrd(new Uint8Array(buffers[0].buffer));
-    } else {
-      console.log("unknown message type", msg, buffers);
+    switch (msg?.type) {
+      case "rrd": {
+        if (!this.channel)
+          throw new Error("on_custom_message called before channel init");
+        this.channel.send_rrd(new Uint8Array(buffers[0].buffer));
+        break;
+      }
+      case "table": {
+        if (!this.channel)
+          throw new Error("on_custom_message called before channel init")
+        this.channel.send_table(new Uint8Array(buffers[0].buffer));
+        break;
+      }
+      case "time_ctrl": {
+        this.set_time_ctrl(msg.timeline ?? null, msg.time ?? null, msg.play ?? false);
+        break;
+      }
+      case "recording_id": {
+        this.set_recording_id(msg.recording_id ?? null)
+        break;
+      }
+      case "open_url": {
+        this.viewer.open(msg.url)
+        break;
+      }
+      case "close_url": {
+        this.viewer.close(msg.url)
+        break;
+      }
+      default: {
+        console.error("received unknown message type", msg, buffers);
+        throw new Error(`unknown message type ${msg}, check console for more details`);
+      }
     }
   };
 
-  on_time_ctrl = (
-    _: unknown,
+  set_time_ctrl(
     timeline: string | null,
     time: number | null,
     play: boolean,
-  ) => {
+  ) {
     let recording_id = this.viewer.get_active_recording_id();
     if (recording_id === null) {
       return;
@@ -187,7 +174,7 @@ class ViewerWidget {
     }
   };
 
-  on_set_recording_id = (_: unknown, recording_id: string | null) => {
+  set_recording_id(recording_id: string | null) {
     if (recording_id === null) {
       return;
     }
@@ -196,11 +183,15 @@ class ViewerWidget {
   };
 }
 
+
+
 const render: Render<WidgetModel> = ({ model, el }) => {
   el.classList.add("rerun_notebook");
 
-  let widget = new ViewerWidget(model);
-  widget.start(el);
+  const container = document.createElement("div");
+  el.append(container);
+
+  let widget = new ViewerWidget(model, container);
   return () => widget.stop();
 };
 
@@ -218,5 +209,6 @@ function error_boundary<Fn extends (...args: any[]) => any>(f: Fn): Fn {
 
   return wrapper as any;
 }
+
 
 export default { render: error_boundary(render) };

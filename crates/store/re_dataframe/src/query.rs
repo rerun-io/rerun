@@ -1,8 +1,8 @@
 use std::{
     collections::BTreeSet,
     sync::{
-        atomic::{AtomicU64, Ordering},
         OnceLock,
+        atomic::{AtomicU64, Ordering},
     },
 };
 
@@ -20,20 +20,21 @@ use arrow::{
 use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
 
-use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
+use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_chunk::{
-    external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
-    TimelineName, UnitChunkShared,
+    Chunk, EntityPath, RangeQuery, RowId, TimeInt, TimelineName, UnitChunkShared,
+    external::arrow::array::ArrayRef,
 };
 use re_chunk_store::{
-    ChunkStore, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, Index, IndexColumnDescriptor, IndexValue, QueryExpression,
-    SparseFillStrategy, TimeColumnSelector,
+    ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
+    IndexValue, QueryExpression, SparseFillStrategy,
 };
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
-use re_sorbet::SorbetColumnDescriptors;
-use re_types_core::{components::ClearIsRecursive, ComponentDescriptor};
+use re_sorbet::{
+    ChunkColumnDescriptors, ColumnSelector, RowIdColumnDescriptor, TimeColumnSelector,
+};
+use re_types_core::{ComponentDescriptor, Loggable as _, archetypes, arrow_helpers::as_array_ref};
 
 // ---
 
@@ -77,7 +78,7 @@ struct QueryHandleState {
     /// Describes the columns that make up this view.
     ///
     /// See [`QueryExpression::view_contents`].
-    view_contents: SorbetColumnDescriptors,
+    view_contents: ChunkColumnDescriptors,
 
     /// Describes the columns specifically selected to be returned from this view.
     ///
@@ -159,6 +160,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// Lazily initialize internal private state.
     ///
     /// It is important that query handles stay cheap to create.
+    #[tracing::instrument(level = "debug", skip_all)]
     fn init(&self) -> &QueryHandleState {
         self.engine
             .with(|store, cache| self.state.get_or_init(|| self.init_(store, cache)))
@@ -258,9 +260,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         chunk
                             .add_component(
                                 re_types_core::ComponentDescriptor {
-                                    component_name: descr.component_name,
-                                    archetype_name: descr.archetype_name,
-                                    archetype_field_name: descr.archetype_field_name,
+                                    component_type: descr.component_type,
+                                    archetype: descr.archetype,
+                                    component: descr.component,
                                 },
                                 re_arrow_util::new_list_array_of_empties(
                                     &child_datatype,
@@ -335,20 +337,26 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             selected_contents
                 .iter()
                 .map(|(_view_idx, descr)| match descr {
-                    ColumnDescriptor::Time(_) => None,
+                    ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => None,
                     ColumnDescriptor::Component(descr) => {
                         descr.sanity_check();
 
                         let query =
                             re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
-                        let results = cache.latest_at(
-                            &query,
-                            &descr.entity_path,
-                            [ComponentDescriptor::from(descr)],
-                        );
+                        let component_descriptor = store
+                            .entity_component_descriptor(
+                                &descr.entity_path,
+                                descr.archetype,
+                                descr.component,
+                            )
+                            .into_iter()
+                            .next()?;
 
-                        results.components.get(&descr.component_name).cloned()
+                        let results =
+                            cache.latest_at(&query, &descr.entity_path, [&component_descriptor]);
+
+                        results.components.into_values().next()
                     }
                 })
                 .collect_vec()
@@ -370,6 +378,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         }
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     #[allow(clippy::unused_self)]
     fn compute_user_selection(
         &self,
@@ -379,6 +388,21 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         selection
             .iter()
             .map(|column| match column {
+                ColumnSelector::RowId => view_contents
+                    .iter()
+                    .enumerate()
+                    .find_map(|(idx, view_column)| {
+                        if let ColumnDescriptor::RowId(descr) = view_column {
+                            Some((idx, ColumnDescriptor::RowId(descr.clone())))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or((
+                        usize::MAX,
+                        ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
+                    )),
+
                 ColumnSelector::Time(selected_column) => {
                     let TimeColumnSelector {
                         timeline: selected_timeline,
@@ -387,11 +411,16 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     view_contents
                         .iter()
                         .enumerate()
-                        .filter_map(|(idx, view_column)| match view_column {
-                            ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
-                            ColumnDescriptor::Component(_) => None,
+                        .filter_map(|(idx, view_column)| {
+                            if let ColumnDescriptor::Time(view_descr) = view_column {
+                                Some((idx, view_descr))
+                            } else {
+                                None
+                            }
                         })
-                        .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
+                        .find(|(_idx, view_descr)| {
+                            *view_descr.timeline().name() == *selected_timeline
+                        })
                         .map_or_else(
                             || {
                                 (
@@ -405,52 +434,35 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         )
                 }
 
-                ColumnSelector::Component(selected_column) => {
-                    let ComponentColumnSelector {
-                        entity_path: selected_entity_path,
-                        component_name: selected_component_name,
-                    } = selected_column;
-
-                    debug_assert!(
-                        !selected_component_name.starts_with("rerun.components.rerun.components."),
-                        "Found component with full name {selected_component_name:?}. Maybe some bad round-tripping?"
-                    );
-
-                    view_contents
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(idx, view_column)| match view_column {
-                            ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
-                            ColumnDescriptor::Time(_) => None,
-                        })
-                        .find(|(_idx, view_descr)| {
-                            view_descr.entity_path == *selected_entity_path
-                                && view_descr.component_name.matches(selected_component_name)
-                        })
-                        .map_or_else(
-                            || {
-                                (
-                                    usize::MAX,
-                                    ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                        entity_path: selected_entity_path.clone(),
-                                        archetype_name: None,
-                                        archetype_field_name: None,
-                                        component_name: ComponentName::from(
-                                            selected_component_name.clone(),
-                                        ),
-                                        store_datatype: ArrowDataType::Null,
-                                        is_static: false,
-                                        is_indicator: false,
-                                        is_tombstone: false,
-                                        is_semantically_empty: false,
-                                    }),
-                                )
-                            },
-                            |(idx, view_descr)| {
-                                (idx, ColumnDescriptor::Component(view_descr.clone()))
-                            },
-                        )
-                }
+                ColumnSelector::Component(selected_column) => view_contents
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, view_column)| {
+                        if let ColumnDescriptor::Component(view_descr) = view_column {
+                            Some((idx, view_descr))
+                        } else {
+                            None
+                        }
+                    })
+                    .find(|(_idx, view_descr)| view_descr.matches(selected_column))
+                    .map_or_else(
+                        || {
+                            (
+                                usize::MAX,
+                                ColumnDescriptor::Component(ComponentColumnDescriptor {
+                                    entity_path: selected_column.entity_path.clone(),
+                                    archetype: None,
+                                    component: selected_column.component.as_str().into(),
+                                    component_type: None,
+                                    store_datatype: ArrowDataType::Null,
+                                    is_static: false,
+                                    is_tombstone: false,
+                                    is_semantically_empty: false,
+                                }),
+                            )
+                        },
+                        |(idx, view_descr)| (idx, ColumnDescriptor::Component(view_descr.clone())),
+                    ),
             })
             .collect_vec()
     }
@@ -468,7 +480,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .iter()
             .enumerate()
             .map(|(idx, selected_column)| match selected_column {
-                ColumnDescriptor::Time(_) => Vec::new(),
+                ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => Vec::new(),
 
                 ColumnDescriptor::Component(column) => {
                     let chunks = self
@@ -476,9 +488,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         .unwrap_or_default();
 
                     if let Some(pov) = self.query.filtered_is_not_null.as_ref() {
-                        if pov.entity_path == column.entity_path
-                            && column.component_name.matches(&pov.component_name)
-                        {
+                        if column.matches(pov) {
                             view_pov_chunks_idx = Some(idx);
                         }
                     }
@@ -505,7 +515,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         /// Returns all the ancestors of an [`EntityPath`].
         ///
         /// Doesn't return `entity_path` itself.
-        fn entity_path_ancestors(entity_path: &EntityPath) -> impl Iterator<Item = EntityPath> {
+        fn entity_path_ancestors(
+            entity_path: &EntityPath,
+        ) -> impl Iterator<Item = EntityPath> + use<> {
             std::iter::from_fn({
                 let mut entity_path = entity_path.parent();
                 move || {
@@ -524,7 +536,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         fn chunk_filter_recursive_only(chunk: &Chunk) -> Option<Chunk> {
             let list_array = chunk
                 .components()
-                .get_by_descriptor(&ClearIsRecursive::descriptor())?;
+                .get(&archetypes::Clear::descriptor_is_recursive())?;
 
             let values = list_array
                 .values()
@@ -545,16 +557,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             (!chunk.is_empty()).then_some(chunk)
         }
 
-        use re_types_core::Component as _;
-        let component_descrs = [&ComponentDescriptor::new(ClearIsRecursive::name())];
+        let component_descrs = [&archetypes::Clear::descriptor_is_recursive()];
 
         // All unique entity paths present in the view contents.
         let entity_paths: IntSet<EntityPath> = view_contents
             .iter()
-            .filter_map(|col| match col {
-                ColumnDescriptor::Component(descr) => Some(descr.entity_path.clone()),
-                ColumnDescriptor::Time(_) => None,
-            })
+            .filter_map(|col| col.entity_path().cloned())
             .collect();
 
         entity_paths
@@ -619,15 +627,15 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .components
             .into_iter()
             .next()
-            .map(|(_component_name, chunks)| {
+            .map(|(_component_descr, chunks)| {
                 chunks
                     .into_iter()
                     .map(|chunk| {
                         // NOTE: Keep in mind that the range APIs would have already taken care
                         // of A) sorting the chunk on the `filtered_index` (and row-id) and
-                        // B) densifying it according to the current `component_name`.
+                        // B) densifying it according to the current `component_type`.
                         // Both of these are mandatory requirements for the deduplication logic to
-                        // do what we want: keep the latest known value for `component_name` at all
+                        // do what we want: keep the latest known value for `component_type` at all
                         // remaining unique index values all while taking row-id ordering semantics
                         // into account.
                         debug_assert!(
@@ -660,7 +668,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// See [`QueryExpression::view_contents`].
     #[inline]
-    pub fn view_contents(&self) -> &SorbetColumnDescriptors {
+    pub fn view_contents(&self) -> &ChunkColumnDescriptors {
         &self.init().view_contents
     }
 
@@ -698,6 +706,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// the chunk's time range contains the `index_value`.
     ///
     /// I.e.: it's pretty cheap already.
+    #[tracing::instrument(level = "trace", skip_all)]
     #[inline]
     pub fn seek_to_row(&self, row_idx: usize) {
         let state = self.init();
@@ -727,6 +736,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// the chunk's time range contains the `index_value`.
     ///
     /// I.e.: it's pretty cheap already.
+    #[tracing::instrument(level = "debug", skip_all)]
     fn seek_to_index_value(&self, index_value: IndexValue) {
         re_tracing::profile_function!();
 
@@ -822,7 +832,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn next_row_async(&self) -> impl std::future::Future<Output = Option<Vec<ArrayRef>>>
+    pub fn next_row_async(
+        &self,
+    ) -> impl std::future::Future<Output = Option<Vec<ArrayRef>>> + use<E>
     where
         E: 'static + Send + Clone,
     {
@@ -858,6 +870,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         })
     }
 
+    #[tracing::instrument(level = "debug", skip_all)]
     pub fn _next_row(&self, store: &ChunkStore, cache: &QueryCache) -> Option<Vec<ArrowArrayRef>> {
         re_tracing::profile_function!();
 
@@ -1052,15 +1065,25 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
+                    let component_descriptor = store
+                        .entity_component_descriptor(
+                            &descr.entity_path,
+                            descr.archetype,
+                            descr.component,
+                        )
+                        .into_iter()
+                        .next()?;
+
                     let results = cache.latest_at(
                         &query,
                         &descr.entity_path.clone(),
-                        [ComponentDescriptor::from(descr.clone())],
+                        [&component_descriptor],
                     );
 
                     *streaming_state = results
                         .components
-                        .get(&descr.component_name)
+                        .into_values()
+                        .next()
                         .map(|unit| StreamingJoinState::Retrofilled(unit.clone()));
                 }
             }
@@ -1152,31 +1175,30 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let list_array = match streaming_state {
                         StreamingJoinState::StreamingJoinState(s) => {
                             debug_assert!(
-                                s.chunk.components().iter_flattened().count() <= 1,
+                                s.chunk.components().iter().count() <= 1,
                                 "cannot possibly get more than one component with this query"
                             );
 
                             s.chunk
                                 .components()
-                                .iter_flattened()
+                                .iter()
                                 .next()
                                 .map(|(_, list_array)| list_array.slice(s.cursor as usize, 1))
 
                         }
 
                         StreamingJoinState::Retrofilled(unit) => {
-                            let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| match col {
-                                ColumnDescriptor::Component(descr) => {
-                                    descr.component_name.sanity_check();
-                                    Some(re_types_core::ComponentDescriptor {
-                                        component_name: descr.component_name,
-                                        archetype_name: descr.archetype_name,
-                                        archetype_field_name: descr.archetype_field_name,
-                                    })
-                                },
-                                ColumnDescriptor::Time(_) => None,
+                            let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| if let ColumnDescriptor::Component(descr) = col {
+                                if let Some(component_type) = descr.component_type  { component_type.sanity_check(); }
+                                Some(re_types_core::ComponentDescriptor {
+                                    component_type: descr.component_type,
+                                    archetype: descr.archetype,
+                                    component: descr.component,
+                                })
+                            } else {
+                                None
                             })?;
-                            unit.components().get_by_descriptor(&component_desc).cloned()
+                            unit.components().get(&component_desc).cloned()
                         }
                     };
 
@@ -1199,6 +1221,19 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .selected_contents
             .iter()
             .map(|(view_idx, column)| match column {
+                ColumnDescriptor::RowId(_) => state
+                    .view_chunks
+                    .first()
+                    .and_then(|vec| vec.first()) // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
+                    .map(|(row_idx, chunk)| {
+                        as_array_ref(
+                            chunk
+                                .row_ids_array()
+                                .slice(row_idx.load(Ordering::Acquire) as _, 1),
+                        )
+                    })
+                    .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
+
                 ColumnDescriptor::Time(descr) => max_value_per_index
                     .get(descr.timeline().name())
                     .map_or_else(
@@ -1298,22 +1333,23 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 mod tests {
     use std::sync::Arc;
 
+    use arrow::array::{StringArray, UInt32Array};
     use arrow::compute::concat_batches;
     use insta::assert_snapshot;
 
-    use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
+    use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimePoint};
     use re_chunk_store::{
-        ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
+        ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, ResolvedTimeRange, TimeInt,
     };
     use re_format_arrow::format_record_batch;
     use re_log_types::{
-        build_frame_nr, build_log_time,
-        example_components::{MyColor, MyLabel, MyPoint},
-        EntityPath, Timeline,
+        EntityPath, Timeline, build_frame_nr, build_log_time,
+        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
     };
     use re_query::StorageEngine;
-    use re_types::components::ClearIsRecursive;
-    use re_types_core::Component as _;
+    use re_sorbet::ComponentColumnSelector;
+    use re_types::{AnyValues, AsComponents as _, ComponentDescriptor};
+    use re_types_core::components;
 
     use crate::{QueryCache, QueryEngine};
 
@@ -1605,11 +1641,13 @@ mod tests {
 
         // non-existing entity
         {
+            let ComponentDescriptor { component, .. } = MyPoints::descriptor_points();
+
             let query = QueryExpression {
                 filtered_index,
                 filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: "no/such/entity".into(),
-                    component_name: MyPoint::name().to_string(),
+                    component: component.to_string(),
                 }),
                 ..Default::default()
             };
@@ -1635,7 +1673,7 @@ mod tests {
                 filtered_index,
                 filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: "AComponentColumnThatDoesntExist".into(),
+                    component: "AFieldThatDoesntExist".to_owned(),
                 }),
                 ..Default::default()
             };
@@ -1657,11 +1695,13 @@ mod tests {
 
         // MyPoint
         {
+            let ComponentDescriptor { component, .. } = MyPoints::descriptor_points();
+
             let query = QueryExpression {
                 filtered_index,
                 filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: MyPoint::name().to_string(),
+                    component: component.to_string(),
                 }),
                 ..Default::default()
             };
@@ -1683,11 +1723,13 @@ mod tests {
 
         // MyColor
         {
+            let ComponentDescriptor { component, .. } = MyPoints::descriptor_colors();
+
             let query = QueryExpression {
                 filtered_index,
                 filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: MyColor::name().to_string(),
+                    component: component.to_string(),
                 }),
                 ..Default::default()
             };
@@ -1757,9 +1799,9 @@ mod tests {
                         entity_path.clone(),
                         Some(
                             [
-                                MyLabel::name(),
-                                MyColor::name(),
-                                "AColumnThatDoesntEvenExist".into(),
+                                MyPoints::descriptor_labels().component,
+                                MyPoints::descriptor_colors().component,
+                                ComponentIdentifier::new("AColumnThatDoesntEvenExist"),
                             ]
                             .into_iter()
                             .collect(),
@@ -1851,26 +1893,39 @@ mod tests {
             assert_snapshot!(DisplayRB(dataframe));
         }
 
-        // only components (+ duplication)
+        // duplication and non-existing
         {
+            let ComponentDescriptor { component, .. } = MyPoints::descriptor_points();
+
             let query = QueryExpression {
                 filtered_index: Some(filtered_index),
                 selection: Some(vec![
+                    // Duplication
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyColor::name().to_string(),
+                        component: component.to_string(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyColor::name().to_string(),
+                        component: component.to_string(),
                     }),
+                    // Non-existing entity
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: "non_existing_entity".into(),
-                        component_name: MyColor::name().to_string(),
+                        component: component.to_string(),
+                    }),
+                    // Non-existing components
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component: "MyPoints:AFieldThatDoesntExist".into(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: "AComponentColumnThatDoesntExist".into(),
+                        component: "AFieldThatDoesntExist".into(),
+                    }),
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component: "AArchetypeNameThatDoesNotExist:positions".into(),
                     }),
                 ]),
                 ..Default::default()
@@ -1893,6 +1948,8 @@ mod tests {
 
         // static
         {
+            let ComponentDescriptor { component, .. } = MyPoints::descriptor_labels();
+
             let query = QueryExpression {
                 filtered_index: Some(filtered_index),
                 selection: Some(vec![
@@ -1911,7 +1968,7 @@ mod tests {
                     //
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyLabel::name().to_string(),
+                        component: component.to_string(),
                     }),
                 ]),
                 ..Default::default()
@@ -1954,7 +2011,14 @@ mod tests {
                 view_contents: Some(
                     [(
                         entity_path.clone(),
-                        Some([MyColor::name(), MyLabel::name()].into_iter().collect()),
+                        Some(
+                            [
+                                MyPoints::descriptor_colors().component,
+                                MyPoints::descriptor_labels().component,
+                            ]
+                            .into_iter()
+                            .collect(),
+                        ),
                     )]
                     .into_iter()
                     .collect(),
@@ -1966,15 +2030,15 @@ mod tests {
                     //
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyPoint::name().to_string(),
+                        component: MyPoints::descriptor_points().component.to_string(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyColor::name().to_string(),
+                        component: MyPoints::descriptor_colors().component.to_string(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
-                        component_name: MyLabel::name().to_string(),
+                        component: MyPoints::descriptor_labels().component.to_string(),
                     }),
                 ]),
                 ..Default::default()
@@ -2117,11 +2181,12 @@ mod tests {
 
         // with pov
         {
+            let ComponentDescriptor { component, .. } = MyPoints::descriptor_points();
             let query = QueryExpression {
                 filtered_index,
                 filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
-                    component_name: MyPoint::name().to_string(),
+                    component: component.to_string(),
                 }),
                 ..Default::default()
             };
@@ -2237,6 +2302,61 @@ mod tests {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn query_static_any_values() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let store = ChunkStore::new_handle(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+
+        let any_values = AnyValues::default()
+            .with_field("yak", Arc::new(StringArray::from(vec!["yuk"])))
+            .with_field("foo", Arc::new(StringArray::from(vec!["bar"])))
+            .with_field("baz", Arc::new(UInt32Array::from(vec![42u32])));
+
+        let entity_path = EntityPath::from("test");
+
+        let chunk0 = Chunk::builder(entity_path.clone())
+            .with_serialized_batches(
+                RowId::new(),
+                TimePoint::default(),
+                any_values.as_serialized_batches(),
+            )
+            .build()?;
+
+        store.write().insert_chunk(&Arc::new(chunk0))?;
+
+        let engine = QueryEngine::from_store(store);
+
+        let query_expr = QueryExpression {
+            view_contents: None,
+            include_semantically_empty_columns: false,
+            include_tombstone_columns: false,
+            include_static_columns: re_chunk_store::StaticColumnSelection::Both,
+            filtered_index: None,
+            filtered_index_range: None,
+            filtered_index_values: None,
+            using_index_values: None,
+            filtered_is_not_null: None,
+            sparse_fill_strategy: re_chunk_store::SparseFillStrategy::None,
+            selection: None,
+        };
+
+        let query_handle = engine.query(query_expr);
+
+        let dataframe = concat_batches(
+            query_handle.schema(),
+            &query_handle.batch_iter().collect_vec(),
+        )?;
+        eprintln!("{}", format_record_batch(&dataframe.clone()));
+
+        assert_snapshot!(DisplayRB(dataframe));
 
         Ok(())
     }
@@ -2399,7 +2519,7 @@ mod tests {
     /// repeated timestamps, duplicated chunks, partial multi-timelines, flat and recursive clears, etc.
     fn create_nasty_store() -> anyhow::Result<ChunkStore> {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             ChunkStoreConfig::COMPACTION_DISABLED,
         );
 
@@ -2443,41 +2563,41 @@ mod tests {
                 row_id1_1,
                 [build_frame_nr(frame1), build_log_time(frame1.into())],
                 [
-                    (MyPoint::descriptor(), Some(&points1 as _)),
-                    (MyColor::descriptor(), None),
-                    (MyLabel::descriptor(), Some(&labels1 as _)), // shadowed by static
+                    (MyPoints::descriptor_points(), Some(&points1 as _)),
+                    (MyPoints::descriptor_colors(), None),
+                    (MyPoints::descriptor_labels(), Some(&labels1 as _)), // shadowed by static
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_3,
                 [build_frame_nr(frame3), build_log_time(frame3.into())],
                 [
-                    (MyPoint::descriptor(), Some(&points3 as _)),
-                    (MyColor::descriptor(), Some(&colors3 as _)),
+                    (MyPoints::descriptor_points(), Some(&points3 as _)),
+                    (MyPoints::descriptor_colors(), Some(&colors3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_5,
                 [build_frame_nr(frame5), build_log_time(frame5.into())],
                 [
-                    (MyPoint::descriptor(), Some(&points5 as _)),
-                    (MyColor::descriptor(), None),
+                    (MyPoints::descriptor_points(), Some(&points5 as _)),
+                    (MyPoints::descriptor_colors(), None),
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_7_1,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::descriptor(), Some(&points7_1 as _))],
+                [(MyPoints::descriptor_points(), Some(&points7_1 as _))],
             )
             .with_sparse_component_batches(
                 row_id1_7_2,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::descriptor(), Some(&points7_2 as _))],
+                [(MyPoints::descriptor_points(), Some(&points7_2 as _))],
             )
             .with_sparse_component_batches(
                 row_id1_7_3,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::descriptor(), Some(&points7_3 as _))],
+                [(MyPoints::descriptor_points(), Some(&points7_3 as _))],
             )
             .build()?;
 
@@ -2495,20 +2615,20 @@ mod tests {
             .with_sparse_component_batches(
                 row_id2_2,
                 [build_frame_nr(frame2)],
-                [(MyPoint::descriptor(), Some(&points2 as _))],
+                [(MyPoints::descriptor_points(), Some(&points2 as _))],
             )
             .with_sparse_component_batches(
                 row_id2_3,
                 [build_frame_nr(frame3)],
                 [
-                    (MyPoint::descriptor(), Some(&points3 as _)),
-                    (MyColor::descriptor(), Some(&colors3 as _)),
+                    (MyPoints::descriptor_points(), Some(&points3 as _)),
+                    (MyPoints::descriptor_colors(), Some(&colors3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id2_4,
                 [build_frame_nr(frame4)],
-                [(MyPoint::descriptor(), Some(&points4 as _))],
+                [(MyPoints::descriptor_points(), Some(&points4 as _))],
             )
             .build()?;
 
@@ -2522,17 +2642,17 @@ mod tests {
             .with_sparse_component_batches(
                 row_id3_2,
                 [build_frame_nr(frame2)],
-                [(MyPoint::descriptor(), Some(&points2 as _))],
+                [(MyPoints::descriptor_points(), Some(&points2 as _))],
             )
             .with_sparse_component_batches(
                 row_id3_4,
                 [build_frame_nr(frame4)],
-                [(MyPoint::descriptor(), Some(&points4 as _))],
+                [(MyPoints::descriptor_points(), Some(&points4 as _))],
             )
             .with_sparse_component_batches(
                 row_id3_6,
                 [build_frame_nr(frame6)],
-                [(MyPoint::descriptor(), Some(&points6 as _))],
+                [(MyPoints::descriptor_points(), Some(&points6 as _))],
             )
             .build()?;
 
@@ -2546,17 +2666,17 @@ mod tests {
             .with_sparse_component_batches(
                 row_id4_4,
                 [build_frame_nr(frame4)],
-                [(MyColor::descriptor(), Some(&colors4 as _))],
+                [(MyPoints::descriptor_colors(), Some(&colors4 as _))],
             )
             .with_sparse_component_batches(
                 row_id4_5,
                 [build_frame_nr(frame5)],
-                [(MyColor::descriptor(), Some(&colors5 as _))],
+                [(MyPoints::descriptor_colors(), Some(&colors5 as _))],
             )
             .with_sparse_component_batches(
                 row_id4_7,
                 [build_frame_nr(frame7)],
-                [(MyColor::descriptor(), Some(&colors7 as _))],
+                [(MyPoints::descriptor_colors(), Some(&colors7 as _))],
             )
             .build()?;
 
@@ -2568,7 +2688,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id5_1,
                 TimePoint::default(),
-                [(MyLabel::descriptor(), Some(&labels2 as _))],
+                [(MyPoints::descriptor_labels(), Some(&labels2 as _))],
             )
             .build()?;
 
@@ -2580,7 +2700,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id6_1,
                 TimePoint::default(),
-                [(MyLabel::descriptor(), Some(&labels3 as _))],
+                [(MyPoints::descriptor_labels(), Some(&labels3 as _))],
             )
             .build()?;
 
@@ -2600,15 +2720,18 @@ mod tests {
         let frame60 = TimeInt::new_temporal(60);
         let frame65 = TimeInt::new_temporal(65);
 
-        let clear_flat = ClearIsRecursive(false.into());
-        let clear_recursive = ClearIsRecursive(true.into());
+        let clear_flat = components::ClearIsRecursive(false.into());
+        let clear_recursive = components::ClearIsRecursive(true.into());
 
         let row_id1_1 = RowId::new();
         let chunk1 = Chunk::builder(entity_path.clone())
             .with_sparse_component_batches(
                 row_id1_1,
                 TimePoint::default(),
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .build()?;
 
@@ -2630,7 +2753,10 @@ mod tests {
             .with_sparse_component_batches(
                 row_id2_1,
                 [build_frame_nr(frame35), build_log_time(frame35.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_recursive as _),
+                )],
             )
             .build()?;
 
@@ -2642,17 +2768,26 @@ mod tests {
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame55), build_log_time(frame55.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame60), build_log_time(frame60.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_recursive as _),
+                )],
             )
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame65), build_log_time(frame65.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .build()?;
 
@@ -2664,7 +2799,10 @@ mod tests {
             .with_sparse_component_batches(
                 row_id4_1,
                 [build_frame_nr(frame60), build_log_time(frame60.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .build()?;
 
@@ -2676,7 +2814,10 @@ mod tests {
             .with_sparse_component_batches(
                 row_id5_1,
                 [build_frame_nr(frame65), build_log_time(frame65.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_recursive as _),
+                )],
             )
             .build()?;
 

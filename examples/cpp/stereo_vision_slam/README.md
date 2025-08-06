@@ -18,7 +18,7 @@ Visualizes stereo vision SLAM on the [KITTI dataset](https://www.cvlibs.net/data
 
 # Used Rerun types
 
-[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`LineStrips3D`](https://rerun.io/docs/reference/types/archetypes/line_strips3d), [`Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars?speculative-link), [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole), [`Points3D`](https://rerun.io/docs/reference/types/archetypes/points3d), [`TextLog`](https://rerun.io/docs/reference/types/archetypes/text_log)
+[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`LineStrips3D`](https://rerun.io/docs/reference/types/archetypes/line_strips3d), [`Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars), [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole), [`Points3D`](https://rerun.io/docs/reference/types/archetypes/points3d), [`TextLog`](https://rerun.io/docs/reference/types/archetypes/text_log)
 
 
 # Background

@@ -10,6 +10,9 @@ on:
         description: "Commit to release"
         type: string
         required: true
+      release-version:
+        type: string
+        required: true
 
 concurrency:
   group: ${{ inputs.concurrency }}-publish-js
@@ -49,7 +52,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
+          node-version: "22.x"
           registry-url: "https://registry.npmjs.org"
 
       - name: Install Yarn
@@ -63,7 +66,7 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.41.4
 
@@ -72,3 +75,14 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           pixi run node rerun_js/scripts/publish.mjs
+
+      - name: "Upload rerun_js to GCS"
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: "rerun_js_package"
+          destination: "rerun-builds/version/${{ inputs.release-version }}/rerun_js"
+          parent: false
+          process_gcloudignore: false
+          headers: |-
+            cache-control: no-cache, max-age=0
+          gzip: false

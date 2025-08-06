@@ -1,11 +1,12 @@
 //! Image-related utilities.
 
-use re_types_core::ArrowBuffer;
+use arrow::buffer::ScalarBuffer;
+use re_types_core::{Archetype as _, ArchetypeName};
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    datatypes::ChannelDatatype,
-    datatypes::{Blob, TensorBuffer, TensorData},
+    archetypes,
+    datatypes::{Blob, ChannelDatatype, TensorBuffer, TensorData},
 };
 
 #[cfg(feature = "image")]
@@ -16,22 +17,46 @@ use crate::datatypes::ImageFormat;
 /// The kind of image data, either color, segmentation, or depth image.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ImageKind {
-    /// A normal grayscale or color image ([`crate::archetypes::Image`]).
+    /// A normal grayscale or color image ([`archetypes::Image`]).
     Color,
 
-    /// A depth map ([`crate::archetypes::DepthImage`]).
+    /// A depth map ([`archetypes::DepthImage`]).
     Depth,
 
-    /// A segmentation image ([`crate::archetypes::SegmentationImage`]).
+    /// A segmentation image ([`archetypes::SegmentationImage`]).
     ///
     /// The data is a [`crate::components::ClassId`] which should be
     /// looked up using the appropriate [`crate::components::AnnotationContext`]
     Segmentation,
 }
 
+impl ImageKind {
+    /// Determine the kind of image from an image archetype name.
+    pub fn from_archetype_name(archetype_name: Option<ArchetypeName>) -> Self {
+        if archetype_name == Some(archetypes::SegmentationImage::name()) {
+            Self::Segmentation
+        } else if archetype_name == Some(archetypes::DepthImage::name()) {
+            Self::Depth
+        } else {
+            // TODO(#9046): Note that currently all encoded images are treated as color images.
+            Self::Color
+        }
+    }
+}
+
+impl re_byte_size::SizeBytes for ImageKind {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    fn is_pod() -> bool {
+        true
+    }
+}
+
 // ----------------------------------------------------------------------------
 
-/// Errors when converting images from the [`image`] crate to an [`crate::archetypes::Image`].
+/// Errors when converting images from the [`image`] crate to an [`archetypes::Image`].
 #[cfg(feature = "image")]
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum ImageConversionError {
@@ -40,7 +65,9 @@ pub enum ImageConversionError {
     /// This should only happen if you are using a newer `image` crate than the one Rerun was built for,
     /// because `image` can add new color types without it being a breaking change,
     /// so we cannot exhaustively match on all color types.
-    #[error("Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha.")]
+    #[error(
+        "Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha."
+    )]
     UnsupportedImageColorType(image::ColorType),
 }
 
@@ -60,7 +87,7 @@ pub enum ImageLoadError {
     #[error("Failed to load file: {0}")]
     ReadError(std::sync::Arc<std::io::Error>),
 
-    /// Failure to convert the loaded image to a [`crate::archetypes::Image`].
+    /// Failure to convert the loaded image to a [`archetypes::Image`].
     #[error(transparent)]
     ImageConversionError(#[from] ImageConversionError),
 
@@ -111,10 +138,12 @@ where
 
     /// The tensor did not have the right shape for an image (e.g. had too many dimensions).
     #[error("Could not create Image from TensorData with shape {0:?}")]
-    BadImageShape(ArrowBuffer<u64>),
+    BadImageShape(ScalarBuffer<u64>),
 
     /// Happens if you try to cast `NV12` or `YUY2` to a depth image or segmentation image.
-    #[error("Chroma downsampling is not supported for this image type (e.g. DepthImage or SegmentationImage)")]
+    #[error(
+        "Chroma downsampling is not supported for this image type (e.g. DepthImage or SegmentationImage)"
+    )]
     ChromaDownsamplingNotSupported,
 }
 
@@ -122,17 +151,25 @@ where
 pub fn blob_and_datatype_from_tensor(tensor_buffer: TensorBuffer) -> (Blob, ChannelDatatype) {
     match tensor_buffer {
         TensorBuffer::U8(buffer) => (Blob(buffer), ChannelDatatype::U8),
-        TensorBuffer::U16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U16),
-        TensorBuffer::U32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U32),
-        TensorBuffer::U64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U64),
-        TensorBuffer::I8(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I8),
-        TensorBuffer::I16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I16),
-        TensorBuffer::I32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I32),
-        TensorBuffer::I64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I64),
-        TensorBuffer::F16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F16),
-        TensorBuffer::F32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F32),
-        TensorBuffer::F64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F64),
+        TensorBuffer::U16(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::U16),
+        TensorBuffer::U32(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::U32),
+        TensorBuffer::U64(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::U64),
+        TensorBuffer::I8(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::I8),
+        TensorBuffer::I16(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::I16),
+        TensorBuffer::I32(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::I32),
+        TensorBuffer::I64(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::I64),
+        TensorBuffer::F16(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::F16),
+        TensorBuffer::F32(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::F32),
+        TensorBuffer::F64(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::F64),
     }
+}
+
+/// Reinterpret POD (plain-old-data) types to `u8`.
+#[inline]
+pub fn cast_to_u8<T: arrow::datatypes::ArrowNativeType>(
+    buffer: &arrow::buffer::ScalarBuffer<T>,
+) -> ScalarBuffer<u8> {
+    arrow::buffer::ScalarBuffer::new(buffer.inner().clone(), 0, buffer.inner().len())
 }
 
 // ----------------------------------------------------------------------------
@@ -278,9 +315,8 @@ fn test_find_non_empty_dim_indices() {
 // TODO(andreas): Expose this in the API?
 /// Yuv matrix coefficients that determine how a YUV image is meant to be converted to RGB.
 ///
-/// A rigorious definition of the yuv conversion matrix would still require to define
+/// A rigorious definition of the yuv conversion matrix would additionally require to define
 /// the transfer characteristics & color primaries of the resulting RGB space.
-/// See [`re_video::decode`]'s documentation.
 ///
 /// However, at this point we generally assume that no further processing is needed after the transform.
 /// This is acceptable for most non-HDR content because of the following properties of `Bt709`/`Bt601`/ sRGB:

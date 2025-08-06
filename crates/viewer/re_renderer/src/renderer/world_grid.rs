@@ -1,4 +1,5 @@
 use crate::{
+    ViewBuilder,
     allocator::create_and_fill_uniform_buffer,
     draw_phases::DrawPhase,
     include_shader_module,
@@ -7,7 +8,6 @@ use crate::{
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
         RenderPipelineDesc,
     },
-    ViewBuilder,
 };
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
@@ -21,7 +21,7 @@ pub struct WorldGridConfiguration {
     pub color: Rgba,
 
     /// The plane in which the grid lines are drawn.
-    pub plane: re_math::Plane3,
+    pub plane: macaw::Plane3,
 
     /// How far apart the closest sets of lines are.
     pub spacing: f32,

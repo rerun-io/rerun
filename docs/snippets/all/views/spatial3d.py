@@ -22,8 +22,13 @@ blueprint = rrb.Blueprint(
         name="3D Scene",
         # Set the background color to light blue.
         background=[100, 149, 237],
+        # Configure the eye controls.
+        eye_controls=rrb.EyeControls3D(
+            kind=rrb.Eye3DKind.FirstPerson,
+            speed=20.0,
+        ),
         # Configure the line grid.
-        line_grid=rrb.archetypes.LineGrid3D(
+        line_grid=rrb.LineGrid3D(
             visible=True,  # The grid is enabled by default, but you can hide it with this property.
             spacing=0.1,  # Makes the grid more fine-grained.
             # By default, the plane is inferred from view coordinates setup, but you can set arbitrary planes.

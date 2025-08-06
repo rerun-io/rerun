@@ -9,6 +9,8 @@ struct Plane {
 }
 
 /// How far away is a given point from the plane?
+///
+/// Returns a *signed* distance! Positive, when the point is above the plane, negative when below.
 fn distance_to_plane(plane: Plane, point: vec3f) -> f32 {
     return dot(plane.normal, point) - plane.distance;
 }

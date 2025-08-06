@@ -5,13 +5,15 @@ title: "Tensor"
 
 An N-dimensional array of numbers.
 
-## Components
+## Fields
+### Required
+* `data`: [`TensorData`](../components/tensor_data.md)
 
-**Required**: [`TensorData`](../components/tensor_data.md)
+### Optional
+* `value_range`: [`ValueRange`](../components/value_range.md)
 
-**Optional**: [`ValueRange`](../components/value_range.md)
 
-## Shown in
+## Can be shown in
 * [TensorView](../views/tensor_view.md)
 * [BarChartView](../views/bar_chart_view.md) (for 1D tensors)
 * [DataframeView](../views/dataframe_view.md)

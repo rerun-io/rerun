@@ -29,9 +29,8 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     (e.g. a bounding sphere).
     For points whose radii are for the sake of visualization, use [`archetypes.Points3D`][rerun.archetypes.Points3D] instead.
 
-    Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.InstancePoses3D]`.
-    Some of its component are repeated here for convenience.
-    If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+    If there's more instance poses than half sizes, the last ellipsoid/sphere's orientation will be repeated for the remaining poses.
+    Orienting and placing ellipsoids/spheres forms a separate transform that is applied prior to [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D] and [`archetypes.Transform3D`][rerun.archetypes.Transform3D].
 
     Example
     -------
@@ -123,17 +122,14 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
             Optional center positions of the ellipsoids.
 
             If not specified, the centers will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the ellipsoids.
         line_radii:
@@ -143,7 +139,10 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
         labels:
             Optional text labels for the ellipsoids.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional class ID for the ellipsoids.
 
@@ -213,17 +212,14 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
             Optional center positions of the ellipsoids.
 
             If not specified, the centers will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the ellipsoids.
         line_radii:
@@ -233,7 +229,10 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
         labels:
             Optional text labels for the ellipsoids.
         show_labels:
-            Optional choice of whether the text labels should be shown by default.
+            Whether the text labels should be shown.
+
+            If not set, labels will automatically appear when there is exactly one label for this entity
+            or the number of instances on this entity is under a certain threshold.
         class_ids:
             Optional class ID for the ellipsoids.
 
@@ -256,21 +255,21 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
                 class_ids=class_ids,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
         kwargs = {
-            "half_sizes": half_sizes,
-            "centers": centers,
-            "rotation_axis_angles": rotation_axis_angles,
-            "quaternions": quaternions,
-            "colors": colors,
-            "line_radii": line_radii,
-            "fill_mode": fill_mode,
-            "labels": labels,
-            "show_labels": show_labels,
-            "class_ids": class_ids,
+            "Ellipsoids3D:half_sizes": half_sizes,
+            "Ellipsoids3D:centers": centers,
+            "Ellipsoids3D:rotation_axis_angles": rotation_axis_angles,
+            "Ellipsoids3D:quaternions": quaternions,
+            "Ellipsoids3D:colors": colors,
+            "Ellipsoids3D:line_radii": line_radii,
+            "Ellipsoids3D:fill_mode": fill_mode,
+            "Ellipsoids3D:labels": labels,
+            "Ellipsoids3D:show_labels": show_labels,
+            "Ellipsoids3D:class_ids": class_ids,
         }
         columns = []
 
@@ -279,12 +278,13 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
+                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
-                if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) <= 2:
-                    # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
-                    # `shape[1]` should be the length of the fixed sized list.
+                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
+                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                    # we have `num_rows` single element batches (each element is a fixed sized list).
                     # (This should have been already validated by conversion to the arrow_array)
                     batch_length = 1
                 else:
@@ -298,8 +298,7 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     half_sizes: components.HalfSize3DBatch | None = field(
         metadata={"component": True},
@@ -320,7 +319,6 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     # Optional center positions of the ellipsoids.
     #
     # If not specified, the centers will be at (0, 0, 0).
-    # Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -332,7 +330,6 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     # Rotations via axis + angle.
     #
     # If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-    # Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -344,7 +341,6 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     # Rotations via quaternion.
     #
     # If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-    # Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -389,7 +385,10 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
         default=None,
         converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
     )
-    # Optional choice of whether the text labels should be shown by default.
+    # Whether the text labels should be shown.
+    #
+    # If not set, labels will automatically appear when there is exactly one label for this entity
+    # or the number of instances on this entity is under a certain threshold.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

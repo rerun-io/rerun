@@ -27,6 +27,7 @@ _deps
 # Python virtual environment:
 **/venv*
 **/.venv*
+/env/
 .python-version
 
 # Python build artifacts:

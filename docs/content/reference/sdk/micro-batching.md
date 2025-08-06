@@ -16,7 +16,8 @@ You can configure these thresholds using the following environment variables:
 
 Sets the duration of the periodic tick that triggers the time threshold, in seconds.
 
-Defaults to `RERUN_FLUSH_TICK_SECS=0.008` (8ms).
+Defaults to `RERUN_FLUSH_TICK_SECS=0.2` (200ms) unless the recording stream uses a
+a networking sink which defaults to `RERUN_FLUSH_TICK_SECS=0.008` (8ms).
 
 #### RERUN_FLUSH_NUM_BYTES
 
@@ -29,3 +30,7 @@ Defaults to `RERUN_FLUSH_NUM_BYTES=1048576` (1MiB).
 Sets the number of rows that drives the space threshold.
 
 Defaults to `RERUN_FLUSH_NUM_BYTES=18446744073709551615` (`u64::MAX`).
+
+Or directly from code, in Python & Rust:
+
+snippet: howto/micro_batching

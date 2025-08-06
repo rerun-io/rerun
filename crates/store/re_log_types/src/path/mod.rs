@@ -8,7 +8,7 @@ mod data_path;
 mod entity_path;
 mod entity_path_filter;
 mod entity_path_part;
-mod natural_ordering;
+pub mod natural_ordering;
 mod parse_path;
 
 pub use component_path::ComponentPath;
@@ -19,7 +19,7 @@ pub use entity_path_filter::{
     ResolvedEntityPathFilter, ResolvedEntityPathRule, RuleEffect,
 };
 pub use entity_path_part::EntityPathPart;
-pub use parse_path::PathParseError;
+pub use parse_path::{PathParseError, tokenize_by};
 
 // ----------------------------------------------------------------------------
 

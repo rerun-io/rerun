@@ -88,7 +88,7 @@ class TimeColumn(TimeColumnLike):
         """
         if sum(x is not None for x in (sequence, duration, timestamp)) != 1:
             raise ValueError(
-                "TimeColumn: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
+                f"TimeColumn: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
             )
 
         self.timeline = timeline
@@ -112,7 +112,14 @@ class TimeColumn(TimeColumnLike):
         elif timestamp is not None:
             # TODO(zehiko) add back timezone support (#9310)
             if isinstance(timestamp, np.ndarray):
-                self.times = pa.array(timestamp.astype("datetime64[ns]"), pa.timestamp("ns"))
+                if np.issubdtype(timestamp.dtype, np.datetime64):
+                    # Already a datetime array, just ensure it's in nanoseconds
+                    self.times = pa.array(timestamp.astype("datetime64[ns]"), pa.timestamp("ns"))
+                elif np.issubdtype(timestamp.dtype, np.number):
+                    # Numeric array that needs conversion to nanoseconds
+                    self.times = pa.array((timestamp * 1e9).astype("datetime64[ns]"), pa.timestamp("ns"))
+                else:
+                    raise TypeError(f"Unsupported numpy array dtype: {timestamp.dtype}")
             else:
                 self.times = pa.array(
                     [np.int64(to_nanos_since_epoch(timestamp)).astype("datetime64[ns]") for timestamp in timestamp],
@@ -129,7 +136,7 @@ class TimeColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 class TimeSequenceColumn(TimeColumnLike):
     """
@@ -163,7 +170,7 @@ class TimeSequenceColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 class TimeSecondsColumn(TimeColumnLike):
     """
@@ -197,7 +204,7 @@ class TimeSecondsColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 class TimeNanosColumn(TimeColumnLike):
     """
@@ -249,7 +256,7 @@ def send_columns(
     data that shares the same index across the different columns will act as a single logical row,
     equivalent to a single call to `rr.log()`.
 
-    Note that this API ignores any stateful time set on the log stream via the `rerun.set_time_*` APIs.
+    Note that this API ignores any stateful time set on the log stream via [`rerun.set_time`][].
     Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
 
     Parameters

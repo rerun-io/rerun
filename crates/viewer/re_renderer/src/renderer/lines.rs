@@ -78,11 +78,13 @@
 use std::{num::NonZeroU64, ops::Range};
 
 use bitflags::bitflags;
-use enumset::{enum_set, EnumSet};
+use enumset::{EnumSet, enum_set};
 use re_tracing::profile_function;
 use smallvec::smallvec;
 
 use crate::{
+    DebugLabel, DepthOffset, LineDrawableBuilder, OutlineMaskPreference, PickingLayerObjectId,
+    PickingLayerProcessor,
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
@@ -92,8 +94,6 @@ use crate::{
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, PoolError,
         RenderPipelineDesc,
     },
-    DebugLabel, DepthOffset, LineDrawableBuilder, OutlineMaskPreference, PickingLayerObjectId,
-    PickingLayerProcessor,
 };
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
@@ -101,7 +101,7 @@ use super::{DrawData, DrawError, RenderContext, Renderer};
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
-    use crate::{size::SizeHalf, wgpu_buffer_types, Color32, PickingLayerObjectId};
+    use crate::{Color32, PickingLayerObjectId, size::SizeHalf, wgpu_buffer_types};
 
     use super::LineStripFlags;
 
@@ -759,7 +759,7 @@ impl Renderer for LineRenderer {
 
 #[cfg(test)]
 mod tests {
-    use crate::{view_builder::TargetConfiguration, Rgba};
+    use crate::{Rgba, view_builder::TargetConfiguration};
 
     use super::*;
 

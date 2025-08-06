@@ -1,11 +1,15 @@
 //! Checks that inter- and intra-timestamp partial updates are properly handled by range queries,
 
+#![expect(clippy::unnecessary_fallible_conversions)]
+
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
-use re_types::{archetypes::Points2D, datatypes::VisibleTimeRange, Archetype as _};
+use re_test_context::TestContext;
+use re_test_viewport::TestContextExt as _;
+use re_types::{Archetype as _, archetypes::Points2D, datatypes::VisibleTimeRange};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::{test_context_ext::TestContextExt as _, ViewBlueprint};
+use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewport_blueprint::ViewBlueprint;
 
 fn intra_timestamp_data(test_context: &mut TestContext) {
     let timeline = Timeline::new_sequence("frame");
@@ -180,24 +184,21 @@ fn visible_timerange_data(test_context: &mut TestContext) {
             );
 
             for y in [y_green, y_red] {
-                test_context.log_entity(
-                    format!("point_{:02}_{:02}", i, y as i32).into(),
-                    |builder| {
-                        builder.with_archetype(
-                            RowId::new(),
-                            TimePoint::default(),
-                            &re_types::archetypes::Points2D::new([(x, y)])
-                                .with_colors([0x555555FF])
-                                .with_radii([4.0])
-                                .with_draw_order(1.0),
-                        )
-                    },
-                );
+                test_context.log_entity(format!("point_{:02}_{:02}", i, y as i32), |builder| {
+                    builder.with_archetype(
+                        RowId::new(),
+                        TimePoint::default(),
+                        &re_types::archetypes::Points2D::new([(x, y)])
+                            .with_colors([0x555555FF])
+                            .with_radii([4.0])
+                            .with_draw_order(1.0),
+                    )
+                });
             }
 
             {
                 let time_point = time_point.clone();
-                test_context.log_entity("red".into(), |builder| {
+                test_context.log_entity("red", |builder| {
                     builder.with_archetype(
                         RowId::new(),
                         time_point,
@@ -209,7 +210,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
                 });
             }
 
-            test_context.log_entity("green".into(), |builder| {
+            test_context.log_entity("green", |builder| {
                 builder.with_archetype(
                     RowId::new(),
                     time_point,
@@ -299,22 +300,11 @@ fn run_visible_time_range_test(
     view_time_range: Option<VisibleTimeRange>,
     green_time_range: Option<VisibleTimeRange>,
 ) {
-    let mut test_context = get_test_context();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
     add_data(&mut test_context);
 
     let view_id = setup_blueprint(&mut test_context, view_time_range, green_time_range);
     run_view_ui_and_save_snapshot(&mut test_context, view_id, name, egui::vec2(200.0, 200.0));
-}
-
-fn get_test_context() -> TestContext {
-    let mut test_context = TestContext::default();
-
-    // It's important to first register the view class before adding any entities,
-    // otherwise the `VisualizerEntitySubscriber` for our visualizers doesn't exist yet,
-    // and thus will not find anything applicable to the visualizer.
-    test_context.register_view_class::<re_view_spatial::SpatialView2D>();
-
-    test_context
 }
 
 fn setup_blueprint(
@@ -323,11 +313,9 @@ fn setup_blueprint(
     green_time_range: Option<VisibleTimeRange>,
 ) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
-        let view_blueprint =
-            ViewBlueprint::new(SpatialView2D::identifier(), RecommendedView::root());
-
-        let view_id = view_blueprint.id;
-        blueprint.add_views(std::iter::once(view_blueprint), None, None);
+        let view_id = blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            SpatialView2D::identifier(),
+        ));
 
         // Set the bounds such that the points are fully visible, that way we get more pixels contributing to the output.
         let property_path = re_viewport_blueprint::entity_path_for_view_property(
@@ -336,7 +324,7 @@ fn setup_blueprint(
             re_types::blueprint::archetypes::VisualBounds2D::name(),
         );
         ctx.save_blueprint_archetype(
-            &property_path,
+            property_path.clone(),
             &re_types::blueprint::archetypes::VisualBounds2D::new(re_types::datatypes::Range2D {
                 x_range: [0.0, 100.0].into(),
                 y_range: [0.0, 100.0].into(),
@@ -352,14 +340,14 @@ fn setup_blueprint(
                 re_types::blueprint::archetypes::VisibleTimeRanges::name(),
             );
 
-            ctx.save_blueprint_archetype(&property_path, &visible_time_range_list);
+            ctx.save_blueprint_archetype(property_path, &visible_time_range_list);
         }
 
         if let Some(green_time_range) = green_time_range {
             let visible_time_range_list =
                 re_types::blueprint::archetypes::VisibleTimeRanges::new([green_time_range]);
             ctx.save_blueprint_archetype(
-                &re_viewport_blueprint::ViewContents::override_path_for_entity(
+                re_viewport_blueprint::ViewContents::override_path_for_entity(
                     view_id,
                     &"green".into(),
                 ),
@@ -380,35 +368,8 @@ fn run_view_ui_and_save_snapshot(
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
-        .build(|ctx| {
-            re_ui::apply_style_and_install_loaders(ctx);
-
-            egui::CentralPanel::default().show(ctx, |ui| {
-                test_context.run(ctx, |ctx| {
-                    let view_class = ctx
-                        .view_class_registry()
-                        .get_class_or_log_error(SpatialView2D::identifier());
-
-                    let view_blueprint = ViewBlueprint::try_from_db(
-                        view_id,
-                        ctx.store_context.blueprint,
-                        ctx.blueprint_query,
-                    )
-                    .expect("we just created that view");
-
-                    let mut view_states = test_context.view_states.lock();
-                    let view_state = view_states.get_mut_or_create(view_id, view_class);
-
-                    let (view_query, system_execution_output) =
-                        re_viewport::execute_systems_for_view(ctx, &view_blueprint, view_state);
-
-                    view_class
-                        .ui(ctx, ui, view_state, &view_query, system_execution_output)
-                        .expect("failed to run graph view ui");
-                });
-
-                test_context.handle_system_commands();
-            });
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
         });
 
     harness.run();

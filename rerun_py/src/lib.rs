@@ -7,11 +7,17 @@
 #![doc = document_features::document_features!()]
 //!
 
-use re_memory::AccountingAllocator;
+// NOTE: The SDK currently allocates *a lot*, so much in fact that adding accounting around
+// allocations yields a lot of overhead.
+//
+// use re_memory::AccountingAllocator;
+//
+// #[global_allocator]
+// static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
+//     AccountingAllocator::new(mimalloc::MiMalloc);
 
 #[global_allocator]
-static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
-    AccountingAllocator::new(mimalloc::MiMalloc);
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 mod arrow;
 mod catalog;
@@ -19,3 +25,4 @@ mod dataframe;
 mod python_bridge;
 mod utils;
 mod video;
+mod viewer;

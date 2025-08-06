@@ -56,18 +56,33 @@ impl EntityPathSubs {
 /// the rules can not be sorted yet from general to specific, instead they are stored
 /// in alphabetical order.
 /// To expand variables & evaluate the filter, use [`ResolvedEntityPathFilter`].
-#[derive(Clone, Default, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct EntityPathFilter {
     rules: BTreeMap<EntityPathRule, RuleEffect>,
 }
 
-// Note: it's not possible to implement that for `S: AsRef<str>` because this conflicts with some
-// blanket implementation in `core` :(
-impl TryFrom<&str> for EntityPathFilter {
-    type Error = EntityPathFilterError;
+impl std::str::FromStr for EntityPathFilter {
+    type Err = EntityPathFilterError;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         Self::parse_strict(value)
+    }
+}
+
+impl std::fmt::Debug for EntityPathFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Keep it compact for the sake of snapshot tests:
+        self.rules
+            .iter()
+            .map(|(rule, effect)| {
+                let sign = match effect {
+                    RuleEffect::Include => '+',
+                    RuleEffect::Exclude => '-',
+                };
+                format!("{sign} {rule:?}")
+            })
+            .collect_vec()
+            .fmt(f)
     }
 }
 
@@ -122,7 +137,7 @@ impl std::fmt::Debug for ResolvedEntityPathFilter {
 ///
 /// Note that ordering of unresolved entity path rules is simply alphabetical.
 /// In contrast, [`ResolvedEntityPathRule`] are ordered by entity path from least specific to most specific.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct EntityPathRule(String);
 
 impl From<EntityPath> for EntityPathRule {
@@ -141,19 +156,10 @@ impl std::ops::Deref for EntityPathRule {
     }
 }
 
-impl std::fmt::Display for EntityPathRule {
+impl std::fmt::Debug for EntityPathRule {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{}{}{}",
-            self.0,
-            if EntityPath::parse_forgiving(&self.0).is_root() {
-                ""
-            } else {
-                "/"
-            },
-            if self.include_subtree() { "**" } else { "" }
-        ))
+        f.write_str(&self.0)
     }
 }
 
@@ -353,7 +359,7 @@ impl EntityPathFilter {
     /// Adds a rule to this filter.
     ///
     /// If there's already an effect for the rule, it is overwritten with the new effect.
-    pub fn add_rule(&mut self, effect: RuleEffect, rule: EntityPathRule) {
+    pub fn insert_rule(&mut self, effect: RuleEffect, rule: EntityPathRule) {
         self.rules.insert(rule, effect);
     }
 
@@ -502,6 +508,8 @@ impl EntityPathFilter {
 impl ResolvedEntityPathFilter {
     /// Turns the resolved filter back into an unresolved filter.
     ///
+    /// The returned [`EntityPathFilter`] will _not_ contain the default exclusion of the recording properties.
+    ///
     /// Warning: Iterating over the rules in the unresolved filter will yield a different order
     /// than the order of the rules in the resolved filter.
     /// To preserve the order, use [`Self::iter_unresolved_expressions`] instead.
@@ -510,7 +518,15 @@ impl ResolvedEntityPathFilter {
             rules: self
                 .rules
                 .iter()
-                .map(|(rule, effect)| (rule.rule.clone(), *effect))
+                .filter_map(|(rule, effect)| {
+                    if rule == &ResolvedEntityPathRule::including_subtree(&EntityPath::properties())
+                        && effect == &RuleEffect::Exclude
+                    {
+                        None
+                    } else {
+                        Some((rule.rule.clone(), *effect))
+                    }
+                })
                 .collect(),
         }
     }
@@ -955,8 +971,8 @@ impl std::hash::Hash for ResolvedEntityPathRule {
 #[cfg(test)]
 mod tests {
     use crate::{
-        path::entity_path_filter::{split_whitespace_smart, ResolvedEntityPathRule},
         EntityPath, EntityPathFilter, EntityPathSubs, RuleEffect,
+        path::entity_path_filter::{ResolvedEntityPathRule, split_whitespace_smart},
     };
 
     #[test]
@@ -1268,6 +1284,87 @@ mod tests {
         assert_eq!(
             filter.formatted_without_properties(),
             "+ /**\n+ /__properties/**"
+        );
+    }
+
+    #[test]
+    fn test_unresolved() {
+        // We should omit the properties from the unresolved filter.
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        - /__properties/**
+        - /test123
+        + /test345
+        "#,
+        );
+        let resolved = filter.resolve_forgiving(&EntityPathSubs::empty());
+        assert_eq!(
+            resolved.unresolved(),
+            EntityPathFilter::parse_forgiving(
+                r#"
+                + /**
+                - /test123
+                + /test345
+                "#
+            )
+        );
+
+        // If not explicitly mentioned, it should roundtrip.
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        - /test123
+        + /test345
+        "#,
+        );
+        let resolved = filter.resolve_forgiving(&EntityPathSubs::empty());
+        assert_eq!(resolved.unresolved(), filter);
+
+        // If the properties are _included_ they should be present.
+        // We should omit the properties from the unresolved filter.
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        + /__properties/**
+        - /test123
+        + /test345
+        "#,
+        );
+        let resolved = filter.resolve_forgiving(&EntityPathSubs::empty());
+        assert_eq!(
+            resolved.unresolved(),
+            EntityPathFilter::parse_forgiving(
+                r#"
+                + /**
+                + /__properties/**
+                - /test123
+                + /test345
+                "#
+            )
+        );
+
+        // If the subpaths of properties are _excluded_ they should be present.
+        // We should omit the properties from the unresolved filter.
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + /**
+        - /__properties/test123/**
+        - /test123
+        + /test345
+        "#,
+        );
+        let resolved = filter.resolve_forgiving(&EntityPathSubs::empty());
+        assert_eq!(
+            resolved.unresolved(),
+            EntityPathFilter::parse_forgiving(
+                r#"
+                + /**
+                - /__properties/test123/**
+                - /test123
+                + /test345
+                "#
+            )
         );
     }
 }

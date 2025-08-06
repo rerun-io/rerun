@@ -11,8 +11,8 @@ use std::{
     fmt::Display,
     str::FromStr,
     sync::{
-        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
 };
 
@@ -81,6 +81,7 @@ impl FromStr for WebViewerServerPort {
 
 /// HTTP host for the Rerun Web Viewer application
 /// This serves the HTTP+Wasm+JS files that make up the web-viewer.
+#[must_use = "Dropping this means stopping the server"]
 pub struct WebViewerServer {
     inner: Arc<WebViewerServerInner>,
     thread_handle: Option<std::thread::JoinHandle<()>>,
@@ -94,7 +95,7 @@ struct WebViewerServerInner {
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
     // while at the same time opting-out of analytics at run-time.
     #[cfg(feature = "analytics")]
-    analytics: Option<re_analytics::Analytics>,
+    analytics: Option<&'static re_analytics::Analytics>,
 }
 
 impl WebViewerServer {
@@ -126,13 +127,7 @@ impl WebViewerServer {
             num_wasm_served: Default::default(),
 
             #[cfg(feature = "analytics")]
-            analytics: match re_analytics::Analytics::new(std::time::Duration::from_secs(2)) {
-                Ok(analytics) => Some(analytics),
-                Err(err) => {
-                    re_log::error!(%err, "failed to initialize analytics SDK");
-                    None
-                }
-            },
+            analytics: re_analytics::Analytics::global_or_init(),
         });
 
         let inner_copy = inner.clone();
@@ -167,6 +162,14 @@ impl WebViewerServer {
     pub fn block(mut self) {
         if let Some(thread_handle) = self.thread_handle.take() {
             thread_handle.join().ok();
+        }
+    }
+
+    /// Keeps the web viewer running until the parent process shuts down.
+    pub fn detach(mut self) {
+        if let Some(thread_handle) = self.thread_handle.take() {
+            // dropping the thread handle detaches the thread.
+            drop(thread_handle);
         }
     }
 }
@@ -223,7 +226,9 @@ impl WebViewerServerInner {
         if false {
             self.on_serve_wasm(); // to silence warning about the function being unused
         }
-        panic!("web_server compiled with '__ci' feature, `--all-features`, or '--cfg disable_web_viewer_server'. DON'T DO THAT! It's only for the CI!");
+        panic!(
+            "web_server compiled with '__ci' feature, `--all-features`, or '--cfg disable_web_viewer_server'. DON'T DO THAT! It's only for the CI!"
+        );
     }
 
     #[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]

@@ -132,7 +132,7 @@ def main() -> None:
         # Check if user put `v0.15.0` instead of `0.15.0`:
         if m := re.match(r"v(\d+\.\d+\..*)", version):
             version = m.group(1)
-            raise RuntimeError("Version should be in the format '{version}', without a leading 'v'")
+            raise RuntimeError(f"Version should be in the format '{version}', without a leading 'v'")
 
         file_data = file_path.read_bytes()
         digest = data_hash(file_data)

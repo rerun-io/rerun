@@ -1,53 +1,58 @@
 //! Methods for handling Arrow datamodel log ingest
 
 use std::borrow::Cow;
+use std::sync::Arc;
 
+use arrow::array::RecordBatchIterator;
+use arrow::record_batch::RecordBatchReader;
 use arrow::{
     array::{
-        make_array, ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef,
-        ListArray as ArrowListArray,
+        ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
+        make_array,
     },
     buffer::OffsetBuffer as ArrowOffsetBuffer,
     datatypes::Field as ArrowField,
     pyarrow::PyArrowType,
 };
+use datafusion::prelude::SessionContext;
 use pyo3::{
+    Bound, PyAny, PyResult,
     exceptions::PyRuntimeError,
     types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString},
-    Bound, PyAny, PyResult,
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TimelineName};
 use re_log_types::TimePoint;
-use re_sdk::{external::nohash_hasher::IntMap, ComponentDescriptor, EntityPath, Timeline};
+use re_sdk::{ComponentDescriptor, EntityPath, Timeline, external::nohash_hasher::IntMap};
+
+use crate::catalog::to_py_err;
 
 /// Perform Python-to-Rust conversion for a `ComponentDescriptor`.
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {
     let py = component_descr.py();
 
-    let archetype_name = component_descr.getattr(pyo3::intern!(py, "archetype_name"))?;
-    let archetype_name: Option<Cow<'_, str>> = if !archetype_name.is_none() {
-        Some(archetype_name.extract()?)
+    let archetype = component_descr.getattr(pyo3::intern!(py, "archetype"))?;
+    let archetype: Option<Cow<'_, str>> = if !archetype.is_none() {
+        Some(archetype.extract()?)
     } else {
         None
     };
 
-    let archetype_field_name =
-        component_descr.getattr(pyo3::intern!(py, "archetype_field_name"))?;
-    let archetype_field_name: Option<Cow<'_, str>> = if !archetype_field_name.is_none() {
-        Some(archetype_field_name.extract()?)
+    let component_type = component_descr.getattr(pyo3::intern!(py, "component_type"))?;
+    let component_type: Option<Cow<'_, str>> = if !component_type.is_none() {
+        Some(component_type.extract()?)
     } else {
         None
     };
 
-    let component_name = component_descr.getattr(pyo3::intern!(py, "component_name"))?;
-    let component_name: Cow<'_, str> = component_name.extract()?;
+    let component = component_descr.getattr(pyo3::intern!(py, "component"))?;
+    let component: Cow<'_, str> = component.extract()?;
 
     let descr = ComponentDescriptor {
-        archetype_name: archetype_name.map(|s| s.as_ref().into()),
-        archetype_field_name: archetype_field_name.map(|s| s.as_ref().into()),
-        component_name: component_name.as_ref().into(),
+        archetype: archetype.map(|s| s.as_ref().into()),
+        component: component.as_ref().into(),
+        component_type: component_type.map(|s| s.as_ref().into()),
     };
     descr.sanity_check();
     Ok(descr)
@@ -170,4 +175,30 @@ pub fn build_chunk_from_components(
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     Ok(chunk)
+}
+
+/// Convert a Datafusion table provider to an Arrow `RecordBatchReader`.
+//TODO(ab): WARNING — this reads the entire table into memory
+pub async fn datafusion_table_provider_to_arrow_reader(
+    table_provider: Arc<dyn datafusion::catalog::TableProvider + Send>,
+) -> PyResult<Box<dyn RecordBatchReader + Send>> {
+    let schema = table_provider.schema();
+
+    let session_context = SessionContext::new();
+    session_context
+        .register_table("__table__", table_provider)
+        .map_err(to_py_err)?;
+
+    let record_batches = session_context
+        .table("__table__")
+        .await
+        .map_err(to_py_err)?
+        .collect()
+        .await
+        .map_err(to_py_err)?;
+
+    Ok(Box::new(RecordBatchIterator::new(
+        record_batches.into_iter().map(Result::Ok),
+        schema,
+    )))
 }

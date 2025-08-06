@@ -59,9 +59,9 @@ impl Includes {
             ["rerun", scope, obj_kind, typname] => (format!("{scope}/{obj_kind}"), typname),
             _ => {
                 panic!(
-                "Can't figure out include for {included_fqname:?} when adding includes for {:?}",
-                self.fqname
-            );
+                    "Can't figure out include for {included_fqname:?} when adding includes for {:?}",
+                    self.fqname
+                );
             }
         };
 

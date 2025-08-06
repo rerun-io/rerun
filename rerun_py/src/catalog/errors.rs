@@ -15,37 +15,75 @@
 
 use std::error::Error as _;
 
-use pyo3::exceptions::{PyConnectionError, PyValueError};
 use pyo3::PyErr;
+use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
 
-use re_grpc_client::redap::ConnectionError;
+use re_grpc_client::ConnectionError;
+use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
 
 // ---
 
 /// Private error type to server as a bridge between various external error type and the
 /// [`to_py_err`] function.
+#[derive(Debug, thiserror::Error)]
 #[expect(clippy::enum_variant_names)] // this is by design
 enum ExternalError {
-    ConnectionError(ConnectionError),
-    TonicStatusError(tonic::Status),
-    UriError(re_uri::Error),
+    #[error("{0}")]
+    ConnectionError(#[from] ConnectionError),
+
+    #[error("{0}")]
+    TonicStatusError(#[from] tonic::Status),
+
+    #[error("{0}")]
+    UriError(#[from] re_uri::Error),
+
+    #[error("{0}")]
+    ChunkError(#[from] re_chunk::ChunkError),
+
+    #[error("{0}")]
+    ChunkStoreError(#[from] re_chunk_store::ChunkStoreError),
+
+    #[error("{0}")]
+    StreamError(#[from] re_grpc_client::StreamError),
+
+    #[error("{0}")]
+    ArrowError(#[from] arrow::error::ArrowError),
+
+    #[error("{0}")]
+    UrlParseError(#[from] url::ParseError),
+
+    #[error("{0}")]
+    DatafusionError(#[from] datafusion::error::DataFusionError),
+
+    #[error(transparent)]
+    CodecError(#[from] re_log_encoding::codec::CodecError),
+
+    #[error(transparent)]
+    SorbetError(#[from] re_sorbet::SorbetError),
+
+    #[error(transparent)]
+    ColumnSelectorParseError(#[from] re_sorbet::ColumnSelectorParseError),
+
+    #[error(transparent)]
+    ColumnSelectorResolveError(#[from] re_sorbet::ColumnSelectorResolveError),
+
+    #[error(transparent)]
+    TypeConversionError(#[from] re_protos::TypeConversionError),
+
+    #[error(transparent)]
+    TokenError(#[from] re_auth::TokenError),
 }
 
-impl From<ConnectionError> for ExternalError {
-    fn from(value: ConnectionError) -> Self {
-        Self::ConnectionError(value)
-    }
-}
-
-impl From<tonic::Status> for ExternalError {
-    fn from(value: tonic::Status) -> Self {
-        Self::TonicStatusError(value)
-    }
-}
-
-impl From<re_uri::Error> for ExternalError {
-    fn from(value: re_uri::Error) -> Self {
-        Self::UriError(value)
+impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
+    for ExternalError
+{
+    fn from(value: GetDatasetSchemaResponseError) -> Self {
+        match value {
+            GetDatasetSchemaResponseError::ArrowError(err) => err.into(),
+            GetDatasetSchemaResponseError::TypeConversionError(err) => {
+                re_grpc_client::StreamError::from(err).into()
+            }
+        }
     }
 }
 
@@ -55,20 +93,65 @@ impl From<ExternalError> for PyErr {
             ExternalError::ConnectionError(err) => PyConnectionError::new_err(err.to_string()),
 
             ExternalError::TonicStatusError(status) => {
-                let mut msg = format!(
-                    "tonic status error: {} (code: {}",
-                    status.message(),
-                    status.code()
-                );
-                if let Some(source) = status.source() {
-                    msg.push_str(&format!(", source: {source})"));
+                if status.code() == tonic::Code::DeadlineExceeded {
+                    PyTimeoutError::new_err("Deadline expired before operation could complete")
                 } else {
-                    msg.push(')');
+                    let mut msg = format!(
+                        "tonic status error: {} (code: {}",
+                        status.message(),
+                        status.code()
+                    );
+                    if let Some(source) = status.source() {
+                        msg.push_str(&format!(", source: {source})"));
+                    } else {
+                        msg.push(')');
+                    }
+
+                    PyConnectionError::new_err(msg)
                 }
-                PyConnectionError::new_err(msg)
             }
 
             ExternalError::UriError(err) => PyValueError::new_err(format!("Invalid URI: {err}")),
+
+            ExternalError::ChunkError(err) => PyValueError::new_err(format!("Chunk error: {err}")),
+
+            ExternalError::ChunkStoreError(err) => {
+                PyValueError::new_err(format!("Chunk store error: {err}"))
+            }
+
+            ExternalError::StreamError(err) => {
+                PyValueError::new_err(format!("Data streaming error: {err}"))
+            }
+
+            ExternalError::ArrowError(err) => PyValueError::new_err(format!("Arrow error: {err}")),
+
+            ExternalError::UrlParseError(err) => {
+                PyValueError::new_err(format!("Could not parse URL: {err}"))
+            }
+
+            ExternalError::DatafusionError(err) => {
+                PyValueError::new_err(format!("DataFusion error: {err}"))
+            }
+
+            ExternalError::CodecError(err) => PyValueError::new_err(format!("Codec error: {err}")),
+
+            ExternalError::SorbetError(err) => {
+                PyValueError::new_err(format!("Sorbet error: {err}"))
+            }
+
+            ExternalError::ColumnSelectorParseError(err) => PyValueError::new_err(format!("{err}")),
+
+            ExternalError::ColumnSelectorResolveError(err) => {
+                PyValueError::new_err(format!("{err}"))
+            }
+
+            ExternalError::TypeConversionError(err) => {
+                PyValueError::new_err(format!("Could not convert gRPC message: {err}"))
+            }
+
+            ExternalError::TokenError(err) => {
+                PyValueError::new_err(format!("Invalid token: {err}"))
+            }
         }
     }
 }

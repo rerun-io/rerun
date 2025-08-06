@@ -31,7 +31,7 @@ from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import git
 import requests
@@ -160,7 +160,7 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
     ) -> None:
         crate = crates[name]
         for dependency in crate_deps(crate.manifest):
-            assert dependency.name != name, "Crate {name} had itself as a dependency"
+            assert dependency.name != name, f"Crate {name} had itself as a dependency"
             if dependency.name not in crates:
                 continue
             if dependency.name in visited:
@@ -324,8 +324,8 @@ def bump_dependency_versions(
             update_to = pin_prefix + str(new_version)
             ctx.bump(
                 f"{crate}.{dependency.name}",
-                info["version"],
-                update_to,
+                str(info["version"]),
+                cast(VersionInfo, update_to),
             )
             info["version"] = update_to
 
@@ -596,6 +596,44 @@ def check_git_branch_name() -> None:
         raise Exception(f'"{version}" is not a valid version string. See RELEASES.md for supported formats')
 
 
+def check_publish_flags() -> None:
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
+    crates = get_workspace_crates(root)
+
+    def traverse(out: set[str], crates: dict[str, Crate], crate: Crate) -> None:
+        if crate.manifest["package"]["name"] in out:
+            return
+
+        for dependency in crate_deps(crate.manifest):
+            if dependency.name not in crates:
+                continue
+
+            dependency_manifest = crates[dependency.name].manifest
+            should_publish_dependency = dependency_manifest["package"]["publish"]
+            if not should_publish_dependency:
+                out.add(dependency.name)
+
+                # recurse into the publish=false dependency
+                traverse(out, crates, crates[dependency.name])
+
+    wrong_publish: set[str] = set()
+
+    # traverse the crates, and for each one that is `publish=true`,
+    # check that all of its workspace dependencies are `publish=true`.
+    for crate in crates.values():
+        should_publish = crate.manifest["package"]["publish"]
+        if should_publish:
+            traverse(wrong_publish, crates, crate)
+
+    if len(wrong_publish) > 0:
+        for name in wrong_publish:
+            print(f"{name} needs to be changed to `publish=true`")
+        sys.exit(1)
+    else:
+        print("All crates have the correct `publish` flag set.")
+        return
+
+
 def print_version(
     target: Target | None,
     finalize: bool = False,
@@ -608,7 +646,7 @@ def print_version(
         current_version = current_version.finalize_version()
 
     if pre_id:
-        sys.stdout.write(str(current_version.prerelease.split(".", 1)[0]))
+        sys.stdout.write(str(current_version.prerelease.split(".", 1)[0]))  # type: ignore[union-attr]
         sys.stdout.flush()
     else:
         sys.stdout.write(str(current_version))
@@ -674,10 +712,16 @@ def main() -> None:
         help="If target is cratesio, return the first non-prerelease version",
     )
 
+    cmds_parser.add_parser(
+        "check-publish-flags", help="Check if any publish=true crates depend on publish=false crates."
+    )
+
     args = parser.parse_args()
 
     if args.cmd == "check-git-branch-name":
         check_git_branch_name()
+    if args.cmd == "check-publish-flags":
+        check_publish_flags()
     if args.cmd == "get-version":
         print_version(args.target, args.finalize, args.pre_id, args.skip_prerelease)
     if args.cmd == "version":

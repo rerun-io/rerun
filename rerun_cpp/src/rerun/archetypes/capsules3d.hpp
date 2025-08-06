@@ -8,6 +8,7 @@
 #include "../component_column.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
+#include "../components/fill_mode.hpp"
 #include "../components/length.hpp"
 #include "../components/pose_rotation_axis_angle.hpp"
 #include "../components/pose_rotation_quat.hpp"
@@ -15,7 +16,6 @@
 #include "../components/radius.hpp"
 #include "../components/show_labels.hpp"
 #include "../components/text.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -30,6 +30,9 @@ namespace rerun::archetypes {
     /// at (0, 0, 0) and (0, 0, length), that is, extending along the positive direction of the Z axis.
     /// Capsules in other orientations may be produced by applying a rotation to the entity or
     /// instances.
+    ///
+    /// If there's more instance poses than lengths & radii, the last capsule's orientation will be repeated for the remaining poses.
+    /// Orienting and placing capsules forms a separate transform that is applied prior to `archetypes::InstancePoses3D` and `archetypes::Transform3D`.
     ///
     /// ## Example
     ///
@@ -64,7 +67,7 @@ namespace rerun::archetypes {
     ///                 {8.0f, 0.0f, 0.0f},
     ///             })
     ///             .with_rotation_axis_angles({
-    ///                 rerun::RotationAxisAngle(),
+    ///                 rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(0.0)),
     ///                 rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(-22.5)),
     ///                 rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(-45.0)),
     ///                 rerun::RotationAxisAngle({1.0f, 0.0f, 0.0f}, rerun::Angle::degrees(-67.5)),
@@ -83,28 +86,34 @@ namespace rerun::archetypes {
         /// Optional translations of the capsules.
         ///
         /// If not specified, one end of each capsule will be at (0, 0, 0).
-        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> translations;
 
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> rotation_axis_angles;
 
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> quaternions;
 
         /// Optional colors for the capsules.
         std::optional<ComponentBatch> colors;
 
+        /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
+        std::optional<ComponentBatch> line_radii;
+
+        /// Optionally choose whether the cylinders are drawn with lines or solid.
+        std::optional<ComponentBatch> fill_mode;
+
         /// Optional text labels for the capsules, which will be located at their centers.
         std::optional<ComponentBatch> labels;
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         std::optional<ComponentBatch> show_labels;
 
         /// Optional class ID for the ellipsoids.
@@ -113,54 +122,59 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> class_ids;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.components.Capsules3DIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Capsules3D";
 
         /// `ComponentDescriptor` for the `lengths` field.
         static constexpr auto Descriptor_lengths = ComponentDescriptor(
-            ArchetypeName, "lengths", Loggable<rerun::components::Length>::Descriptor.component_name
+            ArchetypeName, "Capsules3D:lengths", Loggable<rerun::components::Length>::ComponentType
         );
         /// `ComponentDescriptor` for the `radii` field.
         static constexpr auto Descriptor_radii = ComponentDescriptor(
-            ArchetypeName, "radii", Loggable<rerun::components::Radius>::Descriptor.component_name
+            ArchetypeName, "Capsules3D:radii", Loggable<rerun::components::Radius>::ComponentType
         );
         /// `ComponentDescriptor` for the `translations` field.
         static constexpr auto Descriptor_translations = ComponentDescriptor(
-            ArchetypeName, "translations",
-            Loggable<rerun::components::PoseTranslation3D>::Descriptor.component_name
+            ArchetypeName, "Capsules3D:translations",
+            Loggable<rerun::components::PoseTranslation3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `rotation_axis_angles` field.
         static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
-            ArchetypeName, "rotation_axis_angles",
-            Loggable<rerun::components::PoseRotationAxisAngle>::Descriptor.component_name
+            ArchetypeName, "Capsules3D:rotation_axis_angles",
+            Loggable<rerun::components::PoseRotationAxisAngle>::ComponentType
         );
         /// `ComponentDescriptor` for the `quaternions` field.
         static constexpr auto Descriptor_quaternions = ComponentDescriptor(
-            ArchetypeName, "quaternions",
-            Loggable<rerun::components::PoseRotationQuat>::Descriptor.component_name
+            ArchetypeName, "Capsules3D:quaternions",
+            Loggable<rerun::components::PoseRotationQuat>::ComponentType
         );
         /// `ComponentDescriptor` for the `colors` field.
         static constexpr auto Descriptor_colors = ComponentDescriptor(
-            ArchetypeName, "colors", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "Capsules3D:colors", Loggable<rerun::components::Color>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `line_radii` field.
+        static constexpr auto Descriptor_line_radii = ComponentDescriptor(
+            ArchetypeName, "Capsules3D:line_radii",
+            Loggable<rerun::components::Radius>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `fill_mode` field.
+        static constexpr auto Descriptor_fill_mode = ComponentDescriptor(
+            ArchetypeName, "Capsules3D:fill_mode",
+            Loggable<rerun::components::FillMode>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
-            ArchetypeName, "labels", Loggable<rerun::components::Text>::Descriptor.component_name
+            ArchetypeName, "Capsules3D:labels", Loggable<rerun::components::Text>::ComponentType
         );
         /// `ComponentDescriptor` for the `show_labels` field.
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
-            ArchetypeName, "show_labels",
-            Loggable<rerun::components::ShowLabels>::Descriptor.component_name
+            ArchetypeName, "Capsules3D:show_labels",
+            Loggable<rerun::components::ShowLabels>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids",
-            Loggable<rerun::components::ClassId>::Descriptor.component_name
+            ArchetypeName, "Capsules3D:class_ids",
+            Loggable<rerun::components::ClassId>::ComponentType
         );
 
       public: // START of extensions from capsules3d_ext.cpp:
@@ -223,7 +237,6 @@ namespace rerun::archetypes {
         /// Optional translations of the capsules.
         ///
         /// If not specified, one end of each capsule will be at (0, 0, 0).
-        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
         Capsules3D with_translations(
             const Collection<rerun::components::PoseTranslation3D>& _translations
         ) && {
@@ -235,7 +248,6 @@ namespace rerun::archetypes {
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         Capsules3D with_rotation_axis_angles(
             const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
         ) && {
@@ -250,7 +262,6 @@ namespace rerun::archetypes {
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
         Capsules3D with_quaternions(
             const Collection<rerun::components::PoseRotationQuat>& _quaternions
         ) && {
@@ -265,13 +276,41 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
+        Capsules3D with_line_radii(const Collection<rerun::components::Radius>& _line_radii) && {
+            line_radii =
+                ComponentBatch::from_loggable(_line_radii, Descriptor_line_radii).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optionally choose whether the cylinders are drawn with lines or solid.
+        Capsules3D with_fill_mode(const rerun::components::FillMode& _fill_mode) && {
+            fill_mode =
+                ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `fill_mode` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_fill_mode` should
+        /// be used when logging a single row's worth of data.
+        Capsules3D with_many_fill_mode(const Collection<rerun::components::FillMode>& _fill_mode
+        ) && {
+            fill_mode =
+                ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode).value_or_throw();
+            return std::move(*this);
+        }
+
         /// Optional text labels for the capsules, which will be located at their centers.
         Capsules3D with_labels(const Collection<rerun::components::Text>& _labels) && {
             labels = ComponentBatch::from_loggable(_labels, Descriptor_labels).value_or_throw();
             return std::move(*this);
         }
 
-        /// Optional choice of whether the text labels should be shown by default.
+        /// Whether the text labels should be shown.
+        ///
+        /// If not set, labels will automatically appear when there is exactly one label for this entity
+        /// or the number of instances on this entity is under a certain threshold.
         Capsules3D with_show_labels(const rerun::components::ShowLabels& _show_labels) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();

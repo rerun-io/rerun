@@ -1,209 +1,60 @@
-use std::str::FromStr as _;
+use re_log_types::StoreId;
 
-use re_log_types::{TimeCell, TimeInt};
-
-use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, ProxyEndpoint};
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct TimeRange {
-    pub timeline: re_log_types::Timeline,
-    pub range: re_log_types::ResolvedTimeRangeF,
-}
-
-impl TimeRange {
-    const QUERY_KEY: &'static str = "time_range";
-}
-
-impl std::fmt::Display for TimeRange {
-    /// Used for formatting time ranges in URLs
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { timeline, range } = self;
-
-        let min = TimeCell::new(timeline.typ(), range.min.floor());
-        let max = TimeCell::new(timeline.typ(), range.max.ceil());
-
-        let name = timeline.name();
-        write!(f, "{name}@{min}..{max}")
-    }
-}
-
-impl TryFrom<&str> for TimeRange {
-    type Error = Error;
-
-    fn try_from(value: &str) -> Result<Self, crate::Error> {
-        let (timeline, range) = value
-            .split_once('@')
-            .ok_or_else(|| Error::InvalidTimeRange("Missing @".to_owned()))?;
-
-        let (min, max) = range
-            .split_once("..")
-            .ok_or_else(|| Error::InvalidTimeRange("Missing ..".to_owned()))?;
-
-        let min = min.parse::<TimeCell>().map_err(|err| {
-            Error::InvalidTimeRange(format!("Failed to parse time index '{min}': {err}"))
-        })?;
-        let max = max.parse::<TimeCell>().map_err(|err| {
-            Error::InvalidTimeRange(format!("Failed to parse time index '{max}': {err}"))
-        })?;
-
-        if min.typ() != max.typ() {
-            return Err(Error::InvalidTimeRange(
-                format!("min/max had differing types. Min was identified as {}, whereas max was identified as {}", min.typ(), max.typ()),
-            ));
-        }
-
-        let timeline = re_log_types::Timeline::new(timeline, min.typ());
-        let range = re_log_types::ResolvedTimeRangeF::new(TimeInt::from(min), TimeInt::from(max));
-
-        Ok(Self { timeline, range })
-    }
-}
-
-/// The different schemes supported by Rerun.
-///
-/// We support `rerun`, `rerun+http`, and `rerun+https`.
-#[derive(
-    Debug, PartialEq, Eq, Copy, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
-)]
-pub enum Scheme {
-    Rerun,
-    RerunHttp,
-    RerunHttps,
-}
-
-impl std::fmt::Display for Scheme {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Rerun => write!(f, "rerun"),
-            Self::RerunHttp => write!(f, "rerun+http"),
-            Self::RerunHttps => write!(f, "rerun+https"),
-        }
-    }
-}
-
-impl Scheme {
-    /// Converts a [`Scheme`] to either `http` or `https`.
-    fn as_http_scheme(&self) -> &str {
-        match self {
-            Self::Rerun | Self::RerunHttps => "https",
-            Self::RerunHttp => "http",
-        }
-    }
-
-    /// Converts a rerun url into a canonical http or https url.
-    fn canonical_url(&self, url: &str) -> String {
-        match self {
-            Self::Rerun => {
-                debug_assert!(url.starts_with("rerun://"));
-                url.replace("rerun://", "https://")
-            }
-            Self::RerunHttp => {
-                debug_assert!(url.starts_with("rerun+http://"));
-                url.replace("rerun+http://", "http://")
-            }
-            Self::RerunHttps => {
-                debug_assert!(url.starts_with("rerun+https://"));
-                url.replace("rerun+https://", "https://")
-            }
-        }
-    }
-}
-
-impl TryFrom<&str> for Scheme {
-    type Error = Error;
-
-    fn try_from(url: &str) -> Result<Self, crate::Error> {
-        if url.starts_with("rerun://") {
-            Ok(Self::Rerun)
-        } else if url.starts_with("rerun+http://") {
-            Ok(Self::RerunHttp)
-        } else if url.starts_with("rerun+https://") {
-            Ok(Self::RerunHttps)
-        } else {
-            Err(crate::Error::InvalidScheme)
-        }
-    }
-}
-
-#[derive(
-    Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
-)]
-pub struct Origin {
-    pub scheme: Scheme,
-    pub host: url::Host<String>,
-    pub port: u16,
-}
-
-impl crate::Origin {
-    /// Converts the [`crate::Origin`] to a URL that starts with either `http` or `https`.
-    pub fn as_url(&self) -> String {
-        format!(
-            "{}://{}:{}",
-            self.scheme.as_http_scheme(),
-            self.host,
-            self.port
-        )
-    }
-
-    /// Converts the [`crate::Origin`] to a `http` URL.
-    ///
-    /// In most cases you want to use [`crate::Origin::as_url()`] instead.
-    pub fn coerce_http_url(&self) -> String {
-        format!("http://{}:{}", self.host, self.port)
-    }
-}
-
-/// Parses a URL and returns the [`crate::Origin`] and the canonical URL (i.e. one that
-///  starts with `http://` or `https://`).
-fn replace_and_parse(value: &str) -> Result<(crate::Origin, url::Url), Error> {
-    let scheme = Scheme::try_from(value)?;
-    let rewritten = scheme.canonical_url(value);
-
-    // We have to first rewrite the endpoint, because `Url` does not allow
-    // `.set_scheme()` for non-opaque origins, nor does it return a proper
-    // `Origin` in that case.
-    let http_url = url::Url::parse(&rewritten)?;
-
-    let url::Origin::Tuple(_, host, port) = http_url.origin() else {
-        return Err(Error::UnexpectedOpaqueOrigin(value.to_owned()));
-    };
-
-    let origin = crate::Origin { scheme, host, port };
-
-    Ok((origin, http_url))
-}
-
-impl TryFrom<&str> for crate::Origin {
-    type Error = Error;
-
-    fn try_from(value: &str) -> Result<Self, crate::Error> {
-        replace_and_parse(value).map(|(origin, _)| origin)
-    }
-}
-
-impl std::fmt::Display for crate::Origin {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}://{}:{}", self.scheme, self.host, self.port)
-    }
-}
+use crate::{
+    CatalogUri, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT, DatasetDataUri, EntryUri, Error, Fragment,
+    Origin, ProxyUri,
+};
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
-#[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
 pub enum RedapUri {
-    Catalog(CatalogEndpoint),
+    /// `/catalog` - also the default if there is no /endpoint
+    Catalog(CatalogUri),
 
-    DatasetData(DatasetDataEndpoint),
+    /// `/entry`
+    Entry(EntryUri),
+
+    /// `/dataset`
+    DatasetData(DatasetDataUri),
 
     /// We use the `/proxy` endpoint to access another _local_ viewer.
-    Proxy(ProxyEndpoint),
+    Proxy(ProxyUri),
+}
+
+impl RedapUri {
+    pub fn origin(&self) -> &Origin {
+        match self {
+            Self::Catalog(uri) => &uri.origin,
+            Self::Entry(uri) => &uri.origin,
+            Self::DatasetData(uri) => &uri.origin,
+            Self::Proxy(uri) => &uri.origin,
+        }
+    }
+
+    /// Return the parsed `#fragment` of the URI, if any.
+    pub fn fragment(&self) -> Option<&Fragment> {
+        match self {
+            Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) => None,
+            Self::DatasetData(dataset_data_endpoint) => Some(&dataset_data_endpoint.fragment),
+        }
+    }
+
+    pub fn store_id(&self) -> Option<StoreId> {
+        match self {
+            Self::Catalog(_) | Self::Entry(_) | Self::Proxy(_) => None,
+            Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.store_id()),
+        }
+    }
 }
 
 impl std::fmt::Display for RedapUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Catalog(endpoint) => write!(f, "{endpoint}",),
-            Self::DatasetData(endpoints) => write!(f, "{endpoints}",),
-            Self::Proxy(endpoint) => write!(f, "{endpoint}",),
+            Self::Catalog(uri) => write!(f, "{uri}",),
+            Self::Entry(uri) => write!(f, "{uri}",),
+            Self::DatasetData(uri) => write!(f, "{uri}",),
+            Self::Proxy(uri) => write!(f, "{uri}",),
         }
     }
 }
@@ -211,16 +62,15 @@ impl std::fmt::Display for RedapUri {
 impl std::str::FromStr for RedapUri {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::try_from(s)
-    }
-}
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        // Hacky, but I don't want to have to memorize ports.
+        let default_localhost_port = if value.contains("/proxy") {
+            DEFAULT_PROXY_PORT
+        } else {
+            DEFAULT_REDAP_PORT
+        };
 
-impl TryFrom<&str> for RedapUri {
-    type Error = Error;
-
-    fn try_from(value: &str) -> Result<Self, crate::Error> {
-        let (origin, http_url) = replace_and_parse(value)?;
+        let (origin, http_url) = Origin::replace_and_parse(value, Some(default_localhost_port))?;
 
         // :warning: We limit the amount of segments, which might need to be
         // adjusted when adding additional resources.
@@ -231,40 +81,59 @@ impl TryFrom<&str> for RedapUri {
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
-        let time_range = http_url
-            .query_pairs()
-            .find(|(key, _)| key == TimeRange::QUERY_KEY)
-            .map(|(_, value)| TimeRange::try_from(value.as_ref()));
-
         match segments.as_slice() {
-            ["proxy"] => Ok(Self::Proxy(ProxyEndpoint::new(origin))),
+            ["proxy"] => Ok(Self::Proxy(ProxyUri::new(origin))),
 
-            ["catalog"] | [] => Ok(Self::Catalog(CatalogEndpoint::new(origin))),
+            ["catalog"] | [] => Ok(Self::Catalog(CatalogUri::new(origin))),
+
+            ["entry", entry_id] => {
+                let entry_id =
+                    re_log_types::EntryId::from_str(entry_id).map_err(Error::InvalidTuid)?;
+                Ok(Self::Entry(EntryUri::new(origin, entry_id)))
+            }
 
             ["dataset", dataset_id] => {
                 let dataset_id = re_tuid::Tuid::from_str(dataset_id).map_err(Error::InvalidTuid)?;
 
-                let partition_id = http_url
-                    .query_pairs()
-                    .find(|(key, _)| key == "partition_id")
-                    .ok_or(Error::MissingPartitionId)?
-                    .1
-                    .into_owned();
-
-                Ok(Self::DatasetData(DatasetDataEndpoint::new(
-                    origin,
-                    dataset_id,
-                    partition_id,
-                    time_range.transpose()?,
-                )))
+                DatasetDataUri::new(origin, dataset_id, &http_url).map(Self::DatasetData)
             }
-            [unknown, ..] => Err(Error::UnexpectedEndpoint(format!("{unknown}/"))),
+            [unknown, ..] => Err(Error::UnexpectedUri(format!("{unknown}/"))),
         }
     }
 }
 
+// --------------------------------
+
+// Serialize as string:
+impl serde::Serialize for RedapUri {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_string().serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for RedapUri {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse::<Self>()
+            .map_err(|err| serde::de::Error::custom(err.to_string()))
+    }
+}
+
+// --------------------------------
+
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unnecessary_fallible_conversions)]
+
+    use re_log_types::DataPath;
+
+    use crate::{Fragment, Scheme, TimeRange};
 
     use super::*;
     use core::net::Ipv4Addr;
@@ -301,16 +170,35 @@ mod tests {
     }
 
     #[test]
+    fn test_entry_url_to_address() {
+        let url = "rerun://127.0.0.1:1234/entry/1830B33B45B963E7774455beb91701ae";
+        let address: RedapUri = url.parse().unwrap();
+
+        let RedapUri::Entry(EntryUri { origin, entry_id }) = address else {
+            panic!("Expected recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(
+            entry_id,
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+        );
+    }
+
+    #[test]
     fn test_dataset_data_url_to_address() {
         let url =
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid";
-        let address: RedapUri = url.try_into().unwrap();
+        let address: RedapUri = url.parse().unwrap();
 
-        let RedapUri::DatasetData(DatasetDataEndpoint {
+        let RedapUri::DatasetData(DatasetDataUri {
             origin,
             dataset_id,
             partition_id,
             time_range,
+            fragment,
         }) = address
         else {
             panic!("Expected recording");
@@ -321,22 +209,62 @@ mod tests {
         assert_eq!(origin.port, 1234);
         assert_eq!(
             dataset_id,
-            re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap(),
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
         assert_eq!(partition_id, "pid");
         assert_eq!(time_range, None);
+        assert_eq!(fragment, Default::default());
+    }
+
+    #[test]
+    fn test_dataset_data_url_with_fragment() {
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#focus=/some/entity[#42]";
+        let address: RedapUri = url.parse().unwrap();
+
+        let RedapUri::DatasetData(DatasetDataUri {
+            origin,
+            dataset_id,
+            partition_id,
+            time_range,
+            fragment,
+        }) = address
+        else {
+            panic!("Expected recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(
+            dataset_id,
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+        );
+        assert_eq!(partition_id, "pid");
+        assert_eq!(time_range, None);
+        assert_eq!(
+            fragment,
+            Fragment {
+                focus: Some(DataPath {
+                    entity_path: "/some/entity".into(),
+                    instance: Some(42.into()),
+                    component_descriptor: None,
+                }),
+                ..Default::default()
+            }
+        );
     }
 
     #[test]
     fn test_dataset_data_url_time_range_sequence_to_address() {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@100..200";
-        let address: RedapUri = url.try_into().unwrap();
+        let address: RedapUri = url.parse().unwrap();
 
-        let RedapUri::DatasetData(DatasetDataEndpoint {
+        let RedapUri::DatasetData(DatasetDataUri {
             origin,
             dataset_id,
             partition_id,
             time_range,
+            fragment,
         }) = address
         else {
             panic!("Expected recording");
@@ -347,31 +275,31 @@ mod tests {
         assert_eq!(origin.port, 1234);
         assert_eq!(
             dataset_id,
-            re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap()
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap()
         );
         assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
             Some(TimeRange {
                 timeline: re_log_types::Timeline::new_sequence("timeline"),
-                range: re_log_types::ResolvedTimeRangeF::new(
-                    re_log_types::TimeReal::from(100.0),
-                    re_log_types::TimeReal::from(200.0)
-                )
+                min: 100.try_into().unwrap(),
+                max: 200.try_into().unwrap(),
             })
         );
+        assert_eq!(fragment, Default::default());
     }
 
     #[test]
     fn test_dataset_data_url_time_range_timepoint_to_address() {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=log_time@2022-01-01T00:00:03.123456789Z..2022-01-01T00:00:13.123456789Z";
-        let address: RedapUri = url.try_into().unwrap();
+        let address: RedapUri = url.parse().unwrap();
 
-        let RedapUri::DatasetData(DatasetDataEndpoint {
+        let RedapUri::DatasetData(DatasetDataUri {
             origin,
             dataset_id,
             partition_id,
             time_range,
+            fragment,
         }) = address
         else {
             panic!("Expected recording");
@@ -382,23 +310,18 @@ mod tests {
         assert_eq!(origin.port, 1234);
         assert_eq!(
             dataset_id,
-            re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap()
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap()
         );
         assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
             Some(TimeRange {
                 timeline: re_log_types::Timeline::new_timestamp("log_time"),
-                range: re_log_types::ResolvedTimeRangeF::new(
-                    re_log_types::TimeInt::from_nanos(
-                        1_640_995_203_123_456_789.try_into().unwrap()
-                    ),
-                    re_log_types::TimeInt::from_nanos(
-                        1_640_995_213_123_456_789.try_into().unwrap()
-                    ),
-                )
+                min: 1_640_995_203_123_456_789.try_into().unwrap(),
+                max: 1_640_995_213_123_456_789.try_into().unwrap(),
             })
         );
+        assert_eq!(fragment, Default::default());
     }
 
     #[test]
@@ -407,13 +330,14 @@ mod tests {
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1.23s..72s",
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1230ms..1m12s",
         ] {
-            let address: RedapUri = url.try_into().unwrap();
+            let address: RedapUri = url.parse().unwrap();
 
-            let RedapUri::DatasetData(DatasetDataEndpoint {
+            let RedapUri::DatasetData(DatasetDataUri {
                 origin,
                 dataset_id,
                 partition_id,
                 time_range,
+                fragment,
             }) = address
             else {
                 panic!("Expected recording");
@@ -424,19 +348,18 @@ mod tests {
             assert_eq!(origin.port, 1234);
             assert_eq!(
                 dataset_id,
-                re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap()
+                "1830B33B45B963E7774455beb91701ae".parse().unwrap()
             );
             assert_eq!(partition_id, "pid");
             assert_eq!(
                 time_range,
                 Some(TimeRange {
                     timeline: re_log_types::Timeline::new_duration("timeline"),
-                    range: re_log_types::ResolvedTimeRangeF::new(
-                        re_log_types::TimeReal::from_secs(1.23),
-                        re_log_types::TimeReal::from_secs(72.0)
-                    )
+                    min: re_log_types::TimeInt::from_secs(1.23).try_into().unwrap(),
+                    max: re_log_types::TimeInt::from_secs(72.0).try_into().unwrap(),
                 })
             );
+            assert_eq!(fragment, Default::default());
         }
     }
 
@@ -444,16 +367,16 @@ mod tests {
     fn test_dataset_data_url_missing_partition_id() {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data";
 
-        assert!(RedapUri::try_from(url).is_err());
+        assert!(url.parse::<RedapUri>().is_err());
     }
 
     #[test]
     fn test_http_catalog_url_to_address() {
         let url = "rerun+http://127.0.0.1:50051/catalog";
-        let address: RedapUri = url.try_into().unwrap();
+        let address: RedapUri = url.parse().unwrap();
         assert!(matches!(
             address,
-            RedapUri::Catalog(CatalogEndpoint {
+            RedapUri::Catalog(CatalogUri {
                 origin: Origin {
                     scheme: Scheme::RerunHttp,
                     host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
@@ -466,11 +389,11 @@ mod tests {
     #[test]
     fn test_https_catalog_url_to_address() {
         let url = "rerun+https://127.0.0.1:50051/catalog";
-        let address: RedapUri = url.try_into().unwrap();
+        let address: RedapUri = url.parse().unwrap();
 
         assert!(matches!(
             address,
-            RedapUri::Catalog(CatalogEndpoint {
+            RedapUri::Catalog(CatalogUri {
                 origin: Origin {
                     scheme: Scheme::RerunHttps,
                     host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
@@ -483,11 +406,11 @@ mod tests {
     #[test]
     fn test_localhost_url() {
         let url = "rerun+http://localhost:51234/catalog";
-        let address = RedapUri::try_from(url).unwrap();
+        let address: RedapUri = url.parse().unwrap();
 
         assert_eq!(
             address,
-            RedapUri::Catalog(CatalogEndpoint {
+            RedapUri::Catalog(CatalogUri {
                 origin: Origin {
                     scheme: Scheme::RerunHttp,
                     host: url::Host::<String>::Domain("localhost".to_owned()),
@@ -500,7 +423,7 @@ mod tests {
     #[test]
     fn test_invalid_url() {
         let url = "http://wrong-scheme:1234/recording/12345";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
         assert!(matches!(
             address.unwrap_err(),
@@ -511,20 +434,20 @@ mod tests {
     #[test]
     fn test_invalid_path() {
         let url = "rerun://0.0.0.0:51234/redap/recordings/12345";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
         assert!(matches!(
             address.unwrap_err(),
-            super::Error::UnexpectedEndpoint(unknown) if &unknown == "redap/"
+            super::Error::UnexpectedUri(unknown) if &unknown == "redap/"
         ));
     }
 
     #[test]
     fn test_proxy_endpoint() {
         let url = "rerun://localhost:51234/proxy";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
-        let expected = RedapUri::Proxy(ProxyEndpoint {
+        let expected = RedapUri::Proxy(ProxyUri {
             origin: Origin {
                 scheme: Scheme::Rerun,
                 host: url::Host::Domain("localhost".to_owned()),
@@ -535,17 +458,112 @@ mod tests {
         assert_eq!(address.unwrap(), expected);
 
         let url = "rerun://localhost:51234/proxy/";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
         assert_eq!(address.unwrap(), expected);
     }
 
     #[test]
+    fn test_parsing() {
+        let test_cases = [
+            (
+                "rerun://localhost/catalog",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::Rerun,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: DEFAULT_REDAP_PORT,
+                    },
+                }),
+            ),
+            (
+                "localhost",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: DEFAULT_REDAP_PORT,
+                    },
+                }),
+            ),
+            (
+                "localhost/proxy",
+                RedapUri::Proxy(ProxyUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: DEFAULT_PROXY_PORT,
+                    },
+                }),
+            ),
+            (
+                "127.0.0.1/proxy",
+                RedapUri::Proxy(ProxyUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+                        port: DEFAULT_PROXY_PORT,
+                    },
+                }),
+            ),
+            (
+                "rerun+http://example.com",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 80,
+                    },
+                }),
+            ),
+            (
+                "rerun+https://example.com",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttps,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 443,
+                    },
+                }),
+            ),
+            (
+                "rerun://example.com",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::Rerun,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 443,
+                    },
+                }),
+            ),
+            (
+                "rerun://example.com:420/catalog",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::Rerun,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 420,
+                    },
+                }),
+            ),
+        ];
+
+        for (url, expected) in test_cases {
+            assert_eq!(
+                url.parse::<RedapUri>()
+                    .unwrap_or_else(|err| panic!("Failed to parse url {url:}: {err}")),
+                expected,
+                "Url: {url:?}"
+            );
+        }
+    }
+
+    #[test]
     fn test_catalog_default() {
         let url = "rerun://localhost:51234";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
-        let expected = RedapUri::Catalog(CatalogEndpoint {
+        let expected = RedapUri::Catalog(CatalogUri {
             origin: Origin {
                 scheme: Scheme::Rerun,
                 host: url::Host::Domain("localhost".to_owned()),
@@ -556,8 +574,23 @@ mod tests {
         assert_eq!(address.unwrap(), expected);
 
         let url = "rerun://localhost:51234/";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
         assert_eq!(address.unwrap(), expected);
+    }
+
+    #[test]
+    fn test_custom_port() {
+        let url = "rerun://localhost:123";
+
+        let expected = RedapUri::Catalog(CatalogUri {
+            origin: Origin {
+                scheme: Scheme::Rerun,
+                host: url::Host::Domain("localhost".to_owned()),
+                port: 123,
+            },
+        });
+
+        assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
     }
 }

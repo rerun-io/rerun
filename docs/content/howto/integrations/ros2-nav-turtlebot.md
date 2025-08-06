@@ -119,8 +119,8 @@ If you are familiar with the turtlebot nav example and rviz, this view will like
 -   `map/robot/camera/points` contains a `PointCloud2` msg logged as a [point3d](../../reference/types/archetypes/points3d.md).
 -   `map/points` contains a second copy of `PointCloud2` with a different transform. (This is a workaround until Rerun
     has support for ROS-style fixed frames [#1522](https://github.com/rerun-io/rerun/issues/1522).)
--   `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../../reference/types/archetypes/scalar.md).
--   `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../../reference/types/archetypes/scalar.md).
+-   `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../../reference/types/archetypes/scalars.md).
+-   `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../../reference/types/archetypes/scalars.md).
 
 ## Code explanation
 

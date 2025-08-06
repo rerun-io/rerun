@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/float32.hpp"
 #include "../../result.hpp"
 
@@ -12,6 +11,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Space between grid lines of one line to the next in scene units.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct GridSpacing {
         /// Space between grid lines of one line to the next in scene units.
         rerun::datatypes::Float32 distance;
@@ -46,7 +48,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::GridSpacing> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.components.GridSpacing";
+        static constexpr std::string_view ComponentType = "rerun.blueprint.components.GridSpacing";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

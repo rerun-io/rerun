@@ -18,6 +18,12 @@ pub fn generate_rust_code(
 ) {
     let mut prost_config = prost_build::Config::new();
     prost_config.enable_type_names(); // tonic doesn't expose this option
+    prost_config.bytes([
+        ".rerun.common.v1alpha1",
+        ".rerun.frontend.v1alpha1",
+        ".rerun.log_msg.v1alpha1",
+        ".rerun.manifest_registry.v1alpha1",
+    ]);
 
     if let Err(err) = tonic_build::configure()
         .out_dir(output_dir.as_ref())

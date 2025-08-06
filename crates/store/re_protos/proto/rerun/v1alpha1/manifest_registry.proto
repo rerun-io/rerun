@@ -2,16 +2,25 @@ syntax = "proto3";
 
 package rerun.manifest_registry.v1alpha1;
 
+import "google/protobuf/timestamp.proto";
 import "rerun/v1alpha1/common.proto";
+import "rerun/v1alpha1/log_msg.proto";
 
 service ManifestRegistryService {
   // --- Write data ---
 
-  // Register new partitions with the Dataset
+  // Register new partitions with the Dataset (asynchronously)
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
-  // Unimplemented.
-  rpc WriteChunks(stream WriteChunksRequest) returns (stream WriteChunksResponse) {}
+  // Write chunks to one or more partitions.
+  //
+  // The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+  //
+  // The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
+  rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
+
+  // Miscellaneous maintenance operations: scalar index creation, compaction, etc.
+  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
 
   // --- Query schemas ---
 
@@ -93,22 +102,14 @@ service ManifestRegistryService {
   // --- Developer/Debug APIs ---
   // Unstable APIs that are not exposed by the Frontend.
 
-  // Fetch an entire partition from the server, without any pre- or post-processing.
-  //
-  // This is a temporary hack while we get everything up and running.
-  rpc FetchPartition(FetchPartitionRequest) returns (stream FetchPartitionResponse) {}
+  // Fetch the internal state of a Partition Manifest.
+  rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
+
+  // Fetch the internal state of a Schema Manifest.
+  rpc FetchSchemaManifest(FetchSchemaManifestRequest) returns (stream FetchSchemaManifestResponse) {}
 
   // Retrieves the chunk manifest for a specific index.
   rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
-
-  // Create manifests for all partitions in the Dataset. Partition manifest contains information about
-  // the chunks in the partitions.
-  //
-  // This is normally automatically done as part of the registration process.
-  rpc CreatePartitionManifests(CreatePartitionManifestsRequest) returns (CreatePartitionManifestsResponse) {}
-
-  // Fetch the internal state of a Partition Manifest.
-  rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
 }
 
 // --- Write data ---
@@ -116,6 +117,11 @@ service ManifestRegistryService {
 message DataSource {
   // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
   optional string storage_url = 1;
+
+  /// Which Partition Layer should this data source be registered to?
+  ///
+  /// Defaults to `base` if unspecified.
+  optional string layer = 3;
 
   // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
   DataSourceKind typ = 2;
@@ -137,7 +143,7 @@ message RegisterWithDatasetResponse {
 }
 
 message WriteChunksRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
 message WriteChunksResponse {}
@@ -177,6 +183,11 @@ message CreateIndexRequest {
 
   // List of specific partitions that will be indexed (all if left empty).
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
+
+  // List of specific partition layers that will be indexed (all if left empty).
+  //
+  // If non-empty, this must match the length of `partition_ids`.
+  repeated string partition_layers = 5;
 
   IndexConfig config = 3;
 
@@ -310,10 +321,48 @@ message QueryDatasetRequest {
   // all chunks that match other query parameters will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
-  // Generic parameters that will influence the behavior of the Lance scanner.
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 4;
+  // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
+  // in order to query all of them.
+  repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
 
-  Query query = 5;
+  // If set, the query will cover all existing entity paths.
+  //
+  // `entity_paths` must be empty, otherwise an error will be raised.
+  //
+  // Truth table:
+  // ```text
+  // select_all_entity_paths | entity_paths   | result
+  // ------------------------+----------------+--------
+  // false                   | []             | valid query, empty results (no entity paths selected)
+  // false                   | ['foo', 'bar'] | valid query, 'foo' & 'bar' selected
+  // true                    | []             | valid query, all entity paths selected
+  // true                    | ['foo', 'bar'] | invalid query, error
+  // ```
+  bool select_all_entity_paths = 7;
+
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 10;
+
+  // If set, static data will be excluded from the results.
+  bool exclude_static_data = 8;
+
+  // If set, temporal data will be excluded from the results.
+  bool exclude_temporal_data = 9;
+
+  // Generic parameters that will influence the behavior of the Lance scanner.
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
+
+  // A chunk-level latest-at or range query, or both.
+  //
+  // This query is AND'd together with the `partition_ids` and `chunk_ids` filters above.
+  Query query = 6;
 }
 
 message QueryDatasetResponse {
@@ -321,76 +370,70 @@ message QueryDatasetResponse {
 }
 
 message Query {
-  // If true, `columns` will contain the entire schema.
-  bool columns_always_include_everything = 4;
-
-  // If true, `columns` always includes `chunk_id`,
-  bool columns_always_include_chunk_ids = 5;
-
-  // If true, `columns` always includes `byte_offset` and `byte_size`.
-  bool columns_always_include_byte_offsets = 6;
-
-  // If true, `columns` always includes `entity_path`.
-  bool columns_always_include_entity_paths = 7;
-
-  // If true, `columns` always includes all static component-level indexes.
-  bool columns_always_include_static_indexes = 8;
-
-  // If true, `columns` always includes all temporal chunk-level indexes.
-  bool columns_always_include_global_indexes = 9;
-
-  // If true, `columns` always includes all component-level indexes.
-  bool columns_always_include_component_indexes = 10;
-
   // If specified, will perform a latest-at query with the given parameters.
-  QueryDatasetLatestAtRelevantChunks latest_at = 11;
+  //
+  // You can combine this with a `QueryRange` in order to gather all the relevant chunks for
+  // a full-fledged dataframe query (i.e. they get OR'd together).
+  QueryLatestAt latest_at = 1;
 
   // If specified, will perform a range query with the given parameters.
-  QueryDatasetRangeRelevantChunks range = 12;
+  //
+  // You can combine this with a `QueryLatestAt` in order to gather all the relevant chunks for
+  // a full-fledged dataframe query (i.e. they get OR'd together).
+  QueryRange range = 2;
+
+  // If true, `columns` will contain the entire schema.
+  bool columns_always_include_everything = 3;
+
+  // If true, `columns` always includes `chunk_id`,
+  bool columns_always_include_chunk_ids = 4;
+
+  // If true, `columns` always includes `byte_offset` and `byte_size`.
+  bool columns_always_include_byte_offsets = 5;
+
+  // If true, `columns` always includes `entity_path`.
+  bool columns_always_include_entity_paths = 6;
+
+  // If true, `columns` always includes all static component-level indexes.
+  bool columns_always_include_static_indexes = 7;
+
+  // If true, `columns` always includes all temporal chunk-level indexes.
+  bool columns_always_include_global_indexes = 8;
+
+  // If true, `columns` always includes all component-level indexes.
+  bool columns_always_include_component_indexes = 9;
 }
 
-message QueryDatasetLatestAtRelevantChunks {
-  // Which entity paths are we interested in? Empty list means all entity paths
-  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
-
+// A chunk-level latest-at query, aka `LatestAtRelevantChunks`.
+//
+// This has the exact same semantics as the query of the same name on our `ChunkStore`.
+message QueryLatestAt {
   // Which index column should we perform the query on? E.g. `log_time`.
-  rerun.common.v1alpha1.IndexColumnSelector index = 2;
+  //
+  // Leave this empty to query for static data.
+  rerun.common.v1alpha1.IndexColumnSelector index = 1;
 
   // What index value are we looking for?
-  optional int64 at = 3;
+  //
+  // Leave this empty to query for static data.
+  optional int64 at = 2;
 
-  // Which components are we interested in?
-  //
-  // If left unspecified, all existing components are considered of interest.
-  //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-  // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-  // `SeriesLine`, etc.
-  repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 4;
+  reserved 3;
+  reserved "fuzzy_descriptors";
 }
 
-message QueryDatasetRangeRelevantChunks {
-  // Which entity paths are we interested in?
-  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
-
+/// A chunk-level range query, aka `RangeRelevantChunks`.
+//
+// This has the exact same semantics as the query of the same name on our `ChunkStore`.
+message QueryRange {
   // Which index column should we perform the query on? E.g. `log_time`.
-  rerun.common.v1alpha1.IndexColumnSelector index = 2;
+  rerun.common.v1alpha1.IndexColumnSelector index = 1;
 
   // What index range are we looking for?
-  rerun.common.v1alpha1.TimeRange index_range = 3;
+  rerun.common.v1alpha1.TimeRange index_range = 2;
 
-  // Which components are we interested in?
-  //
-  // If left unspecified, all existing components are considered of interest.
-  //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-  // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-  // `SeriesLine`, etc.
-  repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 4;
+  reserved 3;
+  reserved "fuzzy_descriptors";
 }
 
 message GetChunksRequest {
@@ -405,33 +448,55 @@ message GetChunksRequest {
   // all chunks (that match other query parameters) will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
-  // Query details
-  Query query = 4;
+  // Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
+  // in order to query all of them.
+  repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
+
+  // If set, the query will cover all existing entity paths.
+  //
+  // `entity_paths` must be empty, otherwise an error will be raised.
+  //
+  // Truth table:
+  // ```text
+  // select_all_entity_paths | entity_paths   | result
+  // ------------------------+----------------+--------
+  // false                   | []             | valid query, empty results (no entity paths selected)
+  // false                   | ['foo', 'bar'] | valid query, 'foo' & 'bar' selected
+  // true                    | []             | valid query, all entity paths selected
+  // true                    | ['foo', 'bar'] | invalid query, error
+  // ```
+  bool select_all_entity_paths = 6;
+
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLines:width` index, all of the following
+  // would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+  repeated string fuzzy_descriptors = 9;
+
+  // If set, static data will be excluded from the results.
+  bool exclude_static_data = 7;
+
+  // If set, temporal data will be excluded from the results.
+  bool exclude_temporal_data = 8;
+
+  // A chunk-level latest-at or range query, or both.
+  //
+  // This query is AND'd together with the `partition_ids` and `chunk_ids` filters above.
+  Query query = 5;
 }
 
 message GetChunksResponse {
-  rerun.common.v1alpha1.RerunChunk chunk = 1;
+  // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
+  // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
+  repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
 }
 
 // --- Developer/Debug APIs ---
 // Unstable APIs that are not exposed by the Frontend.
-
-message CreatePartitionManifestsRequest {
-  // Dataset for which we want to create manifests
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Create manifest for specific partitions. All will be
-  // created if left unspecified (empty list)
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // Define what happens if create is called multiple times for the same
-  // Dataset / partitions
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
-}
-
-message CreatePartitionManifestsResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
 
 message FetchPartitionManifestRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
@@ -444,14 +509,14 @@ message FetchPartitionManifestResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-message FetchPartitionRequest {
+message FetchSchemaManifestRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
-  rerun.common.v1alpha1.PartitionId partition_id = 2;
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
 }
 
-message FetchPartitionResponse {
-  // Chunks as arrow RecordBatch
-  rerun.common.v1alpha1.RerunChunk chunk = 1;
+// TODO(cmc): this should have response extensions too.
+message FetchSchemaManifestResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 message FetchChunkManifestRequest {
@@ -468,6 +533,29 @@ message FetchChunkManifestRequest {
 message FetchChunkManifestResponse {
   // Chunk manifest as arrow RecordBatches
   rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message DoMaintenanceRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+
+  // Create the acceleration structures for temporal queries.
+  //
+  // This will recreate all scalar indexes from scratch everytime.
+  //
+  // TODO(cmc): support incremental scalar indexing & index compaction
+  bool build_scalar_indexes = 2;
+
+  // Compact the underlying Lance fragments, for all Rerun Manifests.
+  //
+  // Hardcoded to the default (optimal) settings.
+  bool compact_fragments = 3;
+
+  // If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+  google.protobuf.Timestamp cleanup_before = 4;
+}
+
+message DoMaintenanceResponse {
+  string report = 1;
 }
 
 // ----------------- Error handling -----------------

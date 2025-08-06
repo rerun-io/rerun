@@ -10,6 +10,10 @@ on:
         required: false
         type: string
         default: ""
+      CHECK:
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-pip-index
@@ -50,7 +54,7 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Install deps
-        run: pip install google-cloud-storage Jinja2
+        run: pip3 install google-cloud-storage Jinja2
 
       - name: Render pip index and upload to gcloud
         run: |
@@ -61,4 +65,4 @@ jobs:
             --title "Commit: $commit" \
             --dir "commit/$commit/wheels" \
             --upload \
-            --check
+            ${{ inputs.CHECK == 'true' && '--check' || '' }}

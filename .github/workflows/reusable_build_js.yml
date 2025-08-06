@@ -12,11 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
-
+  RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
 
   # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
@@ -49,7 +45,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
+          node-version: "22.x"
 
       - name: Install Yarn
         run: npm install -g yarn
@@ -63,7 +59,7 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.41.4
 
@@ -72,3 +68,16 @@ jobs:
 
       - name: Build rerun_js package
         run: pixi run yarn --cwd rerun_js workspaces run build
+
+      - name: Package rerun_js
+        run: |
+          pixi run yarn --cwd rerun_js workspaces run pack
+          mkdir rerun_js_package
+          cp rerun_js/*/*.tar.gz rerun_js_package/
+
+      - name: Upload rerun_js
+        uses: actions/upload-artifact@v4
+        with:
+          name: rerun_js
+          path: rerun_js_package
+          compression-level: 0 # already compressed

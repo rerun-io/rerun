@@ -1,8 +1,13 @@
 //! Support crate for context menu and actions.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
+use egui::Popup;
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
+use re_log_types::TableId;
+use re_ui::UiExt as _;
 use re_viewer_context::{
     ContainerId, Contents, Item, ItemCollection, ItemContext, ViewId, ViewerContext,
 };
@@ -13,6 +18,7 @@ pub mod collapse_expand;
 mod sub_menu;
 
 use actions::{
+    CopyEntityPathToClipboard,
     add_container::AddContainerAction,
     add_entities_to_new_view::AddEntitiesToNewViewAction,
     add_view::AddViewAction,
@@ -21,8 +27,8 @@ use actions::{
     move_contents_to_new_container::MoveContentsToNewContainerAction,
     remove::RemoveAction,
     show_hide::{HideAction, ShowAction},
-    CopyEntityPathToClipboard,
 };
+use re_ui::menu::menu_style;
 use sub_menu::SubMenu;
 
 /// Controls how [`context_menu_ui_for_item`] should handle the current selection state.
@@ -83,54 +89,59 @@ fn context_menu_ui_for_item_with_context_impl(
     item_response: &egui::Response,
     selection_update_behavior: SelectionUpdateBehavior,
 ) {
-    item_response.context_menu(|ui| {
-        if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
-            ui.close_menu();
-            return;
-        }
+    Popup::context_menu(item_response)
+        .style(menu_style())
+        .show(|ui| {
+            if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+                ui.close();
+                return;
+            }
 
-        let mut show_context_menu = |selection: &ItemCollection| {
-            let context_menu_ctx = ContextMenuContext {
-                viewer_context: ctx,
-                viewport_blueprint,
-                selection,
-                clicked_item: item,
+            let mut show_context_menu = |selection: &ItemCollection| {
+                let context_menu_ctx = ContextMenuContext {
+                    viewer_context: ctx,
+                    viewport_blueprint,
+                    selection,
+                    clicked_item: item,
+                };
+                show_context_menu_for_selection(&context_menu_ctx, ui);
             };
-            show_context_menu_for_selection(&context_menu_ctx, ui);
-        };
 
-        let item_collection = ItemCollection::from(std::iter::once((item.clone(), item_context)));
+            let item_collection = ItemCollection::from_items_and_context(std::iter::once((
+                item.clone(),
+                item_context,
+            )));
 
-        // handle selection
-        match selection_update_behavior {
-            SelectionUpdateBehavior::UseSelection => {
-                if !ctx.selection().contains_item(item) {
-                    // When the context menu is triggered open, we check if we're part of the selection,
-                    // and, if not, we update the selection to include only the item that was clicked.
-                    if item_response.hovered() && item_response.secondary_clicked() {
-                        show_context_menu(&item_collection);
-                        ctx.selection_state().set_selection(item_collection);
+            // handle selection
+            match selection_update_behavior {
+                SelectionUpdateBehavior::UseSelection => {
+                    if !ctx.selection().contains_item(item) {
+                        // When the context menu is triggered open, we check if we're part of the selection,
+                        // and, if not, we update the selection to include only the item that was clicked.
+                        if item_response.hovered() && item_response.secondary_clicked() {
+                            show_context_menu(&item_collection);
+                            ctx.selection_state().set_selection(item_collection);
+                        } else {
+                            show_context_menu(ctx.selection());
+                        }
                     } else {
                         show_context_menu(ctx.selection());
                     }
-                } else {
-                    show_context_menu(ctx.selection());
                 }
-            }
 
-            SelectionUpdateBehavior::OverrideSelection => {
-                show_context_menu(&item_collection);
+                SelectionUpdateBehavior::OverrideSelection => {
+                    show_context_menu(&item_collection);
 
-                if item_response.secondary_clicked() {
-                    ctx.selection_state().set_selection(item_collection);
+                    if item_response.secondary_clicked() {
+                        ctx.selection_state().set_selection(item_collection);
+                    }
                 }
-            }
 
-            SelectionUpdateBehavior::Ignore => {
-                show_context_menu(&item_collection);
-            }
-        };
-    });
+                SelectionUpdateBehavior::Ignore => {
+                    show_context_menu(&item_collection);
+                }
+            };
+        });
 }
 
 /// Returns the (statically-defined) list of action, grouped in sections.
@@ -225,7 +236,7 @@ fn show_context_menu_for_selection(ctx: &ContextMenuContext<'_>, ui: &mut egui::
 
             let response = action.ui(ctx, ui);
             if response.clicked() {
-                ui.close_menu();
+                ui.close();
             }
         }
 
@@ -328,7 +339,7 @@ trait ContextMenuAction {
         let label = self.label(ctx);
 
         let response = if let Some(icon) = self.icon() {
-            ui.add(egui::Button::image_and_text(icon.as_image(), label))
+            ui.add(icon.as_button_with_label(ui.tokens(), label))
         } else {
             ui.button(label)
         };
@@ -358,6 +369,7 @@ trait ContextMenuAction {
         for (item, _) in ctx.selection.iter() {
             match item {
                 Item::AppId(app_id) => self.process_app_id(ctx, app_id),
+                Item::TableId(table_id) => self.process_table_id(ctx, table_id),
                 Item::DataSource(data_source) => self.process_data_source(ctx, data_source),
                 Item::StoreId(store_id) => self.process_store_id(ctx, store_id),
                 Item::ComponentPath(component_path) => {
@@ -369,6 +381,10 @@ trait ContextMenuAction {
                     self.process_data_result(ctx, view_id, instance_path);
                 }
                 Item::Container(container_id) => self.process_container(ctx, container_id),
+                Item::RedapServer(origin) => self.process_redap_server(ctx, origin),
+                Item::RedapEntry(entry_id) => {
+                    self.process_redap_entry(ctx, entry_id);
+                }
             }
         }
     }
@@ -386,8 +402,22 @@ trait ContextMenuAction {
     /// Process a single recording.
     fn process_store_id(&self, _ctx: &ContextMenuContext<'_>, _store_id: &re_log_types::StoreId) {}
 
+    /// Process a table.
+    fn process_table_id(&self, _ctx: &ContextMenuContext<'_>, _store_id: &TableId) {}
+
     /// Process a single container.
     fn process_container(&self, _ctx: &ContextMenuContext<'_>, _container_id: &ContainerId) {}
+
+    /// Process a single redap server.
+    fn process_redap_server(&self, _ctx: &ContextMenuContext<'_>, _origin: &re_uri::Origin) {}
+
+    /// Process a single redap entry (dataset or table).
+    fn process_redap_entry(
+        &self,
+        _ctx: &ContextMenuContext<'_>,
+        _entry_id: &re_log_types::EntryId,
+    ) {
+    }
 
     /// Process a single view.
     fn process_view(&self, _ctx: &ContextMenuContext<'_>, _view_id: &ViewId) {}

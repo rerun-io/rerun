@@ -2,10 +2,13 @@
 //!
 //! Types & utilities for defining View classes and communicating with the Viewport.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 pub mod controls;
 
 mod annotation_context_utils;
 mod annotation_scene_context;
+mod chunks_with_descriptor;
 mod heuristics;
 mod instance_hash_conversions;
 mod outlines;
@@ -17,15 +20,16 @@ pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
 };
 pub use annotation_scene_context::AnnotationSceneContext;
+pub use chunks_with_descriptor::{ChunkWithDescriptor, ChunksWithDescriptor};
 pub use heuristics::suggest_view_for_each_entity;
 pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
 };
 pub use outlines::{
-    outline_config, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES, outline_config,
 };
 pub use query::{
-    latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, DataResultQuery,
+    DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
 pub use results_ext::{
     HybridLatestAtResults, HybridRangeResults, HybridResults, HybridResultsChunkIter,
@@ -37,30 +41,6 @@ pub use view_property_ui::{
 
 pub mod external {
     pub use re_entity_db::external::*;
-}
-
-// -----------
-
-/// Utility for implementing [`re_viewer_context::DataBasedVisualizabilityFilter`] using on the properties of a concrete component.
-#[inline]
-pub fn diff_component_filter<T: re_types_core::Component>(
-    event: &re_chunk_store::ChunkStoreEvent,
-    filter: impl Fn(&T) -> bool,
-) -> bool {
-    let filter = &filter;
-    event
-        .diff
-        .chunk
-        .components()
-        .get_by_component_name(&T::descriptor().component_name)
-        .any(|list_array| {
-            list_array
-                .iter()
-                .filter_map(|array| {
-                    array.and_then(|array| T::from_arrow(&arrow::array::ArrayRef::from(array)).ok())
-                })
-                .any(|instances| instances.iter().any(filter))
-        })
 }
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.

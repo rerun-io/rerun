@@ -1,13 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
-use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
+use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, StoreInfo, TimeInt, TimeType};
-use re_types_core::{ComponentDescriptor, ComponentName};
+use re_types_core::{ComponentDescriptor, ComponentType};
 
 use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
 
@@ -204,10 +204,15 @@ impl ChunkStoreConfig {
 #[test]
 fn chunk_store_config() {
     // Detect breaking changes in our environment variables.
-    std::env::set_var("RERUN_STORE_ENABLE_CHANGELOG", "false");
-    std::env::set_var("RERUN_CHUNK_MAX_BYTES", "42");
-    std::env::set_var("RERUN_CHUNK_MAX_ROWS", "666");
-    std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "999");
+
+    // SAFETY: it's a test
+    #[expect(unsafe_code)]
+    unsafe {
+        std::env::set_var("RERUN_STORE_ENABLE_CHANGELOG", "false");
+        std::env::set_var("RERUN_CHUNK_MAX_BYTES", "42");
+        std::env::set_var("RERUN_CHUNK_MAX_ROWS", "666");
+        std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "999");
+    };
 
     let config = ChunkStoreConfig::from_env().unwrap();
 
@@ -258,17 +263,17 @@ pub struct ChunkIdSetPerTime {
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
-pub type ChunkIdSetPerTimePerComponentName = IntMap<ComponentName, ChunkIdSetPerTime>;
+pub type ChunkIdSetPerTimePerComponentDescriptor = IntMap<ComponentDescriptor, ChunkIdSetPerTime>;
 
-pub type ChunkIdSetPerTimePerComponentNamePerTimeline =
-    IntMap<TimelineName, ChunkIdSetPerTimePerComponentName>;
+pub type ChunkIdSetPerTimePerComponentDescriptorPerTimeline =
+    IntMap<TimelineName, ChunkIdSetPerTimePerComponentDescriptor>;
 
-pub type ChunkIdSetPerTimePerComponentNamePerTimelinePerEntity =
-    IntMap<EntityPath, ChunkIdSetPerTimePerComponentNamePerTimeline>;
+pub type ChunkIdSetPerTimePerComponentDescriptorPerTimelinePerEntity =
+    IntMap<EntityPath, ChunkIdSetPerTimePerComponentDescriptorPerTimeline>;
 
-pub type ChunkIdPerComponentName = IntMap<ComponentName, ChunkId>;
+pub type ChunkIdPerComponentDescriptor = IntMap<ComponentDescriptor, ChunkId>;
 
-pub type ChunkIdPerComponentNamePerEntity = IntMap<EntityPath, ChunkIdPerComponentName>;
+pub type ChunkIdPerComponentDescriptorPerEntity = IntMap<EntityPath, ChunkIdPerComponentDescriptor>;
 
 pub type ChunkIdSetPerTimePerTimeline = IntMap<TimelineName, ChunkIdSetPerTime>;
 
@@ -280,9 +285,6 @@ pub type ChunkIdSetPerTimePerTimelinePerEntity = IntMap<EntityPath, ChunkIdSetPe
 pub struct ColumnMetadata {
     /// Whether this column represents static data.
     pub is_static: bool,
-
-    /// Whether this column represents an indicator component.
-    pub is_indicator: bool,
 
     /// Whether this column represents a `Clear`-related component.
     ///
@@ -395,7 +397,7 @@ impl ChunkStoreHandle {
 #[derive(Debug)]
 pub struct ChunkStore {
     pub(crate) id: StoreId,
-    pub(crate) info: Option<StoreInfo>,
+    pub(crate) store_info: Option<StoreInfo>,
 
     /// The configuration of the chunk store (e.g. compaction settings).
     pub(crate) config: ChunkStoreConfig,
@@ -412,30 +414,30 @@ pub struct ChunkStore {
     //
     // TODO(cmc): this would become fairly problematic in a world where each chunk can use a
     // different datatype for a given component.
-    pub(crate) type_registry: IntMap<ComponentName, ArrowDataType>,
+    pub(crate) type_registry: IntMap<ComponentType, ArrowDataType>,
 
-    pub(crate) per_column_metadata:
-        IntMap<EntityPath, IntMap<ComponentName, IntMap<ComponentDescriptor, ColumnMetadataState>>>,
+    // TODO(grtlr): Can we slim this map down by getting rid of `ColumnIdentifier`-level here?
+    pub(crate) per_column_metadata: IntMap<
+        EntityPath,
+        IntMap<ComponentIdentifier, (ComponentDescriptor, ColumnMetadataState, ArrowDataType)>,
+    >,
 
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
     /// All [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
-    ///
-    /// This is a map of vecs instead of individual [`ChunkId`] in order to better support
-    /// duplicated [`RowId`]s.
-    pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, Vec<ChunkId>>,
+    pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentName`].
+    /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentDescriptor`].
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity`].
     /// * [`Self::static_chunk_ids_per_entity`].
     pub(crate) temporal_chunk_ids_per_entity_per_component:
-        ChunkIdSetPerTimePerComponentNamePerTimelinePerEntity,
+        ChunkIdSetPerTimePerComponentDescriptorPerTimelinePerEntity,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentName`] index.
+    /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentType`] index.
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity_per_component`].
@@ -452,7 +454,7 @@ pub struct ChunkStore {
     /// Static data unconditionally shadows temporal data at query time.
     ///
     /// Existing temporal will not be removed. Events won't be fired.
-    pub(crate) static_chunk_ids_per_entity: ChunkIdPerComponentNamePerEntity,
+    pub(crate) static_chunk_ids_per_entity: ChunkIdPerComponentDescriptorPerEntity,
 
     /// Accumulated size statitistics for all static [`Chunk`]s currently present in the store.
     ///
@@ -489,7 +491,7 @@ impl Clone for ChunkStore {
         re_tracing::profile_function!();
         Self {
             id: self.id.clone(),
-            info: self.info.clone(),
+            store_info: self.store_info.clone(),
             config: self.config.clone(),
             time_type_registry: self.time_type_registry.clone(),
             type_registry: self.type_registry.clone(),
@@ -514,7 +516,7 @@ impl std::fmt::Display for ChunkStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             id,
-            info: _,
+            store_info: _,
             config,
             time_type_registry: _,
             type_registry: _,
@@ -533,7 +535,7 @@ impl std::fmt::Display for ChunkStore {
 
         f.write_str("ChunkStore {\n")?;
 
-        f.write_str(&indent::indent_all_by(4, format!("id: {id}\n")))?;
+        f.write_str(&indent::indent_all_by(4, format!("id: {id:?}\n")))?;
         f.write_str(&indent::indent_all_by(4, format!("config: {config:?}\n")))?;
 
         f.write_str(&indent::indent_all_by(4, "stats: {\n"))?;
@@ -544,7 +546,7 @@ impl std::fmt::Display for ChunkStore {
         f.write_str(&indent::indent_all_by(4, "}\n"))?;
 
         f.write_str(&indent::indent_all_by(4, "chunks: [\n"))?;
-        for chunk_id in chunk_id_per_min_row_id.values().flatten() {
+        for chunk_id in chunk_id_per_min_row_id.values() {
             if let Some(chunk) = chunks_per_chunk_id.get(chunk_id) {
                 if let Some(width) = f.width() {
                     let chunk_width = width.saturating_sub(8);
@@ -576,7 +578,7 @@ impl ChunkStore {
     pub fn new(id: StoreId, config: ChunkStoreConfig) -> Self {
         Self {
             id,
-            info: None,
+            store_info: None,
             config,
             time_type_registry: Default::default(),
             type_registry: Default::default(),
@@ -611,13 +613,13 @@ impl ChunkStore {
     }
 
     #[inline]
-    pub fn set_info(&mut self, info: StoreInfo) {
-        self.info = Some(info);
+    pub fn set_store_info(&mut self, store_info: StoreInfo) {
+        self.store_info = Some(store_info);
     }
 
     #[inline]
-    pub fn info(&self) -> Option<&StoreInfo> {
-        self.info.as_ref()
+    pub fn store_info(&self) -> Option<&StoreInfo> {
+        self.store_info.as_ref()
     }
 
     /// Return the current [`ChunkStoreGeneration`]. This can be used to determine whether the
@@ -662,43 +664,36 @@ impl ChunkStore {
 
     /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].
     #[inline]
-    pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<ArrowDataType> {
-        self.type_registry.get(component_name).cloned()
+    pub fn lookup_datatype(&self, component_type: &ComponentType) -> Option<ArrowDataType> {
+        self.type_registry.get(component_type).cloned()
     }
 
     /// Lookup the [`ColumnMetadata`] for a specific [`EntityPath`] and [`re_types_core::Component`].
     pub fn lookup_column_metadata(
         &self,
         entity_path: &EntityPath,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Option<ColumnMetadata> {
         let ColumnMetadataState {
             is_semantically_empty,
         } = self
             .per_column_metadata
             .get(entity_path)
-            .and_then(|per_name| per_name.get(component_name))
-            .and_then(|per_component| {
-                per_component.iter().find_map(|(descr, metadata)| {
-                    (descr.component_name == *component_name).then_some(metadata)
-                })
-            })?;
+            .and_then(|per_identifier| per_identifier.get(&component_descr.component))
+            .map(|(_, metadata_state, _)| metadata_state)?;
 
         let is_static = self
             .static_chunk_ids_per_entity
             .get(entity_path)
-            .is_some_and(|per_component| per_component.get(component_name).is_some());
-
-        let is_indicator = component_name.is_indicator_component();
+            .is_some_and(|per_descr| per_descr.get(component_descr).is_some());
 
         use re_types_core::Archetype as _;
         let is_tombstone = re_types_core::archetypes::Clear::all_components()
             .iter()
-            .any(|descr| descr.component_name == *component_name);
+            .any(|descr| descr == component_descr);
 
         Some(ColumnMetadata {
             is_static,
-            is_indicator,
             is_tombstone,
             is_semantically_empty: *is_semantically_empty,
         })
@@ -714,10 +709,10 @@ impl ChunkStore {
     ///
     /// See also:
     /// * [`ChunkStore::new`]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
-        version_policy: re_log_encoding::VersionPolicy,
     ) -> anyhow::Result<BTreeMap<StoreId, Self>> {
         let path_to_rrd = path_to_rrd.as_ref();
 
@@ -730,7 +725,7 @@ impl ChunkStore {
         let rrd_file = std::fs::File::open(path_to_rrd)
             .with_context(|| format!("couldn't open {path_to_rrd:?}"))?;
 
-        let mut decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)
+        let mut decoder = re_log_encoding::decoder::Decoder::new(rrd_file)
             .with_context(|| format!("couldn't decode {path_to_rrd:?}"))?;
 
         // TODO(cmc): offload the decoding to a background thread.
@@ -742,12 +737,12 @@ impl ChunkStore {
                         Self::new(info.info.store_id.clone(), store_config.clone())
                     });
 
-                    store.set_info(info.info);
+                    store.set_store_info(info.info);
                 }
 
                 re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
                     let Some(store) = stores.get_mut(&store_id) else {
-                        anyhow::bail!("unknown store ID: {store_id}");
+                        anyhow::bail!("unknown store ID: {store_id:?}");
                     };
 
                     let chunk = Chunk::from_arrow_msg(&msg)
@@ -790,12 +785,12 @@ impl ChunkStore {
                         Self::new(info.info.store_id.clone(), store_config.clone())
                     });
 
-                    store.set_info(info.info);
+                    store.set_store_info(info.info);
                 }
 
                 re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
                     let Some(store) = stores.get_mut(&store_id) else {
-                        anyhow::bail!("unknown store ID: {store_id}");
+                        anyhow::bail!("unknown store ID: {store_id:?}");
                     };
 
                     let chunk = Chunk::from_arrow_msg(&msg)
@@ -821,16 +816,14 @@ impl ChunkStore {
     ///
     /// See also:
     /// * [`ChunkStore::new_handle`]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn handle_from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
-        version_policy: re_log_encoding::VersionPolicy,
     ) -> anyhow::Result<BTreeMap<StoreId, ChunkStoreHandle>> {
-        Ok(
-            Self::from_rrd_filepath(store_config, path_to_rrd, version_policy)?
-                .into_iter()
-                .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
-                .collect(),
-        )
+        Ok(Self::from_rrd_filepath(store_config, path_to_rrd)?
+            .into_iter()
+            .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
+            .collect())
     }
 }

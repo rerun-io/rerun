@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -16,7 +15,11 @@ __all__ = ["Enabled", "EnabledBatch"]
 
 
 class Enabled(datatypes.Bool, ComponentMixin):
-    """**Component**: Whether a procedure is enabled."""
+    """
+    **Component**: Whether a procedure is enabled.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of EnabledExt in enabled_ext.py
@@ -25,7 +28,7 @@ class Enabled(datatypes.Bool, ComponentMixin):
 
 
 class EnabledBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.Enabled")
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.Enabled"
 
 
 # This is patched in late to avoid circular dependencies.

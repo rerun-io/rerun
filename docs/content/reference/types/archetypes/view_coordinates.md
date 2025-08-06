@@ -17,11 +17,12 @@ Make sure that this archetype is logged at or above the origin entity path of yo
 
 ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 
-## Components
+## Fields
+### Required
+* `xyz`: [`ViewCoordinates`](../components/view_coordinates.md)
 
-**Required**: [`ViewCoordinates`](../components/view_coordinates.md)
 
-## Shown in
+## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

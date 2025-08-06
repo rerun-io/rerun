@@ -8,7 +8,6 @@
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
 #include "../../components/range1d.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -17,7 +16,10 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Configuration for the scalar axis of a plot.
+    /// **Archetype**: Configuration for the scalar (Y) axis of a plot.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ScalarAxis {
         /// The range of the axis.
         ///
@@ -28,22 +30,17 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> zoom_lock;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.ScalarAxisIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.ScalarAxis";
 
         /// `ComponentDescriptor` for the `range` field.
         static constexpr auto Descriptor_range = ComponentDescriptor(
-            ArchetypeName, "range", Loggable<rerun::components::Range1D>::Descriptor.component_name
+            ArchetypeName, "ScalarAxis:range", Loggable<rerun::components::Range1D>::ComponentType
         );
         /// `ComponentDescriptor` for the `zoom_lock` field.
         static constexpr auto Descriptor_zoom_lock = ComponentDescriptor(
-            ArchetypeName, "zoom_lock",
-            Loggable<rerun::blueprint::components::LockRangeDuringZoom>::Descriptor.component_name
+            ArchetypeName, "ScalarAxis:zoom_lock",
+            Loggable<rerun::blueprint::components::LockRangeDuringZoom>::ComponentType
         );
 
       public:

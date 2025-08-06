@@ -10,7 +10,6 @@ mod helpers;
 mod iter;
 mod latest_at;
 mod merge;
-mod migration;
 mod range;
 mod shuffle;
 mod slice;
@@ -32,17 +31,19 @@ pub use self::range::{RangeQuery, RangeQueryOptions};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::batcher::{
-    ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkBatcherResult, PendingRow,
+    BatcherHooks, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkBatcherResult,
+    PendingRow,
 };
 
 // Re-exports
 
 #[doc(no_inline)]
-pub use arrow::array::Array as ArrowArray;
-#[doc(no_inline)]
-pub use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
-#[doc(no_inline)]
-pub use re_types_core::{ArchetypeFieldName, ArchetypeName, ChunkId, ComponentName, RowId};
+pub use {
+    arrow::array::Array as ArrowArray,
+    re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName},
+    re_span::Span,
+    re_types_core::{ArchetypeName, ChunkId, ComponentIdentifier, ComponentType, RowId},
+};
 
 pub mod external {
     pub use arrow;

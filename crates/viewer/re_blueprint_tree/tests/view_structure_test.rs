@@ -1,22 +1,22 @@
-//! Snapshot testTest suite dedicated to snapshot the way we present various kinds of blueprint tree structures
+//! Snapshot test suite dedicated to snapshot the way we present various kinds of blueprint tree structures
 //! with a focus on various view contents and filter configuration.
 
 #![cfg(feature = "testing")]
 
 use egui::Vec2;
-use egui_kittest::{SnapshotError, SnapshotOptions};
+use egui_kittest::{OsThreshold, SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 
-use re_blueprint_tree::data::BlueprintTreeData;
 use re_blueprint_tree::BlueprintTree;
-use re_chunk_store::external::re_chunk::ChunkBuilder;
+use re_blueprint_tree::data::BlueprintTreeData;
 use re_chunk_store::RowId;
-use re_log_types::{build_frame_nr, EntityPath, Timeline};
+use re_chunk_store::external::re_chunk::ChunkBuilder;
+use re_log_types::{EntityPath, Timeline, build_frame_nr};
+use re_test_context::TestContext;
+use re_test_viewport::TestContextExt as _;
 use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;
-use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
 
 const VIEW_ID: &str = "this-is-a-view-id";
@@ -91,6 +91,7 @@ fn base_test_cases() -> impl Iterator<Item = TestCase> {
 fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
     [
         None,
+        Some(""),
         Some("t"),
         Some("void"),
         Some("path"),
@@ -106,35 +107,31 @@ fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
 }
 
 fn test_context(test_case: &TestCase) -> TestContext {
-    let mut test_context = TestContext::default();
-
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     match test_case.recording_kind {
         RecordingKind::Empty => {}
         RecordingKind::Regular => {
-            test_context.log_entity("/path/to/left".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/path/to/right".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/path/to/the/void".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/path/onto/their/coils".into(), add_point_to_chunk_builder);
-            test_context.log_entity("/center/way".into(), add_point_to_chunk_builder);
+            test_context.log_entity("/path/to/left", add_point_to_chunk_builder);
+            test_context.log_entity("/path/to/right", add_point_to_chunk_builder);
+            test_context.log_entity("/path/to/the/void", add_point_to_chunk_builder);
+            test_context.log_entity("/path/onto/their/coils", add_point_to_chunk_builder);
+            test_context.log_entity("/center/way", add_point_to_chunk_builder);
         }
     }
 
     test_context.setup_viewport_blueprint(|_, blueprint| {
-        let view = ViewBlueprint::new_with_id(
+        blueprint.add_view_at_root(ViewBlueprint::new_with_id(
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
                 origin: test_case.origin.clone(),
                 query_filter: test_case
                     .entity_filter
-                    .try_into()
+                    .parse()
                     .expect("invalid entity filter"),
             },
             ViewId::hashed_from_str(VIEW_ID),
-        );
-
-        blueprint.add_views(std::iter::once(view), None, None);
+        ));
     });
 
     test_context
@@ -176,7 +173,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
     // when it's run for the snapshot.
     test_context.run_in_egui_central_panel(|ctx, ui| {
         let blueprint =
-            ViewportBlueprint::try_from_db(ctx.store_context.blueprint, ctx.blueprint_query);
+            ViewportBlueprint::from_db(ctx.store_context.blueprint, ctx.blueprint_query);
 
         blueprint_tree.show(ctx, &blueprint, ui);
     });
@@ -200,7 +197,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
                     true,
                 );
 
-                let blueprint = ViewportBlueprint::try_from_db(
+                let blueprint = ViewportBlueprint::from_db(
                     viewer_ctx.store_context.blueprint,
                     viewer_ctx.blueprint_query,
                 );
@@ -213,12 +210,18 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
 
     harness.run();
 
-    let options = SnapshotOptions::default().output_path(format!(
-        "tests/snapshots/view_structure_test/{}",
-        filter_query
-            .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
-            .unwrap_or("no-query".to_owned())
-    ));
+    let options = SnapshotOptions::new()
+        .output_path(format!(
+            "tests/snapshots/view_structure_test/{}",
+            filter_query
+                .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
+                .unwrap_or("no-query".to_owned())
+        ))
+        // @wumpf's Windows machine needs a bit of a higher threshold to pass this test due to discrepancies in text rendering.
+        // (Software Rasterizer on CI seems fine with the default).
+        .threshold(OsThreshold::new(SnapshotOptions::default().threshold).windows(0.8))
+        .failed_pixel_count_threshold(OsThreshold::new(0).windows(15));
+
     harness.try_snapshot_options(test_case.name, &options)
 }
 
@@ -232,7 +235,7 @@ fn test_all_insta_test_cases() {
 
             let blueprint_tree_data =
                 test_context.run_once_in_egui_central_panel(|viewer_ctx, _| {
-                    let blueprint = ViewportBlueprint::try_from_db(
+                    let blueprint = ViewportBlueprint::from_db(
                         viewer_ctx.store_context.blueprint,
                         viewer_ctx.blueprint_query,
                     );

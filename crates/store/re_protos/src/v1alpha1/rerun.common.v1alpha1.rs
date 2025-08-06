@@ -9,8 +9,8 @@ pub struct RerunChunk {
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
     /// TODO(zehiko) make this optional (#9285)
-    #[prost(bytes = "vec", tag = "2")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "bytes", tag = "2")]
+    pub payload: ::prost::bytes::Bytes,
 }
 impl ::prost::Name for RerunChunk {
     const NAME: &'static str = "RerunChunk";
@@ -22,20 +22,20 @@ impl ::prost::Name for RerunChunk {
         "/rerun.common.v1alpha1.RerunChunk".into()
     }
 }
-/// unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
+/// uniquely identifies a table
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RecordingId {
+pub struct TableId {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
 }
-impl ::prost::Name for RecordingId {
-    const NAME: &'static str = "RecordingId";
+impl ::prost::Name for TableId {
+    const NAME: &'static str = "TableId";
     const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.RecordingId".into()
+        "rerun.common.v1alpha1.TableId".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.RecordingId".into()
+        "/rerun.common.v1alpha1.TableId".into()
     }
 }
 /// A recording can have multiple timelines, each is identified by a name, for example `log_tick`, `log_time`, etc.
@@ -76,8 +76,8 @@ impl ::prost::Name for TimeRange {
 /// arrow IPC serialized schema
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
-    #[prost(bytes = "vec", optional, tag = "1")]
-    pub arrow_schema: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
+    #[prost(bytes = "bytes", optional, tag = "1")]
+    pub arrow_schema: ::core::option::Option<::prost::bytes::Bytes>,
 }
 impl ::prost::Name for Schema {
     const NAME: &'static str = "Schema";
@@ -87,118 +87,6 @@ impl ::prost::Name for Schema {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.Schema".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Query {
-    /// The subset of the database that the query will run on: a set of EntityPath(s) and their
-    /// associated Component(s)
-    #[prost(message, optional, tag = "1")]
-    pub view_contents: ::core::option::Option<ViewContents>,
-    /// Whether the view_contents should ignore semantically empty columns
-    /// A semantically empty column is a column that either contains no data at all, or where all
-    /// values are either nulls or empty arrays (\[\]).
-    #[prost(bool, tag = "2")]
-    pub include_semantically_empty_columns: bool,
-    /// Whether the view_contents should ignore columns corresponding to indicator components
-    /// Indicator components are marker components, generally automatically inserted by Rerun, that
-    /// helps keep track of the original context in which a piece of data was logged/sent.
-    #[prost(bool, tag = "3")]
-    pub include_indicator_columns: bool,
-    /// Whether the view_contents should ignore columns corresponding to Clear-related components
-    #[prost(bool, tag = "4")]
-    pub include_tombstone_columns: bool,
-    /// The index used to filter out _rows_ from the view contents.
-    /// Only rows where at least 1 column contains non-null data at that index will be kept in the
-    /// final dataset. If left unspecified, the results will only contain static data.
-    #[prost(message, optional, tag = "5")]
-    pub filtered_index: ::core::option::Option<IndexColumnSelector>,
-    /// The range of index values used to filter out _rows_ from the view contents
-    /// Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
-    /// the final dataset.
-    /// This has no effect if filtered_index isn't set.
-    /// This has no effect if using_index_values is set.
-    #[prost(message, optional, tag = "6")]
-    pub filtered_index_range: ::core::option::Option<IndexRange>,
-    /// The specific index values used to filter out _rows_ from the view contents.
-    /// Only rows where at least 1 column contains non-null data at these specific values will be kept
-    /// in the final dataset.
-    /// This has no effect if filtered_index isn't set.
-    /// This has no effect if using_index_values is set.
-    #[prost(message, optional, tag = "7")]
-    pub filtered_index_values: ::core::option::Option<IndexValues>,
-    /// The specific index values used to sample _rows_ from the view contents.
-    /// The final dataset will contain one row per sampled index value, regardless of whether data
-    /// existed for that index value in the view contents.
-    /// The semantics of the query are consistent with all other settings: the results will be
-    /// sorted on the filtered_index, and only contain unique index values.
-    ///
-    /// This has no effect if filtered_index isn't set.
-    /// If set, this overrides both filtered_index_range and filtered_index_values.
-    #[prost(message, optional, tag = "8")]
-    pub using_index_values: ::core::option::Option<IndexValues>,
-    /// The component column used to filter out _rows_ from the view contents.
-    /// Only rows where this column contains non-null data be kept in the final dataset.
-    #[prost(message, optional, tag = "9")]
-    pub filtered_is_not_null: ::core::option::Option<ComponentColumnSelector>,
-    /// The specific _columns_ to sample from the final view contents.
-    /// The order of the samples will be respected in the final result.
-    ///
-    /// If unspecified, it means - everything.
-    #[prost(message, optional, tag = "10")]
-    pub column_selection: ::core::option::Option<ColumnSelection>,
-    /// Specifies how null values should be filled in the returned dataframe.
-    #[prost(enumeration = "SparseFillStrategy", tag = "11")]
-    pub sparse_fill_strategy: i32,
-}
-impl ::prost::Name for Query {
-    const NAME: &'static str = "Query";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.Query".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.Query".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ColumnSelection {
-    #[prost(message, repeated, tag = "1")]
-    pub columns: ::prost::alloc::vec::Vec<ColumnSelector>,
-}
-impl ::prost::Name for ColumnSelection {
-    const NAME: &'static str = "ColumnSelection";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.ColumnSelection".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.ColumnSelection".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ColumnSelector {
-    #[prost(oneof = "column_selector::SelectorType", tags = "2, 3")]
-    pub selector_type: ::core::option::Option<column_selector::SelectorType>,
-}
-/// Nested message and enum types in `ColumnSelector`.
-pub mod column_selector {
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum SelectorType {
-        #[prost(message, tag = "2")]
-        ComponentColumn(super::ComponentColumnSelector),
-        #[prost(message, tag = "3")]
-        TimeColumn(super::TimeColumnSelector),
-    }
-}
-impl ::prost::Name for ColumnSelector {
-    const NAME: &'static str = "ColumnSelector";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.ColumnSelector".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.ColumnSelector".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -233,100 +121,6 @@ impl ::prost::Name for IndexRange {
         "/rerun.common.v1alpha1.IndexRange".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct IndexValues {
-    /// TODO(zehiko) we need to add support for other types of index selectors
-    #[prost(message, repeated, tag = "1")]
-    pub time_points: ::prost::alloc::vec::Vec<TimeInt>,
-}
-impl ::prost::Name for IndexValues {
-    const NAME: &'static str = "IndexValues";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.IndexValues".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.IndexValues".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SampledIndexValues {
-    #[prost(message, repeated, tag = "1")]
-    pub sample_points: ::prost::alloc::vec::Vec<TimeInt>,
-}
-impl ::prost::Name for SampledIndexValues {
-    const NAME: &'static str = "SampledIndexValues";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.SampledIndexValues".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.SampledIndexValues".into()
-    }
-}
-/// A 64-bit number describing either nanoseconds, sequence numbers or fully static data.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct TimeInt {
-    #[prost(int64, tag = "1")]
-    pub time: i64,
-}
-impl ::prost::Name for TimeInt {
-    const NAME: &'static str = "TimeInt";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.TimeInt".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.TimeInt".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ViewContents {
-    #[prost(message, repeated, tag = "1")]
-    pub contents: ::prost::alloc::vec::Vec<ViewContentsPart>,
-}
-impl ::prost::Name for ViewContents {
-    const NAME: &'static str = "ViewContents";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.ViewContents".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.ViewContents".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ViewContentsPart {
-    #[prost(message, optional, tag = "1")]
-    pub path: ::core::option::Option<EntityPath>,
-    #[prost(message, optional, tag = "2")]
-    pub components: ::core::option::Option<ComponentsSet>,
-}
-impl ::prost::Name for ViewContentsPart {
-    const NAME: &'static str = "ViewContentsPart";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.ViewContentsPart".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.ViewContentsPart".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ComponentsSet {
-    #[prost(message, repeated, tag = "1")]
-    pub components: ::prost::alloc::vec::Vec<Component>,
-}
-impl ::prost::Name for ComponentsSet {
-    const NAME: &'static str = "ComponentsSet";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.ComponentsSet".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.ComponentsSet".into()
-    }
-}
 /// The unique identifier of an entity, e.g. `camera/3/points`
 /// See <<https://www.rerun.io/docs/concepts/entity-path>> for more on entity paths.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -342,57 +136,6 @@ impl ::prost::Name for EntityPath {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.EntityPath".into()
-    }
-}
-/// Component describes semantic data that can be used by any number of  rerun's archetypes.
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Component {
-    /// component name needs to be a string as user can define their own component
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-impl ::prost::Name for Component {
-    const NAME: &'static str = "Component";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.Component".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.Component".into()
-    }
-}
-/// Used to telect a time column.
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TimeColumnSelector {
-    #[prost(message, optional, tag = "1")]
-    pub timeline: ::core::option::Option<Timeline>,
-}
-impl ::prost::Name for TimeColumnSelector {
-    const NAME: &'static str = "TimeColumnSelector";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.TimeColumnSelector".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.TimeColumnSelector".into()
-    }
-}
-/// Used to select a component based on its EntityPath and Component name.
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ComponentColumnSelector {
-    #[prost(message, optional, tag = "1")]
-    pub entity_path: ::core::option::Option<EntityPath>,
-    #[prost(message, optional, tag = "2")]
-    pub component: ::core::option::Option<Component>,
-}
-impl ::prost::Name for ComponentColumnSelector {
-    const NAME: &'static str = "ComponentColumnSelector";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.ComponentColumnSelector".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.ComponentColumnSelector".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -412,10 +155,16 @@ impl ::prost::Name for ApplicationId {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StoreId {
+    /// The kind of the store.
     #[prost(enumeration = "StoreKind", tag = "1")]
     pub kind: i32,
+    /// The recording id of the store. For remote stores, this is the partition id. For blueprint store, this is an
+    /// arbitrary uuid.
     #[prost(string, tag = "2")]
-    pub id: ::prost::alloc::string::String,
+    pub recording_id: ::prost::alloc::string::String,
+    /// User-chosen name of the application doing the logging. For remote stores, this is the dataset entry id.
+    #[prost(message, optional, tag = "3")]
+    pub application_id: ::core::option::Option<ApplicationId>,
 }
 impl ::prost::Name for StoreId {
     const NAME: &'static str = "StoreId";
@@ -468,6 +217,9 @@ pub struct DatasetHandle {
     /// Unique entry identifier (for debug purposes)
     #[prost(message, optional, tag = "1")]
     pub entry_id: ::core::option::Option<EntryId>,
+    /// The kind of dataset this handle refers to.
+    #[prost(enumeration = "StoreKind", tag = "3")]
+    pub store_kind: i32,
     /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
     #[prost(string, optional, tag = "2")]
     pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
@@ -489,8 +241,8 @@ pub struct DataframePart {
     #[prost(enumeration = "EncoderVersion", tag = "1")]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
-    #[prost(bytes = "vec", optional, tag = "2")]
-    pub payload: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
+    #[prost(bytes = "bytes", optional, tag = "2")]
+    pub payload: ::core::option::Option<::prost::bytes::Bytes>,
 }
 impl ::prost::Name for DataframePart {
     const NAME: &'static str = "DataframePart";
@@ -539,8 +291,8 @@ pub struct ScanParameters {
     /// ```text
     /// scanner.order_by(…)
     /// ```
-    #[prost(message, optional, tag = "6")]
-    pub order_by: ::core::option::Option<ScanParametersOrderClause>,
+    #[prost(message, repeated, tag = "6")]
+    pub order_by: ::prost::alloc::vec::Vec<ScanParametersOrderClause>,
     /// If set, the output of `scanner.explain_plan` will be dumped to the server's log.
     #[prost(bool, tag = "7")]
     pub explain_plan: bool,
@@ -598,14 +350,14 @@ impl ::prost::Name for PartitionId {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ComponentDescriptor {
     /// Optional name of the `Archetype` associated with this data.
-    #[prost(string, optional, tag = "1")]
-    pub archetype_name: ::core::option::Option<::prost::alloc::string::String>,
-    /// Optional name of the field within `Archetype` associated with this data.
-    #[prost(string, optional, tag = "2")]
-    pub archetype_field_name: ::core::option::Option<::prost::alloc::string::String>,
-    /// Semantic name associated with this data.
-    #[prost(string, optional, tag = "3")]
-    pub component_name: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(string, optional, tag = "4")]
+    pub archetype: ::core::option::Option<::prost::alloc::string::String>,
+    /// Identifier of the field within `Archetype` associated with this data.
+    #[prost(string, optional, tag = "5")]
+    pub component: ::core::option::Option<::prost::alloc::string::String>,
+    /// Optional semantic name associated with this data.
+    #[prost(string, optional, tag = "6")]
+    pub component_type: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for ComponentDescriptor {
     const NAME: &'static str = "ComponentDescriptor";
@@ -615,6 +367,122 @@ impl ::prost::Name for ComponentDescriptor {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.ComponentDescriptor".into()
+    }
+}
+/// Unique identifier of a task submitted in the redap
+/// tasks subsystem
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TaskId {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+impl ::prost::Name for TaskId {
+    const NAME: &'static str = "TaskId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.TaskId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.TaskId".into()
+    }
+}
+/// Mirrors `re_build_info::BuildInfo`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BuildInfo {
+    /// `CARGO_PKG_NAME`.
+    #[prost(string, optional, tag = "1")]
+    pub crate_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Space-separated names of all features enabled for this crate.
+    #[prost(string, optional, tag = "2")]
+    pub features: ::core::option::Option<::prost::alloc::string::String>,
+    /// Crate version, parsed from `CARGO_PKG_VERSION`, ignoring any `+metadata` suffix.
+    #[prost(message, optional, tag = "3")]
+    pub version: ::core::option::Option<SemanticVersion>,
+    /// The raw version string of the Rust compiler used, or an empty string.
+    #[prost(string, optional, tag = "4")]
+    pub rustc_version: ::core::option::Option<::prost::alloc::string::String>,
+    /// The raw version string of the LLVM toolchain used, or an empty string.
+    #[prost(string, optional, tag = "5")]
+    pub llvm_version: ::core::option::Option<::prost::alloc::string::String>,
+    /// Git commit hash, or empty string.
+    #[prost(string, optional, tag = "6")]
+    pub git_hash: ::core::option::Option<::prost::alloc::string::String>,
+    /// Current git branch, or empty string.
+    #[prost(string, optional, tag = "7")]
+    pub git_branch: ::core::option::Option<::prost::alloc::string::String>,
+    /// Target architecture and OS
+    ///
+    /// Example: `xaarch64-apple-darwin`
+    #[prost(string, optional, tag = "8")]
+    pub target_triple: ::core::option::Option<::prost::alloc::string::String>,
+    /// ISO 8601 / RFC 3339 build time.
+    ///
+    /// Example: `"2023-02-23T19:33:26Z"`
+    ///
+    /// Empty if unknown.
+    #[prost(string, optional, tag = "9")]
+    pub build_time: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for BuildInfo {
+    const NAME: &'static str = "BuildInfo";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.BuildInfo".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.BuildInfo".into()
+    }
+}
+/// Mirrors `re_build_info::CrateVersion`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SemanticVersion {
+    #[prost(fixed32, optional, tag = "1")]
+    pub major: ::core::option::Option<u32>,
+    #[prost(fixed32, optional, tag = "2")]
+    pub minor: ::core::option::Option<u32>,
+    #[prost(fixed32, optional, tag = "3")]
+    pub patch: ::core::option::Option<u32>,
+    #[prost(oneof = "semantic_version::Meta", tags = "4, 5, 6")]
+    pub meta: ::core::option::Option<semantic_version::Meta>,
+}
+/// Nested message and enum types in `SemanticVersion`.
+pub mod semantic_version {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Meta {
+        #[prost(fixed32, tag = "4")]
+        Rc(u32),
+        #[prost(fixed32, tag = "5")]
+        Alpha(u32),
+        #[prost(message, tag = "6")]
+        DevAlpha(super::DevAlpha),
+    }
+}
+impl ::prost::Name for SemanticVersion {
+    const NAME: &'static str = "SemanticVersion";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.SemanticVersion".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.SemanticVersion".into()
+    }
+}
+/// Mirrors `re_build_info::DevAlpha`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DevAlpha {
+    #[prost(fixed32, optional, tag = "1")]
+    pub alpha: ::core::option::Option<u32>,
+    #[prost(string, optional, tag = "2")]
+    pub commit: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for DevAlpha {
+    const NAME: &'static str = "DevAlpha";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.DevAlpha".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.DevAlpha".into()
     }
 }
 /// supported encoder versions for encoding data
@@ -641,36 +509,6 @@ impl EncoderVersion {
         match value {
             "ENCODER_VERSION_UNSPECIFIED" => Some(Self::Unspecified),
             "ENCODER_VERSION_V0" => Some(Self::V0),
-            _ => None,
-        }
-    }
-}
-/// Specifies how null values should be filled in the returned dataframe.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum SparseFillStrategy {
-    Unspecified = 0,
-    None = 1,
-    LatestAtGlobal = 2,
-}
-impl SparseFillStrategy {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::Unspecified => "SPARSE_FILL_STRATEGY_UNSPECIFIED",
-            Self::None => "SPARSE_FILL_STRATEGY_NONE",
-            Self::LatestAtGlobal => "SPARSE_FILL_STRATEGY_LATEST_AT_GLOBAL",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "SPARSE_FILL_STRATEGY_UNSPECIFIED" => Some(Self::Unspecified),
-            "SPARSE_FILL_STRATEGY_NONE" => Some(Self::None),
-            "SPARSE_FILL_STRATEGY_LATEST_AT_GLOBAL" => Some(Self::LatestAtGlobal),
             _ => None,
         }
     }

@@ -22,6 +22,8 @@ class TextDocumentView(View):
     """
     **View**: A view of a single text document, for use with [`archetypes.TextDocument`][rerun.archetypes.TextDocument].
 
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
     Example
     -------
     ### Use a blueprint to show a text document.:

@@ -1,23 +1,27 @@
-use egui::{color_picker, Vec2};
+use egui::{NumExt as _, Vec2, color_picker};
 use itertools::Itertools as _;
-
-use re_types::components::AnnotationContext;
-use re_types::datatypes::{
-    AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
+use re_log_types::EntityPath;
+use re_types::{
+    Component as _, ComponentDescriptor, RowId,
+    components::{self, AnnotationContext},
+    datatypes::{
+        AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
+    },
 };
-use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::{auto_color_egui, UiLayout, ViewerContext};
+use re_ui::UiExt as _;
+use re_viewer_context::{UiLayout, ViewerContext, auto_color_egui};
 
 use super::DataUi;
 
-impl crate::EntityDataUi for re_types::components::ClassId {
+impl crate::EntityDataUi for components::ClassId {
     fn entity_data_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        entity_path: &re_log_types::EntityPath,
-        _row_id: Option<re_chunk_store::RowId>,
+        entity_path: &EntityPath,
+        _component_descriptor: &ComponentDescriptor,
+        _row_id: Option<RowId>,
         query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
@@ -56,14 +60,15 @@ impl crate::EntityDataUi for re_types::components::ClassId {
     }
 }
 
-impl crate::EntityDataUi for re_types::components::KeypointId {
+impl crate::EntityDataUi for components::KeypointId {
     fn entity_data_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        entity_path: &re_log_types::EntityPath,
-        _row_id: Option<re_chunk_store::RowId>,
+        entity_path: &EntityPath,
+        _component_descriptor: &ComponentDescriptor,
+        _row_id: Option<RowId>,
         query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
@@ -93,9 +98,23 @@ fn annotation_info(
 ) -> Option<AnnotationInfo> {
     // TODO(#3168): this needs to use the index of the keypoint to look up the correct
     // class_id. For now we use `latest_at_component_quiet` to avoid the warning spam.
+
+    // TODO(grtlr): If there's several class ids we have no idea which one to use.
+    // This code uses the first one that shows up.
+    // We should search instead for a class id that is likely a sibling of the keypoint id.
+    let storage_engine = ctx.recording().storage_engine();
+    let possible_class_id_descriptors = storage_engine
+        .store()
+        .entity_component_descriptors_with_type(entity_path, components::ClassId::name());
+    let picked_class_id_descriptors = possible_class_id_descriptors.iter().next()?;
+
     let (_, class_id) = ctx
         .recording()
-        .latest_at_component_quiet::<re_types::components::ClassId>(entity_path, query)?;
+        .latest_at_component_quiet::<components::ClassId>(
+            entity_path,
+            query,
+            picked_class_id_descriptors,
+        )?;
 
     let annotations = crate::annotations(ctx, query, entity_path);
     let class = annotations.resolved_class_description(Some(class_id));
@@ -163,9 +182,13 @@ fn class_description_ui(
 
     re_tracing::profile_function!();
 
+    let tokens = ui.tokens();
+
     let use_collapsible = ui_layout == UiLayout::SelectionPanel;
 
-    let row_height = DesignTokens::table_line_height();
+    let table_style = re_ui::TableStyle::Dense;
+
+    let row_height = tokens.table_row_height(table_style);
     if !class.keypoint_annotations.is_empty() {
         ui.maybe_collapsing_header(
             use_collapsible,
@@ -199,8 +222,8 @@ fn class_description_ui(
                     .column(Column::auto().clip(true).at_least(40.0))
                     .column(Column::auto().clip(true).at_least(40.0));
                 table
-                    .header(DesignTokens::table_header_height(), |mut header| {
-                        DesignTokens::setup_table_header(&mut header);
+                    .header(tokens.deprecated_table_header_height(), |mut header| {
+                        re_ui::DesignTokens::setup_table_header(&mut header);
                         header.col(|ui| {
                             ui.strong("From");
                         });
@@ -209,7 +232,7 @@ fn class_description_ui(
                         });
                     })
                     .body(|mut body| {
-                        DesignTokens::setup_table_body(&mut body);
+                        tokens.setup_table_body(&mut body, table_style);
 
                         // TODO(jleibs): Helper to do this with caching somewhere
                         let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
@@ -255,7 +278,9 @@ fn annotation_info_table_ui(
 ) {
     re_tracing::profile_function!();
 
-    let row_height = DesignTokens::table_line_height();
+    let tokens = ui.tokens();
+    let table_style = re_ui::TableStyle::Dense;
+    let row_height = tokens.table_row_height(table_style);
 
     ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
 
@@ -269,8 +294,8 @@ fn annotation_info_table_ui(
         .column(Column::auto()); // color
 
     table
-        .header(DesignTokens::table_header_height(), |mut header| {
-            DesignTokens::setup_table_header(&mut header);
+        .header(tokens.deprecated_table_header_height(), |mut header| {
+            re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("Class Id");
             });
@@ -282,7 +307,7 @@ fn annotation_info_table_ui(
             });
         })
         .body(|mut body| {
-            DesignTokens::setup_table_body(&mut body);
+            tokens.setup_table_body(&mut body, table_style);
 
             body.rows(row_height, annotation_infos.len(), |mut row| {
                 let info = &annotation_infos[row.index()];
@@ -319,7 +344,12 @@ fn color_ui(ui: &mut egui::Ui, info: &AnnotationInfo, size: Vec2) {
 }
 
 fn small_color_ui(ui: &mut egui::Ui, info: &AnnotationInfo) {
-    let size = egui::Vec2::splat(DesignTokens::table_line_height());
+    let tokens = ui.tokens();
+    let size = egui::Vec2::splat(
+        tokens
+            .table_row_height(re_ui::TableStyle::Dense)
+            .at_most(ui.available_height()),
+    );
 
     let color = info
         .color

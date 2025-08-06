@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    str::FromStr as _,
+};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -7,8 +10,13 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::{
+    ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
+    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
+    ATTR_RUST_REPR, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
+    Type, TypeRegistry,
     codegen::{
-        autogen_warning,
+        Target, autogen_warning,
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
@@ -18,15 +26,9 @@ use crate::{
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, quote_doc_line},
         },
-        Target,
     },
     format_path,
-    objects::ObjectClass,
-    ArrowRegistry, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
-    Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
-    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
-    ATTR_RUST_REPR,
+    objects::{EnumIntegerType, ObjectClass},
 };
 
 use super::{
@@ -54,7 +56,7 @@ impl CodeGenerator for RustCodeGenerator {
         &mut self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
+        type_registry: &TypeRegistry,
     ) -> BTreeMap<Utf8PathBuf, String> {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
         let mut extension_contents_for_fqname: HashMap<String, String> = Default::default();
@@ -63,7 +65,7 @@ impl CodeGenerator for RustCodeGenerator {
             self.generate_folder(
                 reporter,
                 objects,
-                arrow_registry,
+                type_registry,
                 object_kind,
                 &mut files_to_write,
                 &mut extension_contents_for_fqname,
@@ -87,7 +89,7 @@ impl RustCodeGenerator {
         &self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
+        type_registry: &TypeRegistry,
         object_kind: ObjectKind,
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
         extension_contents_for_fqname: &mut HashMap<String, String>,
@@ -112,7 +114,7 @@ impl RustCodeGenerator {
             let filename = format!("{filename_stem}.rs");
 
             let filepath = module_path.join(filename);
-            let mut code = generate_object_file(reporter, objects, arrow_registry, obj, &filepath);
+            let mut code = generate_object_file(reporter, objects, type_registry, obj, &filepath);
 
             if let Ok(extension_contents) =
                 std::fs::read_to_string(module_path.join(format!("{filename_stem}_ext.rs")))
@@ -150,7 +152,7 @@ impl RustCodeGenerator {
 fn generate_object_file(
     reporter: &Reporter,
     objects: &Objects,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     obj: &Object,
     target_file: &Utf8Path,
 ) -> String {
@@ -160,6 +162,7 @@ fn generate_object_file(
         code.push_str(&format!("// Based on {:?}.\n\n", format_path(source_path)));
     }
 
+    code.push_str("#![allow(unused_braces)]\n");
     code.push_str("#![allow(unused_imports)]\n");
     code.push_str("#![allow(unused_parens)]\n");
     code.push_str("#![allow(clippy::clone_on_copy)]\n");
@@ -184,7 +187,7 @@ fn generate_object_file(
     code.push_str("use ::re_types_core::try_serialize_field;\n");
     code.push_str("use ::re_types_core::SerializationResult;\n");
     code.push_str("use ::re_types_core::{DeserializationResult, DeserializationError};\n");
-    code.push_str("use ::re_types_core::{ComponentDescriptor, ComponentName};\n");
+    code.push_str("use ::re_types_core::{ComponentDescriptor, ComponentType};\n");
     code.push_str("use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};\n");
 
     // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
@@ -192,9 +195,9 @@ fn generate_object_file(
     // random spacing into doc comments that look like code!
 
     let quoted_obj = match obj.class {
-        crate::objects::ObjectClass::Struct => quote_struct(reporter, arrow_registry, objects, obj),
-        crate::objects::ObjectClass::Union => quote_union(reporter, arrow_registry, objects, obj),
-        crate::objects::ObjectClass::Enum => quote_enum(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectClass::Struct => quote_struct(reporter, type_registry, objects, obj),
+        crate::objects::ObjectClass::Union => quote_union(reporter, type_registry, objects, obj),
+        crate::objects::ObjectClass::Enum(_) => quote_enum(reporter, type_registry, objects, obj),
     };
 
     append_tokens(reporter, code, &quoted_obj, target_file)
@@ -255,7 +258,7 @@ fn generate_mod_file(
 
 fn quote_struct(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
@@ -308,7 +311,7 @@ fn quote_struct(
 
     let quoted_from_impl = quote_from_impl_from_obj(obj);
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, type_registry, objects, obj);
 
     let quoted_builder = quote_builder_from_obj(reporter, objects, obj);
 
@@ -378,7 +381,7 @@ fn quote_struct(
 
 fn quote_union(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
@@ -422,7 +425,7 @@ fn quote_union(
         }
     });
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, type_registry, objects, obj);
 
     let quoted_heap_size_bytes = {
         let quoted_matches = fields.iter().map(|obj_field| {
@@ -491,11 +494,11 @@ fn quote_union(
 // Pure C-style enum
 fn quote_enum(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
-    assert_eq!(obj.class, ObjectClass::Enum);
+    assert!(obj.class.is_enum());
 
     let Object { name, fields, .. } = obj;
 
@@ -538,8 +541,13 @@ fn quote_enum(
     let quoted_fields = fields.iter().map(|field| {
         let name = format_ident!("{}", field.name);
 
-        if let Some(enum_value) = field.enum_value {
-            let quoted_enum = proc_macro2::Literal::u8_unsuffixed(enum_value);
+        if let Some(enum_value) = field.enum_or_union_variant_value {
+            let quoted_enum = proc_macro2::Literal::from_str(
+                &obj.enum_integer_type()
+                    .expect("enums must have an integer type")
+                    .format_value(enum_value),
+            )
+            .unwrap();
             let quoted_doc = quote_field_docs(reporter, objects, field);
 
             let default_attr = if field.attrs.has(ATTR_DEFAULT) {
@@ -570,7 +578,7 @@ fn quote_enum(
         }
     });
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, type_registry, objects, obj);
 
     let all = fields.iter().map(|field| {
         let name = format_ident!("{}", field.name);
@@ -604,11 +612,19 @@ fn quote_enum(
         quote!(Self::#quoted_name => #docstring_md)
     });
 
+    let repr_type = match obj.enum_integer_type() {
+        Some(EnumIntegerType::U8) => quote!(u8),
+        Some(EnumIntegerType::U16) => quote!(u16),
+        Some(EnumIntegerType::U32) => quote!(u32),
+        Some(EnumIntegerType::U64) => quote!(u64),
+        None => unreachable!("enums must have an integer type"),
+    };
+
     let tokens = quote! {
         #quoted_doc
         #[derive( #(#derives,)* )]
         #quoted_custom_clause
-        #[repr(u8)]
+        #[repr(#repr_type)]
         pub enum #name {
             #(#quoted_fields,)*
         }
@@ -778,13 +794,13 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Vector { elem_type } => {
                 if *unwrap {
                     quote!(#elem_type)
-                } else if elem_type.backed_by_arrow_buffer() {
-                    quote!(::re_types_core::ArrowBuffer<#elem_type>)
+                } else if elem_type.backed_by_scalar_buffer() {
+                    quote!(::arrow::buffer::ScalarBuffer<#elem_type>)
                 } else {
                     quote!(Vec<#elem_type>)
                 }
             }
-            Type::Object(fqname) => quote_fqname_as_type_path(fqname),
+            Type::Object { fqname } => quote_fqname_as_type_path(fqname),
         }
         .to_tokens(tokens);
     }
@@ -806,7 +822,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
             ElementType::String => quote!(::re_types_core::ArrowString),
-            ElementType::Object(fqname) => quote_fqname_as_type_path(fqname),
+            ElementType::Object { fqname } => quote_fqname_as_type_path(fqname),
         }
         .to_tokens(tokens);
     }
@@ -836,13 +852,13 @@ fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenSt
 
 fn quote_trait_impls_from_obj(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
     match obj.kind {
         ObjectKind::Datatype | ObjectKind::Component => {
-            quote_trait_impls_for_datatype_or_component(objects, arrow_registry, obj)
+            quote_trait_impls_for_datatype_or_component(objects, type_registry, obj)
         }
 
         ObjectKind::Archetype => quote_trait_impls_for_archetype(reporter, obj),
@@ -853,7 +869,7 @@ fn quote_trait_impls_from_obj(
 
 fn quote_trait_impls_for_datatype_or_component(
     objects: &Objects,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     obj: &Object,
 ) -> TokenStream {
     let Object {
@@ -864,13 +880,13 @@ fn quote_trait_impls_for_datatype_or_component(
 
     let name = format_ident!("{name}");
 
-    let datatype = arrow_registry.get(fqname);
+    let datatype = type_registry.get(fqname);
 
-    let optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, arrow_registry);
+    let optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, type_registry);
 
     let is_forwarded_type = obj.is_arrow_transparent()
         && !obj.fields[0].is_nullable
-        && matches!(obj.fields[0].typ, Type::Object(_));
+        && matches!(obj.fields[0].typ, Type::Object { .. });
     let forwarded_type =
         is_forwarded_type.then(|| quote_field_type_from_typ(&obj.fields[0].typ, true).0);
 
@@ -882,7 +898,10 @@ fn quote_trait_impls_for_datatype_or_component(
             }
         }
     } else {
-        let datatype = ArrowDataTypeTokenizer(&datatype, false);
+        let datatype = ArrowDataTypeTokenizer {
+            datatype: &datatype,
+            recursive: false,
+        };
         quote! {
             #[inline]
             fn arrow_datatype() -> arrow::datatypes::DataType {
@@ -912,7 +931,7 @@ fn quote_trait_impls_for_datatype_or_component(
             }
         } else {
             let quoted_deserializer =
-                quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
+                quote_arrow_deserializer_buffer_slice(type_registry, objects, obj);
 
             quote! {
                 // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
@@ -955,7 +974,7 @@ fn quote_trait_impls_for_datatype_or_component(
             #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(Self)).collect())
         }
     } else {
-        let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
+        let quoted_deserializer = quote_arrow_deserializer(type_registry, objects, obj);
         quote! {
             // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
             // re_tracing::profile_function!();
@@ -986,7 +1005,7 @@ fn quote_trait_impls_for_datatype_or_component(
         }
     } else {
         let quoted_serializer =
-            quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
+            quote_arrow_serializer(type_registry, objects, obj, &format_ident!("data"));
 
         quote! {
             // NOTE: Don't inline this, this gets _huge_.
@@ -1013,8 +1032,8 @@ fn quote_trait_impls_for_datatype_or_component(
         quote! {
             impl ::re_types_core::Component for #name {
                 #[inline]
-                fn descriptor() -> ComponentDescriptor {
-                    ComponentDescriptor::new(#fqname)
+                fn name() -> ComponentType {
+                    #fqname.into()
                 }
             }
         }
@@ -1069,8 +1088,8 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                     .try_get_attr::<String>(requirement_attr_value)
                     .map(|_| {
                         let archetype_name = format_ident!("{}", obj.name);
-                        let archetype_field_name = field.snake_case_name();
-                        let fn_name = format_ident!("descriptor_{archetype_field_name}");
+                        let component = field.snake_case_name();
+                        let fn_name = format_ident!("descriptor_{component}");
 
                         quote!(#archetype_name::#fn_name())
                     })
@@ -1087,7 +1106,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         .fields
         .iter()
         .map(|field| {
-            let Some(component_name) = field.typ.fqname() else {
+            let Some(component_type) = field.typ.fqname() else {
                 reporter.error(
                     &obj.virtpath,
                     &obj.fqname,
@@ -1097,67 +1116,43 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             };
 
             let archetype_name = &obj.fqname;
-            let archetype_field_name = field.snake_case_name();
+            let archetype_field = field.snake_case_name();
+            let component = format!("{}:{}", obj.name, field.snake_case_name());
+            let (typ, _) = quote_field_type_from_typ(&field.typ, true);
 
-            let doc = format!(
-                "Returns the [`ComponentDescriptor`] for [`Self::{archetype_field_name}`]."
-            );
-            let fn_name = format_ident!("descriptor_{archetype_field_name}");
+            // Make the `#doc` string nice (avoids `/** */`).
+            let lines = [
+                format!("Returns the [`ComponentDescriptor`] for [`Self::{archetype_field}`]."),
+                String::new(),
+                format!("The corresponding component is [`{typ}`]."),
+            ];
+
+            let doc_attrs = lines.iter().map(|line| {
+                quote! { #[doc = #line] }
+            });
+
+            let fn_name = format_ident!("descriptor_{archetype_field}");
 
             quote! {
-                #[doc = #doc]
-                #[inline]
+            #(#doc_attrs)*
+            #[inline]
                 pub fn #fn_name() -> ComponentDescriptor {
                     ComponentDescriptor {
-                        archetype_name: Some(#archetype_name.into()),
-                        component_name: #component_name.into(),
-                        archetype_field_name: Some(#archetype_field_name.into()),
+                        archetype: Some(#archetype_name.into()),
+                        component: #component.into(),
+                        component_type: Some(#component_type.into()),
                     }
                 }
             }
         })
-        .chain(std::iter::once({
-            let archetype_name = &obj.fqname;
-            let indicator_component_name = format!(
-                "{}Indicator",
-                obj.fqname.replace("archetypes", "components")
-            );
-
-            let doc = "Returns the [`ComponentDescriptor`] for the associated indicator component.";
-
-            quote! {
-                #[doc = #doc]
-                #[inline]
-                pub fn descriptor_indicator() -> ComponentDescriptor {
-                    ComponentDescriptor {
-                        archetype_name: Some(#archetype_name.into()),
-                        component_name: #indicator_component_name.into(),
-                        archetype_field_name: None,
-                    }
-                }
-            }
-        }))
         .collect_vec();
-
-    let archetype_name = format_ident!("{}", obj.name);
-    let indicator_name = format!("{}Indicator", obj.name);
-
-    let quoted_indicator_name = format_ident!("{indicator_name}");
-    let quoted_indicator_doc =
-        format!("Indicator component for the [`{name}`] [`::re_types_core::Archetype`]");
 
     let (num_required_descriptors, required_descriptors) =
         compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_REQUIRED);
-    let (mut num_recommended_descriptors, mut recommended_descriptors) =
+    let (num_recommended_descriptors, recommended_descriptors) =
         compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_RECOMMENDED);
     let (num_optional_descriptors, optional_descriptors) =
         compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_OPTIONAL);
-
-    num_recommended_descriptors += 1;
-    recommended_descriptors = quote! {
-        #recommended_descriptors
-        #archetype_name::descriptor_indicator(),
-    };
 
     let num_components_docstring = quote_doc_line(&format!(
         "The total number of components in the archetype: {num_required_descriptors} required, {num_recommended_descriptors} recommended, {num_optional_descriptors} optional"
@@ -1172,23 +1167,29 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         .collect::<Vec<_>>();
 
     let all_component_batches = {
-        std::iter::once(quote! {
-            Some(Self::indicator())
-        })
-        .chain(obj.fields.iter().map(|obj_field| {
+        obj.fields.iter().map(|obj_field| {
             let field_name = format_ident!("{}", obj_field.name);
             quote!(self.#field_name.clone())
-        }))
+        })
     };
 
-    let as_components_impl = quote! {
-        #[inline]
-        fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-            use ::re_types_core::Archetype as _;
-            [#(#all_component_batches,)*].into_iter().flatten().collect()
+    let as_components_impl = if all_component_batches.len() == 1 {
+        quote! {
+            #[inline]
+            fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
+                use ::re_types_core::Archetype as _;
+                std::iter::once(#(#all_component_batches)*).flatten().collect()
+            }
+        }
+    } else {
+        quote! {
+            #[inline]
+            fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
+                use ::re_types_core::Archetype as _;
+                [#(#all_component_batches,)*].into_iter().flatten().collect()
+            }
         }
     };
-
     let all_deserializers = {
         obj.fields.iter().map(|obj_field| {
             let field_name = format_ident!("{}", obj_field.name);
@@ -1226,12 +1227,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             pub const NUM_COMPONENTS: usize = #num_all_descriptors;
         }
 
-        #[doc = #quoted_indicator_doc]
-        pub type #quoted_indicator_name = ::re_types_core::GenericIndicatorComponent<#name>;
-
         impl ::re_types_core::Archetype for #name {
-            type Indicator = #quoted_indicator_name;
-
             #[inline]
             fn name() -> ::re_types_core::ArchetypeName {
                 #fqname.into()
@@ -1240,12 +1236,6 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             #[inline]
             fn display_name() -> &'static str {
                 #display_name
-            }
-
-            #[inline]
-            fn indicator() -> SerializedComponentBatch {
-                #[allow(clippy::unwrap_used)] // There is no such thing as failing to serialize an indicator.
-                #quoted_indicator_name::DEFAULT.serialized().unwrap()
             }
 
             #[inline]
@@ -1651,8 +1641,6 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             quote!(let #len_field_name = self.#field_name.as_ref().map(|b| b.array.len()))
         });
 
-        let indicator_column = quote!(::re_types_core::indicator_column::<Self>(_lengths.into_iter().count())?);
-
         quote! {
             #columns_doc
             #[inline]
@@ -1664,7 +1652,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 I: IntoIterator<Item = usize> + Clone,
             {
                 let columns = [ #(#fields),* ];
-                Ok(columns.into_iter().flatten().chain([#indicator_column]))
+                Ok(columns.into_iter().flatten())
             }
 
             #columns_unary_doc

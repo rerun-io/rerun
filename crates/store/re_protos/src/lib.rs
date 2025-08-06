@@ -35,6 +35,9 @@ mod v1alpha1 {
     #[path = "./rerun.log_msg.v1alpha1.rs"]
     pub mod rerun_log_msg_v1alpha1;
 
+    #[path = "./rerun.log_msg.v1alpha1.ext.rs"]
+    pub mod rerun_log_msg_v1alpha1_ext;
+
     #[path = "./rerun.sdk_comms.v1alpha1.rs"]
     pub mod rerun_sdk_comms_v1alpha1;
 
@@ -47,8 +50,14 @@ mod v1alpha1 {
     #[path = "./rerun.frontend.v1alpha1.rs"]
     pub mod rerun_frontend_v1alpha1;
 
+    #[path = "./rerun.frontend.v1alpha1.ext.rs"]
+    pub mod rerun_frontend_v1alpha1_ext;
+
     #[path = "./rerun.redap_tasks.v1alpha1.rs"]
     pub mod rerun_redap_tasks_v1alpha1;
+
+    #[path = "./rerun.redap_tasks.v1alpha1.ext.rs"]
+    pub mod rerun_redap_tasks_v1alpha1_ext;
 }
 
 pub mod common {
@@ -63,6 +72,9 @@ pub mod common {
 pub mod log_msg {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
+        pub mod ext {
+            pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
+        }
     }
 }
 
@@ -70,20 +82,16 @@ pub mod manifest_registry {
     #[rustfmt::skip] // keep these constants single line for easy sorting
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_manifest_registry_v1alpha1::*;
-        #[expect(unused_imports)]
         pub mod ext {
             pub use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::*;
         }
 
         /// `DatasetManifest` mandatory field names. All mandatory metadata fields are prefixed
         /// with "rerun_" to avoid conflicts with user-defined fields.
-        pub const DATASET_MANIFEST_APP_ID_FIELD_NAME: &str = "rerun_application_id";
         pub const DATASET_MANIFEST_ID_FIELD_NAME: &str = "rerun_partition_id";
         pub const DATASET_MANIFEST_PARTITION_MANIFEST_UPDATED_AT_FIELD_NAME: &str = "rerun_partition_manifest_updated_at";
-        pub const DATASET_MANIFEST_PARTITION_MANIFEST_URL_FIELD_NAME: &str = "rerun_partition_manifest_url";
         pub const DATASET_MANIFEST_RECORDING_TYPE_FIELD_NAME: &str = "rerun_partition_type";
         pub const DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME: &str = "rerun_registration_time";
-        pub const DATASET_MANIFEST_ROW_ID_FIELD_NAME: &str = "rerun_row_id";
         pub const DATASET_MANIFEST_START_TIME_FIELD_NAME: &str = "rerun_start_time";
         pub const DATASET_MANIFEST_STORAGE_URL_FIELD_NAME: &str = "rerun_storage_url";
     }
@@ -101,6 +109,9 @@ pub mod catalog {
 pub mod frontend {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_frontend_v1alpha1::*;
+        pub mod ext {
+            pub use crate::v1alpha1::rerun_frontend_v1alpha1_ext::*;
+        }
     }
 }
 
@@ -149,6 +160,16 @@ pub enum TypeConversionError {
 
     #[error("{0}")]
     UnknownEnumValue(#[from] prost::UnknownEnumValue),
+
+    #[error("could not parse url: {0}")]
+    UrlParseError(#[from] url::ParseError),
+
+    #[error("internal error: {0}")]
+    InternalError(String),
+
+    //TODO(#10730): delete when removing 0.24 back compat
+    #[error("unexpected legacy `StoreId`: {0}")]
+    LegacyStoreIdError(String),
 }
 
 impl TypeConversionError {
@@ -254,15 +275,15 @@ mod sizes {
     impl SizeBytes for crate::log_msg::v1alpha1::StoreInfo {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
+            #[expect(deprecated)]
             let Self {
-                application_id,
+                application_id: _,
                 store_id,
                 store_source,
                 store_version,
             } = self;
 
-            application_id.heap_size_bytes()
-                + store_id.heap_size_bytes()
+            store_id.heap_size_bytes()
                 + store_source.heap_size_bytes()
                 + store_version.heap_size_bytes()
         }
@@ -280,9 +301,24 @@ mod sizes {
     impl SizeBytes for crate::common::v1alpha1::StoreId {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
-            let Self { kind, id } = self;
+            let Self {
+                kind,
+                recording_id,
+                application_id,
+            } = self;
 
-            kind.heap_size_bytes() + id.heap_size_bytes()
+            kind.heap_size_bytes()
+                + recording_id.heap_size_bytes()
+                + application_id.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::common::v1alpha1::TableId {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { id } = self;
+
+            id.heap_size_bytes()
         }
     }
 
@@ -300,7 +336,7 @@ mod sizes {
         fn heap_size_bytes(&self) -> u64 {
             let Self { payload } = self;
 
-            payload.heap_size_bytes()
+            payload.len() as _
         }
     }
 
@@ -318,6 +354,7 @@ mod sizes {
         fn heap_size_bytes(&self) -> u64 {
             let Self {
                 store_id,
+                chunk_id,
                 compression,
                 uncompressed_size,
                 encoding,
@@ -325,10 +362,11 @@ mod sizes {
             } = self;
 
             store_id.heap_size_bytes()
+                + chunk_id.heap_size_bytes()
                 + compression.heap_size_bytes()
                 + uncompressed_size.heap_size_bytes()
                 + encoding.heap_size_bytes()
-                + payload.heap_size_bytes()
+                + payload.len() as u64
         }
     }
 
@@ -344,6 +382,19 @@ mod sizes {
             blueprint_id.heap_size_bytes()
                 + make_active.heap_size_bytes()
                 + make_default.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::common::v1alpha1::DataframePart {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self {
+                encoder_version,
+                payload,
+            } = self;
+
+            encoder_version.heap_size_bytes()
+                + payload.as_ref().map_or(0, |payload| payload.len() as u64)
         }
     }
 }

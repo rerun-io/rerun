@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -16,7 +15,11 @@ __all__ = ["AutoLayout", "AutoLayoutBatch"]
 
 
 class AutoLayout(datatypes.Bool, ComponentMixin):
-    """**Component**: Whether the viewport layout is determined automatically."""
+    """
+    **Component**: Whether the viewport layout is determined automatically.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of AutoLayoutExt in auto_layout_ext.py
@@ -25,7 +28,7 @@ class AutoLayout(datatypes.Bool, ComponentMixin):
 
 
 class AutoLayoutBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.AutoLayout")
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.AutoLayout"
 
 
 # This is patched in late to avoid circular dependencies.

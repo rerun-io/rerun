@@ -3,6 +3,9 @@ use arrow::error::ArrowError;
 #[derive(thiserror::Error, Debug)]
 pub enum SorbetError {
     #[error(transparent)]
+    UnknownColumnKind(#[from] crate::UnknownColumnKind),
+
+    #[error(transparent)]
     MissingMetadataKey(#[from] crate::MissingMetadataKey),
 
     #[error(transparent)]
@@ -17,14 +20,21 @@ pub enum SorbetError {
     #[error(transparent)]
     ArrowError(#[from] ArrowError),
 
-    #[error("Bad chunk schema: {reason}")]
-    Custom { reason: String },
-}
+    #[error("Missing chunk ID")]
+    MissingChunkId,
 
-impl SorbetError {
-    pub fn custom(reason: impl Into<String>) -> Self {
-        Self::Custom {
-            reason: reason.into(),
-        }
-    }
+    #[error("Missing entity path")]
+    MissingEntityPath,
+
+    #[error("Missing RowId column")]
+    MissingRowIdColumn,
+
+    #[error("Invalid column order: {0}")]
+    InvalidColumnOrder(String),
+
+    #[error("Multiple RowId columns found: {0}")]
+    MultipleRowIdColumns(usize),
+
+    #[error("Failed to deserialize chunk ID: {0}")]
+    ChunkIdDeserializationError(String),
 }

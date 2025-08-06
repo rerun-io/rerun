@@ -1,8 +1,8 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{HashMap, hash_map::Entry},
     fmt::Debug,
     hash::Hash,
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc, atomic::AtomicU64},
 };
 
 use parking_lot::RwLock;
@@ -167,7 +167,10 @@ where
             );
             for resource in resources {
                 let Some(removed_resource) = state.all_resources.remove(resource) else {
-                    debug_assert!(false, "a resource was marked as destroyed last frame that we no longer kept track of");
+                    debug_assert!(
+                        false,
+                        "a resource was marked as destroyed last frame that we no longer kept track of"
+                    );
                     continue;
                 };
                 update_stats(&desc);

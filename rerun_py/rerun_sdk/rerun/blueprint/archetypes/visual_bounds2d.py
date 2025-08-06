@@ -28,6 +28,8 @@ class VisualBounds2D(VisualBounds2DExt, Archetype):
 
     If no visual bounds are set, it will be determined automatically,
     based on the bounding-box of the data or other camera information present in the view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     # __init__ can be found in visual_bounds2d_ext.py

@@ -35,8 +35,11 @@ pub enum FFmpegVersionParseError {
     #[error("Failed to retrieve file modification time of FFmpeg executable: {0}")]
     RetrieveFileModificationTime(String),
 
-    #[error("Failed to determine FFmpeg version: {0}")]
+    #[error("Failed to run FFmpeg: {0}")]
     RunFFmpeg(String),
+
+    #[error("FFmpeg not found at {0}")]
+    FFmpegNotFound(String),
 
     #[error("Failed to parse FFmpeg version: {raw_version}")]
     ParseVersion { raw_version: String },
@@ -95,7 +98,8 @@ impl FFmpegVersion {
 
     /// Like [`Self::for_executable_poll`], but blocks until the version is ready.
     ///
-    /// WARNING: this blocks for half a second on Mac the first time this is called with a given path, maybe more on other platforms.
+    /// WARNING: this can block for SEVEN SECONDS on Mac, but usually only the first time
+    /// after a reboot. NEVER call this on the GUI thread!
     pub fn for_executable_blocking(path: Option<&std::path::Path>) -> FfmpegVersionResult {
         re_tracing::profile_function!();
 
@@ -121,7 +125,13 @@ fn file_modification_time(
 ) -> Result<Option<std::time::SystemTime>, FFmpegVersionParseError> {
     Ok(if let Some(path) = path {
         path.metadata()
-            .map_err(|err| FFmpegVersionParseError::RetrieveFileModificationTime(err.to_string()))?
+            .map_err(|err| {
+                if err.kind() == std::io::ErrorKind::NotFound {
+                    FFmpegVersionParseError::FFmpegNotFound(path.display().to_string())
+                } else {
+                    FFmpegVersionParseError::RetrieveFileModificationTime(err.to_string())
+                }
+            })?
             .modified()
             .ok()
     } else {
@@ -166,12 +176,47 @@ fn ffmpeg_version(
 ) -> Result<FFmpegVersion, FFmpegVersionParseError> {
     re_tracing::profile_function!("ffmpeg_version_with_path");
 
-    let raw_version = if let Some(path) = path {
-        ffmpeg_sidecar::version::ffmpeg_version_with_path(path)
-    } else {
-        ffmpeg_sidecar::version::ffmpeg_version()
+    // Don't use sidecar's ffmpeg_version_with_path/ffmpeg_version directly since the error message for
+    // file not found isn't great and we want this for display in the UI.
+
+    let path = path.cloned().unwrap_or_else(|| {
+        re_tracing::profile_scope!("ffmpeg_path");
+        ffmpeg_sidecar::paths::ffmpeg_path()
+    });
+    let mut cmd = match std::process::Command::new(&path)
+        .arg("-version")
+        .stdout(std::process::Stdio::piped()) // not stderr when calling `-version`
+        .spawn()
+    {
+        Ok(cmd) => cmd,
+        Err(err) => {
+            return Err(if err.kind() == std::io::ErrorKind::NotFound {
+                FFmpegVersionParseError::FFmpegNotFound(path.display().to_string())
+            } else {
+                FFmpegVersionParseError::RunFFmpeg(err.to_string())
+            });
+        }
+    };
+    let Some(stdout) = cmd.stdout.take() else {
+        return Err(FFmpegVersionParseError::RunFFmpeg(
+            "No standard output channel".to_owned(),
+        ));
+    };
+
+    let mut parser = ffmpeg_sidecar::log_parser::FfmpegLogParser::new(stdout);
+    let mut raw_version = None;
+    while let Ok(event) = parser.parse_next_event() {
+        match event {
+            ffmpeg_sidecar::event::FfmpegEvent::ParsedVersion(v) => raw_version = Some(v.version),
+            ffmpeg_sidecar::event::FfmpegEvent::LogEOF => break,
+            _ => {}
+        }
     }
-    .map_err(|err| FFmpegVersionParseError::RunFFmpeg(err.to_string()))?;
+    cmd.wait().ok(); // Don't care if it fails here.
+
+    let raw_version = raw_version.ok_or(FFmpegVersionParseError::ParseVersion {
+        raw_version: "No version found".to_owned(),
+    })?;
 
     if let Some(version) = FFmpegVersion::parse(&raw_version) {
         Ok(version)

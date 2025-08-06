@@ -27,13 +27,13 @@ class ComponentColumnSelectorExt:
         Parameters
         ----------
         spec:
-            A string in the format "/entity/path:ComponentName". If used, `entity_path` and `component` must be `None`.
+            A string in the format "/entity/path:Component". If used, `entity_path` and `component` must be `None`.
 
         entity_path:
             The column's entity path. If used, `spec` must be `None` and `component` must be provided.
 
         component:
-            The column's component name. If used, `spec` must be `None` and `entity_path` must be provided.
+            The column's component type. If used, `spec` must be `None` and `entity_path` must be provided.
 
         """
 

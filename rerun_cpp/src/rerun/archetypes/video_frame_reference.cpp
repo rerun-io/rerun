@@ -14,6 +14,9 @@ namespace rerun::archetypes {
         archetype.video_reference =
             ComponentBatch::empty<rerun::components::EntityPath>(Descriptor_video_reference)
                 .value_or_throw();
+        archetype.draw_order =
+            ComponentBatch::empty<rerun::components::DrawOrder>(Descriptor_draw_order)
+                .value_or_throw();
         return archetype;
     }
 
@@ -26,10 +29,9 @@ namespace rerun::archetypes {
         if (video_reference.has_value()) {
             columns.push_back(video_reference.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(ComponentColumn::from_indicators<VideoFrameReference>(
-                              static_cast<uint32_t>(lengths_.size())
-        )
-                              .value_or_throw());
+        if (draw_order.has_value()) {
+            columns.push_back(draw_order.value().partitioned(lengths_).value_or_throw());
+        }
         return columns;
     }
 
@@ -39,6 +41,9 @@ namespace rerun::archetypes {
         }
         if (video_reference.has_value()) {
             return columns(std::vector<uint32_t>(video_reference.value().length(), 1));
+        }
+        if (draw_order.has_value()) {
+            return columns(std::vector<uint32_t>(draw_order.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -59,10 +64,8 @@ namespace rerun {
         if (archetype.video_reference.has_value()) {
             cells.push_back(archetype.video_reference.value());
         }
-        {
-            auto result = ComponentBatch::from_indicator<VideoFrameReference>();
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+        if (archetype.draw_order.has_value()) {
+            cells.push_back(archetype.draw_order.value());
         }
 
         return rerun::take_ownership(std::move(cells));

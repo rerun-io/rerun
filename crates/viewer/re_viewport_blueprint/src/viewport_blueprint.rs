@@ -1,32 +1,33 @@
+use std::{
+    collections::BTreeMap,
+    ops::ControlFlow,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
+
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
 use parking_lot::Mutex;
-use re_log_types::{EntityPathSubs, ResolvedEntityPathFilter};
 use smallvec::SmallVec;
-use std::ops::ControlFlow;
-use std::{
-    collections::BTreeMap,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
+use re_log_types::EntityPathSubs;
 use re_types::blueprint::{
     archetypes as blueprint_archetypes,
     components::{AutoLayout, AutoViews, RootContainer, ViewMaximized},
 };
 use re_types::{
-    blueprint::components::ViewerRecommendationHash, Archetype as _, ViewClassIdentifier,
+    Archetype as _, ViewClassIdentifier, blueprint::components::ViewerRecommendationHash,
 };
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow,
+    ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow, blueprint_id_to_tile_id,
 };
 
-use crate::{container::ContainerBlueprint, ViewBlueprint, ViewportCommand, VIEWPORT_PATH};
+use crate::{VIEWPORT_PATH, ViewBlueprint, ViewportCommand, container::ContainerBlueprint};
 
 // ----------------------------------------------------------------------------
 
@@ -81,8 +82,8 @@ pub struct ViewportBlueprint {
 }
 
 impl ViewportBlueprint {
-    /// Attempt to load a [`ViewBlueprint`] from the blueprint store.
-    pub fn try_from_db(blueprint_db: &re_entity_db::EntityDb, query: &LatestAtQuery) -> Self {
+    /// Load a [`ViewBlueprint`] from the blueprint store, or fall back to defaults.
+    pub fn from_db(blueprint_db: &re_entity_db::EntityDb, query: &LatestAtQuery) -> Self {
         re_tracing::profile_function!();
 
         let blueprint_engine = blueprint_db.storage_engine();
@@ -93,11 +94,21 @@ impl ViewportBlueprint {
             blueprint_archetypes::ViewportBlueprint::all_components().iter(),
         );
 
-        let root_container = results.component_mono::<RootContainer>();
-        let maximized = results.component_mono::<ViewMaximized>();
-        let auto_layout = results.component_mono::<AutoLayout>();
-        let auto_views = results.component_mono::<AutoViews>();
-        let past_viewer_recommendations = results.component_batch::<ViewerRecommendationHash>();
+        let root_container = results.component_mono::<RootContainer>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
+        );
+        let maximized = results.component_mono::<ViewMaximized>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_maximized(),
+        );
+        let auto_layout = results.component_mono::<AutoLayout>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_auto_layout(),
+        );
+        let auto_views = results.component_mono::<AutoViews>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_auto_views(),
+        );
+        let past_viewer_recommendations = results.component_batch::<ViewerRecommendationHash>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_past_viewer_recommendations(),
+        );
 
         let root_container: Option<ContainerId> = root_container.map(|id| id.0.into());
         re_log::trace_once!("Loaded root_container: {root_container:?}");
@@ -241,20 +252,23 @@ impl ViewportBlueprint {
     /// of its descendent are always considered valid.
     pub fn is_item_valid(
         &self,
-        store_context: &re_viewer_context::StoreContext<'_>,
+        storage_ctx: &re_viewer_context::StorageContext<'_>,
         item: &Item,
     ) -> bool {
         match item {
-            Item::AppId(app_id) => store_context
+            Item::AppId(app_id) => storage_ctx
                 .hub
                 .store_bundle()
                 .entity_dbs()
-                .any(|db| db.app_id() == Some(app_id)),
+                .any(|db| db.application_id() == app_id),
 
             Item::DataSource(_)
+            | Item::TableId(_)
             | Item::StoreId(_)
             | Item::ComponentPath(_)
-            | Item::InstancePath(_) => true,
+            | Item::InstancePath(_)
+            | Item::RedapEntry(_)
+            | Item::RedapServer(_) => true,
 
             Item::View(view_id) => self.view(view_id).is_some(),
 
@@ -301,11 +315,12 @@ impl ViewportBlueprint {
         for entry in ctx.view_class_registry().iter_registry() {
             let class_id = entry.identifier;
 
-            let suggested_filter = ResolvedEntityPathFilter::properties();
+            let excluded_entities = re_log_types::ResolvedEntityPathFilter::properties();
+            let include_entity = |ent: &EntityPath| !excluded_entities.matches(ent);
 
             let mut recommended_views = entry
                 .class
-                .spawn_heuristics(ctx, &suggested_filter)
+                .spawn_heuristics(ctx, &include_entity)
                 .into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);
@@ -344,7 +359,8 @@ impl ViewportBlueprint {
                     .collect();
 
                 ctx.save_blueprint_component(
-                    &VIEWPORT_PATH.into(),
+                    VIEWPORT_PATH.into(),
+                    &blueprint_archetypes::ViewportBlueprint::descriptor_past_viewer_recommendations(),
                     &new_viewer_recommendation_hashes,
                 );
             }
@@ -401,7 +417,6 @@ impl ViewportBlueprint {
     /// Add a set of views to the viewport.
     ///
     /// The view is added to the root container, or, if provided, to a given parent container.
-    /// The list of created view IDs is returned.
     ///
     /// Note that this doesn't focus the corresponding tab. Use [`Self::focus_tab`] with the returned ID
     /// if needed.
@@ -418,6 +433,15 @@ impl ViewportBlueprint {
                 position_in_parent,
             });
         }
+    }
+
+    /// Add a single view to the viewport to the root container.
+    ///
+    /// Returns the ID of the added view.
+    pub fn add_view_at_root(&self, view: ViewBlueprint) -> ViewId {
+        let view_id = view.id;
+        self.add_views(std::iter::once(view), None, None);
+        view_id
     }
 
     /// Returns an iterator over all the contents (views and containers) in the viewport.
@@ -758,7 +782,11 @@ impl ViewportBlueprint {
 
         if old_value != value {
             let auto_layout = AutoLayout::from(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &auto_layout);
+            ctx.save_blueprint_component(
+                VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_auto_layout(),
+                &auto_layout,
+            );
         }
     }
 
@@ -775,7 +803,11 @@ impl ViewportBlueprint {
 
         if old_value != value {
             let auto_views = AutoViews::from(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &auto_views);
+            ctx.save_blueprint_component(
+                VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_auto_views(),
+                &auto_views,
+            );
         }
     }
 
@@ -783,7 +815,11 @@ impl ViewportBlueprint {
     pub fn set_maximized(&self, view_id: Option<ViewId>, ctx: &ViewerContext<'_>) {
         if self.maximized != view_id {
             let view_maximized = view_id.map(|id| ViewMaximized(id.into()));
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &view_maximized);
+            ctx.save_blueprint_component(
+                VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_maximized(),
+                &view_maximized,
+            );
         }
     }
 
@@ -882,10 +918,17 @@ impl ViewportBlueprint {
             .map(|container_id| RootContainer((container_id).into()))
         {
             re_log::trace!("Saving with a root container");
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &root_container);
+            ctx.save_blueprint_component(
+                VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
+                &root_container,
+            );
         } else {
             re_log::trace!("Saving empty viewport");
-            ctx.save_empty_blueprint_component::<RootContainer>(&VIEWPORT_PATH.into());
+            ctx.clear_blueprint_component(
+                VIEWPORT_PATH.into(),
+                blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
+            );
         }
     }
 

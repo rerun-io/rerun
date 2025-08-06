@@ -3,10 +3,10 @@ namespace rerun.blueprint.components;
 
 /// How many columns a grid container should have.
 table GridColumns (
-    "attr.rerun.scope": "blueprint",
-    "attr.python.aliases": "int",
-    "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord"
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "int",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord"
 ) {
-    /// The number of columns.
-    columns: rerun.datatypes.UInt32 (order: 100);
+  /// The number of columns.
+  columns: rerun.datatypes.UInt32 (order: 100);
 }

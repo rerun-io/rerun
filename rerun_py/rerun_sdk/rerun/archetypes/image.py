@@ -142,6 +142,7 @@ class Image(ImageExt, Archetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+            Defaults to `-10.0`.
 
         """
 
@@ -199,6 +200,7 @@ class Image(ImageExt, Archetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+            Defaults to `-10.0`.
 
         """
 
@@ -211,11 +213,16 @@ class Image(ImageExt, Archetype):
                 draw_order=draw_order,
             )
 
-        batches = inst.as_component_batches(include_indicators=False)
+        batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"buffer": buffer, "format": format, "opacity": opacity, "draw_order": draw_order}
+        kwargs = {
+            "Image:buffer": buffer,
+            "Image:format": format,
+            "Image:opacity": opacity,
+            "Image:draw_order": draw_order,
+        }
         columns = []
 
         for batch in batches:
@@ -223,12 +230,13 @@ class Image(ImageExt, Archetype):
 
             # For primitive arrays and fixed size list arrays, we infer partition size from the input shape.
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
-                param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
+                param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
+                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
-                if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) <= 2:
-                    # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
-                    # `shape[1]` should be the length of the fixed sized list.
+                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
+                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                    # we have `num_rows` single element batches (each element is a fixed sized list).
                     # (This should have been already validated by conversion to the arrow_array)
                     batch_length = 1
                 else:
@@ -242,8 +250,7 @@ class Image(ImageExt, Archetype):
 
             columns.append(batch.partition(sizes))
 
-        indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
-        return ComponentColumnList([indicator_column] + columns)
+        return ComponentColumnList(columns)
 
     buffer: components.ImageBufferBatch | None = field(
         metadata={"component": True},
@@ -282,6 +289,7 @@ class Image(ImageExt, Archetype):
     # An optional floating point value that specifies the 2D drawing order.
     #
     # Objects with higher values are drawn on top of those with lower values.
+    # Defaults to `-10.0`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

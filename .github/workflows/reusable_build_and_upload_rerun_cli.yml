@@ -47,11 +47,8 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.9"
-  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
 
+  RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
 
   # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
@@ -88,15 +85,15 @@ jobs:
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
-              runner="buildjet-8vcpu-ubuntu-2204-arm"
+              runner="buildjet-16vcpu-ubuntu-2204-arm"
               target="aarch64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.15.0'"
+              container="'rerunio/ci_docker:0.16.0'"
               bin_name="rerun"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.15.0'"
+              container="'rerunio/ci_docker:0.16.0'"
               bin_name="rerun"
               ;;
             windows-x64)
@@ -106,13 +103,13 @@ jobs:
               bin_name="rerun.exe"
               ;;
             macos-arm64)
-              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-15-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
               bin_name="rerun"
               ;;
             macos-x64)
-              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-15-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
               container="null"
               bin_name="rerun"
@@ -162,7 +159,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.41.4
 

@@ -68,6 +68,7 @@ function(rerun_strict_warning_settings target)
         )
 
         if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # match both "Clang" and "AppleClang"
+            # TODO(emilk): enable some hardening flags from https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html
             target_compile_options(${target} PRIVATE
                 -Wc++17-compat-pedantic
                 -Wc++20-compat-pedantic

@@ -1,71 +1,343 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
+use std::task::Poll;
 
-use re_protos::common::v1alpha1::ext::EntryId;
-use re_ui::{list_item, UiExt as _};
-use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
+use datafusion::prelude::{SessionContext, col, lit};
+use egui::{Frame, Margin, RichText, Widget as _};
+use re_auth::Jwt;
+use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
+use re_grpc_client::ConnectionRegistryHandle;
+use re_log_types::{EntityPathPart, EntryId};
+use re_protos::catalog::v1alpha1::EntryKind;
+use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_sorbet::{BatchType, ColumnDescriptorRef};
+use re_ui::alert::Alert;
+use re_ui::list_item::{ItemButton as _, ItemMenuButton};
+use re_ui::{UiExt as _, icons, list_item};
+use re_viewer_context::{
+    AsyncRuntimeHandle, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
+    ViewerContext,
+};
 
-use crate::add_server_modal::AddServerModal;
 use crate::context::Context;
-use crate::entries::{Dataset, Entries};
+use crate::entries::{Dataset, Entries, Entry, Table};
+use crate::server_modal::{ServerModal, ServerModalMode};
 
 struct Server {
     origin: re_uri::Origin,
-
     entries: Entries,
+
+    /// Session context wrapper which holds all the table-like entries of the server.
+    tables_session_ctx: Arc<SessionContext>,
+
+    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    runtime: AsyncRuntimeHandle,
 }
 
 impl Server {
-    fn new(runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
-        let entries = Entries::new(runtime, egui_ctx, origin.clone());
+    fn new(
+        connection_registry: re_grpc_client::ConnectionRegistryHandle,
+        runtime: AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        origin: re_uri::Origin,
+    ) -> Self {
+        let tables_session_ctx = Arc::new(SessionContext::new());
 
-        Self { origin, entries }
+        let entries = Entries::new(
+            connection_registry.clone(),
+            &runtime,
+            egui_ctx,
+            origin.clone(),
+            tables_session_ctx.clone(),
+        );
+
+        Self {
+            origin,
+            entries,
+            tables_session_ctx,
+            connection_registry,
+            runtime,
+        }
     }
 
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
-        self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
+        // Note: this also drops the DataFusionTableWidget caches
+        self.tables_session_ctx = Arc::new(SessionContext::new());
+
+        self.entries = Entries::new(
+            self.connection_registry.clone(),
+            runtime,
+            egui_ctx,
+            self.origin.clone(),
+            self.tables_session_ctx.clone(),
+        );
     }
 
     fn on_frame_start(&mut self) {
         self.entries.on_frame_start();
     }
 
-    fn find_dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
-        self.entries.find_dataset(entry_id)
+    fn find_entry(&self, entry_id: EntryId) -> Option<&Entry> {
+        self.entries.find_entry(entry_id)
     }
 
-    fn find_dataset_by_name(&self, dataset_name: &str) -> Option<&Dataset> {
-        self.entries.find_dataset_by_name(dataset_name)
+    fn title_ui(
+        &self,
+        title: String,
+        ctx: &Context<'_>,
+        ui: &mut egui::Ui,
+        content: impl FnOnce(&mut egui::Ui),
+    ) {
+        Frame::new().inner_margin(Margin::same(16)).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading(RichText::new(title).strong());
+                if ui
+                    .small_icon_button(&icons::RESET, "Refresh collection")
+                    .clicked()
+                {
+                    ctx.command_sender
+                        .send(Command::RefreshCollection(self.origin.clone()))
+                        .ok();
+                }
+            });
+
+            ui.add_space(12.0);
+
+            content(ui);
+        });
     }
 
-    fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
-        let content = list_item::LabelContent::new(self.origin.to_string())
-            .with_buttons(|ui| {
-                let response = ui
-                    .small_icon_button(&re_ui::icons::REMOVE)
-                    .on_hover_text("Remove server");
+    /// Central panel UI for when a server is selected.
+    fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
+        if let Poll::Ready(Err(err)) = self.entries.state() {
+            self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
+                if err.is_missing_token() || err.is_wrong_token() {
+                    let message = if err.is_missing_token() {
+                        "This server requires a token to access its data."
+                    } else {
+                        "The provided token is invalid for this server."
+                    };
+                    let edit_message = if err.is_missing_token() {
+                        "Add a token"
+                    } else {
+                        "Edit token"
+                    };
+                    Alert::warning().show(ui, |ui| {
+                        ui.vertical(|ui| {
+                            ui.strong(message);
+                            if ui
+                                .link(RichText::new(edit_message).strong().underline())
+                                .clicked()
+                            {
+                                ctx.command_sender
+                                    .send(Command::OpenEditServerModal(self.origin.clone()))
+                                    .ok();
+                            }
+                        });
+                    });
+                } else {
+                    ui.error_label(err.to_string());
+                }
+            });
+            return;
+        };
 
-                if response.clicked() {
-                    let _ = ctx
-                        .command_sender
-                        .send(Command::RemoveServer(self.origin.clone()));
+        const ENTRY_LINK_COLUMN_NAME: &str = "link";
+
+        re_dataframe_ui::DataFusionTableWidget::new(self.tables_session_ctx.clone(), "__entries")
+            .title(self.origin.host.to_string())
+            .column_blueprint(|desc| {
+                let mut blueprint = ColumnBlueprint::default();
+
+                if let ColumnDescriptorRef::Component(component) = desc {
+                    if component.component == "entry_kind" {
+                        blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
+                    }
                 }
 
-                response
-            })
-            .always_show_buttons(true);
+                let column_sort_key = match desc.display_name().as_str() {
+                    "name" => 0,
+                    ENTRY_LINK_COLUMN_NAME => 1,
+                    _ => 2,
+                };
 
-        ui.list_item()
-            .interactive(false)
+                blueprint = blueprint.sort_key(column_sort_key);
+
+                if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
+                    blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
+                }
+
+                blueprint
+            })
+            .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
+            .filter(
+                col("entry_kind")
+                    .in_list(
+                        vec![lit(EntryKind::Table as i32), lit(EntryKind::Dataset as i32)],
+                        false,
+                    )
+                    .and(col("name").not_eq(lit("__entries"))),
+            )
+            .show(viewer_ctx, &self.runtime, ui);
+    }
+
+    fn dataset_entry_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        dataset: &Dataset,
+    ) {
+        const RECORDING_LINK_COLUMN_NAME: &str = "recording link";
+
+        re_dataframe_ui::DataFusionTableWidget::new(
+            self.tables_session_ctx.clone(),
+            dataset.name(),
+        )
+        .title(dataset.name())
+        .url(re_uri::EntryUri::new(dataset.origin.clone(), dataset.id()).to_string())
+        .column_blueprint(|desc| {
+            let mut name = default_display_name_for_column(desc);
+
+            // strip prefix and remove underscores, _only_ for the base columns (aka not the
+            // properties)
+            name = name
+                .strip_prefix("rerun_")
+                .map(|name| name.replace('_', " "))
+                .unwrap_or(name);
+
+            let default_visible = if desc.entity_path().is_some_and(|entity_path| {
+                entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
+            }) {
+                // Property column, just hide indicator components
+                // TODO(grtlr): Indicators are gone, but since servers might still
+                // have this column we keep this check for now.
+                let is_indicator = desc
+                    .column_name(BatchType::Dataframe)
+                    .ends_with("Indicator");
+                if is_indicator {
+                    re_log::warn_once!(
+                        "Encountered unexpected indicator column name: {}",
+                        desc.column_name(BatchType::Dataframe)
+                    );
+                }
+                !is_indicator
+            } else {
+                matches!(
+                    desc.display_name().as_str(),
+                    RECORDING_LINK_COLUMN_NAME | DATASET_MANIFEST_ID_FIELD_NAME
+                )
+            };
+
+            let column_sort_key = match desc.display_name().as_str() {
+                DATASET_MANIFEST_ID_FIELD_NAME => 0,
+                RECORDING_LINK_COLUMN_NAME => 1,
+                _ => 2,
+            };
+
+            let mut blueprint = ColumnBlueprint::default()
+                .display_name(name)
+                .default_visibility(default_visible)
+                .sort_key(column_sort_key);
+
+            if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {
+                blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
+            }
+
+            blueprint
+        })
+        .generate_partition_links(
+            RECORDING_LINK_COLUMN_NAME,
+            DATASET_MANIFEST_ID_FIELD_NAME,
+            self.origin.clone(),
+            dataset.id(),
+        )
+        .show(viewer_ctx, &self.runtime, ui);
+    }
+
+    fn table_entry_ui(&self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, table: &Table) {
+        re_dataframe_ui::DataFusionTableWidget::new(self.tables_session_ctx.clone(), table.name())
+            .title(table.name())
+            .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
+            .show(viewer_ctx, &self.runtime, ui);
+    }
+
+    fn panel_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ctx: &Context<'_>,
+        ui: &mut egui::Ui,
+        recordings: Option<re_entity_db::DatasetRecordings<'_>>,
+    ) {
+        let item = Item::RedapServer(self.origin.clone());
+        let is_selected = viewer_ctx.selection().contains_item(&item);
+        let is_active = matches!(
+            viewer_ctx.display_mode(),
+            DisplayMode::RedapServer(origin)
+            if origin == &self.origin
+        );
+
+        let content = list_item::LabelContent::header(self.origin.host.to_string())
+            .always_show_buttons(true)
+            .with_buttons(|ui| {
+                Box::new(ItemMenuButton::new(&icons::MORE, "Actions", |ui| {
+                    if icons::RESET
+                        .as_button_with_label(ui.tokens(), "Refresh")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        ctx.command_sender
+                            .send(Command::RefreshCollection(self.origin.clone()))
+                            .ok();
+                    }
+                    if icons::SETTINGS
+                        .as_button_with_label(ui.tokens(), "Edit")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        ctx.command_sender
+                            .send(Command::OpenEditServerModal(self.origin.clone()))
+                            .ok();
+                    }
+                    if icons::TRASH
+                        .as_button_with_label(ui.tokens(), "Remove")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        ctx.command_sender
+                            .send(Command::RemoveServer(self.origin.clone()))
+                            .ok();
+                    }
+                }))
+                .ui(ui)
+            });
+
+        let item_response = ui
+            .list_item()
+            .header()
+            .selected(is_selected)
+            .active(is_active)
             .show_hierarchical_with_children(
                 ui,
                 egui::Id::new(&self.origin).with("server_item"),
                 true,
                 content,
                 |ui| {
-                    self.entries.panel_ui(ctx, ui);
+                    self.entries.panel_ui(viewer_ctx, ctx, ui, recordings);
                 },
-            );
+            )
+            .item_response
+            .on_hover_text(self.origin.to_string());
+
+        viewer_ctx.handle_select_hover_drag_interactions(&item_response, item, false);
+
+        if item_response.clicked() {
+            viewer_ctx
+                .command_sender()
+                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+                    self.origin.clone(),
+                )));
+        }
     }
 }
 
@@ -73,13 +345,15 @@ impl Server {
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
 
-    selected_entry: Option<EntryId>,
+    /// When deserializing we can't construct the [`Server`]s right away
+    /// so they get queued here.
+    pending_servers: Vec<re_uri::Origin>,
 
     // message queue for commands
     command_sender: Sender<Command>,
     command_receiver: Receiver<Command>,
 
-    add_server_modal_ui: AddServerModal,
+    server_modal_ui: ServerModal,
 }
 
 impl serde::Serialize for RedapServers {
@@ -101,12 +375,12 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
     {
         let origins = Vec::<re_uri::Origin>::deserialize(deserializer)?;
 
-        let servers = Self::default();
+        let mut servers = Self::default();
 
         // We cannot create `Server` right away, because we need an async handle and an
         // `egui::Context` for that, so we just queue commands to be processed early next frame.
         for origin in origins {
-            let _ = servers.command_sender.send(Command::AddServer(origin));
+            servers.pending_servers.push(origin);
         }
 
         Ok(servers)
@@ -119,60 +393,64 @@ impl Default for RedapServers {
 
         Self {
             servers: Default::default(),
-            selected_entry: None,
+            pending_servers: Default::default(),
             command_sender,
             command_receiver,
-            add_server_modal_ui: Default::default(),
+            server_modal_ui: Default::default(),
         }
     }
 }
 
 pub enum Command {
-    SelectEntry(EntryId),
-    DeselectEntry,
-    AddServer(re_uri::Origin),
+    OpenAddServerModal,
+
+    OpenEditServerModal(re_uri::Origin),
+
+    /// Add a server with an optional JWT token.
+    ///
+    /// If the token is None, this does *not* remove an existing token.
+    AddServer(re_uri::Origin, Option<Jwt>),
+
+    /// Remove a server and its token.
     RemoveServer(re_uri::Origin),
+
     RefreshCollection(re_uri::Origin),
 }
 
 impl RedapServers {
+    pub fn is_empty(&self) -> bool {
+        self.servers.is_empty() && self.pending_servers.is_empty()
+    }
+
+    /// Whether we already know about a given server (or have it queued to be added).
+    pub fn has_server(&self, origin: &re_uri::Origin) -> bool {
+        self.servers.contains_key(origin) || self.pending_servers.contains(origin)
+    }
+
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
-        let _ = self.command_sender.send(Command::AddServer(origin));
-    }
-
-    #[expect(clippy::unused_self)]
-    pub fn select_server(&self, _origin: re_uri::Origin) {
-        //TODO(ab): we don't have support for selecting servers yet.
-    }
-
-    pub fn find_dataset_by_name(
-        &self,
-        origin: &re_uri::Origin,
-        dataset_name: &str,
-    ) -> Option<&Dataset> {
-        self.servers.get(origin)?.find_dataset_by_name(dataset_name)
-    }
-
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn select_dataset_by_name(&self, origin: &re_uri::Origin, dataset_name: &str) {
-        let Some(entry_id) = self
-            .find_dataset_by_name(origin, dataset_name)
-            .map(|dataset| dataset.id())
-        else {
-            return;
-        };
-
-        let _ = self.command_sender.send(Command::SelectEntry(entry_id));
+        self.command_sender
+            .send(Command::AddServer(origin, None))
+            .ok();
     }
 
     /// Per-frame housekeeping.
     ///
     /// - Process commands from the queue.
     /// - Update all servers.
-    pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
+    pub fn on_frame_start(
+        &mut self,
+        connection_registry: &ConnectionRegistryHandle,
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+    ) {
+        self.pending_servers.drain(..).for_each(|origin| {
+            self.command_sender
+                .send(Command::AddServer(origin, None))
+                .ok();
+        });
         while let Ok(command) = self.command_receiver.try_recv() {
-            self.handle_command(runtime, egui_ctx, command);
+            self.handle_command(connection_registry, runtime, egui_ctx, command);
         }
 
         for server in self.servers.values_mut() {
@@ -182,26 +460,41 @@ impl RedapServers {
 
     fn handle_command(
         &mut self,
+        connection_registry: &re_grpc_client::ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         command: Command,
     ) {
         match command {
-            Command::SelectEntry(collection_handle) => {
-                self.selected_entry = Some(collection_handle);
+            Command::OpenAddServerModal => {
+                self.server_modal_ui
+                    .open(ServerModalMode::Add, connection_registry);
             }
 
-            Command::DeselectEntry => self.selected_entry = None,
+            Command::OpenEditServerModal(origin) => {
+                self.server_modal_ui
+                    .open(ServerModalMode::Edit(origin), connection_registry);
+            }
 
-            Command::AddServer(origin) => {
+            Command::AddServer(origin, jwt) => {
+                if let Some(token) = jwt {
+                    connection_registry.set_token(&origin, token);
+                }
                 if !self.servers.contains_key(&origin) {
                     self.servers.insert(
                         origin.clone(),
-                        Server::new(runtime, egui_ctx, origin.clone()),
+                        Server::new(
+                            connection_registry.clone(),
+                            runtime.clone(),
+                            egui_ctx,
+                            origin.clone(),
+                        ),
                     );
                 } else {
-                    re_log::warn!(
-                        "Tried to add pre-existing sever at {:?}",
+                    // Since we persist the server list on disk this happens quite often.
+                    // E.g. run `pixi run rerun "rerun+http://localhost"` more than once.
+                    re_log::debug!(
+                        "Tried to add pre-existing server at {:?}",
                         origin.to_string()
                     );
                 }
@@ -209,6 +502,7 @@ impl RedapServers {
 
             Command::RemoveServer(origin) => {
                 self.servers.remove(&origin);
+                connection_registry.remove_token(&origin);
             }
 
             Command::RefreshCollection(origin) => {
@@ -219,78 +513,85 @@ impl RedapServers {
         }
     }
 
-    pub fn server_panel_ui(&mut self, ui: &mut egui::Ui) {
-        ui.panel_content(|ui| {
-            ui.panel_title_bar_with_buttons(
-                "Servers",
-                Some("These are the currently connected Redap servers."),
-                |ui| {
-                    if ui
-                        .small_icon_button(&re_ui::icons::ADD)
-                        .on_hover_text("Add a server")
-                        .clicked()
-                    {
-                        self.add_server_modal_ui.open();
-                    }
-                },
-            );
-        });
-
-        egui::ScrollArea::both()
-            .id_salt("servers_scroll_area")
-            .auto_shrink([false, true])
-            .show(ui, |ui| {
-                ui.panel_content(|ui| {
-                    re_ui::list_item::list_item_scope(ui, "server panel", |ui| {
-                        self.server_list_ui(ui);
-                    });
-                });
+    pub fn server_central_panel_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        origin: &re_uri::Origin,
+    ) {
+        if let Some(server) = self.servers.get(origin) {
+            self.with_ctx(|ctx| {
+                server.server_ui(viewer_ctx, ctx, ui);
             });
+        } else {
+            viewer_ctx
+                .command_sender()
+                .send_system(SystemCommand::ChangeDisplayMode(
+                    DisplayMode::LocalRecordings,
+                ));
+        }
     }
 
-    fn server_list_ui(&self, ui: &mut egui::Ui) {
+    pub fn server_list_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        mut remote_recordings: re_entity_db::RemoteRecordings<'_>,
+    ) {
         self.with_ctx(|ctx| {
             for server in self.servers.values() {
-                server.panel_ui(ctx, ui);
+                let recordings = remote_recordings.remove(&server.origin);
+                server.panel_ui(viewer_ctx, ctx, ui, recordings);
             }
         });
     }
 
-    pub fn ui(&mut self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-        self.add_server_modal_ui(ui);
+    pub fn open_add_server_modal(&self) {
+        self.command_sender.send(Command::OpenAddServerModal).ok();
+    }
 
-        //TODO(ab): we should display something even if no catalog is currently selected.
-
-        if let Some(selected_entry) = self.selected_entry.as_ref() {
-            for server in self.servers.values() {
-                let dataset = server.find_dataset(*selected_entry);
-
-                if let Some(dataset) = dataset {
-                    self.with_ctx(|ctx| {
-                        super::dataset_ui::dataset_ui(viewer_ctx, ctx, ui, &server.origin, dataset);
-                    });
-
-                    return;
+    pub fn entry_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        active_entry: EntryId,
+    ) {
+        for server in self.servers.values() {
+            if let Some(entry) = server.find_entry(active_entry) {
+                match entry.inner() {
+                    Ok(crate::entries::EntryInner::Dataset(dataset)) => {
+                        server.dataset_entry_ui(viewer_ctx, ui, dataset);
+                    }
+                    Ok(crate::entries::EntryInner::Table(table)) => {
+                        server.table_entry_ui(viewer_ctx, ui, table);
+                    }
+                    Err(err) => {
+                        Frame::new().inner_margin(16.0).show(ui, |ui| {
+                            Alert::error().show_text(
+                                ui,
+                                format!("Error loading entry {}", entry.name()),
+                                Some(err.to_string()),
+                            );
+                        });
+                    }
                 }
             }
         }
     }
 
-    fn add_server_modal_ui(&mut self, ui: &egui::Ui) {
+    pub fn modals_ui(&mut self, global_ctx: &GlobalContext<'_>, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_entry: &self.selected_entry,
         };
 
-        self.add_server_modal_ui.ui(&ctx, ui);
+        self.server_modal_ui.ui(global_ctx, &ctx, ui);
     }
 
     #[inline]
     fn with_ctx<R>(&self, func: impl FnOnce(&Context<'_>) -> R) -> R {
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_entry: &self.selected_entry,
         };
 
         func(&ctx)

@@ -26,7 +26,7 @@ Watch our demo video:
 
 ## Get started
 
-Please see [the original project repo](https://github.com/cake-lab/ARFlow/blob/main/README.md), and refer to the individual [server](https://github.com/cake-lab/ARFlow/blob/main/python/README.md) and [client](https://github.com/cake-lab/ARFlow/blob/main/unity/Packages/edu.wpi.cake.arflow/README.md) installation guides.
+Please see [the original project repo](https://github.com/cake-lab/ARFlow/blob/main/README.md), and refer to the individual [server](https://github.com/cake-lab/ARFlow/blob/090995a066e8394fc7358a889c655fa3020d20d4/python/README.md) and [client](https://github.com/cake-lab/ARFlow/tree/090995a066e8394fc7358a889c655fa3020d20d4/unity) installation guides.
 
 ## Citation
 

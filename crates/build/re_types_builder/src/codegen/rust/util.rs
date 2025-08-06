@@ -5,12 +5,12 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::{
+    ATTR_RUST_TUPLE_STRUCT, Docs, Object, ObjectKind, Objects, Reporter,
     codegen::{
-        common::{collect_snippets_for_api_docs, ExampleInfo},
         Target,
+        common::{ExampleInfo, collect_snippets_for_api_docs},
     },
     objects::State,
-    Docs, Object, ObjectKind, Objects, Reporter, ATTR_RUST_TUPLE_STRUCT,
 };
 
 // ---

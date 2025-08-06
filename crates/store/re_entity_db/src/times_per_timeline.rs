@@ -8,6 +8,7 @@ use re_log_types::{TimeInt, Timeline};
 
 pub type TimeCounts = BTreeMap<TimeInt, u64>;
 
+#[derive(Clone)]
 pub struct TimelineStats {
     pub timeline: Timeline,
     pub per_time: TimeCounts,
@@ -25,6 +26,7 @@ impl TimelineStats {
 /// A [`ChunkStoreSubscriber`] that keeps track of all unique timestamps on each [`Timeline`].
 ///
 /// TODO(#7084): Get rid of [`TimesPerTimeline`] and implement time-stepping with [`crate::TimeHistogram`] instead.
+#[derive(Clone)]
 pub struct TimesPerTimeline(BTreeMap<TimelineName, TimelineStats>);
 
 impl std::ops::Deref for TimesPerTimeline {
@@ -89,7 +91,7 @@ impl ChunkStoreSubscriber for TimesPerTimeline {
                     if delta < 0 {
                         *count = count.checked_sub(delta.unsigned_abs()).unwrap_or_else(|| {
                             re_log::debug!(
-                                store_id = %event.store_id,
+                                store_id = ?event.store_id,
                                 entity_path = %event.chunk.entity_path(),
                                 current = count,
                                 removed = delta.unsigned_abs(),
@@ -100,7 +102,7 @@ impl ChunkStoreSubscriber for TimesPerTimeline {
                     } else {
                         *count = count.checked_add(delta.unsigned_abs()).unwrap_or_else(|| {
                             re_log::debug!(
-                                store_id = %event.store_id,
+                                store_id = ?event.store_id,
                                 entity_path = %event.chunk.entity_path(),
                                 current = count,
                                 removed = delta.unsigned_abs(),

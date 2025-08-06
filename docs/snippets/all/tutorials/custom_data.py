@@ -11,29 +11,28 @@ import pyarrow as pa
 import rerun as rr
 
 
-class ConfidenceBatch(rr.ComponentBatchMixin):
+class ConfidenceBatch(rr.ComponentBatchMixin):  # type: ignore[misc]
     """A batch of confidence data."""
 
     def __init__(self: Any, confidence: npt.ArrayLike) -> None:
         self.confidence = confidence
-
-    def component_descriptor(self) -> rr.ComponentDescriptor:
-        """The descriptor of the custom component."""
-        return rr.ComponentDescriptor("user.Confidence")
 
     def as_arrow_array(self) -> pa.Array:
         """The arrow batch representing the custom component."""
         return pa.array(self.confidence, type=pa.float32())
 
 
-class CustomPoints3D(rr.AsComponents):
+class CustomPoints3D(rr.AsComponents):  # type: ignore[misc]
     """A custom archetype that extends Rerun's builtin `Points3D` archetype with a custom component."""
 
     def __init__(self: Any, positions: npt.ArrayLike, confidences: npt.ArrayLike) -> None:
         self.points3d = rr.Points3D(positions)
-        self.confidences = ConfidenceBatch(confidences).or_with_descriptor_overrides(
-            archetype_name="user.CustomPoints3D",
-            archetype_field_name="confidences",
+        self.confidences = ConfidenceBatch(confidences).described(
+            rr.ComponentDescriptor(
+                "user.CustomPoints3D:confidences",
+                archetype="user.CustomPoints3D",
+                component_type="user.Confidence",
+            )
         )
 
     def as_component_batches(self) -> list[rr.DescribedComponentBatch]:

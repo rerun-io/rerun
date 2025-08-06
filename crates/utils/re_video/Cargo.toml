@@ -33,7 +33,7 @@ av1 = ["dep:dav1d"]
 ffmpeg = ["dep:ffmpeg-sidecar"]
 
 ## Enable faster native video decoding with assembly.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
+## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = [
   # The default feature set of our dav1d fork has asm enabled
   "dav1d?/default",
@@ -42,18 +42,24 @@ nasm = [
 
 [dependencies]
 re_build_info.workspace = true
+re_byte_size.workspace = true
 re_log.workspace = true
+re_span.workspace = true
 re_tracing.workspace = true
 
+ahash.workspace = true
 bit-vec.workspace = true
 crossbeam.workspace = true
 econtext.workspace = true
+h264-reader.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 poll-promise.workspace = true
 re_mp4.workspace = true
+smallvec.workspace = true
 thiserror.workspace = true
+web-time.workspace = true
 
 ffmpeg-sidecar = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
@@ -76,6 +82,7 @@ dav1d = { workspace = true, optional = true, default-features = false, features 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys.workspace = true
 wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
 web-sys = { workspace = true, features = [
   "DomException",
   "EncodedVideoChunk",
@@ -92,12 +99,12 @@ web-sys = { workspace = true, features = [
 # For the `frames` example:
 indicatif.workspace = true
 criterion.workspace = true
+re_log = { workspace = true, features = ["setup"] }
 
 # For build.rs:
 [build-dependencies]
 re_build_tools.workspace = true
 cfg_aliases.workspace = true
-
 
 [[example]]
 name = "frames"

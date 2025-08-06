@@ -2,11 +2,11 @@ use arrow::array::{Array as _, ListArray as ArrowListArray, RecordBatch as Arrow
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
-use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
+use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_byte_size::SizeBytes as _;
-use re_types_core::{arrow_helpers::as_array_ref, ComponentDescriptor};
+use re_types_core::{ComponentDescriptor, arrow_helpers::as_array_ref};
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkResult, TimeColumn};
+use crate::{Chunk, ChunkError, ChunkResult, TimeColumn, chunk::ChunkComponents};
 
 // ---
 
@@ -14,6 +14,7 @@ impl Chunk {
     /// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
+    // TODO(#8744): this is infallible, so we should not return a `Result` here.
     pub fn to_record_batch(&self) -> ChunkResult<ArrowRecordBatch> {
         re_tracing::profile_function!();
         Ok(self.to_chunk_batch()?.into())
@@ -22,6 +23,7 @@ impl Chunk {
     /// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
+    // TODO(#8744): this is infallible, so we should not return a `Result` here.
     pub fn to_chunk_batch(&self) -> ChunkResult<re_sorbet::ChunkBatch> {
         re_tracing::profile_function!();
         self.sanity_check()?;
@@ -80,31 +82,31 @@ impl Chunk {
             re_tracing::profile_scope!("components");
 
             let mut components = components
-                .values()
-                .flat_map(|per_desc| per_desc.iter())
+                .iter()
                 .map(|(component_desc, list_array)| {
                     let list_array = ArrowListArray::from(list_array.clone());
                     let ComponentDescriptor {
-                        archetype_name,
-                        archetype_field_name,
-                        component_name,
+                        archetype: archetype_name,
+                        component,
+                        component_type,
                     } = *component_desc;
 
-                    component_name.sanity_check();
+                    if let Some(c) = component_type {
+                        c.sanity_check();
+                    }
 
                     let schema = re_sorbet::ComponentColumnDescriptor {
                         store_datatype: list_array.data_type().clone(),
                         entity_path: entity_path.clone(),
 
-                        archetype_name,
-                        archetype_field_name,
-                        component_name,
+                        archetype: archetype_name,
+                        component,
+                        component_type,
 
                         // These are a consequence of using `ComponentColumnDescriptor` both for chunk batches and dataframe batches.
                         // Setting them all to `false` at least ensures they aren't written to the arrow metadata:
                         // TODO(#8744): figure out what to do here
                         is_static: false,
-                        is_indicator: false,
                         is_tombstone: false,
                         is_semantically_empty: false,
                     };
@@ -123,6 +125,7 @@ impl Chunk {
             row_id_schema,
             index_schemas,
             data_schemas,
+            Default::default(),
         )
         .with_heap_size_bytes(heap_size_bytes);
 
@@ -134,6 +137,7 @@ impl Chunk {
         )?)
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn from_record_batch(batch: &ArrowRecordBatch) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",
@@ -143,6 +147,7 @@ impl Chunk {
         Self::from_chunk_batch(&re_sorbet::ChunkBatch::try_from(batch)?)
     }
 
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn from_chunk_batch(batch: &re_sorbet::ChunkBatch) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",
@@ -196,15 +201,12 @@ impl Chunk {
                     })?;
 
                 let component_desc = ComponentDescriptor {
-                    archetype_name: schema.archetype_name,
-                    archetype_field_name: schema.archetype_field_name,
-                    component_name: schema.component_name,
+                    archetype: schema.archetype,
+                    component: schema.component,
+                    component_type: schema.component_type,
                 };
 
-                if components
-                    .insert_descriptor(component_desc, column.clone())
-                    .is_some()
-                {
+                if components.insert(component_desc, column.clone()).is_some() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
                             "component column '{schema:?}' was specified more than once"
@@ -244,7 +246,6 @@ impl Chunk {
     pub fn from_arrow_msg(msg: &re_log_types::ArrowMsg) -> ChunkResult<Self> {
         let re_log_types::ArrowMsg {
             chunk_id: _,
-            timepoint_max: _,
             batch,
             on_release: _,
         } = msg;
@@ -258,8 +259,7 @@ impl Chunk {
         self.sanity_check()?;
 
         Ok(re_log_types::ArrowMsg {
-            chunk_id: re_tuid::Tuid::from_u128(self.id().as_u128()),
-            timepoint_max: self.timepoint_max(),
+            chunk_id: self.id().as_tuid(),
             batch: self.to_record_batch()?,
             on_release: None,
         })
@@ -272,10 +272,10 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use re_log_types::{
-        example_components::{MyColor, MyPoint},
         EntityPath, Timeline,
+        example_components::{MyColor, MyPoint, MyPoints},
     };
-    use re_types_core::{ChunkId, Component as _, Loggable as _, RowId};
+    use re_types_core::{ChunkId, Loggable as _, RowId};
 
     use super::*;
 
@@ -311,7 +311,7 @@ mod tests {
         let colors4 = None;
 
         let components = [
-            (MyPoint::descriptor(), {
+            (MyPoints::descriptor_points(), {
                 let list_array = re_arrow_util::arrays_to_list_array_opt(&[
                     Some(&*points1),
                     points2,
@@ -322,7 +322,7 @@ mod tests {
                 assert_eq!(4, list_array.len());
                 list_array
             }),
-            (MyPoint::descriptor(), {
+            (MyPoints::descriptor_points(), {
                 let list_array = re_arrow_util::arrays_to_list_array_opt(&[
                     Some(&*colors1),
                     Some(&*colors2),

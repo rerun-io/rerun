@@ -2,10 +2,10 @@ namespace rerun.blueprint.components;
 
 /// Space between grid lines of one line to the next in scene units.
 table GridSpacing (
-    "attr.python.aliases": "float",
-    "attr.python.array_aliases": "npt.ArrayLike",
-    "attr.rerun.scope": "blueprint"
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rerun.scope": "blueprint"
 ) {
-    /// Space between grid lines of one line to the next in scene units.
-    distance: rerun.datatypes.Float32 (order: 100);
+  /// Space between grid lines of one line to the next in scene units.
+  distance: rerun.datatypes.Float32 (order: 100);
 }

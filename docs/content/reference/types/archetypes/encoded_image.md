@@ -8,15 +8,19 @@ An image encoded as e.g. a JPEG or PNG.
 Rerun also supports uncompressed images with the [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 For images that refer to video frames see [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference).
 
-## Components
+## Fields
+### Required
+* `blob`: [`Blob`](../components/blob.md)
 
-**Required**: [`Blob`](../components/blob.md)
+### Recommended
+* `media_type`: [`MediaType`](../components/media_type.md)
 
-**Recommended**: [`MediaType`](../components/media_type.md)
+### Optional
+* `opacity`: [`Opacity`](../components/opacity.md)
+* `draw_order`: [`DrawOrder`](../components/draw_order.md)
 
-**Optional**: [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
 
-## Shown in
+## Can be shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)

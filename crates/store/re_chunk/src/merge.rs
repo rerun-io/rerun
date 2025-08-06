@@ -1,12 +1,12 @@
 use arrow::array::FixedSizeBinaryArray;
 use arrow::array::{Array as _, ListArray as ArrowListArray};
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
-use itertools::{izip, Itertools as _};
+use itertools::{Itertools as _, izip};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
+use crate::{Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn, chunk::ChunkComponents};
 
 // ---
 
@@ -73,25 +73,17 @@ impl Chunk {
 
         let lhs_per_desc: IntMap<_, _> = cl
             .components
-            .values()
-            .flat_map(|per_desc| {
-                per_desc
-                    .iter()
-                    .map(|(component_desc, list_array)| (component_desc.clone(), list_array))
-            })
+            .iter()
+            .map(|(component_desc, list_array)| (component_desc.clone(), list_array))
             .collect();
         let rhs_per_desc: IntMap<_, _> = cr
             .components
-            .values()
-            .flat_map(|per_desc| {
-                per_desc
-                    .iter()
-                    .map(|(component_desc, list_array)| (component_desc.clone(), list_array))
-            })
+            .iter()
+            .map(|(component_desc, list_array)| (component_desc.clone(), list_array))
             .collect();
 
         // First pass: concat right onto left.
-        let mut components: IntMap<_, _> = {
+        let mut components = ChunkComponents({
             re_tracing::profile_scope!("components (r2l)");
             lhs_per_desc
                 .iter()
@@ -121,12 +113,12 @@ impl Chunk {
                     }
                 })
                 .collect()
-        };
+        });
 
         // Second pass: concat left onto right, where necessary.
-        components.extend({
+        {
             re_tracing::profile_scope!("components (l2r)");
-            rhs_per_desc
+            let rhs = rhs_per_desc
                 .iter()
                 .filter_map(|(component_desc, &rhs_list_array)| {
                     if components.contains_key(component_desc) {
@@ -159,16 +151,9 @@ impl Chunk {
                         ))
                     }
                 })
-                .collect_vec()
-        });
-
-        let components = {
-            let mut per_name = ChunkComponents::default();
-            for (component_desc, list_array) in components {
-                per_name.insert_descriptor(component_desc.clone(), list_array);
-            }
-            per_name
-        };
+                .collect_vec();
+            components.extend(rhs);
+        }
 
         let chunk = Self {
             id: ChunkId::new(),
@@ -235,48 +220,14 @@ impl Chunk {
     #[inline]
     pub fn same_datatypes(&self, rhs: &Self) -> bool {
         self.components
-            .values()
-            .flat_map(|per_desc| per_desc.iter())
+            .iter()
             .all(|(component_desc, lhs_list_array)| {
-                if let Some(rhs_list_array) = rhs
-                    .components
-                    .get(&component_desc.component_name)
-                    .and_then(|per_desc| per_desc.get(component_desc))
-                {
+                if let Some(rhs_list_array) = rhs.components.get(component_desc) {
                     lhs_list_array.data_type() == rhs_list_array.data_type()
                 } else {
                     true
                 }
             })
-    }
-
-    /// Returns `true` if both chunks share the same descriptors for the components that
-    /// _they have in common_.
-    #[inline]
-    pub fn same_descriptors(&self, rhs: &Self) -> bool {
-        self.components.values().all(|lhs_per_desc| {
-            if lhs_per_desc.len() > 1 {
-                // If it's already in UB land, we might as well give up immediately.
-                return false;
-            }
-
-            lhs_per_desc.keys().all(|lhs_desc| {
-                let Some(rhs_per_desc) = rhs.components.get(&lhs_desc.component_name) else {
-                    return true;
-                };
-
-                if rhs_per_desc.len() > 1 {
-                    // If it's already in UB land, we might as well give up immediately.
-                    return false;
-                }
-
-                if let Some(rhs_desc) = rhs_per_desc.keys().next() {
-                    lhs_desc == rhs_desc
-                } else {
-                    true
-                }
-            })
-        })
     }
 
     /// Returns true if two chunks are concatenable.
@@ -287,51 +238,7 @@ impl Chunk {
     /// * Use the same datatypes for the components they have in common.
     #[inline]
     pub fn concatenable(&self, rhs: &Self) -> bool {
-        self.same_entity_paths(rhs)
-            && self.same_timelines(rhs)
-            && self.same_datatypes(rhs)
-            && self.same_descriptors(rhs)
-    }
-
-    /// Moves all indicator components from `self` into a new, dedicated chunk.
-    ///
-    /// The new chunk contains only the first index from each index column, and all the indicators,
-    /// packed in a single row.
-    /// Beware: `self` might be left with no component columns at all after this operation.
-    ///
-    /// This greatly reduces the overhead of indicators, both in the row-oriented and
-    /// column-oriented APIs.
-    /// See <https://github.com/rerun-io/rerun/issues/8768> for further rationale.
-    pub fn split_indicators(&mut self) -> Option<Self> {
-        let indicators: ChunkComponents = self
-            .components
-            .iter_flattened()
-            .filter(|&(descr, _list_array)| descr.component_name.is_indicator_component())
-            .filter(|&(_descr, list_array)| (!list_array.is_empty()))
-            .map(|(descr, list_array)| (descr.clone(), list_array.slice(0, 1)))
-            .collect();
-        if indicators.is_empty() {
-            return None;
-        }
-
-        let timelines = self
-            .timelines
-            .iter()
-            .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(0, 1)))
-            .collect();
-
-        if let Ok(chunk) = Self::from_auto_row_ids(
-            ChunkId::new(),
-            self.entity_path.clone(),
-            timelines,
-            indicators,
-        ) {
-            self.components
-                .retain(|component_name, _per_desc| !component_name.is_indicator_component());
-            return Some(chunk);
-        }
-
-        None
+        self.same_entity_paths(rhs) && self.same_timelines(rhs) && self.same_datatypes(rhs)
     }
 }
 
@@ -374,8 +281,7 @@ impl TimeColumn {
 mod tests {
     use super::*;
 
-    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoint64};
-    use re_types_core::Component as _;
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoint64, MyPoints};
 
     use crate::{Chunk, RowId, Timeline};
 
@@ -428,15 +334,41 @@ mod tests {
         ];
         let labels5 = &[MyLabel("d".into())];
 
-        let chunk1 = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id1, timepoint1, [points1 as _])
-            .with_component_batches(row_id2, timepoint2, [colors2 as _, labels2 as _])
-            .with_component_batches(row_id3, timepoint3, [points3 as _])
+        let chunk1 = Chunk::builder(entity_path)
+            .with_component_batches(
+                row_id1,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id2,
+                timepoint2,
+                [
+                    (MyPoints::descriptor_colors(), colors2 as _),
+                    (MyPoints::descriptor_labels(), labels2 as _),
+                ],
+            )
+            .with_component_batches(
+                row_id3,
+                timepoint3,
+                [(MyPoints::descriptor_points(), points3 as _)],
+            )
             .build()?;
 
-        let chunk2 = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id4, timepoint4, [colors4 as _])
-            .with_component_batches(row_id5, timepoint5, [points5 as _, labels5 as _])
+        let chunk2 = Chunk::builder(entity_path)
+            .with_component_batches(
+                row_id4,
+                timepoint4,
+                [(MyPoints::descriptor_colors(), colors4 as _)],
+            )
+            .with_component_batches(
+                row_id5,
+                timepoint5,
+                [
+                    (MyPoints::descriptor_points(), points5 as _),
+                    (MyPoints::descriptor_labels(), labels5 as _),
+                ],
+            )
             .build()?;
 
         eprintln!("chunk1:\n{chunk1}");
@@ -446,50 +378,50 @@ mod tests {
             assert!(chunk1.concatenable(&chunk2));
 
             let got = chunk1.concatenated(&chunk2).unwrap();
-            let expected = Chunk::builder_with_id(got.id(), entity_path.into())
+            let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id1,
                     timepoint1,
                     [
-                        (MyPoint::descriptor(), Some(points1 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(points1 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id2,
                     timepoint2,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors2 as _)),
-                        (MyLabel::descriptor(), Some(labels2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors2 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id3,
                     timepoint3,
                     [
-                        (MyPoint::descriptor(), Some(points3 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id4,
                     timepoint4,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors4 as _)),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors4 as _)),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id5,
                     timepoint5,
                     [
-                        (MyPoint::descriptor(), Some(points5 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels5 as _)),
+                        (MyPoints::descriptor_points(), Some(points5 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels5 as _)),
                     ],
                 )
                 .build()?;
@@ -516,50 +448,50 @@ mod tests {
             assert!(chunk2.concatenable(&chunk1));
 
             let got = chunk2.concatenated(&chunk1).unwrap();
-            let expected = Chunk::builder_with_id(got.id(), entity_path.into())
+            let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id4,
                     timepoint4,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors4 as _)),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors4 as _)),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id5,
                     timepoint5,
                     [
-                        (MyPoint::descriptor(), Some(points5 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels5 as _)),
+                        (MyPoints::descriptor_points(), Some(points5 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels5 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id1,
                     timepoint1,
                     [
-                        (MyPoint::descriptor(), Some(points1 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(points1 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id2,
                     timepoint2,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors2 as _)),
-                        (MyLabel::descriptor(), Some(labels2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors2 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id3,
                     timepoint3,
                     [
-                        (MyPoint::descriptor(), Some(points3 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .build()?;
@@ -629,15 +561,47 @@ mod tests {
         let labels4 = &[MyLabel("d".into())];
         let labels5 = &[MyLabel("e".into())];
 
-        let chunk1 = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id1, timepoint1, [points1 as _, labels1 as _])
-            .with_component_batches(row_id2, timepoint2, [labels2 as _])
-            .with_component_batches(row_id3, timepoint3, [points3 as _, labels3 as _])
+        let chunk1 = Chunk::builder(entity_path)
+            .with_component_batches(
+                row_id1,
+                timepoint1,
+                [
+                    (MyPoints::descriptor_points(), points1 as _),
+                    (MyPoints::descriptor_labels(), labels1 as _),
+                ],
+            )
+            .with_component_batches(
+                row_id2,
+                timepoint2,
+                [(MyPoints::descriptor_labels(), labels2 as _)],
+            )
+            .with_component_batches(
+                row_id3,
+                timepoint3,
+                [
+                    (MyPoints::descriptor_points(), points3 as _),
+                    (MyPoints::descriptor_labels(), labels3 as _),
+                ],
+            )
             .build()?;
 
-        let chunk2 = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id4, timepoint4, [colors4 as _, labels4 as _])
-            .with_component_batches(row_id5, timepoint5, [colors5 as _, labels5 as _])
+        let chunk2 = Chunk::builder(entity_path)
+            .with_component_batches(
+                row_id4,
+                timepoint4,
+                [
+                    (MyPoints::descriptor_colors(), colors4 as _),
+                    (MyPoints::descriptor_labels(), labels4 as _),
+                ],
+            )
+            .with_component_batches(
+                row_id5,
+                timepoint5,
+                [
+                    (MyPoints::descriptor_colors(), colors5 as _),
+                    (MyPoints::descriptor_labels(), labels5 as _),
+                ],
+            )
             .build()?;
 
         eprintln!("chunk1:\n{chunk1}");
@@ -647,50 +611,50 @@ mod tests {
             assert!(chunk1.concatenable(&chunk2));
 
             let got = chunk1.concatenated(&chunk2).unwrap();
-            let expected = Chunk::builder_with_id(got.id(), entity_path.into())
+            let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id1,
                     timepoint1,
                     [
-                        (MyPoint::descriptor(), Some(points1 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels1 as _)),
+                        (MyPoints::descriptor_points(), Some(points1 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels1 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id2,
                     timepoint2,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id3,
                     timepoint3,
                     [
-                        (MyPoint::descriptor(), Some(points3 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels3 as _)),
+                        (MyPoints::descriptor_points(), Some(points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels3 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id4,
                     timepoint4,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors4 as _)),
-                        (MyLabel::descriptor(), Some(labels4 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors4 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels4 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id5,
                     timepoint5,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors5 as _)),
-                        (MyLabel::descriptor(), Some(labels5 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors5 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels5 as _)),
                     ],
                 )
                 .build()?;
@@ -717,50 +681,50 @@ mod tests {
             assert!(chunk2.concatenable(&chunk1));
 
             let got = chunk2.concatenated(&chunk1).unwrap();
-            let expected = Chunk::builder_with_id(got.id(), entity_path.into())
+            let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id4,
                     timepoint4,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors4 as _)),
-                        (MyLabel::descriptor(), Some(labels4 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors4 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels4 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id5,
                     timepoint5,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors5 as _)),
-                        (MyLabel::descriptor(), Some(labels5 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors5 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels5 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id1,
                     timepoint1,
                     [
-                        (MyPoint::descriptor(), Some(points1 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels1 as _)),
+                        (MyPoints::descriptor_points(), Some(points1 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels1 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id2,
                     timepoint2,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id3,
                     timepoint3,
                     [
-                        (MyPoint::descriptor(), Some(points3 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels3 as _)),
+                        (MyPoints::descriptor_points(), Some(points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels3 as _)),
                     ],
                 )
                 .build()?;
@@ -809,12 +773,20 @@ mod tests {
             let points1 = &[MyPoint::new(1.0, 1.0)];
             let points2 = &[MyPoint::new(2.0, 2.0)];
 
-            let chunk1 = Chunk::builder(entity_path1.into())
-                .with_component_batches(row_id1, timepoint1, [points1 as _])
+            let chunk1 = Chunk::builder(entity_path1)
+                .with_component_batches(
+                    row_id1,
+                    timepoint1,
+                    [(MyPoints::descriptor_points(), points1 as _)],
+                )
                 .build()?;
 
-            let chunk2 = Chunk::builder(entity_path2.into())
-                .with_component_batches(row_id2, timepoint2, [points2 as _])
+            let chunk2 = Chunk::builder(entity_path2)
+                .with_component_batches(
+                    row_id2,
+                    timepoint2,
+                    [(MyPoints::descriptor_points(), points2 as _)],
+                )
                 .build()?;
 
             assert!(matches!(
@@ -840,12 +812,20 @@ mod tests {
             let points1 = &[MyPoint::new(1.0, 1.0)];
             let points2 = &[MyPoint::new(2.0, 2.0)];
 
-            let chunk1 = Chunk::builder(entity_path.into())
-                .with_component_batches(row_id1, timepoint1, [points1 as _])
+            let chunk1 = Chunk::builder(entity_path)
+                .with_component_batches(
+                    row_id1,
+                    timepoint1,
+                    [(MyPoints::descriptor_points(), points1 as _)],
+                )
                 .build()?;
 
-            let chunk2 = Chunk::builder(entity_path.into())
-                .with_component_batches(row_id2, timepoint2, [points2 as _])
+            let chunk2 = Chunk::builder(entity_path)
+                .with_component_batches(
+                    row_id2,
+                    timepoint2,
+                    [(MyPoints::descriptor_points(), points2 as _)],
+                )
                 .build()?;
 
             assert!(matches!(
@@ -869,26 +849,26 @@ mod tests {
             let timepoint2 = [(Timeline::new_sequence("frame"), 2)];
 
             let points32bit =
-                <MyPoint as re_types_core::LoggableBatch>::to_arrow(&MyPoint::new(1.0, 1.0))?;
+                <MyPoint as re_types_core::ComponentBatch>::to_arrow(&MyPoint::new(1.0, 1.0))?;
             let points64bit =
-                <MyPoint64 as re_types_core::LoggableBatch>::to_arrow(&MyPoint64::new(1.0, 1.0))?;
+                <MyPoint64 as re_types_core::ComponentBatch>::to_arrow(&MyPoint64::new(1.0, 1.0))?;
 
-            let chunk1 = Chunk::builder(entity_path.into())
+            let chunk1 = Chunk::builder(entity_path)
                 .with_row(
                     row_id1,
                     timepoint1,
                     [
-                        (MyPoint::descriptor(), points32bit), //
+                        (MyPoints::descriptor_points(), points32bit), //
                     ],
                 )
                 .build()?;
 
-            let chunk2 = Chunk::builder(entity_path.into())
+            let chunk2 = Chunk::builder(entity_path)
                 .with_row(
                     row_id2,
                     timepoint2,
                     [
-                        (MyPoint::descriptor(), points64bit), //
+                        (MyPoints::descriptor_points(), points64bit), //
                     ],
                 )
                 .build()?;

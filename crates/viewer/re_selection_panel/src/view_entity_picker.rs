@@ -7,11 +7,11 @@ use smallvec::SmallVec;
 use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
-use re_ui::filter_widget::{format_matching_text, FilterMatcher, FilterState, PathRanges};
-use re_ui::{list_item, UiExt as _};
+use re_ui::filter_widget::{FilterMatcher, FilterState, PathRanges, format_matching_text};
+use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{DataQueryResult, ViewId, ViewerContext};
 use re_viewport_blueprint::{
-    create_entity_add_info, CanAddToView, EntityAddInfo, ViewBlueprint, ViewportBlueprint,
+    CanAddToView, EntityAddInfo, ViewBlueprint, ViewportBlueprint, create_entity_add_info,
 };
 
 /// Window for adding/removing entities from a view.
@@ -48,16 +48,16 @@ impl ViewEntityPicker {
                     .set_side_margin(false)
                     .scrollable([false, false])
             },
-            |ui, open| {
+            |ui| {
                 // 80%, never more than 500px
                 ui.set_max_height(f32::min(ui.ctx().screen_rect().height() * 0.8, 500.0));
                 let Some(view_id) = &self.view_id else {
-                    *open = false;
+                    ui.close();
                     return;
                 };
 
                 let Some(view) = viewport_blueprint.view(view_id) else {
-                    *open = false;
+                    ui.close();
                     return;
                 };
 
@@ -237,7 +237,7 @@ fn add_entities_line_ui(
                 let enabled = add_info.can_add_self_or_descendant.is_compatible();
 
                 ui.add_enabled_ui(enabled, |ui| {
-                    let response = ui.small_icon_button(&re_ui::icons::ADD);
+                    let response = ui.small_icon_button(&re_ui::icons::ADD, "Include entity");
 
                     if response.clicked() {
                         view.contents.remove_filter_rule_for(ctx, entity_path);
@@ -262,7 +262,7 @@ fn add_entities_line_ui(
             } else {
                 // Reset-button
                 // Shows when an entity is explicitly excluded or included
-                let response = ui.small_icon_button(&re_ui::icons::RESET);
+                let response = ui.small_icon_button(&re_ui::icons::RESET, "Remove this rule");
 
                 if response.clicked() {
                     view.contents.remove_filter_rule_for(ctx, entity_path);
@@ -277,7 +277,7 @@ fn add_entities_line_ui(
         } else if is_included {
             // Remove-button
             // Shows when an entity is already included (but not explicitly)
-            let response = ui.small_icon_button(&re_ui::icons::REMOVE);
+            let response = ui.small_icon_button(&re_ui::icons::REMOVE, "Exclude entity");
 
             if response.clicked() {
                 view.contents.raw_add_entity_exclusion(
@@ -294,7 +294,7 @@ fn add_entities_line_ui(
             let enabled = add_info.can_add_self_or_descendant.is_compatible();
 
             ui.add_enabled_ui(enabled, |ui| {
-                let response = ui.small_icon_button(&re_ui::icons::ADD);
+                let response = ui.small_icon_button(&re_ui::icons::ADD, "Include entity");
 
                 if response.clicked() {
                     view.contents.raw_add_entity_inclusion(
@@ -337,11 +337,6 @@ impl EntityPickerEntryData {
         hierarchy: &mut Vec<String>,
         hierarchy_highlights: &mut PathRanges,
     ) -> Option<Self> {
-        // Early out
-        if filter_matcher.matches_nothing() {
-            return None;
-        }
-
         let entity_part_ui_string = entity_tree
             .path
             .last()

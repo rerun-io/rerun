@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-import importlib.util
-import logging
+import os
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
+import pyarrow
+import pyarrow.ipc as ipc
+from pyarrow import RecordBatch
 
 from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
@@ -16,29 +18,20 @@ if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
 
-# The notebook package is an optional dependency, so first check
-# if it is installed before importing it. If the user is trying
-# to use the notebook part of rerun, they'll be notified when
-# that it's not installed when they try to init a `Viewer` instance.
-if importlib.util.find_spec("rerun_notebook") is not None:
-    try:
-        from rerun_notebook import (
-            ContainerSelection as ContainerSelection,
-            EntitySelection as EntitySelection,
-            SelectionItem as SelectionItem,
-            ViewerCallbacks as ViewerCallbacks,
-            ViewSelection as ViewSelection,
-        )
-    except ImportError:
-        logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
-    except FileNotFoundError:
-        logging.error(
-            "rerun_notebook package is missing widget assets. Please run `py-build-notebook` in your pixi env."
-        )
-
 from rerun import bindings
+from rerun.error_utils import RerunOptionalDependencyError
 
+from .event import (
+    ViewerEvent as ViewerEvent,
+    _viewer_event_from_json_str,
+)
 from .recording_stream import RecordingStream, get_data_recording
+
+HAS_NOTEBOOK = True
+try:
+    from rerun_notebook import ErrorWidget as _ErrorWidget, Viewer as _Viewer
+except ModuleNotFoundError:
+    HAS_NOTEBOOK = False
 
 _default_width = 640
 _default_height = 480
@@ -69,9 +62,6 @@ def set_default_size(*, width: int | None, height: int | None) -> None:
         _default_height = height
 
 
-_version_mismatch_checked = False
-
-
 class Viewer:
     """
     A viewer embeddable in a notebook.
@@ -82,11 +72,12 @@ class Viewer:
     def __init__(
         self,
         *,
-        width: int | None = None,
-        height: int | None = None,
+        width: int | Literal["auto"] | None = None,
+        height: int | Literal["auto"] | None = None,
+        url: str | None = None,
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
-        use_global_recording: bool = True,
+        use_global_recording: bool | None = None,
     ) -> None:
         """
         Create a new Rerun viewer widget for use in a notebook.
@@ -98,10 +89,16 @@ class Viewer:
 
         Parameters
         ----------
-        width : int
-            The width of the viewer in pixels.
-        height : int
-            The height of the viewer in pixels.
+        width:
+            The width of the viewer in pixels, or "auto".
+
+            When set to "auto", scales to 100% of the notebook cell's width.
+        height:
+            The height of the viewer in pixels, or "auto".
+
+            When set to "auto", scales using a 16:9 aspect ratio with `width`.
+        url:
+            Optional URL passed to the viewer for displaying its contents.
         recording:
             Specifies the [`rerun.RecordingStream`][] to use.
             If left unspecified, defaults to the current active data recording, if there is one.
@@ -112,52 +109,54 @@ class Viewer:
 
             Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
         use_global_recording:
-            Whether or not the Viewer should default to the global recording in case no explicit `recording`
-            is specified.
+            If no explicit `recording` is provided, the Viewer uses the thread-local/global recording created by `rr.init`
+            or set explicitly via `rr.set_thread_local_data_recording`/`rr.set_global_data_recording`.
 
-            If this is set to `False`, then `blueprint` is ignored.
+            Settings this to `False` causes the Viewer to not pick up the global recording.
+
+            Defaults to `False` if `url` is provided, and `True` otherwise.
 
         """
-
-        try:
-            global _version_mismatch_checked
-            if not _version_mismatch_checked:
-                import importlib.metadata
-                import warnings
-
-                rerun_notebook_version = importlib.metadata.version("rerun-notebook")
-                rerun_version = importlib.metadata.version("rerun-sdk")
-                if rerun_version != rerun_notebook_version:
-                    warnings.warn(
-                        f"rerun-notebook version mismatch: rerun-sdk {rerun_version}, rerun-notebook {rerun_notebook_version}",
-                        category=ImportWarning,
-                        stacklevel=2,
-                    )
-                _version_mismatch_checked = True
-
-            from rerun_notebook import Viewer as _Viewer  # type: ignore[attr-defined]
-        except ImportError:
-            logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
-            hack: Any = None
-            return hack  # type: ignore[no-any-return]
-
+        if not HAS_NOTEBOOK:
+            raise RerunOptionalDependencyError("rerun-notebook", "notebook")
+        self._error_widget = _ErrorWidget()
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
+            url=url,
+            fallback_token=os.environ.get("REDAP_TOKEN", None),
         )
+
+        # Viewer event handling
+        self._event_callbacks: list[Callable[[ViewerEvent], None]] = []
+
+        def on_raw_event(json_str: str) -> None:
+            evt = _viewer_event_from_json_str(json_str)
+            for callback in self._event_callbacks:
+                callback(evt)
+
+        self._viewer._on_raw_event(on_raw_event)
+
+        # By default, we use the global recording only if no `url` is provided.
+        if use_global_recording is None:
+            use_global_recording = url is None
 
         if use_global_recording:
             recording = get_data_recording(recording)
-            if recording is None:
-                raise ValueError("No recording specified and no active recording found")
 
+        if recording is not None:
             bindings.set_callback_sink(
                 recording=recording.to_native(),
                 callback=self._flush_hook,
             )
 
-            if blueprint is not None:
+        if blueprint is not None:
+            if recording is not None:
                 recording.send_blueprint(blueprint)
+            else:
+                raise ValueError(
+                    "Can only set a blueprint if there's either an active recording or a recording passed in"
+                )
 
     def add_recording(
         self,
@@ -198,7 +197,82 @@ class Viewer:
         if blueprint is not None:
             recording.send_blueprint(blueprint)
 
-    def display(self, block_until_ready: bool = True) -> None:
+    def _add_table_id(self, record_batch: RecordBatch, table_id: str) -> RecordBatch:
+        # Get current schema
+        schema = record_batch.schema
+        schema = schema.with_metadata({b"__table_id": table_id})
+
+        # Create new record batch with updated schema
+        return RecordBatch.from_arrays(record_batch.columns, schema=schema)
+
+    def set_application_blueprint(
+        self, application_id: str, blueprint: BlueprintLike, make_active: bool = True, make_default: bool = True
+    ) -> None:
+        """
+        Set the blueprint for the given application.
+
+        Parameters
+        ----------
+        application_id:
+            The ID of the application to set the blueprint for.
+        blueprint:
+            The blueprint to set for the application.
+        make_active:
+            Whether to make the blueprint active.
+            If `True`, the blueprint will be set as the active blueprint for the application.
+        make_default:
+            Whether to make the blueprint the default blueprint for the application.
+            If `True`, the blueprint will be set as the default blueprint for the application.
+
+        """
+
+        blueprint = blueprint.to_blueprint()
+
+        blueprint_stream = RecordingStream._from_native(
+            bindings.new_blueprint(
+                application_id=application_id,
+                make_default=False,
+                make_thread_default=False,
+                default_enabled=True,
+            ),
+        )
+
+        blueprint_stream.set_time("blueprint", sequence=0)
+        blueprint._log_to_stream(blueprint_stream)
+
+        bindings.set_callback_sink_blueprint(
+            callback=self._flush_hook,
+            make_active=make_active,
+            make_default=make_default,
+            blueprint_stream=blueprint_stream.to_native(),
+        )
+
+    def send_table(
+        self,
+        id: str,
+        table: RecordBatch,
+    ) -> None:
+        """
+        Sends a table in the form of a dataframe to the viewer.
+
+        Parameters
+        ----------
+        id:
+            The name that uniquely identifies the table in the viewer.
+            This name will also be shown in the recording panel.
+        table:
+            The table as a single Arrow record batch.
+
+        """
+        new_table = self._add_table_id(table, id)
+        sink = pyarrow.BufferOutputStream()
+        writer = ipc.new_stream(sink, new_table.schema)
+        writer.write_batch(new_table)
+        writer.close()
+        table_as_bytes = sink.getvalue().to_pybytes()
+        self._viewer.send_table(table_as_bytes)
+
+    def display(self, block_until_ready: bool = False) -> None:
         """
         Display the viewer in the notebook cell immediately.
 
@@ -213,19 +287,17 @@ class Viewer:
 
         from IPython.display import display
 
+        display(self._error_widget)
         display(self._viewer)
 
         if block_until_ready:
             self._viewer.block_until_ready()
 
+    def _ipython_display_(self) -> None:
+        self.display()
+
     def _flush_hook(self, data: bytes) -> None:
         self._viewer.send_rrd(data)
-
-    def _repr_mimebundle_(self, **kwargs: dict) -> tuple[dict, dict] | None:  # type: ignore[type-arg]
-        return self._viewer._repr_mimebundle_(**kwargs)  # type: ignore[no-any-return]
-
-    def _repr_keys(self):  # type: ignore[no-untyped-def]
-        return self._viewer._repr_keys()
 
     def update_panels(
         self,
@@ -299,6 +371,42 @@ class Viewer:
 
         self._viewer.set_active_recording(recording_id)
 
+    def open_url(
+        self,
+        url: str,
+    ) -> None:
+        """
+        Open a URL in the viewer.
+
+        Parameters
+        ----------
+        url: str
+            The URL to open.
+
+            Must point to a valid data source.
+
+        """
+
+        self._viewer.open_url(url)
+
+    def close_url(
+        self,
+        url: str,
+    ) -> None:
+        """
+        Close an open URL in the viewer.
+
+        Does nothing if the URL is not open.
+
+        Parameters
+        ----------
+        url: str
+            The URL to close.
+
+        """
+
+        self._viewer.close_url(url)
+
     @deprecated_param("nanoseconds", use_instead="duration or timestamp", since="0.23.0")
     @deprecated_param("seconds", use_instead="duration or timestamp", since="0.23.0")
     def set_time_ctrl(
@@ -350,7 +458,7 @@ class Viewer:
 
         if sum(x is not None for x in (sequence, duration, timestamp)) > 1:
             raise ValueError(
-                "set_time_ctrl: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
+                f"set_time_ctrl: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
             )
 
         if sequence is not None:
@@ -364,48 +472,5 @@ class Viewer:
 
         self._viewer.set_time_ctrl(timeline, time, play)
 
-    def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
-        self._viewer.register_callbacks(callbacks)
-
-
-def notebook_show(
-    *,
-    width: int | None = None,
-    height: int | None = None,
-    blueprint: BlueprintLike | None = None,
-    recording: RecordingStream | None = None,
-) -> None:
-    """
-    Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
-
-    Any data logged to the recording after initialization will be sent directly to the viewer.
-
-    Note that this can be called at any point during cell execution. The call will block until the embedded
-    viewer is initialized and ready to receive data. Thereafter any log calls will immediately send data
-    to the viewer.
-
-    Parameters
-    ----------
-    width : int
-        The width of the viewer in pixels.
-    height : int
-        The height of the viewer in pixels.
-    blueprint : BlueprintLike
-        A blueprint object to send to the viewer.
-        It will be made active and set as the default blueprint in the recording.
-
-        Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    """
-
-    viewer = Viewer(
-        width=width,
-        height=height,
-        blueprint=blueprint,
-        recording=recording,  # NOLINT
-    )
-    viewer.display()
+    def on_event(self, callback: Callable[[ViewerEvent], None]) -> None:
+        self._event_callbacks.append(callback)

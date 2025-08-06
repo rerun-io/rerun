@@ -1,14 +1,14 @@
 use re_types::{
+    Archetype as _,
     blueprint::{
         archetypes::{Background, LineGrid3D},
         components::BackgroundKind,
     },
-    components::{Color, Plane3D, StrokeWidth},
-    Archetype as _,
+    components::{Color, LinearSpeed, Plane3D, StrokeWidth},
 };
 use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt as _};
 
-use crate::{ui::SpatialViewState, SpatialView3D};
+use crate::{SpatialView3D, ui::SpatialViewState};
 
 impl TypedComponentFallbackProvider<Color> for SpatialView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
@@ -24,8 +24,11 @@ impl TypedComponentFallbackProvider<Color> for SpatialView3D {
 }
 
 impl TypedComponentFallbackProvider<BackgroundKind> for SpatialView3D {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> BackgroundKind {
-        BackgroundKind::GradientDark
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> BackgroundKind {
+        match ctx.egui_ctx().theme() {
+            egui::Theme::Dark => BackgroundKind::GradientDark,
+            egui::Theme::Light => BackgroundKind::GradientBright,
+        }
     }
 }
 
@@ -39,7 +42,7 @@ impl TypedComponentFallbackProvider<Plane3D> for SpatialView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Plane3D {
         const DEFAULT_PLANE: Plane3D = Plane3D::XY;
 
-        let Ok(view_state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
+        let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
             return DEFAULT_PLANE;
         };
 
@@ -51,4 +54,20 @@ impl TypedComponentFallbackProvider<Plane3D> for SpatialView3D {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SpatialView3D => [BackgroundKind, Color, StrokeWidth, Plane3D]);
+impl TypedComponentFallbackProvider<LinearSpeed> for SpatialView3D {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> LinearSpeed {
+        let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+            re_log::error_once!(
+                "Fallback for `LinearSpeed` queried on 3D view outside the context of a spatial view."
+            );
+            return 1.0.into();
+        };
+        let Some(view_eye) = &view_state.state_3d.view_eye else {
+            // There's no view eye yet. This may happen on startup
+            return 1.0.into();
+        };
+        TypedComponentFallbackProvider::<LinearSpeed>::fallback_for(view_eye, ctx)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SpatialView3D => [BackgroundKind, Color, StrokeWidth, Plane3D, LinearSpeed]);

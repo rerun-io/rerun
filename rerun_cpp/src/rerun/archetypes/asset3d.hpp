@@ -9,7 +9,6 @@
 #include "../components/albedo_factor.hpp"
 #include "../components/blob.hpp"
 #include "../components/media_type.hpp"
-#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -74,26 +73,22 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> albedo_factor;
 
       public:
-        static constexpr const char IndicatorComponentName[] = "rerun.components.Asset3DIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Asset3D";
 
         /// `ComponentDescriptor` for the `blob` field.
         static constexpr auto Descriptor_blob = ComponentDescriptor(
-            ArchetypeName, "blob", Loggable<rerun::components::Blob>::Descriptor.component_name
+            ArchetypeName, "Asset3D:blob", Loggable<rerun::components::Blob>::ComponentType
         );
         /// `ComponentDescriptor` for the `media_type` field.
         static constexpr auto Descriptor_media_type = ComponentDescriptor(
-            ArchetypeName, "media_type",
-            Loggable<rerun::components::MediaType>::Descriptor.component_name
+            ArchetypeName, "Asset3D:media_type",
+            Loggable<rerun::components::MediaType>::ComponentType
         );
         /// `ComponentDescriptor` for the `albedo_factor` field.
         static constexpr auto Descriptor_albedo_factor = ComponentDescriptor(
-            ArchetypeName, "albedo_factor",
-            Loggable<rerun::components::AlbedoFactor>::Descriptor.component_name
+            ArchetypeName, "Asset3D:albedo_factor",
+            Loggable<rerun::components::AlbedoFactor>::ComponentType
         );
 
       public: // START of extensions from asset3d_ext.cpp:

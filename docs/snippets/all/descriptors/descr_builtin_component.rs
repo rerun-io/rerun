@@ -1,10 +1,20 @@
-use rerun::{ChunkStore, ChunkStoreConfig, Component as _, ComponentDescriptor, VersionPolicy};
+use rerun::{ChunkStore, ChunkStoreConfig, ComponentDescriptor};
 
 fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
     use rerun::ComponentBatch as _;
     rec.log_static(
         "data",
-        &[rerun::components::Position3D::new(1.0, 2.0, 3.0).try_serialized()?],
+        &[
+            rerun::components::Position3D::new(1.0, 2.0, 3.0).try_serialized(
+                ComponentDescriptor {
+                    archetype: Some("user.CustomPoints3D".into()),
+                    component: "user.CustomPoints3D:points".into(),
+                    component_type: Some(
+                        <rerun::components::Position3D as rerun::Component>::name(),
+                    ),
+                },
+            )?,
+        ],
     )?;
 
     Ok(())
@@ -35,34 +45,25 @@ fn check_tags(rec: &rerun::RecordingStream) {
     if let Ok(path_to_rrd) = std::env::var("_RERUN_TEST_FORCE_SAVE") {
         rec.flush_blocking();
 
-        let stores = ChunkStore::from_rrd_filepath(
-            &ChunkStoreConfig::ALL_DISABLED,
-            path_to_rrd,
-            VersionPolicy::Warn,
-        )
-        .unwrap();
+        let stores =
+            ChunkStore::from_rrd_filepath(&ChunkStoreConfig::ALL_DISABLED, path_to_rrd).unwrap();
         assert_eq!(1, stores.len());
 
         let store = stores.into_values().next().unwrap();
-        // Skip the first two chunks, as they represent the `RecordingProperties`.
-        let chunks = store.iter_chunks().skip(2).collect::<Vec<_>>();
+        // Skip the first chunk, as it represents the `RecordingInfo`.
+        let chunks = store.iter_chunks().skip(1).collect::<Vec<_>>();
         assert_eq!(1, chunks.len());
 
         let chunk = chunks.into_iter().next().unwrap();
 
-        let mut descriptors = chunk
-            .components()
-            .values()
-            .flat_map(|per_desc| per_desc.keys())
-            .cloned()
-            .collect::<Vec<_>>();
+        let mut descriptors = chunk.components().keys().cloned().collect::<Vec<_>>();
         descriptors.sort();
 
         let expected = vec![
             ComponentDescriptor {
-                archetype_name: None,
-                archetype_field_name: None,
-                component_name: rerun::components::Position3D::name(),
+                archetype: Some("user.CustomPoints3D".into()),
+                component: "user.CustomPoints3D:points".into(),
+                component_type: Some(<rerun::components::Position3D as rerun::Component>::name()),
             }, //
         ];
 

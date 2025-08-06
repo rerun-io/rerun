@@ -3,13 +3,13 @@ use std::ops::Range;
 use re_log::ResultExt as _;
 
 use crate::{
-    allocator::{CpuWriteGpuReadError, DataTextureSource, DataTextureSourceWriteError},
-    renderer::{
-        gpu_data::{LineStripInfo, LineVertex},
-        LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags,
-    },
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId,
     PickingLayerObjectId, RenderContext, Size,
+    allocator::{CpuWriteGpuReadError, DataTextureSource, DataTextureSourceWriteError},
+    renderer::{
+        LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags,
+        gpu_data::{LineStripInfo, LineVertex},
+    },
 };
 
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
@@ -137,7 +137,8 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
         let num_new_vertices = if reserve_count > num_available_points {
             re_log::error_once!(
                 "Reached maximum number of vertices for lines strips of {}. Ignoring all excess vertices.",
-                self.0.vertices_buffer.len() + num_available_points - LineVertex::NUM_SENTINEL_VERTICES
+                self.0.vertices_buffer.len() + num_available_points
+                    - LineVertex::NUM_SENTINEL_VERTICES
             );
             num_available_points - num_sentinels_to_add
         } else {
@@ -331,7 +332,7 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
     /// Returns None for empty and non-finite boxes.
     pub fn add_box_outline(
         &mut self,
-        bbox: &re_math::BoundingBox,
+        bbox: &macaw::BoundingBox,
     ) -> Option<LineStripBuilder<'_, 'ctx>> {
         if !bbox.is_something() || !bbox.is_finite() {
             return None;

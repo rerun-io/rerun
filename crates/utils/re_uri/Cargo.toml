@@ -15,6 +15,7 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+re_log.workspace = true
 re_log_types = { workspace = true, features = ["serde"] }
 re_tuid.workspace = true
 

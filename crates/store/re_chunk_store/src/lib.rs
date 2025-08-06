@@ -24,12 +24,10 @@ mod store;
 mod subscribers;
 mod writes;
 
-mod protobuf_conversions;
-
 pub use self::{
     dataframe::{
-        ColumnSelector, ComponentColumnSelector, Index, IndexRange, IndexValue, QueryExpression,
-        SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
+        Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
+        ViewContentsSelector,
     },
     events::{ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent},
     gc::{GarbageCollectionOptions, GarbageCollectionTarget},
@@ -43,13 +41,13 @@ pub(crate) use self::store::ColumnMetadataState;
 
 // Re-exports
 #[doc(no_inline)]
-pub use re_chunk::{
-    Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId,
-    UnitChunkShared,
+pub use {
+    re_chunk::{
+        Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId, Span,
+        UnitChunkShared,
+    },
+    re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline},
 };
-
-#[doc(no_inline)]
-pub use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline};
 
 pub mod external {
     pub use arrow;

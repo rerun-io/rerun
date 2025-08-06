@@ -4,9 +4,9 @@ use super::yuv_converter::{
     YuvFormatConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
 };
 use crate::{
+    DebugLabel, RenderContext, Texture2DBufferInfo,
     renderer::DrawError,
     wgpu_resources::{GpuTexture, TextureDesc},
-    DebugLabel, RenderContext, Texture2DBufferInfo,
 };
 
 /// Image data format that can be converted to a wgpu texture.
@@ -31,7 +31,7 @@ pub enum SourceImageDataFormat {
         range: YuvRange,
     },
     //
-    // TODO(#7608): Add rgb (3 channels!) formats.
+    // TODO(#10648): Add rgb (3 channels!) formats.
 }
 
 impl From<wgpu::TextureFormat> for SourceImageDataFormat {
@@ -77,14 +77,18 @@ pub enum ImageDataToTextureError {
     #[error("Gpu-based conversion for texture {label:?} did not succeed: {err}")]
     GpuBasedConversionError { label: DebugLabel, err: DrawError },
 
-    #[error("Texture {label:?} has invalid texture usage flags: {actual_usage:?}, expected at least {required_usage:?}")]
+    #[error(
+        "Texture {label:?} has invalid texture usage flags: {actual_usage:?}, expected at least {required_usage:?}"
+    )]
     InvalidTargetTextureUsageFlags {
         label: DebugLabel,
         actual_usage: wgpu::TextureUsages,
         required_usage: wgpu::TextureUsages,
     },
 
-    #[error("Texture {label:?} has invalid texture format: {actual_format:?}, expected at least {required_format:?}")]
+    #[error(
+        "Texture {label:?} has invalid texture format: {actual_format:?}, expected at least {required_format:?}"
+    )]
     InvalidTargetTextureFormat {
         label: DebugLabel,
         actual_format: wgpu::TextureFormat,

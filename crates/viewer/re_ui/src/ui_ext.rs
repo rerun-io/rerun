@@ -1,12 +1,16 @@
 use std::hash::Hash;
 
 use egui::{
+    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _, WidgetText,
     emath::{GuiRounding as _, Rot2},
-    pos2, Align2, Button, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Vec2,
-    Widget as _,
+    pos2,
 };
 
-use crate::{design_tokens, icons, list_item, DesignTokens, Icon, LabelStyle, SUCCESS_COLOR};
+use crate::alert::Alert;
+use crate::{
+    ContextExt as _, DesignTokens, Icon, LabelStyle, icons,
+    list_item::{self, LabelContent},
+};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -14,81 +18,43 @@ fn error_label_bg_color(fg_color: Color32) -> Color32 {
     fg_color.gamma_multiply(0.35)
 }
 
-/// success, warning, error…
-fn notification_label(
-    ui: &mut egui::Ui,
-    fg_color: Color32,
-    icon: &str,
-    visible_text: &str,
-    full_text: &str,
-) -> egui::Response {
-    egui::Frame::new()
-        .stroke((1.0, fg_color))
-        .fill(error_label_bg_color(fg_color))
-        .corner_radius(4)
-        .inner_margin(3.0)
-        .outer_margin(1.0) // Needed because we set clip_rect_margin. TODO(emilk): https://github.com/emilk/egui/issues/4019
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 4.0;
-                ui.colored_label(fg_color, icon);
-                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                let response = ui.strong(visible_text).on_hover_ui(|ui| {
-                    if visible_text != full_text {
-                        ui.label(full_text);
-                        ui.add_space(8.0);
-                    }
-                    ui.label("Click to copy text.");
-                });
-                if response.clicked() {
-                    ui.ctx().copy_text(full_text.to_owned());
-                };
-            });
-        })
-        .response
-}
-
 /// Rerun custom extensions to [`egui::Ui`].
 pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
+    fn theme(&self) -> egui::Theme {
+        self.ui().ctx().theme()
+    }
+
+    fn tokens(&self) -> &'static DesignTokens {
+        crate::design_tokens_of(self.theme())
+    }
+
     /// Shows a success label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
     fn success_label(&mut self, success_text: impl Into<String>) -> egui::Response {
-        let ui = self.ui_mut();
-        let success_text = success_text.into();
-        notification_label(ui, SUCCESS_COLOR, "✅", &success_text, &success_text)
+        Alert::success().show_text(self.ui_mut(), success_text.into(), None)
+    }
+
+    /// Shows a info label with a large border.
+    fn info_label(&mut self, info_text: impl Into<String>) -> egui::Response {
+        Alert::info().show_text(self.ui_mut(), info_text.into(), None)
     }
 
     /// Shows a warning label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::warning_text`].
     fn warning_label(&mut self, warning_text: impl Into<String>) -> egui::Response {
-        let ui = self.ui_mut();
-        let warning_text = warning_text.into();
-        notification_label(
-            ui,
-            ui.style().visuals.warn_fg_color,
-            "⚠",
-            &warning_text,
-            &warning_text,
-        )
+        Alert::warning().show_text(self.ui_mut(), warning_text.into(), None)
     }
 
     /// Shows a small error label with the given text on hover and copies the text to the clipboard on click with a large border.
     ///
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_with_details_on_hover(&mut self, error_text: impl Into<String>) -> egui::Response {
-        let ui = self.ui_mut();
-        notification_label(
-            ui,
-            ui.style().visuals.error_fg_color,
-            "⚠",
-            "Error",
-            &error_text.into(),
-        )
+        Alert::error().show_text(self.ui_mut(), "Error", Some(error_text.into()))
     }
 
     fn error_label_background_color(&self) -> egui::Color32 {
@@ -102,37 +68,37 @@ pub trait UiExt {
     ///
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_label(&mut self, error_text: impl Into<String>) -> egui::Response {
-        let ui = self.ui_mut();
-        let error_text = error_text.into();
-        notification_label(
-            ui,
-            ui.style().visuals.error_fg_color,
-            "⚠",
-            &error_text,
-            &error_text,
-        )
+        Alert::error().show_text(self.ui_mut(), error_text.into(), None)
     }
 
-    fn small_icon_button(&mut self, icon: &Icon) -> egui::Response {
-        let widget = self.small_icon_button_widget(icon);
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    fn small_icon_button(&mut self, icon: &Icon, alt_text: impl Into<String>) -> egui::Response {
+        let widget = self.small_icon_button_widget(icon, alt_text);
         self.ui_mut().add(widget)
     }
 
-    fn small_icon_button_widget<'a>(&self, icon: &'a Icon) -> egui::Button<'a> {
-        // TODO(emilk): change color and size on hover
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    fn small_icon_button_widget<'a>(
+        &self,
+        icon: &'a Icon,
+        alt_text: impl Into<String>,
+    ) -> egui::Button<'a> {
         egui::Button::image(
             icon.as_image()
-                .fit_to_exact_size(DesignTokens::small_icon_size())
-                .tint(self.ui().visuals().widgets.inactive.fg_stroke.color),
+                .fit_to_exact_size(self.tokens().small_icon_size)
+                .alt_text(alt_text),
         )
+        .image_tint_follows_text_color(true)
     }
 
     /// Adds a non-interactive, optionally tinted small icon.
     ///
-    /// Uses [`DesignTokens::small_icon_size`]. Returns the rect where the icon was painted.
+    /// Uses [`tokens.small_icon_size`]. Returns the rect where the icon was painted.
     fn small_icon(&mut self, icon: &Icon, tint: Option<egui::Color32>) -> egui::Rect {
         let ui = self.ui_mut();
-        let (_, rect) = ui.allocate_space(DesignTokens::small_icon_size());
+        let (_, rect) = ui.allocate_space(ui.tokens().small_icon_size);
         let mut image = icon.as_image();
         if let Some(tint) = tint {
             image = image.tint(tint);
@@ -166,6 +132,11 @@ pub trait UiExt {
         bg_fill: Option<Color32>,
         tint: Option<Color32>,
     ) -> egui::Response {
+        let tokens = self.tokens();
+        let button_size = tokens.large_button_size;
+        let icon_size = tokens.large_button_icon_size; // centered inside the button
+        let corner_radius = tokens.large_button_corner_radius;
+
         let ui = self.ui_mut();
 
         let prev_style = ui.style().clone();
@@ -179,10 +150,6 @@ pub trait UiExt {
             visuals.widgets.active.expansion = 0.0;
             visuals.widgets.open.expansion = 0.0;
         }
-
-        let button_size = Vec2::splat(22.0);
-        let icon_size = Vec2::splat(12.0); // centered inside the button
-        let corner_radius = 6.0;
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
         response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ImageButton));
@@ -208,16 +175,16 @@ pub trait UiExt {
 
     fn re_checkbox(
         &mut self,
-        selected: &mut bool,
+        checked: &mut bool,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        self.checkbox_indeterminate(selected, text, false)
+        self.checkbox_indeterminate(checked, text, false)
     }
 
     #[allow(clippy::disallowed_types)]
     fn checkbox_indeterminate(
         &mut self,
-        selected: &mut bool,
+        checked: &mut bool,
         text: impl Into<egui::WidgetText>,
         indeterminate: bool,
     ) -> egui::Response {
@@ -227,14 +194,14 @@ pub trait UiExt {
                 ui.visuals_mut().widgets.active.expansion = 0.0;
                 ui.visuals_mut().widgets.open.expansion = 0.0;
 
-                egui::Checkbox::new(selected, text)
+                egui::Checkbox::new(checked, text)
                     .indeterminate(indeterminate)
                     .ui(ui)
             })
             .inner
     }
 
-    #[allow(clippy::disallowed_methods)]
+    #[expect(clippy::disallowed_methods)]
     fn re_radio_value<Value: PartialEq>(
         &mut self,
         current_value: &mut Value,
@@ -265,9 +232,9 @@ pub trait UiExt {
 
     fn visibility_toggle_button(&mut self, visible: &mut bool) -> egui::Response {
         let mut response = if *visible && self.ui().is_enabled() {
-            self.small_icon_button(&icons::VISIBLE)
+            self.small_icon_button(&icons::VISIBLE, "Make invisible")
         } else {
-            self.small_icon_button(&icons::INVISIBLE)
+            self.small_icon_button(&icons::INVISIBLE, "Make visible")
         };
         if response.clicked() {
             response.mark_changed();
@@ -313,51 +280,28 @@ pub trait UiExt {
         &self,
         popup_id: egui::Id,
         widget_response: &egui::Response,
-        vertical_offset: f32,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> Option<R> {
-        let ui = self.ui();
-
-        if !ui.memory(|mem| mem.is_popup_open(popup_id)) {
-            return None;
-        }
-
-        let pos = widget_response.rect.left_bottom() + egui::vec2(0.0, vertical_offset);
-        let pivot = Align2::LEFT_TOP;
-
         let mut ret = None;
-        egui::Area::new(popup_id)
-            .order(egui::Order::Foreground)
-            .constrain(true)
-            .fixed_pos(pos)
-            .pivot(pivot)
-            .show(ui.ctx(), |ui| {
-                let frame = egui::Frame {
-                    fill: ui.visuals().panel_fill,
-                    ..Default::default()
-                };
-                let frame_margin = frame.total_margin();
-                frame.show(ui, |ui| {
-                    ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
-                        ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
 
-                        crate::list_item::list_item_scope(ui, popup_id, |ui| {
-                            egui::ScrollArea::vertical().show(ui, |ui| {
-                                egui::Frame {
-                                    //TODO(ab): use design token
-                                    inner_margin: egui::Margin::symmetric(8, 0),
-                                    ..Default::default()
-                                }
-                                .show(ui, |ui| ret = Some(add_contents(ui)))
-                            })
+        egui::Popup::from_response(widget_response)
+            .id(popup_id)
+            .frame(egui::Frame::default())
+            .open_memory(None)
+            .gap(4.0)
+            .layout(egui::Layout::top_down_justified(egui::Align::LEFT))
+            .show(|ui| {
+                ui.set_width(widget_response.rect.width());
+                let frame = ui.tokens().popup_frame(ui.style());
+                frame.show(ui, |ui| {
+                    crate::list_item::list_item_scope(ui, popup_id, |ui| {
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            ret = Some(add_contents(ui));
                         })
                     })
                 })
             });
 
-        if ui.input(|i| i.key_pressed(egui::Key::Escape)) || widget_response.clicked_elsewhere() {
-            ui.memory_mut(|mem| mem.close_popup());
-        }
         ret
     }
 
@@ -365,7 +309,7 @@ pub trait UiExt {
     // It's highly likely that all these use are now redundant.
     fn panel_content<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
         egui::Frame {
-            inner_margin: DesignTokens::panel_margin(),
+            inner_margin: self.tokens().panel_margin(),
             ..Default::default()
         }
         .show(self.ui_mut(), |ui| add_contents(ui))
@@ -392,10 +336,11 @@ pub trait UiExt {
         hover_text: Option<&str>,
         add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
+        let tokens = self.tokens();
         let ui = self.ui_mut();
 
         ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), DesignTokens::title_bar_height()),
+            egui::vec2(ui.available_width(), tokens.title_bar_height()),
             egui::Layout::left_to_right(egui::Align::Center),
             |ui| {
                 // draw horizontal separator lines
@@ -403,11 +348,9 @@ pub trait UiExt {
                     ui.full_span(),
                     ui.available_rect_before_wrap().y_range(),
                 );
-                let hline_stroke = ui.style().visuals.widgets.noninteractive.bg_stroke;
 
-                ui.painter().hline(rect.x_range(), rect.top(), hline_stroke);
                 ui.painter()
-                    .hline(rect.x_range(), rect.bottom(), hline_stroke);
+                    .rect_filled(rect, 0.0, ui.tokens().section_header_color);
 
                 // draw label
                 let resp = ui.strong(label);
@@ -499,7 +442,7 @@ pub trait UiExt {
                 ui.paint_collapsing_triangle(
                     openness,
                     icon_rect.center(),
-                    ui.style().interact(&icon_response),
+                    ui.style().interact(&icon_response).fg_stroke.color,
                 );
             }
 
@@ -554,12 +497,7 @@ pub trait UiExt {
     ///
     /// Alternative to [`egui::collapsing_header::paint_default_icon`]. Note that the triangle is
     /// painted with a fixed size.
-    fn paint_collapsing_triangle(
-        &self,
-        openness: f32,
-        center: egui::Pos2,
-        visuals: &egui::style::WidgetVisuals,
-    ) {
+    fn paint_collapsing_triangle(&self, openness: f32, center: egui::Pos2, color: Color32) {
         // This value is hard coded because, from a UI perspective, the size of the triangle is
         // given and fixed, and shouldn't vary based on the area it's in.
         static TRIANGLE_SIZE: f32 = 8.0;
@@ -584,9 +522,7 @@ pub trait UiExt {
             *p = center + rotation * (*p - pos2(0.5, 0.5)) * TRIANGLE_SIZE;
         }
 
-        self.ui()
-            .painter()
-            .line(points, (1.0, visuals.fg_stroke.color));
+        self.ui().painter().line(points, (1.0, color));
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.
@@ -612,7 +548,7 @@ pub trait UiExt {
 
     /// Draws a shadow into the given rect with the shadow direction given from dark to light
     fn draw_shadow_line(&self, rect: Rect, direction: egui::Direction) {
-        let color_dark = design_tokens().shadow_gradient_dark_start;
+        let color_dark = self.tokens().shadow_gradient_dark_start;
         let color_bright = Color32::TRANSPARENT;
 
         let (left_top, right_top, left_bottom, right_bottom) = match direction {
@@ -668,6 +604,12 @@ pub trait UiExt {
         list_item::ListItem::new()
     }
 
+    fn list_item_label(&mut self, text: impl Into<WidgetText>) -> egui::Response {
+        self.list_item()
+            .interactive(false)
+            .show_flat(self.ui_mut(), LabelContent::new(text))
+    }
+
     /// Convenience for adding a flat non-interactive [`list_item::ListItemContent`]
     fn list_item_flat_noninteractive(
         &mut self,
@@ -712,13 +654,13 @@ pub trait UiExt {
 
     fn selectable_label_with_icon(
         &mut self,
-
         icon: &Icon,
         text: impl Into<egui::WidgetText>,
         selected: bool,
         style: LabelStyle,
     ) -> egui::Response {
         let ui = self.ui_mut();
+        let tokens = ui.tokens();
         let button_padding = ui.spacing().button_padding;
         let total_extra = button_padding + button_padding;
 
@@ -735,15 +677,14 @@ pub trait UiExt {
 
         let galley = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
 
-        let icon_width_plus_padding =
-            DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
+        let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
 
         let mut desired_size =
             total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
         desired_size.y = desired_size
             .y
             .at_least(ui.spacing().interact_size.y)
-            .at_least(DesignTokens::small_icon_size().y);
+            .at_least(tokens.small_icon_size.y);
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
         response.widget_info(|| {
             egui::WidgetInfo::selected(
@@ -771,23 +712,31 @@ pub trait UiExt {
             }
 
             // Draw icon
-            let image_size = DesignTokens::small_icon_size();
+            let image_size = tokens.small_icon_size;
             let image_rect = egui::Rect::from_min_size(
                 egui::pos2(
                     rect.min.x.ceil(),
-                    (rect.center().y - 0.5 * DesignTokens::small_icon_size().y).ceil(),
+                    (rect.center().y - 0.5 * tokens.small_icon_size.y).ceil(),
                 )
                 .round_to_pixels(ui.pixels_per_point()),
                 image_size,
             );
 
             // TODO(emilk, andreas): change color and size on hover
-            let tint = ui.visuals().widgets.inactive.fg_stroke.color;
-            icon.as_image().tint(tint).paint_at(ui, image_rect);
+            let icon_tint = if selected {
+                if response.hovered() {
+                    ui.tokens().icon_color_on_primary_hovered
+                } else {
+                    ui.tokens().icon_color_on_primary
+                }
+            } else {
+                visuals.fg_stroke.color
+            };
+            icon.as_image().tint(icon_tint).paint_at(ui, image_rect);
 
             // Draw text next to the icon.
             let mut text_rect = rect;
-            text_rect.min.x = image_rect.max.x + DesignTokens::text_to_icon_padding();
+            text_rect.min.x = image_rect.max.x + tokens.text_to_icon_padding();
             let text_pos = ui
                 .layout()
                 .align_size_within_rect(galley.size(), text_rect)
@@ -939,7 +888,7 @@ pub trait UiExt {
             let visuals = ui.style().interact(&response);
             let expanded_rect = visual_rect.expand(visuals.expansion);
             let fg_fill_off = visuals.bg_fill;
-            let fg_fill_on = egui::Color32::from_rgba_premultiplied(0, 128, 255, 255);
+            let fg_fill_on = ui.visuals().selection.bg_fill;
             let fg_fill = fg_fill_off.lerp_to_gamma(fg_fill_on, how_on);
             let bg_fill_off = visuals.text_color();
 
@@ -982,23 +931,21 @@ pub trait UiExt {
         let ui = self.ui_mut();
 
         ui.scope(|ui| {
+            let tokens = ui.tokens();
             let style = ui.style_mut();
             style.visuals.button_frame = false;
 
-            let tint = ui.style().visuals.widgets.noninteractive.fg_stroke.color;
-            let image = crate::icons::EXTERNAL_LINK.as_image().tint(tint);
             let response = ui
-                .add(Button::image_and_text(image, text))
+                .add(crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
-            // Inspired from `egui::Ui::Hyperlink::ui()`
-            if response.clicked() {
+            if response.clicked_with_open_in_background() {
+                ui.ctx().open_url(egui::OpenUrl::new_tab(url.to_string()));
+            } else if response.clicked() {
                 ui.ctx().open_url(egui::OpenUrl {
                     url: url.to_string(),
                     new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
                 });
-            } else if response.middle_clicked() {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(url));
             }
 
             response
@@ -1052,12 +999,81 @@ pub trait UiExt {
         }
     }
 
-    fn help_hover_button(&mut self) -> egui::Response {
-        self.ui_mut().add(
-            egui::Label::new("❓")
-                .sense(egui::Sense::click()) // sensing clicks also gives hover effect
-                .selectable(false),
-        )
+    /// Shows a `?` help button that will show a help UI when clicked.
+    ///
+    /// Until the user has interacted with a help button (any help button), we
+    /// highlight the button extra to draw user attention to it.
+    fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
+        // The help menu appears when clicked and/or hovered
+        let mut help_ui: Option<_> = Some(help_ui);
+
+        let ui = self.ui_mut();
+
+        // Have we ever shown any help UI anywhere?
+        let has_shown_help_id = egui::Id::new("has_shown_help");
+        let user_has_clicked_any_help_button: bool =
+            ui.data_mut(|d| *d.get_persisted_mut_or_default(has_shown_help_id));
+
+        // Draw attention to the help button by highlighting it when the user hovers
+        // over its container (e.g. the tab bar of a view).
+        let is_hovering_container = ui.rect_contains_pointer(ui.max_rect());
+
+        ui.scope(|ui| {
+            let where_to_paint_background =
+                if !user_has_clicked_any_help_button && is_hovering_container {
+                    Some(ui.painter().add(egui::Shape::Noop))
+                } else {
+                    None
+                };
+
+            let menu_button = egui::containers::menu::MenuButton::from_button(
+                ui.small_icon_button_widget(&icons::HELP, "Help"),
+            );
+
+            let button_response = menu_button
+                .ui(ui, |ui| {
+                    if let Some(help_ui) = help_ui.take() {
+                        help_ui(ui);
+                        if !user_has_clicked_any_help_button {
+                            // Remember that the user has found and used the help button at least once,
+                            // to stop it from animating in the future:
+                            ui.data_mut(|d| {
+                                d.insert_persisted(has_shown_help_id, true);
+                            });
+
+                            #[cfg(feature = "analytics")]
+                            if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                                analytics.record(re_analytics::event::HelpButtonFirstClicked {});
+                            }
+                        }
+                    }
+                })
+                .0;
+
+            if let Some(where_to_paint_background) = where_to_paint_background {
+                if !button_response.hovered() {
+                    let mut bg_rect = button_response.rect.expand(2.0);
+
+                    // Hack: ensure we don't paint outside the lines on the Y-axis.
+                    // Yes, we only do so for the Y axis, because if we do it for the X axis too
+                    // then the background won't be centered behind the help icon.
+                    bg_rect.min.y = bg_rect.min.y.max(ui.max_rect().min.y);
+                    bg_rect.max.y = bg_rect.max.y.min(ui.max_rect().max.y);
+
+                    ui.painter().set(
+                        where_to_paint_background,
+                        egui::Shape::rect_filled(bg_rect, 4.0, ui.tokens().highlight_color),
+                    );
+                }
+            }
+
+            if let Some(help_ui) = help_ui.take() {
+                button_response.on_hover_ui(help_ui)
+            } else {
+                button_response
+            }
+        })
+        .inner
     }
 
     /// Show some markdown
@@ -1153,12 +1169,16 @@ pub trait UiExt {
     /// });
     /// # });
     /// ```
-    fn selectable_toggle<R>(&mut self, content: impl FnOnce(&mut egui::Ui) -> R) -> R {
+    fn selectable_toggle<R>(
+        &mut self,
+        content: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> egui::InnerResponse<R> {
         let ui = self.ui_mut();
 
+        let tokens = ui.tokens();
         egui::Frame {
             inner_margin: egui::Margin::same(3),
-            stroke: design_tokens().bottom_bar_stroke,
+            stroke: tokens.bottom_bar_stroke,
             corner_radius: ui.visuals().widgets.hovered.corner_radius + egui::CornerRadius::same(3),
             ..Default::default()
         }
@@ -1183,7 +1203,6 @@ pub trait UiExt {
 
             ui.horizontal(content).inner
         })
-        .inner
     }
 
     /// Set [`egui::Style::wrap_mode`] to [`egui::TextWrapMode::Truncate`], unless this is a sizing
@@ -1195,6 +1214,38 @@ pub trait UiExt {
         } else {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
         }
+    }
+
+    /// Display some UI that may optionally include extras (see [`crate::ContextExt::show_extras`]).
+    ///
+    /// This assumes that the content will change based on whether extras are shown or not, so it
+    /// takes care of triggering a sizing pass and repaint as required.
+    ///
+    /// The closure is passed a `bool` indicating whether extras are shown or not.
+    fn with_optional_extras<R>(&mut self, content: impl FnOnce(&mut egui::Ui, bool) -> R) -> R {
+        let ui = self.ui_mut();
+
+        let show_extras = ui.ctx().show_extras();
+
+        let content_changed = ui.data_mut(|data| {
+            let stored_show_extras = data
+                .get_temp_mut_or_insert_with(ui.id().with("__stored_show_extra__"), || show_extras);
+            if *stored_show_extras != show_extras {
+                *stored_show_extras = show_extras;
+                true
+            } else {
+                false
+            }
+        });
+
+        let mut builder = egui::UiBuilder::new();
+        if content_changed {
+            builder = builder.sizing_pass();
+            ui.ctx().request_repaint();
+        }
+
+        ui.scope_builder(builder, |ui| content(ui, show_extras))
+            .inner
     }
 }
 

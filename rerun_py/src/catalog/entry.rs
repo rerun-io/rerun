@@ -1,11 +1,11 @@
 use std::str::FromStr as _;
 
-use pyo3::{exceptions::PyTypeError, pyclass, pymethods, Py, PyErr, PyResult, Python};
+use pyo3::{Py, PyErr, PyResult, Python, exceptions::PyTypeError, pyclass, pymethods};
 
-use re_protos::catalog::v1alpha1::{ext::EntryDetails, EntryKind};
-use re_protos::common::v1alpha1::ext::EntryId;
+use re_log_types::EntryId;
+use re_protos::catalog::v1alpha1::{EntryKind, ext::EntryDetails};
 
-use crate::catalog::PyCatalogClient;
+use crate::catalog::PyCatalogClientInternal;
 
 /// A unique identifier for an entry in the catalog.
 #[pyclass(name = "EntryId")]
@@ -16,7 +16,9 @@ pub struct PyEntryId {
 
 #[pymethods]
 impl PyEntryId {
+    /// Create a new `EntryId` from a string.
     #[new]
+    #[pyo3(text_signature = "(self, id)")]
     pub fn new(id: String) -> PyResult<Self> {
         Ok(Self {
             id: re_tuid::Tuid::from_str(id.as_str())
@@ -25,6 +27,7 @@ impl PyEntryId {
         })
     }
 
+    /// Entry id as a string.
     pub fn __str__(&self) -> String {
         self.id.to_string()
     }
@@ -38,8 +41,9 @@ impl From<EntryId> for PyEntryId {
 
 // ---
 
-#[pyclass(name = "EntryType", eq, eq_int)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// The kinds of entries that can be stored in the catalog.
+#[pyclass(name = "EntryKind", eq, eq_int)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, strum_macros::EnumIter)]
 pub enum PyEntryKind {
     #[pyo3(name = "DATASET")]
     Dataset = 1,
@@ -52,6 +56,9 @@ pub enum PyEntryKind {
 
     #[pyo3(name = "TABLE_VIEW")]
     TableView = 4,
+
+    #[pyo3(name = "BLUEPRINT_DATASET")]
+    BlueprintDataset = 5,
 }
 
 #[pymethods]
@@ -77,15 +84,29 @@ impl TryFrom<EntryKind> for PyEntryKind {
             EntryKind::DatasetView => Ok(Self::DatasetView),
             EntryKind::Table => Ok(Self::Table),
             EntryKind::TableView => Ok(Self::TableView),
+            EntryKind::BlueprintDataset => Ok(Self::BlueprintDataset),
+        }
+    }
+}
+
+impl From<PyEntryKind> for EntryKind {
+    fn from(value: PyEntryKind) -> Self {
+        match value {
+            PyEntryKind::Dataset => Self::Dataset,
+            PyEntryKind::DatasetView => Self::DatasetView,
+            PyEntryKind::Table => Self::Table,
+            PyEntryKind::TableView => Self::TableView,
+            PyEntryKind::BlueprintDataset => Self::BlueprintDataset,
         }
     }
 }
 
 // ---
 
+/// An entry in the catalog.
 #[pyclass(name = "Entry", subclass)]
 pub struct PyEntry {
-    pub client: Py<PyCatalogClient>,
+    pub client: Py<PyCatalogClientInternal>,
 
     pub id: Py<PyEntryId>,
 
@@ -94,21 +115,25 @@ pub struct PyEntry {
 
 #[pymethods]
 impl PyEntry {
+    /// The entry's id.
     #[getter]
     pub fn id(&self, py: Python<'_>) -> Py<PyEntryId> {
         self.id.clone_ref(py)
     }
 
+    /// The entry's name.
     #[getter]
     pub fn name(&self) -> String {
         self.details.name.clone()
     }
 
+    /// The catalog client that this entry belongs to.
     #[getter]
-    pub fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClient> {
+    pub fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClientInternal> {
         self.client.clone_ref(py)
     }
 
+    /// The entry's kind.
     #[getter]
     pub fn kind(&self) -> PyResult<PyEntryKind> {
         self.details.kind.try_into()
@@ -136,11 +161,54 @@ impl PyEntry {
 
     // ---
 
+    /// Delete this entry from the catalog.
     fn delete(&mut self, py: Python<'_>) -> PyResult<()> {
         let entry_id = self.id.borrow(py).id;
-        let mut connection = self.client.borrow_mut(py).connection().clone();
+        let connection = self.client.borrow_mut(py).connection().clone();
 
         connection.delete_entry(py, entry_id)
+    }
+
+    /// Update this entry's properties.
+    ///
+    /// Parameters
+    /// ----------
+    /// name : str | None
+    ///     New name for the entry
+    #[pyo3(signature = (*, name=None))]
+    fn update(&mut self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
+        let entry_id = self.id.borrow(py).id;
+        let connection = self.client.borrow_mut(py).connection().clone();
+
+        let entry_details_update =
+            re_protos::catalog::v1alpha1::ext::EntryDetailsUpdate { name: name.clone() };
+
+        let updated_entry_details = connection.update_entry(py, entry_id, entry_details_update)?;
+        self.details = updated_entry_details;
+
+        Ok(())
+    }
+
+    fn __repr__(&self) -> String {
+        format!("Entry({:?}, '{}')", self.details.kind, self.details.name)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_entry_kind_and_py_entry_kind_have_same_representation() {
+        use strum::IntoEnumIterator as _;
+
+        for kind in PyEntryKind::iter() {
+            let entry_kind: EntryKind = kind.into();
+            assert_eq!(
+                kind as i32, entry_kind as i32,
+                "Mismatched numerical representation for kind: {kind:?}",
+            );
+        }
     }
 }
 

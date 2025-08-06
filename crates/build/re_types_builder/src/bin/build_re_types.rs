@@ -9,7 +9,7 @@
 use re_build_tools::{
     read_versioning_hash, set_output_cargo_build_instructions, write_versioning_hash,
 };
-use re_types_builder::{compute_re_types_hash, SourceLocations};
+use re_types_builder::{SourceLocations, compute_re_types_hash};
 
 use camino::Utf8Path;
 
@@ -46,6 +46,7 @@ fn main() {
 
     let mut always_run = false;
     let mut check = false;
+    let mut warnings_as_errors = false;
 
     for arg in std::env::args().skip(1) {
         match arg.as_str() {
@@ -58,6 +59,7 @@ fn main() {
                 always_run = true;
                 check = true;
             }
+            "--warnings-as-errors" => warnings_as_errors = true,
 
             #[cfg(feature = "tracing")]
             "--profile" => profiler.start(),
@@ -127,7 +129,7 @@ fn main() {
     re_log::info!("Generating flatbuffers code…");
     re_types_builder::generate_fbs(&reporter, &definitions_dir_path, check);
 
-    let (objects, arrow_registry) =
+    let (objects, type_registry) =
         re_types_builder::generate_lang_agnostic(&reporter, definitions_dir_path, entrypoint_path);
 
     re_tracing::profile_scope!("Language-specific code-gen");
@@ -136,14 +138,14 @@ fn main() {
             &reporter,
             cpp_output_dir_path,
             &objects,
-            &arrow_registry,
+            &type_registry,
             check,
         ),
         || re_types_builder::generate_rust_code(
             &reporter,
             workspace_dir,
             &objects,
-            &arrow_registry,
+            &type_registry,
             check,
         ),
         || re_types_builder::generate_python_code(
@@ -151,26 +153,26 @@ fn main() {
             python_output_dir_path,
             python_testing_output_dir_path,
             &objects,
-            &arrow_registry,
+            &type_registry,
             check,
         ),
         || re_types_builder::generate_docs(
             &reporter,
             docs_content_dir_path,
             &objects,
-            &arrow_registry,
+            &type_registry,
             check,
         ),
         || re_types_builder::generate_snippets_ref(
             &reporter,
             snippets_ref_dir_path,
             &objects,
-            &arrow_registry,
+            &type_registry,
             check,
         ),
     );
 
-    report.finalize();
+    report.finalize(warnings_as_errors);
 
     write_versioning_hash(re_types_source_hash_path, new_hash);
 

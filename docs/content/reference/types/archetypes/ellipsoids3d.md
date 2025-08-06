@@ -9,19 +9,28 @@ This archetype is for ellipsoids or spheres whose size is a key part of the data
 (e.g. a bounding sphere).
 For points whose radii are for the sake of visualization, use [`archetypes.Points3D`](https://rerun.io/docs/reference/types/archetypes/points3d) instead.
 
-Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.InstancePoses3D]`.
-Some of its component are repeated here for convenience.
-If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+If there's more instance poses than half sizes, the last ellipsoid/sphere's orientation will be repeated for the remaining poses.
+Orienting and placing ellipsoids/spheres forms a separate transform that is applied prior to [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
 
-## Components
+## Fields
+### Required
+* `half_sizes`: [`HalfSize3D`](../components/half_size3d.md)
 
-**Required**: [`HalfSize3D`](../components/half_size3d.md)
+### Recommended
+* `centers`: [`PoseTranslation3D`](../components/pose_translation3d.md)
+* `colors`: [`Color`](../components/color.md)
 
-**Recommended**: [`PoseTranslation3D`](../components/pose_translation3d.md), [`Color`](../components/color.md)
+### Optional
+* `rotation_axis_angles`: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md)
+* `quaternions`: [`PoseRotationQuat`](../components/pose_rotation_quat.md)
+* `line_radii`: [`Radius`](../components/radius.md)
+* `fill_mode`: [`FillMode`](../components/fill_mode.md)
+* `labels`: [`Text`](../components/text.md)
+* `show_labels`: [`ShowLabels`](../components/show_labels.md)
+* `class_ids`: [`ClassId`](../components/class_id.md)
 
-**Optional**: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md), [`PoseRotationQuat`](../components/pose_rotation_quat.md), [`Radius`](../components/radius.md), [`FillMode`](../components/fill_mode.md), [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`ClassId`](../components/class_id.md)
 
-## Shown in
+## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 * [DataframeView](../views/dataframe_view.md)

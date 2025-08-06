@@ -39,7 +39,7 @@ pub use log_once::{debug_once, error_once, info_once, log_once, trace_once, warn
 pub use channel_logger::*;
 
 #[cfg(feature = "setup")]
-pub use multi_logger::{add_boxed_logger, add_logger, MultiLoggerNotSetupError};
+pub use multi_logger::{MultiLoggerNotSetupError, add_boxed_logger, add_logger};
 
 #[cfg(feature = "setup")]
 pub use setup::{setup_logging, setup_logging_with_filter};
@@ -57,6 +57,8 @@ const CRATES_AT_ERROR_LEVEL: &[&str] = &[
     // silence rustls in release mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(not(debug_assertions))]
     "rustls",
+    // TODO(#10286): Remove once we have a wgpu version with https://github.com/gfx-rs/wgpu/pull/7850 landed.
+    "wgpu_hal::vulkan::conv",
 ];
 
 /// Never log anything less serious than a `WARN` from these crates.
@@ -71,11 +73,16 @@ const CRATES_AT_WARN_LEVEL: &[&str] = &[
 ];
 
 /// Never log anything less serious than a `INFO` from these crates.
+///
+/// These creates are quite spammy on debug, drowning out what we care about:
 const CRATES_AT_INFO_LEVEL: &[&str] = &[
-    // These are quite spammy on debug, drowning out what we care about:
+    "datafusion_optimizer",
+    "datafusion",
     "h2",
     "hyper",
     "prost_build",
+    "sqlparser",
+    "tower",
     "ureq",
     // only let rustls log in debug mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(debug_assertions)]
@@ -221,12 +228,17 @@ fn shorten_file_path(file_path: &str) -> &str {
 #[test]
 fn test_shorten_file_path() {
     for (before, after) in [
-        ("/Users/emilk/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-1.24.1/src/runtime/runtime.rs", "tokio-1.24.1/src/runtime/runtime.rs"),
+        (
+            "/Users/emilk/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-1.24.1/src/runtime/runtime.rs",
+            "tokio-1.24.1/src/runtime/runtime.rs",
+        ),
         ("crates/rerun/src/main.rs", "rerun/src/main.rs"),
-        ("/rustc/d5a82bbd26e1ad8b7401f6a718a9c57c96905483/library/core/src/ops/function.rs", "core/src/ops/function.rs"),
+        (
+            "/rustc/d5a82bbd26e1ad8b7401f6a718a9c57c96905483/library/core/src/ops/function.rs",
+            "core/src/ops/function.rs",
+        ),
         ("/weird/path/file.rs", "/weird/path/file.rs"),
-        ]
-    {
+    ] {
         assert_eq!(shorten_file_path(before), after);
     }
 }

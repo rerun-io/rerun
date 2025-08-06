@@ -2,8 +2,8 @@ use egui::NumExt as _;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
-use re_log_types::{ComponentPath, Instance, TimeInt};
-use re_ui::{ContextExt as _, SyntaxHighlighting as _, UiExt as _};
+use re_log_types::{ComponentPath, EntityPath, Instance, TimeInt, TimePoint};
+use re_ui::{SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -24,16 +24,18 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        re_tracing::profile_function!(self.component_path.component_name);
+        re_tracing::profile_function!(self.component_path.component_descriptor.display_name());
+
+        let tokens = ui.tokens();
 
         let ComponentPath {
             entity_path,
-            component_name,
+            component_descriptor,
         } = &self.component_path;
 
         let Some(num_instances) = self
             .unit
-            .component_batch_raw(component_name)
+            .component_batch_raw(component_descriptor)
             .map(|data| data.len())
         else {
             ui.weak("<pending>");
@@ -60,12 +62,12 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             if time.is_static() {
                 let static_message_count = engine
                     .store()
-                    .num_static_events_for_component(entity_path, *component_name);
+                    .num_static_events_for_component(entity_path, component_descriptor);
                 if static_message_count > 1 {
-                    ui.label(ui.ctx().warning_text(format!(
-                        "Static component value was overridden {} times",
+                    ui.warning_label(format!(
+                        "Static component value was overridden {} times.",
                         static_message_count.saturating_sub(1),
-                    )))
+                    ))
                     .on_hover_text(
                         "When a static component is logged multiple times, only the last value \
                         is stored. Previously logged values are overwritten and not \
@@ -77,11 +79,11 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     .store()
                     .num_temporal_events_for_component_on_all_timelines(
                         entity_path,
-                        *component_name,
+                        component_descriptor,
                     );
                 if temporal_message_count > 0 {
                     ui.error_label(format!(
-                        "Static component has {} event{} logged on timelines",
+                        "Static component has {} event{} logged on timelines.",
                         temporal_message_count,
                         if temporal_message_count > 1 { "s" } else { "" }
                     ))
@@ -126,38 +128,59 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         };
 
         if num_instances <= 1 {
-            ctx.component_ui_registry().ui(
+            // Allow editing recording properties:
+            if entity_path.starts_with(&EntityPath::properties()) {
+                if let Some(array) = self.unit.component_batch_raw(component_descriptor) {
+                    if ctx.component_ui_registry().try_show_edit_ui(
+                        ctx,
+                        ui,
+                        re_viewer_context::EditTarget {
+                            store_id: ctx.store_id().clone(),
+                            timepoint: TimePoint::STATIC,
+                            entity_path: entity_path.clone(),
+                        },
+                        array.as_ref(),
+                        component_descriptor.clone(),
+                        !ui_layout.is_single_line(),
+                    ) {
+                        return;
+                    }
+                }
+            }
+
+            ctx.component_ui_registry().component_ui(
                 ctx,
                 ui,
                 ui_layout,
                 query,
                 db,
                 entity_path,
-                *component_name,
+                component_descriptor,
                 self.unit,
                 &Instance::from(0),
             );
         } else if ui_layout.is_single_line() {
             ui.label(format!("{} values", re_format::format_uint(num_instances)));
         } else {
+            let table_style = re_ui::TableStyle::Dense;
             ui_layout
                 .table(ui)
                 .resizable(false)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                 .column(egui_extras::Column::auto())
                 .column(egui_extras::Column::remainder())
-                .header(re_ui::DesignTokens::table_header_height(), |mut header| {
+                .header(tokens.deprecated_table_header_height(), |mut header| {
                     re_ui::DesignTokens::setup_table_header(&mut header);
                     header.col(|ui| {
                         ui.label("Index");
                     });
                     header.col(|ui| {
-                        ui.label(component_name.short_name());
+                        ui.label(component_descriptor.display_name());
                     });
                 })
                 .body(|mut body| {
-                    re_ui::DesignTokens::setup_table_body(&mut body);
-                    let row_height = re_ui::DesignTokens::table_line_height();
+                    tokens.setup_table_body(&mut body, table_style);
+                    let row_height = tokens.table_row_height(table_style);
                     body.rows(row_height, num_displayed_rows, |mut row| {
                         let instance = Instance::from(row.index() as u64);
                         row.col(|ui| {
@@ -174,14 +197,14 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                             );
                         });
                         row.col(|ui| {
-                            ctx.component_ui_registry().ui(
+                            ctx.component_ui_registry().component_ui(
                                 ctx,
                                 ui,
                                 UiLayout::List,
                                 query,
                                 db,
                                 entity_path,
-                                *component_name,
+                                component_descriptor,
                                 self.unit,
                                 &instance,
                             );

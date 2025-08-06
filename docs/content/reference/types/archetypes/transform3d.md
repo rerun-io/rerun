@@ -16,11 +16,18 @@ it will be resolved to a transform with only a rotation.
 
 For transforms that affect only a single entity and do not propagate along the entity tree refer to [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).
 
-## Components
+## Fields
+### Optional
+* `translation`: [`Translation3D`](../components/translation3d.md)
+* `rotation_axis_angle`: [`RotationAxisAngle`](../components/rotation_axis_angle.md)
+* `quaternion`: [`RotationQuat`](../components/rotation_quat.md)
+* `scale`: [`Scale3D`](../components/scale3d.md)
+* `mat3x3`: [`TransformMat3x3`](../components/transform_mat3x3.md)
+* `relation`: [`TransformRelation`](../components/transform_relation.md)
+* `axis_length`: [`AxisLength`](../components/axis_length.md)
 
-**Optional**: [`Translation3D`](../components/translation3d.md), [`RotationAxisAngle`](../components/rotation_axis_angle.md), [`RotationQuat`](../components/rotation_quat.md), [`Scale3D`](../components/scale3d.md), [`TransformMat3x3`](../components/transform_mat3x3.md), [`TransformRelation`](../components/transform_relation.md), [`AxisLength`](../components/axis_length.md)
 
-## Shown in
+## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 * [DataframeView](../views/dataframe_view.md)

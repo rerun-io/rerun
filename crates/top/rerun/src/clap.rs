@@ -55,7 +55,12 @@ pub struct RerunArgs {
 
     /// Connects and sends the logged data to a remote Rerun viewer.
     ///
-    /// Optionally takes an HTTP(S) URL.
+    /// Optionally takes a URL to connect to.
+    ///
+    /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+    /// and the pathname must be `/proxy`.
+    ///
+    /// The default is `rerun+http://127.0.0.1:9876/proxy`.
     #[clap(long)]
     #[allow(clippy::option_option)]
     connect: Option<Option<String>>,
@@ -131,14 +136,15 @@ impl RerunArgs {
                 let server_memory_limit = re_memory::MemoryLimit::parse(&self.server_memory_limit)
                     .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
-                let open_browser = true;
-                let rec = RecordingStreamBuilder::new(application_id).serve_web(
-                    &self.bind,
-                    Default::default(),
-                    Default::default(),
-                    server_memory_limit,
-                    open_browser,
-                )?;
+                let rec = RecordingStreamBuilder::new("rerun_example_minimal_serve")
+                    .serve_grpc_opts(&self.bind, crate::DEFAULT_SERVER_PORT, server_memory_limit)?;
+
+                crate::serve_web_viewer(crate::web_viewer::WebViewerConfig {
+                    open_browser: true,
+                    connect_to: Some("rerun+http://localhost:9876/proxy".to_owned()),
+                    ..Default::default()
+                })?
+                .detach();
 
                 // Ensure the server stays alive until the end of the program.
                 let sleep_guard = ServeGuard {
@@ -170,7 +176,7 @@ impl RerunArgs {
             Some(None) => {
                 return Ok(RerunBehavior::Connect(
                     re_sdk::DEFAULT_CONNECT_URL.to_owned(),
-                ))
+                ));
             }
             None => {}
         }

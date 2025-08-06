@@ -29,7 +29,7 @@ nb_prefix = re.compile(r"nb_")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
 explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"')  # looks for: \"{foo}\"
 ellipsis = re.compile(r"[^.]\.\.\.([^\-.0-9a-zA-Z]|$)")
-ellipsis_expression = re.compile(r"[\[(<].*\.\.\..*[\])>]")
+ellipsis_expression = re.compile(r"[\[\]\(\)<>\{\}]?.*\.\.\..*[\[\]\(\)<>\{\}]")
 ellipsis_import = re.compile(r"from \.\.\.")
 ellipsis_reference = re.compile(r"&\.\.\.")
 ellipsis_bare = re.compile(r"^\s*\.\.\.\s*$")
@@ -249,11 +249,6 @@ def lint_line(
             if not app_id.startswith("rerun_example_") and not app_id == "<your_app_name>":
                 return f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'"
 
-    # Methods that return Self should usually be marked #[inline] or #[inline(always)] since they indicate a builder.
-    if re.search(r"\(mut self.*-> Self", line):
-        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
-            return "Builder methods impls should be marked #[inline]"
-
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn deref(&self)" in line or "fn deref_mut(&mut self)" in line:
         if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
@@ -406,7 +401,6 @@ def test_lint_line() -> None:
         'rr.script_setup(args, "missing_prefix")',
         'rr.script_setup(args, "")',
         "I accidentally wrote the same same word twice",
-        "fn foo(mut self) -> Self {",
         "fn deref(&self) -> Self::Target {",
         "fn deref_mut(&mut self) -> &mut Self::Target",
         "fn borrow(&self) -> &Self",
@@ -606,7 +600,7 @@ def test_lint_workspace_deps() -> None:
         name = "clock"
         version = "0.6.0-alpha.0"
         edition = "2021"
-        rust-version = "1.84"
+        rust-version = "1.85"
         license = "MIT OR Apache-2.0"
         publish = false
 
@@ -615,7 +609,7 @@ def test_lint_workspace_deps() -> None:
 
         anyhow = "1.0"
         clap = { version = "4.0", features = ["derive"] }
-        glam = "0.28"
+        glam = "0.30"
         """,
     ]
 
@@ -682,11 +676,13 @@ force_capitalized = [
     "CI",
     "Colab",
     "Google",
+    "Gradio",
     "gRPC",
     "GUI",
     "GUIs",
     "July",
     "Jupyter",
+    "LeRobot",
     "Linux",
     "Mac",
     "macOS",
@@ -1261,7 +1257,7 @@ def main() -> None:
                 num_errors += lint_file(filepath, args)
     else:
         for root, dirs, files in os.walk(".", topdown=True):
-            dirs[:] = [d for d in dirs if not should_ignore(d)]
+            dirs[:] = [d for d in dirs if not should_ignore(os.path.join(root, d))]
 
             for filename in files:
                 extension = filename.split(".")[-1]

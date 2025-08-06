@@ -14,7 +14,6 @@
 #include "../../component_column.hpp"
 #include "../../components/name.hpp"
 #include "../../components/visible.hpp"
-#include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -24,6 +23,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: The description of a container.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ContainerBlueprint {
         /// The class of the view.
         std::optional<ComponentBatch> container_kind;
@@ -66,54 +68,49 @@ namespace rerun::blueprint::archetypes {
         std::optional<ComponentBatch> grid_columns;
 
       public:
-        static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.ContainerBlueprintIndicator";
-
-        /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] =
             "rerun.blueprint.archetypes.ContainerBlueprint";
 
         /// `ComponentDescriptor` for the `container_kind` field.
         static constexpr auto Descriptor_container_kind = ComponentDescriptor(
-            ArchetypeName, "container_kind",
-            Loggable<rerun::blueprint::components::ContainerKind>::Descriptor.component_name
+            ArchetypeName, "ContainerBlueprint:container_kind",
+            Loggable<rerun::blueprint::components::ContainerKind>::ComponentType
         );
         /// `ComponentDescriptor` for the `display_name` field.
         static constexpr auto Descriptor_display_name = ComponentDescriptor(
-            ArchetypeName, "display_name",
-            Loggable<rerun::components::Name>::Descriptor.component_name
+            ArchetypeName, "ContainerBlueprint:display_name",
+            Loggable<rerun::components::Name>::ComponentType
         );
         /// `ComponentDescriptor` for the `contents` field.
         static constexpr auto Descriptor_contents = ComponentDescriptor(
-            ArchetypeName, "contents",
-            Loggable<rerun::blueprint::components::IncludedContent>::Descriptor.component_name
+            ArchetypeName, "ContainerBlueprint:contents",
+            Loggable<rerun::blueprint::components::IncludedContent>::ComponentType
         );
         /// `ComponentDescriptor` for the `col_shares` field.
         static constexpr auto Descriptor_col_shares = ComponentDescriptor(
-            ArchetypeName, "col_shares",
-            Loggable<rerun::blueprint::components::ColumnShare>::Descriptor.component_name
+            ArchetypeName, "ContainerBlueprint:col_shares",
+            Loggable<rerun::blueprint::components::ColumnShare>::ComponentType
         );
         /// `ComponentDescriptor` for the `row_shares` field.
         static constexpr auto Descriptor_row_shares = ComponentDescriptor(
-            ArchetypeName, "row_shares",
-            Loggable<rerun::blueprint::components::RowShare>::Descriptor.component_name
+            ArchetypeName, "ContainerBlueprint:row_shares",
+            Loggable<rerun::blueprint::components::RowShare>::ComponentType
         );
         /// `ComponentDescriptor` for the `active_tab` field.
         static constexpr auto Descriptor_active_tab = ComponentDescriptor(
-            ArchetypeName, "active_tab",
-            Loggable<rerun::blueprint::components::ActiveTab>::Descriptor.component_name
+            ArchetypeName, "ContainerBlueprint:active_tab",
+            Loggable<rerun::blueprint::components::ActiveTab>::ComponentType
         );
         /// `ComponentDescriptor` for the `visible` field.
         static constexpr auto Descriptor_visible = ComponentDescriptor(
-            ArchetypeName, "visible",
-            Loggable<rerun::components::Visible>::Descriptor.component_name
+            ArchetypeName, "ContainerBlueprint:visible",
+            Loggable<rerun::components::Visible>::ComponentType
         );
         /// `ComponentDescriptor` for the `grid_columns` field.
         static constexpr auto Descriptor_grid_columns = ComponentDescriptor(
-            ArchetypeName, "grid_columns",
-            Loggable<rerun::blueprint::components::GridColumns>::Descriptor.component_name
+            ArchetypeName, "ContainerBlueprint:grid_columns",
+            Loggable<rerun::blueprint::components::GridColumns>::ComponentType
         );
 
       public:

@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/float64.hpp"
 #include "../../result.hpp"
 
@@ -12,6 +11,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: A zoom level determines how much of the world is visible on a map.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ZoomLevel {
         /// Zoom level: 0 being the lowest zoom level (fully zoomed out) and 22 being the highest (fully zoomed in).
         rerun::datatypes::Float64 zoom;
@@ -46,7 +48,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::ZoomLevel> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.components.ZoomLevel";
+        static constexpr std::string_view ComponentType = "rerun.blueprint.components.ZoomLevel";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

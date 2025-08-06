@@ -10,15 +10,18 @@ See also [`archetypes.Mesh3D`](https://rerun.io/docs/reference/types/archetypes/
 If there are multiple [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,
 an instance of the mesh will be drawn for each transform.
 
-## Components
+## Fields
+### Required
+* `blob`: [`Blob`](../components/blob.md)
 
-**Required**: [`Blob`](../components/blob.md)
+### Recommended
+* `media_type`: [`MediaType`](../components/media_type.md)
 
-**Recommended**: [`MediaType`](../components/media_type.md)
+### Optional
+* `albedo_factor`: [`AlbedoFactor`](../components/albedo_factor.md)
 
-**Optional**: [`AlbedoFactor`](../components/albedo_factor.md)
 
-## Shown in
+## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 * [DataframeView](../views/dataframe_view.md)

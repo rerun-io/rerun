@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/time_int.hpp"
 #include "../../result.hpp"
 
@@ -18,6 +17,9 @@ namespace arrow {
 
 namespace rerun::blueprint::datatypes {
     /// **Datatype**: Configuration for the filter-by-range feature of the dataframe view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct FilterByRange {
         /// Beginning of the time range.
         rerun::datatypes::TimeInt start;
@@ -37,7 +39,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::datatypes::FilterByRange> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.datatypes.FilterByRange";
+        static constexpr std::string_view ComponentType = "rerun.blueprint.datatypes.FilterByRange";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

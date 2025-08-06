@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/visible_time_range.hpp"
 #include "../../result.hpp"
 
@@ -15,6 +14,9 @@ namespace rerun::blueprint::components {
     /// **Component**: The range of values on a given timeline that will be included in a view's query.
     ///
     /// Refer to `VisibleTimeRanges` archetype for more information.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct VisibleTimeRange {
         rerun::datatypes::VisibleTimeRange value;
 
@@ -44,7 +46,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::VisibleTimeRange> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.VisibleTimeRange";
 
         /// Returns the arrow data type this type corresponds to.

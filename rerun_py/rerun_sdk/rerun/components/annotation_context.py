@@ -15,7 +15,6 @@ from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 from .annotation_context_ext import AnnotationContextExt
@@ -59,6 +58,10 @@ class AnnotationContext(AnnotationContextExt, ComponentMixin):
     # List of class descriptions, mapping class indices to class names, colors etc.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
+
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AnnotationContextExt in annotation_context_ext.py
+        return len(self.class_map)
 
 
 if TYPE_CHECKING:
@@ -135,7 +138,7 @@ class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBat
             metadata={},
         )
     )
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.AnnotationContext")
+    _COMPONENT_TYPE: str = "rerun.components.AnnotationContext"
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:

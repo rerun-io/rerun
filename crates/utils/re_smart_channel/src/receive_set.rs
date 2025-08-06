@@ -46,15 +46,14 @@ impl<T: Send> ReceiveSet<T> {
     }
 
     /// Disconnect from any channel with a source pointing at this `uri`.
-    #[cfg(target_arch = "wasm32")]
-    pub fn remove_by_uri(&self, uri: &str) {
+    pub fn remove_by_uri(&self, needle: &str) {
         self.receivers.lock().retain(|r| match r.source() {
             // retain only sources which:
             // - aren't network sources
-            // - don't point at the given `uri`
-            SmartChannelSource::RrdHttpStream { url, .. }
-            | SmartChannelSource::MessageProxy { url } => url != uri,
-            SmartChannelSource::RedapGrpcStream(endpoint) => endpoint.to_string() != uri,
+            // - don't point at the given `needle`
+            SmartChannelSource::RrdHttpStream { url, .. } => url != needle,
+            SmartChannelSource::MessageProxy(url) => url.to_string() != needle,
+            SmartChannelSource::RedapGrpcStream { uri, .. } => uri.to_string() != needle,
 
             SmartChannelSource::File(_)
             | SmartChannelSource::Stdin
@@ -198,7 +197,7 @@ impl<T: Send> ReceiveSet<T> {
 
 #[test]
 fn test_receive_set() {
-    use crate::{smart_channel, SmartMessageSource};
+    use crate::{SmartMessageSource, smart_channel};
 
     let timeout = std::time::Duration::from_millis(100);
 

@@ -3,9 +3,11 @@ use indexmap::IndexMap;
 use itertools::Itertools as _;
 use parking_lot::Mutex;
 
-use crate::{global_context::resolve_mono_instance_path_item, ViewerContext};
 use re_entity_db::EntityPath;
+use re_global_context::{ViewId, resolve_mono_instance_path_item};
 use re_log_types::StoreKind;
+
+use crate::ViewerContext;
 
 use super::Item;
 
@@ -115,13 +117,29 @@ impl From<Item> for ItemCollection {
     }
 }
 
-impl<T> From<T> for ItemCollection
-where
-    T: Iterator<Item = (Item, Option<ItemContext>)>,
-{
-    #[inline]
-    fn from(value: T) -> Self {
-        Self(value.collect())
+impl ItemCollection {
+    pub fn from_items_and_context(
+        items: impl IntoIterator<Item = (Item, Option<ItemContext>)>,
+    ) -> Self {
+        Self(items.into_iter().collect())
+    }
+
+    /// Is this view the selected one (and no other)?
+    pub fn is_view_the_only_selected(&self, needle: &ViewId) -> bool {
+        let mut is_selected = false;
+        for item in self.iter_items() {
+            let item_is_view = match item {
+                Item::View(id) | Item::DataResult(id, _) => id == needle,
+                _ => false,
+            };
+
+            if item_is_view {
+                is_selected = true;
+            } else {
+                return false; // More than one view selected
+            }
+        }
+        is_selected
     }
 }
 
@@ -254,6 +272,10 @@ impl ItemCollection {
             .filter_map(|(item, _)| match item {
                 Item::Container(_) => None,
                 Item::View(_) => None,
+                // TODO(lucasmerlin): Should these be copyable as URLs?
+                Item::RedapServer(_) => None,
+                Item::RedapEntry(_) => None,
+                Item::TableId(_) => None, // TODO(grtlr): Make `TableId`s copyable too
 
                 Item::DataSource(source) => match source {
                     re_smart_channel::SmartChannelSource::File(path) => {
@@ -266,16 +288,20 @@ impl ItemCollection {
                     re_smart_channel::SmartChannelSource::JsChannel { .. } => None,
                     re_smart_channel::SmartChannelSource::Sdk => None,
                     re_smart_channel::SmartChannelSource::Stdin => None,
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint) => {
-                        Some((ClipboardTextDesc::Url, endpoint.to_string()))
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream { uri, .. } => {
+                        Some((ClipboardTextDesc::Url, uri.to_string()))
                     }
-                    re_smart_channel::SmartChannelSource::MessageProxy { url } => {
-                        Some((ClipboardTextDesc::Url, url.clone()))
+                    re_smart_channel::SmartChannelSource::MessageProxy(uri) => {
+                        Some((ClipboardTextDesc::Url, uri.to_string()))
                     }
                 },
 
                 Item::AppId(id) => Some((ClipboardTextDesc::AppId, id.to_string())),
-                Item::StoreId(id) => Some((ClipboardTextDesc::StoreId, id.to_string())),
+
+                // TODO(ab): it is not very meaningful to copy the `StoreId` representation, but
+                // that's the best we can do for now. In the future, we should have URIs for
+                // in-memory recordings, and that's what we should copy here.
+                Item::StoreId(id) => Some((ClipboardTextDesc::StoreId, format!("{id:?}"))),
 
                 Item::DataResult(_, instance_path) | Item::InstancePath(instance_path) => Some((
                     ClipboardTextDesc::EntityPath,
@@ -481,17 +507,23 @@ impl ApplicationSelectionState {
             .iter_items()
             .any(|current| match current {
                 Item::AppId(_)
+                | Item::TableId(_)
                 | Item::DataSource(_)
                 | Item::StoreId(_)
                 | Item::View(_)
-                | Item::Container(_) => current == test,
+                | Item::Container(_)
+                | Item::RedapEntry(_)
+                | Item::RedapServer(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
                     Item::AppId(_)
+                    | Item::TableId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::View(_)
-                    | Item::Container(_) => false,
+                    | Item::Container(_)
+                    | Item::RedapEntry(_)
+                    | Item::RedapServer(_) => false,
 
                     Item::ComponentPath(test_component_path) => {
                         test_component_path == component_path
@@ -508,11 +540,14 @@ impl ApplicationSelectionState {
 
                 Item::InstancePath(current_instance_path) => match test {
                     Item::AppId(_)
+                    | Item::TableId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::View(_)
-                    | Item::Container(_) => false,
+                    | Item::Container(_)
+                    | Item::RedapEntry(_)
+                    | Item::RedapServer(_) => false,
 
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {
@@ -526,11 +561,14 @@ impl ApplicationSelectionState {
 
                 Item::DataResult(_current_view_id, current_instance_path) => match test {
                     Item::AppId(_)
+                    | Item::TableId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::View(_)
-                    | Item::Container(_) => false,
+                    | Item::Container(_)
+                    | Item::RedapEntry(_)
+                    | Item::RedapServer(_) => false,
 
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {

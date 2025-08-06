@@ -13,3 +13,7 @@ options = { semi = true, tabWidth = 2 }
 [[overrides]]
 files = [".prettierrc", "*.json", "*.css", "*.html"]
 options = { tabWidth = 2 }
+
+[[overrides]]
+files = ["*.ts"]
+options = { parser = "typescript" }

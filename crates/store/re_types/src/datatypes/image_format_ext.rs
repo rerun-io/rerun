@@ -130,3 +130,20 @@ impl ImageFormat {
         }
     }
 }
+
+impl std::fmt::Display for ImageFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(pixel_format) = self.pixel_format {
+            write!(f, "{} {}×{}", pixel_format, self.width, self.height)
+        } else {
+            write!(
+                f,
+                "{} {} {}×{}",
+                self.color_model(),
+                self.datatype(),
+                self.width,
+                self.height
+            )
+        }
+    }
+}

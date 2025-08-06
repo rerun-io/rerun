@@ -1,17 +1,11 @@
-use egui::Label;
+use egui::{Label, Sense};
 
-use egui::Sense;
-use re_types::View as _;
-use re_types::ViewClassIdentifier;
-use re_ui::Help;
-use re_ui::UiExt as _;
+use re_types::{View as _, ViewClassIdentifier};
+use re_ui::{Help, UiExt as _};
 use re_view::suggest_view_for_each_entity;
-
-use re_viewer_context::external::re_log_types::ResolvedEntityPathFilter;
-use re_viewer_context::Item;
 use re_viewer_context::{
-    external::re_log_types::EntityPath, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    Item, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewerContext, external::re_log_types::EntityPath,
 };
 
 use crate::visualizer_system::{TextDocumentEntry, TextDocumentSystem};
@@ -62,7 +56,7 @@ impl ViewClass for TextDocumentView {
         &re_ui::icons::VIEW_TEXT
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help {
+    fn help(&self, _os: egui::os::OperatingSystem) -> Help {
         Help::new("Text document view")
             .docs_link("https://rerun.io/docs/reference/types/views/text_document_view")
             .markdown("Supports raw text and markdown.")
@@ -109,11 +103,11 @@ impl ViewClass for TextDocumentView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // By default spawn a view for every text document.
-        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, self, suggested_filter)
+        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, self, include_entity)
     }
 
     fn ui(
@@ -124,16 +118,17 @@ impl ViewClass for TextDocumentView {
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
+        let tokens = ui.tokens();
         let state = state.downcast_mut::<TextDocumentViewState>()?;
         let text_document = system_output.view_systems.get::<TextDocumentSystem>()?;
 
-        let frame = egui::Frame::new().inner_margin(re_ui::DesignTokens::view_padding());
+        let frame = egui::Frame::new().inner_margin(tokens.view_padding());
         let response = frame
             .show(ui, |ui| {
                 let inner_ui_builder = egui::UiBuilder::new()
                     .layout(egui::Layout::top_down(egui::Align::LEFT))
                     .sense(Sense::click());
-                ui.allocate_new_ui(inner_ui_builder, |ui| {
+                ui.scope_builder(inner_ui_builder, |ui| {
                     egui::ScrollArea::both()
                         .auto_shrink([false, false])
                         .show(ui, |ui| text_document_ui(ui, state, text_document));
@@ -144,11 +139,18 @@ impl ViewClass for TextDocumentView {
             })
             .inner;
 
-        if response.hovered() {
+        // Since we want the view to be hoverable / clickable when the pointer is over a label
+        // (and we want selectable labels), we need to work around egui's interactions here.
+        // Since `rect_contains_pointer` checks for the layer id, this shouldn't cause any problems
+        // with popups / modals.
+        let hovered = ui.ctx().rect_contains_pointer(ui.layer_id(), response.rect);
+        let clicked = hovered && ui.ctx().input(|i| i.pointer.primary_pressed());
+
+        if hovered {
             ctx.selection_state().set_hovered(Item::View(query.view_id));
         }
 
-        if response.clicked() {
+        if clicked {
             ctx.selection_state()
                 .set_selection(Item::View(query.view_id));
         }
@@ -207,5 +209,5 @@ fn text_document_ui(
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TextDocumentView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| TextDocumentView.help(ctx));
 }

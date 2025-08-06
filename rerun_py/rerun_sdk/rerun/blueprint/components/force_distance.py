@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -20,6 +19,8 @@ class ForceDistance(datatypes.Float64, ComponentMixin):
     **Component**: The target distance between two nodes.
 
     This is helpful to scale the layout, for example if long labels are involved.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     _BATCH_TYPE = None
@@ -29,7 +30,7 @@ class ForceDistance(datatypes.Float64, ComponentMixin):
 
 
 class ForceDistanceBatch(datatypes.Float64Batch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.ForceDistance")
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.ForceDistance"
 
 
 # This is patched in late to avoid circular dependencies.

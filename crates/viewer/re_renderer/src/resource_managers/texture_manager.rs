@@ -2,12 +2,12 @@ use ahash::{HashMap, HashSet};
 use parking_lot::Mutex;
 
 use crate::{
+    RenderContext,
     resource_managers::ImageDataDesc,
     wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc},
-    RenderContext,
 };
 
-use super::{image_data_to_texture::transfer_image_data_to_texture, ImageDataToTextureError};
+use super::{ImageDataToTextureError, image_data_to_texture::transfer_image_data_to_texture};
 
 /// Handle to a 2D resource.
 ///

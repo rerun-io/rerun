@@ -11,14 +11,18 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
 import numpy as np
+from rerun_bindings import (
+    ChunkBatcherConfig as ChunkBatcherConfig,
+)
 from typing_extensions import deprecated
 
+import rerun as rr
 from rerun import bindings
 from rerun.memory import MemoryRecording
-from rerun.time import reset_time
 
 if TYPE_CHECKING:
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
+    from rerun.sinks import LogSinkLike
 
     from ._send_columns import TimeColumnLike
 
@@ -28,7 +32,7 @@ if TYPE_CHECKING:
 
 @deprecated(
     """Please migrate to `rr.RecordingStream(…)`.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 def new_recording(
     application_id: str,
@@ -38,6 +42,7 @@ def new_recording(
     make_thread_default: bool = False,
     spawn: bool = False,
     default_enabled: bool = True,
+    batcher_config: ChunkBatcherConfig | None = None,
 ) -> RecordingStream:
     """
     Creates a new recording with a user-chosen application id (name) that can be used to log data.
@@ -98,10 +103,12 @@ def new_recording(
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
-        you call either `connect`, `show`, or `save`
+        you call either `connect_grpc`, `show`, or `save`
     default_enabled
         Should Rerun logging be on by default?
         Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+    batcher_config
+        Optional configuration for the chunk batcher.
 
     Returns
     -------
@@ -116,6 +123,7 @@ def new_recording(
         make_default=make_default,
         make_thread_default=make_thread_default,
         default_enabled=default_enabled,
+        batcher_config=batcher_config,
     )
 
     if spawn:
@@ -301,10 +309,11 @@ class RecordingStream:
     Micro-batching using both space and time triggers (whichever comes first) is done automatically
     in a dedicated background thread.
 
-    You can configure the frequency of the batches using the following environment variables:
+    You can configure the frequency of the batches using the `batcher_config` parameter when creating
+    the RecordingStream, or via the following environment variables:
 
     - `RERUN_FLUSH_TICK_SECS`:
-        Flush frequency in seconds (default: `0.05` (50ms)).
+        Flush frequency in seconds (default: `0.2` (200ms)).
     - `RERUN_FLUSH_NUM_BYTES`:
         Flush threshold in bytes (default: `1048576` (1MiB)).
     - `RERUN_FLUSH_NUM_ROWS`:
@@ -321,6 +330,7 @@ class RecordingStream:
         make_thread_default: bool = False,
         default_enabled: bool = True,
         send_properties: bool = True,
+        batcher_config: ChunkBatcherConfig | None = None,
     ) -> None:
         """
         Creates a new recording stream with a user-chosen application id (name) that can be used to log data.
@@ -382,6 +392,8 @@ class RecordingStream:
             Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
         send_properties
             Immediately send the recording properties to the viewer (default: True)
+        batcher_config
+            Optional configuration for the chunk batcher.
 
         Returns
         -------
@@ -410,6 +422,7 @@ class RecordingStream:
             make_thread_default=make_thread_default,
             default_enabled=default_enabled,
             send_properties=send_properties,
+            batcher_config=batcher_config,
         )
 
         self._prev: RecordingStream | None = None
@@ -485,6 +498,52 @@ class RecordingStream:
     get_recording_id = get_recording_id
     is_enabled = is_enabled
 
+    def set_sinks(
+        self,
+        *sinks: LogSinkLike,
+        default_blueprint: BlueprintLike | None = None,
+    ) -> None:
+        """
+        Stream data to multiple different sinks.
+
+        Duplicate sinks are not allowed. For example, two [`rerun.GrpcSink`][]s that
+        use the same `url` will cause this function to throw a `ValueError`.
+
+        This _replaces_ existing sinks. Calling `rr.init(spawn=True)`, `rr.spawn()`,
+        `rr.connect_grpc()` or similar followed by `set_sinks` will result in only
+        the sinks passed to `set_sinks` remaining active.
+
+        Only data logged _after_ the `set_sinks` call will be logged to the newly attached sinks.
+
+        Parameters
+        ----------
+        sinks:
+            A list of sinks to wrap.
+
+            See [`rerun.GrpcSink`][], [`rerun.FileSink`][].
+        default_blueprint:
+            Optionally set a default blueprint to use for this application. If the application
+            already has an active blueprint, the new blueprint won't become active until the user
+            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            immediately, instead use the [`rerun.send_blueprint`][] API.
+
+        Example
+        -------
+        ```py
+        rec = rr.RecordingStream("rerun_example_tee")
+        rec.set_sinks(
+            rr.GrpcSink(),
+            rr.FileSink("data.rrd")
+        )
+        rec.log("my/point", rr.Points3D(position=[1.0, 2.0, 3.0]))
+        ```
+
+        """
+
+        from .sinks import set_sinks
+
+        set_sinks(*sinks, default_blueprint=default_blueprint, recording=self)
+
     def connect_grpc(
         self,
         url: str | None = None,
@@ -493,14 +552,19 @@ class RecordingStream:
         default_blueprint: BlueprintLike | None = None,
     ) -> None:
         """
-        Connect to a remote Rerun Viewer on the given HTTP(S) URL.
+        Connect to a remote Rerun Viewer on the given URL.
 
         This function returns immediately.
 
         Parameters
         ----------
         url:
-            The HTTP(S) URL to connect to
+            The URL to connect to
+
+            The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+            and the pathname must be `/proxy`.
+
+            The default is `rerun+http://127.0.0.1:9876/proxy`.
         flush_timeout_sec:
             The minimum time the SDK will wait during a flush before potentially
             dropping data if progress is not being made. Passing `None` indicates no timeout,
@@ -591,13 +655,65 @@ class RecordingStream:
         Closes all gRPC connections, servers, and files.
 
         Closes all gRPC connections, servers, and files that have been opened with
-        [`rerun.connect_grpc`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
+        [`rerun.RecordingStream.connect_grpc`], [`rerun.RecordingStream.serve`], [`rerun.RecordingStream.save`] or
+        [`rerun.RecordingStream.spawn`].
         """
 
         from .sinks import disconnect
 
         disconnect(recording=self)
 
+    def serve_grpc(
+        self,
+        *,
+        grpc_port: int | None = None,
+        default_blueprint: BlueprintLike | None = None,
+        server_memory_limit: str = "25%",
+    ) -> str:
+        """
+        Serve log-data over gRPC.
+
+        You can to this server with the native viewer using `rerun rerun+http://localhost:{grpc_port}/proxy`.
+
+        The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+        You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+        Once reached, the earliest logged data will be dropped. Static data is never dropped.
+
+        It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+        on the same machine, otherwise you're potentially doubling your memory usage!
+
+        Returns the URI of the server so you can connect the viewer to it.
+
+        This function returns immediately.
+
+        Parameters
+        ----------
+        grpc_port:
+            The port to serve the gRPC server on (defaults to 9876)
+        default_blueprint:
+            Optionally set a default blueprint to use for this application. If the application
+            already has an active blueprint, the new blueprint won't become active until the user
+            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            immediately, instead use the [`rerun.RecordingStream.send_blueprint`][] API.
+        server_memory_limit:
+            Maximum amount of memory to use for buffering log data for clients that connect late.
+            This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
+
+        """
+
+        from .sinks import serve_grpc
+
+        return serve_grpc(
+            grpc_port=grpc_port,
+            default_blueprint=default_blueprint,
+            server_memory_limit=server_memory_limit,
+            recording=self,
+        )
+
+    @deprecated(
+        """Use a combination of `serve_grpc` and `rr.serve_web_viewer` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-24 for more details.""",
+    )
     def serve_web(
         self,
         *,
@@ -612,11 +728,17 @@ class RecordingStream:
 
         You can also connect to this server with the native viewer using `rerun localhost:9090`.
 
-        The gRPC server will buffer all log data in memorsy so that late connecting viewers will get all the data.
+        The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
         You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
         This function returns immediately.
+
+        Calling `serve_web` is equivalent to calling [`rerun.RecordingStream.serve_grpc`][] followed by [`rerun.serve_web_viewer`][]:
+        ```
+        server_uri = rec.serve_grpc(grpc_port=grpc_port, default_blueprint=default_blueprint, server_memory_limit=server_memory_limit)
+        rr.serve_web_viewer(web_port=web_port, open_browser=open_browser, connect_to=server_uri)
+        ```
 
         Parameters
         ----------
@@ -630,7 +752,7 @@ class RecordingStream:
             Optionally set a default blueprint to use for this application. If the application
             already has an active blueprint, the new blueprint won't become active until the user
             clicks the "reset blueprint" button. If you want to activate the new blueprint
-            immediately, instead use the [`rerun.send_blueprint`][] API.
+            immediately, instead use the [`rerun.RecordingStream.send_blueprint`][] API.
         server_memory_limit:
             Maximum amount of memory to use for buffering log data for clients that connect late.
             This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
@@ -679,6 +801,24 @@ class RecordingStream:
 
         send_blueprint(blueprint=blueprint, make_active=make_active, make_default=make_default, recording=self)
 
+    def send_recording(self, recording: rr.dataframe.Recording) -> None:
+        """
+        Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
+
+        .. warning::
+            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+
+        Parameters
+        ----------
+        recording:
+            A `Recording` loaded from a `.rrd`.
+
+        """
+
+        from .sinks import send_recording
+
+        send_recording(rrd=recording, recording=self)
+
     def spawn(
         self,
         *,
@@ -691,9 +831,6 @@ class RecordingStream:
     ) -> None:
         """
         Spawn a Rerun Viewer, listening on the given port.
-
-        This is often the easiest and best way to use Rerun.
-        Just call this once at the start of your program.
 
         You can also call [rerun.init][] with a `spawn=True` argument.
 
@@ -715,7 +852,7 @@ class RecordingStream:
             Optionally set a default blueprint to use for this application. If the application
             already has an active blueprint, the new blueprint won't become active until the user
             clicks the "reset blueprint" button. If you want to activate the new blueprint
-            immediately, instead use the [`rerun.send_blueprint`][] API.
+            immediately, instead use the [`rerun.RecordingStream.send_blueprint`][] API.
 
         """
 
@@ -757,18 +894,24 @@ class RecordingStream:
             A blueprint object to send to the viewer.
             It will be made active and set as the default blueprint in the recording.
 
-            Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
+            Setting this is equivalent to calling [`rerun.RecordingStream.send_blueprint`][] before initializing the viewer.
 
         """
+        try:
+            from .notebook import Viewer
 
-        from .notebook import notebook_show
-
-        notebook_show(
-            width=width,
-            height=height,
-            blueprint=blueprint,
-            recording=self,
-        )
+            Viewer(
+                width=width,
+                height=height,
+                blueprint=blueprint,
+                recording=self,
+            ).display()
+        except ImportError as e:
+            raise Exception("Could not import rerun_notebook. Please install `rerun-notebook`.") from e
+        except FileNotFoundError as e:
+            raise Exception(
+                "rerun_notebook package is missing widget assets. Please run `py-build-notebook` in your pixi env."
+            ) from e
 
     def send_property(
         self,
@@ -848,7 +991,8 @@ class RecordingStream:
         Set the current time of a timeline for this thread.
 
         Used for all subsequent logging on the same thread, until the next call to
-        [`rerun.set_time`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
+        [`rerun.RecordingStream.set_time`][], [`rerun.RecordingStream.reset_time`][] or
+        [`rerun.RecordingStream.disable_timeline`][].
 
         For example: `set_time("frame_nr", sequence=frame_nr)`.
 
@@ -890,8 +1034,8 @@ class RecordingStream:
         )
 
     @deprecated(
-        """Use `set_time(sequence=…)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+        """Use `RecordingStream.set_time(sequence=…)` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
     )
     def set_time_sequence(self, timeline: str, sequence: int) -> None:
         """
@@ -924,8 +1068,8 @@ class RecordingStream:
         set_time_sequence(timeline=timeline, sequence=sequence, recording=self)
 
     @deprecated(
-        """Use `set_time(timestamp=seconds)` or set_time(duration=seconds)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+        """Use `RecordingStream.set_time(timestamp=seconds)` or `RecordingStream.set_time(duration=seconds)` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
     )
     def set_time_seconds(self, timeline: str, seconds: float) -> None:
         """
@@ -965,8 +1109,8 @@ class RecordingStream:
         set_time_seconds(timeline=timeline, seconds=seconds, recording=self)
 
     @deprecated(
-        """Use `set_time(timestamp=1e-9 * nanos)` or set_time(duration=1e-9 * nanos)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+        """Use `RecordingStream.set_time(timestamp=1e-9 * nanos)` or `RecordingStream.set_time(duration=1e-9 * nanos)` instead.
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
     )
     def set_time_nanos(self, timeline: str, nanos: int) -> None:
         """
@@ -1020,7 +1164,18 @@ class RecordingStream:
 
         disable_timeline(timeline=timeline, recording=self)
 
-    reset_time = reset_time
+    # TODO(emilk): rename to something with the word `index`, and maybe unify with `disable_timeline`?
+    def reset_time(self) -> None:
+        """
+        Clear all timeline information on this thread.
+
+        This is the same as calling `disable_timeline` for all of the active timelines.
+
+        Used for all subsequent logging on the same thread,
+        until the next call to [`rerun.RecordingStream.set_time`][].
+        """
+
+        bindings.reset_time(recording=self.to_native())
 
     def log(
         self,
@@ -1089,8 +1244,7 @@ class RecordingStream:
             any temporal data of the same type.
 
             Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-            Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-            [`rerun.set_time_nanos`][] will also be included.
+            Additional timelines set by [`rerun.RecordingStream.set_time`][] will also be included.
 
         strict:
             If True, raise exceptions on non-loggable data.
@@ -1139,8 +1293,7 @@ class RecordingStream:
             any temporal data of the same type.
 
             Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-            Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-            [`rerun.set_time_nanos`][] will also be included.
+            Additional timelines set by [`rerun.RecordingStream.set_time`][] will also be included.
 
         """
 
@@ -1186,8 +1339,7 @@ class RecordingStream:
             any temporal data of the same type.
 
             Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-            Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-            [`rerun.set_time_nanos`][] will also be included.
+            Additional timelines set by [`rerun.RecordingStream.set_time`][] will also be included.
 
         """
 
@@ -1216,7 +1368,7 @@ class RecordingStream:
         data that shares the same index across the different columns will act as a single logical row,
         equivalent to a single call to `rr.log()`.
 
-        Note that this API ignores any stateful time set on the log stream via the `rerun.set_time_*` APIs.
+        Note that this API ignores any stateful time set on the log stream via [`rerun.RecordingStream.set_time`][].
         Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
 
         Parameters
@@ -1252,7 +1404,7 @@ class BinaryStream:
     def __init__(self, storage: bindings.PyBinarySinkStorage) -> None:
         self.storage = storage
 
-    def read(self, *, flush: bool = True) -> bytes:
+    def read(self, *, flush: bool = True) -> bytes | None:
         """
         Reads the available bytes from the stream.
 

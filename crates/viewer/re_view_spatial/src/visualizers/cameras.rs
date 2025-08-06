@@ -2,9 +2,9 @@ use glam::vec3;
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
+    Archetype as _,
     archetypes::Pinhole,
     components::{self},
-    Archetype as _,
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
@@ -14,13 +14,11 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 use crate::{
     contexts::TransformTreeContext, resolution_of_image_at, space_camera_3d::SpaceCamera3D,
     ui::SpatialViewState,
 };
-
-const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 
 pub struct CamerasVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -54,6 +52,7 @@ impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
+        tokens: &re_ui::DesignTokens,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformTreeContext,
         data_result: &DataResult,
@@ -77,7 +76,7 @@ impl CamerasVisualizer {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
-                world_from_camera: re_math::IsoTransform::IDENTITY,
+                world_from_camera: macaw::IsoTransform::IDENTITY,
                 pinhole: Some(pinhole_properties.pinhole),
                 picture_plane_distance: pinhole_properties.image_plane_distance,
             });
@@ -91,7 +90,9 @@ impl CamerasVisualizer {
         let Some(twod_in_threed_info) = &transform_info.twod_in_threed_info else {
             // This implies that the transform context didn't see the pinhole transform.
             // Should be impossible!
-            re_log::error_once!("Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!");
+            re_log::error_once!(
+                "Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!"
+            );
             return;
         };
         if &twod_in_threed_info.parent_pinhole != ent_path {
@@ -103,8 +104,7 @@ impl CamerasVisualizer {
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let Some(world_from_camera_iso) =
-            re_math::IsoTransform::from_mat4(&world_from_camera.into())
+        let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
         else {
             return;
         };
@@ -185,7 +185,7 @@ impl CamerasVisualizer {
             let lines = batch
                 .add_strip(strip.into_iter())
                 .radius(radius)
-                .color(CAMERA_COLOR)
+                .color(tokens.frustum_color)
                 .flags(flags)
                 .picking_instance_id(instance_layer_id.instance);
 
@@ -243,26 +243,28 @@ impl VisualizerSystem for CamerasVisualizer {
                 None,
                 &time_query,
                 data_result,
-                Pinhole::all_components()
-                    .iter()
-                    .map(|desc| desc.component_name),
+                Pinhole::all_components().iter(),
                 query_shadowed_components,
             );
 
-            let Some(pinhole_projection) =
-                query_results.get_required_mono::<components::PinholeProjection>()
+            let Some(pinhole_projection) = query_results
+                .get_required_mono::<components::PinholeProjection>(
+                    &Pinhole::descriptor_image_from_camera(),
+                )
             else {
                 continue;
             };
 
             let resolution = query_results
-                .get_mono::<components::Resolution>()
+                .get_mono::<components::Resolution>(&Pinhole::descriptor_resolution())
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
             let camera_xyz = query_results
-                .get_mono::<components::ViewCoordinates>()
+                .get_mono::<components::ViewCoordinates>(&Pinhole::descriptor_camera_xyz())
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
             let image_plane_distance = query_results
-                .get_mono::<components::ImagePlaneDistance>()
+                .get_mono::<components::ImagePlaneDistance>(
+                    &Pinhole::descriptor_image_plane_distance(),
+                )
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
 
             let component_data = CameraComponentDataWithFallbacks {
@@ -279,6 +281,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 .entity_outline_mask(data_result.entity_path.hash());
 
             self.visit_instance(
+                ctx.tokens(),
                 &mut line_builder,
                 transforms,
                 data_result,
@@ -305,7 +308,7 @@ impl VisualizerSystem for CamerasVisualizer {
 
 impl TypedComponentFallbackProvider<components::ImagePlaneDistance> for CamerasVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::ImagePlaneDistance {
-        let Ok(state) = ctx.view_state.downcast_ref::<SpatialViewState>() else {
+        let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
             return Default::default();
         };
 
@@ -334,7 +337,7 @@ impl TypedComponentFallbackProvider<components::Resolution> for CamerasVisualize
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::Resolution {
         // If the Pinhole has no resolution, use the resolution for the image logged at the same path.
         // See https://github.com/rerun-io/rerun/issues/3852
-        resolution_of_image_at(ctx.viewer_ctx, ctx.query, ctx.target_entity_path)
+        resolution_of_image_at(ctx.viewer_ctx(), ctx.query, ctx.target_entity_path)
             // Zero will be seen as invalid resolution by the visualizer, making it opt out of visualization.
             // TODO(andreas): We should display a warning about this somewhere.
             // Since it's not a required component, logging a warning about this might be too noisy.

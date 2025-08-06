@@ -19,7 +19,7 @@ mod prelude {
     pub use re_types::archetypes::*;
 
     // Special utility types.
-    pub use re_types::Rotation3D;
+    pub use re_types::{AnyValues, Rotation3D};
 
     // Also import any component or datatype that has a unique name:
     pub use re_chunk::TimeColumn;

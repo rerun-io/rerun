@@ -22,6 +22,7 @@ table Transform3D (
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
   "attr.rerun.log_missing_as_empty", // See https://github.com/rerun-io/rerun/issues/6909
+  "attr.rerun.state": "stable",
   "attr.rust.derive": "PartialEq"
 ) {
   /// Translation vector.

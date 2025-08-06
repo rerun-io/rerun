@@ -3,29 +3,33 @@ use std::ops::Range;
 
 use anyhow::Context as _;
 use arrow::array::ArrayRef;
-use egui::NumExt as _;
+use egui::{NumExt as _, RichText};
 use itertools::Itertools as _;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
-use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe::QueryHandle;
+use re_dataframe::external::re_query::StorageEngineArcReadGuard;
+use re_dataframe_ui::table_utils::{apply_table_style_fixes, cell_ui, header_ui};
+use re_dataframe_ui::{ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
-use re_types_core::ComponentName;
+use re_types::ComponentDescriptor;
+use re_types::reflection::ComponentDescriptorExt as _;
 use re_ui::UiExt as _;
 use re_viewer_context::{SystemCommandSender as _, ViewId, ViewerContext};
 
-use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
 
 /// Ui actions triggered by the dataframe UI to be handled by the calling code.
 pub(crate) enum HideColumnAction {
-    HideTimeColumn {
+    RowId,
+
+    Time {
         timeline_name: TimelineName,
     },
 
-    HideComponentColumn {
+    Component {
         entity_path: EntityPath,
-        component_name: ComponentName,
+        descr: ComponentDescriptor,
     },
 }
 
@@ -38,6 +42,9 @@ pub(crate) fn dataframe_ui(
     view_id: &ViewId,
 ) -> Vec<HideColumnAction> {
     re_tracing::profile_function!();
+
+    let tokens = ui.tokens();
+    let table_style = re_ui::TableStyle::Dense;
 
     let selected_columns = query_handle
         .selected_contents()
@@ -64,6 +71,7 @@ pub(crate) fn dataframe_ui(
 
     let mut table_delegate = DataframeTableDelegate {
         ctx,
+        table_style,
         query_handle,
         selected_columns: &selected_columns,
         header_entity_paths,
@@ -75,17 +83,18 @@ pub(crate) fn dataframe_ui(
             ui.ctx().clone(),
             ui.make_persistent_id(row_expansion_id_salt),
             expanded_rows_cache,
-            re_ui::DesignTokens::table_line_height(),
+            tokens.table_row_height(table_style),
         ),
         hide_column_actions: vec![],
     };
 
     let num_sticky_cols = selected_columns
         .iter()
-        .take_while(|cd| matches!(cd, ColumnDescriptor::Time(_)))
+        .take_while(|cd| matches!(cd, ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_)))
         .count();
 
-    egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
+    ui.scope(|ui| {
+        apply_table_style_fixes(ui.style_mut());
         egui_table::Table::new()
             .id_salt(table_id_salt)
             .columns(
@@ -101,10 +110,11 @@ pub(crate) fn dataframe_ui(
             .num_sticky_cols(num_sticky_cols)
             .headers(vec![
                 egui_table::HeaderRow {
-                    height: re_ui::DesignTokens::table_header_height(),
+                    height: tokens.table_header_height(),
                     groups: header_groups,
                 },
-                egui_table::HeaderRow::new(re_ui::DesignTokens::table_header_height()),
+                // This one has extra space for the archetype name
+                egui_table::HeaderRow::new(tokens.table_header_height() + 8.0),
             ])
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
@@ -150,7 +160,11 @@ impl RowsDisplayData {
             .into_iter()
             .map(|data| {
                 DisplayRecordBatch::try_new(
-                    selected_columns.iter().map(|desc| desc.into()).zip(data),
+                    selected_columns
+                        .iter()
+                        .map(|desc| desc.into())
+                        .zip(data)
+                        .map(|(desc, data)| (desc, ColumnBlueprint::default_ref(), data)),
                 )
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -168,11 +182,12 @@ impl RowsDisplayData {
         // find the time column
         let query_time_column_index = selected_columns
             .iter()
-            .find_position(|desc| match desc {
-                ColumnDescriptor::Time(time_column_desc) => {
+            .find_position(|desc| {
+                if let ColumnDescriptor::Time(time_column_desc) = desc {
                     time_column_desc.timeline_name() == *query_timeline
+                } else {
+                    false
                 }
-                ColumnDescriptor::Component(_) => false,
             })
             .map(|(pos, _)| pos);
 
@@ -187,6 +202,7 @@ impl RowsDisplayData {
 /// [`egui_table::TableDelegate`] implementation for displaying a [`QueryHandle`] in a table.
 struct DataframeTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
+    table_style: re_ui::TableStyle,
     query_handle: &'a QueryHandle<StorageEngineArcReadGuard>,
     selected_columns: &'a [ColumnDescriptor],
     header_entity_paths: Vec<Option<EntityPath>>,
@@ -230,136 +246,178 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
     }
 
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::HeaderCellInfo) {
+        let table_style = self.table_style;
         ui.set_truncate_style();
 
-        egui::Frame::new()
-            .inner_margin(egui::Margin::symmetric(4, 0))
-            .show(ui, |ui| {
-                if cell.row_nr == 0 {
-                    if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
-                        //TODO(ab): factor this into a helper as soon as we use it elsewhere
-                        let text = entity_path.to_string();
-                        let font_id = egui::TextStyle::Body.resolve(ui.style());
-                        let text_color = ui.visuals().text_color();
-                        let galley = ui
-                            .painter()
-                            .layout(text, font_id, text_color, f32::INFINITY);
+        if cell.row_nr == 0 {
+            header_ui(ui, table_style, false, |ui| {
+                if let Some(entity_path) = &self.header_entity_paths[cell.group_index] {
+                    //TODO(ab): factor this into a helper as soon as we use it elsewhere
+                    let text = entity_path.to_string();
+                    let font_id = egui::TextStyle::Body.resolve(ui.style());
+                    let text_color = ui.visuals().text_color();
+                    let galley = ui
+                        .painter()
+                        .layout(text, font_id, text_color, f32::INFINITY);
 
-                        // Extra padding for this being a button.
-                        let size = galley.size() + 2.0 * ui.spacing().button_padding;
+                    // Extra padding for this being a button.
+                    let size = galley.size() + 2.0 * ui.spacing().button_padding;
 
-                        // Put the text leftmost in the clip rect (so it is always visible)
-                        let mut pos = egui::Align2::LEFT_CENTER
-                            .anchor_size(
-                                ui.clip_rect()
-                                    .shrink(Self::LEFT_RIGHT_MARGIN as _)
-                                    .left_center(),
-                                size,
-                            )
-                            .min;
+                    // Put the text leftmost in the clip rect (so it is always visible)
+                    let mut pos = egui::Align2::LEFT_CENTER
+                        .anchor_size(
+                            ui.clip_rect()
+                                .shrink(Self::LEFT_RIGHT_MARGIN as _)
+                                .left_center(),
+                            size,
+                        )
+                        .min;
 
-                        // … but not so far to the right that it doesn't fit.
-                        pos.x = pos.x.at_most(ui.max_rect().right() - size.x);
+                    // … but not so far to the right that it doesn't fit.
+                    pos.x = pos.x.at_most(ui.max_rect().right() - size.x);
 
-                        let item = re_viewer_context::Item::from(entity_path.clone());
-                        let is_selected = self.ctx.selection().contains_item(&item);
-                        let response = ui.put(
-                            egui::Rect::from_min_size(pos, size),
-                            egui::SelectableLabel::new(is_selected, galley),
-                        );
-                        self.ctx
-                            .handle_select_hover_drag_interactions(&response, item, false);
+                    let item = re_viewer_context::Item::from(entity_path.clone());
+                    let is_selected = self.ctx.selection().contains_item(&item);
+                    let response = ui.put(
+                        egui::Rect::from_min_size(pos, size),
+                        egui::Button::selectable(is_selected, galley),
+                    );
+                    self.ctx
+                        .handle_select_hover_drag_interactions(&response, item, false);
 
-                        // TODO(emilk): expand column(s) to make sure the text fits (requires egui_table fix).
-                    }
-                } else if cell.row_nr == 1 {
-                    let column = &self.selected_columns[cell.col_range.start];
+                    // TODO(emilk): expand column(s) to make sure the text fits (requires egui_table fix).
+                }
+            });
+        } else if cell.row_nr == 1 {
+            let column = &self.selected_columns[cell.col_range.start];
 
-                    // TODO(ab): actual static-only support
-                    let filtered_index = self
-                        .query_handle
-                        .query()
-                        .filtered_index
-                        .unwrap_or_else(|| TimelineName::new(""));
+            let next_column = self.selected_columns.get(cell.col_range.end);
+            let connected_to_next_cell = next_column.is_some_and(|next_column| {
+                next_column.entity_path() == column.entity_path()
+                    && next_column.archetype_name() == column.archetype_name()
+                    && column.archetype_name().is_some()
+            });
 
-                    // if this column can actually be hidden, then that's the corresponding action
-                    let hide_action = match column {
-                        ColumnDescriptor::Time(desc) => (desc.timeline_name() != filtered_index)
-                            .then(|| HideColumnAction::HideTimeColumn {
-                                timeline_name: desc.timeline_name(),
-                            }),
+            // TODO(ab): actual static-only support
+            let filtered_index = self
+                .query_handle
+                .query()
+                .filtered_index
+                .unwrap_or_else(|| TimelineName::new(""));
 
-                        ColumnDescriptor::Component(desc) => {
-                            Some(HideColumnAction::HideComponentColumn {
-                                entity_path: desc.entity_path.clone(),
-                                component_name: desc.component_name,
-                            })
+            // if this column can actually be hidden, then that's the corresponding action
+            let hide_action = match column {
+                ColumnDescriptor::RowId(_) => Some(HideColumnAction::RowId),
+
+                ColumnDescriptor::Time(desc) => {
+                    (desc.timeline_name() != filtered_index).then(|| HideColumnAction::Time {
+                        timeline_name: desc.timeline_name(),
+                    })
+                }
+
+                ColumnDescriptor::Component(desc) => Some(HideColumnAction::Component {
+                    entity_path: desc.entity_path.clone(),
+                    descr: desc.component_descriptor(),
+                }),
+            };
+
+            header_ui(ui, table_style, connected_to_next_cell, |ui| {
+                let header_content = |ui: &mut egui::Ui| {
+                    let mut text = egui::RichText::new(
+                        if let ColumnDescriptor::Component(component) = column {
+                            component
+                                .component_descriptor()
+                                .archetype_field_name()
+                                .to_owned()
+                        } else {
+                            column.display_name()
+                        },
+                    )
+                    .monospace();
+                    let archetype = column.archetype_name().map_or("", |a| a.short_name());
+
+                    let is_selected = match column {
+                        ColumnDescriptor::RowId(_) => {
+                            false // Can't select "RowId" as a concept
                         }
+                        ColumnDescriptor::Time(descr) => {
+                            &descr.timeline() == self.ctx.rec_cfg.time_ctrl.read().timeline()
+                        }
+                        ColumnDescriptor::Component(component_column_descriptor) => self
+                            .ctx
+                            .selection()
+                            .contains_item(&re_viewer_context::Item::ComponentPath(
+                                component_column_descriptor.component_path(),
+                            )),
                     };
 
-                    let header_ui = |ui: &mut egui::Ui| {
-                        let text = egui::RichText::new(column.short_name()).strong();
+                    // If we set strong
+                    if !is_selected {
+                        text = text.strong();
+                    }
 
-                        let is_selected = match column {
-                            ColumnDescriptor::Time(descr) => {
-                                &descr.timeline() == self.ctx.rec_cfg.time_ctrl.read().timeline()
-                            }
-                            ColumnDescriptor::Component(component_column_descriptor) => self
-                                .ctx
-                                .selection()
-                                .contains_item(&re_viewer_context::Item::ComponentPath(
-                                    component_column_descriptor.component_path(),
-                                )),
-                        };
+                    let response = ui
+                        .vertical(|ui| {
+                            ui.spacing_mut().item_spacing.y = 2.0;
+                            ui.label(
+                                RichText::new(archetype)
+                                    .size(10.0)
+                                    .color(ui.tokens().text_subdued),
+                            );
+                            ui.selectable_label(is_selected, text)
+                        })
+                        .inner;
 
-                        let response = ui.selectable_label(is_selected, text);
-
-                        match column {
-                            ColumnDescriptor::Time(descr) => {
-                                if response.clicked() {
-                                    self.ctx.command_sender().send_system(
-                                        re_viewer_context::SystemCommand::SetActiveTimeline {
-                                            rec_id: self.ctx.recording_id().clone(),
-                                            timeline: descr.timeline(),
-                                        },
-                                    );
-                                }
-                            }
-                            ColumnDescriptor::Component(component_column_descriptor) => {
-                                self.ctx.handle_select_hover_drag_interactions(
-                                    &response,
-                                    re_viewer_context::Item::ComponentPath(
-                                        component_column_descriptor.component_path(),
-                                    ),
-                                    false,
+                    match column {
+                        ColumnDescriptor::RowId(_) => {}
+                        ColumnDescriptor::Time(descr) => {
+                            if response.clicked() {
+                                self.ctx.command_sender().send_system(
+                                    re_viewer_context::SystemCommand::SetActiveTime {
+                                        store_id: self.ctx.store_id().clone(),
+                                        timeline: descr.timeline(),
+                                        time: None,
+                                    },
                                 );
                             }
                         }
-                    };
-
-                    if let Some(hide_action) = hide_action {
-                        let hide_clicked = cell_with_hover_button_ui(
-                            ui,
-                            &re_ui::icons::VISIBLE,
-                            CellStyle::Header,
-                            header_ui,
-                        );
-
-                        if hide_clicked {
-                            self.hide_column_actions.push(hide_action);
+                        ColumnDescriptor::Component(component_column_descriptor) => {
+                            self.ctx.handle_select_hover_drag_interactions(
+                                &response,
+                                re_viewer_context::Item::ComponentPath(
+                                    component_column_descriptor.component_path(),
+                                ),
+                                false,
+                            );
                         }
-                    } else {
-                        header_ui(ui);
+                    }
+                };
+
+                if let Some(hide_action) = hide_action {
+                    let hide_clicked = cell_with_hover_button_ui(
+                        ui,
+                        &re_ui::icons::VISIBLE,
+                        CellStyle::Header,
+                        header_content,
+                    );
+
+                    if hide_clicked {
+                        self.hide_column_actions.push(hide_action);
                     }
                 } else {
-                    // this should never happen
-                    error_ui(ui, format!("Unexpected header row_nr: {}", cell.row_nr));
+                    header_content(ui);
                 }
             });
+        } else {
+            // this should never happen
+            error_ui(ui, format!("Unexpected header row_nr: {}", cell.row_nr));
+        }
     }
 
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &egui_table::CellInfo) {
         re_tracing::profile_function!();
+
+        let table_style = self.table_style;
 
         debug_assert!(cell.row_nr < self.num_rows, "Bug in egui_table");
 
@@ -416,19 +474,19 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
 
         let is_row_odd = self.expanded_rows.is_row_odd(cell.row_nr);
 
-        // Iterate over the top line (the summary, thus the `None`), and all additional lines.
-        // Note: we must iterate over all lines regardless of the actual number of instances so that
+        // Iterate over the top row (the summary, thus the `None`), and all additional rows.
+        // Note: we must iterate over all rows regardless of the actual number of instances so that
         // the zebra stripes are properly drawn.
         let instance_indices = std::iter::once(None).chain((0..additional_lines).map(Option::Some));
 
         {
-            re_tracing::profile_scope!("lines");
+            re_tracing::profile_scope!("rows");
 
-            // how the line is drawn
-            let line_content = |ui: &mut egui::Ui,
-                                expanded_rows: &mut ExpandedRows<'_>,
-                                line_index: usize,
-                                instance_index: Option<u64>| {
+            // how the row is drawn
+            let row_content = |ui: &mut egui::Ui,
+                               expanded_rows: &mut ExpandedRows<'_>,
+                               line_index: usize,
+                               instance_index: Option<u64>| {
                 // Draw the alternating background color.
                 let is_line_odd = is_row_odd ^ (line_index % 2 == 1);
                 if is_line_odd {
@@ -449,22 +507,26 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                 };
 
                 // Draw the cell content with some margin.
-                egui::Frame::new()
-                    .inner_margin(egui::Margin::symmetric(Self::LEFT_RIGHT_MARGIN, 0))
-                    .show(ui, |ui| {
-                        line_ui(
-                            ui,
-                            expanded_rows,
-                            line_index,
-                            instance_index,
-                            instance_count,
-                            cell,
-                            data_content,
-                        );
-                    });
+                cell_ui(ui, table_style, false, |ui| {
+                    line_ui(
+                        ui,
+                        expanded_rows,
+                        line_index,
+                        instance_index,
+                        instance_count,
+                        cell,
+                        data_content,
+                    );
+                });
             };
 
-            split_ui_vertically(ui, &mut self.expanded_rows, instance_indices, line_content);
+            split_ui_vertically(
+                ui,
+                &mut self.expanded_rows,
+                table_style,
+                instance_indices,
+                row_content,
+            );
         }
     }
 
@@ -473,11 +535,11 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
     }
 
     fn default_row_height(&self) -> f32 {
-        re_ui::DesignTokens::table_line_height()
+        self.ctx.tokens().table_row_height(self.table_style)
     }
 }
 
-/// Draw a single line in a table.
+/// Draw a single row in a table.
 ///
 /// This deals with the row expansion interaction and logic, as well as summarizing the data when
 /// necessary. The actual data drawing is delegated to the `data_content` closure.
@@ -494,26 +556,26 @@ fn line_ui(
 
     let row_expansion = expanded_rows.additional_lines_for_row(cell.row_nr);
 
-    /// What kinds of lines might we encounter here?
+    /// What kinds of rows might we encounter here?
     enum SubcellKind {
-        /// Summary line with content that as zero or one instances, so cannot be expanded.
+        /// Summary row with content that as zero or one instances, so cannot be expanded.
         Summary,
 
-        /// Summary line with >1 instances, so can be expanded.
+        /// Summary row with >1 instances, so can be expanded.
         SummaryWithExpand,
 
         /// A particular instance
         Instance,
 
-        /// There are more instances than available lines, so this is a summary of how many
+        /// There are more instances than available rows, so this is a summary of how many
         /// there are left.
         MoreInstancesSummary { remaining_instances: u64 },
 
-        /// Not enough instances to fill this line.
+        /// Not enough instances to fill this row.
         Blank,
     }
 
-    // The truth table that determines what kind of line we are dealing with.
+    // The truth table that determines what kind of row we are dealing with.
     let subcell_kind = match instance_index {
         // First row with >1 instances.
         None if { instance_count > 1 } => SubcellKind::SummaryWithExpand,
@@ -521,7 +583,7 @@ fn line_ui(
         // First row with 0 or 1 instances.
         None => SubcellKind::Summary,
 
-        // Last line and possibly too many instances to display.
+        // Last row and possibly too many instances to display.
         Some(instance_index)
             if { line_index as u64 == row_expansion && instance_index < instance_count } =>
         {
@@ -529,7 +591,7 @@ fn line_ui(
                 .saturating_sub(instance_index)
                 .saturating_sub(1);
             if remaining > 0 {
-                // +1 is because the "X more…" line takes one instance spot
+                // +1 is because the "X more…" row takes one instance spot
                 SubcellKind::MoreInstancesSummary {
                     remaining_instances: remaining + 1,
                 }
@@ -538,10 +600,10 @@ fn line_ui(
             }
         }
 
-        // Some line for which an instance exists.
+        // Some row for which an instance exists.
         Some(instance_index) if { instance_index < instance_count } => SubcellKind::Instance,
 
-        // Some line for which no instance exists.
+        // Some row for which no instance exists.
         Some(_) => SubcellKind::Blank,
     };
 
@@ -575,7 +637,7 @@ fn line_ui(
         SubcellKind::Instance => {
             let cell_clicked = cell_with_hover_button_ui(
                 ui,
-                &re_ui::icons::COLLAPSE,
+                &re_ui::icons::ARROW_UP,
                 CellStyle::InstanceData,
                 data_content,
             );
@@ -676,14 +738,13 @@ fn cell_with_hover_button_ui(
 
     if is_hovering_cell {
         let mut content_rect = ui.max_rect();
-        content_rect.max.x = (content_rect.max.x
-            - re_ui::DesignTokens::small_icon_size().x
-            - re_ui::DesignTokens::text_to_icon_padding())
-        .at_least(content_rect.min.x);
+        let tokens = ui.tokens();
+        content_rect.max.x =
+            (content_rect.max.x - tokens.small_icon_size.x - tokens.text_to_icon_padding())
+                .at_least(content_rect.min.x);
 
         let button_rect = egui::Rect::from_x_y_ranges(
-            (content_rect.max.x + re_ui::DesignTokens::text_to_icon_padding())
-                ..=ui.max_rect().max.x,
+            (content_rect.max.x + tokens.text_to_icon_padding())..=ui.max_rect().max.x,
             ui.max_rect().y_range(),
         );
 
@@ -700,7 +761,7 @@ fn cell_with_hover_button_ui(
         button_ui.visuals_mut().widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
         button_ui.add(egui::Button::image(
             icon.as_image()
-                .fit_to_exact_size(re_ui::DesignTokens::small_icon_size())
+                .fit_to_exact_size(tokens.small_icon_size)
                 .tint(button_tint),
         ));
 
@@ -719,18 +780,21 @@ fn cell_with_hover_button_ui(
     }
 }
 
-/// Helper to draw individual lines into an expanded cell in a table.
+/// Helper to draw individual rows into an expanded cell in a table.
 ///
 /// `context`: whatever mutable context is necessary for the `line_content_ui`
-/// `line_data`: the data to be displayed in each line
-/// `line_content_ui`: the function to draw the content of each line
+/// `line_data`: the data to be displayed in each row
+/// `line_content_ui`: the function to draw the content of each row
 fn split_ui_vertically<Item, Ctx>(
     ui: &mut egui::Ui,
     context: &mut Ctx,
+    table_style: re_ui::TableStyle,
     line_data: impl Iterator<Item = Item>,
     line_content_ui: impl Fn(&mut egui::Ui, &mut Ctx, usize, Item),
 ) {
     re_tracing::profile_function!();
+
+    let tokens = ui.tokens();
 
     // Empirical testing shows that iterating over all instances can take multiple tens of ms
     // when the instance count is very large (which is common). So we use the clip rectangle to
@@ -738,33 +802,33 @@ fn split_ui_vertically<Item, Ctx>(
     let visible_y_range = ui.clip_rect().y_range();
     let total_y_range = ui.max_rect().y_range();
 
-    let line_height = re_ui::DesignTokens::table_line_height();
+    let row_height = tokens.table_row_height(table_style);
 
     // Note: converting float to unsigned ints implicitly saturate negative values to 0
-    let start_row = ((visible_y_range.min - total_y_range.min) / line_height).floor() as usize;
+    let start_row = ((visible_y_range.min - total_y_range.min) / row_height).floor() as usize;
 
-    let end_row = ((visible_y_range.max - total_y_range.min) / line_height).ceil() as usize;
+    let end_row = ((visible_y_range.max - total_y_range.min) / row_height).ceil() as usize;
 
     let ui_left_top = ui.cursor().min;
-    let row_size = egui::vec2(ui.available_width(), line_height);
+    let row_size = egui::vec2(ui.available_width(), row_height);
 
     for (line_index, item_data) in line_data
         .enumerate()
         .skip(start_row)
         .take(end_row.saturating_sub(start_row))
     {
-        let line_rect = egui::Rect::from_min_size(
-            ui_left_top + egui::Vec2::DOWN * (line_index as f32 * line_height),
+        let row_rect = egui::Rect::from_min_size(
+            ui_left_top + egui::Vec2::DOWN * (line_index as f32 * row_height),
             row_size,
         );
 
-        // During animation, there may be more lines than can possibly fit. If so, no point in
+        // During animation, there may be more rows than can possibly fit. If so, no point in
         // continuing to draw them.
-        if !ui.max_rect().intersects(line_rect) {
+        if !ui.max_rect().intersects(row_rect) {
             return;
         }
 
-        ui.scope_builder(egui::UiBuilder::new().max_rect(line_rect), |ui| {
+        ui.scope_builder(egui::UiBuilder::new().max_rect(row_rect), |ui| {
             line_content_ui(ui, context, line_index, item_data);
         });
     }

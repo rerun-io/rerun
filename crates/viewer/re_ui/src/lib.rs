@@ -1,5 +1,8 @@
 //! Rerun GUI theme and helpers, built around [`egui`](https://www.egui.rs/).
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
+pub mod alert;
 mod color_table;
 mod command;
 mod command_palette;
@@ -8,6 +11,7 @@ mod design_tokens;
 pub mod drag_and_drop;
 pub mod filter_widget;
 mod help;
+mod hot_reload_design_tokens;
 mod icon_text;
 pub mod icons;
 pub mod list_item;
@@ -16,30 +20,33 @@ pub mod modal;
 pub mod notifications;
 mod section_collapsing_header;
 pub mod syntax_highlighting;
+mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
 
-use egui::Color32;
 use egui::NumExt as _;
 
 pub use self::{
-    color_table::{ColorTable, ColorToken, Hue, Scale},
     command::{UICommand, UICommandSender},
     command_palette::CommandPalette,
     context_ext::ContextExt,
-    design_tokens::DesignTokens,
+    design_tokens::{DesignTokens, TableStyle},
     help::*,
+    hot_reload_design_tokens::design_tokens_of,
     icon_text::*,
     icons::Icon,
     markdown_utils::*,
     section_collapsing_header::SectionCollapsingHeader,
     syntax_highlighting::SyntaxHighlighting,
+    time_drag_value::TimeDragValue,
     ui_ext::UiExt,
     ui_layout::UiLayout,
 };
 
 #[cfg(feature = "arrow")]
 mod arrow_ui;
+pub mod menu;
+pub mod time;
 
 #[cfg(feature = "arrow")]
 pub use self::arrow_ui::arrow_ui;
@@ -58,9 +65,6 @@ pub const CUSTOM_WINDOW_DECORATIONS: bool = false; // !FULLSIZE_CONTENT; // TODO
 /// If true, we show the native window decorations/chrome with the
 /// close/maximize/minimize buttons and app title.
 pub const NATIVE_WINDOW_BAR: bool = !FULLSIZE_CONTENT && !CUSTOM_WINDOW_DECORATIONS;
-
-pub const INFO_COLOR: Color32 = Color32::from_rgb(0, 155, 255);
-pub const SUCCESS_COLOR: Color32 = Color32::from_rgb(0, 240, 32);
 
 // ----------------------------------------------------------------------------
 
@@ -88,15 +92,18 @@ pub enum LabelStyle {
 
 // ----------------------------------------------------------------------------
 
-/// Return a reference to the global design tokens structure.
-pub fn design_tokens() -> &'static DesignTokens {
-    use once_cell::sync::OnceCell;
-    static DESIGN_TOKENS: OnceCell<DesignTokens> = OnceCell::new();
-    DESIGN_TOKENS.get_or_init(DesignTokens::load)
+pub fn design_tokens_of_visuals(visuals: &egui::Visuals) -> &'static DesignTokens {
+    if visuals.dark_mode {
+        design_tokens_of(egui::Theme::Dark)
+    } else {
+        design_tokens_of(egui::Theme::Light)
+    }
 }
 
 /// Apply the Rerun design tokens to the given egui context and install image loaders.
 pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
+    re_tracing::profile_function!();
+
     egui_extras::install_image_loaders(egui_ctx);
 
     egui_ctx.include_bytes(
@@ -109,15 +116,32 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     );
 
     egui_ctx.options_mut(|o| {
-        o.theme_preference = egui::ThemePreference::Dark;
-        o.fallback_theme = egui::Theme::Dark;
+        o.fallback_theme = egui::Theme::Dark; // If we don't know the system theme, use this as fallback
     });
 
-    design_tokens().apply(egui_ctx);
+    set_themes(egui_ctx);
 
-    egui_ctx.style_mut(|style| {
-        style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
-    });
+    #[cfg(hot_reload_design_tokens)]
+    {
+        let egui_ctx = egui_ctx.clone();
+        hot_reload_design_tokens::install_hot_reload(move || {
+            re_log::debug!("Hot-reloading design tokens…");
+            hot_reload_design_tokens::hot_reload_design_tokens();
+            set_themes(&egui_ctx);
+            egui_ctx.request_repaint();
+        });
+    }
+}
+
+fn set_themes(egui_ctx: &egui::Context) {
+    // It's the same fonts in dark/light mode:
+    design_tokens_of(egui::Theme::Dark).set_fonts(egui_ctx);
+
+    for theme in [egui::Theme::Dark, egui::Theme::Light] {
+        let mut style = std::sync::Arc::unwrap_or_clone(egui_ctx.style_of(theme));
+        design_tokens_of(theme).apply(&mut style);
+        egui_ctx.set_style_of(theme, style);
+    }
 }
 
 fn format_with_decimals_in_range(

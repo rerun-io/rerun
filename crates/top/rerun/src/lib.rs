@@ -93,7 +93,7 @@
 //! ```
 //!
 //! ```ignore
-//! cargo install rerun
+//! cargo install rerun --locked
 //! rerun --help
 //! ```
 //!
@@ -130,9 +130,7 @@ pub use re_log::default_log_filter;
 pub use log_integration::Logger;
 
 #[cfg(feature = "run")]
-pub use commands::{run, CallSource};
-
-pub use re_log_encoding::VersionPolicy;
+pub use commands::{CallSource, run};
 
 #[cfg(feature = "sdk")]
 pub use sdk::*;
@@ -171,6 +169,7 @@ pub mod external {
     pub use ::re_build_info;
     pub use ::re_entity_db;
     pub use ::re_entity_db::external::*;
+    pub use ::re_error;
     pub use ::re_format;
     pub use ::re_format_arrow;
 
@@ -181,13 +180,16 @@ pub mod external {
     #[cfg(not(target_arch = "wasm32"))]
     pub use clap;
 
+    #[cfg(any(feature = "run", feature = "native_viewer"))]
+    pub use re_crash_handler;
+
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;
 
     #[cfg(feature = "native_viewer")]
     pub use re_viewer::external::*;
 
-    #[cfg(feature = "sdk")]
+    #[cfg(any(feature = "sdk", feature = "server"))]
     pub use re_sdk::external::*;
 
     #[cfg(feature = "sdk")]

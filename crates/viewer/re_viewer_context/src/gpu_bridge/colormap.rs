@@ -2,8 +2,8 @@ use re_types::reflection::Enum as _;
 use re_ui::list_item;
 
 use crate::{
-    gpu_bridge::{get_or_create_texture, render_image},
     MaybeMutRef,
+    gpu_bridge::{get_or_create_texture, render_image},
 };
 
 const MIN_WIDTH: f32 = 150.0;

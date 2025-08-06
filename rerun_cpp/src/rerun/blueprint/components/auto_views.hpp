@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/bool.hpp"
 #include "../../result.hpp"
 
@@ -12,6 +11,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether or not views should be created automatically.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct AutoViews {
         rerun::datatypes::Bool auto_views;
 
@@ -45,7 +47,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::AutoViews> {
-        static constexpr ComponentDescriptor Descriptor = "rerun.blueprint.components.AutoViews";
+        static constexpr std::string_view ComponentType = "rerun.blueprint.components.AutoViews";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {

@@ -9,13 +9,13 @@ use itertools::Itertools as _;
 use re_renderer::Hsva;
 
 use re_renderer::{
+    Color32, LineDrawableBuilder, PointCloudBuilder, Size,
     renderer::{
         ColormappedTexture, LineStripFlags, RectangleDrawData, RectangleOptions, TextureFilterMag,
         TextureFilterMin, TexturedRect,
     },
     resource_managers::{GpuTexture2D, ImageDataDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
-    Color32, LineDrawableBuilder, PointCloudBuilder, Size,
 };
 
 mod framework;
@@ -295,7 +295,7 @@ impl framework::Example for Render2D {
                     TargetConfiguration {
                         name: "2D".into(),
                         resolution_in_pixel: splits[0].resolution_in_pixel,
-                        view_from_world: re_math::IsoTransform::IDENTITY,
+                        view_from_world: macaw::IsoTransform::IDENTITY,
                         projection_from_view: Projection::Orthographic {
                             camera_mode:
                                 view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
@@ -331,7 +331,7 @@ impl framework::Example for Render2D {
                     view_builder::TargetConfiguration {
                         name: "3D".into(),
                         resolution_in_pixel: splits[1].resolution_in_pixel,
-                        view_from_world: re_math::IsoTransform::look_at_rh(
+                        view_from_world: macaw::IsoTransform::look_at_rh(
                             camera_position,
                             camera_rotation_center,
                             glam::Vec3::Y,

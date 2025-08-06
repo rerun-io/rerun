@@ -10,9 +10,29 @@ impl Blob {
     /// Panics iff `offset + length` is larger than `len`.
     #[inline]
     pub fn sliced(self, range: std::ops::Range<usize>) -> Self {
-        self.0.sliced(range).into()
+        self.0.slice(range.start, range.len()).into()
+    }
+
+    /// Returns the bytes of a serialized blob batch without copying it.
+    ///
+    /// Returns `None` if the serialized component batch didn't have the expected shape.
+    pub fn serialized_blob_as_slice(
+        serialized_blob: &re_types_core::SerializedComponentBatch,
+    ) -> Option<&[u8]> {
+        let blob_list_array = serialized_blob
+            .array
+            .as_any()
+            .downcast_ref::<arrow::array::ListArray>()?;
+        let blob_data = blob_list_array
+            .values()
+            .as_any()
+            .downcast_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()?;
+
+        Some(blob_data.values().inner().as_slice())
     }
 }
+
+impl Eq for Blob {}
 
 impl From<Vec<u8>> for Blob {
     fn from(bytes: Vec<u8>) -> Self {
@@ -22,22 +42,15 @@ impl From<Vec<u8>> for Blob {
 
 impl From<&[u8]> for Blob {
     fn from(bytes: &[u8]) -> Self {
-        Self(bytes.into())
+        Self::from(bytes.to_vec())
     }
 }
 
 impl std::ops::Deref for Blob {
-    type Target = re_types_core::ArrowBuffer<u8>;
+    type Target = arrow::buffer::ScalarBuffer<u8>;
 
     #[inline]
-    fn deref(&self) -> &re_types_core::ArrowBuffer<u8> {
+    fn deref(&self) -> &arrow::buffer::ScalarBuffer<u8> {
         &self.0
-    }
-}
-
-impl From<arrow::buffer::ScalarBuffer<u8>> for Blob {
-    #[inline]
-    fn from(buff: arrow::buffer::ScalarBuffer<u8>) -> Self {
-        Self(buff.into())
     }
 }

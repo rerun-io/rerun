@@ -100,7 +100,10 @@ impl UiLayout {
     }
 
     fn decorate_url(ui: &mut egui::Ui, text: &str, galley: Arc<egui::Galley>) -> egui::Response {
-        if url::Url::parse(text).is_ok() {
+        // By default e.g., "droid:full" would be considered a valid URL. We decided we only care
+        // about sane URL formats that include "://". This means e.g., "mailto:hello@world" won't
+        // be considered a URL, but that is preferable to showing links for anything with a colon.
+        if text.contains("://") && url::Url::parse(text).is_ok() {
             // This is a general link and should not open a new tab unless desired by the user.
             ui.re_hyperlink(text, text, false)
         } else {
@@ -118,6 +121,13 @@ impl UiLayout {
         match self {
             Self::List => {
                 layout_job.wrap.max_rows = 1; // We must fit on one line
+
+                // Show the whole text; not just the first line.
+                // See https://github.com/rerun-io/rerun/issues/10653
+                // Ideally egui would allow us to configure what replacement character to use
+                // instead of newline, but for now it doesn't, so `\n` will show up as a square.
+                layout_job.break_on_newline = false;
+
                 if ui.is_sizing_pass() {
                     // grow parent if needed - that's the point of a sizing pass
                     layout_job.wrap.max_width = f32::INFINITY;

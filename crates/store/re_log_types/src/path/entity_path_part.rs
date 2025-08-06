@@ -4,7 +4,6 @@ use crate::PathParseError;
 
 pub const RESERVED_NAMESPACE_PREFIX: &str = "__";
 const PROPERTIES_PART: &str = "__properties";
-const RECORDING_PART: &str = "recording";
 
 /// The different parts that make up an [`EntityPath`][crate::EntityPath].
 ///
@@ -39,11 +38,6 @@ impl EntityPathPart {
     #[inline]
     pub fn properties() -> Self {
         Self::new(PROPERTIES_PART)
-    }
-
-    #[inline]
-    pub fn recording() -> Self {
-        Self::new(RECORDING_PART)
     }
 
     /// Unescape the string, forgiving any syntax error with a best-effort approach.

@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/bool.hpp"
 #include "../../result.hpp"
 #include "component_column_selector.hpp"
@@ -19,6 +18,9 @@ namespace arrow {
 
 namespace rerun::blueprint::datatypes {
     /// **Datatype**: Configuration for the filter is not null feature of the dataframe view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct FilterIsNotNull {
         /// Whether the filter by event feature is active.
         rerun::datatypes::Bool active;
@@ -38,7 +40,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::datatypes::FilterIsNotNull> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.datatypes.FilterIsNotNull";
 
         /// Returns the arrow data type this type corresponds to.

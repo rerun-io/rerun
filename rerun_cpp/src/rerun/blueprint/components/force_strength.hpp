@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/float64.hpp"
 #include "../../result.hpp"
 
@@ -14,6 +13,9 @@ namespace rerun::blueprint::components {
     /// **Component**: The strength of a given force.
     ///
     /// Allows to assign different weights to the individual forces, prioritizing one over the other.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ForceStrength {
         rerun::datatypes::Float64 distance;
 
@@ -49,7 +51,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::ForceStrength> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentType =
             "rerun.blueprint.components.ForceStrength";
 
         /// Returns the arrow data type this type corresponds to.

@@ -3,28 +3,28 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
-use re_types::blueprint::archetypes::LineGrid3D;
-use re_types::{
-    blueprint::archetypes::Background, components::ViewCoordinates, Component as _, View as _,
-    ViewClassIdentifier,
-};
-use re_ui::{list_item, Help, UiExt as _};
+use re_log_types::EntityPath;
+use re_types::blueprint::archetypes::{EyeControls3D, LineGrid3D};
+use re_types::components;
+use re_types::{Component as _, View as _, ViewClassIdentifier, blueprint::archetypes::Background};
+use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    RecommendedView, SmallVisualizerSet, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableFilterContext,
+    RecommendedView, SmallVisualizerSet, ViewClass, ViewClassExt as _, ViewClassRegistryError,
+    ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    VisualizableFilterContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
+use crate::transform_cache::query_view_coordinates;
 use crate::visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer};
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
-    ui::{format_vector, SpatialViewState},
+    ui::{SpatialViewState, format_vector},
     view_kind::SpatialViewKind,
     visualizers::register_3d_spatial_visualizers,
 };
@@ -60,8 +60,8 @@ impl ViewClass for SpatialView3D {
         &re_ui::icons::VIEW_3D
     }
 
-    fn help(&self, egui_ctx: &egui::Context) -> Help {
-        super::ui_3d::help(egui_ctx)
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        super::ui_3d::help(os)
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {
@@ -94,7 +94,7 @@ impl ViewClass for SpatialView3D {
         re_viewer_context::ViewClassLayoutPriority::High
     }
 
-    fn recommended_root_for_entities(
+    fn recommended_origin_for_entities(
         &self,
         entities: &IntSet<EntityPath>,
         entity_db: &EntityDb,
@@ -107,7 +107,7 @@ impl ViewClass for SpatialView3D {
         //
         // Also, if a ViewCoordinate3D is logged somewhere between the common ancestor and the
         // subspace origin, we use it as origin.
-        SpatialTopology::access(&entity_db.store_id(), |topo| {
+        SpatialTopology::access(entity_db.store_id(), |topo| {
             let common_ancestor_subspace = topo.subspace_for_entity(&common_ancestor);
 
             // Consider the case where the common ancestor might be in a 2D space that is connected
@@ -149,7 +149,7 @@ impl ViewClass for SpatialView3D {
         // If the topology hasn't changed, we don't need to recompute any of this.
         // Also, we arrive at the same `VisualizableFilterContext` for lots of different origins!
 
-        let context = SpatialTopology::access(&entity_db.store_id(), |topo| {
+        let context = SpatialTopology::access(entity_db.store_id(), |topo| {
             let primary_space = topo.subspace_for_entity(space_origin);
             if !primary_space.supports_3d_content() {
                 // If this is strict 2D space, only display the origin entity itself.
@@ -265,7 +265,7 @@ impl ViewClass for SpatialView3D {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -273,7 +273,7 @@ impl ViewClass for SpatialView3D {
             ctx,
             Self::identifier(),
             SpatialViewKind::ThreeD,
-            suggested_filter,
+            include_entity,
         );
 
         // ViewCoordinates is a strong indicator that a 3D view is needed.
@@ -286,9 +286,11 @@ impl ViewClass for SpatialView3D {
         // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
         let engine = ctx.recording_engine();
         ctx.recording().tree().visit_children_recursively(|path| {
-            if engine
+            // TODO(#2663): Note that the view coordinates component may be logged by different archetypes which is why we do a name query here.
+            if !engine
                 .store()
-                .entity_has_component(path, &ViewCoordinates::name())
+                .entity_component_descriptors_with_type(path, components::ViewCoordinates::name())
+                .is_empty()
             {
                 indicated_entities.insert(path.clone());
             }
@@ -297,7 +299,7 @@ impl ViewClass for SpatialView3D {
         // Spawn a view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(&ctx.recording_id(), |topo| {
+        SpatialTopology::access(ctx.store_id(), |topo| {
             ViewSpawnHeuristics::new(
                 topo.iter_subspaces()
                     .filter_map(|subspace| {
@@ -358,7 +360,7 @@ impl ViewClass for SpatialView3D {
                     .flatten(),
             )
         })
-        .unwrap_or_default()
+        .unwrap_or_else(ViewSpawnHeuristics::empty)
     }
 
     fn selection_ui(
@@ -371,10 +373,8 @@ impl ViewClass for SpatialView3D {
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialViewState>()?;
 
-        let scene_view_coordinates = ctx
-            .recording()
-            .latest_at_component::<ViewCoordinates>(space_origin, &ctx.current_query())
-            .map(|(_index, c)| c);
+        let scene_view_coordinates =
+            query_view_coordinates(space_origin, ctx.recording(), &ctx.current_query());
 
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
@@ -423,8 +423,10 @@ impl ViewClass for SpatialView3D {
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
-            view_property_ui::<Background>(ctx, ui, view_id, self, state);
-            view_property_ui_grid3d(ctx, ui, view_id, self, state);
+            let view_ctx = self.view_context(ctx, view_id, state);
+            view_property_ui::<EyeControls3D>(&view_ctx, ui, self);
+            view_property_ui::<Background>(&view_ctx, ui, self);
+            view_property_ui_grid3d(&view_ctx, ui, self);
         });
 
         Ok(())
@@ -452,18 +454,17 @@ impl ViewClass for SpatialView3D {
 // is suitable for the most part. However, as of writing the alpha color picker doesn't handle alpha
 // which we need here.
 fn view_property_ui_grid3d(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    view_id: ViewId,
     fallback_provider: &dyn re_viewer_context::ComponentFallbackProvider,
-    view_state: &dyn ViewState,
 ) {
     let property = ViewProperty::from_archetype::<LineGrid3D>(
         ctx.blueprint_db(),
-        ctx.blueprint_query,
-        view_id,
+        ctx.blueprint_query(),
+        ctx.view_id,
     );
-    let Some(reflection) = ctx.reflection().archetypes.get(&property.archetype_name) else {
+    let reflection = ctx.viewer_ctx.reflection();
+    let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
         ui.error_label(format!(
             "Missing reflection data for archetype {:?}.",
             property.archetype_name
@@ -471,12 +472,12 @@ fn view_property_ui_grid3d(
         return;
     };
 
-    let query_ctx = property.query_context(ctx, view_state);
+    let query_ctx = property.query_context(ctx);
     let sub_prop_ui = |ui: &mut egui::Ui| {
         for field in &reflection.fields {
             // TODO(#1611): The color picker for the color component doesn't show alpha values so far since alpha is almost never supported.
             // Here however, we need that alpha color picker!
-            if field.component_name == re_types::components::Color::name() {
+            if field.component_type == re_types::components::Color::name() {
                 re_view::view_property_component_ui_custom(
                     &query_ctx,
                     ui,
@@ -488,7 +489,7 @@ fn view_property_ui_grid3d(
                             .component_or_fallback::<re_types::components::Color>(
                                 ctx,
                                 fallback_provider,
-                                view_state,
+                                &LineGrid3D::descriptor_color(),
                             )
                         else {
                             ui.error_label("Failed to query color component");
@@ -503,7 +504,11 @@ fn view_property_ui_grid3d(
                         .changed()
                         {
                             let color = re_types::components::Color::from(edit_color);
-                            property.save_blueprint_component(ctx, &[color]);
+                            property.save_blueprint_component(
+                                ctx.viewer_ctx,
+                                &LineGrid3D::descriptor_color(),
+                                &color,
+                            );
                         }
                     },
                     None, // No multiline editor.

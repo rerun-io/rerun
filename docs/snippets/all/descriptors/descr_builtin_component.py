@@ -9,7 +9,15 @@ rr.spawn()
 
 rr.log(
     "data",
-    [rr.components.Position3DBatch([1, 2, 3]).described()],
+    [
+        rr.components.Position3DBatch([1, 2, 3]).described(
+            rr.ComponentDescriptor(
+                "user.CustomPoints3D:points",
+                archetype="user.CustomPoints3D",
+                component_type="rerun.components.Position3D",
+            )
+        )
+    ],
     static=True,
 )
 

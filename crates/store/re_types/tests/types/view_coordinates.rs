@@ -7,8 +7,7 @@ use re_types::{
 fn roundtrip() {
     let expected = ViewCoordinates {
         xyz: components::ViewCoordinates::new(ViewDir::Right, ViewDir::Down, ViewDir::Forward)
-            .serialized()
-            .map(|xyz| xyz.with_descriptor_override(ViewCoordinates::descriptor_xyz())),
+            .serialized(ViewCoordinates::descriptor_xyz()),
     };
 
     let arch = ViewCoordinates::RDF();

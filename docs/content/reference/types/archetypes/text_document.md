@@ -7,13 +7,15 @@ A text element intended to be displayed in its own text box.
 
 Supports raw text and markdown.
 
-## Components
+## Fields
+### Required
+* `text`: [`Text`](../components/text.md)
 
-**Required**: [`Text`](../components/text.md)
+### Optional
+* `media_type`: [`MediaType`](../components/media_type.md)
 
-**Optional**: [`MediaType`](../components/media_type.md)
 
-## Shown in
+## Can be shown in
 * [TextDocumentView](../views/text_document_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

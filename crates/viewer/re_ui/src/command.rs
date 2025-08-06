@@ -1,5 +1,7 @@
-use egui::{os::OperatingSystem, Key, KeyboardShortcut, Modifiers};
-use smallvec::{smallvec, SmallVec};
+use egui::{Key, KeyboardShortcut, Modifiers, os::OperatingSystem};
+use smallvec::{SmallVec, smallvec};
+
+use crate::context_ext::ContextExt as _;
 
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {
@@ -16,11 +18,13 @@ pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
     Open,
     Import,
+
+    /// Save the current recording, or all selected recordings
     SaveRecording,
     SaveRecordingSelection,
     SaveBlueprint,
     CloseCurrentRecording,
-    CloseAllRecordings,
+    CloseAllEntries,
 
     Undo,
     Redo,
@@ -94,6 +98,9 @@ pub enum UICommand {
     RestartWithWebGl,
     #[cfg(target_arch = "wasm32")]
     RestartWithWebGpu,
+
+    // Redap commands
+    AddRedapServer,
 }
 
 impl UICommand {
@@ -107,34 +114,57 @@ impl UICommand {
 
     pub fn text_and_tooltip(self) -> (&'static str, &'static str) {
         match self {
-            Self::SaveRecording => ("Save recording…", "Save all data to a Rerun data file (.rrd)"),
+            Self::SaveRecording => (
+                "Save recording…",
+                "Save all data to a Rerun data file (.rrd)",
+            ),
 
             Self::SaveRecordingSelection => (
                 "Save current time selection…",
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
             ),
 
-            Self::SaveBlueprint => ("Save blueprint…", "Save the current viewer setup as a Rerun blueprint file (.rbl)"),
+            Self::SaveBlueprint => (
+                "Save blueprint…",
+                "Save the current viewer setup as a Rerun blueprint file (.rbl)",
+            ),
 
-            Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …) in a new recording"),
-            Self::Import => ("Import…", "Import any supported files (.rrd, images, meshes, …) in the current recording"),
+            Self::Open => (
+                "Open…",
+                "Open any supported files (.rrd, images, meshes, …) in a new recording",
+            ),
+            Self::Import => (
+                "Import…",
+                "Import any supported files (.rrd, images, meshes, …) in the current recording",
+            ),
 
             Self::CloseCurrentRecording => (
                 "Close current recording",
                 "Close the current recording (unsaved data will be lost)",
             ),
 
-            Self::CloseAllRecordings => ("Close all recordings",
-                                         "Close all open current recording (unsaved data will be lost)"),
+            Self::CloseAllEntries => (
+                "Close all recordings",
+                "Close all open current recording (unsaved data will be lost)",
+            ),
 
-            Self::Undo => ("Undo", "Undo the last blueprint edit for the open recording"),
+            Self::Undo => (
+                "Undo",
+                "Undo the last blueprint edit for the open recording",
+            ),
             Self::Redo => ("Redo", "Redo the last undone thing"),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Quit => ("Quit", "Close the Rerun Viewer"),
 
-            Self::OpenWebHelp => ("Help", "Visit the help page on our website, with troubleshooting tips and more"),
-            Self::OpenRerunDiscord => ("Rerun Discord", "Visit the Rerun Discord server, where you can ask questions and get help"),
+            Self::OpenWebHelp => (
+                "Help",
+                "Visit the help page on our website, with troubleshooting tips and more",
+            ),
+            Self::OpenRerunDiscord => (
+                "Rerun Discord",
+                "Visit the Rerun Discord server, where you can ask questions and get help",
+            ),
 
             Self::ResetViewer => (
                 "Reset Viewer",
@@ -143,12 +173,12 @@ impl UICommand {
 
             Self::ClearActiveBlueprint => (
                 "Reset to default blueprint",
-                "Clear active blueprint and use the default blueprint instead. If no default blueprint is set, this will use a heuristic blueprint."
+                "Clear active blueprint and use the default blueprint instead. If no default blueprint is set, this will use a heuristic blueprint.",
             ),
 
             Self::ClearActiveBlueprintAndEnableHeuristics => (
                 "Reset to heuristic blueprint",
-                "Re-populate viewport with automatically chosen views using default visualizers"
+                "Re-populate viewport with automatically chosen views using default visualizers",
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -162,13 +192,19 @@ impl UICommand {
                 "View and track current RAM usage inside Rerun Viewer",
             ),
 
-            Self::TogglePanelStateOverrides => ("Toggle panel state overrides", "Toggle panel state between app blueprint and overrides"),
+            Self::TogglePanelStateOverrides => (
+                "Toggle panel state overrides",
+                "Toggle panel state between app blueprint and overrides",
+            ),
             Self::ToggleTopPanel => ("Toggle top panel", "Toggle the top panel"),
             Self::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
             Self::ExpandBlueprintPanel => ("Expand blueprint panel", "Expand the left panel"),
             Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
             Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
-            Self::ToggleChunkStoreBrowser => ("Toggle chunk store browser", "Toggle the chunk store browser"),
+            Self::ToggleChunkStoreBrowser => (
+                "Toggle chunk store browser",
+                "Toggle the chunk store browser",
+            ),
             Self::Settings => ("Settings…", "Show the settings screen"),
 
             #[cfg(debug_assertions)]
@@ -192,7 +228,7 @@ impl UICommand {
             #[cfg(target_arch = "wasm32")]
             Self::ToggleFullscreen => (
                 "Toggle fullscreen",
-                "Toggle between full viewport dimensions and initial dimensions"
+                "Toggle between full viewport dimensions and initial dimensions",
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -207,16 +243,14 @@ impl UICommand {
 
             Self::ToggleCommandPalette => ("Command palette…", "Toggle the Command Palette"),
 
-            Self::PlaybackTogglePlayPause => {
-                ("Toggle play/pause", "Either play or pause the time")
-            }
+            Self::PlaybackTogglePlayPause => ("Toggle play/pause", "Either play or pause the time"),
             Self::PlaybackFollow => ("Follow", "Follow on from end of timeline"),
             Self::PlaybackStepBack => (
-                "Step time back",
+                "Step backwards",
                 "Move the time marker back to the previous point in time with any data",
             ),
             Self::PlaybackStepForward => (
-                "Step time forward",
+                "Step forwards",
                 "Move the time marker to the next point in time with any data",
             ),
             Self::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
@@ -251,24 +285,28 @@ impl UICommand {
             #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => (
                 "Copy direct link",
-                "Copy a link to the viewer with the URL parameter set to the current .rrd data source."
+                "Copy a link to the viewer with the URL parameter set to the current .rrd data source.",
             ),
-
 
             Self::CopyTimeRangeLink => (
                 "Copy link to selected time range",
-                "Copy a link to the part of the active recording within the loop selection bounds."
+                "Copy a link to the part of the active recording within the loop selection bounds.",
             ),
 
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGl => (
                 "Restart with WebGL",
-                "Reloads the webpage and force WebGL for rendering. All data will be lost."
+                "Reloads the webpage and force WebGL for rendering. All data will be lost.",
             ),
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGpu => (
                 "Restart with WebGPU",
-                "Reloads the webpage and force WebGPU for rendering. All data will be lost."
+                "Reloads the webpage and force WebGPU for rendering. All data will be lost.",
+            ),
+
+            Self::AddRedapServer => (
+                "Add Redap server",
+                "Connect to a Redap server (experimental)",
             ),
         }
     }
@@ -285,6 +323,10 @@ impl UICommand {
 
         fn cmd(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::COMMAND, key)
+        }
+
+        fn alt(key: Key) -> KeyboardShortcut {
+            KeyboardShortcut::new(Modifiers::ALT, key)
         }
 
         fn cmd_shift(key: Key) -> KeyboardShortcut {
@@ -306,7 +348,7 @@ impl UICommand {
             Self::Open => smallvec![cmd(Key::O)],
             Self::Import => smallvec![cmd_shift(Key::O)],
             Self::CloseCurrentRecording => smallvec![],
-            Self::CloseAllRecordings => smallvec![],
+            Self::CloseAllEntries => smallvec![],
 
             Self::Undo => smallvec![cmd(Key::Z)],
             Self::Redo => {
@@ -363,10 +405,10 @@ impl UICommand {
             Self::ToggleCommandPalette => smallvec![cmd(Key::P)],
 
             Self::PlaybackTogglePlayPause => smallvec![key(Key::Space)],
-            Self::PlaybackFollow => smallvec![cmd(Key::ArrowRight)],
-            Self::PlaybackStepBack => smallvec![key(Key::ArrowLeft)],
-            Self::PlaybackStepForward => smallvec![key(Key::ArrowRight)],
-            Self::PlaybackRestart => smallvec![cmd(Key::ArrowLeft)],
+            Self::PlaybackFollow => smallvec![alt(Key::ArrowRight)],
+            Self::PlaybackStepBack => smallvec![cmd(Key::ArrowLeft)],
+            Self::PlaybackStepForward => smallvec![cmd(Key::ArrowRight)],
+            Self::PlaybackRestart => smallvec![alt(Key::ArrowLeft)],
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => smallvec![],
@@ -389,29 +431,23 @@ impl UICommand {
             Self::RestartWithWebGl => smallvec![],
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGpu => smallvec![],
+
+            Self::AddRedapServer => smallvec![],
         }
     }
 
     /// Primary keyboard shortcut
-    fn primary_kb_shortcut(self, os: OperatingSystem) -> Option<KeyboardShortcut> {
+    pub fn primary_kb_shortcut(self, os: OperatingSystem) -> Option<KeyboardShortcut> {
         self.kb_shortcuts(os).first().copied()
     }
 
     /// Return the keyboard shortcut for this command, nicely formatted
+    // TODO(emilk): use Help/IconText instead
     pub fn formatted_kb_shortcut(self, egui_ctx: &egui::Context) -> Option<String> {
         // Note: we only show the primary shortcut to the user.
         // The fallbacks are there for people who have muscle memory for the other shortcuts.
         self.primary_kb_shortcut(egui_ctx.os())
             .map(|shortcut| egui_ctx.format_shortcut(&shortcut))
-    }
-
-    /// Add e.g. " (Ctrl+F11)" as a suffix
-    pub fn format_shortcut_tooltip_suffix(self, egui_ctx: &egui::Context) -> String {
-        if let Some(shortcut_text) = self.formatted_kb_shortcut(egui_ctx) {
-            format!(" ({shortcut_text})")
-        } else {
-            Default::default()
-        }
     }
 
     pub fn icon(self) -> Option<&'static crate::Icon> {
@@ -483,17 +519,20 @@ impl UICommand {
 
         if response.clicked() {
             command_sender.send_ui(self);
-            ui.close_menu();
+            ui.close();
         }
 
         response
     }
 
     pub fn menu_button(self, egui_ctx: &egui::Context) -> egui::Button<'static> {
+        let tokens = egui_ctx.tokens();
+
         let mut button = if let Some(icon) = self.icon() {
             egui::Button::image_and_text(
                 icon.as_image()
-                    .fit_to_exact_size(crate::DesignTokens::small_icon_size()),
+                    .tint(tokens.label_button_icon_color)
+                    .fit_to_exact_size(tokens.small_icon_size),
                 self.text(),
             )
         } else {
@@ -507,12 +546,22 @@ impl UICommand {
         button
     }
 
-    pub fn tooltip_with_shortcut(self, egui_ctx: &egui::Context) -> String {
-        format!(
-            "{}{}",
-            self.tooltip(),
-            self.format_shortcut_tooltip_suffix(egui_ctx)
-        )
+    /// Show name of command and how to activate it
+    pub fn tooltip_ui(self, ui: &mut egui::Ui) {
+        let os = ui.ctx().os();
+
+        let (label, details) = self.text_and_tooltip();
+
+        if let Some(shortcut) = self.primary_kb_shortcut(os) {
+            crate::Help::new_without_title()
+                .control(label, crate::IconText::from_keyboard_shortcut(os, shortcut))
+                .ui(ui);
+        } else {
+            ui.label(label);
+        }
+
+        ui.set_max_width(220.0);
+        ui.label(details);
     }
 }
 

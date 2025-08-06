@@ -2,60 +2,57 @@
 //!
 //! This crate contains data structures that are shared with most modules of the viewer.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod annotations;
 mod async_runtime_handle;
 mod blueprint_helpers;
-mod blueprint_id;
 mod cache;
 mod collapsed_id;
 mod component_fallbacks;
-mod contents;
+mod component_ui_registry;
 mod drag_and_drop;
-mod file_dialog;
-mod global_context;
 mod image_info;
 mod maybe_mut_ref;
 mod query_context;
 mod query_range;
 mod selection_state;
-mod store_bundle;
+mod storage_context;
 mod store_context;
 pub mod store_hub;
+mod tables;
 mod tensor;
 mod time_control;
-mod time_drag_value;
 mod typed_entity_collections;
 mod undo;
 mod utils;
 mod view;
 mod viewer_context;
 
-#[cfg(feature = "testing")]
-pub mod test_context;
-
 // TODO(andreas): Move to its own crate?
 pub mod gpu_bridge;
 mod visitor_flow_control;
+
+// if you use a ViewerContext, you probably want to use the inner GlobalContext, so we re-export
+// everything
+pub use re_global_context::*;
 
 pub use self::{
     annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
-    blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
-    cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache},
+    cache::{
+        Cache, Caches, ImageDecodeCache, ImageStatsCache, SharablePlayableVideoStream,
+        TensorStatsCache, VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
+    },
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     component_fallbacks::{
         ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
         TypedComponentFallbackProvider,
     },
-    contents::{blueprint_id_to_tile_id, Contents, ContentsName},
+    component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName},
     drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload},
-    file_dialog::santitize_file_name,
-    global_context::{
-        command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
-        ComponentUiTypes, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender,
-    },
-    image_info::{ColormapWithRange, ImageInfo},
+    image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey},
     maybe_mut_ref::MaybeMutRef,
     query_context::{
         DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
@@ -65,17 +62,20 @@ pub use self::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
         ItemContext, SelectionChange, SelectionHighlight,
     },
-    store_bundle::{StoreBundle, StoreLoadError},
+    storage_context::StorageContext,
     store_context::StoreContext,
     store_hub::StoreHub,
+    tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
     time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},
-    time_drag_value::TimeDragValue,
     typed_entity_collections::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },
     undo::BlueprintUndoState,
-    utils::{auto_color_egui, auto_color_for_entity_path, level_to_rich_text},
+    utils::{
+        auto_color_egui, auto_color_for_entity_path, level_to_rich_text,
+        video_stream_time_from_query, video_timestamp_component_to_video_time,
+    },
     view::{
         DataBasedVisualizabilityFilter, DataResult, IdentifiedViewSystem,
         OptionalViewEntityHighlight, OverridePath, PerSystemDataResults, PerSystemEntities,
@@ -96,8 +96,8 @@ pub mod external {
     pub use nohash_hasher;
     pub use {re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
 
-    #[cfg(feature = "testing")]
-    pub use egui_kittest;
+    #[cfg(not(target_arch = "wasm32"))]
+    pub use tokio;
 }
 
 // ---------------------------------------------------------------------------

@@ -5,13 +5,11 @@ fn roundtrip() {
     let all_expected = [
         Clear {
             is_recursive: re_types::components::ClearIsRecursive(true.into())
-                .serialized()
-                .map(|batch| batch.with_descriptor_override(Clear::descriptor_is_recursive())),
+                .serialized(Clear::descriptor_is_recursive()),
         },
         Clear {
             is_recursive: re_types::components::ClearIsRecursive(false.into())
-                .serialized()
-                .map(|batch| batch.with_descriptor_override(Clear::descriptor_is_recursive())),
+                .serialized(Clear::descriptor_is_recursive()),
         },
     ];
 

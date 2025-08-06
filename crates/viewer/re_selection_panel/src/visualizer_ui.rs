@@ -1,15 +1,17 @@
+use egui::RichText;
 use itertools::Itertools as _;
 
-use re_chunk::{ComponentName, RowId, UnitChunkShared};
-use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
+use re_chunk::{RowId, UnitChunkShared};
+use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
 use re_types::blueprint::archetypes::VisualizerOverrides;
+use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
 use re_types_core::external::arrow::array::ArrayRef;
-use re_ui::{list_item, UiExt as _};
+use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, QueryContext, UiLayout, ViewClassExt as _, ViewContext, ViewSystemIdentifier,
+    DataResult, QueryContext, UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection,
     VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
@@ -29,6 +31,7 @@ pub fn visualizer_ui(
         ui.error_label("Entity not found in view");
         return;
     };
+    let all_visualizers = ctx.new_visualizer_collection();
     let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
     let available_inactive_visualizers = available_inactive_visualizers(
         ctx,
@@ -36,9 +39,10 @@ pub fn visualizer_ui(
         view,
         &data_result,
         &active_visualizers,
+        &all_visualizers,
     );
 
-    let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
+    let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, "Add new visualizer…", |ui| {
         menu_add_new_visualizer(
             ctx,
             ui,
@@ -73,7 +77,7 @@ specific to the visualizer and the current view type.";
         .button(button)
         .help_markdown(markdown)
         .show(ui, |ui| {
-            visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers);
+            visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers, &all_visualizers);
         });
 }
 
@@ -82,11 +86,12 @@ pub fn visualizer_ui_impl(
     ui: &mut egui::Ui,
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
+    all_visualizers: &VisualizerCollection,
 ) {
     let override_path = data_result.override_path();
 
     let remove_visualizer_button = |ui: &mut egui::Ui, vis_name: ViewSystemIdentifier| {
-        let response = ui.small_icon_button(&re_ui::icons::CLOSE);
+        let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
         if response.clicked() {
             let archetype = VisualizerOverrides::new(
                 active_visualizers
@@ -95,7 +100,7 @@ pub fn visualizer_ui_impl(
                     .map(|v| v.as_str()),
             );
 
-            ctx.save_blueprint_archetype(override_path, &archetype);
+            ctx.save_blueprint_archetype(override_path.clone(), &archetype);
         }
         response
     };
@@ -110,22 +115,24 @@ pub fn visualizer_ui_impl(
         }
 
         for &visualizer_id in active_visualizers {
-            let default_open = true;
-
             // List all components that the visualizer may consume.
-            if let Ok(visualizer) = ctx.visualizer_collection.get_by_identifier(visualizer_id) {
+            if let Ok(visualizer) = all_visualizers.get_by_identifier(visualizer_id) {
                 ui.list_item()
+                    .with_y_offset(1.0)
+                    .with_height(20.0)
                     .interactive(false)
-                    .show_hierarchical_with_children(
+                    .show_flat(
                         ui,
-                        ui.make_persistent_id(visualizer_id),
-                        default_open,
-                        list_item::LabelContent::new(visualizer_id.as_str())
-                            .min_desired_width(150.0)
-                            .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
-                            .always_show_buttons(true),
-                        |ui| visualizer_components(ctx, ui, data_result, visualizer),
+                        list_item::LabelContent::new(
+                            RichText::new(format!("{visualizer_id}")).size(10.0).color(
+                                design_tokens_of_visuals(ui.visuals()).list_item_strong_text,
+                            ),
+                        )
+                        .min_desired_width(150.0)
+                        .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
+                        .always_show_buttons(true),
                     );
+                visualizer_components(ctx, ui, data_result, visualizer);
             } else {
                 ui.list_item_flat_noninteractive(
                     list_item::LabelContent::new(format!("{visualizer_id} (unknown visualizer)"))
@@ -155,13 +162,12 @@ fn visualizer_components(
     data_result: &DataResult,
     visualizer: &dyn VisualizerSystem,
 ) {
-    // Helper for code below
     fn non_empty_component_batch_raw(
         unit: Option<&UnitChunkShared>,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Option<(Option<RowId>, ArrayRef)> {
         let unit = unit?;
-        let batch = unit.component_batch_raw(component_name)?;
+        let batch = unit.component_batch_raw(component_descr)?;
         if batch.is_empty() {
             None
         } else {
@@ -181,32 +187,35 @@ fn visualizer_components(
         None, // TODO(andreas): Figure out how to deal with annotation context here.
         &store_query,
         data_result,
-        query_info.queried.iter().copied(),
+        query_info.queried.iter(),
         query_shadowed_defaults,
     );
 
     // TODO(andreas): Should we show required components in a special way?
-    for component_name in sorted_component_list_for_ui(query_info.queried.iter()) {
-        if component_name.is_indicator_component() {
-            continue;
-        }
-
+    for component_descr in sorted_component_list_by_archetype_for_ui(
+        ctx.viewer_ctx.reflection(),
+        query_info.queried.iter(),
+    )
+    .values()
+    .flatten()
+    {
         // TODO(andreas): What about annotation context?
 
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
-        let result_override = query_result.overrides.get(&component_name);
-        let raw_override = non_empty_component_batch_raw(result_override, &component_name);
+        let result_override = query_result.overrides.get(component_descr);
+        let raw_override = non_empty_component_batch_raw(result_override, component_descr);
 
-        let result_store = query_result.results.get(&component_name);
-        let raw_store = non_empty_component_batch_raw(result_store, &component_name);
+        let result_store = query_result.results.get(component_descr);
+        let raw_store = non_empty_component_batch_raw(result_store, component_descr);
 
-        let result_default = query_result.defaults.get(&component_name);
-        let raw_default = non_empty_component_batch_raw(result_default, &component_name);
+        let result_default = query_result.defaults.get(component_descr);
+        let raw_default = non_empty_component_batch_raw(result_default, component_descr);
 
+        // If we don't have a component type, we don't have a way to retrieve a fallback. Therefore, we return a `NullArray` as a dummy.
         let raw_fallback = visualizer
             .fallback_provider()
-            .fallback_for(&query_ctx, component_name);
+            .fallback_for(&query_ctx, component_descr);
 
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.
@@ -231,9 +240,13 @@ fn visualizer_components(
                 || !ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
                     ctx.viewer_ctx,
                     ui,
-                    raw_current_value.as_ref()                    ,
-                    override_path,
-                    component_name,
+                    re_viewer_context::EditTarget {
+                        store_id: ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
+                        timepoint: ctx.viewer_ctx.store_context.blueprint_timepoint_for_writes(),
+                        entity_path: override_path.clone(),
+                    },
+                    raw_current_value.as_ref(),
+                    component_descr.clone(),
                     multiline,
                 )
             {
@@ -243,7 +256,7 @@ fn visualizer_components(
                 #[allow(clippy::unwrap_used)] // We checked earlier that these values are valid!
                 let (query, db, entity_path, latest_at_unit) = match value_source {
                     ValueSource::Override => (
-                        ctx.viewer_ctx.blueprint_query,
+                        ctx.blueprint_query(),
                         ctx.blueprint_db(),
                         override_path.clone(),
                         result_override.unwrap(),
@@ -255,7 +268,7 @@ fn visualizer_components(
                         result_store.unwrap(),
                     ),
                     ValueSource::Default => (
-                        ctx.viewer_ctx.blueprint_query,
+                        ctx.blueprint_query(),
                         ctx.blueprint_db(),
                         ViewBlueprint::defaults_path(ctx.view_id),
                         result_default.unwrap(),
@@ -263,14 +276,14 @@ fn visualizer_components(
                     ValueSource::FallbackOrPlaceholder => {
                         // Fallback values are always single values, so we can directly go to the component ui.
                         // TODO(andreas): db & entity path don't make sense here.
-                        ctx.viewer_ctx.component_ui_registry().ui_raw(
+                        ctx.viewer_ctx.component_ui_registry().component_ui_raw(
                             ctx.viewer_ctx,
                             ui,
                             UiLayout::List,
                             &store_query,
                             ctx.recording(),
                             &data_result.entity_path,
-                            component_name,
+                            component_descr,
                             current_value_row_id,
                             raw_current_value.as_ref(),
                         );
@@ -279,7 +292,7 @@ fn visualizer_components(
                 };
 
                 re_data_ui::ComponentPathLatestAtResults {
-                    component_path: ComponentPath::new(entity_path, component_name),
+                    component_path: ComponentPath::new(entity_path, component_descr.clone()),
                     unit: latest_at_unit,
                 }
                 .data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
@@ -298,8 +311,8 @@ fn visualizer_components(
                         &query_ctx,
                         ui,
                         "Override",
-                        override_path,
-                        component_name,
+                        override_path.clone(),
+                        component_descr,
                         *row_id,
                         raw_override.as_ref(),
                     )
@@ -315,7 +328,7 @@ fn visualizer_components(
                             re_data_ui::ComponentPathLatestAtResults {
                                 component_path: ComponentPath::new(
                                     data_result.entity_path.clone(),
-                                    component_name,
+                                    component_descr.clone(),
                                 ),
                                 unit,
                             }
@@ -339,8 +352,8 @@ fn visualizer_components(
                         &query_ctx,
                         ui,
                         "Default",
-                        &ViewBlueprint::defaults_path(ctx.view_id),
-                        component_name,
+                        ViewBlueprint::defaults_path(ctx.view_id),
+                        component_descr,
                         *row_id,
                         raw_default.as_ref(),
                     )
@@ -356,14 +369,14 @@ fn visualizer_components(
                     ui.list_item_flat_noninteractive(
                         list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
                             // TODO(andreas): db & entity path don't make sense here.
-                            ctx.viewer_ctx.component_ui_registry().ui_raw(
+                            ctx.viewer_ctx.component_ui_registry().component_ui_raw(
                                 ctx.viewer_ctx,
                                 ui,
                                 UiLayout::List,
                                 &store_query,
                                 ctx.recording(),
                                 &data_result.entity_path,
-                                component_name,
+                                component_descr,
                                 None,
                                 raw_fallback.as_ref(),
                             );
@@ -379,33 +392,46 @@ fn visualizer_components(
         };
 
         let default_open = false;
-        ui.list_item()
+        let response = ui
+            .list_item()
             .interactive(false)
             .show_hierarchical_with_children(
                 ui,
-                ui.make_persistent_id(component_name),
+                ui.make_persistent_id(component_descr),
                 default_open,
-                list_item::PropertyContent::new(component_name.short_name())
-                    .value_fn(value_fn)
-                    .show_only_when_collapsed(false)
-                    .menu_button(&re_ui::icons::MORE, |ui: &mut egui::Ui| {
+                list_item::PropertyContent::new(
+                    // We're in the context of a visualizer, so we don't have to print the archetype name
+                    // since usually archetypes match 1:1 with visualizers.
+                    component_descr.archetype_field_name(),
+                )
+                .value_fn(value_fn)
+                .show_only_when_collapsed(false)
+                .menu_button(
+                    &re_ui::icons::MORE,
+                    "More options",
+                    |ui: &mut egui::Ui| {
                         menu_more(
                             ctx,
                             ui,
-                            component_name,
+                            component_descr.clone(),
                             override_path,
                             &raw_override.clone().map(|(_, raw_override)| raw_override),
                             raw_default.clone().map(|(_, raw_override)| raw_override),
                             raw_fallback.clone(),
                             raw_current_value.clone(),
                         );
-                    }),
+                    },
+                ),
                 add_children,
             )
-            .item_response
-            .on_hover_ui(|ui| {
-                component_name.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
+            .item_response;
+
+        if let Some(component_type) = component_descr.component_type {
+            response.on_hover_ui(|ui| {
+                // TODO(andreas): Add data ui for component descr?
+                component_type.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
             });
+        }
     }
 }
 
@@ -413,30 +439,31 @@ fn editable_blueprint_component_list_item(
     query_ctx: &QueryContext<'_>,
     ui: &mut egui::Ui,
     name: &'static str,
-    blueprint_path: &EntityPath,
-    component: re_types::ComponentName,
+    blueprint_path: EntityPath,
+    component_descr: &re_types::ComponentDescriptor,
     row_id: Option<RowId>,
     raw_override: &dyn arrow::array::Array,
 ) -> egui::Response {
+    let blueprint_path_clone = blueprint_path.clone();
     ui.list_item_flat_noninteractive(
         list_item::PropertyContent::new(name)
             .value_fn(|ui, _style| {
                 let allow_multiline = false;
-                query_ctx.viewer_ctx.component_ui_registry().edit_ui_raw(
+                query_ctx.viewer_ctx().component_ui_registry().edit_ui_raw(
                     query_ctx,
                     ui,
-                    query_ctx.viewer_ctx.blueprint_db(),
-                    blueprint_path,
-                    component,
+                    query_ctx.viewer_ctx().blueprint_db(),
+                    blueprint_path_clone,
+                    component_descr,
                     row_id,
                     raw_override,
                     allow_multiline,
                 );
             })
-            .action_button(&re_ui::icons::CLOSE, || {
+            .action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
                 query_ctx
-                    .viewer_ctx
-                    .clear_blueprint_component_by_name(blueprint_path, component);
+                    .viewer_ctx()
+                    .clear_blueprint_component(blueprint_path, component_descr.clone());
             }),
     )
 }
@@ -446,7 +473,7 @@ fn editable_blueprint_component_list_item(
 fn menu_more(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    component_name: re_types::ComponentName,
+    component_descr: re_types::ComponentDescriptor,
     override_path: &EntityPath,
     raw_override: &Option<ArrayRef>,
     raw_default: Option<ArrayRef>,
@@ -458,8 +485,9 @@ fn menu_more(
         .on_disabled_hover_text("There's no override active")
         .clicked()
     {
-        ctx.clear_blueprint_component_by_name(override_path, component_name);
-        ui.close_menu();
+        ctx.clear_blueprint_component(override_path.clone(), component_descr);
+        ui.close();
+        return;
     }
 
     if ui
@@ -471,20 +499,22 @@ fn menu_more(
         .clicked()
     {
         if let Some(raw_default) = raw_default {
-            ctx.save_blueprint_array(override_path, component_name, raw_default);
+            ctx.save_blueprint_array(override_path.clone(), component_descr, raw_default);
         }
-        ui.close_menu();
+        ui.close();
+        return;
     }
 
     if ui.button("Set to fallback value").clicked() {
-        ctx.save_blueprint_array(override_path, component_name, raw_fallback);
-        ui.close_menu();
+        ctx.save_blueprint_array(override_path.clone(), component_descr, raw_fallback);
+        ui.close();
+        return;
     }
 
     let override_differs_from_default = raw_override
         != &ctx
             .viewer_ctx
-            .raw_latest_at_in_default_blueprint(override_path, component_name);
+            .raw_latest_at_in_default_blueprint(override_path, &component_descr);
     if ui
         .add_enabled(
             override_differs_from_default,
@@ -494,17 +524,18 @@ fn menu_more(
         .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
         .clicked()
     {
-        ctx.reset_blueprint_component_by_name(override_path, component_name);
-        ui.close_menu();
+        ctx.reset_blueprint_component(override_path.clone(), component_descr);
+        ui.close();
+        return;
     }
 
     if ui.button("Make default for current view").clicked() {
         ctx.save_blueprint_array(
-            &ViewBlueprint::defaults_path(ctx.view_id),
-            component_name,
+            ViewBlueprint::defaults_path(ctx.view_id),
+            component_descr,
             raw_current_value,
         );
-        ui.close_menu();
+        ui.close();
     }
 }
 
@@ -529,9 +560,9 @@ fn menu_add_new_visualizer(
                     .map(|v| v.as_str()),
             );
 
-            ctx.save_blueprint_archetype(override_path, &archetype);
+            ctx.save_blueprint_archetype(override_path.clone(), &archetype);
 
-            ui.close_menu();
+            ui.close();
         }
     }
 }
@@ -543,20 +574,21 @@ fn available_inactive_visualizers(
     view: &ViewBlueprint,
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
+    all_visualizers: &VisualizerCollection,
 ) -> Vec<ViewSystemIdentifier> {
     // TODO(jleibs): This has already been computed for the View this frame. Maybe We
     // should do this earlier and store it with the View?
     let maybe_visualizable_entities = ctx
         .viewer_ctx
         .view_class_registry()
-        .maybe_visualizable_entities_for_visualizer_systems(&entity_db.store_id());
+        .maybe_visualizable_entities_for_visualizer_systems(entity_db.store_id());
 
     let visualizable_entities = view
         .class(ctx.viewer_ctx.view_class_registry())
         .determine_visualizable_entities(
             &maybe_visualizable_entities,
             entity_db,
-            &ctx.visualizer_collection,
+            all_visualizers,
             &view.space_origin,
         );
 

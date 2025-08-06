@@ -28,7 +28,11 @@ __all__ = [
 
 @define(init=False)
 class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
-    """**Datatype**: Defines a slider for the index of some dimension."""
+    """
+    **Datatype**: Defines a slider for the index of some dimension.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     def __init__(self: Any, dimension: TensorDimensionIndexSliderLike) -> None:
         """

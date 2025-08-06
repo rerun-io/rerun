@@ -5,13 +5,19 @@ title: "GraphNodes"
 
 A list of nodes in a graph with optional labels, colors, etc.
 
-## Components
+## Fields
+### Required
+* `node_ids`: [`GraphNode`](../components/graph_node.md)
 
-**Required**: [`GraphNode`](../components/graph_node.md)
+### Optional
+* `positions`: [`Position2D`](../components/position2d.md)
+* `colors`: [`Color`](../components/color.md)
+* `labels`: [`Text`](../components/text.md)
+* `show_labels`: [`ShowLabels`](../components/show_labels.md)
+* `radii`: [`Radius`](../components/radius.md)
 
-**Optional**: [`Position2D`](../components/position2d.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`Radius`](../components/radius.md)
 
-## Shown in
+## Can be shown in
 * [GraphView](../views/graph_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 
-use super::{quote_hide_from_docs, NEWLINE_TOKEN};
+use super::{NEWLINE_TOKEN, quote_hide_from_docs};
 
 /// A C++ forward declaration.
 #[derive(Debug, Clone)]

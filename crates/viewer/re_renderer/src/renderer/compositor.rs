@@ -1,14 +1,14 @@
 use crate::{
+    OutlineConfig, Rgba,
     allocator::create_and_fill_uniform_buffer,
     include_shader_module,
-    renderer::{screen_triangle_vertex_shader, DrawData, DrawError, Renderer},
+    renderer::{DrawData, DrawError, Renderer, screen_triangle_vertex_shader},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
         RenderPipelineDesc,
     },
-    OutlineConfig, Rgba,
 };
 
 use crate::{DrawPhase, RenderContext};

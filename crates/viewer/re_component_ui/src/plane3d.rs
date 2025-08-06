@@ -121,8 +121,8 @@ pub fn edit_or_view_plane3d(
 
     ui.label("d");
     let mut maybe_mut_distance = match value {
-        MaybeMutRef::Ref(value) => MaybeMutRef::Ref(&value.0 .0[3]),
-        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.0 .0[3]),
+        MaybeMutRef::Ref(value) => MaybeMutRef::Ref(&value.0.0[3]),
+        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.0.0[3]),
     };
     let distance_response =
         edit_f32_float_raw(ui, &mut maybe_mut_distance, f32::MIN..=f32::MAX, "");
@@ -158,8 +158,8 @@ pub fn multiline_edit_or_view_plane3d(
         ui,
         re_ui::list_item::PropertyContent::new("Distance").value_fn(|ui, _| {
             let mut maybe_mut_distance = match value {
-                MaybeMutRef::Ref(value) => MaybeMutRef::Ref(&value.0 .0[3]),
-                MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.0 .0[3]),
+                MaybeMutRef::Ref(value) => MaybeMutRef::Ref(&value.0.0[3]),
+                MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.0.0[3]),
             };
 
             any_edit |=

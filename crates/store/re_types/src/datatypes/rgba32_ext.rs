@@ -20,7 +20,7 @@ impl Rgba32 {
     #[inline]
     pub const fn from_unmultiplied_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         let [r, g, b, a] = [r as u32, g as u32, b as u32, a as u32];
-        Self(r << 24 | g << 16 | b << 8 | a)
+        Self((r << 24) | (g << 16) | (b << 8) | a)
     }
 
     /// From linear-space sRGB values in 0-1 range, with a separate/unmultiplied alpha.
@@ -28,6 +28,7 @@ impl Rgba32 {
     /// This is a lossy conversion.
     #[cfg(feature = "ecolor")]
     pub fn from_linear_unmultiplied_rgba_f32(r: f32, g: f32, b: f32, a: f32) -> Self {
+        #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
         ecolor::Rgba::from_rgba_unmultiplied(r, g, b, a).into()
     }
 
@@ -87,6 +88,7 @@ impl From<(u8, u8, u8, u8)> for Rgba32 {
 impl From<Rgba32> for ecolor::Color32 {
     fn from(color: Rgba32) -> Self {
         let [r, g, b, a] = color.to_array();
+        #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
         Self::from_rgba_unmultiplied(r, g, b, a)
     }
 }

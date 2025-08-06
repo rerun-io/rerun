@@ -10,6 +10,7 @@ import rerun as rr
 import torch
 from rerun.datatypes import (
     Angle,
+    Float64ArrayLike,
     Quaternion,
     RotationAxisAngle,
     Vec3D,
@@ -65,9 +66,9 @@ def test_angle() -> None:
 
 
 def test_transform3d() -> None:
-    rotation_axis_angle = [None, RotationAxisAngle([1, 2, 3], rr.Angle(deg=10))]
+    rotation_axis_angle_original = [None, RotationAxisAngle([1, 2, 3], rr.Angle(deg=10))]
     quaternion_arrays = [None, Quaternion(xyzw=[1, 2, 3, 4])]
-    scale_arrays = [None, 1.0, 1, [1.0, 2.0, 3.0]]
+    scale_arrays = [None, 1.0, 1, [1.0, 2.0, 3.0], rr.Scale3D([1.0, 2.0, 3.0])]
     axis_lengths = [None, 1, 1.0]
     relations = [
         None,
@@ -79,7 +80,7 @@ def test_transform3d() -> None:
 
     all_arrays = itertools.zip_longest(
         VEC_3D_INPUT + [None],
-        rotation_axis_angle,
+        rotation_axis_angle_original,
         quaternion_arrays,
         scale_arrays,
         MAT_3X3_INPUT + [None],
@@ -98,7 +99,7 @@ def test_transform3d() -> None:
     ) in all_arrays:
         translation = cast(Optional[rr.datatypes.Vec3DLike], translation)
         quaternion = cast(Optional[rr.datatypes.QuaternionLike], quaternion)
-        scale = cast(Optional[rr.datatypes.Vec3DLike | rr.datatypes.Float32Like], scale)
+        scale = cast(Optional[rr.datatypes.Vec3DLike], scale)
         mat3x3 = cast(Optional[rr.datatypes.Mat3x3Like], mat3x3)
         relation = cast(Optional[rr.components.TransformRelationLike], relations)
         axis_length = cast(Optional[rr.datatypes.Float32Like], axis_length)
@@ -170,3 +171,52 @@ def test_transform3d_rotation() -> None:
     assert rr.Transform3D(rotation=Quaternion(xyzw=[1, 2, 3, 4])) == rr.Transform3D(
         quaternion=Quaternion(xyzw=[1, 2, 3, 4]),
     )
+
+
+TRANSLATION_CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
+    ([], []),
+    (np.ones((10, 3)), np.ones((10, 1, 3)).tolist()),
+    (np.zeros((5, 3)), np.zeros((5, 1, 3)).tolist()),
+    (np.array([[1.0, 2.0, 3.0]]), [[[1.0, 2.0, 3.0]]]),
+    (np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]), [[[0.0, 0.0, 0.0]], [[1.0, 1.0, 1.0]]]),
+    (np.array([[5.5, -3.2, 0.0], [0.0, 10.7, -8.9]]), [[[5.5, -3.2, 0.0]], [[0.0, 10.7, -8.9]]]),
+    (
+        np.array([[-1.0, -2.0, -3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]),
+        [[[-1.0, -2.0, -3.0]], [[4.0, 5.0, 6.0]], [[7.0, 8.0, 9.0]]],
+    ),
+    (np.zeros((0, 3)), []),
+    (np.array([[1000.0, 2000.0, 3000.0]]), [[[1000.0, 2000.0, 3000.0]]]),
+]
+
+
+def test_transform3d_translation_columns() -> None:
+    for input, expected in TRANSLATION_CASES:
+        data = [*rr.Transform3D.columns(translation=input)]
+        assert np.allclose(data[0].as_arrow_array().to_pylist(), np.asarray(expected))
+
+
+MAT_3X3_CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
+    ([], []),
+    (np.ones((10, 3, 3)), np.ones((10, 1, 9)).tolist()),
+    (np.eye(3).reshape(1, 3, 3), [[[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]]]),
+    (
+        np.array([
+            [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+            [[0, 1, 0], [0, 0, 1], [1, 0, 0]],
+        ]),
+        [[[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]], [[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0]]],
+    ),
+    (np.zeros((5, 3, 3)), np.zeros((5, 1, 9)).tolist()),
+    (np.array([[[-1, -2, -3], [-4, -5, -6], [-7, -8, -9]]]), [[[-1, -4, -7, -2, -5, -8, -3, -6, -9]]]),
+    (
+        np.array([[[1000, 2000, 3000], [4000, 5000, 6000], [7000, 8000, 9000]]]),
+        [[[1000, 4000, 7000, 2000, 5000, 8000, 3000, 6000, 9000]]],
+    ),
+    (np.zeros((0, 3, 3)), []),
+]
+
+
+def test_transform3d_mat3x3_columns() -> None:
+    for input, expected in MAT_3X3_CASES:
+        data = [*rr.Transform3D.columns(mat3x3=input)]
+        assert np.allclose(data[0].as_arrow_array().to_pylist(), np.asarray(expected))

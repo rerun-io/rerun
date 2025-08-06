@@ -2,12 +2,12 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::Time;
+use crate::{Time, VideoDataDescription};
 use dav1d::{PixelLayout, PlanarImageComponent};
 
 use super::{
-    async_decoder_wrapper::SyncDecoder, Chunk, Error, Frame, FrameContent, FrameInfo,
-    OutputCallback, PixelFormat, Result, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+    Chunk, DecodeError, Frame, FrameContent, FrameInfo, OutputCallback, PixelFormat, Result,
+    YuvMatrixCoefficients, YuvPixelLayout, YuvRange, async_decoder_wrapper::SyncDecoder,
 };
 
 pub struct SyncDav1dDecoder {
@@ -23,13 +23,15 @@ impl SyncDecoder for SyncDav1dDecoder {
     }
 
     /// Clear and reset everything
-    fn reset(&mut self) {
+    fn reset(&mut self, _video_data_description: &VideoDataDescription) {
         re_tracing::profile_function!();
 
         self.decoder.flush();
 
-        debug_assert!(matches!(self.decoder.get_picture(), Err(dav1d::Error::Again)),
-            "There should be no pending pictures, since we output them directly after submitting a chunk.");
+        debug_assert!(
+            matches!(self.decoder.get_picture(), Err(dav1d::Error::Again)),
+            "There should be no pending pictures, since we output them directly after submitting a chunk."
+        );
     }
 }
 
@@ -41,8 +43,8 @@ impl SyncDav1dDecoder {
             // The `nasm` feature makes AV1 decoding much faster.
             // On Linux the difference is huge (~25x).
             // On Windows, the difference was also pretty big (unsure how big).
-            // On an M3 Mac the difference is smalelr (2-3x),
-            // and ever without `nasm` emilk can play an 8k video at 2x speed.
+            // On an M3 Mac the difference is smaller (2-3x),
+            // and even without `nasm` emilk can play an 8k video at 2x speed.
 
             if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
                 re_log::warn_once!(
@@ -51,7 +53,7 @@ impl SyncDav1dDecoder {
                 );
             } else {
                 // Better to return an error than to be perceived as being slow
-                return Err(Error::Dav1dWithoutNasm);
+                return Err(DecodeError::Dav1dWithoutNasm);
             }
         }
 
@@ -84,12 +86,15 @@ impl SyncDav1dDecoder {
             chunk.data,
             None,
             Some(chunk.presentation_timestamp.0),
-            Some(chunk.duration.0),
+            chunk.duration.map(|d| d.0),
         ) {
             Ok(()) => {}
             Err(err) => {
-                debug_assert!(err != dav1d::Error::Again, "Bug in AV1 decoder: send_data returned `Error::Again`. This shouldn't happen, since we process all images in a chunk right away");
-                on_output(Err(Error::Dav1d(err)));
+                debug_assert!(
+                    err != dav1d::Error::Again,
+                    "Bug in AV1 decoder: send_data returned `Error::Again`. This shouldn't happen, since we process all images in a chunk right away"
+                );
+                on_output(Err(DecodeError::Dav1d(err)));
             }
         };
     }
@@ -114,7 +119,7 @@ impl SyncDav1dDecoder {
                     break;
                 }
                 Err(err) => {
-                    on_output(Err(Error::Dav1d(err)));
+                    on_output(Err(DecodeError::Dav1d(err)));
                 }
             }
         }
@@ -135,13 +140,12 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
         // TODO(#7594): Support HDR video.
         // We currently handle HDR videos by throwing away the lowest bits,
         // and doing so rather slowly on CPU. It works, but the colors won't be perfectly correct.
-        re_log::warn_once!(
-            "{debug_name:?} is a High-Dynamic-Range (HDR) video with {bits_per_component} bits per component. Rerun does not support this fully. Color accuracy and performance may suffer.",
-        );
         // Note that `bit_depth` is either 8 or 16, which is semi-independent `bits_per_component` (which is None/8/10/12).
+        //
+        // Don't trigger a warning here: we already warn separately for detecting 10bit elsewhere as well as for HDR primaries.
         2
     } else {
-        return Err(Error::BadBitsPerComponent(bits_per_component));
+        return Err(DecodeError::BadBitsPerComponent(bits_per_component));
     };
 
     let mut data = match picture.pixel_layout() {
@@ -253,12 +257,15 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
             format,
         },
         info: FrameInfo {
-            is_sync: None,    // TODO(emilk)
-            sample_idx: None, // TODO(emilk),
-            frame_nr: None,   // TODO(emilk),
-            presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
-            duration: Time(picture.duration()),
+            // TODO(andreas): dav1d has a user-data field that isn't exposed yet.
+            // We should us that to populate these fields.
+            is_sync: None,
+            sample_idx: None,
+            frame_nr: None,
             latest_decode_timestamp: None,
+
+            presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
+            duration: (picture.duration() != 0).then_some(Time(picture.duration())),
         },
     })
 }
@@ -320,7 +327,9 @@ fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMat
         | dav1d::pixel::MatrixCoefficients::ICtCp
         | dav1d::pixel::MatrixCoefficients::ST2085 => {
             // TODO(#7594): HDR support (we'll probably only care about `BT2020NonConstantLuminance`?)
-            re_log::warn_once!("Video {debug_name:?} specified HDR color primaries. Rerun doesn't handle HDR colors correctly yet. Color artifacts may be visible.");
+            re_log::warn_once!(
+                "Video {debug_name:?} specified HDR color primaries. Rerun doesn't handle HDR colors correctly yet. Color artifacts may be visible."
+            );
             YuvMatrixCoefficients::Bt709
         }
 
@@ -328,9 +337,9 @@ fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMat
         | dav1d::pixel::MatrixCoefficients::ChromaticityDerivedConstantLuminance
         | dav1d::pixel::MatrixCoefficients::YCgCo => {
             re_log::warn_once!(
-                 "Video {debug_name:?} specified unsupported matrix coefficients {:?}. Color artifacts may be visible.",
-                 picture.matrix_coefficients()
-             );
+                "Video {debug_name:?} specified unsupported matrix coefficients {:?}. Color artifacts may be visible.",
+                picture.matrix_coefficients()
+            );
             YuvMatrixCoefficients::Bt709
         }
     }

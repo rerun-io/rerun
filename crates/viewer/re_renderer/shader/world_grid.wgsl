@@ -39,7 +39,7 @@ struct VertexOutput {
 @vertex
 fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
     var out: VertexOutput;
-    let camera_plane_distance_world = distance_to_plane(config.plane, frame.camera_position);
+    let camera_plane_distance_world = abs(distance_to_plane(config.plane, frame.camera_position));
 
     // Scale the plane geometry based on the distance to the camera.
     // This preserves relative precision MUCH better than a fixed scale.

@@ -1,23 +1,23 @@
-use egui::NumExt as _;
+use egui::{NumExt as _, TextBuffer};
 use egui_tiles::ContainerKind;
 
-use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
+use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::{
-    item_ui::{self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity},
     DataUi,
+    item_ui::{self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity},
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
+use re_types::ComponentDescriptor;
 use re_ui::{
-    icons,
+    SyntaxHighlighting as _, UiExt as _, icons,
     list_item::{self, PropertyContent},
-    ContextExt as _, UiExt as _,
 };
 use re_viewer_context::{
-    contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
-    DataResult, HoverHighlight, Item, UiLayout, ViewContext, ViewId, ViewStates, ViewerContext,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, UiLayout,
+    ViewContext, ViewId, ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
-use re_viewport_blueprint::{ui::show_add_view_or_container_modal, ViewportBlueprint};
+use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
 use crate::{
     defaults_ui::view_components_defaults_section_ui,
@@ -109,6 +109,8 @@ impl SelectionPanel {
             return;
         }
 
+        let tokens = ui.tokens();
+
         // no gap before the first item title
         ui.add_space(-ui.spacing().item_spacing.y);
 
@@ -130,7 +132,7 @@ impl SelectionPanel {
         } else {
             list_item::list_item_scope(ui, "selections_panel", |ui| {
                 ui.list_item()
-                    .with_height(re_ui::DesignTokens::title_bar_height())
+                    .with_height(tokens.title_bar_height())
                     .interactive(false)
                     .selected(true)
                     .show_flat(
@@ -163,14 +165,14 @@ impl SelectionPanel {
             Item::ComponentPath(component_path) => {
                 let ComponentPath {
                     entity_path,
-                    component_name,
+                    component_descriptor,
                 } = component_path;
 
                 let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
                 let is_static = db
                     .storage_engine()
                     .store()
-                    .entity_has_static_component(entity_path, component_name);
+                    .entity_has_static_component(entity_path, component_descriptor);
 
                 ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
                     |ui, _| {
@@ -179,12 +181,64 @@ impl SelectionPanel {
                 ));
 
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Component type").value_text(if is_static {
+                    PropertyContent::new("Index type").value_text(if is_static {
                         "Static"
                     } else {
                         "Temporal"
                     }),
                 );
+
+                let ComponentDescriptor {
+                    archetype: archetype_name,
+                    component,
+                    component_type,
+                } = component_descriptor;
+
+                if let Some(archetype_name) = archetype_name {
+                    ui.list_item_flat_noninteractive(PropertyContent::new("Archetype").value_fn(
+                        |ui, _| {
+                            ui.label(archetype_name.short_name()).on_hover_ui(|ui| {
+                                ui.spacing_mut().item_spacing.y = 12.0;
+
+                                ui.strong(archetype_name.full_name());
+
+                                if let Some(doc_url) = archetype_name.doc_url() {
+                                    ui.re_hyperlink("Full documentation", doc_url, true);
+                                }
+                            });
+                        },
+                    ));
+                }
+
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Component").value_text(component.as_str()),
+                );
+
+                if let Some(component_type) = component_type {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Component type").value_fn(|ui, _| {
+                            ui.label(component_type.short_name()).on_hover_ui(|ui| {
+                                ui.spacing_mut().item_spacing.y = 12.0;
+
+                                ui.strong(component_type.full_name());
+
+                                // Only show the first line of the docs:
+                                if let Some(markdown) = ctx
+                                    .reflection()
+                                    .components
+                                    .get(component_type)
+                                    .map(|info| info.docstring_md)
+                                {
+                                    ui.markdown_ui(markdown);
+                                }
+
+                                if let Some(doc_url) = component_type.doc_url() {
+                                    ui.re_hyperlink("Full documentation", doc_url, true);
+                                }
+                            });
+                        }),
+                    );
+                }
 
                 list_existing_data_blueprints(ctx, viewport, ui, &entity_path.clone().into());
             }
@@ -295,36 +349,13 @@ impl SelectionPanel {
             });
         }
 
-        if let Item::StoreId(_) = item {
-            ui.section_collapsing_header("Properties").show(ui, |ui| {
-                let filtered = db
-                    .entity_paths()
-                    .into_iter()
-                    .filter(|entity_path| {
-                        // Only check for properties, but skip the recording properties,
-                        // because we display them already elsewhere in the UI.
-                        entity_path.is_descendant_of(&EntityPath::properties())
-                    })
-                    .collect::<Vec<_>>();
-
-                if filtered.is_empty() {
-                    ui.label("No properties found for this recording.");
-                } else {
-                    for entity_path in filtered {
-                        // We strip the property part
-                        let name = entity_path
-                            .to_string()
-                            .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
-                            .map(re_case::to_human_case)
-                            .unwrap_or("<unknown>".to_owned());
-                        ui.label(name);
-                        entity_path.data_ui(ctx, ui, ui_layout, &query, db);
-                    }
-                }
-            });
-        }
-
         match item {
+            Item::StoreId(_) => {
+                ui.section_collapsing_header("Properties").show(ui, |ui| {
+                    show_recording_properties(ctx, db, &query, ui, ui_layout);
+                });
+            }
+
             Item::View(view_id) => {
                 self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
@@ -397,9 +428,13 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         if let Some(view) = viewport.view(view_id) {
             ui.section_collapsing_header("Entity path filter")
                 .button(
-                    list_item::ItemActionButton::new(&re_ui::icons::EDIT, || {
-                        self.view_entity_modal.open(*view_id);
-                    })
+                    list_item::ItemActionButton::new(
+                        &re_ui::icons::EDIT,
+                        "Add new entity…",
+                        || {
+                            self.view_entity_modal.open(*view_id);
+                        },
+                    )
                     .hover_text("Modify the entity query using the editor"),
                 )
                 .help_markdown(markdown)
@@ -460,6 +495,48 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     }
 }
 
+fn show_recording_properties(
+    ctx: &ViewerContext<'_>,
+    db: &re_entity_db::EntityDb,
+    query: &re_chunk::LatestAtQuery,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+) {
+    let mut property_entities = db
+        .entity_paths()
+        .into_iter()
+        .filter_map(|entity_path| entity_path.strip_prefix(&EntityPath::properties()))
+        .collect::<Vec<_>>();
+    property_entities.sort();
+
+    if property_entities.is_empty() {
+        ui.label("No properties found for this recording.");
+    } else {
+        list_item::list_item_scope(ui, "recording_properties", |ui| {
+            for suffix_path in property_entities {
+                let entity_path = EntityPath::properties() / suffix_path.clone();
+                if suffix_path.is_root() {
+                    // No header - this is likely `RecordingInfo`.
+                } else if suffix_path.len() == 1 {
+                    // Single nested - this is what we expect in the normal case.
+                    ui.add_space(8.0);
+                    ui.label(re_case::to_human_case(suffix_path[0].unescaped_str()))
+                        .on_hover_ui(|ui| {
+                            ui.label(entity_path.syntax_highlighted(ui.style()));
+                        });
+                } else {
+                    // Deeply nested - show the full path.
+                    ui.add_space(8.0);
+                    ui.label(suffix_path.to_string()).on_hover_ui(|ui| {
+                        ui.label(entity_path.syntax_highlighted(ui.style()));
+                    });
+                }
+                entity_path.data_ui(ctx, ui, ui_layout, query, db);
+            }
+        });
+    }
+}
+
 fn entity_selection_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -511,6 +588,7 @@ fn entity_path_filter_ui(
     origin: &EntityPath,
 ) -> Option<EntityPathFilter> {
     fn syntax_highlight_entity_path_filter(
+        tokens: &re_ui::DesignTokens,
         style: &egui::Style,
         mut string: &str,
     ) -> egui::text::LayoutJob {
@@ -525,9 +603,9 @@ fn entity_path_filter_ui(
             let is_exclusion = line.trim_start().starts_with('-');
 
             let color = if is_exclusion {
-                egui::Color32::LIGHT_RED
+                style.visuals.error_fg_color
             } else {
-                egui::Color32::LIGHT_GREEN
+                tokens.info_log_text_color
             };
 
             let text_format = egui::TextFormat {
@@ -542,8 +620,13 @@ fn entity_path_filter_ui(
         job
     }
 
-    fn text_layouter(ui: &egui::Ui, string: &str, wrap_width: f32) -> std::sync::Arc<egui::Galley> {
-        let mut layout_job = syntax_highlight_entity_path_filter(ui.style(), string);
+    fn text_layouter(
+        ui: &egui::Ui,
+        text: &dyn TextBuffer,
+        wrap_width: f32,
+    ) -> std::sync::Arc<egui::Galley> {
+        let mut layout_job =
+            syntax_highlight_entity_path_filter(ui.tokens(), ui.style(), text.as_str());
         layout_job.wrap.max_width = wrap_width;
         ui.fonts(|f| f.layout_job(layout_job))
     }
@@ -577,7 +660,7 @@ fn entity_path_filter_ui(
     // Show some statistics about the query, print a warning text if something seems off.
     let query = ctx.lookup_query_result(view_id);
     if query.num_matching_entities == 0 {
-        ui.label(ui.ctx().warning_text("Does not match any entity"));
+        ui.warning_label("Does not match any entity");
     } else if query.num_matching_entities == 1 {
         ui.label("Matches 1 entity");
     } else {
@@ -585,9 +668,9 @@ fn entity_path_filter_ui(
     }
     if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
         // TODO(andreas): Talk about this root bit only if it's a spatial view.
-        ui.label(ui.ctx().warning_text(
+        ui.warning_label(
             format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
-        ));
+        );
     }
 
     // Apply the edit.
@@ -626,7 +709,7 @@ fn container_children(
 
     ui.section_collapsing_header("Contents")
         .button(
-            list_item::ItemActionButton::new(&re_ui::icons::ADD, || {
+            list_item::ItemActionButton::new(&re_ui::icons::ADD, "Add to container", || {
                 show_add_view_or_container_modal(*container_id);
             })
             .hover_text("Add a new view or container to this container"),
@@ -644,7 +727,11 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
             Some(Box::new(instance_path.clone()))
         }
         // Skip data ui since we don't know yet what to show for these.
-        Item::View(_) | Item::Container(_) => None,
+        Item::TableId(_)
+        | Item::View(_)
+        | Item::Container(_)
+        | Item::RedapEntry(_)
+        | Item::RedapServer(_) => None,
     }
 }
 
@@ -776,7 +863,7 @@ fn container_top_level_properties(
         container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
     }));
 
-    ui.list_item_flat_noninteractive(PropertyContent::new("Kind").value_fn(|ui, _| {
+    ui.list_item_flat_noninteractive(PropertyContent::new("Container kind").value_fn(|ui, _| {
         let mut container_kind = container.container_kind;
         container_kind_selection_ui(ui, &mut container_kind);
         viewport.set_container_kind(*container_id, container_kind);
@@ -904,7 +991,7 @@ fn show_list_item_for_container_child(
                     .with_icon(view.class(ctx.view_class_registry()).icon())
                     .with_buttons(|ui| {
                         let response = ui
-                            .small_icon_button(&icons::REMOVE)
+                            .small_icon_button(&icons::REMOVE, "Remove this view")
                             .on_hover_text("Remove this view");
 
                         if response.clicked() {
@@ -930,7 +1017,7 @@ fn show_list_item_for_container_child(
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|ui| {
                         let response = ui
-                            .small_icon_button(&icons::REMOVE)
+                            .small_icon_button(&icons::REMOVE, "Remove this container")
                             .on_hover_text("Remove this container");
 
                         if response.clicked() {
@@ -999,5 +1086,240 @@ fn visible_interactive_toggle_ui(
         if interactive_before != interactive {
             data_result.save_interactive(ctx.viewer_ctx, &query_result.tree, interactive);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_chunk::{LatestAtQuery, RowId, TimePoint, Timeline};
+    use re_log_types::TimeType;
+    use re_test_context::TestContext;
+    use re_types::archetypes;
+    use re_viewer_context::blueprint_timeline;
+
+    use super::*;
+
+    fn get_test_context() -> TestContext {
+        let mut test_context = TestContext::new();
+        test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
+        re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
+        test_context
+    }
+
+    /// Snapshot test for the selection panel when a recording is selected.
+    #[test]
+    fn selection_panel_recording_snapshot() {
+        let mut test_context = get_test_context();
+
+        // Select recording:
+        let recording_id = test_context.active_store_id();
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::StoreId(recording_id));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([600.0, 400.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_recording");
+    }
+
+    /// Snapshot test for the selection panel when a static component is selected.
+    #[test]
+    fn selection_panel_static_component_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("static");
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+
+        // Select component:
+        let component_path = re_log_types::ComponentPath {
+            entity_path,
+            component_descriptor: archetypes::Points2D::descriptor_positions(),
+        };
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(component_path));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([400.0, 350.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_static");
+    }
+
+    /// Snapshot test for the selection panel when a static component that was overwritten is selected.
+    #[test]
+    fn selection_panel_component_static_overwrite_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("static");
+
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Points2D::new([(0., 0.), (1., 1.), (5., 2.)]),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Points2D::new([(0., 0.), (1., 1.), (10., 2.)]),
+                )
+        });
+
+        // Select component:
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
+                entity_path,
+                component_descriptor: archetypes::Points2D::descriptor_positions(),
+            }));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([400.0, 350.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_static_overwrite");
+    }
+
+    /// Snapshot test for the selection panel when a static component with additional time information is
+    /// selected (which means a user error).
+    #[test]
+    fn selection_panel_component_static_hybrid_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("hybrid");
+
+        let timeline_frame = Timeline::new("frame_nr", TimeType::Sequence);
+        let timeline_other = Timeline::new("other_time", TimeType::Sequence);
+
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline_frame, 1)],
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline_frame, 1)],
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline_other, 10)],
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+
+        // Select component:
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
+                entity_path,
+                component_descriptor: archetypes::Points2D::descriptor_positions(),
+            }));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size([400.0, 350.0])
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_hybrid_overwrite");
     }
 }

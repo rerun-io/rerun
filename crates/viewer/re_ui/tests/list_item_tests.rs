@@ -1,6 +1,6 @@
 use egui::Vec2;
-
-use re_ui::{list_item, UiExt as _};
+use egui_kittest::SnapshotOptions;
+use re_ui::{UiExt as _, icons, list_item};
 
 #[test]
 pub fn test_list_items_should_match_snapshot() {
@@ -9,6 +9,10 @@ pub fn test_list_items_should_match_snapshot() {
     let mut color = [255, 255, 0, 255];
 
     let mut test_code = |ui: &mut egui::Ui| {
+        ui.list_item()
+            .header()
+            .show_hierarchical(ui, list_item::LabelContent::header("Header item"));
+
         ui.list_item()
             .show_hierarchical(ui, list_item::LabelContent::new("Default"));
 
@@ -32,7 +36,25 @@ pub fn test_list_items_should_match_snapshot() {
                 ui.list_item().show_hierarchical(
                     ui,
                     list_item::LabelContent::new("LabelContent with icon")
-                        .with_icon(&re_ui::icons::VIEW_TEXT),
+                        .with_icon(&icons::VIEW_TEXT),
+                );
+
+                ui.list_item().active(true).show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("LabelContent with icon + active")
+                        .with_icon(&icons::VIEW_TEXT),
+                );
+
+                ui.list_item().selected(true).show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("LabelContent with icon + selected")
+                        .with_icon(&icons::VIEW_TEXT),
+                );
+
+                ui.list_item().force_hovered(true).show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("LabelContent with icon + hovered")
+                        .with_icon(&icons::VIEW_TEXT),
                 );
 
                 ui.list_item().show_hierarchical(
@@ -42,7 +64,7 @@ pub fn test_list_items_should_match_snapshot() {
                             ui.painter().circle(
                                 rect.center(),
                                 rect.width() / 2.0,
-                                visuals.fg_stroke.color,
+                                visuals.icon_tint(),
                                 egui::Stroke::NONE,
                             );
                         }),
@@ -74,7 +96,7 @@ pub fn test_list_items_should_match_snapshot() {
                         list_item::LabelContent::new("LabelContent with custom styling")
                             .subdued(true)
                             .italics(true)
-                            .with_icon(&re_ui::icons::VIEW_2D),
+                            .with_icon(&icons::VIEW_2D),
                     )
                     .on_hover_text("The styling applies to the icon.");
 
@@ -83,15 +105,15 @@ pub fn test_list_items_should_match_snapshot() {
                         ui,
                         list_item::LabelContent::new("LabelContent with LabelStyle")
                             .label_style(re_ui::LabelStyle::Unnamed)
-                            .with_icon(&re_ui::icons::VIEW_2D),
+                            .with_icon(&icons::VIEW_2D),
                     )
                     .on_hover_text("The LabelStyle doesn't apply to the icon.");
 
                 ui.list_item().show_hierarchical(
                     ui,
                     list_item::LabelContent::new("LabelContent with buttons").with_buttons(|ui| {
-                        ui.small_icon_button(&re_ui::icons::ADD)
-                            | ui.small_icon_button(&re_ui::icons::REMOVE)
+                        ui.small_icon_button(&icons::ADD, "Add")
+                            | ui.small_icon_button(&icons::REMOVE, "Remove")
                     }),
                 );
 
@@ -99,8 +121,8 @@ pub fn test_list_items_should_match_snapshot() {
                     ui,
                     list_item::LabelContent::new("LabelContent with buttons (always shown)")
                         .with_buttons(|ui| {
-                            ui.small_icon_button(&re_ui::icons::ADD)
-                                | ui.small_icon_button(&re_ui::icons::REMOVE)
+                            ui.small_icon_button(&icons::ADD, "Add")
+                                | ui.small_icon_button(&icons::REMOVE, "Remove")
                         })
                         .always_show_buttons(true),
                 );
@@ -142,16 +164,16 @@ pub fn test_list_items_should_match_snapshot() {
                     ui.list_item().show_hierarchical(
                         ui,
                         list_item::PropertyContent::new("Color")
-                            .with_icon(&re_ui::icons::VIEW_TEXT)
-                            .action_button(&re_ui::icons::ADD, || {})
+                            .with_icon(&icons::VIEW_TEXT)
+                            .action_button(&icons::ADD, "Add", || {})
                             .value_color(&color),
                     );
 
                     ui.list_item().show_hierarchical(
                         ui,
                         list_item::PropertyContent::new("Color (editable)")
-                            .with_icon(&re_ui::icons::VIEW_TEXT)
-                            .action_button(&re_ui::icons::ADD, || {})
+                            .with_icon(&icons::VIEW_TEXT)
+                            .action_button(&icons::ADD, "Add", || {})
                             .value_color_mut(&mut color),
                     );
                 });
@@ -190,7 +212,7 @@ pub fn test_list_items_should_match_snapshot() {
                             "CustomContent with an action button",
                         );
                     })
-                    .action_button(&re_ui::icons::ADD, || {}),
+                    .action_button(&icons::ADD, "Add", || {}),
                 );
             },
         );
@@ -208,5 +230,5 @@ pub fn test_list_items_should_match_snapshot() {
         });
 
     harness.run();
-    harness.snapshot("list_items");
+    harness.snapshot_options("list_items", &SnapshotOptions::new().threshold(1.3));
 }

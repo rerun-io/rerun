@@ -21,7 +21,11 @@ __all__ = ["ForceCenter"]
 
 @define(str=False, repr=False, init=False)
 class ForceCenter(Archetype):
-    """**Archetype**: Tries to move the center of mass of the graph to the origin."""
+    """
+    **Archetype**: Tries to move the center of mass of the graph to the origin.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     def __init__(
         self: Any, *, enabled: datatypes.BoolLike | None = None, strength: datatypes.Float64Like | None = None

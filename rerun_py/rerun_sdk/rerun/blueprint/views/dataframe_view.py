@@ -25,6 +25,8 @@ class DataframeView(View):
 
     Any data from the store can be shown, using a flexibly, user-configurable query.
 
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
     Example
     -------
     ### Use a blueprint to customize a DataframeView.:

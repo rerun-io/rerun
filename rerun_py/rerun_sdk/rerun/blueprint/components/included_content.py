@@ -8,7 +8,6 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
-    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -16,7 +15,11 @@ __all__ = ["IncludedContent", "IncludedContentBatch"]
 
 
 class IncludedContent(datatypes.EntityPath, ComponentMixin):
-    """**Component**: All the contents in the container."""
+    """
+    **Component**: All the contents in the container.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of IncludedContentExt in included_content_ext.py
@@ -25,7 +28,7 @@ class IncludedContent(datatypes.EntityPath, ComponentMixin):
 
 
 class IncludedContentBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
-    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.IncludedContent")
+    _COMPONENT_TYPE: str = "rerun.blueprint.components.IncludedContent"
 
 
 # This is patched in late to avoid circular dependencies.
