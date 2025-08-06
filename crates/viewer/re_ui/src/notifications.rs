@@ -373,7 +373,6 @@ fn show_notification(
 }
 
 fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
-    // let age = (now() - notification.created_at).as_seconds_f64();
     let age = now().duration_since(notification.created_at).as_secs_f64();
 
     let formatted = if age < 10.0 {
