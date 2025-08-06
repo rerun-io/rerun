@@ -23,8 +23,8 @@ all-features = true
 anyhow = { workspace = true, default-features = true }
 cargo_metadata.workspace = true
 glob.workspace = true
+jiff.workspace = true
 sha2.workspace = true
-jiff = { workspace = true }
 unindent.workspace = true
 walkdir.workspace = true
 
