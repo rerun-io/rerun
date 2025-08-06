@@ -27,7 +27,7 @@ ignored = ["wayland-sys"]
 [features]
 default = []
 
-## Enable to easily host a puffin server. For binaries.
+## Enable to easily host a puffin server. For native binaries with a windowing system (!).
 server = ["dep:puffin_http", "dep:re_log", "dep:rfd", "dep:wayland-sys"]
 
 
