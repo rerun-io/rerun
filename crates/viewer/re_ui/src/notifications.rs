@@ -5,7 +5,7 @@ use jiff::Timestamp;
 
 pub use re_log::Level;
 
-use crate::{icons, UiExt as _};
+use crate::{UiExt as _, icons};
 
 fn now() -> Timestamp {
     Timestamp::now()

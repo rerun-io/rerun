@@ -40,8 +40,8 @@ use std::{
     collections::HashMap,
     io::Error as IoError,
     sync::{
-        atomic::{AtomicU64, Ordering},
         OnceLock,
+        atomic::{AtomicU64, Ordering},
     },
     time::Duration,
 };
