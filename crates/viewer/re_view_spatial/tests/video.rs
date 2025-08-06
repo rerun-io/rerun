@@ -353,6 +353,11 @@ fn test_video_stream_codec_h264() {
     test_video(VideoType::VideoStream, VideoCodec::H264);
 }
 
+#[test]
+fn test_video_stream_codec_h265() {
+    test_video(VideoType::VideoStream, VideoCodec::H265);
+}
+
 // TODO(#10185): Unsupported codec for VideoStream
 // #[test]
 // fn test_video_stream_codec_h265() {
