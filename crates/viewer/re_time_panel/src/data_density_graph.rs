@@ -219,7 +219,7 @@ impl DensityGraph {
             max: max_y,
         } = y_range;
 
-        let center_y = (min_y + max_y) / 2.0;
+        let center_y = f32::midpoint(min_y, max_y);
         let max_radius = (max_y - min_y) / 2.0;
 
         // We paint a symmetric plot, with extra feathering for anti-aliasing:
@@ -710,7 +710,7 @@ impl<'a> DensityGraphBuilder<'a> {
         if let Some(pointer_pos) = self.pointer_pos {
             let is_hovered = if (max_x - min_x).abs() < 1.0 {
                 // Are we close enough to center?
-                let center_x = (max_x + min_x) / 2.0;
+                let center_x = f32::midpoint(max_x, min_x);
                 let distance_sq = pos2(center_x, self.row_rect.center().y).distance_sq(pointer_pos);
 
                 distance_sq < self.interact_radius.powi(2)

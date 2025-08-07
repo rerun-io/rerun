@@ -950,7 +950,7 @@ fn make_range_sane(y_range: Range1D) -> Range1D {
     }
 
     if end <= start {
-        let center = (start + end) / 2.0;
+        let center = f64::midpoint(start, end);
         Range1D::new(center - 1.0, center + 1.0)
     } else {
         Range1D::new(start, end)
