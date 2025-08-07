@@ -935,7 +935,6 @@ fn rr_recording_stream_log_impl(
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
     let num_data_cells = num_data_cells as usize;
-    re_log::debug!("rerun_log {entity_path:?}, num_data_cells: {num_data_cells}");
 
     let batches = unsafe { std::slice::from_raw_parts_mut(batches, num_data_cells) };
 
