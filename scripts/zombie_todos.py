@@ -69,7 +69,7 @@ def check_issue_closed(repo_owner: str, repo_name: str, issue_number: int) -> tu
     global issue_cache, cache_hit, cache_miss
     cache_key = (repo_owner, repo_name, issue_number)
 
-    # Check if we already have this result cached (thread-safe)
+    # Check if we already have this result cached
     with cache_lock:
         if cache_key in issue_cache:
             cache_hit += 1
@@ -78,7 +78,7 @@ def check_issue_closed(repo_owner: str, repo_name: str, issue_number: int) -> tu
     # Fetch the result and cache it
     result = check_issue_closed_api(repo_owner, repo_name, issue_number)
 
-    # Store in cache (thread-safe)
+    # Store in cache
     with cache_lock:
         issue_cache[cache_key] = result
 
@@ -277,6 +277,7 @@ def main() -> None:
 
     # Collect all files to process
     files_to_process = []
+    print("Collecting files to process...")
     for root, dirs, files in os.walk(".", topdown=True):
         dirs[:] = [d for d in dirs if not should_ignore(d)]
 
