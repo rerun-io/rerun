@@ -99,7 +99,6 @@ disallowed-methods = [
 disallowed-types = [
   { path = "egui::Checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "instant::SystemTime", reason = "Known bugs. Use web-time." },
-  { path = "ring::digest::SHA1_FOR_LEGACY_USE_ONLY", reason = "SHA1 is cryptographically broken" },
   { path = "std::fs::File", reason = "Can't access files on web" },
   { path = "std::sync::Condvar", reason = "Use parking_lot instead" },
   { path = "std::sync::Mutex", reason = "Use parking_lot instead" },
