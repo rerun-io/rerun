@@ -55,10 +55,10 @@ EXECUTABLE_EXTENSION = ".exe"
 
 # TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
 [target.osx-64.activation.env]
-AR = "${PIXI_PROJECT_ROOT}/.pixi/envs/cpp/bin/llvm-ar"
+AR = "${PIXI_PROJECT_ROOT}/.pixi/envs/default/bin/llvm-ar"
 
 [target.osx-arm64.activation.env]
-AR = "${PIXI_PROJECT_ROOT}/.pixi/envs/cpp/bin/llvm-ar"
+AR = "${PIXI_PROJECT_ROOT}/.pixi/envs/default/bin/llvm-ar"
 
 # python-dev
 
@@ -646,6 +646,7 @@ buf = "1.*"             # not available for linux-aarch64
 buf = "1.*"             # not available for linux-aarch64
 libgfortran5 = ">=14"   # Fixes issues with OpenCV
 meilisearch = "1.5.1.*" # not available for linux-aarch64
+llvm-tools = "16.0.6.*" # TODO(rust-lang/stacker#127)
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64
