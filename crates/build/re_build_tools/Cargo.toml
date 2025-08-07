@@ -23,7 +23,10 @@ all-features = true
 anyhow = { workspace = true, default-features = true }
 cargo_metadata.workspace = true
 glob.workspace = true
+jiff.workspace = true
 sha2.workspace = true
-time = { workspace = true, features = ["formatting"] }
 unindent.workspace = true
 walkdir.workspace = true
+
+[dev-dependencies]
+regex-lite.workspace = true

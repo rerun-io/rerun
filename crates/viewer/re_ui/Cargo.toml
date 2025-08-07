@@ -55,6 +55,7 @@ egui_tiles.workspace = true
 egui.workspace = true
 getrandom.workspace = true
 itertools.workspace = true
+jiff.workspace = true
 parking_lot.workspace = true
 ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -62,23 +63,11 @@ smallvec.workspace = true
 strum_macros.workspace = true
 strum.workspace = true
 sublime_fuzzy.workspace = true
-time = { workspace = true, features = ["formatting", "local-offset", "macros"] }
 url.workspace = true
-
 
 # Native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 notify.workspace = true # Only used with the `hot_reload_design_tokens` feature
-
-
-# Web
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-time = { workspace = true, features = [
-  "formatting",
-  "local-offset",
-  "wasm-bindgen",
-] }
-
 
 [dev-dependencies]
 egui_kittest.workspace = true
