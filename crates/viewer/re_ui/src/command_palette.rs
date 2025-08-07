@@ -116,8 +116,11 @@ impl CommandPalette {
             let style = ui.style().interact_selectable(&response, selected);
 
             if selected {
-                ui.painter()
-                    .rect_filled(rect, style.corner_radius, ui.visuals().selection.bg_fill);
+                ui.painter().rect_filled(
+                    rect.expand(1.0),
+                    style.corner_radius,
+                    ui.visuals().selection.bg_fill,
+                );
 
                 if enter_pressed {
                     selected_command = Some(command);
@@ -128,7 +131,7 @@ impl CommandPalette {
                 }
             }
 
-            let text = format_match(fuzzy_match, ui, &font_id, style.text_color());
+            let text = format_match(fuzzy_match, &font_id, style.text_color());
 
             // TODO(emilk): shorten long text using '…'
             let galley = text.into_galley(
@@ -212,9 +215,8 @@ fn commands_that_match(query: &str) -> Vec<FuzzyMatch> {
 
 fn format_match(
     m: &FuzzyMatch,
-    ui: &egui::Ui,
     font_id: &egui::FontId,
-    default_text_color: egui::Color32,
+    text_color: egui::Color32,
 ) -> egui::WidgetText {
     let target_text = m.command.text();
 
@@ -223,22 +225,15 @@ fn format_match(
 
         let mut job = egui::text::LayoutJob::default();
         for (i, c) in target_text.chars().enumerate() {
-            let color = if matched_indices.contains(&i) {
-                ui.visuals().strong_text_color()
-            } else {
-                default_text_color
-            };
-            job.append(
-                &c.to_string(),
-                0.0,
-                egui::text::TextFormat::simple(font_id.clone(), color),
-            );
+            let mut format = egui::text::TextFormat::simple(font_id.clone(), text_color);
+            if matched_indices.contains(&i) {
+                format.underline = egui::Stroke::new(1.0, text_color);
+            }
+            job.append(&c.to_string(), 0.0, format);
         }
 
         job.into()
     } else {
-        egui::RichText::new(target_text)
-            .color(default_text_color)
-            .into()
+        egui::RichText::new(target_text).color(text_color).into()
     }
 }
