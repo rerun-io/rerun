@@ -11,10 +11,10 @@ use re_protos::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
         ReadDatasetEntryRequest, ReadTableEntryRequest,
         ext::{
-            CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails, LanceTable,
-            ProviderDetails as _, ReadDatasetEntryResponse, ReadTableEntryResponse,
-            RegisterTableResponse, TableEntry, UpdateDatasetEntryRequest,
-            UpdateDatasetEntryResponse,
+            CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails,
+            EntryDetailsUpdate, LanceTable, ProviderDetails as _, ReadDatasetEntryResponse,
+            ReadTableEntryResponse, RegisterTableResponse, TableEntry, UpdateDatasetEntryRequest,
+            UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
         },
     },
     common::v1alpha1::{
@@ -99,6 +99,28 @@ where
             .await?;
 
         Ok(())
+    }
+
+    /// Update the provided entry.
+    pub async fn update_entry(
+        &mut self,
+        entry_id: EntryId,
+        entry_details_update: EntryDetailsUpdate,
+    ) -> Result<EntryDetails, StreamError> {
+        let response: UpdateEntryResponse = self
+            .inner()
+            .update_entry(tonic::Request::new(
+                UpdateEntryRequest {
+                    id: entry_id,
+                    entry_details_update,
+                }
+                .into(),
+            ))
+            .await?
+            .into_inner()
+            .try_into()?;
+
+        Ok(response.entry_details)
     }
 
     /// Create a new dataset entry.

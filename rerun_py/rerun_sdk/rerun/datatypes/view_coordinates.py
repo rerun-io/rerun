@@ -72,6 +72,10 @@ class ViewCoordinates(ViewCoordinatesExt):
         # You can define your own __array__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
         return np.asarray(self.coordinates, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
+        return len(self.coordinates)
+
 
 if TYPE_CHECKING:
     ViewCoordinatesLike = Union[ViewCoordinates, npt.ArrayLike]

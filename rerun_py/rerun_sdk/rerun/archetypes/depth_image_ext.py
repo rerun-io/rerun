@@ -23,6 +23,7 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint32],
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
+        np.ndarray[Any, np.dtype[np.floating | np.integer]],
     ]
 
 

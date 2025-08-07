@@ -279,10 +279,13 @@ fn load_mcap(
 
     let mut registry = mcap::decode::MessageDecoderRegistry::default();
     registry
+        .register_default::<mcap::schema::sensor_msgs::CameraInfoSchemaPlugin>()
         .register_default::<mcap::schema::sensor_msgs::CompressedImageSchemaPlugin>()
         .register_default::<mcap::schema::sensor_msgs::ImageSchemaPlugin>()
         .register_default::<mcap::schema::sensor_msgs::ImuSchemaPlugin>()
-        .register_default::<mcap::schema::sensor_msgs::PointCloud2SchemaPlugin>();
+        .register_default::<mcap::schema::sensor_msgs::JointStateSchemaPlugin>()
+        .register_default::<mcap::schema::sensor_msgs::PointCloud2SchemaPlugin>()
+        .register_default::<mcap::schema::std_msgs::StringSchemaPlugin>();
 
     // Send warnings for unsupported messages.
     for channel in summary.channels.values() {

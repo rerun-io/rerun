@@ -12,7 +12,6 @@ use re_chunk::{
     external::nohash_hasher::{IntMap, IsEnabled},
 };
 use re_log_types::TimeCell;
-use re_sorbet::SorbetSchema;
 use thiserror::Error;
 
 use super::schema::{RawMcapMessageParser, protobuf::ProtobufMessageParser};
@@ -51,9 +50,6 @@ pub trait SchemaPlugin {
     /// The name should exactly match the schema name found in the MCAP file.
     fn name(&self) -> SchemaName;
 
-    /// Parses the schema definition from an MCAP channel, and returns a [`SorbetSchema`].
-    fn parse_schema(&self, channel: &mcap::Channel<'_>) -> Result<SorbetSchema, PluginError>;
-
     /// Creates a new [`McapMessageParser`] instance for processing messages from this channel.
     ///
     /// This method is called once per channel/entity path combination when the first
@@ -69,7 +65,6 @@ pub trait SchemaPlugin {
     /// # use anyhow::Error;
     /// # use mcap::Channel;
     /// # use re_chunk::Chunk;
-    /// # use re_sorbet::SorbetSchema;
     /// # use re_data_loader::mcap::decode::{
     /// #     McapMessageParser, ParserContext, PluginError, SchemaName, SchemaPlugin,
     /// # };
@@ -93,9 +88,6 @@ pub trait SchemaPlugin {
     /// # impl SchemaPlugin for MyPlugin {
     /// #     fn name(&self) -> SchemaName {
     /// #         "my_schema".into()
-    /// #     }
-    /// #     fn parse_schema(&self, _channel: &Channel<'_>) -> Result<SorbetSchema, PluginError> {
-    /// #         unreachable!()
     /// #     }
     /// fn create_message_parser(
     ///     &self,

@@ -62,7 +62,7 @@ class AffixFuzzer20Batch(BaseBatch[AffixFuzzer20ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer20ArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.testing.datatypes import PrimitiveComponentBatch, StringComponentBatch
+        from . import PrimitiveComponentBatch, StringComponentBatch
 
         if isinstance(data, AffixFuzzer20):
             data = [data]

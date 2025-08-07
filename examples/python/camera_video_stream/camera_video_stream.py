@@ -58,6 +58,8 @@ def setup_output_stream(width: int, height: int) -> av.video.VideoStream:
 
     output_container = av.open("/dev/null", "w", format="h264")  # Use AnnexB H.264 stream.
     output_stream = output_container.add_stream("libx264")
+    # Type narrowing
+    assert isinstance(output_stream, av.video.stream.VideoStream)
     output_stream.width = width
     output_stream.height = height
 

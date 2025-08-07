@@ -18,6 +18,8 @@ mod saving;
 mod screenshotter;
 mod startup_options;
 mod ui;
+
+#[cfg(feature = "analytics")]
 mod viewer_analytics;
 
 #[cfg(not(target_arch = "wasm32"))]

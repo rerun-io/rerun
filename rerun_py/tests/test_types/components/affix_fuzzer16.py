@@ -33,6 +33,10 @@ class AffixFuzzer16(ComponentMixin):
 
     many_required_unions: list[datatypes.AffixFuzzer3] = field()
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AffixFuzzer16Ext in affix_fuzzer16_ext.py
+        return len(self.many_required_unions)
+
 
 AffixFuzzer16Like = AffixFuzzer16
 AffixFuzzer16ArrayLike = Union[

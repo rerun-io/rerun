@@ -415,34 +415,7 @@ impl ViewEye {
 
         if response.hovered() {
             did_interact |= self.keyboard_navigation(&response.ctx, speed as f32);
-        }
-
-        if self.kind == Eye3DKind::Orbital {
-            let (zoom_delta, scroll_delta) = if response.hovered() {
-                response
-                    .ctx
-                    .input(|i| (i.zoom_delta(), i.smooth_scroll_delta.y))
-            } else {
-                (1.0, 0.0)
-            };
-
-            let zoom_factor = zoom_delta * (scroll_delta / 200.0).exp();
-            if zoom_factor != 1.0 {
-                let new_radius = self.orbit_radius / zoom_factor;
-
-                // The user may be scrolling to move the camera closer, but are not realizing
-                // the radius is now tiny.
-                // TODO(emilk): inform the users somehow that scrolling won't help, and that they should use WSAD instead.
-                // It might be tempting to start moving the camera here on scroll, but that would is bad for other reasons.
-
-                // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
-                // Max value is chosen with some generous margin of an observed crash due to infinity.
-                if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
-                    self.orbit_radius = new_radius;
-                }
-
-                did_interact = true;
-            }
+            did_interact |= self.zoom(&response.ctx, speed as f32);
         }
 
         did_interact
@@ -488,6 +461,47 @@ impl ViewEye {
 
         if requires_repaint {
             egui_ctx.request_repaint();
+        }
+
+        did_interact
+    }
+
+    /// Handle zoom/scroll input.
+    ///
+    /// Returns `true` if we did anything.
+    fn zoom(&mut self, egui_ctx: &egui::Context, speed: f32) -> bool {
+        let zoom_factor = egui_ctx.input(|input| {
+            let (zoom_delta, scroll_delta) = (input.zoom_delta(), input.smooth_scroll_delta.y);
+            zoom_delta * (scroll_delta / 200.0).exp()
+        });
+
+        if zoom_factor == 1.0 {
+            return false;
+        }
+
+        let mut did_interact = false;
+        match self.kind {
+            Eye3DKind::Orbital => {
+                let new_radius = self.orbit_radius / zoom_factor;
+
+                // The user may be scrolling to move the camera closer, but are not realizing
+                // the radius is now tiny.
+                // TODO(emilk): inform the users somehow that scrolling won't help, and that they should use WSAD instead.
+                // It might be tempting to start moving the camera here on scroll, but that would is bad for other reasons.
+
+                // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
+                // Max value is chosen with some generous margin of an observed crash due to infinity.
+                if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
+                    self.orbit_radius = new_radius;
+                    did_interact = true;
+                }
+            }
+            Eye3DKind::FirstPerson => {
+                // Move along the forward axis when zooming in first person mode.
+                let delta = (zoom_factor - 1.0) * speed;
+                self.center += delta * self.fwd();
+                did_interact = true;
+            }
         }
 
         did_interact
