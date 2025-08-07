@@ -5,7 +5,7 @@ title: "BarChart"
 
 A bar chart.
 
-The x values will be the indices of the array, and the bar heights will be the provided values.
+The bar heights will be the provided values, and the x coordinates of the bars will be the provided abscissa or default to the index of the provided values.
 
 ## Fields
 ### Required
@@ -13,7 +13,7 @@ The x values will be the indices of the array, and the bar heights will be the p
 
 ### Optional
 * `color`: [`Color`](../components/color.md)
-* `indexes`: [`TensorData`](../components/tensor_data.md)
+* `abscissa`: [`TensorData`](../components/tensor_data.md)
 
 
 ## Can be shown in

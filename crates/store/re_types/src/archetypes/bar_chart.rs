@@ -21,7 +21,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A bar chart.
 ///
-/// The x values will be the indices of the array, and the bar heights will be the provided values.
+/// The bar heights will be the provided values, and the x coordinates of the bars will be the provided abscissa or default to the index of the provided values.
 ///
 /// ## Example
 ///
@@ -55,8 +55,8 @@ pub struct BarChart {
     /// The color of the bar chart
     pub color: Option<SerializedComponentBatch>,
 
-    /// The indexes. Should always be a 1-dimensional tensor (i.e. a vector).
-    pub indexes: Option<SerializedComponentBatch>,
+    /// The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+    pub abscissa: Option<SerializedComponentBatch>,
 }
 
 impl BarChart {
@@ -84,14 +84,14 @@ impl BarChart {
         }
     }
 
-    /// Returns the [`ComponentDescriptor`] for [`Self::indexes`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::abscissa`].
     ///
     /// The corresponding component is [`crate::components::TensorData`].
     #[inline]
-    pub fn descriptor_indexes() -> ComponentDescriptor {
+    pub fn descriptor_abscissa() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.BarChart".into()),
-            component: "BarChart:indexes".into(),
+            component: "BarChart:abscissa".into(),
             component_type: Some("rerun.components.TensorData".into()),
         }
     }
@@ -104,14 +104,19 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usiz
     once_cell::sync::Lazy::new(|| []);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| [BarChart::descriptor_color(), BarChart::descriptor_indexes()]);
+    once_cell::sync::Lazy::new(|| {
+        [
+            BarChart::descriptor_color(),
+            BarChart::descriptor_abscissa(),
+        ]
+    });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             BarChart::descriptor_values(),
             BarChart::descriptor_color(),
-            BarChart::descriptor_indexes(),
+            BarChart::descriptor_abscissa(),
         ]
     });
 
@@ -164,13 +169,13 @@ impl ::re_types_core::Archetype for BarChart {
         let color = arrays_by_descr
             .get(&Self::descriptor_color())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_color()));
-        let indexes = arrays_by_descr
-            .get(&Self::descriptor_indexes())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_indexes()));
+        let abscissa = arrays_by_descr
+            .get(&Self::descriptor_abscissa())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_abscissa()));
         Ok(Self {
             values,
             color,
-            indexes,
+            abscissa,
         })
     }
 }
@@ -182,7 +187,7 @@ impl ::re_types_core::AsComponents for BarChart {
         [
             self.values.clone(),
             self.color.clone(),
-            self.indexes.clone(),
+            self.abscissa.clone(),
         ]
         .into_iter()
         .flatten()
@@ -199,7 +204,7 @@ impl BarChart {
         Self {
             values: try_serialize_field(Self::descriptor_values(), [values]),
             color: None,
-            indexes: None,
+            abscissa: None,
         }
     }
 
@@ -222,9 +227,9 @@ impl BarChart {
                 crate::components::Color::arrow_empty(),
                 Self::descriptor_color(),
             )),
-            indexes: Some(SerializedComponentBatch::new(
+            abscissa: Some(SerializedComponentBatch::new(
                 crate::components::TensorData::arrow_empty(),
-                Self::descriptor_indexes(),
+                Self::descriptor_abscissa(),
             )),
         }
     }
@@ -254,8 +259,8 @@ impl BarChart {
             self.color
                 .map(|color| color.partitioned(_lengths.clone()))
                 .transpose()?,
-            self.indexes
-                .map(|indexes| indexes.partitioned(_lengths.clone()))
+            self.abscissa
+                .map(|abscissa| abscissa.partitioned(_lengths.clone()))
                 .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
@@ -271,11 +276,11 @@ impl BarChart {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_values = self.values.as_ref().map(|b| b.array.len());
         let len_color = self.color.as_ref().map(|b| b.array.len());
-        let len_indexes = self.indexes.as_ref().map(|b| b.array.len());
+        let len_abscissa = self.abscissa.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_values)
             .or(len_color)
-            .or(len_indexes)
+            .or(len_abscissa)
             .unwrap_or(0);
         self.columns(std::iter::repeat(1).take(len))
     }
@@ -320,23 +325,23 @@ impl BarChart {
         self
     }
 
-    /// The indexes. Should always be a 1-dimensional tensor (i.e. a vector).
+    /// The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
     #[inline]
-    pub fn with_indexes(mut self, indexes: impl Into<crate::components::TensorData>) -> Self {
-        self.indexes = try_serialize_field(Self::descriptor_indexes(), [indexes]);
+    pub fn with_abscissa(mut self, abscissa: impl Into<crate::components::TensorData>) -> Self {
+        self.abscissa = try_serialize_field(Self::descriptor_abscissa(), [abscissa]);
         self
     }
 
     /// This method makes it possible to pack multiple [`crate::components::TensorData`] in a single component batch.
     ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_indexes`] should
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_abscissa`] should
     /// be used when logging a single row's worth of data.
     #[inline]
-    pub fn with_many_indexes(
+    pub fn with_many_abscissa(
         mut self,
-        indexes: impl IntoIterator<Item = impl Into<crate::components::TensorData>>,
+        abscissa: impl IntoIterator<Item = impl Into<crate::components::TensorData>>,
     ) -> Self {
-        self.indexes = try_serialize_field(Self::descriptor_indexes(), indexes);
+        self.abscissa = try_serialize_field(Self::descriptor_abscissa(), abscissa);
         self
     }
 }
@@ -346,6 +351,6 @@ impl ::re_byte_size::SizeBytes for BarChart {
     fn heap_size_bytes(&self) -> u64 {
         self.values.heap_size_bytes()
             + self.color.heap_size_bytes()
-            + self.indexes.heap_size_bytes()
+            + self.abscissa.heap_size_bytes()
     }
 }

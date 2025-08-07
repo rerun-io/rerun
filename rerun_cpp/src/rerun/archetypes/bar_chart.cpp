@@ -12,8 +12,9 @@ namespace rerun::archetypes {
                                .value_or_throw();
         archetype.color =
             ComponentBatch::empty<rerun::components::Color>(Descriptor_color).value_or_throw();
-        archetype.indexes = ComponentBatch::empty<rerun::components::TensorData>(Descriptor_indexes)
-                                .value_or_throw();
+        archetype.abscissa =
+            ComponentBatch::empty<rerun::components::TensorData>(Descriptor_abscissa)
+                .value_or_throw();
         return archetype;
     }
 
@@ -26,8 +27,8 @@ namespace rerun::archetypes {
         if (color.has_value()) {
             columns.push_back(color.value().partitioned(lengths_).value_or_throw());
         }
-        if (indexes.has_value()) {
-            columns.push_back(indexes.value().partitioned(lengths_).value_or_throw());
+        if (abscissa.has_value()) {
+            columns.push_back(abscissa.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -39,8 +40,8 @@ namespace rerun::archetypes {
         if (color.has_value()) {
             return columns(std::vector<uint32_t>(color.value().length(), 1));
         }
-        if (indexes.has_value()) {
-            return columns(std::vector<uint32_t>(indexes.value().length(), 1));
+        if (abscissa.has_value()) {
+            return columns(std::vector<uint32_t>(abscissa.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -61,8 +62,8 @@ namespace rerun {
         if (archetype.color.has_value()) {
             cells.push_back(archetype.color.value());
         }
-        if (archetype.indexes.has_value()) {
-            cells.push_back(archetype.indexes.value());
+        if (archetype.abscissa.has_value()) {
+            cells.push_back(archetype.abscissa.value());
         }
 
         return rerun::take_ownership(std::move(cells));

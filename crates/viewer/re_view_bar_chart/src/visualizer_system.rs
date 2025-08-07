@@ -57,12 +57,12 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             };
 
             if tensor.is_vector() {
-                let indexes: components::TensorData =
-                    results.get_mono_with_fallback(&BarChart::descriptor_indexes(), self);
+                let abscissa: components::TensorData =
+                    results.get_mono_with_fallback(&BarChart::descriptor_abscissa(), self);
                 let color = results.get_mono_with_fallback(&BarChart::descriptor_color(), self);
                 self.charts.insert(
                     data_result.entity_path.clone(),
-                    (indexes.0.clone(), tensor.0.clone(), color),
+                    (abscissa.0.clone(), tensor.0.clone(), color),
                 );
             }
         }
@@ -87,7 +87,7 @@ impl TypedComponentFallbackProvider<components::Color> for BarChartVisualizerSys
 
 impl TypedComponentFallbackProvider<components::TensorData> for BarChartVisualizerSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::TensorData {
-        // This fallback is for indexes - generate a sequence from 0 to n-1
+        // This fallback is for abscissa - generate a sequence from 0 to n-1
         // where n is the length of the values tensor
 
         // Try to get the values tensor to determine the length
