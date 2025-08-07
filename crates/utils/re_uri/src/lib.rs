@@ -39,7 +39,7 @@ mod fragment;
 mod origin;
 mod redap_uri;
 mod scheme;
-mod time_range;
+mod uri_time_range;
 
 pub use self::{
     endpoints::{catalog::CatalogUri, dataset::DatasetDataUri, entry::EntryUri, proxy::ProxyUri},
@@ -48,7 +48,7 @@ pub use self::{
     origin::Origin,
     redap_uri::RedapUri,
     scheme::Scheme,
-    time_range::TimeRange,
+    uri_time_range::UriTimeRange,
 };
 
 pub mod external {

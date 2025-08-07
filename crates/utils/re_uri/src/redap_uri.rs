@@ -129,11 +129,9 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unnecessary_fallible_conversions)]
-
     use re_log_types::DataPath;
 
-    use crate::{Fragment, Scheme, TimeRange};
+    use crate::{Fragment, Scheme, UriTimeRange};
 
     use super::*;
     use core::net::Ipv4Addr;
@@ -280,10 +278,9 @@ mod tests {
         assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
-            Some(TimeRange {
+            Some(UriTimeRange {
                 timeline: re_log_types::Timeline::new_sequence("timeline"),
-                min: 100.try_into().unwrap(),
-                max: 200.try_into().unwrap(),
+                range: re_log_types::AbsoluteTimeRange::new(100, 200),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -315,10 +312,12 @@ mod tests {
         assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
-            Some(TimeRange {
+            Some(UriTimeRange {
                 timeline: re_log_types::Timeline::new_timestamp("log_time"),
-                min: 1_640_995_203_123_456_789.try_into().unwrap(),
-                max: 1_640_995_213_123_456_789.try_into().unwrap(),
+                range: re_log_types::AbsoluteTimeRange::new(
+                    1_640_995_203_123_456_789,
+                    1_640_995_213_123_456_789,
+                ),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -353,10 +352,12 @@ mod tests {
             assert_eq!(partition_id, "pid");
             assert_eq!(
                 time_range,
-                Some(TimeRange {
+                Some(UriTimeRange {
                     timeline: re_log_types::Timeline::new_duration("timeline"),
-                    min: re_log_types::TimeInt::from_secs(1.23).try_into().unwrap(),
-                    max: re_log_types::TimeInt::from_secs(72.0).try_into().unwrap(),
+                    range: re_log_types::AbsoluteTimeRange::new(
+                        re_log_types::TimeInt::from_secs(1.23),
+                        re_log_types::TimeInt::from_secs(72.0),
+                    ),
                 })
             );
             assert_eq!(fragment, Default::default());

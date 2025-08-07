@@ -1390,10 +1390,9 @@ impl App {
             return;
         };
 
-        uri.time_range = Some(re_uri::TimeRange {
+        uri.time_range = Some(re_uri::UriTimeRange {
             timeline: *time_ctrl.timeline(),
-            min: range.min.floor().into(),
-            max: range.max.ceil().into(),
+            range: re_log_types::AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
         });
 
         // On web we can produce a link to the web viewer,

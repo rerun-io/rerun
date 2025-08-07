@@ -1,43 +1,40 @@
-use re_log_types::{NonMinI64, AbsoluteTimeRangeF, TimeCell};
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeCell};
 
 use crate::Error;
 
+/// A time range as used in URIs, qualified with a timeline.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct TimeRange {
+pub struct UriTimeRange {
     pub timeline: re_log_types::Timeline,
-    pub min: NonMinI64,
-    pub max: NonMinI64,
+    pub range: AbsoluteTimeRange,
 }
 
-impl From<TimeRange> for AbsoluteTimeRangeF {
-    fn from(range: TimeRange) -> Self {
-        Self {
-            min: range.min.into(),
-            max: range.max.into(),
-        }
+impl From<UriTimeRange> for AbsoluteTimeRangeF {
+    fn from(range: UriTimeRange) -> Self {
+        range.range.into()
     }
 }
 
-impl From<TimeRange> for re_log_types::AbsoluteTimeRange {
-    fn from(range: TimeRange) -> Self {
-        Self::new(range.min, range.max)
+impl From<UriTimeRange> for AbsoluteTimeRange {
+    fn from(range: UriTimeRange) -> Self {
+        range.range
     }
 }
 
-impl std::fmt::Display for TimeRange {
+impl std::fmt::Display for UriTimeRange {
     /// Used for formatting time ranges in URLs
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { timeline, min, max } = self;
+        let Self { timeline, range } = self;
 
-        let min = TimeCell::new(timeline.typ(), *min);
-        let max = TimeCell::new(timeline.typ(), *max);
+        let min = TimeCell::new(timeline.typ(), range.min());
+        let max = TimeCell::new(timeline.typ(), range.max());
 
         let name = timeline.name();
         write!(f, "{name}@{min}..{max}")
     }
 }
 
-impl std::str::FromStr for TimeRange {
+impl std::str::FromStr for UriTimeRange {
     type Err = Error;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
@@ -65,9 +62,8 @@ impl std::str::FromStr for TimeRange {
         }
 
         let timeline = re_log_types::Timeline::new(timeline, min.typ());
-        let min = min.into();
-        let max = max.into();
+        let range = AbsoluteTimeRange::new(min, max);
 
-        Ok(Self { timeline, min, max })
+        Ok(Self { timeline, range })
     }
 }
