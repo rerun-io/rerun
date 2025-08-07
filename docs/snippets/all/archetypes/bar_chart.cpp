@@ -7,4 +7,5 @@ int main() {
     rec.spawn().exit_on_failure();
 
     rec.log("bar_chart", rerun::BarChart::i64({8, 4, 0, 9, 1, 4, 1, 6, 9, 0}));
+    rec.log("bar_chart_custom_abscissa", rerun::BarChart::i64({8, 4, 0, 9, 1, 4}).with_abscissa({0, 1, 3, 4, 7, 11}));
 }
