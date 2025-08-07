@@ -1406,7 +1406,7 @@ impl App {
         let Some(range) = time_ctrl.loop_selection() else {
             // no loop selection
             re_log::warn!(
-                "Could not copy time range link: No loop selection set. Use shift+left click on the timeline to create a loop"
+                "Could not copy time range link: No loop selection set. Use shift to drag a selection on the timeline"
             );
             return;
         };
