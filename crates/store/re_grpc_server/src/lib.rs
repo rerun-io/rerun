@@ -355,7 +355,6 @@ pub fn spawn_with_recv(
                 }
                 Err(err) => {
                     re_log::error!("dropping LogMsg due to failed decode: {err}");
-                    continue;
                 }
             }
         }
@@ -390,7 +389,6 @@ pub fn spawn_with_recv(
                 }
                 Err(err) => {
                     re_log::error!("dropping table due to failed decode: {err}");
-                    continue;
                 }
             }
         }

@@ -239,8 +239,6 @@ impl crate::DataLoader for ExternalLoader {
 
                             // NOTE: This will busy loop if there's no work available in the native OS thread-pool.
                             std::thread::yield_now();
-
-                            continue;
                         }
                         Err(err) => {
                             re_log::error!(?filepath, loader = ?exe, %err, "Failed to execute external loader");
