@@ -53,6 +53,13 @@ EXECUTABLE_EXTENSION = ""
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
 
+# TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
+[target.osx-64.activation.env]
+AR = "${PIXI_HOME}/.pixi/envs/cpp/bin/llvm-ar"
+
+[target.osx-arm64.activation.env]
+AR = "${PIXI_HOME}/.pixi/envs/cpp/bin/llvm-ar"
+
 # python-dev
 
 [feature.python-dev.activation.env]
