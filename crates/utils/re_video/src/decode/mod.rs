@@ -47,7 +47,7 @@
 //!   * we have to keep in mind the EOTF that our screen at the other end will use which for today's renderpipeline is always sRGB
 //!     (meaning it's a 2.2 gamma curve with a small linear part)
 //!   * Similar to the primaries, BT.709 uses a _similar_ transfer function as sRGB, but not exactly the same
-//!      <https://www.image-engineering.de/library/technotes/714-color-spaces-rec-709-vs-srgb>
+//!     <https://www.image-engineering.de/library/technotes/714-color-spaces-rec-709-vs-srgb>
 //!        * There's reason to believe players just ignore this:
 //!           * From a [VLC issue](https://code.videolan.org/videolan/vlc/-/issues/26999):
 //!              > We do not support transfers or primaries anyway, so it does not matter

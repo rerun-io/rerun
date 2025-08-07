@@ -29,10 +29,10 @@ pub struct PlayerConfiguration {
     ///
     /// Discarded alternatives:
     /// * use video time based tolerance:
-    ///   -> makes it depend on playback speed whether we hit the threshold or not
+    ///   - makes it depend on playback speed whether we hit the threshold or not
     /// * use a wall clock time based tolerance:
-    ///   -> any seek operation that leads to waiting for the decoder to catch up,
-    ///      would cause us to show in-progress frames until the tolerance is hit
+    ///   - any seek operation that leads to waiting for the decoder to catch up,
+    ///     would cause us to show in-progress frames until the tolerance is hit
     pub tolerated_output_delay_in_num_frames: usize,
 
     /// If we haven't seen new samples in this amount of time, we assume the video has ended
