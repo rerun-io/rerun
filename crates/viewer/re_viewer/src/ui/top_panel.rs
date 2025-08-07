@@ -149,32 +149,7 @@ fn top_bar_ui(
             connection_status_ui(ui, app.msg_receive_set());
         }
 
-        if let Some(wgpu) = frame.wgpu_render_state() {
-            let info = wgpu.adapter.get_info();
-            if info.device_type == wgpu::DeviceType::Cpu {
-                // TODO(emilk): we could consider logging this as a warning instead,
-                // and relying on the notification panel to show it.
-                // However, this let's us customize the message a bit more, with links etc.
-                ui.hyperlink_to(
-                    egui::RichText::new("⚠ Software rasterizer ⚠")
-                        .small()
-                        .color(ui.visuals().warn_fg_color),
-                    "https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues",
-                )
-                .on_hover_ui(|ui| {
-                    ui.label("Software rasterizer detected - expect poor performance.");
-                    ui.label(
-                        "Rerun requires hardware accelerated graphics (i.e. a GPU) for good performance.",
-                    );
-                    ui.label("Click for troubleshooting.");
-                    ui.add_space(8.0);
-                    ui.label(format!(
-                        "wgpu adapter {}",
-                        re_renderer::adapter_info_summary(&info)
-                    ));
-                });
-            }
-        }
+        show_software_rasterizer_warning(frame, ui);
 
         // Warn if in debug build
         if cfg!(debug_assertions) && !app.is_screenshotting() {
@@ -185,6 +160,35 @@ fn top_bar_ui(
             });
         }
     });
+}
+
+fn show_software_rasterizer_warning(frame: &eframe::Frame, ui: &mut egui::Ui) {
+    if let Some(wgpu) = frame.wgpu_render_state() {
+        let info = wgpu.adapter.get_info();
+        if info.device_type == wgpu::DeviceType::Cpu {
+            // TODO(emilk): we could consider logging this as a warning instead,
+            // and relying on the notification panel to show it.
+            // However, this let's us customize the message a bit more, with links etc.
+            ui.hyperlink_to(
+                egui::RichText::new("⚠ Software rasterizer ⚠")
+                    .small()
+                    .color(ui.visuals().warn_fg_color),
+                "https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues",
+            )
+            .on_hover_ui(|ui| {
+                ui.label("Software rasterizer detected - expect poor performance.");
+                ui.label(
+                    "Rerun requires hardware accelerated graphics (i.e. a GPU) for good performance.",
+                );
+                ui.label("Click for troubleshooting.");
+                ui.add_space(8.0);
+                ui.label(format!(
+                    "wgpu adapter {}",
+                    re_renderer::adapter_info_summary(&info)
+                ));
+            });
+        }
+    }
 }
 
 /// Show an orange dot to warn about multi-pass layout in egui.
