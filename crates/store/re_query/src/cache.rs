@@ -11,7 +11,7 @@ use re_chunk::ChunkId;
 use re_chunk_store::{
     ChunkCompactionReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber,
 };
-use re_log_types::{EntityPath, AbsoluteTimeRange, StoreId, TimeInt, TimelineName};
+use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeInt, TimelineName};
 use re_types_core::{ComponentDescriptor, archetypes};
 
 use crate::{LatestAtCache, RangeCache};

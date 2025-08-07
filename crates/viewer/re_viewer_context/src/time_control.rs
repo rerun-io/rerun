@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_chunk::TimelineName;
 use re_entity_db::{TimeCounts, TimesPerTimeline};
 use re_log_types::{
-    AbsoluteTimeRange, Duration, AbsoluteTimeRangeF, TimeInt, TimeReal, TimeType, Timeline,
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, Timeline,
 };
 
 use crate::NeedsRepaint;

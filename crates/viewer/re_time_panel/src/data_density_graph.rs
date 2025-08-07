@@ -8,7 +8,7 @@ use std::sync::Arc;
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, Tooltip, epaint::Vertex, lerp, pos2, remap};
 
 use re_chunk_store::{Chunk, RangeQuery};
-use re_log_types::{ComponentPath, AbsoluteTimeRange, TimeInt, TimelineName};
+use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimelineName};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 

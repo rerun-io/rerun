@@ -9,7 +9,7 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_log_types::{
-    EntityPath, AbsoluteTimeRange, Timestamp, build_frame_nr, build_log_time,
+    AbsoluteTimeRange, EntityPath, Timestamp, build_frame_nr, build_log_time,
     example_components::{MyColor, MyIndex, MyPoint, MyPoints},
 };
 use re_types::{

@@ -11,7 +11,7 @@ use nohash_hasher::IntMap;
 
 use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
-use re_log_types::{EntityPath, AbsoluteTimeRange, TimeInt, TimePoint, Timeline, TimelineName};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
 use re_types_core::ComponentDescriptor;
 
 use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};

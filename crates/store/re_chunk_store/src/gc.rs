@@ -9,7 +9,7 @@ use re_byte_size::SizeBytes;
 use web_time::Instant;
 
 use re_chunk::{Chunk, ChunkId, TimelineName};
-use re_log_types::{EntityPath, AbsoluteTimeRange, TimeInt};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_types_core::ComponentDescriptor;
 
 use crate::{

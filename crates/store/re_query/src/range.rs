@@ -7,7 +7,7 @@ use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId};
 use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
-use re_log_types::{EntityPath, AbsoluteTimeRange};
+use re_log_types::{AbsoluteTimeRange, EntityPath};
 use re_types_core::ComponentDescriptor;
 
 use crate::{QueryCache, QueryCacheKey, QueryError};

@@ -5,7 +5,7 @@ use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_grpc_client::ConnectionRegistryHandle;
-use re_log_types::{LogMsg, AbsoluteTimeRangeF, StoreId, TableId};
+use re_log_types::{AbsoluteTimeRangeF, LogMsg, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;

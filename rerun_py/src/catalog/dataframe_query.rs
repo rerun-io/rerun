@@ -17,7 +17,7 @@ use tracing::instrument;
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
-use re_log_types::{EntityPath, EntityPathFilter, AbsoluteTimeRange};
+use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathFilter};
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 

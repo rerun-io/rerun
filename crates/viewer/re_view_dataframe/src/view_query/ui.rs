@@ -3,7 +3,7 @@ use egui::PopupCloseBehavior;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{
-    EntityPath, AbsoluteTimeRange, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
+    AbsoluteTimeRange, EntityPath, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
 };
 use re_sorbet::ColumnSelector;
 use re_types::blueprint::components;

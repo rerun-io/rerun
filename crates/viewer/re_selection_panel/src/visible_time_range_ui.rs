@@ -1,7 +1,7 @@
 use egui::{NumExt as _, Ui};
 
 use re_chunk::Timeline;
-use re_log_types::{EntityPath, AbsoluteTimeRange, TimeType, TimelineName};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeType, TimelineName};
 use re_types::{
     Archetype as _,
     blueprint::{archetypes as blueprint_archetypes, components::VisibleTimeRange},

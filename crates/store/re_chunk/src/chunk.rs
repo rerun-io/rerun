@@ -15,7 +15,7 @@ use nohash_hasher::IntMap;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
-    EntityPath, NonMinI64, AbsoluteTimeRange, TimeInt, TimeType, Timeline, TimelineName,
+    AbsoluteTimeRange, EntityPath, NonMinI64, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
     ArchetypeName, ComponentDescriptor, ComponentType, DeserializationError, Loggable as _,

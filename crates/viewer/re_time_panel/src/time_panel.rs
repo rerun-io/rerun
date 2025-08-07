@@ -11,7 +11,7 @@ use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, AbsoluteTimeRange, TimeInt, TimeReal,
+    AbsoluteTimeRange, ApplicationId, ComponentPath, EntityPath, TimeInt, TimeReal,
 };
 use re_types::blueprint::components::PanelState;
 use re_types::reflection::ComponentDescriptorExt as _;

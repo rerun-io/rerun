@@ -1,7 +1,7 @@
 use std::ops::RangeInclusive;
 
 use re_chunk_store::ChunkStore;
-use re_log_types::{EntityPath, AbsoluteTimeRange, TimeInt, Timeline, TimestampFormat};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline, TimestampFormat};
 use re_types::ComponentDescriptor;
 use re_ui::{TimeDragValue, UiExt as _};
 

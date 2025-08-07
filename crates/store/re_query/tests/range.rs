@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 
 use re_chunk::{RowId, TimelineName};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreSubscriber as _, RangeQuery, AbsoluteTimeRange, TimeInt,
+    AbsoluteTimeRange, ChunkStore, ChunkStoreSubscriber as _, RangeQuery, TimeInt,
     external::re_chunk::Chunk,
 };
 use re_log_types::{

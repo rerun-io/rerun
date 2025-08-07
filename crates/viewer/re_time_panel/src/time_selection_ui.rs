@@ -1,6 +1,6 @@
 use egui::{CursorIcon, Id, NumExt as _, Rect};
 
-use re_log_types::{Duration, AbsoluteTimeRangeF, TimeInt, TimeReal, TimeType};
+use re_log_types::{AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType};
 use re_ui::UiExt as _;
 use re_viewer_context::{Looping, TimeControl};
 

@@ -3,7 +3,7 @@
 use itertools::Itertools as _;
 
 use re_dataframe::{
-    ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression, AbsoluteTimeRange,
+    AbsoluteTimeRange, ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression,
     SparseFillStrategy, TimeInt,
 };
 use re_format_arrow::format_record_batch;

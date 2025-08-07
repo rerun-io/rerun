@@ -11,8 +11,8 @@ use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, EntityPath, EntityPathHash, LogMsg, RecordingId, AbsoluteTimeRange,
-    AbsoluteTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
+    RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,

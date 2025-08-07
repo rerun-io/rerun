@@ -1339,7 +1339,7 @@ mod tests {
 
     use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimePoint};
     use re_chunk_store::{
-        ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, AbsoluteTimeRange, TimeInt,
+        AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, TimeInt,
     };
     use re_format_arrow::format_record_batch;
     use re_log_types::{

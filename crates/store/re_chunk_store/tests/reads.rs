@@ -5,7 +5,7 @@ use arrow::array::ArrayRef;
 use itertools::Itertools as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TimelineName};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, AbsoluteTimeRange, TimeInt,
+    AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, TimeInt,
 };
 use re_log_types::{
     EntityPath, TimeType, Timeline, build_frame_nr,
