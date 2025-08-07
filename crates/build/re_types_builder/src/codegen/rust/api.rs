@@ -1669,7 +1669,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
 
                 // NOTE: This will return an error if the different batches have different lengths,
                 // which is fine.
-                self.columns(std::iter::repeat(1).take(len))
+                self.columns(std::iter::repeat_n(1, len))
             }
         }
     });

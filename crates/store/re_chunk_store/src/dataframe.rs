@@ -482,7 +482,7 @@ impl ChunkStore {
             selection: _,
         } = query;
 
-        let filter = move |column: &ComponentColumnDescriptor| {
+        move |column: &ComponentColumnDescriptor| {
             let is_part_of_view_contents = || {
                 view_contents.as_ref().is_none_or(|view_contents| {
                     view_contents
@@ -510,8 +510,6 @@ impl ChunkStore {
                 && passes_semantically_empty_check()
                 && passes_tombstone_check()
                 && passes_static_check()
-        };
-
-        filter
+        }
     }
 }

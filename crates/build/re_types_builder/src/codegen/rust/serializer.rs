@@ -265,11 +265,11 @@ pub fn quote_arrow_serializer(
                     let type_ids: Vec<i8> = #quoted_type_ids;
                     let num_variants = #num_variants;
 
-                    let children: Vec<_> = std::iter::repeat(
+                    let children: Vec<_> = std::iter::repeat_n(
                             as_array_ref(NullArray::new(
                                 #data_src.len(),
-                            ))
-                        ).take(1 + num_variants) // +1 for the virtual `nulls` arm
+                            )),
+                            1 + num_variants) // +1 for the virtual `nulls` arm
                         .collect();
 
                     debug_assert_eq!(field_type_ids.len(), fields.len());
@@ -772,7 +772,7 @@ fn quote_arrow_field_serializer(
                                     .flat_map(|v| match v {
                                         Some(v) => itertools::Either::Left(v.into_iter()),
                                         None => itertools::Either::Right(
-                                            std::iter::repeat(Default::default()).take(#count),
+                                            std::iter::repeat_n(Default::default(), #count),
                                         ),
                                     })
                                 }
@@ -859,7 +859,7 @@ fn quote_arrow_field_serializer(
                         #validity_src.as_ref().map(|validity| {
                             validity
                                 .iter()
-                                .map(|b| std::iter::repeat(b).take(#count))
+                                .map(|b| std::iter::repeat_n(b, #count))
                                 .flatten()
                                 .collect::<Vec<_>>()
                                 .into()

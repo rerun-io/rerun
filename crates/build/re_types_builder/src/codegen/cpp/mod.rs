@@ -911,7 +911,7 @@ impl QuotedObject {
             } = &obj.fields[0].typ
             {
                 let data_type = quote_field_type(&mut hpp_includes, &obj.fields[0]);
-                let type_name = datatype_fqname.split('.').last().unwrap();
+                let type_name = datatype_fqname.split('.').next_back().unwrap();
                 let field_name = format_ident!("{}", obj.fields[0].name);
 
                 methods.push(Method {

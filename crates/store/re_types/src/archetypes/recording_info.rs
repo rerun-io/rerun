@@ -219,7 +219,7 @@ impl RecordingInfo {
         let len_start_time = self.start_time.as_ref().map(|b| b.array.len());
         let len_name = self.name.as_ref().map(|b| b.array.len());
         let len = None.or(len_start_time).or(len_name).unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// When the recording started.

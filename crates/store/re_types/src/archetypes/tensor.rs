@@ -248,7 +248,7 @@ impl Tensor {
         let len_data = self.data.as_ref().map(|b| b.array.len());
         let len_value_range = self.value_range.as_ref().map(|b| b.array.len());
         let len = None.or(len_data).or(len_value_range).unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The tensor data

@@ -401,8 +401,8 @@ async fn chunk_store_cpu_worker_thread(
 /// This is the function that will run on the IO (main) tokio runtime that will listen
 /// to the gRPC channel for chunks coming in from the data platform. This loop is started
 /// up by the execute fn of the physical plan, so we will start one per output partition,
-/// which is different from the partition_id. The output of this loop will be sorted
-/// by rerun_partition_id. The sorting by time index will happen within the cpu worker
+/// which is different from the `partition_id`. The output of this loop will be sorted
+/// by `rerun_partition_id`. The sorting by time index will happen within the cpu worker
 /// thread.
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_stream_io_loop(

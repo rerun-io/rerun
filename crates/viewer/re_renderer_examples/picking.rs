@@ -71,9 +71,7 @@ impl framework::Example for Picking {
                         )
                     })
                     .collect_vec(),
-                radii: std::iter::repeat(Size::new_scene_units(0.08))
-                    .take(point_count)
-                    .collect_vec(),
+                radii: vec![Size::new_scene_units(0.08); point_count],
                 colors: (0..point_count)
                     .map(|_| random_color(&mut rnd))
                     .collect_vec(),

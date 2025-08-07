@@ -325,7 +325,7 @@ pub fn align_record_batch_to_schema(
 /// We need to create `num_partitions` of partition stream outputs, each of
 /// which will be fed from multiple `rerun_partition_id` sources. The partitioning
 /// output is a hash of the `rerun_partition_id`. We will reuse some of the
-/// underlying execution code from DataFusion's `RepartitionExec` to compute
+/// underlying execution code from `DataFusion`'s `RepartitionExec` to compute
 /// these partition IDs, just to be certain they match partitioning generated
 /// from sources other than Rerun gRPC services.
 #[tracing::instrument(level = "trace", skip_all)]

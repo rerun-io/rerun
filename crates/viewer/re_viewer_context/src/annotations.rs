@@ -189,7 +189,7 @@ impl ResolvedAnnotationInfos {
     pub fn iter(&self) -> impl Iterator<Item = &ResolvedAnnotationInfo> {
         use itertools::Either;
         match self {
-            Self::Same(n, info) => Either::Left(std::iter::repeat(info).take(*n)),
+            Self::Same(n, info) => Either::Left(std::iter::repeat_n(info, *n)),
             Self::Many(infos) => Either::Right(infos.iter()),
         }
     }

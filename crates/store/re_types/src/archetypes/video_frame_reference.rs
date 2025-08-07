@@ -383,7 +383,7 @@ impl VideoFrameReference {
             .or(len_video_reference)
             .or(len_draw_order)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// References the closest video frame to this timestamp.
