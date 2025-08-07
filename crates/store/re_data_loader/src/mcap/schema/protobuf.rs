@@ -312,9 +312,7 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
             DataType::Struct(fields)
         }
         Kind::Enum(_) => {
-            // TODO(grtlr): The enum support in Arrow is currently limited:
-            // https://github.com/apache/arrow-rs/issues/8033
-            // Implement enum support when `UnionBuilder` implements `ArrayBuilder`.
+            // TODO(apache/arrow-rs#8033): Implement enum support when `UnionBuilder` implements `ArrayBuilder`.
             DataType::Int32
         }
     };

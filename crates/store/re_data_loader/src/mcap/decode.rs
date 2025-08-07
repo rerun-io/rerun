@@ -6,7 +6,6 @@ use std::{
 };
 
 use anyhow::Context as _;
-use mcap::{Message, Schema};
 
 use re_chunk::{
     Chunk, EntityPath, TimeColumn, TimeColumnBuilder, TimePoint, Timeline, TimelineName,
@@ -211,7 +210,7 @@ pub struct McapChunkDecoder<'a> {
 fn create_fallback(
     entity_path: EntityPath,
     num_rows: usize,
-    schema: &Arc<Schema<'_>>,
+    schema: &Arc<::mcap::Schema<'_>>,
 ) -> Result<(ParserContext, Box<dyn McapMessageParser>), PluginError> {
     Ok(match schema.encoding.as_str() {
         "protobuf" => (
@@ -242,7 +241,7 @@ impl<'a> McapChunkDecoder<'a> {
     }
 
     /// Decode the next message in the chunk
-    pub fn decode_next(&mut self, msg: &Message<'_>) -> Result<(), PluginError> {
+    pub fn decode_next(&mut self, msg: &::mcap::Message<'_>) -> Result<(), PluginError> {
         let channel = msg.channel.as_ref();
         let channel_id = ChannelId(channel.id);
         let entity_path = EntityPath::from(channel.topic.as_str());
