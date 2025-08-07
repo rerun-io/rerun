@@ -27,7 +27,7 @@ re_view.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["egui_plot"] }
 re_ui.workspace = true
-re_viewer_context = { workspace = true }
+re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
 arrow.workspace = true
