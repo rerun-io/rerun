@@ -9324,6 +9324,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "rerun_server"
+version = "0.25.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "clap",
+ "futures",
+ "http",
+ "itertools 0.14.0",
+ "jiff",
+ "mimalloc",
+ "nohash-hasher",
+ "re_build_info",
+ "re_build_tools",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_error",
+ "re_grpc_server",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_memory",
+ "re_protos",
+ "re_tuid",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-web",
+ "tower",
+ "tower-service",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "resvg"
 version = "0.45.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
