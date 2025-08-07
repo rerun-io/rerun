@@ -1,12 +1,20 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
+use arrow::array::{
+    ArrayRef, BooleanArray, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
+    TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
+    TimestampSecondArray, UInt64Array,
+};
+use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use nohash_hasher::IntSet;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::sync::Arc;
 use tokio_stream::StreamExt as _;
 
+use crate::store::{Dataset, InMemoryStore};
 use re_chunk_store::Chunk;
+use re_chunk_store::external::re_chunk::external::re_byte_size::SizeBytes;
 use re_entity_db::EntityDb;
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
+use re_log_types::external::re_types_core::{ChunkId, Loggable};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse};
 use re_protos::catalog::v1alpha1::{
@@ -16,7 +24,7 @@ use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::ext::{GetChunksRequest, ScanPartitionTableRequest};
 use re_protos::manifest_registry::v1alpha1::{
     GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
-    ScanPartitionTableResponse,
+    QueryDatasetResponse, ScanPartitionTableResponse,
 };
 use re_protos::{
     frontend::v1alpha1::frontend_service_server::FrontendService,
@@ -25,8 +33,6 @@ use re_protos::{
         QueryTasksRequest, QueryTasksResponse,
     },
 };
-
-use crate::store::{Dataset, InMemoryStore};
 
 #[derive(Debug, Default)]
 pub struct FrontendHandlerSettings {}
@@ -541,10 +547,246 @@ impl FrontendService for FrontendHandler {
 
     async fn query_dataset(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::QueryDatasetRequest>,
+        request: tonic::Request<re_protos::frontend::v1alpha1::QueryDatasetRequest>,
     ) -> std::result::Result<tonic::Response<Self::QueryDatasetStream>, tonic::Status> {
-        Err(tonic::Status::unimplemented(
-            "query_dataset not implemented",
+        let re_protos::frontend::v1alpha1::QueryDatasetRequest {
+            dataset_id,
+            partition_ids,
+            chunk_ids,
+            entity_paths,
+            ..
+        } = request.into_inner();
+
+        if !chunk_ids.is_empty() {
+            return Err(tonic::Status::unimplemented(
+                "query_dataset: querying specific chunk ids is not implemented",
+            ));
+        }
+        let dataset_id: EntryId = match dataset_id {
+            Some(d) => d.try_into()?,
+            None => {
+                return Err(tonic::Status::unimplemented(
+                    "query_dataset: dataset must be specified",
+                ));
+            }
+        };
+
+        let Some(dataset_id) = dataset_id.into() else {
+            return Err(tonic::Status::unimplemented(
+                "query_dataset: dataset must be specified",
+            ));
+        };
+
+        let entity_paths: IntSet<EntityPath> = entity_paths
+            .into_iter()
+            .map(EntityPath::try_from)
+            .collect::<Result<IntSet<EntityPath>, _>>()?;
+
+        let store = self.store.read().await;
+        let dataset = store.dataset(dataset_id).ok_or_else(|| {
+            tonic::Status::not_found(format!("Entry with ID {dataset_id} not found"))
+        })?;
+
+        let partition_ids: Vec<PartitionId> = match partition_ids.is_empty() {
+            true => dataset.partition_ids().collect(),
+            false => partition_ids
+                .into_iter()
+                .map(PartitionId::try_from)
+                .collect::<Result<_, _>>()?,
+        };
+
+        let storage_engines = partition_ids
+            .into_iter()
+            .map(|partition_id| {
+                dataset
+                    .partition(&partition_id)
+                    .ok_or_else(|| {
+                        tonic::Status::not_found(format!(
+                            "Partition with ID {partition_id} not found"
+                        ))
+                    })
+                    .map(|partition| {
+                        #[expect(unsafe_code)]
+                        // Safety: no viewer is running, and we've locked the store for the duration
+                        // of the handler already.
+                        unsafe { partition.storage_engine_raw() }.clone()
+                    })
+                    .map(|storage_engine| (partition_id, storage_engine))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let stream = futures::stream::iter(storage_engines.into_iter().map(
+            move |(partition_id, storage_engine)| {
+                let storage_read = storage_engine.read();
+                let chunk_store = storage_read.store();
+                let num_rows = chunk_store.num_chunks();
+
+                let mut chunk_partition_id = Vec::with_capacity(num_rows);
+                let mut chunk_entity_path = Vec::with_capacity(num_rows);
+                let mut chunk_id = Vec::with_capacity(num_rows);
+                let mut chunk_is_static = Vec::with_capacity(num_rows);
+                let mut chunk_byte_len = Vec::with_capacity(num_rows);
+
+                let mut timelines = BTreeMap::new();
+
+                chunk_store
+                    .iter_chunks()
+                    .filter(|chunk| {
+                        entity_paths.is_empty() || entity_paths.contains(chunk.entity_path())
+                    })
+                    .for_each(|chunk| {
+                        let mut missing_timelines: BTreeSet<_> =
+                            timelines.keys().cloned().collect();
+                        for (timeline_name, timeline_col) in chunk.timelines() {
+                            let range = timeline_col.time_range();
+                            let time_min = range.min();
+                            let time_max = range.max();
+
+                            let timeline_name = timeline_name.as_str();
+                            missing_timelines.remove(timeline_name);
+                            let timeline_data_type =
+                                timeline_col.times_array().data_type().to_owned();
+
+                            let timeline_data = timelines.entry(timeline_name).or_insert((
+                                timeline_data_type,
+                                vec![None; chunk_partition_id.len()],
+                                vec![None; chunk_partition_id.len()],
+                            ));
+
+                            timeline_data.1.push(Some(time_min.as_i64()));
+                            timeline_data.2.push(Some(time_max.as_i64()));
+                        }
+                        for timeline_name in missing_timelines {
+                            let timeline_data = timelines.get_mut(timeline_name).unwrap(); // Already checked
+
+                            timeline_data.1.push(None);
+                            timeline_data.2.push(None);
+                        }
+
+                        chunk_partition_id.push(partition_id.id.clone());
+                        chunk_entity_path.push(chunk.entity_path().to_owned());
+                        chunk_id.push(chunk.id());
+                        chunk_is_static.push(chunk.is_static());
+                        chunk_byte_len.push(chunk.heap_size_bytes());
+                    });
+
+                let mut output_fields = vec![
+                    Field::new(
+                        "chunk_partition_id",
+                        arrow::datatypes::DataType::Utf8,
+                        false,
+                    )
+                    .with_metadata(
+                        [("rerun:kind".to_owned(), "control".to_owned())]
+                            .into_iter()
+                            .collect(),
+                    ),
+                    Field::new("chunk_entity_path", arrow::datatypes::DataType::Utf8, false)
+                        .with_metadata(
+                            [
+                                ("rerun:kind".to_owned(), "control".to_owned()), //
+                            ]
+                            .into_iter()
+                            .collect(),
+                        ),
+                    Field::new("chunk_id", ChunkId::arrow_datatype(), false).with_metadata(
+                        [
+                            ("rerun:kind".to_owned(), "control".to_owned()), //
+                        ]
+                        .into_iter()
+                        .collect(),
+                    ),
+                    Field::new(
+                        "chunk_is_static",
+                        arrow::datatypes::DataType::Boolean,
+                        false,
+                    )
+                    .with_metadata(
+                        [
+                            ("rerun:kind".to_owned(), "control".to_owned()), //
+                        ]
+                        .into_iter()
+                        .collect(),
+                    ),
+                    Field::new("chunk_byte_len", arrow::datatypes::DataType::UInt64, false),
+                ];
+                let mut arrays = vec![
+                    Arc::new(StringArray::from(chunk_partition_id)) as ArrayRef,
+                    EntityPath::to_arrow(chunk_entity_path).map_err(|err| {
+                        tonic::Status::internal(format!("EntityPath to_arrow failed: {err:#}"))
+                    })? as ArrayRef,
+                    ChunkId::to_arrow(chunk_id).map_err(|err| {
+                        tonic::Status::internal(format!("ChunkId to_arrow failed: {err:#}"))
+                    })? as ArrayRef,
+                    Arc::new(BooleanArray::from(chunk_is_static)) as ArrayRef,
+                    Arc::new(UInt64Array::from(chunk_byte_len)) as ArrayRef,
+                ];
+
+                for (timeline_name, (data_type, starts, ends)) in timelines {
+                    let (starts, ends) = match data_type {
+                        DataType::Int64 => (
+                            Arc::new(Int64Array::from(starts)) as ArrayRef,
+                            Arc::new(Int64Array::from(ends)) as ArrayRef,
+                        ),
+                        // downcast_value!(time_array, Int64Array).reinterpret_cast::<Int64Type>(),
+                        DataType::Timestamp(TimeUnit::Second, _) => (
+                            Arc::new(TimestampSecondArray::from(starts)) as ArrayRef,
+                            Arc::new(TimestampSecondArray::from(ends)) as ArrayRef,
+                        ),
+                        DataType::Timestamp(TimeUnit::Millisecond, _) => (
+                            Arc::new(TimestampMillisecondArray::from(starts)) as ArrayRef,
+                            Arc::new(TimestampMillisecondArray::from(ends)) as ArrayRef,
+                        ),
+                        DataType::Timestamp(TimeUnit::Microsecond, _) => (
+                            Arc::new(TimestampMicrosecondArray::from(starts)) as ArrayRef,
+                            Arc::new(TimestampMicrosecondArray::from(ends)) as ArrayRef,
+                        ),
+                        DataType::Timestamp(TimeUnit::Nanosecond, _) => (
+                            Arc::new(TimestampNanosecondArray::from(starts)) as ArrayRef,
+                            Arc::new(TimestampNanosecondArray::from(ends)) as ArrayRef,
+                        ),
+                        DataType::Duration(TimeUnit::Nanosecond) => (
+                            Arc::new(DurationNanosecondArray::from(starts)) as ArrayRef,
+                            Arc::new(DurationNanosecondArray::from(ends)) as ArrayRef,
+                        ),
+                        _ => {
+                            return Err(tonic::Status::internal(format!(
+                                "Unexpected timeline data type: {data_type}"
+                            )));
+                        }
+                    };
+
+                    output_fields.push(Field::new(
+                        format!("{timeline_name}:start"),
+                        starts.data_type().to_owned(),
+                        true,
+                    ));
+                    output_fields.push(Field::new(
+                        format!("{timeline_name}:end"),
+                        ends.data_type().to_owned(),
+                        true,
+                    ));
+
+                    arrays.push(starts);
+                    arrays.push(ends);
+                }
+
+                let schema = Arc::new(Schema::new(output_fields));
+                let batch = RecordBatch::try_new(schema, arrays).map_err(|err| {
+                    tonic::Status::internal(format!("record batch creation failed: {err:#}"))
+                })?;
+
+                let data =
+                    Some(batch.encode().map_err(|err| {
+                        tonic::Status::internal(format!("encoding failed: {err:#}"))
+                    })?);
+
+                Ok(QueryDatasetResponse { data })
+            },
+        ));
+
+        Ok(tonic::Response::new(
+            Box::pin(stream) as Self::QueryDatasetStream
         ))
     }
 
