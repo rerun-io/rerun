@@ -20,27 +20,9 @@ use std::collections::HashMap;
 
 use crate::mcap::{
     cdr,
-    decode::{McapMessageParser, ParserContext, PluginError, SchemaPlugin},
+    decode::{McapMessageParser, ParserContext, PluginError},
     schema::blob_list_builder,
 };
-
-/// Plugin that parses `sensor_msgs/msg/PointCloud2` messages.
-#[derive(Default)]
-pub struct PointCloud2SchemaPlugin;
-
-impl SchemaPlugin for PointCloud2SchemaPlugin {
-    fn name(&self) -> crate::mcap::decode::SchemaName {
-        "sensor_msgs/msg/PointCloud2".into()
-    }
-
-    fn create_message_parser(
-        &self,
-        _channel: &mcap::Channel<'_>,
-        num_rows: usize,
-    ) -> Box<dyn crate::mcap::decode::McapMessageParser> {
-        Box::new(PointCloud2MessageParser::new(num_rows)) as Box<dyn McapMessageParser>
-    }
-}
 
 pub struct PointCloud2MessageParser {
     num_rows: usize,
@@ -62,7 +44,7 @@ pub struct PointCloud2MessageParser {
 impl PointCloud2MessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.PointCloud2";
 
-    fn new(num_rows: usize) -> Self {
+    pub fn new(num_rows: usize) -> Self {
         let fields = FixedSizeListBuilder::with_capacity(
             ListBuilder::new(StructBuilder::new(
                 Fields::from(vec![
