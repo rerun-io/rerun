@@ -397,7 +397,7 @@ struct DepthTexture {
 impl DepthTexture {
     pub fn spiral(re_ctx: &re_renderer::RenderContext, dimensions: glam::UVec2) -> Self {
         let size = (dimensions.x * dimensions.y) as usize;
-        let mut data = std::iter::repeat_n(0f32, size).collect_vec();
+        let mut data = vec![0f32; size];
         spiral(dimensions).for_each(|(texcoords, d)| {
             data[(texcoords.x + texcoords.y * dimensions.x) as usize] = d;
         });
@@ -438,7 +438,7 @@ struct AlbedoTexture {
 impl AlbedoTexture {
     pub fn spiral(re_ctx: &re_renderer::RenderContext, dimensions: glam::UVec2) -> Self {
         let size = (dimensions.x * dimensions.y) as usize;
-        let mut rgba8 = std::iter::repeat_n(0, size * 4).collect_vec();
+        let mut rgba8 = vec![0; size * 4];
         spiral(dimensions).for_each(|(texcoords, d)| {
             let idx = ((texcoords.x + texcoords.y * dimensions.x) * 4) as usize;
             rgba8[idx..idx + 4].copy_from_slice(re_renderer::colormap_turbo_srgb(d).as_slice());

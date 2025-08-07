@@ -389,7 +389,7 @@ impl Chunk {
 
     /// Clones the chunk into a new chunk where all [`RowId`]s are [`RowId::ZERO`].
     pub fn zeroed(self) -> Self {
-        let row_ids = std::iter::repeat_n(RowId::ZERO, self.row_ids.len()).collect_vec();
+        let row_ids = vec![RowId::ZERO; self.row_ids.len()];
 
         let row_ids = RowId::arrow_from_slice(&row_ids);
 
