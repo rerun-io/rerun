@@ -13,7 +13,7 @@ use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClien
 use re_protos::{
     catalog::v1alpha1::ext::ReadDatasetEntryResponse, frontend::v1alpha1::GetChunksRequest,
 };
-use re_uri::{DatasetDataUri, Origin, UriTimeRange};
+use re_uri::{DatasetDataUri, Origin, TimeSelection};
 
 use crate::{
     ConnectionClient, ConnectionRegistryHandle, MAX_DECODING_MESSAGE_SIZE, StreamError,
@@ -423,7 +423,7 @@ async fn stream_partition_from_server(
     tx: &re_smart_channel::Sender<LogMsg>,
     dataset_id: EntryId,
     partition_id: PartitionId,
-    time_range: Option<UriTimeRange>,
+    time_range: Option<TimeSelection>,
     on_cmd: &(dyn Fn(Command) + Send + Sync),
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {

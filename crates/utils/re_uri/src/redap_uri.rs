@@ -131,7 +131,7 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 mod tests {
     use re_log_types::DataPath;
 
-    use crate::{Fragment, Scheme, UriTimeRange};
+    use crate::{Fragment, Scheme, TimeSelection};
 
     use super::*;
     use core::net::Ipv4Addr;
@@ -278,7 +278,7 @@ mod tests {
         assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
-            Some(UriTimeRange {
+            Some(TimeSelection {
                 timeline: re_log_types::Timeline::new_sequence("timeline"),
                 range: re_log_types::AbsoluteTimeRange::new(100, 200),
             })
@@ -312,7 +312,7 @@ mod tests {
         assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
-            Some(UriTimeRange {
+            Some(TimeSelection {
                 timeline: re_log_types::Timeline::new_timestamp("log_time"),
                 range: re_log_types::AbsoluteTimeRange::new(
                     1_640_995_203_123_456_789,
@@ -352,7 +352,7 @@ mod tests {
             assert_eq!(partition_id, "pid");
             assert_eq!(
                 time_range,
-                Some(UriTimeRange {
+                Some(TimeSelection {
                     timeline: re_log_types::Timeline::new_duration("timeline"),
                     range: re_log_types::AbsoluteTimeRange::new(
                         re_log_types::TimeInt::from_secs(1.23),

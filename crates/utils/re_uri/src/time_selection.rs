@@ -2,26 +2,26 @@ use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeCell};
 
 use crate::Error;
 
-/// A time range as used in URIs, qualified with a timeline.
+/// A time range selection as used in URIs, qualified with a timeline.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct UriTimeRange {
+pub struct TimeSelection {
     pub timeline: re_log_types::Timeline,
     pub range: AbsoluteTimeRange,
 }
 
-impl From<UriTimeRange> for AbsoluteTimeRangeF {
-    fn from(range: UriTimeRange) -> Self {
+impl From<TimeSelection> for AbsoluteTimeRangeF {
+    fn from(range: TimeSelection) -> Self {
         range.range.into()
     }
 }
 
-impl From<UriTimeRange> for AbsoluteTimeRange {
-    fn from(range: UriTimeRange) -> Self {
+impl From<TimeSelection> for AbsoluteTimeRange {
+    fn from(range: TimeSelection) -> Self {
         range.range
     }
 }
 
-impl std::fmt::Display for UriTimeRange {
+impl std::fmt::Display for TimeSelection {
     /// Used for formatting time ranges in URLs
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self { timeline, range } = self;
@@ -34,7 +34,7 @@ impl std::fmt::Display for UriTimeRange {
     }
 }
 
-impl std::str::FromStr for UriTimeRange {
+impl std::str::FromStr for TimeSelection {
     type Err = Error;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {

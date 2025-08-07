@@ -1390,7 +1390,7 @@ impl App {
             return;
         };
 
-        uri.time_range = Some(re_uri::UriTimeRange {
+        uri.time_range = Some(re_uri::TimeSelection {
             timeline: *time_ctrl.timeline(),
             range: re_log_types::AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
         });

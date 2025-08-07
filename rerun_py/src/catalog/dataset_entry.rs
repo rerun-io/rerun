@@ -223,17 +223,18 @@ impl PyDatasetEntry {
             .transpose()?;
         let end_i64 = end.as_ref().map(|e| py_object_to_i64(py, e)).transpose()?;
 
-        let time_range: Option<re_uri::UriTimeRange> = timeline.map(|name| re_uri::UriTimeRange {
-            timeline: re_chunk::Timeline::new_timestamp(name),
-            range: re_log_types::AbsoluteTimeRange::new(
-                start_i64
-                    .map(|start| start.try_into().expect("start time must be valid"))
-                    .unwrap_or(re_log_types::NonMinI64::MIN),
-                end_i64
-                    .map(|end| end.try_into().expect("end time must be valid"))
-                    .unwrap_or(re_log_types::NonMinI64::MAX),
-            ),
-        });
+        let time_range: Option<re_uri::TimeSelection> =
+            timeline.map(|name| re_uri::TimeSelection {
+                timeline: re_chunk::Timeline::new_timestamp(name),
+                range: re_log_types::AbsoluteTimeRange::new(
+                    start_i64
+                        .map(|start| start.try_into().expect("start time must be valid"))
+                        .unwrap_or(re_log_types::NonMinI64::MIN),
+                    end_i64
+                        .map(|end| end.try_into().expect("end time must be valid"))
+                        .unwrap_or(re_log_types::NonMinI64::MAX),
+                ),
+            });
         Ok(re_uri::DatasetDataUri {
             origin: connection.origin().clone(),
             dataset_id: super_.details.id.id,
