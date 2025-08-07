@@ -426,10 +426,7 @@ mod tests {
         let url = "http://wrong-scheme:1234/recording/12345";
         let address: Result<RedapUri, _> = url.parse();
 
-        assert!(matches!(
-            address.unwrap_err(),
-            super::Error::InvalidScheme { .. }
-        ));
+        assert!(matches!(address.unwrap_err(), super::Error::InvalidScheme));
     }
 
     #[test]

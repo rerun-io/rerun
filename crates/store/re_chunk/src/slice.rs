@@ -1489,9 +1489,7 @@ mod tests {
         // repeated
         {
             let indices = ArrowInt32Array::from(
-                std::iter::repeat(2i32)
-                    .take(chunk.num_rows() * 2)
-                    .collect_vec(),
+                std::iter::repeat_n(2i32, chunk.num_rows() * 2).collect_vec(),
             );
             let got = chunk.taken(&indices);
             eprintln!("got:\n{got}");
