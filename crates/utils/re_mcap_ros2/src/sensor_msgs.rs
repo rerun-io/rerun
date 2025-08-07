@@ -168,6 +168,9 @@ pub struct PointCloud2 {
 
     /// Actual point data, size is (`row_step`*`height`)
     pub data: Vec<u8>,
+
+    /// True if there are no invalid points
+    pub is_dense: bool,
 }
 
 /// This message is used to specify a region of interest in an image.

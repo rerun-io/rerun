@@ -4,7 +4,8 @@ use std::sync::Arc;
 use std::{io::Cursor, sync::mpsc::Sender};
 
 use arrow::array::{
-    MapBuilder, StringBuilder, UInt16Array, UInt16Builder, UInt32Array, UInt64Array, UInt64Builder,
+    BinaryArray, MapBuilder, StringBuilder, UInt16Array, UInt16Builder, UInt32Array, UInt64Array,
+    UInt64Builder,
 };
 use arrow::error::ArrowError;
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
@@ -145,13 +146,11 @@ fn from_schema(schema: &Arc<::mcap::Schema<'_>>) -> AnyValues {
         data,
     } = schema.as_ref();
 
-    let blob = components::Blob(data.clone().into_owned().into());
-
     // Adds a field of arbitrary data to this archetype.
     AnyValues::new("rerun.mcap.Schema")
         .with_field("id", Arc::new(UInt16Array::from(vec![*id])))
         .with_field("name", Arc::new(StringArray::from(vec![name.clone()])))
-        .with_component::<components::Blob>("data", vec![blob])
+        .with_field("data", Arc::new(BinaryArray::from(vec![data.as_ref()])))
         .with_field(
             "encoding",
             Arc::new(StringArray::from(vec![encoding.clone()])),
@@ -296,8 +295,11 @@ fn load_mcap(
                     .with_archetype(
                         RowId::new(),
                         TimePoint::STATIC,
-                        &archetypes::TextLog::new("Unsupported schema for channel")
-                            .with_level(components::TextLogLevel::WARN),
+                        &archetypes::TextLog::new(format!(
+                            "Unsupported schema for channel: {}",
+                            schema.name
+                        ))
+                        .with_level(components::TextLogLevel::WARN),
                     )
                     .build()?;
                 send_chunk(chunk);

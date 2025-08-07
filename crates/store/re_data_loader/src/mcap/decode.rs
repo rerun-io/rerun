@@ -1,9 +1,11 @@
 //! Utilities for decoding MCAP messages into Rerun chunks.
 
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, hash_map::Entry},
+    sync::Arc,
+};
 
 use anyhow::Context as _;
-use mcap::Message;
 
 use re_chunk::{
     Chunk, EntityPath, TimeColumn, TimeColumnBuilder, TimePoint, Timeline, TimelineName,
@@ -12,7 +14,7 @@ use re_chunk::{
 use re_log_types::TimeCell;
 use thiserror::Error;
 
-use super::schema::RawMcapMessageParser;
+use super::schema::{RawMcapMessageParser, protobuf::ProtobufMessageParser};
 
 pub type SchemaName = String;
 
@@ -192,24 +194,46 @@ impl IsEnabled for ChannelId {}
 /// Decodes batches of messages from an MCAP into Rerun chunks using previously registered parsers.
 pub struct McapChunkDecoder<'a> {
     registry: &'a MessageDecoderRegistry,
-    channel_counts: IntMap<ChannelId, usize>,
+    per_channel_counts: IntMap<ChannelId, usize>,
     parsers: IntMap<ChannelId, (ParserContext, Box<dyn McapMessageParser>)>,
+}
+
+// TODO(grtlr): This needs cleaning up when we revisit the data loader architecture and introduce "layers".
+fn create_fallback(
+    entity_path: EntityPath,
+    num_rows: usize,
+    schema: &Arc<::mcap::Schema<'_>>,
+) -> Result<(ParserContext, Box<dyn McapMessageParser>), PluginError> {
+    Ok(match schema.encoding.as_str() {
+        "protobuf" => (
+            ParserContext::new(entity_path),
+            Box::new(
+                ProtobufMessageParser::try_new(num_rows, schema)
+                    .map_err(|err| PluginError::Other(err.into()))?,
+            ) as Box<dyn McapMessageParser>,
+        ),
+        // TODO(grtlr): Add new schemas, such as `jsonschema` here.
+        _ => (
+            ParserContext::new(entity_path.clone()),
+            Box::new(RawMcapMessageParser::new(num_rows)) as Box<dyn McapMessageParser>,
+        ),
+    })
 }
 
 impl<'a> McapChunkDecoder<'a> {
     pub fn new(
         registry: &'a MessageDecoderRegistry,
-        channel_counts: IntMap<ChannelId, usize>,
+        per_channel_counts: IntMap<ChannelId, usize>,
     ) -> Self {
         Self {
             registry,
-            channel_counts,
-            parsers: IntMap::default(),
+            per_channel_counts,
+            parsers: Default::default(),
         }
     }
 
     /// Decode the next message in the chunk
-    pub fn decode_next(&mut self, msg: &Message<'_>) -> Result<(), PluginError> {
+    pub fn decode_next(&mut self, msg: &::mcap::Message<'_>) -> Result<(), PluginError> {
         let channel = msg.channel.as_ref();
         let channel_id = ChannelId(channel.id);
         let entity_path = EntityPath::from(channel.topic.as_str());
@@ -234,7 +258,7 @@ impl<'a> McapChunkDecoder<'a> {
         };
 
         let num_rows = *self
-            .channel_counts
+            .per_channel_counts
             .get(&ChannelId(channel.id))
             .unwrap_or_else(|| {
                 re_log::warn_once!(
@@ -246,12 +270,13 @@ impl<'a> McapChunkDecoder<'a> {
             });
 
         let Some(plugin) = self.registry.0.get(&schema.name) else {
-            let (ctx, parser) = self.parsers.entry(channel_id).or_insert_with(|| {
-                (
-                    ParserContext::new(entity_path.clone()),
-                    Box::new(RawMcapMessageParser::new(num_rows)),
-                )
-            });
+            let (ctx, parser) = match self.parsers.entry(channel_id) {
+                Entry::Occupied(occupied) => occupied.into_mut(),
+                Entry::Vacant(vacant_entry) => {
+                    let fallback = create_fallback(entity_path.clone(), num_rows, schema)?;
+                    vacant_entry.insert_entry(fallback).into_mut()
+                }
+            };
 
             ctx.add_timepoint(timepoint);
 

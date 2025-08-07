@@ -50,6 +50,7 @@ notify.workspace = true
 once_cell.workspace = true
 mcap.workspace = true
 parking_lot.workspace = true
+prost-reflect.workspace = true
 rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true

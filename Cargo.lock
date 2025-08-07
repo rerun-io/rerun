@@ -6779,6 +6779,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prost-reflect"
+version = "0.15.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37587d5a8a1b3dc9863403d084fc2254b91ab75a702207098837950767e2260b"
+dependencies = [
+ "prost",
+ "prost-types",
+]
+
+[[package]]
 name = "prost-types"
 version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7418,6 +7428,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "parquet",
+ "prost-reflect",
  "rayon",
  "re_arrow_util",
  "re_build_info",
