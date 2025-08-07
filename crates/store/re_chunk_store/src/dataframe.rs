@@ -13,7 +13,7 @@ use itertools::Itertools as _;
 
 use crate::{ChunkStore, ColumnMetadata};
 use re_chunk::{ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
-use re_log_types::{EntityPath, AbsoluteTimeRange, TimeInt, Timeline};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
     IndexColumnDescriptor, TimeColumnSelector,
@@ -96,7 +96,7 @@ pub type Index = TimelineName;
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
 pub type IndexValue = TimeInt;
 
-// TODO(cmc): Ultimately, this shouldn't be hardcoded to `ResolvedTimeRange`, but to a generic `I: Index`.
+// TODO(cmc): Ultimately, this shouldn't be hardcoded to `AbsoluteTimeRange`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
 pub type IndexRange = AbsoluteTimeRange;
 
@@ -193,7 +193,7 @@ pub struct QueryExpression {
     /// * This has no effect if `filtered_index` isn't set.
     /// * This has no effect if [`QueryExpression::using_index_values`] is set.
     ///
-    /// Example: `ResolvedTimeRange(10, 20)`.
+    /// Example: `AbsoluteTimeRange(10, 20)`.
     pub filtered_index_range: Option<IndexRange>,
 
     /// The specific index values used to filter out _rows_ from the view contents.

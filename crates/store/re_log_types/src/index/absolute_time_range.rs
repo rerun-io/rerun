@@ -29,7 +29,7 @@ impl AbsoluteTimeRange {
         max: TimeInt::MAX,
     };
 
-    /// Creates a new temporal [`ResolvedTimeRange`].
+    /// Creates a new temporal [`AbsoluteTimeRange`].
     ///
     /// The returned range is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
