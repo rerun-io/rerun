@@ -1060,7 +1060,7 @@ fn run_impl(
         {
             let tokio_runtime_handle = tokio_runtime_handle.clone();
 
-            return re_viewer::run_native_app(
+            re_viewer::run_native_app(
                 _main_thread_token,
                 Box::new(move |cc| {
                     let mut app = re_viewer::App::with_commands(
@@ -1101,7 +1101,7 @@ fn run_impl(
                 }),
                 args.renderer.as_deref(),
             )
-            .map_err(|err| err.into());
+            .map_err(|err| err.into())
         }
         #[cfg(not(feature = "native_viewer"))]
         {

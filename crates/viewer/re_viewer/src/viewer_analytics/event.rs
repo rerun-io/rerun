@@ -156,7 +156,7 @@ pub fn open_recording(
         re_smart_channel::SmartChannelSource::RedapGrpcStream { .. } => None,
         re_smart_channel::SmartChannelSource::MessageProxy { .. } => Some("grpc"),
         // vvv spawn(), connect() vvv
-        re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => Some("web_event"),
+        re_smart_channel::SmartChannelSource::RrdWebEventListener => Some("web_event"),
         re_smart_channel::SmartChannelSource::JsChannel { .. } => Some("javascript"), // mediated via rerun-js
         re_smart_channel::SmartChannelSource::Sdk => Some("sdk"),                     // show()
         re_smart_channel::SmartChannelSource::Stdin => Some("stdin"),

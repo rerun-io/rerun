@@ -279,7 +279,7 @@ impl TextLog {
         let len_level = self.level.as_ref().map(|b| b.array.len());
         let len_color = self.color.as_ref().map(|b| b.array.len());
         let len = None.or(len_text).or(len_level).or(len_color).unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The body of the message.

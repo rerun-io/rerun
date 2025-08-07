@@ -304,7 +304,7 @@ impl RenderContext {
         if let Some(newest_submission_to_wait_for) = self
             .inflight_queue_submissions
             .drain(0..num_submissions_to_wait_for)
-            .last()
+            .next_back()
         {
             // Disable error reporting on Web:
             // * On WebGPU poll is a no-op and we don't get here.

@@ -153,7 +153,7 @@ pub fn build_chunk_from_components(
                 batch.clone()
             } else {
                 let offsets =
-                    ArrowOffsetBuffer::from_lengths(std::iter::repeat(1).take(list_array.len()));
+                    ArrowOffsetBuffer::from_lengths(std::iter::repeat_n(1, list_array.len()));
                 let field = ArrowField::new("item", list_array.data_type().clone(), true).into();
                 ArrowListArray::try_new(field, offsets, list_array, None).map_err(|err| {
                     ChunkError::Malformed {

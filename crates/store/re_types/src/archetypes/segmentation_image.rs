@@ -346,7 +346,7 @@ impl SegmentationImage {
             .or(len_opacity)
             .or(len_draw_order)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The raw image data.

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{iter::repeat_n, sync::Arc};
 
 use arrow::{
     array::{
@@ -203,7 +203,7 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
             list_array
                 .iter()
                 .map(|array| array.map_or(0, |array| array.len()))
-                .chain(std::iter::repeat(0).take(missing_len)),
+                .chain(repeat_n(0, missing_len)),
         )
     };
 
@@ -212,17 +212,11 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
     let nulls = {
         if let Some(nulls) = list_array.nulls() {
             #[allow(clippy::from_iter_instead_of_collect)]
-            NullBuffer::from_iter(
-                nulls
-                    .iter()
-                    .chain(std::iter::repeat(false).take(missing_len)),
-            )
+            NullBuffer::from_iter(nulls.iter().chain(repeat_n(false, missing_len)))
         } else {
             #[allow(clippy::from_iter_instead_of_collect)]
             NullBuffer::from_iter(
-                std::iter::repeat(true)
-                    .take(list_array.len())
-                    .chain(std::iter::repeat(false).take(missing_len)),
+                repeat_n(true, list_array.len()).chain(repeat_n(false, missing_len)),
             )
         }
     };
@@ -243,7 +237,7 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
 
     let offsets = {
         OffsetBuffer::from_lengths(
-            std::iter::repeat(0).take(missing_len).chain(
+            repeat_n(0, missing_len).chain(
                 list_array
                     .iter()
                     .map(|array| array.map_or(0, |array| array.len())),
@@ -256,17 +250,11 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
     let nulls = {
         if let Some(nulls) = list_array.nulls() {
             #[allow(clippy::from_iter_instead_of_collect)]
-            NullBuffer::from_iter(
-                std::iter::repeat(false)
-                    .take(missing_len)
-                    .chain(nulls.iter()),
-            )
+            NullBuffer::from_iter(repeat_n(false, missing_len).chain(nulls.iter()))
         } else {
             #[allow(clippy::from_iter_instead_of_collect)]
             NullBuffer::from_iter(
-                std::iter::repeat(false)
-                    .take(missing_len)
-                    .chain(std::iter::repeat(true).take(list_array.len())),
+                repeat_n(false, missing_len).chain(repeat_n(true, list_array.len())),
             )
         }
     };
@@ -280,7 +268,7 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
 pub fn new_list_array_of_empties(child_datatype: &DataType, len: usize) -> ListArray {
     let empty_array = new_empty_array(child_datatype);
 
-    let offsets = OffsetBuffer::from_lengths(std::iter::repeat(0).take(len));
+    let offsets = OffsetBuffer::from_lengths(repeat_n(0, len));
 
     let nullable = true;
     ListArray::new(
@@ -450,7 +438,7 @@ pub fn wrap_in_list_array(field: &Field, array: ArrayRef) -> (Field, ListArray) 
         field.is_nullable(),
     ));
 
-    let offsets = OffsetBuffer::from_lengths(std::iter::repeat(1).take(array.len()));
+    let offsets = OffsetBuffer::from_lengths(repeat_n(1, array.len()));
     let nulls = array.nulls().cloned();
     let list_array = ListArray::new(item_field, offsets, array, nulls);
 

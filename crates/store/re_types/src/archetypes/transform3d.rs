@@ -693,7 +693,7 @@ impl Transform3D {
             .or(len_relation)
             .or(len_axis_length)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// Translation vector.

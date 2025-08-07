@@ -171,7 +171,7 @@ impl ViewProperty {
         fallback_provider: &dyn ComponentFallbackProvider,
     ) -> arrow::array::ArrayRef {
         if let Some(value) = self.component_raw(component_descr) {
-            if value.len() > 0 {
+            if !value.is_empty() {
                 return value;
             }
         }

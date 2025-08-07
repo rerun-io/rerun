@@ -301,7 +301,7 @@ impl Asset3D {
             .or(len_media_type)
             .or(len_albedo_factor)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The asset's bytes.

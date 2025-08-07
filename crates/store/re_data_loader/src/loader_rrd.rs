@@ -304,8 +304,8 @@ impl RetryableFileReader {
                             )),
                             _ => Ok(0),
                         },
-                        Ok(Err(err)) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
-                        Err(err) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
+                        Ok(Err(err)) => Err(std::io::Error::other(err)),
+                        Err(err) => Err(std::io::Error::other(err)),
                     }
                 }
             }

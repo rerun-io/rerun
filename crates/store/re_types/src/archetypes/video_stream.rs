@@ -286,7 +286,7 @@ impl VideoStream {
             .or(len_sample)
             .or(len_draw_order)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The codec used to encode the video chunks.

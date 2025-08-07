@@ -389,9 +389,7 @@ impl Chunk {
 
     /// Clones the chunk into a new chunk where all [`RowId`]s are [`RowId::ZERO`].
     pub fn zeroed(self) -> Self {
-        let row_ids = std::iter::repeat(RowId::ZERO)
-            .take(self.row_ids.len())
-            .collect_vec();
+        let row_ids = std::iter::repeat_n(RowId::ZERO, self.row_ids.len()).collect_vec();
 
         let row_ids = RowId::arrow_from_slice(&row_ids);
 
@@ -505,7 +503,9 @@ impl Chunk {
                         .enumerate()
                         .for_each(|(i, is_valid)| counts_raw[i] += is_valid as u64);
                 } else {
-                    counts_raw.iter_mut().for_each(|count| *count += 1);
+                    for count in &mut counts_raw {
+                        *count += 1;
+                    }
                 }
             });
         }

@@ -110,7 +110,7 @@ impl ::re_types_core::Loggable for Range2D {
                                 x_range_validity.as_ref().map(|validity| {
                                     validity
                                         .iter()
-                                        .map(|b| std::iter::repeat(b).take(2usize))
+                                        .map(|b| std::iter::repeat_n(b, 2usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()
@@ -150,7 +150,7 @@ impl ::re_types_core::Loggable for Range2D {
                                 y_range_validity.as_ref().map(|validity| {
                                     validity
                                         .iter()
-                                        .map(|b| std::iter::repeat(b).take(2usize))
+                                        .map(|b| std::iter::repeat_n(b, 2usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()

@@ -1721,9 +1721,7 @@ impl RecordingStream {
                 let time =
                     TimeInt::new_temporal(re_log_types::Timestamp::now().nanos_since_epoch());
 
-                let repeated_time = std::iter::repeat(time.as_i64())
-                    .take(chunk.num_rows())
-                    .collect();
+                let repeated_time = std::iter::repeat_n(time.as_i64(), chunk.num_rows()).collect();
 
                 let time_column = TimeColumn::new(Some(true), time_timeline, repeated_time);
 
@@ -1744,7 +1742,7 @@ impl RecordingStream {
                     .tick
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                let repeated_tick = std::iter::repeat(tick).take(chunk.num_rows()).collect();
+                let repeated_tick = std::iter::repeat_n(tick, chunk.num_rows()).collect();
 
                 let tick_chunk = TimeColumn::new(Some(true), tick_timeline, repeated_tick);
 

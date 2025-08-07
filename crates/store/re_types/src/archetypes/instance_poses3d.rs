@@ -400,7 +400,7 @@ impl InstancePoses3D {
             .or(len_scales)
             .or(len_mat3x3)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// Translation vectors.

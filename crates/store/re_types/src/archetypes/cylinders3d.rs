@@ -602,7 +602,7 @@ impl Cylinders3D {
             .or(len_show_labels)
             .or(len_class_ids)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.
