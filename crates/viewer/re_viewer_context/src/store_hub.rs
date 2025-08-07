@@ -11,7 +11,7 @@ use re_chunk_store::{
 };
 use re_entity_db::{EntityDb, StoreBundle};
 use re_global_context::RecordingOrTable;
-use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind, TableId};
+use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TableId};
 use re_query::QueryCachesStats;
 use re_types::{archetypes, components::Timestamp};
 
@@ -805,7 +805,7 @@ impl StoreHub {
                         // Save everything that we could want to undo to:
                         protected_time_ranges.insert(
                             crate::blueprint_timeline(),
-                            ResolvedTimeRange::new(time, re_chunk::TimeInt::MAX),
+                            AbsoluteTimeRange::new(time, re_chunk::TimeInt::MAX),
                         );
                     }
                 }

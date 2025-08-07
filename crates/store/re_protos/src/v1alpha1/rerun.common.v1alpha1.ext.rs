@@ -255,8 +255,8 @@ impl TryFrom<crate::common::v1alpha1::EntityPath> for re_log_types::EntityPath {
     }
 }
 
-impl From<re_log_types::ResolvedTimeRange> for crate::common::v1alpha1::TimeRange {
-    fn from(value: re_log_types::ResolvedTimeRange) -> Self {
+impl From<re_log_types::AbsoluteTimeRange> for crate::common::v1alpha1::TimeRange {
+    fn from(value: re_log_types::AbsoluteTimeRange) -> Self {
         Self {
             start: value.min().as_i64(),
             end: value.max().as_i64(),
@@ -264,7 +264,7 @@ impl From<re_log_types::ResolvedTimeRange> for crate::common::v1alpha1::TimeRang
     }
 }
 
-impl From<crate::common::v1alpha1::TimeRange> for re_log_types::ResolvedTimeRange {
+impl From<crate::common::v1alpha1::TimeRange> for re_log_types::AbsoluteTimeRange {
     fn from(value: crate::common::v1alpha1::TimeRange) -> Self {
         Self::new(
             re_log_types::TimeInt::new_temporal(value.start),
@@ -273,15 +273,15 @@ impl From<crate::common::v1alpha1::TimeRange> for re_log_types::ResolvedTimeRang
     }
 }
 
-impl From<re_log_types::ResolvedTimeRange> for crate::common::v1alpha1::IndexRange {
-    fn from(value: re_log_types::ResolvedTimeRange) -> Self {
+impl From<re_log_types::AbsoluteTimeRange> for crate::common::v1alpha1::IndexRange {
+    fn from(value: re_log_types::AbsoluteTimeRange) -> Self {
         Self {
             time_range: Some(value.into()),
         }
     }
 }
 
-impl TryFrom<crate::common::v1alpha1::IndexRange> for re_log_types::ResolvedTimeRange {
+impl TryFrom<crate::common::v1alpha1::IndexRange> for re_log_types::AbsoluteTimeRange {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::IndexRange) -> Result<Self, Self::Error> {
@@ -764,23 +764,23 @@ mod tests {
 
     #[test]
     fn time_range_conversion() {
-        let time_range = re_log_types::ResolvedTimeRange::new(
+        let time_range = re_log_types::AbsoluteTimeRange::new(
             re_log_types::TimeInt::new_temporal(123456789),
             re_log_types::TimeInt::new_temporal(987654321),
         );
         let proto_time_range: crate::common::v1alpha1::TimeRange = time_range.into();
-        let time_range2: re_log_types::ResolvedTimeRange = proto_time_range.into();
+        let time_range2: re_log_types::AbsoluteTimeRange = proto_time_range.into();
         assert_eq!(time_range, time_range2);
     }
 
     #[test]
     fn index_range_conversion() {
-        let time_range = re_log_types::ResolvedTimeRange::new(
+        let time_range = re_log_types::AbsoluteTimeRange::new(
             re_log_types::TimeInt::new_temporal(123456789),
             re_log_types::TimeInt::new_temporal(987654321),
         );
         let proto_index_range: crate::common::v1alpha1::IndexRange = time_range.into();
-        let time_range2: re_log_types::ResolvedTimeRange = proto_index_range.try_into().unwrap();
+        let time_range2: re_log_types::AbsoluteTimeRange = proto_index_range.try_into().unwrap();
         assert_eq!(time_range, time_range2);
     }
 

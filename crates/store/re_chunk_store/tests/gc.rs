@@ -9,7 +9,7 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_log_types::{
-    EntityPath, ResolvedTimeRange, Timestamp, build_frame_nr, build_log_time,
+    EntityPath, AbsoluteTimeRange, Timestamp, build_frame_nr, build_log_time,
     example_components::{MyColor, MyIndex, MyPoint, MyPoints},
 };
 use re_types::{
@@ -423,7 +423,7 @@ fn protected_time_ranges() -> anyhow::Result<()> {
     store.insert_chunk(&chunk3)?;
     store.insert_chunk(&chunk4)?;
 
-    fn protect_time_range(time_range: ResolvedTimeRange) -> GarbageCollectionOptions {
+    fn protect_time_range(time_range: AbsoluteTimeRange) -> GarbageCollectionOptions {
         GarbageCollectionOptions {
             protected_time_ranges: std::iter::once((TimelineName::new("frame_nr"), time_range))
                 .collect(),
@@ -433,14 +433,14 @@ fn protected_time_ranges() -> anyhow::Result<()> {
 
     eprintln!("{store}");
 
-    let (events, _) = store.gc(&protect_time_range(ResolvedTimeRange::new(1, 4)));
+    let (events, _) = store.gc(&protect_time_range(AbsoluteTimeRange::new(1, 4)));
     assert_eq!(events.len(), 0);
 
-    let (events, _) = store.gc(&protect_time_range(ResolvedTimeRange::new(2, 4)));
+    let (events, _) = store.gc(&protect_time_range(AbsoluteTimeRange::new(2, 4)));
     assert_eq!(events.len(), 1);
     assert!(Arc::ptr_eq(&events[0].diff.chunk, &chunk1));
 
-    let (events, _) = store.gc(&protect_time_range(ResolvedTimeRange::new(2, 3)));
+    let (events, _) = store.gc(&protect_time_range(AbsoluteTimeRange::new(2, 3)));
     assert_eq!(events.len(), 1);
     assert!(Arc::ptr_eq(&events[0].diff.chunk, &chunk4));
 

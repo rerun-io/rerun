@@ -11,7 +11,7 @@ use re_chunk::ChunkId;
 use re_chunk_store::{
     ChunkCompactionReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber,
 };
-use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, TimelineName};
+use re_log_types::{EntityPath, AbsoluteTimeRange, StoreId, TimeInt, TimelineName};
 use re_types_core::{ComponentDescriptor, archetypes};
 
 use crate::{LatestAtCache, RangeCache};
@@ -195,7 +195,7 @@ impl std::fmt::Debug for QueryCache {
                 strings.push(format!(
                     "  [{cache_key:?} (pending_invalidation_min={:?})]",
                     cache.pending_invalidations.first().map(|&t| {
-                        let range = ResolvedTimeRange::new(t, TimeInt::MAX);
+                        let range = AbsoluteTimeRange::new(t, TimeInt::MAX);
                         if let Some(time_type) =
                             store.read().time_column_type(&cache_key.timeline_name)
                         {

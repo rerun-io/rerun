@@ -8,14 +8,14 @@ use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle,
     PerStoreChunkSubscriber,
 };
-use re_log_types::{EntityPath, EntityPathHash, ResolvedTimeRange, StoreId, TimelineName};
+use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathHash, StoreId, TimelineName};
 
 /// Cached information about a chunk in the context of a given timeline.
 #[derive(Debug, Clone)]
 pub struct ChunkTimelineInfo {
     pub chunk: Arc<Chunk>,
     pub num_events: u64,
-    pub resolved_time_range: ResolvedTimeRange,
+    pub resolved_time_range: AbsoluteTimeRange,
 }
 
 #[cfg(test)]
@@ -183,7 +183,7 @@ mod tests {
 
     use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, GarbageCollectionOptions, RowId};
     use re_log_types::{
-        ResolvedTimeRange, StoreId, TimeInt, Timeline, TimelineName,
+        AbsoluteTimeRange, StoreId, TimeInt, Timeline, TimelineName,
         example_components::{MyPoint, MyPoints},
     };
 
@@ -249,8 +249,8 @@ mod tests {
         // Remove only the t0 chunk on "parent/child"
         store.gc(&GarbageCollectionOptions {
             protected_time_ranges: [
-                (*t0.name(), ResolvedTimeRange::new(1, TimeInt::MAX)),
-                (*t1.name(), ResolvedTimeRange::EVERYTHING),
+                (*t0.name(), AbsoluteTimeRange::new(1, TimeInt::MAX)),
+                (*t1.name(), AbsoluteTimeRange::EVERYTHING),
             ]
             .into_iter()
             .collect(),

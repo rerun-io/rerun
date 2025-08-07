@@ -13,7 +13,7 @@ use itertools::Itertools as _;
 
 use crate::{ChunkStore, ColumnMetadata};
 use re_chunk::{ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
+use re_log_types::{EntityPath, AbsoluteTimeRange, TimeInt, Timeline};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
     IndexColumnDescriptor, TimeColumnSelector,
@@ -98,7 +98,7 @@ pub type IndexValue = TimeInt;
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `ResolvedTimeRange`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
-pub type IndexRange = ResolvedTimeRange;
+pub type IndexRange = AbsoluteTimeRange;
 
 /// Specifies whether static columns should be included in the query.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -284,7 +284,7 @@ impl QueryExpression {
         if let Some(using_index_values) = &self.using_index_values {
             return Some(RangeQuery::new(
                 index,
-                ResolvedTimeRange::new(
+                AbsoluteTimeRange::new(
                     using_index_values.first().copied()?,
                     using_index_values.last().copied()?,
                 ),
@@ -294,7 +294,7 @@ impl QueryExpression {
         if let Some(filtered_index_values) = &self.filtered_index_values {
             return Some(RangeQuery::new(
                 index,
-                ResolvedTimeRange::new(
+                AbsoluteTimeRange::new(
                     filtered_index_values.first().copied()?,
                     filtered_index_values.last().copied()?,
                 ),

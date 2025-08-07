@@ -1,4 +1,4 @@
-use re_log_types::{NonMinI64, ResolvedTimeRangeF, TimeCell};
+use re_log_types::{NonMinI64, AbsoluteTimeRangeF, TimeCell};
 
 use crate::Error;
 
@@ -9,7 +9,7 @@ pub struct TimeRange {
     pub max: NonMinI64,
 }
 
-impl From<TimeRange> for ResolvedTimeRangeF {
+impl From<TimeRange> for AbsoluteTimeRangeF {
     fn from(range: TimeRange) -> Self {
         Self {
             min: range.min.into(),
@@ -18,7 +18,7 @@ impl From<TimeRange> for ResolvedTimeRangeF {
     }
 }
 
-impl From<TimeRange> for re_log_types::ResolvedTimeRange {
+impl From<TimeRange> for re_log_types::AbsoluteTimeRange {
     fn from(range: TimeRange) -> Self {
         Self::new(range.min, range.max)
     }

@@ -24,7 +24,7 @@ pub enum Command {
     SetLoopSelection {
         recording_id: re_log_types::StoreId,
         timeline: re_log_types::Timeline,
-        time_range: re_log_types::ResolvedTimeRangeF,
+        time_range: re_log_types::AbsoluteTimeRangeF,
     },
 }
 

@@ -213,7 +213,7 @@ fn load_video_data_from_chunks(
     // TODO(andreas): Can we be more clever about the chunk range here and build up only what we need?
     // Kinda tricky since we need to know how far back (and ahead for b-frames) we have to look.
     let entire_timeline_query =
-        re_chunk::RangeQuery::new(timeline, re_log_types::ResolvedTimeRange::EVERYTHING);
+        re_chunk::RangeQuery::new(timeline, re_log_types::AbsoluteTimeRange::EVERYTHING);
     let query_results = store.storage_engine().cache().range(
         &entire_timeline_query,
         entity_path,

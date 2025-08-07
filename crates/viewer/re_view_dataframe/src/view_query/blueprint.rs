@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use re_chunk_store::ColumnDescriptor;
-use re_log_types::{ResolvedTimeRange, Timeline, TimelineName};
+use re_log_types::{AbsoluteTimeRange, Timeline, TimelineName};
 use re_sorbet::{ColumnSelector, ComponentColumnSelector};
 use re_types::blueprint::archetypes::DataframeQuery;
 use re_types::blueprint::{components, datatypes};
@@ -64,18 +64,18 @@ impl Query {
             .clear_blueprint_component(ctx, DataframeQuery::descriptor_filter_by_range());
     }
 
-    pub fn filter_by_range(&self) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
+    pub fn filter_by_range(&self) -> Result<AbsoluteTimeRange, ViewSystemExecutionError> {
         Ok(self
             .query_property
             .component_or_empty::<components::FilterByRange>(
                 &DataframeQuery::descriptor_filter_by_range(),
             )?
-            .map(|range_filter| (ResolvedTimeRange::new(range_filter.start, range_filter.end)))
-            .unwrap_or(ResolvedTimeRange::EVERYTHING))
+            .map(|range_filter| (AbsoluteTimeRange::new(range_filter.start, range_filter.end)))
+            .unwrap_or(AbsoluteTimeRange::EVERYTHING))
     }
 
-    pub fn save_filter_by_range(&self, ctx: &ViewerContext<'_>, range: ResolvedTimeRange) {
-        if range == ResolvedTimeRange::EVERYTHING {
+    pub fn save_filter_by_range(&self, ctx: &ViewerContext<'_>, range: AbsoluteTimeRange) {
+        if range == AbsoluteTimeRange::EVERYTHING {
             self.query_property
                 .clear_blueprint_component(ctx, DataframeQuery::descriptor_filter_by_range());
         } else {

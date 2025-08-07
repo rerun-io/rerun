@@ -2688,7 +2688,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 fn save_active_recording(
     app: &mut App,
     store_context: Option<&StoreContext<'_>>,
-    loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
+    loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
     let Some(entity_db) = store_context.as_ref().map(|view| view.recording) else {
         // NOTE: Can only happen if saving through the command palette.
@@ -2701,7 +2701,7 @@ fn save_active_recording(
 fn save_recording(
     app: &mut App,
     entity_db: &EntityDb,
-    loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
+    loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
     let rrd_version = entity_db
         .store_info()

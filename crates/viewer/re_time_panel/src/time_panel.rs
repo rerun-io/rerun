@@ -11,7 +11,7 @@ use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, TimeReal,
+    ApplicationId, ComponentPath, EntityPath, AbsoluteTimeRange, TimeInt, TimeReal,
 };
 use re_types::blueprint::components::PanelState;
 use re_types::reflection::ComponentDescriptorExt as _;
@@ -1475,7 +1475,7 @@ fn highlight_timeline_row(
 }
 
 fn paint_range_highlight(
-    highlighted_range: ResolvedTimeRange,
+    highlighted_range: AbsoluteTimeRange,
     time_ranges_ui: &TimeRangesUi,
     painter: &egui::Painter,
     rect: Rect,

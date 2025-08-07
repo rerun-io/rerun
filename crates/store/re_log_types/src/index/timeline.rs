@@ -1,4 +1,4 @@
-use crate::{ResolvedTimeRange, TimeType, TimestampFormat};
+use crate::{AbsoluteTimeRange, TimeType, TimestampFormat};
 
 re_string_interner::declare_new_type!(
     /// The name of a timeline. Often something like `"log_time"` or `"frame_nr"`.
@@ -123,7 +123,7 @@ impl Timeline {
     #[inline]
     pub fn format_time_range(
         &self,
-        time_range: &ResolvedTimeRange,
+        time_range: &AbsoluteTimeRange,
         timestamp_format: TimestampFormat,
     ) -> String {
         self.typ.format_range(*time_range, timestamp_format)
@@ -131,7 +131,7 @@ impl Timeline {
 
     /// Returns a formatted string of `time_range` on this `Timeline`.
     #[inline]
-    pub fn format_time_range_utc(&self, time_range: &ResolvedTimeRange) -> String {
+    pub fn format_time_range_utc(&self, time_range: &AbsoluteTimeRange) -> String {
         self.format_time_range(time_range, TimestampFormat::Utc)
     }
 
