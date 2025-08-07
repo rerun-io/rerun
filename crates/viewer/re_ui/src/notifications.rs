@@ -7,10 +7,6 @@ pub use re_log::Level;
 
 use crate::{UiExt as _, icons};
 
-fn now() -> Timestamp {
-    Timestamp::now()
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NotificationLevel {
     Info = 0,
@@ -120,7 +116,7 @@ impl NotificationUi {
             level,
             text,
 
-            created_at: now(),
+            created_at: Timestamp::now(),
             toast_ttl: base_ttl(),
             is_unread: true,
         });
@@ -373,7 +369,9 @@ fn show_notification(
 }
 
 fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
-    let age = now().duration_since(notification.created_at).as_secs_f64();
+    let age = Timestamp::now()
+        .duration_since(notification.created_at)
+        .as_secs_f64();
 
     let formatted = if age < 10.0 {
         ui.ctx().request_repaint_after(Duration::from_secs(1));
