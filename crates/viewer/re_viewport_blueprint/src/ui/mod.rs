@@ -11,8 +11,8 @@ mod add_view_or_container_modal;
 
 use add_view_or_container_modal::AddViewOrContainerModal;
 
-static ADD_VIEW_OR_CONTAINER_MODAL: once_cell::sync::Lazy<Mutex<AddViewOrContainerModal>> =
-    once_cell::sync::Lazy::new(|| Mutex::new(AddViewOrContainerModal::default()));
+static ADD_VIEW_OR_CONTAINER_MODAL: std::sync::LazyLock<Mutex<AddViewOrContainerModal>> =
+    std::sync::LazyLock::new(|| Mutex::new(AddViewOrContainerModal::default()));
 
 pub fn add_view_or_container_modal_ui(
     ctx: &ViewerContext<'_>,

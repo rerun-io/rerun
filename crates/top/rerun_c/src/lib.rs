@@ -19,7 +19,6 @@ use arrow::{
     ffi::{FFI_ArrowArray, FFI_ArrowSchema},
 };
 use arrow_utils::arrow_array_from_c_ffi;
-use once_cell::sync::Lazy;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk::{
@@ -388,7 +387,7 @@ pub struct CError {
 #[allow(unsafe_code)]
 #[unsafe(no_mangle)]
 pub extern "C" fn rr_version_string() -> *const c_char {
-    static VERSION: Lazy<CString> = Lazy::new(|| {
+    static VERSION: std::sync::LazyLock<CString> = std::sync::LazyLock::new(|| {
         CString::new(re_sdk::build_info().version.to_string()).expect("CString::new failed")
     }); // unwrap: there won't be any NUL bytes in the string
 

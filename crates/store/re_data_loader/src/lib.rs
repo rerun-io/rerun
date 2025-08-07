@@ -1,8 +1,6 @@
 //! Handles loading of Rerun data from file using data loader plugins.
 
-use std::sync::Arc;
-
-use once_cell::sync::Lazy;
+use std::sync::{Arc, LazyLock};
 
 use re_chunk::{Chunk, ChunkResult};
 use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint};
@@ -416,7 +414,7 @@ impl LoadedData {
 /// Keeps track of all builtin [`DataLoader`]s.
 ///
 /// Lazy initialized the first time a file is opened.
-static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
+static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
     vec![
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
@@ -442,8 +440,8 @@ pub fn iter_loaders() -> impl Iterator<Item = Arc<dyn DataLoader>> {
 /// Keeps track of all custom [`DataLoader`]s.
 ///
 /// Use [`register_custom_data_loader`] to add new loaders.
-static CUSTOM_LOADERS: Lazy<parking_lot::RwLock<Vec<Arc<dyn DataLoader>>>> =
-    Lazy::new(parking_lot::RwLock::default);
+static CUSTOM_LOADERS: LazyLock<parking_lot::RwLock<Vec<Arc<dyn DataLoader>>>> =
+    LazyLock::new(parking_lot::RwLock::default);
 
 /// Register a custom [`DataLoader`].
 ///

@@ -1,5 +1,6 @@
+use std::sync::LazyLock;
+
 use ahash::HashMap;
-use once_cell::sync::Lazy;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
@@ -277,7 +278,7 @@ impl DataResultTree {
     }
 }
 
-static EMPTY_QUERY: Lazy<DataQueryResult> = Lazy::<DataQueryResult>::new(Default::default);
+static EMPTY_QUERY: LazyLock<DataQueryResult> = LazyLock::new(Default::default);
 
 impl ViewerContext<'_> {
     pub fn lookup_query_result(&self, id: ViewId) -> &DataQueryResult {

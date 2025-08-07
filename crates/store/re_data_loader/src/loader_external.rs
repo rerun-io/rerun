@@ -1,12 +1,11 @@
 use std::{
     io::Read as _,
     path::PathBuf,
-    sync::{Arc, atomic::AtomicBool},
+    sync::{Arc, LazyLock, atomic::AtomicBool},
 };
 
 use ahash::HashMap;
 use indexmap::IndexSet;
-use once_cell::sync::Lazy;
 
 use crate::{DataLoader as _, LoadedData};
 
@@ -30,7 +29,7 @@ pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 /// External loaders are _not_ registered on a per-extension basis: we want users to be able to
 /// filter data on a much more fine-grained basis that just file extensions (e.g. checking the file
 /// itself for magic bytes).
-pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<PathBuf>> = Lazy::new(|| {
+pub static EXTERNAL_LOADER_PATHS: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
     re_tracing::profile_scope!("initialize-external-loaders");
 
     let dir_separator = if cfg!(target_os = "windows") {

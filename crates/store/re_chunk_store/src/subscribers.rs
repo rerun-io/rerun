@@ -80,8 +80,8 @@ pub trait PerStoreChunkSubscriber: Send + Sync + Default {
 }
 
 /// All registered [`ChunkStoreSubscriber`]s.
-static SUBSCRIBERS: once_cell::sync::Lazy<RwLock<Vec<SharedStoreSubscriber>>> =
-    once_cell::sync::Lazy::new(|| RwLock::new(Vec::new()));
+static SUBSCRIBERS: std::sync::LazyLock<RwLock<Vec<SharedStoreSubscriber>>> =
+    std::sync::LazyLock::new(|| RwLock::new(Vec::new()));
 
 #[derive(Debug, Clone, Copy)]
 pub struct ChunkStoreSubscriberHandle(u32);

@@ -1210,17 +1210,17 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             #(#all_descriptor_methods)*
         }
 
-        static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; #num_required_descriptors]> =
-            once_cell::sync::Lazy::new(|| {[#required_descriptors]});
+        static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; #num_required_descriptors]> =
+            std::sync::LazyLock::new(|| {[#required_descriptors]});
 
-        static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; #num_recommended_descriptors]> =
-            once_cell::sync::Lazy::new(|| {[#recommended_descriptors]});
+        static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; #num_recommended_descriptors]> =
+            std::sync::LazyLock::new(|| {[#recommended_descriptors]});
 
-        static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; #num_optional_descriptors]> =
-            once_cell::sync::Lazy::new(|| {[#optional_descriptors]});
+        static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; #num_optional_descriptors]> =
+            std::sync::LazyLock::new(|| {[#optional_descriptors]});
 
-        static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; #num_all_descriptors]> =
-            once_cell::sync::Lazy::new(|| {[#required_descriptors #recommended_descriptors #optional_descriptors]});
+        static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; #num_all_descriptors]> =
+            std::sync::LazyLock::new(|| {[#required_descriptors #recommended_descriptors #optional_descriptors]});
 
         impl #name {
             #num_components_docstring

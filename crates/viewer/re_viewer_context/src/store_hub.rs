@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::LazyLock};
 
 use ahash::{HashMap, HashMapExt as _, HashSet};
 use anyhow::Context as _;
@@ -189,10 +189,10 @@ impl StoreHub {
     /// All of the returned references to blueprints and recordings will have a
     /// matching [`ApplicationId`].
     pub fn read_context(&mut self) -> (StorageContext<'_>, Option<StoreContext<'_>>) {
-        static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
-            once_cell::sync::Lazy::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
-        static EMPTY_CACHES: once_cell::sync::Lazy<Caches> =
-            once_cell::sync::Lazy::new(|| Caches::new(re_log_types::StoreId::empty_recording()));
+        static EMPTY_ENTITY_DB: LazyLock<EntityDb> =
+            LazyLock::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
+        static EMPTY_CACHES: LazyLock<Caches> =
+            LazyLock::new(|| Caches::new(re_log_types::StoreId::empty_recording()));
 
         let store_context = 'ctx: {
             // If we have an app-id, then use it to look up the blueprint.
