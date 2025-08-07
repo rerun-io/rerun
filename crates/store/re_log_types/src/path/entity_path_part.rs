@@ -81,7 +81,7 @@ impl EntityPathPart {
                                     output.push('u');
                                     output.push_str(&s);
                                 }
-                            };
+                            }
                         }
                         c if c.is_ascii_punctuation() || c == ' ' => {
                             output.push(c);
@@ -141,7 +141,7 @@ impl EntityPathPart {
                             output.push(c);
                         }
                         c => return Err(PathParseError::UnknownEscapeSequence(c)),
-                    };
+                    }
                 } else {
                     return Err(PathParseError::TrailingBackslash);
                 }
@@ -199,7 +199,7 @@ impl EntityPathPart {
                         // Rust-style unicode escape, e.g. `\u{262E}`.
                         s.push_str(&format!("\\u{{{:04X}}}", c as u32));
                     }
-                };
+                }
             }
         }
         s

@@ -2225,7 +2225,7 @@ mod tests {
                     [(timeline, 2)],
                     &archetypes::Clear::new(false),
                 );
-            };
+            }
             entity_db
                 .add_chunk(&Arc::new(chunk.build().unwrap()))
                 .unwrap();
@@ -2288,7 +2288,7 @@ mod tests {
                     [(timeline, 2)],
                     &archetypes::Clear::new(true),
                 );
-            };
+            }
             entity_db
                 .add_chunk(&Arc::new(parent_chunk.build().unwrap()))
                 .unwrap();

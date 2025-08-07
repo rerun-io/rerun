@@ -276,7 +276,7 @@ impl BlueprintTree {
                     parent_visible,
                 );
             }
-        };
+        }
     }
 
     fn container_ui(
@@ -1308,7 +1308,7 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
 
     if let Some(disabled_reason) = disabled_reason {
         response = response.on_disabled_hover_text(disabled_reason);
-    };
+    }
 
     if response.clicked() {
         ui.close();

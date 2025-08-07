@@ -489,7 +489,7 @@ impl<'a> DataFusionTableWidget<'a> {
                             ui.set_height(height);
                             if icons::RESET.as_button().ui(ui).clicked() {
                                 action = Some(BottomBarAction::Refresh);
-                            };
+                            }
 
                             re_ui::time::short_duration_ui(
                                 ui,

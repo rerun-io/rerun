@@ -77,7 +77,7 @@ pub fn process_annotation_and_keypoint_slices(
             ResolvedAnnotationInfos::Same(num_instances, resolved_annotation),
             keypoints,
         );
-    };
+    }
 
     let class_ids = clamped_or_nothing(class_ids, num_instances);
 

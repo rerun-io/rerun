@@ -636,7 +636,7 @@ impl<'o> KnownObjects<'o> {
                 }
 
                 ObjectKind::Datatype => {}
-            };
+            }
         }
 
         Self {

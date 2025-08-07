@@ -1001,7 +1001,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         cursor: cur_cursor_value,
                         row_id: cur_row_id,
                     });
-                };
+                }
             }
         }
 

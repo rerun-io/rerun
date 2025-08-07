@@ -280,7 +280,7 @@ impl std::io::Read for RetryableFileReader {
                         return Err(err);
                     }
                 }
-            };
+            }
         }
     }
 }

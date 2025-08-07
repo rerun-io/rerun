@@ -140,7 +140,7 @@ fn context_menu_ui_for_item_with_context_impl(
                 SelectionUpdateBehavior::Ignore => {
                     show_context_menu(&item_collection);
                 }
-            };
+            }
         });
 }
 

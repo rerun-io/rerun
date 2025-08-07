@@ -2517,7 +2517,7 @@ fn quote_init_method(
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = quote_doc_lines(doc_string_lines);
 
     let custom_init_hint = format!(
@@ -2641,7 +2641,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
     unindent(&format!(
@@ -2725,7 +2725,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
     let kwargs = quote_component_field_mapping(obj);

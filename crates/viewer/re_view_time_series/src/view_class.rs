@@ -904,7 +904,7 @@ fn nanos_grid_spacer(
             current_nanos = new_nanos;
         } else {
             break;
-        };
+        }
     }
 
     marks

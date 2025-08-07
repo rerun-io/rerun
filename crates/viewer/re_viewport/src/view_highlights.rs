@@ -74,7 +74,7 @@ pub fn highlights_for_view(
                 };
                 add_highlight_and_mask(entity_hash, selected_instance.clone(), highlight);
             }
-        };
+        }
     }
 
     let mut hover_mask_index: u8 = 0;
@@ -120,7 +120,7 @@ pub fn highlights_for_view(
                     .or_default()
                     .add(selected_instance, next_hover_mask());
             }
-        };
+        }
     }
 
     ViewHighlights {

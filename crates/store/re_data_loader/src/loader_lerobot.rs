@@ -253,7 +253,7 @@ pub fn load_episode(
                         "Unsupported channel count {num_channels} (shape: {:?}) for LeRobot dataset; Only 1- and 3-channel images are supported",
                         feature.shape
                     ),
-                };
+                }
             }
             DType::Int64 if feature_key == "task_index" => {
                 // special case int64 task_index columns

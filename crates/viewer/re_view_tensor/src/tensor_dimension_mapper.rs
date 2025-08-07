@@ -121,7 +121,7 @@ impl DragDropAddress {
                     );
                 }
             }
-        };
+        }
     }
 }
 

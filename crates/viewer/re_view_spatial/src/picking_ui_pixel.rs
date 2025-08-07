@@ -346,7 +346,7 @@ fn pixel_value_ui(
                                 .unwrap_or_else(|| u16_val.to_string()),
                         );
                         ui.end_row();
-                    };
+                    }
                 }
             }
             if let Some(meter) = meter {

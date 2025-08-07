@@ -215,7 +215,7 @@ impl crate::DataLoader for ExternalLoader {
                         re_log::error!(?filepath, loader = ?exe, %err, "Failed to decode external loader's output");
                         return;
                     }
-                };
+                }
 
                 // We have to wait in order to know whether the child process is a compatible loader.
                 //
@@ -244,7 +244,7 @@ impl crate::DataLoader for ExternalLoader {
                             re_log::error!(?filepath, loader = ?exe, %err, "Failed to execute external loader");
                             return;
                         }
-                    };
+                    }
                 }
 
                 // NOTE: `try_wait` and `wait` are idempotent.

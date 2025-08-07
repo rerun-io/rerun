@@ -207,13 +207,13 @@ fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
             .clicked()
         {
             ui.close();
-        };
+        }
         if re_ui::UICommand::AddRedapServer
             .menu_button_ui(ui, ctx.command_sender())
             .clicked()
         {
             ui.close();
-        };
+        }
     }))
     .ui(ui)
     .on_hover_text("Open a file or connect to a server");

@@ -142,7 +142,7 @@ impl DepthImageVisualizer {
                             re_log::warn_once!("{err}");
                         }
                     }
-                };
+                }
             }
 
             self.data.add_pickable_rect(

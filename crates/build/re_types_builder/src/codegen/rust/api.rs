@@ -525,7 +525,7 @@ fn quote_enum(
                 "Enums can only have one default value",
             );
         }
-    };
+    }
     let derives = derives.iter().map(|&derive| {
         let derive = format_ident!("{derive}");
         quote!(#derive)

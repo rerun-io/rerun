@@ -141,7 +141,7 @@ impl Server {
                 }
             });
             return;
-        };
+        }
 
         const ENTRY_LINK_COLUMN_NAME: &str = "link";
 

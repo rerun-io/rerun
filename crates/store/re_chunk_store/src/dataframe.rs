@@ -447,7 +447,7 @@ impl ChunkStore {
             result.is_static = is_static;
             result.is_tombstone = is_tombstone;
             result.is_semantically_empty = is_semantically_empty;
-        };
+        }
 
         result
     }

@@ -899,7 +899,7 @@ impl QuotedObject {
                 &mut hpp_includes,
                 objects,
             ));
-        };
+        }
 
         // If we're a component with a single datatype field, add an implicit casting operator for convenience.
         if obj.kind == ObjectKind::Component

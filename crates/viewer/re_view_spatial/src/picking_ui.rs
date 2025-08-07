@@ -223,7 +223,7 @@ pub fn picking(
                 }
             }
         });
-    };
+    }
 
     ctx.handle_select_hover_drag_interactions(&response, hovered_items, false);
 

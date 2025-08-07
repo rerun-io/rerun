@@ -47,7 +47,7 @@ impl<'a> ExampleInfo<'a> {
                 if !args[key_end..].starts_with("=\"") {
                     prev_end = key_end;
                     continue;
-                };
+                }
                 let value_start = key_end + "=\"".len();
                 let Some(mut value_end) = args[value_start..].find('"') else {
                     prev_end = value_start;

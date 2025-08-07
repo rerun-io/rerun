@@ -247,7 +247,7 @@ impl SpatialTopology {
                 entity_reference = &entity_storage;
             } else {
                 return EntityPath::root().hash();
-            };
+            }
         }
     }
 
@@ -274,7 +274,7 @@ impl SpatialTopology {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Pinhole);
             } else if added_component == ViewCoordinates::name() {
                 new_heuristic_hints.insert(HeuristicHints::ViewCoordinates3d);
-            };
+            }
         }
 
         // Do we already know about this entity in general?
@@ -292,7 +292,7 @@ impl SpatialTopology {
             }
         } else {
             self.add_new_entity(entity_path, new_subspace_connections);
-        };
+        }
 
         if !new_heuristic_hints.is_empty() {
             let subspace = self

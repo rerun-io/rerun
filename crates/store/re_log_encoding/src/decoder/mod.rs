@@ -575,7 +575,7 @@ mod tests {
                         legacy_store_id.application_id = None;
                         *store_id = Some(legacy_store_id);
                     }
-                };
+                }
 
                 log_msg
             })

@@ -1611,7 +1611,7 @@ impl App {
                         re_log::debug!("Overwritten table store with id: `{}`", table.id);
                     } else {
                         re_log::debug!("Inserted table store with id: `{}`", table.id);
-                    };
+                    }
                     self.command_sender.send_system(SystemCommand::SetSelection(
                         re_viewer_context::Item::TableId(table.id.clone()),
                     ));
@@ -2751,7 +2751,7 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     let messages = store_context.blueprint.to_messages(None).map(|mut msg| {
         if let Ok(msg) = &mut msg {
             msg.set_store_id(new_store_id.clone());
-        };
+        }
         msg
     });
 

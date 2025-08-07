@@ -187,7 +187,7 @@ fn make_slider_valid(
     } else {
         // If no slider were specified, create a default one for each dimension that isn't covered by width/height
         *slider = Some(indices.iter().map(|index| index.dimension.into()).collect());
-    };
+    }
 }
 
 #[allow(clippy::collapsible_else_if)]

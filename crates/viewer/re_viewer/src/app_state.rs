@@ -596,7 +596,7 @@ impl AppState {
                             }
 
                             DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // handled above
-                        };
+                        }
                     },
                 );
 

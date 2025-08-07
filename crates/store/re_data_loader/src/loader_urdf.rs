@@ -548,7 +548,7 @@ fn log_geometry(
                             *r as f32, *g as f32, *b as f32, *a as f32,
                         ),
                     );
-                };
+                }
                 if texture.is_some() {
                     re_log::warn_once!("Material texture not supported"); // TODO(emilk): support textures
                 }
