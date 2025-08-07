@@ -29,7 +29,7 @@ use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
     IndexValue, QueryExpression, SparseFillStrategy,
 };
-use re_log_types::ResolvedTimeRange;
+use re_log_types::AbsoluteTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, RowIdColumnDescriptor, TimeColumnSelector,
@@ -205,18 +205,18 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // 4. Perform the query and keep track of all the relevant chunks.
         let query = {
             let index_range = if self.query.filtered_index.is_none() {
-                ResolvedTimeRange::EMPTY // static-only
+                AbsoluteTimeRange::EMPTY // static-only
             } else if let Some(using_index_values) = self.query.using_index_values.as_ref() {
                 using_index_values
                     .first()
                     .and_then(|start| using_index_values.last().map(|end| (start, end)))
-                    .map_or(ResolvedTimeRange::EMPTY, |(start, end)| {
-                        ResolvedTimeRange::new(*start, *end)
+                    .map_or(AbsoluteTimeRange::EMPTY, |(start, end)| {
+                        AbsoluteTimeRange::new(*start, *end)
                     })
             } else {
                 self.query
                     .filtered_index_range
-                    .unwrap_or(ResolvedTimeRange::EVERYTHING)
+                    .unwrap_or(AbsoluteTimeRange::EVERYTHING)
             };
 
             RangeQuery::new(filtered_index, index_range)
@@ -1339,7 +1339,7 @@ mod tests {
 
     use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimePoint};
     use re_chunk_store::{
-        ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, ResolvedTimeRange, TimeInt,
+        AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, TimeInt,
     };
     use re_format_arrow::format_record_batch;
     use re_log_types::{
@@ -1494,7 +1494,7 @@ mod tests {
         let filtered_index = Some(TimelineName::new("frame_nr"));
         let query = QueryExpression {
             filtered_index,
-            filtered_index_range: Some(ResolvedTimeRange::new(30, 60)),
+            filtered_index_range: Some(AbsoluteTimeRange::new(30, 60)),
             ..Default::default()
         };
         eprintln!("{query:#?}:");

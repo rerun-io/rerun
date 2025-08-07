@@ -113,7 +113,7 @@ pub fn query_archetype_with_history<'a, 'b>(
         QueryRange::TimeRange(time_range) => {
             let range_query = RangeQuery::new(
                 *timeline,
-                re_log_types::ResolvedTimeRange::from_relative_time_range(
+                re_log_types::AbsoluteTimeRange::from_relative_time_range(
                     time_range,
                     timeline_cursor,
                 ),

@@ -11,7 +11,7 @@ use nohash_hasher::IntMap;
 
 use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline, TimelineName};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
 use re_types_core::ComponentDescriptor;
 
 use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
@@ -1031,7 +1031,7 @@ struct PendingTimeColumn {
     timeline: Timeline,
     times: Vec<i64>,
     is_sorted: bool,
-    time_range: ResolvedTimeRange,
+    time_range: AbsoluteTimeRange,
 }
 
 impl PendingTimeColumn {
@@ -1040,7 +1040,7 @@ impl PendingTimeColumn {
             timeline,
             times: Default::default(),
             is_sorted: true,
-            time_range: ResolvedTimeRange::EMPTY,
+            time_range: AbsoluteTimeRange::EMPTY,
         }
     }
 

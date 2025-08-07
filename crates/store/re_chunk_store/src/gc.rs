@@ -9,7 +9,7 @@ use re_byte_size::SizeBytes;
 use web_time::Instant;
 
 use re_chunk::{Chunk, ChunkId, TimelineName};
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_types_core::ComponentDescriptor;
 
 use crate::{
@@ -54,7 +54,7 @@ pub struct GarbageCollectionOptions {
     pub protect_latest: usize,
 
     /// Do not remove any data within these time ranges.
-    pub protected_time_ranges: IntMap<TimelineName, ResolvedTimeRange>,
+    pub protected_time_ranges: IntMap<TimelineName, AbsoluteTimeRange>,
 }
 
 impl GarbageCollectionOptions {

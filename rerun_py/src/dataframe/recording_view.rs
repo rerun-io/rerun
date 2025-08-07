@@ -8,7 +8,7 @@ use pyo3::types::PyTuple;
 use pyo3::{Bound, PyRef, PyResult, Python, pyclass, pymethods};
 
 use re_chunk_store::{QueryExpression, SparseFillStrategy};
-use re_log_types::ResolvedTimeRange;
+use re_log_types::AbsoluteTimeRange;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 
 use super::{
@@ -321,7 +321,7 @@ impl PyRecordingView {
             re_chunk::TimeInt::MAX
         };
 
-        let resolved = ResolvedTimeRange::new(start, end);
+        let resolved = AbsoluteTimeRange::new(start, end);
 
         let mut query_expression = self.query_expression.clone();
         query_expression.filtered_index_range = Some(resolved);
@@ -367,7 +367,7 @@ impl PyRecordingView {
         let start = re_log_types::Timestamp::from_secs_since_epoch(start);
         let end = re_log_types::Timestamp::from_secs_since_epoch(end);
 
-        let resolved = ResolvedTimeRange::new(start, end);
+        let resolved = AbsoluteTimeRange::new(start, end);
 
         let mut query_expression = self.query_expression.clone();
         query_expression.filtered_index_range = Some(resolved);
@@ -419,7 +419,7 @@ impl PyRecordingView {
         let start = re_log_types::Timestamp::from_nanos_since_epoch(start);
         let end = re_log_types::Timestamp::from_nanos_since_epoch(end);
 
-        let resolved = ResolvedTimeRange::new(start, end);
+        let resolved = AbsoluteTimeRange::new(start, end);
 
         let mut query_expression = self.query_expression.clone();
         query_expression.filtered_index_range = Some(resolved);

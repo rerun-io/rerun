@@ -5,7 +5,7 @@ use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_grpc_client::ConnectionRegistryHandle;
-use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId, TableId};
+use re_log_types::{AbsoluteTimeRangeF, LogMsg, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
@@ -149,7 +149,7 @@ impl AppState {
     pub fn loop_selection(
         &self,
         store_context: Option<&StoreContext<'_>>,
-    ) -> Option<(TimelineName, ResolvedTimeRangeF)> {
+    ) -> Option<(TimelineName, AbsoluteTimeRangeF)> {
         let rec_id = store_context.as_ref()?.recording.store_id();
         let rec_cfg = self.recording_configs.get(rec_id)?;
 

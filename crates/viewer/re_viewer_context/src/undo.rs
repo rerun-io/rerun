@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use re_chunk::{LatestAtQuery, TimeInt};
 use re_entity_db::EntityDb;
-use re_log_types::ResolvedTimeRange;
+use re_log_types::AbsoluteTimeRange;
 
 use crate::blueprint_timeline;
 
@@ -105,7 +105,7 @@ impl BlueprintUndoState {
             // Drop everything after the current timeline time
             let events = blueprint_db.drop_time_range(
                 &blueprint_timeline(),
-                ResolvedTimeRange::new(first_dropped_event_time, re_chunk::TimeInt::MAX),
+                AbsoluteTimeRange::new(first_dropped_event_time, re_chunk::TimeInt::MAX),
             );
 
             re_log::trace!("{} chunks affected when clearing redo buffer", events.len());

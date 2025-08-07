@@ -11,8 +11,8 @@ use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, EntityPath, EntityPathHash, LogMsg, RecordingId, ResolvedTimeRange,
-    ResolvedTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
+    RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
@@ -412,11 +412,11 @@ impl EntityDb {
     }
 
     /// Returns the time range of data on the given timeline, ignoring any static times.
-    pub fn time_range_for(&self, timeline: &TimelineName) -> Option<ResolvedTimeRange> {
+    pub fn time_range_for(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
         let hist = self.time_histogram_per_timeline.get(timeline)?;
         let min = hist.min_key()?;
         let max = hist.max_key()?;
-        Some(ResolvedTimeRange::new(min, max))
+        Some(AbsoluteTimeRange::new(min, max))
     }
 
     /// Histogram of all events on the timeeline, of all entities.
@@ -632,7 +632,7 @@ impl EntityDb {
     pub fn drop_time_range(
         &mut self,
         timeline: &TimelineName,
-        drop_range: ResolvedTimeRange,
+        drop_range: AbsoluteTimeRange,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
@@ -715,7 +715,7 @@ impl EntityDb {
     /// specific time range will be accounted for.
     pub fn to_messages(
         &self,
-        time_selection: Option<(TimelineName, ResolvedTimeRangeF)>,
+        time_selection: Option<(TimelineName, AbsoluteTimeRangeF)>,
     ) -> impl Iterator<Item = ChunkResult<LogMsg>> + '_ {
         re_tracing::profile_function!();
 
@@ -729,7 +729,7 @@ impl EntityDb {
             let time_filter = time_selection.map(|(timeline, range)| {
                 (
                     timeline,
-                    ResolvedTimeRange::new(range.min.floor(), range.max.ceil()),
+                    AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
                 )
             });
 

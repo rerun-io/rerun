@@ -1,4 +1,4 @@
-use re_log_types::ResolvedTimeRange;
+use re_log_types::AbsoluteTimeRange;
 use re_types::{
     components::AggregationPolicy,
     datatypes::{TimeRange, TimeRangeBoundary},
@@ -32,7 +32,7 @@ pub fn determine_time_range(
     time_offset: i64,
     data_result: &re_viewer_context::DataResult,
     plot_mem: Option<&egui_plot::PlotMemory>,
-) -> ResolvedTimeRange {
+) -> AbsoluteTimeRange {
     let query_range = data_result.query_range();
 
     // Latest-at doesn't make sense for time series and should also never happen.
@@ -51,7 +51,7 @@ pub fn determine_time_range(
     };
 
     let mut time_range =
-        ResolvedTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
+        AbsoluteTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
 
     let is_auto_bounds = plot_mem.is_some_and(|mem| mem.auto_bounds.x || mem.auto_bounds.y);
     let plot_bounds = plot_mem.map(|mem| {

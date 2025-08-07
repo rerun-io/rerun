@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arrow::datatypes::DataType as ArrowDataType;
 
-use crate::{ResolvedTimeRange, TimestampFormat};
+use crate::{AbsoluteTimeRange, TimestampFormat};
 
 use super::TimeInt;
 
@@ -122,7 +122,7 @@ impl TimeType {
     #[inline]
     pub fn format_range(
         &self,
-        time_range: ResolvedTimeRange,
+        time_range: AbsoluteTimeRange,
         timestamp_format: TimestampFormat,
     ) -> String {
         format!(
@@ -133,7 +133,7 @@ impl TimeType {
     }
 
     #[inline]
-    pub fn format_range_utc(&self, time_range: ResolvedTimeRange) -> String {
+    pub fn format_range_utc(&self, time_range: AbsoluteTimeRange) -> String {
         self.format_range(time_range, TimestampFormat::Utc)
     }
 

@@ -5,7 +5,7 @@ use arrow::array::ArrayRef;
 use itertools::Itertools as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TimelineName};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, ResolvedTimeRange, TimeInt,
+    AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, TimeInt,
 };
 use re_log_types::{
     EntityPath, TimeType, Timeline, build_frame_nr,
@@ -849,7 +849,7 @@ fn range() -> anyhow::Result<()> {
     // range queries.
     #[allow(clippy::type_complexity)]
     let assert_range_components =
-        |time_range: ResolvedTimeRange,
+        |time_range: AbsoluteTimeRange,
          component_descr: ComponentDescriptor,
          row_ids_at_times: &[(TimeInt, RowId)]| {
             let timeline_frame_nr = TimelineName::new("frame_nr");
@@ -878,52 +878,52 @@ fn range() -> anyhow::Result<()> {
     // Unit ranges
 
     assert_range_components(
-        ResolvedTimeRange::new(frame1, frame1),
+        AbsoluteTimeRange::new(frame1, frame1),
         MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
     assert_range_components(
-        ResolvedTimeRange::new(frame1, frame1),
+        AbsoluteTimeRange::new(frame1, frame1),
         MyPoints::descriptor_points(),
         &[],
     );
     assert_range_components(
-        ResolvedTimeRange::new(frame2, frame2),
+        AbsoluteTimeRange::new(frame2, frame2),
         MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
     assert_range_components(
-        ResolvedTimeRange::new(frame2, frame2),
+        AbsoluteTimeRange::new(frame2, frame2),
         MyPoints::descriptor_points(),
         &[(frame2, row_id2)],
     );
     assert_range_components(
-        ResolvedTimeRange::new(frame3, frame3),
+        AbsoluteTimeRange::new(frame3, frame3),
         MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
     assert_range_components(
-        ResolvedTimeRange::new(frame3, frame3),
+        AbsoluteTimeRange::new(frame3, frame3),
         MyPoints::descriptor_points(),
         &[(frame3, row_id3)],
     );
     assert_range_components(
-        ResolvedTimeRange::new(frame4, frame4),
+        AbsoluteTimeRange::new(frame4, frame4),
         MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
     assert_range_components(
-        ResolvedTimeRange::new(frame4, frame4),
+        AbsoluteTimeRange::new(frame4, frame4),
         MyPoints::descriptor_points(),
         &[(frame4, row_id4_25), (frame4, row_id4_4)],
     );
     assert_range_components(
-        ResolvedTimeRange::new(frame5, frame5),
+        AbsoluteTimeRange::new(frame5, frame5),
         MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
     assert_range_components(
-        ResolvedTimeRange::new(frame5, frame5),
+        AbsoluteTimeRange::new(frame5, frame5),
         MyPoints::descriptor_points(),
         &[],
     );
@@ -931,7 +931,7 @@ fn range() -> anyhow::Result<()> {
     // Full range
 
     assert_range_components(
-        ResolvedTimeRange::new(frame1, frame5),
+        AbsoluteTimeRange::new(frame1, frame5),
         MyPoints::descriptor_points(),
         &[
             (frame2, row_id2),
@@ -941,7 +941,7 @@ fn range() -> anyhow::Result<()> {
         ],
     );
     assert_range_components(
-        ResolvedTimeRange::new(frame1, frame5),
+        AbsoluteTimeRange::new(frame1, frame5),
         MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
@@ -949,7 +949,7 @@ fn range() -> anyhow::Result<()> {
     // Infinite range
 
     assert_range_components(
-        ResolvedTimeRange::new(TimeInt::MIN, TimeInt::MAX),
+        AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX),
         MyPoints::descriptor_points(),
         &[
             (frame2, row_id2),
@@ -959,7 +959,7 @@ fn range() -> anyhow::Result<()> {
         ],
     );
     assert_range_components(
-        ResolvedTimeRange::new(TimeInt::MIN, TimeInt::MAX),
+        AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX),
         MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
@@ -967,7 +967,7 @@ fn range() -> anyhow::Result<()> {
     // Component-less APIs
     {
         let assert_range_chunk =
-            |time_range: ResolvedTimeRange, mut expected_chunk_ids: Vec<ChunkId>| {
+            |time_range: AbsoluteTimeRange, mut expected_chunk_ids: Vec<ChunkId>| {
                 let timeline_frame_nr = TimelineName::new("frame_nr");
 
                 eprintln!("--- {time_range:?} ---");
@@ -991,12 +991,12 @@ fn range() -> anyhow::Result<()> {
             };
 
         // Unit ranges
-        assert_range_chunk(ResolvedTimeRange::new(frame0, frame0), vec![]);
-        assert_range_chunk(ResolvedTimeRange::new(frame1, frame1), vec![chunk1.id()]);
-        assert_range_chunk(ResolvedTimeRange::new(frame2, frame2), vec![chunk2.id()]);
-        assert_range_chunk(ResolvedTimeRange::new(frame3, frame3), vec![chunk3.id()]);
+        assert_range_chunk(AbsoluteTimeRange::new(frame0, frame0), vec![]);
+        assert_range_chunk(AbsoluteTimeRange::new(frame1, frame1), vec![chunk1.id()]);
+        assert_range_chunk(AbsoluteTimeRange::new(frame2, frame2), vec![chunk2.id()]);
+        assert_range_chunk(AbsoluteTimeRange::new(frame3, frame3), vec![chunk3.id()]);
         assert_range_chunk(
-            ResolvedTimeRange::new(frame4, frame4),
+            AbsoluteTimeRange::new(frame4, frame4),
             vec![
                 chunk4_1.id(),
                 chunk4_2.id(),
@@ -1005,12 +1005,12 @@ fn range() -> anyhow::Result<()> {
                 chunk4_4.id(),
             ],
         );
-        assert_range_chunk(ResolvedTimeRange::new(frame5, frame5), vec![]);
-        assert_range_chunk(ResolvedTimeRange::new(frame6, frame6), vec![]);
+        assert_range_chunk(AbsoluteTimeRange::new(frame5, frame5), vec![]);
+        assert_range_chunk(AbsoluteTimeRange::new(frame6, frame6), vec![]);
 
         // Full range
         assert_range_chunk(
-            ResolvedTimeRange::new(frame1, frame5),
+            AbsoluteTimeRange::new(frame1, frame5),
             vec![
                 chunk1.id(),
                 chunk2.id(),
@@ -1025,7 +1025,7 @@ fn range() -> anyhow::Result<()> {
 
         // Infinite range
         assert_range_chunk(
-            ResolvedTimeRange::EVERYTHING,
+            AbsoluteTimeRange::EVERYTHING,
             vec![
                 chunk1.id(),
                 chunk2.id(),
@@ -1142,7 +1142,7 @@ fn range_overlapped_chunks() -> anyhow::Result<()> {
     let chunk2 = Arc::new(chunk2);
     store.insert_chunk(&chunk2)?;
 
-    let assert_range_chunk = |time_range: ResolvedTimeRange,
+    let assert_range_chunk = |time_range: AbsoluteTimeRange,
                               mut expected_chunk_ids: Vec<ChunkId>| {
         let timeline_frame_nr = TimelineName::new("frame_nr");
 
@@ -1167,46 +1167,46 @@ fn range_overlapped_chunks() -> anyhow::Result<()> {
     };
 
     // Unit ranges
-    assert_range_chunk(ResolvedTimeRange::new(frame0, frame0), vec![]);
+    assert_range_chunk(AbsoluteTimeRange::new(frame0, frame0), vec![]);
     assert_range_chunk(
-        ResolvedTimeRange::new(frame1, frame1),
+        AbsoluteTimeRange::new(frame1, frame1),
         vec![chunk1_1.id(), chunk1_2.id(), chunk1_3.id()],
     );
     assert_range_chunk(
-        ResolvedTimeRange::new(frame2, frame2),
+        AbsoluteTimeRange::new(frame2, frame2),
         vec![chunk1_1.id(), chunk1_2.id(), chunk1_3.id(), chunk2.id()],
     );
     assert_range_chunk(
-        ResolvedTimeRange::new(frame3, frame3),
+        AbsoluteTimeRange::new(frame3, frame3),
         vec![chunk1_1.id(), chunk1_2.id(), chunk1_3.id(), chunk2.id()],
     );
     assert_range_chunk(
-        ResolvedTimeRange::new(frame4, frame4),
+        AbsoluteTimeRange::new(frame4, frame4),
         vec![chunk1_1.id(), chunk1_2.id(), chunk1_3.id(), chunk2.id()],
     );
     assert_range_chunk(
-        ResolvedTimeRange::new(frame5, frame5),
+        AbsoluteTimeRange::new(frame5, frame5),
         vec![chunk1_1.id(), chunk1_2.id(), chunk1_3.id()],
     );
     assert_range_chunk(
-        ResolvedTimeRange::new(frame6, frame6),
+        AbsoluteTimeRange::new(frame6, frame6),
         vec![chunk1_1.id(), chunk1_2.id(), chunk1_3.id()],
     );
     assert_range_chunk(
-        ResolvedTimeRange::new(frame7, frame7),
+        AbsoluteTimeRange::new(frame7, frame7),
         vec![chunk1_1.id(), chunk1_2.id(), chunk1_3.id()],
     );
-    assert_range_chunk(ResolvedTimeRange::new(frame8, frame8), vec![]);
+    assert_range_chunk(AbsoluteTimeRange::new(frame8, frame8), vec![]);
 
     // Full range
     assert_range_chunk(
-        ResolvedTimeRange::new(frame1, frame5),
+        AbsoluteTimeRange::new(frame1, frame5),
         vec![chunk1_1.id(), chunk1_2.id(), chunk1_3.id(), chunk2.id()],
     );
 
     // Infinite range
     assert_range_chunk(
-        ResolvedTimeRange::EVERYTHING,
+        AbsoluteTimeRange::EVERYTHING,
         vec![chunk1_1.id(), chunk1_2.id(), chunk1_3.id(), chunk2.id()],
     );
 

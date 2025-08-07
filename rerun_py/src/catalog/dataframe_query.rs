@@ -17,7 +17,7 @@ use tracing::instrument;
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
-use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
+use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathFilter};
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
@@ -179,7 +179,7 @@ impl PyDataframeQueryView {
             re_chunk::TimeInt::MAX
         };
 
-        let resolved = ResolvedTimeRange::new(start, end);
+        let resolved = AbsoluteTimeRange::new(start, end);
 
         Ok(self.clone_with_new_query(py, |query_expression| {
             query_expression.filtered_index_range = Some(resolved);
@@ -221,7 +221,7 @@ impl PyDataframeQueryView {
         let start = re_log_types::Timestamp::from_secs_since_epoch(start);
         let end = re_log_types::Timestamp::from_secs_since_epoch(end);
 
-        let resolved = ResolvedTimeRange::new(start, end);
+        let resolved = AbsoluteTimeRange::new(start, end);
 
         Ok(self.clone_with_new_query(py, |query_expression| {
             query_expression.filtered_index_range = Some(resolved);
@@ -263,7 +263,7 @@ impl PyDataframeQueryView {
         let start = re_log_types::Timestamp::from_nanos_since_epoch(start);
         let end = re_log_types::Timestamp::from_nanos_since_epoch(end);
 
-        let resolved = ResolvedTimeRange::new(start, end);
+        let resolved = AbsoluteTimeRange::new(start, end);
 
         Ok(self.clone_with_new_query(py, |query_expression| {
             query_expression.filtered_index_range = Some(resolved);

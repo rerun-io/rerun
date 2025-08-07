@@ -8,7 +8,7 @@ use std::sync::Arc;
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, Tooltip, epaint::Vertex, lerp, pos2, remap};
 
 use re_chunk_store::{Chunk, RangeQuery};
-use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, TimelineName};
+use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimelineName};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
@@ -456,7 +456,7 @@ pub fn build_density_graph<'a>(
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
     // NOTE: These chunks are guaranteed to have data on the current timeline
-    let (chunk_ranges, total_events): (Vec<(Arc<Chunk>, ResolvedTimeRange, u64)>, u64) = {
+    let (chunk_ranges, total_events): (Vec<(Arc<Chunk>, AbsoluteTimeRange, u64)>, u64) = {
         re_tracing::profile_scope!("collect chunks");
 
         let engine = db.storage_engine();
@@ -692,7 +692,7 @@ impl<'a> DensityGraphBuilder<'a> {
         }
     }
 
-    fn add_chunk_range(&mut self, time_range: ResolvedTimeRange, num_events: u64) {
+    fn add_chunk_range(&mut self, time_range: AbsoluteTimeRange, num_events: u64) {
         if num_events == 0 {
             return;
         }

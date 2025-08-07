@@ -15,7 +15,7 @@ use nohash_hasher::IntMap;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
-    EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName,
+    AbsoluteTimeRange, EntityPath, NonMinI64, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
     ArchetypeName, ComponentDescriptor, ComponentType, DeserializationError, Loggable as _,
@@ -407,7 +407,7 @@ impl Chunk {
     #[inline]
     pub fn time_range_per_component(
         &self,
-    ) -> IntMap<TimelineName, IntMap<ComponentDescriptor, ResolvedTimeRange>> {
+    ) -> IntMap<TimelineName, IntMap<ComponentDescriptor, AbsoluteTimeRange>> {
         re_tracing::profile_function!();
 
         self.timelines
@@ -673,7 +673,7 @@ pub struct TimeColumn {
     /// The time range covered by [`Self::times`].
     ///
     /// Not necessarily contiguous! Just the min and max value found in [`Self::times`].
-    pub(crate) time_range: ResolvedTimeRange,
+    pub(crate) time_range: AbsoluteTimeRange,
 }
 
 /// Errors when deserializing/parsing/reading a column of time data.
@@ -863,7 +863,7 @@ impl TimeColumn {
                 .last()
                 .copied()
                 .map_or(TimeInt::MAX, TimeInt::new_temporal);
-            ResolvedTimeRange::new(min_time, max_time)
+            AbsoluteTimeRange::new(min_time, max_time)
         } else {
             // NOTE: Do the iteration multiple times in a cache-friendly way rather than the opposite.
             // NOTE: The 'or' in 'unwrap_or' is never hit, but better safe than sorry.
@@ -877,7 +877,7 @@ impl TimeColumn {
                 .max()
                 .copied()
                 .map_or(TimeInt::MAX, TimeInt::new_temporal);
-            ResolvedTimeRange::new(min_time, max_time)
+            AbsoluteTimeRange::new(min_time, max_time)
         };
 
         Self {
@@ -1256,7 +1256,7 @@ impl TimeColumn {
     }
 
     #[inline]
-    pub fn time_range(&self) -> ResolvedTimeRange {
+    pub fn time_range(&self) -> AbsoluteTimeRange {
         self.time_range
     }
 
@@ -1314,7 +1314,7 @@ impl TimeColumn {
     pub fn time_range_per_component(
         &self,
         components: &ChunkComponents,
-    ) -> IntMap<ComponentDescriptor, ResolvedTimeRange> {
+    ) -> IntMap<ComponentDescriptor, AbsoluteTimeRange> {
         let times = self.times_raw();
         components
             .iter()
@@ -1349,7 +1349,7 @@ impl TimeColumn {
 
                     Some((
                         component_desc.clone(),
-                        ResolvedTimeRange::new(time_min, time_max),
+                        AbsoluteTimeRange::new(time_min, time_max),
                     ))
                 } else {
                     // Dense
