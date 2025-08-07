@@ -114,10 +114,11 @@ impl DataframeQueryTableProvider {
         .map(String::from)
         .collect::<Vec<_>>();
 
-        if let Some(index) = query_expression.filtered_index {
-            fields_of_interest.push(format!("{}:start", index.as_str()));
-            fields_of_interest.push(format!("{}:end", index.as_str()));
-        }
+        // TODO(tsaucer) see comments below
+        // if let Some(index) = query_expression.filtered_index {
+        //     fields_of_interest.push(format!("{}:start", index.as_str()));
+        //     fields_of_interest.push(format!("{}:end", index.as_str()));
+        // }
 
         let chunk_request = GetChunksRequest {
             dataset_id: Some(dataset_id.into()),
@@ -336,18 +337,20 @@ pub(crate) fn compute_partition_stream_chunk_info(
 
     for batch in chunk_info_batches.as_ref() {
         let schema = batch.schema();
-        let end_time_col = schema
-            .fields()
-            .iter()
-            .map(|f| f.name())
-            .find(|name| name.ends_with(":end"))
-            .ok_or(exec_datafusion_err!("Unable to identify time index"))?;
-        let start_time_col = schema
-            .fields()
-            .iter()
-            .map(|f| f.name())
-            .find(|name| name.ends_with(":start"))
-            .ok_or(exec_datafusion_err!("Unable to identify time index"))?;
+
+        // TODO(tsaucer) see comment below
+        // let end_time_col = schema
+        //     .fields()
+        //     .iter()
+        //     .map(|f| f.name())
+        //     .find(|name| name.ends_with(":end"))
+        //     .ok_or(exec_datafusion_err!("Unable to identify time index"))?;
+        // let start_time_col = schema
+        //     .fields()
+        //     .iter()
+        //     .map(|f| f.name())
+        //     .find(|name| name.ends_with(":start"))
+        //     .ok_or(exec_datafusion_err!("Unable to identify time index"))?;
 
         let partition_id_arr = batch
             .column_by_name("chunk_partition_id")
@@ -374,25 +377,29 @@ pub(crate) fn compute_partition_stream_chunk_info(
             .downcast_ref::<UInt64Array>()
             .ok_or(exec_datafusion_err!("Unexpected type for chunk_id"))?;
 
-        let end_time_arr = batch
-            .column_by_name(end_time_col)
-            .ok_or(exec_datafusion_err!(
-                "Unable to return end time column as expected"
-            ))?;
-        let end_time_arr = time_array_ref_to_i64(end_time_arr)?;
-        let start_time_arr = batch
-            .column_by_name(start_time_col)
-            .ok_or(exec_datafusion_err!(
-                "Unable to return start time column as expected"
-            ))?;
-        let start_time_arr = time_array_ref_to_i64(start_time_arr)?;
+        // TODO(tsaucer) uncomment and ensure this can still work with no timeline selected
+        // Below we are setting the start time to the index, because we are not yet
+        // processing the times for when it is okay to send the next row.
+
+        // let end_time_arr = batch
+        //     .column_by_name(end_time_col)
+        //     .ok_or(exec_datafusion_err!(
+        //         "Unable to return end time column as expected"
+        //     ))?;
+        // let end_time_arr = time_array_ref_to_i64(end_time_arr)?;
+        // let start_time_arr = batch
+        //     .column_by_name(start_time_col)
+        //     .ok_or(exec_datafusion_err!(
+        //         "Unable to return start time column as expected"
+        //     ))?;
+        // let start_time_arr = time_array_ref_to_i64(start_time_arr)?;
 
         for (idx, chunk_id) in chunk_id_arr.iter().enumerate() {
             let partition_id = partition_id_arr.value(idx).to_owned();
             let chunk_id = ChunkId::from_tuid(*chunk_id);
             let byte_len = chunk_byte_len_arr.value(idx);
-            let start_time = start_time_arr.value(idx);
-            let end_time = end_time_arr.value(idx);
+            let start_time = idx as i64;
+            let end_time = idx as i64 + 1;
 
             let chunk_info = ChunkInfo {
                 start_time,
