@@ -831,7 +831,7 @@ impl BlueprintTree {
         let mut found_anchor_item = false;
         let mut found_shift_clicked_items = false;
 
-        blueprint_tree_data.visit(|blueprint_tree_item| {
+        let _ignored = blueprint_tree_data.visit(|blueprint_tree_item| {
             let item = blueprint_tree_item.item();
 
             if &item == anchor_item {
@@ -1206,7 +1206,7 @@ impl BlueprintTree {
         egui_ctx: &egui::Context,
         focused_contents: &Contents,
     ) {
-        viewport.visit_contents(&mut |contents, hierarchy| {
+        let _ignored = viewport.visit_contents(&mut |contents, hierarchy| {
             if contents == focused_contents {
                 self.collapse_scope()
                     .contents(*contents)
@@ -1347,7 +1347,7 @@ fn list_views_with_entity(
     entity_path: &EntityPath,
 ) -> SmallVec<[ViewId; 4]> {
     let mut view_ids = SmallVec::new();
-    viewport.visit_contents::<()>(&mut |contents, _| {
+    let _ignored = viewport.visit_contents::<()>(&mut |contents, _| {
         if let Contents::View(view_id) = contents {
             let result_tree = &ctx.lookup_query_result(*view_id).tree;
             if result_tree.lookup_node_by_path(entity_path).is_some() {

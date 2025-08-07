@@ -72,7 +72,7 @@ impl TestContextExt for TestContext {
                 let mut query_results = HashMap::default();
 
                 self.run(egui_ctx, |ctx| {
-                    viewport_blueprint.visit_contents::<()>(&mut |contents, _| {
+                    let _ignored = viewport_blueprint.visit_contents::<()>(&mut |contents, _| {
                         if let Contents::View(view_id) = contents {
                             let view_blueprint = viewport_blueprint
                                 .view(view_id)

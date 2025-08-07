@@ -1207,7 +1207,7 @@ impl TimePanel {
         let mut found_last_clicked_items = false;
         let mut found_shift_clicked_items = false;
 
-        streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
+        let _ignored = streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
             let item = entity_or_component.item();
 
             if &item == anchor_item {

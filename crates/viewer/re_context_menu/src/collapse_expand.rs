@@ -16,7 +16,7 @@ pub fn collapse_expand_container(
     scope: CollapseScope,
     expand: bool,
 ) {
-    blueprint.visit_contents_in_container::<()>(container_id, &mut |contents, _| {
+    let _ignored = blueprint.visit_contents_in_container::<()>(container_id, &mut |contents, _| {
         match contents {
             Contents::Container(container_id) => scope
                 .container(*container_id)
