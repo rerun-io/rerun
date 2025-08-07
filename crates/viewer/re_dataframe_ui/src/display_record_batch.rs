@@ -304,7 +304,9 @@ pub enum DisplayColumn {
         time_data: ArrowScalarBuffer<i64>,
         time_nulls: Option<ArrowNullBuffer>,
     },
-    Component(DisplayComponentColumn),
+
+    // Boxed for size reasons.
+    Component(Box<DisplayComponentColumn>),
 }
 
 impl DisplayColumn {
@@ -333,13 +335,15 @@ impl DisplayColumn {
                     time_nulls,
                 })
             }
-            ColumnDescriptorRef::Component(desc) => Ok(Self::Component(DisplayComponentColumn {
-                entity_path: desc.entity_path.clone(),
-                component_descr: desc.component_descriptor(),
-                component_data: ComponentData::try_new(desc, column_data)?,
-                row_ids: None,
-                variant_name: column_blueprint.variant_ui,
-            })),
+            ColumnDescriptorRef::Component(desc) => {
+                Ok(Self::Component(Box::new(DisplayComponentColumn {
+                    entity_path: desc.entity_path.clone(),
+                    component_descr: desc.component_descriptor(),
+                    component_data: ComponentData::try_new(desc, column_data)?,
+                    row_ids: None,
+                    variant_name: column_blueprint.variant_ui,
+                })))
+            }
         }
     }
 
@@ -474,8 +478,8 @@ impl DisplayRecordBatch {
         // If we have row_ids, give a reference to all component columns.
         if let Some(batch_row_ids) = batch_row_ids {
             for column in &mut columns {
-                if let DisplayColumn::Component(DisplayComponentColumn { row_ids, .. }) = column {
-                    *row_ids = Some(Arc::clone(&batch_row_ids));
+                if let DisplayColumn::Component(column) = column {
+                    column.row_ids = Some(Arc::clone(&batch_row_ids));
                 }
             }
         }

@@ -439,7 +439,9 @@ fn load_episode_video(
 enum ScalarChunkIterator {
     Empty(std::iter::Empty<Chunk>),
     Batch(Box<dyn ExactSizeIterator<Item = Chunk>>),
-    Single(std::iter::Once<Chunk>),
+
+    // Boxed, because `Chunk` is huge, and by extension so is `std::iter::Once<Chunk>`.
+    Single(Box<std::iter::Once<Chunk>>),
 }
 
 impl Iterator for ScalarChunkIterator {
@@ -498,9 +500,9 @@ fn load_scalar(
                 format!("Failed to cast scalar feature {entity_path} to Float64")
             })?;
 
-            Ok(ScalarChunkIterator::Single(std::iter::once(
+            Ok(ScalarChunkIterator::Single(Box::new(std::iter::once(
                 make_scalar_entity_chunk(entity_path, timelines, &sliced)?,
-            )))
+            ))))
         }
         DataType::Float32 | DataType::Float64 => {
             let feature_data = data.column_by_name(feature_key).ok_or_else(|| {
@@ -514,9 +516,9 @@ fn load_scalar(
                 format!("Failed to cast scalar feature {entity_path} to Float64")
             })?;
 
-            Ok(ScalarChunkIterator::Single(std::iter::once(
+            Ok(ScalarChunkIterator::Single(Box::new(std::iter::once(
                 make_scalar_entity_chunk(entity_path, timelines, &sliced)?,
-            )))
+            ))))
         }
         _ => {
             re_log::warn_once!(

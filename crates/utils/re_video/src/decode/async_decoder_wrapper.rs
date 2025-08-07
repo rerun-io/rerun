@@ -12,7 +12,10 @@ use super::{AsyncDecoder, Chunk, Frame, OutputCallback, Result};
 
 enum Command {
     Chunk(Chunk),
-    Reset(VideoDataDescription),
+
+    // Boxed, because `VideoDataDescription` is huge.
+    Reset(Box<VideoDataDescription>),
+
     Stop,
 }
 
@@ -119,7 +122,7 @@ impl AsyncDecoder for AsyncDecoderWrapper {
 
         // …so it is visible on the decoder thread when it gets the `Reset` command.
         self.command_tx
-            .send(Command::Reset(video_data_description.clone()))
+            .send(Command::Reset(Box::new(video_data_description.clone())))
             .ok();
 
         Ok(())
