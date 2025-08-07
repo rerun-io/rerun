@@ -1353,7 +1353,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { name : "color",
                     display_name : "Color", component_type : "rerun.components.Color"
                     .into(), docstring_md : "The color of the bar chart", is_required :
-                    false, },
+                    false, }, ArchetypeFieldReflection { name : "abscissa", display_name
+                    : "Abscissa", component_type : "rerun.components.TensorData".into(),
+                    docstring_md :
+                    "The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.",
+                    is_required : false, },
                 ],
             },
         ),

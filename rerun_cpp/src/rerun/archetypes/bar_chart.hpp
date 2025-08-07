@@ -18,7 +18,7 @@
 namespace rerun::archetypes {
     /// **Archetype**: A bar chart.
     ///
-    /// The x values will be the indices of the array, and the bar heights will be the provided values.
+    /// The bar heights will be the provided values, and the x coordinates of the bars will be the provided abscissa or default to the index of the provided values.
     ///
     /// ## Example
     ///
@@ -33,6 +33,7 @@ namespace rerun::archetypes {
     ///     rec.spawn().exit_on_failure();
     ///
     ///     rec.log("bar_chart", rerun::BarChart::i64({8, 4, 0, 9, 1, 4, 1, 6, 9, 0}));
+    ///     rec.log("bar_chart_custom_abscissa", rerun::BarChart::i64({8, 4, 0, 9, 1, 4}).with_abscissa({0, 1, 3, 4, 7, 11}));
     /// }
     /// ```
     struct BarChart {
@@ -41,6 +42,9 @@ namespace rerun::archetypes {
 
         /// The color of the bar chart
         std::optional<ComponentBatch> color;
+
+        /// The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+        std::optional<ComponentBatch> abscissa;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
@@ -53,6 +57,11 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
             ArchetypeName, "BarChart:color", Loggable<rerun::components::Color>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `abscissa` field.
+        static constexpr auto Descriptor_abscissa = ComponentDescriptor(
+            ArchetypeName, "BarChart:abscissa",
+            Loggable<rerun::components::TensorData>::ComponentType
         );
 
       public: // START of extensions from bar_chart_ext.cpp:
@@ -219,6 +228,23 @@ namespace rerun::archetypes {
         /// be used when logging a single row's worth of data.
         BarChart with_many_color(const Collection<rerun::components::Color>& _color) && {
             color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+        BarChart with_abscissa(const rerun::components::TensorData& _abscissa) && {
+            abscissa =
+                ComponentBatch::from_loggable(_abscissa, Descriptor_abscissa).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `abscissa` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_abscissa` should
+        /// be used when logging a single row's worth of data.
+        BarChart with_many_abscissa(const Collection<rerun::components::TensorData>& _abscissa) && {
+            abscissa =
+                ComponentBatch::from_loggable(_abscissa, Descriptor_abscissa).value_or_throw();
             return std::move(*this);
         }
 
