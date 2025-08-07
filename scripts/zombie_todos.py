@@ -313,8 +313,6 @@ def main() -> None:
                     completed_files += 1
                     display += file_display
                     pbar.update(1)
-                    # if completed_files % 10 == 0:  # Progress update every 10 files
-                    #     print(f"  Processed {completed_files}/{len(files_to_process)} files...")
                 except Exception as e:
                     print(f"Error processing {filepath}: {e}")
                     completed_files += 1
