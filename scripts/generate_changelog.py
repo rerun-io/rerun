@@ -27,6 +27,8 @@ REPO = "rerun"
 INCLUDE_LABELS = False  # It adds quite a bit of visual noise
 OFFICIAL_RERUN_DEVS = [
     "abey79",
+    "aedm",
+    "andrea-reale",
     "emilk",
     "gavrelina",
     "grtlr",
@@ -34,8 +36,10 @@ OFFICIAL_RERUN_DEVS = [
     "jprochazk",
     "lucasmerlin",
     "nikolausWest",
+    "ntjohnson1",
     "oxkitsune",
     "teh-cmc",
+    "thz",
     "timsaucer",
     "Wumpf",
     "zehiko",
