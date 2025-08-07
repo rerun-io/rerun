@@ -232,7 +232,7 @@ impl BarChart {
         let len_values = self.values.as_ref().map(|b| b.array.len());
         let len_color = self.color.as_ref().map(|b| b.array.len());
         let len = None.or(len_values).or(len_color).unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The values. Should always be a 1-dimensional tensor (i.e. a vector).

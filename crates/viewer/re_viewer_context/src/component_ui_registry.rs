@@ -352,7 +352,7 @@ impl ComponentUiRegistry {
         };
 
         // Component UI can only show a single instance.
-        if array.len() == 0 || (instance.is_all() && array.len() > 1) {
+        if array.is_empty() || (instance.is_all() && array.len() > 1) {
             fallback_ui(ui, ui_layout, array.as_ref());
             return;
         }

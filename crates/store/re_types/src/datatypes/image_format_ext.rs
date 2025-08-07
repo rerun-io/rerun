@@ -106,7 +106,7 @@ impl ImageFormat {
             let bits_per_pixel = self.color_model.unwrap_or_default().num_channels()
                 * self.channel_datatype.unwrap_or_default().bits();
             // rounding upwards:
-            (self.width as usize * self.height as usize * bits_per_pixel + 7) / 8
+            (self.width as usize * self.height as usize * bits_per_pixel).div_ceil(8)
         }
     }
 

@@ -575,7 +575,7 @@ impl Mesh3D {
             .or(len_albedo_texture_format)
             .or(len_class_ids)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The positions of each vertex.

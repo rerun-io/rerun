@@ -34,8 +34,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "/",
         [times],
         [
-            sin.partitioned(std::iter::repeat(1).take(STEPS as _))?,
-            cos.partitioned(std::iter::repeat(1).take(STEPS as _))?,
+            sin.partitioned(std::iter::repeat_n(1, STEPS as _))?,
+            cos.partitioned(std::iter::repeat_n(1, STEPS as _))?,
         ],
     )?;
 

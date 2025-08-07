@@ -459,7 +459,7 @@ impl Boxes2D {
             .or(len_draw_order)
             .or(len_class_ids)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// All half-extents that make up the batch of boxes.

@@ -1066,13 +1066,13 @@ fn run_impl(
             // so we catch any warnings produced during startup.
             let text_log_rx = re_viewer::register_text_log_receiver();
 
-            return re_viewer::run_native_app(
+            re_viewer::run_native_app(
                 _main_thread_token,
                 Box::new(move |cc| {
                     let mut app = re_viewer::App::with_commands(
                         _main_thread_token,
                         _build_info,
-                        &call_source.app_env(),
+                        call_source.app_env(),
                         startup_options,
                         cc,
                         Some(connection_registry),
@@ -1108,7 +1108,7 @@ fn run_impl(
                 }),
                 args.renderer.as_deref(),
             )
-            .map_err(|err| err.into());
+            .map_err(|err| err.into())
         }
         #[cfg(not(feature = "native_viewer"))]
         {

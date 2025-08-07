@@ -10,6 +10,7 @@ use tracing::Instrument as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{ChunkStore, QueryExpression};
 use re_dataframe::ChunkStoreHandle;
+use re_datafusion::query_from_query_expression;
 use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
@@ -23,9 +24,7 @@ use re_protos::{
         ext::{IfDuplicateBehavior, ScanParameters},
     },
     frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest},
-    manifest_registry::v1alpha1::ext::{
-        DataSource, Query, QueryLatestAt, QueryRange, RegisterWithDatasetTaskDescriptor,
-    },
+    manifest_registry::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
     redap_tasks::v1alpha1::QueryTasksResponse,
 };
 
@@ -59,6 +58,10 @@ impl ConnectionHandle {
 
     pub fn origin(&self) -> &re_uri::Origin {
         &self.origin
+    }
+
+    pub fn connection_registry(&self) -> &ConnectionRegistryHandle {
+        &self.connection_registry
     }
 }
 
@@ -246,6 +249,12 @@ impl ConnectionHandle {
     /// Initiate registration of the provided recording URIs with a dataset and return the
     /// corresponding task descriptors.
     ///
+    /// Custom layers can be specified via `recording_layers`:
+    /// * When empty, this defaults to `["base"]`.
+    /// * If longer than `recording_uris`, `recording_layers` will be truncated.
+    /// * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
+    ///   I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
+    ///
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
     #[tracing::instrument(level = "info", skip_all)]
@@ -254,10 +263,21 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uris: Vec<String>,
+        recording_layers: Vec<String>,
     ) -> PyResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+        let last_layer = recording_layers
+            .last()
+            .cloned()
+            .unwrap_or_else(|| DataSource::DEFAULT_LAYER.to_owned());
+
         let data_sources = recording_uris
             .iter()
-            .map(DataSource::new_rrd)
+            .zip(
+                recording_layers
+                    .into_iter()
+                    .chain(std::iter::repeat_with(|| last_layer.clone())),
+            )
+            .map(|(url, layer)| DataSource::new_rrd_layer(layer, url))
             .collect::<Result<Vec<_>, _>>()
             .map_err(to_py_err)?;
 
@@ -777,33 +797,5 @@ impl ConnectionHandle {
             }
             .in_current_span(),
         )
-    }
-}
-
-fn query_from_query_expression(query_expression: &QueryExpression) -> Query {
-    let latest_at = if query_expression.is_static() {
-        Some(QueryLatestAt::new_static())
-    } else {
-        query_expression
-            .min_latest_at()
-            .map(|latest_at| QueryLatestAt {
-                index: Some(latest_at.timeline().to_string()),
-                at: latest_at.at(),
-            })
-    };
-
-    Query {
-        latest_at,
-        range: query_expression.max_range().map(|range| QueryRange {
-            index: range.timeline().to_string(),
-            index_range: range.range,
-        }),
-        columns_always_include_everything: false,
-        columns_always_include_chunk_ids: false,
-        columns_always_include_entity_paths: false,
-        columns_always_include_byte_offsets: false,
-        columns_always_include_static_indexes: false,
-        columns_always_include_global_indexes: false,
-        columns_always_include_component_indexes: false,
     }
 }

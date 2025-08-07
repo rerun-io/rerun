@@ -4,7 +4,6 @@ use re_chunk::{
 };
 use re_log_types::TimeCell;
 use re_mcap_ros2::sensor_msgs;
-use re_sorbet::SorbetSchema;
 use re_types::{
     ComponentDescriptor,
     archetypes::{EncodedImage, VideoStream},
@@ -23,10 +22,6 @@ pub struct CompressedImageSchemaPlugin;
 impl SchemaPlugin for CompressedImageSchemaPlugin {
     fn name(&self) -> SchemaName {
         "sensor_msgs/msg/CompressedImage".into()
-    }
-
-    fn parse_schema(&self, _channel: &mcap::Channel<'_>) -> Result<SorbetSchema, PluginError> {
-        Err(PluginError::Other(anyhow::anyhow!("todo")))
     }
 
     fn create_message_parser(

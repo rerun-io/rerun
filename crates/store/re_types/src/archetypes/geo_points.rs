@@ -323,7 +323,7 @@ impl GeoPoints {
             .or(len_colors)
             .or(len_class_ids)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).

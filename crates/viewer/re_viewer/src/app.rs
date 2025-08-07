@@ -69,6 +69,10 @@ pub struct App {
     #[allow(dead_code)] // Unused on wasm32
     main_thread_token: MainThreadToken,
     build_info: re_build_info::BuildInfo,
+
+    #[allow(dead_code)] // Only used for analytics
+    app_env: crate::AppEnvironment,
+
     startup_options: StartupOptions,
     start_time: web_time::Instant,
     ram_limit_warner: re_memory::RamLimitWarner,
@@ -119,8 +123,6 @@ pub struct App {
     command_receiver: CommandReceiver,
     cmd_palette: re_ui::CommandPalette,
 
-    analytics: crate::viewer_analytics::ViewerAnalytics,
-
     /// All known view types.
     view_class_registry: ViewClassRegistry,
 
@@ -147,7 +149,7 @@ impl App {
     pub fn new(
         main_thread_token: MainThreadToken,
         build_info: re_build_info::BuildInfo,
-        app_env: &crate::AppEnvironment,
+        app_env: crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
         connection_registry: Option<ConnectionRegistryHandle>,
@@ -171,7 +173,7 @@ impl App {
     pub fn with_commands(
         main_thread_token: MainThreadToken,
         build_info: re_build_info::BuildInfo,
-        app_env: &crate::AppEnvironment,
+        app_env: crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
         connection_registry: Option<ConnectionRegistryHandle>,
@@ -180,9 +182,6 @@ impl App {
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();
-
-        let analytics =
-            crate::viewer_analytics::ViewerAnalytics::new(&startup_options, app_env.clone());
 
         let connection_registry =
             connection_registry.unwrap_or_else(re_grpc_client::ConnectionRegistry::new);
@@ -270,7 +269,7 @@ impl App {
             .checked_sub(web_time::Duration::from_secs(1_000_000_000))
             .unwrap_or(web_time::Instant::now());
 
-        let (adapter_backend, device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
+        let (_adapter_backend, _device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
             (
                 wgpu::Backend::Noop,
                 re_renderer::device_caps::DeviceCapabilityTier::Limited,
@@ -290,7 +289,23 @@ impl App {
                 )
             },
         );
-        analytics.on_viewer_started(build_info.clone(), adapter_backend, device_tier);
+
+        #[cfg(feature = "analytics")]
+        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+            use crate::viewer_analytics::event;
+
+            analytics.record(event::identify(
+                analytics.config(),
+                build_info.clone(),
+                &app_env,
+            ));
+            analytics.record(event::viewer_started(
+                &app_env,
+                &creation_context.egui_ctx,
+                _adapter_backend,
+                _device_tier,
+            ));
+        }
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 
@@ -313,6 +328,7 @@ impl App {
         Self {
             main_thread_token,
             build_info,
+            app_env,
             startup_options,
             start_time: web_time::Instant::now(),
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
@@ -353,8 +369,6 @@ impl App {
             cmd_palette: Default::default(),
 
             view_class_registry,
-
-            analytics,
 
             panel_state_overrides_active: true,
             panel_state_overrides,
@@ -1081,6 +1095,11 @@ impl App {
 
             UICommand::Settings => {
                 self.state.navigation.push(DisplayMode::Settings);
+
+                #[cfg(feature = "analytics")]
+                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                    analytics.record(re_analytics::event::SettingsOpened {});
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1767,7 +1786,14 @@ impl App {
             // because `entity_db.store_info` needs to be set.
             let entity_db = store_hub.entity_db_mut(store_id);
             if msg_will_add_new_store && entity_db.store_kind() == StoreKind::Recording {
-                self.analytics.on_open_recording(entity_db);
+                #[cfg(feature = "analytics")]
+                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                    if let Some(event) =
+                        crate::viewer_analytics::event::open_recording(&self.app_env, entity_db)
+                    {
+                        analytics.record(event);
+                    }
+                }
 
                 if let Some(event_dispatcher) = self.event_dispatcher.as_ref() {
                     event_dispatcher.on_recording_open(entity_db);

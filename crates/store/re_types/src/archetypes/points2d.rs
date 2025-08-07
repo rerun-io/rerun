@@ -522,7 +522,7 @@ impl Points2D {
             .or(len_class_ids)
             .or(len_keypoint_ids)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// All the 2D positions at which the point cloud shows points.

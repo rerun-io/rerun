@@ -3,7 +3,7 @@
 /// Implements [`tower_http::trace::MakeSpan`] where the trace name is the gRPC method name.
 ///
 /// We keep track of a bunch of relevant in-house state associated with the span in `SpanMetadata`.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct GrpcMakeSpan {
     gauge: opentelemetry::metrics::Gauge<u64>,
 }

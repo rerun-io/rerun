@@ -406,7 +406,7 @@ impl Pinhole {
             .or(len_camera_xyz)
             .or(len_image_plane_distance)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// Camera projection, from image coordinates to view coordinates.

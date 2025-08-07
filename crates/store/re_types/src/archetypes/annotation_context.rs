@@ -226,7 +226,7 @@ impl AnnotationContext {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_context = self.context.as_ref().map(|b| b.array.len());
         let len = None.or(len_context).unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// List of class descriptions, mapping class indices to class names, colors etc.

@@ -18,6 +18,12 @@ impl From<TimeRange> for ResolvedTimeRangeF {
     }
 }
 
+impl From<TimeRange> for re_log_types::ResolvedTimeRange {
+    fn from(range: TimeRange) -> Self {
+        Self::new(range.min, range.max)
+    }
+}
+
 impl std::fmt::Display for TimeRange {
     /// Used for formatting time ranges in URLs
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

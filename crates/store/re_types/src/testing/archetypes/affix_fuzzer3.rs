@@ -700,7 +700,7 @@ impl AffixFuzzer3 {
             .or(len_fuzz2017)
             .or(len_fuzz2018)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     #[inline]

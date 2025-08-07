@@ -2867,7 +2867,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c9e6a11ca8224451684bc0d7d5a7adbf8f2fd6887261a1cfc3c0432f9d4068e"
 dependencies = [
  "powerfmt",
- "serde",
 ]
 
 [[package]]
@@ -5724,15 +5723,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num_threads"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c7398b9c8b70908f6371f47ed36737907c87c52af34c268fed0bf0ceb92ead9"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "number_prefix"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6789,6 +6779,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prost-reflect"
+version = "0.15.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37587d5a8a1b3dc9863403d084fc2254b91ab75a702207098837950767e2260b"
+dependencies = [
+ "prost",
+ "prost-types",
+]
+
+[[package]]
 name = "prost-types"
 version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7155,14 +7155,15 @@ dependencies = [
  "crossbeam",
  "directories",
  "ehttp",
+ "jiff",
  "re_build_info",
  "re_build_tools",
  "re_log",
+ "regex-lite",
  "serde",
  "serde_json",
  "sha2",
  "thiserror 1.0.69",
- "time",
  "url",
  "uuid",
  "web-sys",
@@ -7236,8 +7237,9 @@ dependencies = [
  "anyhow",
  "cargo_metadata 0.18.1",
  "glob",
+ "jiff",
+ "regex-lite",
  "sha2",
- "time",
  "unindent",
  "walkdir",
 ]
@@ -7426,6 +7428,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "parquet",
+ "prost-reflect",
  "rayon",
  "re_arrow_util",
  "re_build_info",
@@ -7437,7 +7440,6 @@ dependencies = [
  "re_log_types",
  "re_mcap_ros2",
  "re_smart_channel",
- "re_sorbet",
  "re_tracing",
  "re_types",
  "serde",
@@ -7565,6 +7567,7 @@ dependencies = [
 name = "re_datafusion"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "arrow",
  "async-stream",
@@ -7575,12 +7578,15 @@ dependencies = [
  "futures-util",
  "getrandom 0.3.3",
  "itertools 0.14.0",
+ "log",
  "re_dataframe",
  "re_grpc_client",
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_sorbet",
  "re_tuid",
+ "re_uri",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -8460,9 +8466,11 @@ dependencies = [
  "egui_tiles",
  "getrandom 0.3.3",
  "itertools 0.14.0",
+ "jiff",
  "notify",
  "parking_lot",
  "rand 0.8.5",
+ "re_analytics",
  "re_arrow_util",
  "re_build_tools",
  "re_entity_db",
@@ -8477,7 +8485,6 @@ dependencies = [
  "strum",
  "strum_macros",
  "sublime_fuzzy",
- "time",
  "url",
 ]
 
@@ -9088,6 +9095,12 @@ dependencies = [
  "memchr",
  "regex-syntax 0.8.5",
 ]
+
+[[package]]
+name = "regex-lite"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53a49587ad06b26609c52e423de037e7f57f20d53535d66e08c695f347df952a"
 
 [[package]]
 name = "regex-syntax"
@@ -10591,10 +10604,7 @@ checksum = "8a7619e19bc266e0f9c5e6686659d394bc57973859340060a69221e57dbc0c40"
 dependencies = [
  "deranged",
  "itoa",
- "js-sys",
- "libc",
  "num-conv",
- "num_threads",
  "powerfmt",
  "serde",
  "time-core",

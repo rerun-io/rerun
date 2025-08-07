@@ -217,7 +217,7 @@ impl ViewCoordinates {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_xyz = self.xyz.as_ref().map(|b| b.array.len());
         let len = None.or(len_xyz).unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The directions of the [x, y, z] axes.

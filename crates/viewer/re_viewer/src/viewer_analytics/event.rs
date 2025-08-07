@@ -34,9 +34,20 @@ pub fn identify(
 
 pub fn viewer_started(
     app_env: &AppEnvironment,
+    egui_ctx: &egui::Context,
     adapter_backend: wgpu::Backend,
     device_tier: re_renderer::device_caps::DeviceCapabilityTier,
 ) -> ViewerStarted {
+    // Note that some of these things can change at runtime,
+    // but we send them only once at startup.
+    // This means if the user changes the zoom factor we won't send it
+    // until the next restart.
+    let screen_info = re_analytics::event::ScreenInfo {
+        pixels_per_point: egui_ctx.pixels_per_point(),
+        native_pixels_per_point: egui_ctx.native_pixels_per_point(),
+        zoom_factor: egui_ctx.zoom_factor(),
+    };
+
     ViewerStarted {
         url: app_env.url().cloned(),
         app_env: app_env.name(),
@@ -45,6 +56,7 @@ pub fn viewer_started(
             is_wsl: super::wsl::is_wsl(),
             graphics_adapter_backend: adapter_backend.to_string(),
             re_renderer_device_tier: device_tier.to_string(),
+            screen_info,
         },
     }
 }
@@ -144,7 +156,7 @@ pub fn open_recording(
         re_smart_channel::SmartChannelSource::RedapGrpcStream { .. } => None,
         re_smart_channel::SmartChannelSource::MessageProxy { .. } => Some("grpc"),
         // vvv spawn(), connect() vvv
-        re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => Some("web_event"),
+        re_smart_channel::SmartChannelSource::RrdWebEventListener => Some("web_event"),
         re_smart_channel::SmartChannelSource::JsChannel { .. } => Some("javascript"), // mediated via rerun-js
         re_smart_channel::SmartChannelSource::Sdk => Some("sdk"),                     // show()
         re_smart_channel::SmartChannelSource::Stdin => Some("stdin"),

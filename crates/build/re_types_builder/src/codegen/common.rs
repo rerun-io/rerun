@@ -62,7 +62,7 @@ impl<'a> ExampleInfo<'a> {
         let (path, args) = tag_content
             .split_once(' ')
             .map_or((tag_content, None), |(a, b)| (a, Some(b)));
-        let name = path.split('/').last().unwrap_or_default().to_owned();
+        let name = path.split('/').next_back().unwrap_or_default().to_owned();
 
         let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
 
