@@ -128,8 +128,8 @@ pub fn open_recording(
                 rustc_version: rustc,
                 llvm_version: llvm,
             } => {
-                rust_version_preprocessed = Some(rustc.to_string());
-                llvm_version_preprocessed = Some(llvm.to_string());
+                rust_version_preprocessed = Some(rustc.clone());
+                llvm_version_preprocessed = Some(llvm.clone());
             }
             S::PythonSdk(version) => {
                 python_version_preprocessed = Some(version.to_string());

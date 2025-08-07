@@ -86,7 +86,7 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
                     metadata.insert("rerun:component".to_owned(), component);
                 } else if field_name.starts_with("rerun.") {
                     // Long name
-                    metadata.insert("rerun:component".to_owned(), field_name.to_string());
+                    metadata.insert("rerun:component".to_owned(), field_name.clone());
                 } else {
                     // Short name: expand it to be long
                     metadata.insert("rerun:component".to_owned(), format!("rerun.components.{field_name}"));

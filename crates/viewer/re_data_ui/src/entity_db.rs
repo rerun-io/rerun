@@ -43,7 +43,7 @@ impl crate::DataUi for EntityDb {
 
             if let Some(SmartChannelSource::RedapGrpcStream { uri: re_uri::DatasetDataUri { partition_id, .. }, .. }) = &self.data_source {
                 ui.grid_left_hand_label("Partition ID");
-                ui.label(partition_id.to_string());
+                ui.label(partition_id);
                 ui.end_row();
             }
 

@@ -1114,7 +1114,7 @@ fn code_for_union(
     let inner_type = if field_types.len() > 1 {
         format!("Union[{}]", field_types.iter().join(", "))
     } else {
-        field_types.iter().next().unwrap().to_string()
+        field_types.iter().next().unwrap().clone()
     };
 
     // components and datatypes have converters only if manually provided

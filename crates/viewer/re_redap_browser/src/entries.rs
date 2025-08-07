@@ -293,7 +293,7 @@ impl DatasetKind {
                 origin: _,
                 entry_id: _,
                 name,
-            } => name.to_string(),
+            } => name.clone(),
             Self::Local(app_id) => app_id.to_string(),
         }
     }
