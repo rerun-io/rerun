@@ -83,13 +83,10 @@ impl Pinhole {
         since = "0.22.0"
     )]
     pub fn fov_y(&self) -> Option<f32> {
-        self.image_from_camera_from_arrow()
+        let projection = self.image_from_camera_from_arrow().ok()?;
+        self.resolution_from_arrow()
             .ok()
-            .and_then(|projection| {
-                self.resolution_from_arrow()
-                    .ok()
-                    .map(|r| projection.fov_y(r))
-            })
+            .map(|r| projection.fov_y(r))
     }
 
     /// The resolution of the camera sensor in pixels.
@@ -122,11 +119,10 @@ impl Pinhole {
         self.image_from_camera.as_ref().map_or(
             Err(re_types_core::DeserializationError::missing_data()),
             |data| {
-                PinholeProjection::from_arrow(&data.array).and_then(|v| {
-                    v.first()
-                        .copied()
-                        .ok_or(re_types_core::DeserializationError::missing_data())
-                })
+                let v = PinholeProjection::from_arrow(&data.array)?;
+                v.first()
+                    .copied()
+                    .ok_or(re_types_core::DeserializationError::missing_data())
             },
         )
     }
@@ -138,11 +134,10 @@ impl Pinhole {
         self.resolution.as_ref().map_or(
             Err(re_types_core::DeserializationError::missing_data()),
             |data| {
-                Resolution::from_arrow(&data.array).and_then(|v| {
-                    v.first()
-                        .copied()
-                        .ok_or(re_types_core::DeserializationError::missing_data())
-                })
+                let v = Resolution::from_arrow(&data.array)?;
+                v.first()
+                    .copied()
+                    .ok_or(re_types_core::DeserializationError::missing_data())
             },
         )
     }

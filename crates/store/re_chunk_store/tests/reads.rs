@@ -30,10 +30,8 @@ fn query_latest_array(
         .latest_at_relevant_chunks(query, entity_path, component_descr)
         .into_iter()
         .filter_map(|chunk| {
-            chunk
-                .latest_at(query, component_descr)
-                .into_unit()
-                .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
+            let chunk = chunk.latest_at(query, component_descr).into_unit()?;
+            chunk.index(&query.timeline()).map(|index| (index, chunk))
         })
         .max_by_key(|(index, _chunk)| *index)?;
 

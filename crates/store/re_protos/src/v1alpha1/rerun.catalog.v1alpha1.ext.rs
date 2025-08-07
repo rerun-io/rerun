@@ -108,11 +108,10 @@ impl DatasetDetails {
     ///
     /// Both `blueprint_dataset` and `default_blueprint` must be set.
     pub fn default_bluprint(&self) -> Option<(EntryId, PartitionId)> {
-        self.blueprint_dataset.as_ref().and_then(|blueprint| {
-            self.default_blueprint
-                .as_ref()
-                .map(|default| (blueprint.clone(), default.clone()))
-        })
+        let blueprint = self.blueprint_dataset.as_ref()?;
+        self.default_blueprint
+            .as_ref()
+            .map(|default| (blueprint.clone(), default.clone()))
     }
 }
 

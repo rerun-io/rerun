@@ -88,12 +88,13 @@ impl Columns<'_> {
     }
 
     fn index_from_id(&self, id: Option<egui::Id>) -> Option<usize> {
-        id.and_then(|id| self.column_from_index.get(&id).copied())
+        let id = id?;
+        self.column_from_index.get(&id).copied()
     }
 
     fn index_and_column_from_id(&self, id: Option<egui::Id>) -> Option<(usize, &Column<'_>)> {
-        id.and_then(|id| self.column_from_index.get(&id).copied())
-            .and_then(|index| self.columns.get(index).map(|column| (index, column)))
+        let index = id.and_then(|id| self.column_from_index.get(&id).copied())?;
+        self.columns.get(index).map(|column| (index, column))
     }
 }
 
@@ -351,11 +352,7 @@ impl<'a> DataFusionTableWidget<'a> {
         // TODO(lucas): This is a band-aid fix and should be replaced with proper table blueprint
         let first_column = columns
             .index_from_id(table_config.visible_column_ids().next())
-            .and_then(|index| {
-                display_record_batches
-                    .first()
-                    .and_then(|batch| batch.columns().get(index))
-            });
+            .and_then(|index| display_record_batches.first()?.columns().get(index));
         if let Some(DisplayColumn::Component(component)) = first_column {
             if component.is_image() {
                 row_height *= 3.0;

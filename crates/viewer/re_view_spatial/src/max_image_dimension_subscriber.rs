@@ -142,13 +142,11 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                 // Size detection for various types of components.
                 if descr.component_type == Some(components::ImageFormat::name()) {
                     for new_dim in list_array.iter().filter_map(|array| {
-                        array.and_then(|array| {
-                            let array = arrow::array::ArrayRef::from(array);
-                            components::ImageFormat::from_arrow(&array)
-                                .ok()?
-                                .into_iter()
-                                .next()
-                        })
+                        let array = arrow::array::ArrayRef::from(array?);
+                        components::ImageFormat::from_arrow(&array)
+                            .ok()?
+                            .into_iter()
+                            .next()
                     }) {
                         max_dim.width = max_dim.width.max(new_dim.width);
                         max_dim.height = max_dim.height.max(new_dim.height);

@@ -223,11 +223,12 @@ fn active_defaults(
         .unwrap_or_default()
         .into_iter()
         .filter_map(|component_descr| {
-            db.storage_engine()
+            let data = db
+                .storage_engine()
                 .cache()
                 .latest_at(query, &view.defaults_path, [&component_descr])
-                .component_batch_raw(&component_descr)
-                .and_then(|data| (!data.is_empty()).then_some((component_descr, data)))
+                .component_batch_raw(&component_descr)?;
+            (!data.is_empty()).then_some((component_descr, data))
         })
         .collect()
 }

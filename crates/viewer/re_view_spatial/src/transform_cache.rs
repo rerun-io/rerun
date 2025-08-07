@@ -371,11 +371,11 @@ impl TransformsForEntity {
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
         self.pinhole_projections
+            .as_ref()?
+            .range(..query.at().inc())
+            .next_back()?
+            .1
             .as_ref()
-            .and_then(|pinhole_projections| {
-                pinhole_projections.range(..query.at().inc()).next_back()
-            })
-            .and_then(|(_time, projection)| projection.as_ref())
     }
 }
 

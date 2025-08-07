@@ -171,8 +171,7 @@ impl DataResultTree {
     }
 
     pub fn root_node(&self) -> Option<&DataResultNode> {
-        self.root_handle
-            .and_then(|handle| self.data_results.get(handle))
+        self.data_results.get(self.root_handle?)
     }
 
     /// Depth-first traversal of the tree, calling `visitor` on each result.
@@ -212,17 +211,16 @@ impl DataResultTree {
     ) -> Option<&DataResultNode> {
         let mut result = None;
 
-        starting_node.or_else(|| self.root_node()).and_then(|node| {
-            self.visit_from_node(node, &mut |node| {
-                if predicate(node) {
-                    result = Some(node);
-                }
+        let node = starting_node.or_else(|| self.root_node())?;
+        self.visit_from_node(node, &mut |node| {
+            if predicate(node) {
+                result = Some(node);
+            }
 
-                // keep recursing until we find something
-                result.is_none()
-            });
-            result
-        })
+            // keep recursing until we find something
+            result.is_none()
+        });
+        result
     }
 
     /// Look up a [`DataResult`] in the tree based on its handle.

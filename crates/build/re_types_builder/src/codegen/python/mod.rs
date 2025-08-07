@@ -472,10 +472,9 @@ impl PythonCodeGenerator {
                 .iter()
                 .filter_map(|field| quote_import_clauses_from_field(&obj.scope(), field))
                 .chain(obj.fields.iter().filter_map(|field| {
-                    field.typ.fqname().and_then(|fqname| {
-                        objects[fqname].delegate_datatype(objects).map(|delegate| {
-                            quote_import_clauses_from_fqname(&obj.scope(), &delegate.fqname)
-                        })
+                    let fqname = field.typ.fqname()?;
+                    objects[fqname].delegate_datatype(objects).map(|delegate| {
+                        quote_import_clauses_from_fqname(&obj.scope(), &delegate.fqname)
                     })
                 }))
                 .collect();

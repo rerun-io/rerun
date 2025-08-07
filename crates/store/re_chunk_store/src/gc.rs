@@ -680,9 +680,8 @@ impl ChunkStore {
 
         {
             let min_row_ids_removed = chunk_ids_removed.iter().filter_map(|chunk_id| {
-                self.chunks_per_chunk_id
-                    .get(chunk_id)
-                    .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
+                let chunk = self.chunks_per_chunk_id.get(chunk_id)?;
+                chunk.row_id_range().map(|(min, _)| min)
             });
             for row_id in min_row_ids_removed {
                 if self.chunk_ids_per_min_row_id.remove(&row_id).is_none() {

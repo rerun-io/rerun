@@ -641,17 +641,15 @@ fn pixel_value_string_from_gpu_texture(
         } else {
             const MAX_FRAMES_WITHOUT_GPU_READBACK: u64 = 3;
 
-            ui_ctx.memory(|m| m.data.get_temp(memory_id)).and_then(
-                |cached: PreviousReadbackResult| {
-                    if cached.interaction_id == interaction_id
-                        && cached.frame_nr + MAX_FRAMES_WITHOUT_GPU_READBACK >= frame_nr
-                    {
-                        Some(cached.readback_result_rgb)
-                    } else {
-                        None
-                    }
-                },
-            )
+            let cached: PreviousReadbackResult = ui_ctx.memory(|m| m.data.get_temp(memory_id))?;
+
+            if cached.interaction_id == interaction_id
+                && cached.frame_nr + MAX_FRAMES_WITHOUT_GPU_READBACK >= frame_nr
+            {
+                Some(cached.readback_result_rgb)
+            } else {
+                None
+            }
         }
     };
 
@@ -718,12 +716,11 @@ fn pixel_value_string_from_gpu_texture(
         }
     }
 
-    readback_result_rgb.and_then(|rgb| {
-        let rgb = [
-            TensorElement::U8(rgb[0]),
-            TensorElement::U8(rgb[1]),
-            TensorElement::U8(rgb[2]),
-        ];
-        format_pixel_value(ImageKind::Color, ColorModel::RGB, &rgb)
-    })
+    let rgb = readback_result_rgb?;
+    let rgb = [
+        TensorElement::U8(rgb[0]),
+        TensorElement::U8(rgb[1]),
+        TensorElement::U8(rgb[2]),
+    ];
+    format_pixel_value(ImageKind::Color, ColorModel::RGB, &rgb)
 }

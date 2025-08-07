@@ -60,7 +60,7 @@ impl TensorData {
     ///
     /// Returns `None` if the dimension does not have a name.
     pub fn dim_name(&self, dim: usize) -> Option<&ArrowString> {
-        self.names.as_ref().and_then(|names| names.get(dim))
+        self.names.as_ref()?.get(dim)
     }
 
     /// Returns the shape of the tensor with all leading & trailing dimensions of size 1 ignored.

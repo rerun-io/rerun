@@ -209,9 +209,8 @@ pub fn read_versioning_hash(path: impl AsRef<Path>) -> Option<String> {
     // deleted the versioning file, i.e. they're trying to force a rebuild.
     rerun_if_changed_or_doesnt_exist(path);
 
-    std::fs::read_to_string(path).ok().and_then(|contents| {
-        contents
-            .lines()
-            .find_map(|line| (!line.trim().starts_with('#')).then(|| line.trim().to_owned()))
-    })
+    let contents = std::fs::read_to_string(path).ok()?;
+    contents
+        .lines()
+        .find_map(|line| (!line.trim().starts_with('#')).then(|| line.trim().to_owned()))
 }

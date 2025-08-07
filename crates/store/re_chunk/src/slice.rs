@@ -33,9 +33,8 @@ impl Chunk {
             let index = row_ids.binary_search(&row_id).ok()?;
             list_array.is_valid(index).then(|| list_array.value(index))
         } else {
-            self.row_ids()
-                .find_position(|id| *id == row_id)
-                .and_then(|(index, _)| list_array.is_valid(index).then(|| list_array.value(index)))
+            let (index, _) = self.row_ids().find_position(|id| *id == row_id)?;
+            list_array.is_valid(index).then(|| list_array.value(index))
         }
     }
 

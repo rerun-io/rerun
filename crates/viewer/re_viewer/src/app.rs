@@ -197,16 +197,15 @@ impl App {
                 .and_then(|storage| {
                     // This re-implements: `eframe::get_value` so we can customize the warning message.
                     // TODO(#2849): More thorough error-handling.
-                    storage.get_string(eframe::APP_KEY).and_then(|value| {
-                        match ron::from_str(&value) {
-                            Ok(value) => Some(value),
-                            Err(err) => {
-                                re_log::warn!("Failed to restore application state. This is expected if you have just upgraded Rerun versions.");
-                                re_log::debug!("Failed to decode RON for app state: {err}");
-                                None
-                            }
+                    let value = storage.get_string(eframe::APP_KEY)?;
+                    match ron::from_str(&value) {
+                        Ok(value) => Some(value),
+                        Err(err) => {
+                            re_log::warn!("Failed to restore application state. This is expected if you have just upgraded Rerun versions.");
+                            re_log::debug!("Failed to decode RON for app state: {err}");
+                            None
                         }
-                    })
+                    }
                 })
                 .unwrap_or_default()
         } else {
@@ -1912,9 +1911,7 @@ impl App {
     }
 
     pub fn recording_db(&self) -> Option<&EntityDb> {
-        self.store_hub
-            .as_ref()
-            .and_then(|store_hub| store_hub.active_recording())
+        self.store_hub.as_ref()?.active_recording()
     }
 
     pub fn recording_config_mut(

@@ -577,8 +577,8 @@ fn preview_single_blob(
         .find_map(|(descr, chunk)| {
             (descr == &video_timestamp_descr).then(|| {
                 chunk
-                    .component_mono::<components::VideoTimestamp>(&video_timestamp_descr)
-                    .and_then(|r| r.ok())
+                    .component_mono::<components::VideoTimestamp>(&video_timestamp_descr)?
+                    .ok()
             })
         })
         .flatten();
