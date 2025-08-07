@@ -1721,7 +1721,7 @@ impl RecordingStream {
                 let time =
                     TimeInt::new_temporal(re_log_types::Timestamp::now().nanos_since_epoch());
 
-                let repeated_time = vec![time.as_i64(); chunk.num_rows()];
+                let repeated_time = std::iter::repeat_n(time.as_i64(), chunk.num_rows()).collect();
 
                 let time_column = TimeColumn::new(Some(true), time_timeline, repeated_time);
 
