@@ -85,6 +85,7 @@ class Pinhole(PinholeExt, Archetype):
             resolution=None,
             camera_xyz=None,
             image_plane_distance=None,
+            color=None,
         )
 
     @classmethod
@@ -103,6 +104,7 @@ class Pinhole(PinholeExt, Archetype):
         resolution: datatypes.Vec2DLike | None = None,
         camera_xyz: datatypes.ViewCoordinatesLike | None = None,
         image_plane_distance: datatypes.Float32Like | None = None,
+        color: datatypes.Rgba32Like | None = None,
     ) -> Pinhole:
         """
         Update only some specific fields of a `Pinhole`.
@@ -154,6 +156,8 @@ class Pinhole(PinholeExt, Archetype):
             The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 
             This is only used for visualization purposes, and does not affect the projection itself.
+        color:
+            An optional color of the pinhole wireframe.
 
         """
 
@@ -164,6 +168,7 @@ class Pinhole(PinholeExt, Archetype):
                 "resolution": resolution,
                 "camera_xyz": camera_xyz,
                 "image_plane_distance": image_plane_distance,
+                "color": color,
             }
 
             if clear_unset:
@@ -188,6 +193,7 @@ class Pinhole(PinholeExt, Archetype):
         resolution: datatypes.Vec2DArrayLike | None = None,
         camera_xyz: datatypes.ViewCoordinatesArrayLike | None = None,
         image_plane_distance: datatypes.Float32ArrayLike | None = None,
+        color: datatypes.Rgba32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -242,6 +248,8 @@ class Pinhole(PinholeExt, Archetype):
             The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 
             This is only used for visualization purposes, and does not affect the projection itself.
+        color:
+            An optional color of the pinhole wireframe.
 
         """
 
@@ -252,6 +260,7 @@ class Pinhole(PinholeExt, Archetype):
                 resolution=resolution,
                 camera_xyz=camera_xyz,
                 image_plane_distance=image_plane_distance,
+                color=color,
             )
 
         batches = inst.as_component_batches()
@@ -263,6 +272,7 @@ class Pinhole(PinholeExt, Archetype):
             "Pinhole:resolution": resolution,
             "Pinhole:camera_xyz": camera_xyz,
             "Pinhole:image_plane_distance": image_plane_distance,
+            "Pinhole:color": color,
         }
         columns = []
 
@@ -361,6 +371,15 @@ class Pinhole(PinholeExt, Archetype):
     # The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
     #
     # This is only used for visualization purposes, and does not affect the projection itself.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    color: components.ColorBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
+    )
+    # An optional color of the pinhole wireframe.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

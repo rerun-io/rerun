@@ -139,6 +139,9 @@ pub struct Pinhole {
     ///
     /// This is only used for visualization purposes, and does not affect the projection itself.
     pub image_plane_distance: Option<SerializedComponentBatch>,
+
+    /// An optional color of the pinhole wireframe.
+    pub color: Option<SerializedComponentBatch>,
 }
 
 impl Pinhole {
@@ -189,6 +192,18 @@ impl Pinhole {
             component_type: Some("rerun.components.ImagePlaneDistance".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
+    #[inline]
+    pub fn descriptor_color() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.Pinhole".into()),
+            component: "Pinhole:color".into(),
+            component_type: Some("rerun.components.Color".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
@@ -197,27 +212,29 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]>
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Pinhole::descriptor_resolution()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Pinhole::descriptor_camera_xyz(),
             Pinhole::descriptor_image_plane_distance(),
+            Pinhole::descriptor_color(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Pinhole::descriptor_image_from_camera(),
             Pinhole::descriptor_resolution(),
             Pinhole::descriptor_camera_xyz(),
             Pinhole::descriptor_image_plane_distance(),
+            Pinhole::descriptor_color(),
         ]
     });
 
 impl Pinhole {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 impl ::re_types_core::Archetype for Pinhole {
@@ -281,11 +298,15 @@ impl ::re_types_core::Archetype for Pinhole {
                     Self::descriptor_image_plane_distance(),
                 )
             });
+        let color = arrays_by_descr
+            .get(&Self::descriptor_color())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_color()));
         Ok(Self {
             image_from_camera,
             resolution,
             camera_xyz,
             image_plane_distance,
+            color,
         })
     }
 }
@@ -299,6 +320,7 @@ impl ::re_types_core::AsComponents for Pinhole {
             self.resolution.clone(),
             self.camera_xyz.clone(),
             self.image_plane_distance.clone(),
+            self.color.clone(),
         ]
         .into_iter()
         .flatten()
@@ -320,6 +342,7 @@ impl Pinhole {
             resolution: None,
             camera_xyz: None,
             image_plane_distance: None,
+            color: None,
         }
     }
 
@@ -349,6 +372,10 @@ impl Pinhole {
             image_plane_distance: Some(SerializedComponentBatch::new(
                 crate::components::ImagePlaneDistance::arrow_empty(),
                 Self::descriptor_image_plane_distance(),
+            )),
+            color: Some(SerializedComponentBatch::new(
+                crate::components::Color::arrow_empty(),
+                Self::descriptor_color(),
             )),
         }
     }
@@ -384,6 +411,9 @@ impl Pinhole {
             self.image_plane_distance
                 .map(|image_plane_distance| image_plane_distance.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.color
+                .map(|color| color.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -400,11 +430,13 @@ impl Pinhole {
         let len_resolution = self.resolution.as_ref().map(|b| b.array.len());
         let len_camera_xyz = self.camera_xyz.as_ref().map(|b| b.array.len());
         let len_image_plane_distance = self.image_plane_distance.as_ref().map(|b| b.array.len());
+        let len_color = self.color.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_image_from_camera)
             .or(len_resolution)
             .or(len_camera_xyz)
             .or(len_image_plane_distance)
+            .or(len_color)
             .unwrap_or(0);
         self.columns(std::iter::repeat(1).take(len))
     }
@@ -540,6 +572,26 @@ impl Pinhole {
         );
         self
     }
+
+    /// An optional color of the pinhole wireframe.
+    #[inline]
+    pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
+        self.color = try_serialize_field(Self::descriptor_color(), [color]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Color`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_color`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_color(
+        mut self,
+        color: impl IntoIterator<Item = impl Into<crate::components::Color>>,
+    ) -> Self {
+        self.color = try_serialize_field(Self::descriptor_color(), color);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for Pinhole {
@@ -549,5 +601,6 @@ impl ::re_byte_size::SizeBytes for Pinhole {
             + self.resolution.heap_size_bytes()
             + self.camera_xyz.heap_size_bytes()
             + self.image_plane_distance.heap_size_bytes()
+            + self.color.heap_size_bytes()
     }
 }

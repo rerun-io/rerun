@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
+#include "../components/color.hpp"
 #include "../components/image_plane_distance.hpp"
 #include "../components/pinhole_projection.hpp"
 #include "../components/resolution.hpp"
@@ -126,6 +127,9 @@ namespace rerun::archetypes {
         /// This is only used for visualization purposes, and does not affect the projection itself.
         std::optional<ComponentBatch> image_plane_distance;
 
+        /// An optional color of the pinhole wireframe.
+        std::optional<ComponentBatch> color;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Pinhole";
@@ -149,6 +153,10 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_image_plane_distance = ComponentDescriptor(
             ArchetypeName, "Pinhole:image_plane_distance",
             Loggable<rerun::components::ImagePlaneDistance>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `color` field.
+        static constexpr auto Descriptor_color = ComponentDescriptor(
+            ArchetypeName, "Pinhole:color", Loggable<rerun::components::Color>::ComponentType
         );
 
       public: // START of extensions from pinhole_ext.cpp:
@@ -344,6 +352,21 @@ namespace rerun::archetypes {
                                        Descriptor_image_plane_distance
             )
                                        .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// An optional color of the pinhole wireframe.
+        Pinhole with_color(const rerun::components::Color& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `color` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_color` should
+        /// be used when logging a single row's worth of data.
+        Pinhole with_many_color(const Collection<rerun::components::Color>& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
             return std::move(*this);
         }
 
