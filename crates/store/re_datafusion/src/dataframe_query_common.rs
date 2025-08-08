@@ -209,7 +209,7 @@ impl TableProvider for DataframeQueryTableProvider {
     #[tracing::instrument(level = "info", skip_all)]
     async fn scan(
         &self,
-        _state: &dyn Session,
+        state: &dyn Session,
         projection: Option<&Vec<usize>>,
         _filters: &[Expr],
         limit: Option<usize>,
@@ -218,6 +218,7 @@ impl TableProvider for DataframeQueryTableProvider {
             &self.schema,
             self.sort_index,
             projection,
+            state.config().target_partitions(),
             Arc::clone(&self.chunk_info_batches),
             self.query_expression.clone(),
             self.client.clone(),

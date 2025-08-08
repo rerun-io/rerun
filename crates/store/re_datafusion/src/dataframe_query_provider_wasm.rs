@@ -46,7 +46,6 @@ use tokio::runtime::Handle;
 /// the pitfall of executing a single row at a time, but we will likely want to consider
 /// at some point moving to a dynamic sizing.
 const DEFAULT_BATCH_SIZE: usize = 2048;
-const DEFAULT_OUTPUT_PARTITIONS: usize = 14;
 
 #[derive(Debug)]
 pub struct DataframeQueryTableProvider {
@@ -256,6 +255,7 @@ impl PartitionStreamExec {
         table_schema: &SchemaRef,
         sort_index: Option<Index>,
         projection: Option<&Vec<usize>>,
+        num_partitions: usize,
         chunk_info_batches: Arc<Vec<RecordBatch>>,
         query_expression: QueryExpression,
         client: ConnectionClient,
@@ -297,7 +297,6 @@ impl PartitionStreamExec {
             EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), &orderings);
 
         let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
-        let num_partitions = DEFAULT_OUTPUT_PARTITIONS;
 
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(
