@@ -1934,6 +1934,8 @@ impl App {
         storage_ctx: &StorageContext<'_>,
         command_sender: &CommandSender,
     ) {
+        #![allow(clippy::needless_continue)] // false positive, depending on target_arche
+
         preview_files_being_dropped(egui_ctx);
 
         let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
@@ -1990,7 +1992,6 @@ impl App {
                     ),
                 ));
 
-                #[allow(clippy::needless_continue)] // false positive, depending on target_arche
                 continue;
             }
 
