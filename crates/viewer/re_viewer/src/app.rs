@@ -499,27 +499,49 @@ impl App {
             SystemCommand::ActivateApp(app_id) => {
                 self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
+                update_web_address_bar(
+                    self.startup_options.enable_history,
+                    store_hub,
+                    &self.state.navigation.peek(),
+                );
             }
 
             SystemCommand::CloseApp(app_id) => {
                 store_hub.close_app(&app_id);
+                update_web_address_bar(
+                    self.startup_options.enable_history,
+                    store_hub,
+                    &self.state.navigation.peek(),
+                );
             }
 
-            SystemCommand::ActivateRecordingOrTable(entry) => match &entry {
-                RecordingOrTable::Recording { store_id } => {
-                    self.state.navigation.replace(DisplayMode::LocalRecordings);
-                    store_hub.set_active_recording_id(store_id.clone());
+            SystemCommand::ActivateRecordingOrTable(entry) => {
+                match &entry {
+                    RecordingOrTable::Recording { store_id } => {
+                        self.state.navigation.replace(DisplayMode::LocalRecordings);
+                        store_hub.set_active_recording_id(store_id.clone());
+                    }
+                    RecordingOrTable::Table { table_id } => {
+                        self.state
+                            .navigation
+                            .replace(DisplayMode::LocalTable(table_id.clone()));
+                    }
                 }
-                RecordingOrTable::Table { table_id } => {
-                    self.state
-                        .navigation
-                        .replace(DisplayMode::LocalTable(table_id.clone()));
-                }
-            },
+                update_web_address_bar(
+                    self.startup_options.enable_history,
+                    store_hub,
+                    &self.state.navigation.peek(),
+                );
+            }
 
             SystemCommand::CloseRecordingOrTable(entry) => {
                 // TODO(#9464): Find a better successor here.
                 store_hub.remove(&entry);
+                update_web_address_bar(
+                    self.startup_options.enable_history,
+                    store_hub,
+                    &self.state.navigation.peek(),
+                );
             }
 
             SystemCommand::CloseAllEntries => {
@@ -555,6 +577,7 @@ impl App {
             SystemCommand::ChangeDisplayMode(display_mode) => {
                 self.state.navigation.replace(display_mode);
             }
+
             SystemCommand::AddRedapServer(origin) => {
                 self.state.redap_servers.add_server(origin.clone());
 
@@ -725,6 +748,11 @@ impl App {
                 }
 
                 self.state.selection_state.set_selection(item);
+                update_web_address_bar(
+                    self.startup_options.enable_history,
+                    store_hub,
+                    &self.state.navigation.peek(),
+                );
             }
 
             SystemCommand::SetActiveTime {
@@ -1532,11 +1560,6 @@ impl App {
                     .get_mut::<re_renderer::RenderContext>()
                 {
                     if let Some(store_context) = store_context {
-                        #[cfg(target_arch = "wasm32")]
-                        let is_history_enabled = self.startup_options.enable_history;
-                        #[cfg(not(target_arch = "wasm32"))]
-                        let is_history_enabled = false;
-
                         render_ctx.begin_frame(); // This may actually be called multiple times per egui frame, if we have a multi-pass layout frame.
 
                         // In some (rare) circumstances we run two egui passes in a single frame.
@@ -1566,7 +1589,6 @@ impl App {
                                 hide_examples: self.startup_options.hide_welcome_screen,
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
-                            is_history_enabled,
                             self.event_dispatcher.as_ref(),
                             &self.connection_registry,
                             &self.async_runtime,
@@ -2842,4 +2864,101 @@ async fn async_save_dialog(
         messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn update_web_address_bar(
+    _enable_history: bool,
+    _store_hub: &StoreHub,
+    _display_mode: &DisplayMode,
+) {
+    // No-op on native.
+}
+
+#[cfg(target_arch = "wasm32")]
+fn update_web_address_bar(
+    enable_history: bool,
+    store_hub: &StoreHub,
+    display_mode: &DisplayMode,
+) -> Option<()> {
+    if !enable_history {
+        return None;
+    }
+
+    re_log::debug!("Updating navigation bar");
+
+    // TODO: most of this should probably live in `history.rs`
+    // TODO: Handle unnecessary changes.
+
+    use crate::history::{HistoryEntry, HistoryExt as _, history};
+    use crate::web_tools::JsResultExt as _;
+
+    let new_history_entry = match display_mode {
+        DisplayMode::Settings => {
+            // Not much point in updating address for the settings screen.
+            None
+        }
+        DisplayMode::LocalRecordings => {
+            // Local recordings includes those downloaded from rrd urls
+            // (as of writing this includes the sample recordings!)
+            // If it's one of those we want to update the address bar accordingly.
+
+            let active_recording = store_hub.active_recording()?;
+            let data_source = active_recording.data_source.as_ref()?;
+
+            match data_source {
+                SmartChannelSource::RrdHttpStream { url, follow: _ } => {
+                    Some(HistoryEntry::default().rrd_url(url.clone()))
+                }
+
+                SmartChannelSource::File(_path_buf) => {
+                    // Can't share links to local files.
+                    None
+                }
+                SmartChannelSource::RrdWebEventListener
+                | SmartChannelSource::JsChannel { .. }
+                | SmartChannelSource::Sdk
+                | SmartChannelSource::Stdin => {
+                    // Can't share links to live streams / local events.
+                    None
+                }
+                SmartChannelSource::RedapGrpcStream {
+                    uri: _,
+                    select_when_loaded: _,
+                } => {
+                    // TODO:
+                    None
+                }
+                SmartChannelSource::MessageProxy(_proxy_uri) => {
+                    // TODO:
+                    None
+                }
+            }
+        }
+        DisplayMode::LocalTable(_table_id) => {
+            // We can't share links to local tables, so can't update the url.
+            None
+        }
+        DisplayMode::RedapEntry(_entry_id) => {
+            // TODO: implement this for non-tables.
+            None
+        }
+        DisplayMode::RedapServer(_origin) => {
+            // TODO: implement this
+            None
+        }
+        DisplayMode::ChunkStoreBrowser => {
+            // As of writing the store browser is more of a debugging feature.
+            // Could change the url fragments in the future.
+            None
+        }
+    };
+
+    if let Some(new_history_entry) = new_history_entry {
+        if let Some(history) = history().ok_or_log_js_error() {
+            history.push_entry(new_history_entry).ok_or_log_js_error();
+        }
+    }
+
+    Some(())
 }

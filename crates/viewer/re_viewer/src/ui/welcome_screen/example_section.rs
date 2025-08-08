@@ -247,7 +247,6 @@ impl ExampleSection {
         ui: &mut egui::Ui,
         command_sender: &CommandSender,
         header_ui: &impl Fn(&mut Ui),
-        is_history_enabled: bool,
     ) {
         let examples = self
             .examples
@@ -357,7 +356,6 @@ impl ExampleSection {
                                         ui.ctx(),
                                         command_sender,
                                         &example.desc.rrd_url,
-                                        is_history_enabled,
                                     );
                                 }
 
@@ -430,12 +428,7 @@ impl ExampleSection {
     }
 }
 
-fn open_example_url(
-    _egui_ctx: &egui::Context,
-    command_sender: &CommandSender,
-    rrd_url: &str,
-    _is_history_enabled: bool,
-) {
+fn open_example_url(_egui_ctx: &egui::Context, command_sender: &CommandSender, rrd_url: &str) {
     let data_source = re_data_source::DataSource::RrdHttpUrl {
         uri: rrd_url.to_owned(),
         follow: false,
@@ -455,17 +448,6 @@ fn open_example_url(
     command_sender.send_system(SystemCommand::ChangeDisplayMode(
         DisplayMode::LocalRecordings,
     ));
-
-    #[cfg(target_arch = "wasm32")]
-    if _is_history_enabled {
-        use crate::history::{HistoryEntry, HistoryExt as _, history};
-        use crate::web_tools::JsResultExt as _;
-
-        if let Some(history) = history().ok_or_log_js_error() {
-            let entry = HistoryEntry::default().rrd_url(rrd_url.to_owned());
-            history.push_entry(entry).ok_or_log_js_error();
-        }
-    }
 }
 
 impl ExampleDescLayout {

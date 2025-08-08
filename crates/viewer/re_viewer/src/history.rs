@@ -9,8 +9,8 @@
 //!   so that the forward/back buttons can be used to navigate between
 //!   examples and the welcome screen.
 //! - Add a `?url` query param to the address bar when navigating to
-//!   an example, so that examples can be shared directly by just
-//!   copying the link.
+//!   an example or a redap entry, for direct link sharing.
+// TODO: above is simpler once we use our re_uri scheme here as well
 
 use crate::web_tools::{JsResultExt as _, url_to_receiver, window};
 use js_sys::wasm_bindgen;
@@ -28,12 +28,13 @@ use web_sys::UrlSearchParams;
 
 #[derive(Clone, Default, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct HistoryEntry {
+    // TODO: let's use datastructures from re_uri
     /// Data source URL
     ///
     /// We support loading multiple URLs at the same time
     ///
     /// `?url=`
-    pub urls: Vec<String>,
+    urls: Vec<String>,
 }
 
 // Builder methods
@@ -149,16 +150,12 @@ fn handle_popstate(
     }
 
     if new_state.is_none() || new_state.as_ref().is_some_and(|v| v.urls.is_empty()) {
-        re_log::debug!("popstate: clear recordings + go to welcome screen");
-
-        // the user navigated back to the history entry where the viewer was initially opened
-        // in that case they likely expect to land back at the welcome screen.
-        // We just close all recordings, which should automatically show the welcome screen or the redap browser.
-        command_sender.send_system(SystemCommand::CloseAllEntries);
-
-        set_stored_history_entry(new_state);
+        // TODO: go to the initial screen instead of always going to the welcome screen.
+        re_log::debug!("popstate: go to welcome screen");
+        re_redap_browser::switch_to_welcome_screen(command_sender);
         egui_ctx.request_repaint();
 
+        set_stored_history_entry(new_state);
         return;
     }
 
@@ -241,6 +238,10 @@ fn get_raw_state(history: &History) -> Result<JsValue, JsValue> {
 }
 
 fn deserialize_from_state(state: &JsValue) -> Result<Option<HistoryEntry>, JsValue> {
+    if state.is_undefined() || state.is_null() {
+        return Ok(None);
+    }
+
     let key = JsValue::from_str(HistoryEntry::KEY);
     let value = js_sys::Reflect::get(state, &key)?;
     if value.is_undefined() || value.is_null() {
@@ -263,9 +264,15 @@ fn get_updated_state(history: &History, entry: &HistoryEntry) -> Result<JsValue,
 
 pub trait HistoryExt: private::Sealed {
     /// Push a history entry onto the stack, which becomes the latest entry.
+    ///
+    /// Use this for new distinct entries to which one can go back and forth.
+    /// Will not push an entry if it is identical to the current.
     fn push_entry(&self, entry: HistoryEntry) -> Result<(), JsValue>;
 
     /// Replace the latest entry.
+    ///
+    /// Use this to update the current url with a new fragment (selection, time, etc.)
+    /// to which browser history doesn't need to go back to.
     #[allow(unused)]
     fn replace_entry(&self, entry: HistoryEntry) -> Result<(), JsValue>;
 
@@ -277,6 +284,13 @@ impl private::Sealed for History {}
 
 impl HistoryExt for History {
     fn push_entry(&self, entry: HistoryEntry) -> Result<(), JsValue> {
+        // Check if this is the exact same entry as before, if so don't do anything.
+        if let Some(current_entry) = self.current_entry()? {
+            if current_entry == entry {
+                return Ok(());
+            }
+        }
+
         let state = get_updated_state(self, &entry)?;
         let url = entry.to_query_string()?;
         self.push_state_with_url(&state, "", Some(&url))?;

@@ -174,7 +174,6 @@ impl AppState {
         rx_log: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
-        is_history_enabled: bool,
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
         connection_registry: &ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
@@ -649,7 +648,6 @@ impl AppState {
                                         ui,
                                         command_sender,
                                         welcome_screen_state,
-                                        is_history_enabled,
                                         &rx_log.sources(),
                                     );
                                 } else {
