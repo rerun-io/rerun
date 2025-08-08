@@ -743,6 +743,34 @@ impl DataSourceKind {
     }
 }
 
+// --- ChunkKey ---
+
+#[derive(Debug, Clone)]
+pub struct ChunkKey {
+    pub location: DataSource,
+    pub location_details: prost_types::Any,
+}
+
+impl TryFrom<crate::common::v1alpha1::ChunkKey> for ChunkKey {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::ChunkKey) -> Result<Self, Self::Error> {
+        let location = value
+            .location
+            .ok_or_else(|| missing_field!(crate::common::v1alpha1::ChunkKey, "location"))?
+            .try_into()?;
+
+        let location_details = value
+            .location_details
+            .ok_or_else(|| missing_field!(crate::common::v1alpha1::ChunkKey, "location_details"))?;
+
+        Ok(Self {
+            location,
+            location_details,
+        })
+    }
+}
+
 #[test]
 fn datasourcekind_roundtrip() {
     let kind = DataSourceKind::Rrd;

@@ -481,11 +481,15 @@ message GetChunksResponse {
 }
 
 message FetchChunksRequest {
+  // We currently need to know to which partition chunk belongs to in order to include that
+  // in the response metadata
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 1;
+
   // The location of the chunks to fetch. Note that we don't support client side streaming of chunks
   // as there's no plan to support it on grpc-web at the moment.
   //
   // Chunks to fetch (described by their `ChunkKey`)
-  repeated rerun.common.v1alpha1.ChunkKey chunk_keys = 1;
+  repeated rerun.common.v1alpha1.ChunkKey chunk_keys = 2;
 }
 
 message FetchChunksResponse {

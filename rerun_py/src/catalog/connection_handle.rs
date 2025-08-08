@@ -5,6 +5,7 @@ use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError};
+use re_protos::common::v1alpha1::ext::DataSource;
 use tracing::Instrument as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -24,7 +25,7 @@ use re_protos::{
         ext::{IfDuplicateBehavior, ScanParameters},
     },
     frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest},
-    manifest_registry::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
+    manifest_registry::v1alpha1::ext::RegisterWithDatasetTaskDescriptor,
     redap_tasks::v1alpha1::QueryTasksResponse,
 };
 

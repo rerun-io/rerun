@@ -10,15 +10,18 @@ use re_chunk::TimelineName;
 use re_log_types::{EntityPath, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
-use crate::manifest_registry::v1alpha1::{
-    GetDatasetSchemaResponse, RegisterWithDatasetResponse, ScanPartitionTableResponse,
-    VectorDistanceMetric,
-};
 use crate::v1alpha1::rerun_common_v1alpha1_ext::PartitionId;
 use crate::{TypeConversionError, missing_field};
 use crate::{
     common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId},
     v1alpha1::rerun_common_v1alpha1_ext::DataSourceKind,
+};
+use crate::{
+    manifest_registry::v1alpha1::{
+        GetDatasetSchemaResponse, RegisterWithDatasetResponse, ScanPartitionTableResponse,
+        VectorDistanceMetric,
+    },
+    v1alpha1::rerun_common_v1alpha1_ext::ChunkKey,
 };
 
 // --- QueryDataset ---
@@ -243,6 +246,36 @@ impl TryFrom<crate::manifest_registry::v1alpha1::GetChunksRequest> for GetChunks
             exclude_temporal_data: value.exclude_temporal_data,
 
             query: value.query.map(|q| q.try_into()).transpose()?,
+        })
+    }
+}
+
+// --- FetchChunksRequest ---
+
+#[derive(Debug, Clone)]
+pub struct FetchChunksRequest {
+    pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
+    pub chunk_keys: Vec<ChunkKey>,
+}
+
+impl TryFrom<crate::manifest_registry::v1alpha1::FetchChunksRequest> for FetchChunksRequest {
+    type Error = tonic::Status;
+
+    fn try_from(
+        value: crate::manifest_registry::v1alpha1::FetchChunksRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            partition_ids: value
+                .partition_ids
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
+
+            chunk_keys: value
+                .chunk_keys
+                .into_iter()
+                .map(|ck| ck.try_into())
+                .collect::<Result<Vec<_>, _>>()?,
         })
     }
 }
