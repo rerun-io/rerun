@@ -188,14 +188,18 @@ pub mod web_decode {
                 for msg in decoder {
                     match msg {
                         Ok(msg) => {
-                            on_msg(HttpMessage::LogMsg(msg));
+                            if on_msg(HttpMessage::LogMsg(msg)).is_break() {
+                                return;
+                            }
                         }
                         Err(err) => {
                             re_log::warn_once!("Failed to decode message: {err}");
                         }
                     }
 
-                    on_msg(HttpMessage::Success);
+                    if on_msg(HttpMessage::Success).is_break() {
+                        return;
+                    }
 
                     if last_yield.elapsed() > web_time::Duration::from_millis(10) {
                         // yield to the ui task
@@ -205,9 +209,11 @@ pub mod web_decode {
                 }
             }
             Err(err) => {
-                on_msg(HttpMessage::Failure(
+                if on_msg(HttpMessage::Failure(
                     format!("Failed to decode .rrd: {err}").into(),
-                ));
+                ))
+                .is_break()
+                {}
             }
         }
     }
