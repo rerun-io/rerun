@@ -54,9 +54,6 @@ EXECUTABLE_EXTENSION = ""
 EXECUTABLE_EXTENSION = ".exe"
 
 # TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
-[target.osx-64.activation.env]
-AR = "${PIXI_PROJECT_ROOT}/.pixi/envs/default/bin/llvm-ar"
-
 [target.osx-arm64.activation.env]
 AR = "${PIXI_PROJECT_ROOT}/.pixi/envs/default/bin/llvm-ar"
 
