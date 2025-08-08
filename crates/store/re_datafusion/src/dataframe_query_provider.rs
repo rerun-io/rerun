@@ -141,6 +141,7 @@ impl RecordBatchStream for DataframePartitionStream {
 
 impl PartitionStreamExec {
     #[tracing::instrument(level = "info", skip_all)]
+    #[allow(clippy::too_many_arguments)]
     pub fn try_new(
         table_schema: &SchemaRef,
         sort_index: Option<Index>,
