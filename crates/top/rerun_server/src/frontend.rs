@@ -13,6 +13,7 @@ use crate::store::{Dataset, InMemoryStore};
 use re_chunk_store::Chunk;
 use re_chunk_store::external::re_chunk::external::re_byte_size::SizeBytes;
 use re_entity_db::EntityDb;
+use re_entity_db::external::re_query::StorageEngine;
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::external::re_types_core::{ChunkId, Loggable};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
@@ -78,6 +79,41 @@ impl FrontendHandler {
             settings,
             store: tokio::sync::RwLock::new(store),
         }
+    }
+
+    async fn get_storage_engines(
+        &self,
+        dataset_id: EntryId,
+        mut partition_ids: Vec<PartitionId>,
+    ) -> Result<Vec<(PartitionId, StorageEngine)>, tonic::Status> {
+        let store = self.store.read().await;
+        let dataset = store.dataset(dataset_id).ok_or_else(|| {
+            tonic::Status::not_found(format!("Entry with ID {dataset_id} not found"))
+        })?;
+
+        if partition_ids.is_empty() {
+            partition_ids = dataset.partition_ids().collect();
+        }
+
+        partition_ids
+            .into_iter()
+            .map(|partition_id| {
+                dataset
+                    .partition(&partition_id)
+                    .ok_or_else(|| {
+                        tonic::Status::not_found(format!(
+                            "Partition with ID {partition_id} not found"
+                        ))
+                    })
+                    .map(|partition| {
+                        #[expect(unsafe_code)]
+                        // Safety: no viewer is running, and we've locked the store for the duration
+                        // of the handler already.
+                        unsafe { partition.storage_engine_raw() }.clone()
+                    })
+                    .map(|storage_engine| (partition_id, storage_engine))
+            })
+            .collect::<Result<Vec<_>, _>>()
     }
 }
 
@@ -562,58 +598,24 @@ impl FrontendService for FrontendHandler {
                 "query_dataset: querying specific chunk ids is not implemented",
             ));
         }
-        let dataset_id: EntryId = match dataset_id {
-            Some(d) => d.try_into()?,
-            None => {
-                return Err(tonic::Status::unimplemented(
-                    "query_dataset: dataset must be specified",
-                ));
-            }
-        };
 
-        let Some(dataset_id) = dataset_id.into() else {
-            return Err(tonic::Status::unimplemented(
+        let dataset_id = dataset_id
+            .ok_or(tonic::Status::unimplemented(
                 "query_dataset: dataset must be specified",
-            ));
-        };
+            ))?
+            .try_into()?;
 
         let entity_paths: IntSet<EntityPath> = entity_paths
             .into_iter()
             .map(EntityPath::try_from)
             .collect::<Result<IntSet<EntityPath>, _>>()?;
 
-        let store = self.store.read().await;
-        let dataset = store.dataset(dataset_id).ok_or_else(|| {
-            tonic::Status::not_found(format!("Entry with ID {dataset_id} not found"))
-        })?;
-
-        let partition_ids: Vec<PartitionId> = match partition_ids.is_empty() {
-            true => dataset.partition_ids().collect(),
-            false => partition_ids
-                .into_iter()
-                .map(PartitionId::try_from)
-                .collect::<Result<_, _>>()?,
-        };
-
-        let storage_engines = partition_ids
+        let partition_ids = partition_ids
             .into_iter()
-            .map(|partition_id| {
-                dataset
-                    .partition(&partition_id)
-                    .ok_or_else(|| {
-                        tonic::Status::not_found(format!(
-                            "Partition with ID {partition_id} not found"
-                        ))
-                    })
-                    .map(|partition| {
-                        #[expect(unsafe_code)]
-                        // Safety: no viewer is running, and we've locked the store for the duration
-                        // of the handler already.
-                        unsafe { partition.storage_engine_raw() }.clone()
-                    })
-                    .map(|storage_engine| (partition_id, storage_engine))
-            })
+            .map(PartitionId::try_from)
             .collect::<Result<Vec<_>, _>>()?;
+
+        let storage_engines = self.get_storage_engines(dataset_id, partition_ids).await?;
 
         let stream = futures::stream::iter(storage_engines.into_iter().map(
             move |(partition_id, storage_engine)| {
@@ -814,34 +816,7 @@ impl FrontendService for FrontendHandler {
 
         let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
 
-        let store = self.store.read().await;
-        let dataset = store.dataset(dataset_id).ok_or_else(|| {
-            tonic::Status::not_found(format!("Entry with ID {dataset_id} not found"))
-        })?;
-
-        if partition_ids.is_empty() {
-            partition_ids = dataset.partition_ids().collect();
-        }
-
-        let storage_engines = partition_ids
-            .into_iter()
-            .map(|partition_id| {
-                dataset
-                    .partition(&partition_id)
-                    .ok_or_else(|| {
-                        tonic::Status::not_found(format!(
-                            "Partition with ID {partition_id} not found"
-                        ))
-                    })
-                    .map(|partition| {
-                        #[expect(unsafe_code)]
-                        // Safety: no viewer is running, and we've locked the store for the duration
-                        // of the handler already.
-                        unsafe { partition.storage_engine_raw() }.clone()
-                    })
-                    .map(|storage_engine| (partition_id, storage_engine))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let storage_engines = self.get_storage_engines(dataset_id, partition_ids).await?;
 
         let stream = futures::stream::iter(storage_engines.into_iter().map(
             move |(partition_id, storage_engine)| {
