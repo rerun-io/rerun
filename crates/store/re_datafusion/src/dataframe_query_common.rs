@@ -114,11 +114,10 @@ impl DataframeQueryTableProvider {
         .map(String::from)
         .collect::<Vec<_>>();
 
-        // TODO(tsaucer) see comments below
-        // if let Some(index) = query_expression.filtered_index {
-        //     fields_of_interest.push(format!("{}:start", index.as_str()));
-        //     fields_of_interest.push(format!("{}:end", index.as_str()));
-        // }
+        if let Some(index) = query_expression.filtered_index {
+            fields_of_interest.push(format!("{}:start", index.as_str()));
+            fields_of_interest.push(format!("{}:end", index.as_str()));
+        }
 
         let chunk_request = GetChunksRequest {
             dataset_id: Some(dataset_id.into()),
@@ -336,9 +335,8 @@ pub(crate) fn compute_partition_stream_chunk_info(
     let mut results = BTreeMap::new();
 
     for batch in chunk_info_batches.as_ref() {
-        let schema = batch.schema();
-
         // TODO(tsaucer) see comment below
+        // let schema = batch.schema();
         // let end_time_col = schema
         //     .fields()
         //     .iter()
@@ -417,6 +415,7 @@ pub(crate) fn compute_partition_stream_chunk_info(
 }
 
 #[tracing::instrument(level = "trace", skip_all)]
+#[expect(dead_code)]
 pub(crate) fn time_array_ref_to_i64(time_array: &ArrayRef) -> Result<Int64Array, DataFusionError> {
     Ok(match time_array.data_type() {
         DataType::Int64 => downcast_value!(time_array, Int64Array).reinterpret_cast::<Int64Type>(),
