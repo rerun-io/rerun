@@ -251,6 +251,18 @@ class ImageExt:
             draw_order=draw_order,
         )
 
+    def image_format(self: Any) -> ImageFormat:
+        """Returns the image format of this image."""
+        image_format_arrow = self.format.as_arrow_array()[0].as_py()
+
+        return ImageFormat(
+            width=image_format_arrow["width"],
+            height=image_format_arrow["height"],
+            pixel_format=image_format_arrow["pixel_format"],
+            channel_datatype=image_format_arrow["channel_datatype"],
+            color_model=image_format_arrow["color_model"],
+        )
+
     def compress(self: Any, jpeg_quality: int = 95) -> EncodedImage | Image:
         """
         Compress the given image as a JPEG.
