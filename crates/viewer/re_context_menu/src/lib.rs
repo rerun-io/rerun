@@ -2,8 +2,9 @@
 
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
+use std::sync::OnceLock;
+
 use egui::Popup;
-use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
 use re_log_types::TableId;
@@ -153,8 +154,8 @@ fn action_list(
 ) -> &'static Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>> {
     use egui_tiles::ContainerKind;
 
-    static CONTEXT_MENU_ACTIONS: OnceCell<Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>>> =
-        OnceCell::new();
+    static CONTEXT_MENU_ACTIONS: OnceLock<Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>>> =
+        OnceLock::new();
 
     static_assertions::const_assert_eq!(ContainerKind::ALL.len(), 4);
 

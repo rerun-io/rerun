@@ -1,13 +1,12 @@
 #![allow(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::OnceLock};
 
 use ahash::{HashMap, HashSet};
 use glam::Affine3A;
 use itertools::Either;
 use nohash_hasher::{IntMap, IntSet};
 
-use once_cell::sync::OnceCell;
 use re_chunk_store::{
     ChunkStore, ChunkStoreSubscriberHandle, LatestAtQuery, PerStoreChunkSubscriber,
 };
@@ -384,7 +383,7 @@ impl TransformCacheStoreSubscriber {
     ///
     /// Lazily registers the subscriber if it hasn't been registered yet.
     pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
-        static SUBSCRIPTION: OnceCell<ChunkStoreSubscriberHandle> = OnceCell::new();
+        static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
         *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
     }
 

@@ -113,7 +113,7 @@ pub struct ResolvedEntityPathFilter {
 impl ResolvedEntityPathFilter {
     /// Creates an filter that matches [`EntityPath::properties`].
     pub fn properties() -> Self {
-        // TODO(grtlr): Consider using `OnceCell` here to cache this.
+        // TODO(grtlr): Consider using `OnceLock` here to cache this.
         Self {
             rules: std::iter::once((
                 ResolvedEntityPathRule::including_subtree(&EntityPath::properties()),
