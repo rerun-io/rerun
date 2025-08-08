@@ -195,8 +195,9 @@ impl ChunkStore {
         let subscriber = subscriber.read();
         subscriber
             .as_any()
-            .downcast_ref::<PerStoreStoreSubscriberWrapper<S>>()
-            .and_then(|wrapper| wrapper.get(store_id).map(&mut f))
+            .downcast_ref::<PerStoreStoreSubscriberWrapper<S>>()?
+            .get(store_id)
+            .map(&mut f)
     }
 
     /// Passes a reference to the downcasted per-store subscriber to the given `FnOnce` callback.
