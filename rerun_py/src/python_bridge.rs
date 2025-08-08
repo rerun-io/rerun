@@ -4,13 +4,11 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use core::time;
-use std::borrow::Borrow as _;
-use std::io::IsTerminal as _;
-use std::path::PathBuf;
+use std::{borrow::Borrow as _, io::IsTerminal as _, path::PathBuf, sync::LazyLock};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::OnceCell;
 use pyo3::{
     exceptions::PyRuntimeError,
     prelude::*,
@@ -80,8 +78,8 @@ type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 /// accumulated data for real.
 //
 // NOTE: `crossbeam` rather than `std` because we need a `Send` & `Sync` receiver.
-static GARBAGE_QUEUE: Lazy<(GarbageSender, GarbageReceiver)> =
-    Lazy::new(crossbeam::channel::unbounded);
+static GARBAGE_QUEUE: LazyLock<(GarbageSender, GarbageReceiver)> =
+    LazyLock::new(crossbeam::channel::unbounded);
 
 /// Flushes the [`GARBAGE_QUEUE`], therefore running all the associated FFI `release` callbacks.
 ///
