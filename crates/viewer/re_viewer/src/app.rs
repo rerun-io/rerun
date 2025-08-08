@@ -2082,7 +2082,7 @@ impl App {
                 // Tell JS to toggle fullscreen.
                 if let Err(err) = options.on_toggle.call0() {
                     re_log::error!("{}", crate::web_tools::string_from_js_value(err));
-                };
+                }
             }
         }
     }
