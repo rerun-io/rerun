@@ -189,7 +189,7 @@ async fn message_proxy_client(
     compression: Compression,
     status: Arc<AtomicCell<ClientConnectionState>>,
 ) {
-    let endpoint = match Endpoint::from_shared(uri.origin.as_url()) {
+    let endpoint = match Endpoint::from_shared(uri.endpoint_url()) {
         Ok(endpoint) => endpoint,
         Err(err) => {
             status.store(ClientConnectionState::Disconnected(Err(
