@@ -208,6 +208,10 @@ pub struct DesignTokens {
     pub list_item_hovered_bg: Color32,
     pub list_item_active_bg: Color32,
     pub list_item_collapse_default: Color32,
+
+    pub code_index: Color32,
+    pub code_string: Color32,
+    pub code_number: Color32,
 }
 
 impl DesignTokens {
@@ -341,6 +345,10 @@ impl DesignTokens {
             list_item_hovered_bg: get_color("list_item_hovered_bg"),
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
+
+            code_index: get_color("code_index"),
+            code_string: get_color("code_string"),
+            code_number: get_color("code_number"),
         })
     }
 
