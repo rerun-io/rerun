@@ -11,11 +11,11 @@ use tokio_stream::StreamExt as _;
 
 use crate::store::{Dataset, InMemoryStore};
 use re_chunk_store::Chunk;
-use re_chunk_store::external::re_chunk::external::re_byte_size::SizeBytes;
+use re_chunk_store::external::re_chunk::external::re_byte_size::SizeBytes as _;
 use re_entity_db::EntityDb;
 use re_entity_db::external::re_query::StorageEngine;
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
-use re_log_types::external::re_types_core::{ChunkId, Loggable};
+use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse};
 use re_protos::catalog::v1alpha1::{
@@ -638,7 +638,7 @@ impl FrontendService for FrontendHandler {
                     })
                     .for_each(|chunk| {
                         let mut missing_timelines: BTreeSet<_> =
-                            timelines.keys().cloned().collect();
+                            timelines.keys().copied().collect();
                         for (timeline_name, timeline_col) in chunk.timelines() {
                             let range = timeline_col.time_range();
                             let time_min = range.min();
@@ -659,7 +659,9 @@ impl FrontendService for FrontendHandler {
                             timeline_data.2.push(Some(time_max.as_i64()));
                         }
                         for timeline_name in missing_timelines {
-                            let timeline_data = timelines.get_mut(timeline_name).unwrap(); // Already checked
+                            let timeline_data = timelines
+                                .get_mut(timeline_name)
+                                .expect("timeline_names already checked"); // Already checked
 
                             timeline_data.1.push(None);
                             timeline_data.2.push(None);
@@ -679,24 +681,15 @@ impl FrontendService for FrontendHandler {
                         false,
                     )
                     .with_metadata(
-                        [("rerun:kind".to_owned(), "control".to_owned())]
-                            .into_iter()
-                            .collect(),
+                        std::iter::once(("rerun:kind".to_owned(), "control".to_owned())).collect(),
                     ),
                     Field::new("chunk_entity_path", arrow::datatypes::DataType::Utf8, false)
                         .with_metadata(
-                            [
-                                ("rerun:kind".to_owned(), "control".to_owned()), //
-                            ]
-                            .into_iter()
-                            .collect(),
+                            std::iter::once(("rerun:kind".to_owned(), "control".to_owned()))
+                                .collect(),
                         ),
                     Field::new("chunk_id", ChunkId::arrow_datatype(), false).with_metadata(
-                        [
-                            ("rerun:kind".to_owned(), "control".to_owned()), //
-                        ]
-                        .into_iter()
-                        .collect(),
+                        std::iter::once(("rerun:kind".to_owned(), "control".to_owned())).collect(),
                     ),
                     Field::new(
                         "chunk_is_static",
@@ -704,11 +697,7 @@ impl FrontendService for FrontendHandler {
                         false,
                     )
                     .with_metadata(
-                        [
-                            ("rerun:kind".to_owned(), "control".to_owned()), //
-                        ]
-                        .into_iter()
-                        .collect(),
+                        std::iter::once(("rerun:kind".to_owned(), "control".to_owned())).collect(),
                     ),
                     Field::new("chunk_byte_len", arrow::datatypes::DataType::UInt64, false),
                 ];
@@ -773,7 +762,7 @@ impl FrontendService for FrontendHandler {
                     arrays.push(ends);
                 }
 
-                let schema = Arc::new(Schema::new(output_fields));
+                let schema = Arc::new(Schema::new_with_metadata(output_fields, HashMap::default()));
                 let batch = RecordBatch::try_new(schema, arrays).map_err(|err| {
                     tonic::Status::internal(format!("record batch creation failed: {err:#}"))
                 })?;
@@ -800,7 +789,7 @@ impl FrontendService for FrontendHandler {
     ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status> {
         let GetChunksRequest {
             dataset_id,
-            mut partition_ids,
+            partition_ids,
             chunk_ids,
             entity_paths,
 
