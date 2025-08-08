@@ -75,7 +75,7 @@ pub struct StartupOptions {
     /// viewers onto the same page, then it's better to turn this off.
     ///
     /// We use browser history in a limited way to track the currently
-    /// open example recording, see [`crate::history`].
+    /// open example or redap recording, see [`crate::history`].
     #[cfg(target_arch = "wasm32")]
     pub enable_history: bool,
 }
