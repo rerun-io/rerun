@@ -265,6 +265,7 @@ class ImageExt:
 
     def as_pil_image(self: Any) -> PILImage.Image:
         """Convert the image to a PIL Image."""
+        from PIL import Image as PILImage
 
         image_format = self.image_format()
 
