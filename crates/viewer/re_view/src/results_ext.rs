@@ -109,8 +109,6 @@ impl HybridLatestAtResults<'_> {
 
 pub enum HybridResults<'a> {
     LatestAt(LatestAtQuery, HybridLatestAtResults<'a>),
-
-    // Boxed because of size difference between variants
     Range(RangeQuery, HybridRangeResults<'a>),
 }
 
