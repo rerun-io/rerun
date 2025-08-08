@@ -209,11 +209,10 @@ pub mod web_decode {
                 }
             }
             Err(err) => {
-                if on_msg(HttpMessage::Failure(
+                // Regardless of what the message handler returns, we are done here.
+                let _ignored_control_flow = on_msg(HttpMessage::Failure(
                     format!("Failed to decode .rrd: {err}").into(),
-                ))
-                .is_break()
-                {}
+                ));
             }
         }
     }
