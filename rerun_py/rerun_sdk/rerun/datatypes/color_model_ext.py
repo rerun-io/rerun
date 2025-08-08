@@ -1,12 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from . import (
-        ColorModel,
-    )
-
 
 class ColorModelExt:
     """Extension for [ColorModel][rerun.datatypes.ColorModel]."""
