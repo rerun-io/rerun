@@ -13,6 +13,8 @@
 //! cargo run-wasm --example depth_cloud
 //! ```
 
+#![expect(clippy::disallowed_methods)] // allow hardcoded colors
+
 use std::f32::consts::TAU;
 
 use glam::Vec3;

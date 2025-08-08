@@ -265,6 +265,7 @@ fn import_mesh(
         // https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#_material_pbrmetallicroughness_basecolorfactor
         let albedo_factor = {
             let [r, g, b, a] = pbr_material.base_color_factor();
+            #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
             crate::Rgba::from_rgba_unmultiplied(r, g, b, a)
         };
 
