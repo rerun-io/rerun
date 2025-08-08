@@ -106,15 +106,14 @@ impl Server {
                 return;
             };
 
+            // NOTE: We already set NODELAY at the `tonic` layer just below, but that might
+            // or might not be good enough depending on a bunch of external conditions: make
+            // sure to disable Nagle's on every socket as soon as they're accepted, no
+            // matter what.
             let incoming = tokio_stream::wrappers::TcpListenerStream::new(listener).map(|inc| {
-                inc.and_then(|inc| {
-                    // NOTE: We already set NODELAY at the `tonic` layer just below, but that might
-                    // or might not be good enough depending on a bunch of external conditions: make
-                    // sure to disable Nagle's on every socket as soon as they're accepted, no
-                    // matter what.
-                    inc.set_nodelay(true)?;
-                    Ok(inc)
-                })
+                let inc = inc?;
+                inc.set_nodelay(true)?;
+                Ok::<_, std::io::Error>(inc)
             });
 
             let middlewares = tower::ServiceBuilder::new()
