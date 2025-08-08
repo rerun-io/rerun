@@ -175,9 +175,12 @@ fn handle_popstate(
             continue;
         };
 
+        // TODO: why kill old recordings?
+        // TODO: am I doing this right?
         command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
             receiver.source().clone(),
         ));
+        // TODO: we still need this in case the receiver was removed.
         command_sender.send_system(SystemCommand::AddReceiver(receiver));
 
         re_log::debug!("popstate: add receiver {url:?}");

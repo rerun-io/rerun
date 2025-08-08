@@ -17,7 +17,8 @@ use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender a
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
-use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray, url_to_receiver};
+use crate::open_url::try_open_url_in_viewer;
+use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -197,21 +198,20 @@ impl WebHandle {
     /// It is an error to open a channel twice with the same id.
     #[wasm_bindgen]
     pub fn add_receiver(&self, url: &str, follow_if_http: Option<bool>) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
+        // TODO: how to test that this still works?
+        // TODO(andreas): should follow_if_http be part of the fragments?
         let follow_if_http = follow_if_http.unwrap_or(false);
-        if let Some(rx) = url_to_receiver(
-            &self.connection_registry,
+        let select_redap_source_when_loaded = true;
+        try_open_url_in_viewer(
             app.egui_ctx.clone(),
             follow_if_http,
+            select_redap_source_when_loaded,
             url.to_owned(),
-            app.command_sender.clone(),
-        ) {
-            app.add_log_receiver(rx);
-            app.egui_ctx
-                .request_repaint_after(std::time::Duration::from_millis(10));
-        }
+            &app.command_sender,
+        );
     }
 
     #[wasm_bindgen]
@@ -799,16 +799,12 @@ fn create_app(
     if let Some(urls) = url {
         let follow_if_http = false;
         for url in urls.into_inner() {
-            if let Some(receiver) = url_to_receiver(
-                app.connection_registry(),
+            try_open_url_in_viewer(
                 cc.egui_ctx.clone(),
                 follow_if_http,
                 url,
-                app.command_sender.clone(),
-            ) {
-                app.command_sender
-                    .send_system(SystemCommand::AddReceiver(receiver));
-            }
+                &app.command_sender,
+            );
         }
     }
 
