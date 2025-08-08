@@ -283,7 +283,8 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
         let resp = resp?;
 
         let _span =
-            tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len()).entered();
+            tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len())
+                .entered();
 
         resp.chunks
             .into_iter()
