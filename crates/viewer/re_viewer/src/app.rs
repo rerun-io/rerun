@@ -2923,12 +2923,12 @@ fn update_web_address_bar(
                     None
                 }
                 SmartChannelSource::RedapGrpcStream {
-                    uri: _,
+                    uri,
                     select_when_loaded: _,
-                } => {
-                    // TODO:
-                    None
-                }
+                } => Some(
+                    HistoryEntry::default().redap_uri(re_uri::RedapUri::DatasetData(uri.clone())),
+                ),
+
                 SmartChannelSource::MessageProxy(_proxy_uri) => {
                     // TODO:
                     None
