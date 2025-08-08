@@ -51,22 +51,22 @@ impl Telemetry {
             drop_behavior: _,
         } = self;
 
-        if let Some(logs) = logs {
-            if let Err(err) = logs.force_flush() {
-                tracing::error!(%err, "failed to flush otel log provider");
-            }
+        if let Some(logs) = logs
+            && let Err(err) = logs.force_flush()
+        {
+            tracing::error!(%err, "failed to flush otel log provider");
         }
 
-        if let Some(traces) = traces {
-            if let Err(err) = traces.force_flush() {
-                tracing::error!(%err, "failed to flush otel trace provider");
-            }
+        if let Some(traces) = traces
+            && let Err(err) = traces.force_flush()
+        {
+            tracing::error!(%err, "failed to flush otel trace provider");
         }
 
-        if let Some(metrics) = metrics {
-            if let Err(err) = metrics.force_flush() {
-                tracing::error!(%err, "failed to flush otel metric provider");
-            }
+        if let Some(metrics) = metrics
+            && let Err(err) = metrics.force_flush()
+        {
+            tracing::error!(%err, "failed to flush otel metric provider");
         }
     }
 
@@ -84,22 +84,22 @@ impl Telemetry {
             drop_behavior: _,
         } = self;
 
-        if let Some(logs) = logs {
-            if let Err(err) = logs.shutdown() {
-                tracing::error!(%err, "failed to shutdown otel log provider");
-            }
+        if let Some(logs) = logs
+            && let Err(err) = logs.shutdown()
+        {
+            tracing::error!(%err, "failed to shutdown otel log provider");
         }
 
-        if let Some(traces) = traces {
-            if let Err(err) = traces.shutdown() {
-                tracing::error!(%err, "failed to shutdown otel trace provider");
-            }
+        if let Some(traces) = traces
+            && let Err(err) = traces.shutdown()
+        {
+            tracing::error!(%err, "failed to shutdown otel trace provider");
         }
 
-        if let Some(metrics) = metrics {
-            if let Err(err) = metrics.shutdown() {
-                tracing::error!(%err, "failed to shutdown otel metric provider");
-            }
+        if let Some(metrics) = metrics
+            && let Err(err) = metrics.shutdown()
+        {
+            tracing::error!(%err, "failed to shutdown otel metric provider");
         }
     }
 }

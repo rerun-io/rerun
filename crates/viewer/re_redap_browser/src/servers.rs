@@ -150,10 +150,10 @@ impl Server {
             .column_blueprint(|desc| {
                 let mut blueprint = ColumnBlueprint::default();
 
-                if let ColumnDescriptorRef::Component(component) = desc {
-                    if component.component == "entry_kind" {
-                        blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
-                    }
+                if let ColumnDescriptorRef::Component(component) = desc
+                    && component.component == "entry_kind"
+                {
+                    blueprint = blueprint.variant_ui(re_component_ui::REDAP_ENTRY_KIND_VARIANT);
                 }
 
                 let column_sort_key = match desc.display_name().as_str() {

@@ -682,19 +682,17 @@ impl BlueprintTree {
         if ctx
             .egui_ctx()
             .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
+            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
         {
-            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
-                collapse_id.set_open(ctx.egui_ctx(), true);
-            }
+            collapse_id.set_open(ctx.egui_ctx(), true);
         }
 
         if ctx
             .egui_ctx()
             .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
+            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
         {
-            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
-                collapse_id.set_open(ctx.egui_ctx(), false);
-            }
+            collapse_id.set_open(ctx.egui_ctx(), false);
         }
 
         if ctx
@@ -1071,12 +1069,11 @@ impl BlueprintTree {
         // We cannot allow the target location to be "inside" any of the dragged items, because that
         // would amount to moving myself inside of me.
         let parent_contains_dragged_content = |content: &Contents| {
-            if let Contents::Container(dragged_container_id) = content {
-                if viewport
+            if let Contents::Container(dragged_container_id) = content
+                && viewport
                     .is_contents_in_container(&drop_target.target_parent_id, dragged_container_id)
-                {
-                    return true;
-                }
+            {
+                return true;
             }
             false
         };
@@ -1234,16 +1231,16 @@ impl BlueprintTree {
         entity_path: &EntityPath,
     ) {
         let result_tree = &ctx.lookup_query_result(*view_id).tree;
-        if result_tree.lookup_node_by_path(entity_path).is_some() {
-            if let Some(root_node) = result_tree.root_node() {
-                EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path)
-                    .chain(std::iter::once(root_node.data_result.entity_path.clone()))
-                    .for_each(|entity_path| {
-                        self.collapse_scope()
-                            .data_result(*view_id, entity_path)
-                            .set_open(egui_ctx, true);
-                    });
-            }
+        if result_tree.lookup_node_by_path(entity_path).is_some()
+            && let Some(root_node) = result_tree.root_node()
+        {
+            EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path)
+                .chain(std::iter::once(root_node.data_result.entity_path.clone()))
+                .for_each(|entity_path| {
+                    self.collapse_scope()
+                        .data_result(*view_id, entity_path)
+                        .set_open(egui_ctx, true);
+                });
         }
     }
 }

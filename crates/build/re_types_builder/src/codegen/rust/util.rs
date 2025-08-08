@@ -367,16 +367,14 @@ pub fn doc_as_lines(
         }
     }
 
-    if let Some(second_line) = lines.get(1) {
-        if !second_line.is_empty() {
-            reporter.warn(
-                virtpath,
-                fqname,
-                format!(
-                    "Second line of documentation should be an empty line; found {second_line:?}"
-                ),
-            );
-        }
+    if let Some(second_line) = lines.get(1)
+        && !second_line.is_empty()
+    {
+        reporter.warn(
+            virtpath,
+            fqname,
+            format!("Second line of documentation should be an empty line; found {second_line:?}"),
+        );
     }
 
     lines

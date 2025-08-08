@@ -107,40 +107,40 @@ impl DepthImageVisualizer {
                 return;
             };
 
-            if is_3d_view {
-                if let Some(twod_in_threed_info) = &ent_context.transform_info.twod_in_threed_info {
-                    let fill_ratio = fill_ratio.unwrap_or_default();
+            if is_3d_view
+                && let Some(twod_in_threed_info) = &ent_context.transform_info.twod_in_threed_info
+            {
+                let fill_ratio = fill_ratio.unwrap_or_default();
 
-                    // NOTE: we don't pass in `world_from_obj` because this corresponds to the
-                    // transform of the projection plane, which is of no use to us here.
-                    // What we want are the extrinsics of the depth camera!
-                    match Self::process_entity_view_as_depth_cloud(
-                        ctx,
-                        ent_context,
-                        entity_path,
-                        twod_in_threed_info,
-                        depth_meter,
-                        fill_ratio,
-                        &textured_rect.colormapped_texture,
-                    ) {
-                        Ok(cloud) => {
-                            self.data.add_bounding_box(
-                                entity_path.hash(),
-                                cloud.world_space_bbox(),
-                                glam::Affine3A::IDENTITY,
-                            );
-                            self.depth_cloud_entities.insert(
-                                entity_path.hash(),
-                                (image, depth_meter, textured_rect.colormapped_texture),
-                            );
-                            depth_clouds.push(cloud);
+                // NOTE: we don't pass in `world_from_obj` because this corresponds to the
+                // transform of the projection plane, which is of no use to us here.
+                // What we want are the extrinsics of the depth camera!
+                match Self::process_entity_view_as_depth_cloud(
+                    ctx,
+                    ent_context,
+                    entity_path,
+                    twod_in_threed_info,
+                    depth_meter,
+                    fill_ratio,
+                    &textured_rect.colormapped_texture,
+                ) {
+                    Ok(cloud) => {
+                        self.data.add_bounding_box(
+                            entity_path.hash(),
+                            cloud.world_space_bbox(),
+                            glam::Affine3A::IDENTITY,
+                        );
+                        self.depth_cloud_entities.insert(
+                            entity_path.hash(),
+                            (image, depth_meter, textured_rect.colormapped_texture),
+                        );
+                        depth_clouds.push(cloud);
 
-                            // Skip creating a textured rect.
-                            return;
-                        }
-                        Err(err) => {
-                            re_log::warn_once!("{err}");
-                        }
+                        // Skip creating a textured rect.
+                        return;
+                    }
+                    Err(err) => {
+                        re_log::warn_once!("{err}");
                     }
                 }
             }

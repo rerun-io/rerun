@@ -100,11 +100,11 @@ impl EntityPathPart {
                     output.push('\\');
                 }
             } else {
-                if c.is_whitespace() {
-                    if let Some(warnings) = warnings.as_mut() {
-                        // This could be a sign of forgetting to split a string containing multiple entity paths.
-                        warnings.push("Unescaped whitespace".to_owned());
-                    }
+                if c.is_whitespace()
+                    && let Some(warnings) = warnings.as_mut()
+                {
+                    // This could be a sign of forgetting to split a string containing multiple entity paths.
+                    warnings.push("Unescaped whitespace".to_owned());
                 }
 
                 output.push(c);

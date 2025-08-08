@@ -291,14 +291,14 @@ impl VideoDataDescription {
         }
 
         // The last GOP includes the last sample.
-        if let Some(front_gop) = self.gops.back() {
-            if front_gop.sample_range.end != self.samples.next_index() {
-                return Err(format!(
-                    "Last GOP sample range {:?} does not include the last sample {}.",
-                    front_gop.sample_range,
-                    self.samples.next_index() - 1
-                ));
-            }
+        if let Some(front_gop) = self.gops.back()
+            && front_gop.sample_range.end != self.samples.next_index()
+        {
+            return Err(format!(
+                "Last GOP sample range {:?} does not include the last sample {}.",
+                front_gop.sample_range,
+                self.samples.next_index() - 1
+            ));
         }
         // Note that this isn't true vice versa!
         // The first GOP may not include the first few samples.

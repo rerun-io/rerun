@@ -487,10 +487,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         .fetch_chunks(store, cache, query, &column.entity_path, [&column.into()])
                         .unwrap_or_default();
 
-                    if let Some(pov) = self.query.filtered_is_not_null.as_ref() {
-                        if column.matches(pov) {
-                            view_pov_chunks_idx = Some(idx);
-                        }
+                    if let Some(pov) = self.query.filtered_is_not_null.as_ref()
+                        && column.matches(pov)
+                    {
+                        view_pov_chunks_idx = Some(idx);
                     }
 
                     chunks

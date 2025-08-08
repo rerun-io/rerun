@@ -442,14 +442,13 @@ impl TransformCacheStoreSubscriber {
                 TimeInt::MIN,
             );
 
-            if aspects.contains(TransformAspect::Tree) {
-                if let Some(transform) =
+            if aspects.contains(TransformAspect::Tree)
+                && let Some(transform) =
                     query_and_resolve_tree_transform_at_entity(&entity_path, entity_db, &query)
-                {
-                    static_transforms
-                        .tree_transforms
-                        .insert(TimeInt::STATIC, transform);
-                }
+            {
+                static_transforms
+                    .tree_transforms
+                    .insert(TimeInt::STATIC, transform);
             }
             if aspects.contains(TransformAspect::Pose) {
                 let poses =
@@ -576,20 +575,18 @@ impl TransformCacheStoreSubscriber {
                         entity_entry.tree_transforms.split_off(&min_time);
                     invalidated_times.extend(invalidated_tree_transforms.into_keys());
                 }
-                if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear) {
-                    if let Some(pose_transforms) = &mut entity_entry.pose_transforms {
-                        let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
-                        invalidated_times.extend(invalidated_pose_transforms.into_keys());
-                    }
+                if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear)
+                    && let Some(pose_transforms) = &mut entity_entry.pose_transforms
+                {
+                    let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
+                    invalidated_times.extend(invalidated_pose_transforms.into_keys());
                 }
                 if aspects
                     .intersects(TransformAspect::PinholeOrViewCoordinates | TransformAspect::Clear)
+                    && let Some(pinhole_projections) = &mut entity_entry.pinhole_projections
                 {
-                    if let Some(pinhole_projections) = &mut entity_entry.pinhole_projections {
-                        let invalidated_pinhole_projections =
-                            pinhole_projections.split_off(&min_time);
-                        invalidated_times.extend(invalidated_pinhole_projections.into_keys());
-                    }
+                    let invalidated_pinhole_projections = pinhole_projections.split_off(&min_time);
+                    invalidated_times.extend(invalidated_pinhole_projections.into_keys());
                 }
             }
 
@@ -739,15 +736,15 @@ impl TransformCacheStoreSubscriber {
                     if aspects.contains(TransformAspect::Tree) {
                         per_entity.tree_transforms.remove(&time);
                     }
-                    if aspects.contains(TransformAspect::Pose) {
-                        if let Some(pose_transforms) = &mut per_entity.pose_transforms {
-                            pose_transforms.remove(&time);
-                        }
+                    if aspects.contains(TransformAspect::Pose)
+                        && let Some(pose_transforms) = &mut per_entity.pose_transforms
+                    {
+                        pose_transforms.remove(&time);
                     }
-                    if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
-                        if let Some(pinhole_projections) = &mut per_entity.pinhole_projections {
-                            pinhole_projections.remove(&time);
-                        }
+                    if aspects.contains(TransformAspect::PinholeOrViewCoordinates)
+                        && let Some(pinhole_projections) = &mut per_entity.pinhole_projections
+                    {
+                        pinhole_projections.remove(&time);
                     }
                 }
 

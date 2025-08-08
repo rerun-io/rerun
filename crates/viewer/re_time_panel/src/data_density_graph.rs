@@ -132,15 +132,15 @@ impl DensityGraph {
         debug_assert!(0.0 <= fract && fract <= 1.0);
         let i = i.floor() as i64;
 
-        if let Ok(i) = usize::try_from(i) {
-            if let Some(bucket) = self.buckets.get_mut(i) {
-                *bucket += (1.0 - fract) * count;
-            }
+        if let Ok(i) = usize::try_from(i)
+            && let Some(bucket) = self.buckets.get_mut(i)
+        {
+            *bucket += (1.0 - fract) * count;
         }
-        if let Ok(i) = usize::try_from(i + 1) {
-            if let Some(bucket) = self.buckets.get_mut(i) {
-                *bucket += fract * count;
-            }
+        if let Ok(i) = usize::try_from(i + 1)
+            && let Some(bucket) = self.buckets.get_mut(i)
+        {
+            *bucket += fract * count;
         }
     }
 
@@ -180,10 +180,10 @@ impl DensityGraph {
         // (everything before & beyond can be seen as a "virtual" bucket that we can't fill)
 
         // first bucket, partially filled:
-        if let Ok(i) = usize::try_from(first_bucket as i64) {
-            if let Some(bucket) = self.buckets.get_mut(i) {
-                *bucket += first_bucket_factor * count_per_bucket;
-            }
+        if let Ok(i) = usize::try_from(first_bucket as i64)
+            && let Some(bucket) = self.buckets.get_mut(i)
+        {
+            *bucket += first_bucket_factor * count_per_bucket;
         }
 
         // full buckets:
@@ -198,10 +198,10 @@ impl DensityGraph {
         }
 
         // last bucket, partially filled:
-        if let Ok(i) = usize::try_from(last_bucket as i64) {
-            if let Some(bucket) = self.buckets.get_mut(i) {
-                *bucket += last_bucket_factor * count_per_bucket;
-            }
+        if let Ok(i) = usize::try_from(last_bucket as i64)
+            && let Some(bucket) = self.buckets.get_mut(i)
+        {
+            *bucket += last_bucket_factor * count_per_bucket;
         }
     }
 
@@ -421,24 +421,22 @@ pub fn data_density_graph_ui(
         graph_color(ctx, &item.to_item(), ui),
     );
 
-    if tooltips_enabled {
-        if let Some(hovered_time) = data.hovered_time {
-            ctx.selection_state().set_hovered(item.to_item());
+    if tooltips_enabled && let Some(hovered_time) = data.hovered_time {
+        ctx.selection_state().set_hovered(item.to_item());
 
-            if ui.ctx().dragged_id().is_none() {
-                // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
-                //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
-                Tooltip::always_open(
-                    ui.ctx().clone(),
-                    ui.layer_id(),
-                    egui::Id::new("data_tooltip"),
-                    egui::PopupAnchor::Pointer,
-                )
-                .gap(12.0)
-                .show(|ui| {
-                    show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
-                });
-            }
+        if ui.ctx().dragged_id().is_none() {
+            // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
+            //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
+            Tooltip::always_open(
+                ui.ctx().clone(),
+                ui.layer_id(),
+                egui::Id::new("data_tooltip"),
+                egui::PopupAnchor::Pointer,
+            )
+            .gap(12.0)
+            .show(|ui| {
+                show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
+            });
         }
     }
 }
@@ -730,10 +728,9 @@ impl<'a> DensityGraphBuilder<'a> {
                 time_range_rect.contains(pointer_pos)
             };
 
-            if is_hovered {
-                if let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                    self.hovered_time = Some(at_time.round());
-                }
+            if is_hovered && let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer_pos.x)
+            {
+                self.hovered_time = Some(at_time.round());
             }
         }
     }

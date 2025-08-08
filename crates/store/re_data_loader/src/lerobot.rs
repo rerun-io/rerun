@@ -400,12 +400,12 @@ impl Feature {
     /// from the feature's shape.
     pub fn channel_dim(&self) -> usize {
         // first check if there's a "channels" name, if there is we can use that index.
-        if let Some(names) = &self.names {
-            if let Some(channel_idx) = names.0.iter().position(|name| name == "channels") {
-                // If channel_idx is within bounds of shape, return that dimension
-                if channel_idx < self.shape.len() {
-                    return self.shape[channel_idx];
-                }
+        if let Some(names) = &self.names
+            && let Some(channel_idx) = names.0.iter().position(|name| name == "channels")
+        {
+            // If channel_idx is within bounds of shape, return that dimension
+            if channel_idx < self.shape.len() {
+                return self.shape[channel_idx];
             }
         }
 

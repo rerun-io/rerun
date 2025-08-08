@@ -104,22 +104,22 @@ impl ServerModal {
                 ui.label("Host name:");
                 let mut host = url::Host::parse(&self.host);
 
-                if host.is_err() {
-                    if let Ok(url) = url::Url::parse(&self.host) {
-                        // Maybe the user pasted a full URL, with scheme and port?
-                        // Then handle that gracefully!
-                        if let Ok(scheme) = Scheme::from_str(url.scheme()) {
-                            self.scheme = scheme;
-                        }
+                if host.is_err()
+                    && let Ok(url) = url::Url::parse(&self.host)
+                {
+                    // Maybe the user pasted a full URL, with scheme and port?
+                    // Then handle that gracefully!
+                    if let Ok(scheme) = Scheme::from_str(url.scheme()) {
+                        self.scheme = scheme;
+                    }
 
-                        if let Some(url_host) = url.host_str() {
-                            self.host = url_host.to_owned();
-                            host = url::Host::parse(&self.host);
-                        }
+                    if let Some(url_host) = url.host_str() {
+                        self.host = url_host.to_owned();
+                        host = url::Host::parse(&self.host);
+                    }
 
-                        if let Some(port) = url.port() {
-                            self.port = port;
-                        }
+                    if let Some(port) = url.port() {
+                        self.port = port;
                     }
                 }
 

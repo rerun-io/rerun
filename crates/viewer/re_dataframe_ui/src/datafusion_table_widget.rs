@@ -353,10 +353,10 @@ impl<'a> DataFusionTableWidget<'a> {
         let first_column = columns
             .index_from_id(table_config.visible_column_ids().next())
             .and_then(|index| display_record_batches.first()?.columns().get(index));
-        if let Some(DisplayColumn::Component(component)) = first_column {
-            if component.is_image() {
-                row_height *= 3.0;
-            }
+        if let Some(DisplayColumn::Component(component)) = first_column
+            && component.is_image()
+        {
+            row_height *= 3.0;
         }
 
         let mut table_delegate = DataFusionTableDelegate {
@@ -524,14 +524,13 @@ fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str, url:
                 ui,
                 |ui| {
                     ui.heading(RichText::new(title).strong());
-                    if let Some(url) = url {
-                        if ui
+                    if let Some(url) = url
+                        && ui
                             .small_icon_button(&re_ui::icons::COPY, "Copy URL")
                             .on_hover_text(url)
                             .clicked()
-                        {
-                            ui.ctx().copy_text(url.clone());
-                        }
+                    {
+                        ui.ctx().copy_text(url.clone());
                     }
                 },
                 |ui| {

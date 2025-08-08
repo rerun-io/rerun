@@ -544,13 +544,13 @@ impl ViewClass for TimeSeriesView {
             transform,
             hovered_plot_item,
         } = plot.show(ui, |plot_ui| {
-            if plot_ui.response().secondary_clicked() {
-                if let Some(pointer) = plot_ui.pointer_coordinate() {
-                    let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
-                    let timeline = *time_ctrl_write.timeline();
-                    time_ctrl_write.set_timeline_and_time(timeline, pointer.x as i64 + time_offset);
-                    time_ctrl_write.pause();
-                }
+            if plot_ui.response().secondary_clicked()
+                && let Some(pointer) = plot_ui.pointer_coordinate()
+            {
+                let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
+                let timeline = *time_ctrl_write.timeline();
+                time_ctrl_write.set_timeline_and_time(timeline, pointer.x as i64 + time_offset);
+                time_ctrl_write.pause();
             }
 
             plot_double_clicked = plot_ui.response().double_clicked();
@@ -660,20 +660,20 @@ impl ViewClass for TimeSeriesView {
                 .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
 
             state.is_dragging_time_cursor = false;
-            if response.dragged() {
-                if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
-                    let new_offset_time = transform.value_from_position(pointer_pos).x;
-                    let new_time = time_offset + new_offset_time.round() as i64;
+            if response.dragged()
+                && let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos())
+            {
+                let new_offset_time = transform.value_from_position(pointer_pos).x;
+                let new_time = time_offset + new_offset_time.round() as i64;
 
-                    // Avoid frame-delay:
-                    time_x = pointer_pos.x;
+                // Avoid frame-delay:
+                time_x = pointer_pos.x;
 
-                    let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-                    time_ctrl.set_time(new_time);
-                    time_ctrl.pause();
+                let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
+                time_ctrl.set_time(new_time);
+                time_ctrl.pause();
 
-                    state.is_dragging_time_cursor = true;
-                }
+                state.is_dragging_time_cursor = true;
             }
 
             ui.paint_time_cursor(ui.painter(), &response, time_x, response.rect.y_range());

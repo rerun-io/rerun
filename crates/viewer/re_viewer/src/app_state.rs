@@ -249,10 +249,10 @@ impl AppState {
 
                 let selection_change = selection_state.on_frame_start(
                     |item| {
-                        if let Item::StoreId(store_id) = item {
-                            if store_id.is_empty_recording() {
-                                return false;
-                            }
+                        if let Item::StoreId(store_id) = item
+                            && store_id.is_empty_recording()
+                        {
+                            return false;
                         }
 
                         viewport_ui.blueprint.is_item_valid(storage_context, item)
@@ -260,14 +260,14 @@ impl AppState {
                     Some(Item::StoreId(store_context.recording.store_id().clone())),
                 );
 
-                if let SelectionChange::SelectionChanged(selection) = selection_change {
-                    if let Some(event_dispatcher) = event_dispatcher {
-                        event_dispatcher.on_selection_change(
-                            store_context.recording,
-                            selection,
-                            &viewport_ui.blueprint,
-                        );
-                    }
+                if let SelectionChange::SelectionChanged(selection) = selection_change
+                    && let Some(event_dispatcher) = event_dispatcher
+                {
+                    event_dispatcher.on_selection_change(
+                        store_context.recording,
+                        selection,
+                        &viewport_ui.blueprint,
+                    );
                 }
 
                 // The root container cannot be dragged.

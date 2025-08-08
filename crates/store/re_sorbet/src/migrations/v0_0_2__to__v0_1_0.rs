@@ -192,10 +192,10 @@ fn port_recording_info(batch: &mut RecordBatch) {
 
     // We renamed `RecordingProperties` to `RecordingInfo`,
     // and moved it from `/__properties/recording` to `/__properties`.
-    if let Some(entity_path) = batch.schema_metadata_mut().get_mut("rerun:entity_path") {
-        if entity_path == "/__properties/recording" {
-            *entity_path = "/__properties".to_owned();
-        }
+    if let Some(entity_path) = batch.schema_metadata_mut().get_mut("rerun:entity_path")
+        && entity_path == "/__properties/recording"
+    {
+        *entity_path = "/__properties".to_owned();
     }
 
     fn migrate_column_name(name: &str) -> String {
@@ -220,10 +220,10 @@ fn port_recording_info(batch: &mut RecordBatch) {
             .with_metadata(field.metadata().clone());
 
             // Migrate per-column entity paths (if any):
-            if let Some(entity_path) = field.metadata_mut().get_mut("rerun:entity_path") {
-                if entity_path == "/__properties/recording" {
-                    *entity_path = "/__properties".to_owned();
-                }
+            if let Some(entity_path) = field.metadata_mut().get_mut("rerun:entity_path")
+                && entity_path == "/__properties/recording"
+            {
+                *entity_path = "/__properties".to_owned();
             }
 
             // Rename `RecordingProperties` to `RecordingInfo` in metadata keys:

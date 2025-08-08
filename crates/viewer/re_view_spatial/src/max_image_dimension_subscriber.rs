@@ -96,15 +96,14 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                     }; // Ignore both empty arrays and multiple codecs per row.
                     if let Some(existing_codec) =
                         self.video_codecs.insert(entity_path.hash(), *codec)
+                        && existing_codec != *codec
                     {
-                        if existing_codec != *codec {
-                            re_log::warn!(
-                                "Changing video codec for entity path {:?} from {:?} to {:?}. This is unexpected, video codecs should remain constant per entity.",
-                                entity_path,
-                                existing_codec,
-                                codec,
-                            );
-                        }
+                        re_log::warn!(
+                            "Changing video codec for entity path {:?} from {:?} to {:?}. This is unexpected, video codecs should remain constant per entity.",
+                            entity_path,
+                            existing_codec,
+                            codec,
+                        );
                     }
                 }
             }

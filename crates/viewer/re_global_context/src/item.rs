@@ -233,10 +233,9 @@ pub fn resolve_mono_instance_path(
                 .cache()
                 .latest_at(query, &instance.entity_path, [component_descr])
                 .component_batch_raw(component_descr)
+                && array.len() > 1
             {
-                if array.len() > 1 {
-                    return instance.clone();
-                }
+                return instance.clone();
             }
         }
 

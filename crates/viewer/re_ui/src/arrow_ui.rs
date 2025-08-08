@@ -26,19 +26,19 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         // Special-treat text.
         // This is so that we can show urls as clickable links.
         // Note: we match on the raw data here, so this works for any component containing text.
-        if let Some(entries) = array.downcast_array_ref::<StringArray>() {
-            if entries.len() == 1 {
-                let string = entries.value(0);
-                ui_layout.data_label(ui, string);
-                return;
-            }
+        if let Some(entries) = array.downcast_array_ref::<StringArray>()
+            && entries.len() == 1
+        {
+            let string = entries.value(0);
+            ui_layout.data_label(ui, string);
+            return;
         }
-        if let Some(entries) = array.downcast_array_ref::<LargeStringArray>() {
-            if entries.len() == 1 {
-                let string = entries.value(0);
-                ui_layout.data_label(ui, string);
-                return;
-            }
+        if let Some(entries) = array.downcast_array_ref::<LargeStringArray>()
+            && entries.len() == 1
+        {
+            let string = entries.value(0);
+            ui_layout.data_label(ui, string);
+            return;
         }
 
         // Special-treat batches that are themselves unit-lists (i.e. blobs).
@@ -46,17 +46,17 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         // What we really want to display in these instances in the underlying array, otherwise we'll
         // bring down the entire viewer trying to render a list whose single entry might itself be
         // an array with millions of values.
-        if let Some(entries) = array.downcast_array_ref::<ListArray>() {
-            if entries.len() == 1 {
-                // Don't use `values` since this may contain values before and after the single blob we want to display.
-                return arrow_ui(ui, ui_layout, &entries.value(0));
-            }
+        if let Some(entries) = array.downcast_array_ref::<ListArray>()
+            && entries.len() == 1
+        {
+            // Don't use `values` since this may contain values before and after the single blob we want to display.
+            return arrow_ui(ui, ui_layout, &entries.value(0));
         }
-        if let Some(entries) = array.downcast_array_ref::<LargeListArray>() {
-            if entries.len() == 1 {
-                // Don't use `values` since this may contain values before and after the single blob we want to display.
-                return arrow_ui(ui, ui_layout, &entries.value(0));
-            }
+        if let Some(entries) = array.downcast_array_ref::<LargeListArray>()
+            && entries.len() == 1
+        {
+            // Don't use `values` since this may contain values before and after the single blob we want to display.
+            return arrow_ui(ui, ui_layout, &entries.value(0));
         }
 
         let Ok(array_formatter) = make_formatter(array) else {

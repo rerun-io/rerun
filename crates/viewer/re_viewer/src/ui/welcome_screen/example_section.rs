@@ -571,13 +571,12 @@ impl ExampleDescLayout {
                     .on_hover_cursor(egui::CursorIcon::PointingHand)
                     .on_disabled_hover_text("Source code is not available for this example")
                     .clicked()
+                    && let Some(source_url) = source_url
                 {
-                    if let Some(source_url) = source_url {
-                        ui.ctx().open_url(egui::output::OpenUrl {
-                            url: source_url.to_owned(),
-                            new_tab: true,
-                        });
-                    }
+                    ui.ctx().open_url(egui::output::OpenUrl {
+                        url: source_url.to_owned(),
+                        new_tab: true,
+                    });
                 }
 
                 if let Some(Some(size)) = self.rrd_byte_size_promise.ready().copied() {

@@ -70,10 +70,10 @@ impl GarbageCollectionOptions {
     /// If true, we cannot remove this chunk.
     pub fn is_chunk_protected(&self, chunk: &Chunk) -> bool {
         for (timeline, protected_time_range) in &self.protected_time_ranges {
-            if let Some(time_column) = chunk.timelines().get(timeline) {
-                if time_column.time_range().intersects(*protected_time_range) {
-                    return true;
-                }
+            if let Some(time_column) = chunk.timelines().get(timeline)
+                && time_column.time_range().intersects(*protected_time_range)
+            {
+                return true;
             }
         }
         false
@@ -583,10 +583,10 @@ impl ChunkStore {
                             chunk_ids_removed.extend(chunk_ids);
                         }
 
-                        if let Some((start_time, time_budget)) = time_budget {
-                            if start_time.elapsed() >= time_budget {
-                                break;
-                            }
+                        if let Some((start_time, time_budget)) = time_budget
+                            && start_time.elapsed() >= time_budget
+                        {
+                            break;
                         }
                     }
 

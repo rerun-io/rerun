@@ -67,11 +67,9 @@ pub fn determine_time_range(
 
     // If we're not in auto mode, which is the mode where the query drives the bounds of the plot,
     // then we want the bounds of the plots to drive the query!
-    if !is_auto_bounds {
-        if let Some((x_min, x_max)) = plot_bounds {
-            time_range.set_min(i64::max(time_range.min().as_i64(), x_min));
-            time_range.set_max(i64::min(time_range.max().as_i64(), x_max));
-        }
+    if !is_auto_bounds && let Some((x_min, x_max)) = plot_bounds {
+        time_range.set_min(i64::max(time_range.min().as_i64(), x_min));
+        time_range.set_max(i64::min(time_range.max().as_i64(), x_max));
     }
 
     time_range
