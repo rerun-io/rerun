@@ -40,10 +40,10 @@ impl Rrd {
         let progress = MultiProgress::new();
         let results: Vec<anyhow::Result<PathBuf>> = examples
             .into_par_iter()
-            .map(|example| example.build(&progress, &self.output_dir))
+            .map(|example| example.build_rrd(&progress, &self.output_dir))
             .collect();
 
-        let mut failed = false;
+        let mut num_failed = 0;
         for result in results {
             match result {
                 Ok(rrd_path) => {
@@ -55,17 +55,17 @@ impl Rrd {
                         );
                     } else {
                         eprintln!("Missing rrd at {}", rrd_path.display());
-                        failed = true;
+                        num_failed += 1;
                     }
                 }
                 Err(err) => {
                     eprintln!("{err}");
-                    failed = true;
+                    num_failed += 1;
                 }
             }
         }
-        if failed {
-            anyhow::bail!("Failed to run some examples");
+        if 0 < num_failed {
+            anyhow::bail!("Failed to run {num_failed} example(s)");
         }
 
         Ok(())
@@ -73,7 +73,7 @@ impl Rrd {
 }
 
 impl Example {
-    fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<PathBuf> {
+    fn build_rrd(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<PathBuf> {
         let tempdir = tempfile::tempdir()?;
 
         let initial_rrd_path = tempdir.path().join(&self.name).with_extension("rrd");
@@ -90,7 +90,13 @@ impl Example {
             cmd.env("RERUN_FLUSH_TICK_SECS", 1_000_000_000.to_string());
             cmd.env("RERUN_FLUSH_NUM_BYTES", (128 * 1024).to_string());
 
-            cmd.env("PYTHONWARNINGS", "error"); // raise exception on warnings, e.g. when using a @deprecated function
+            if self.allow_warnings {
+                cmd.env("PYTHONWARNINGS", "default");
+            } else {
+                // raise exception on warnings, e.g. when using a @deprecated function
+                cmd.env("PYTHONWARNINGS", "error");
+            }
+
             cmd.env("RERUN_PANIC_ON_WARN", "1"); // any logged warnings/errors should cause a failure
             cmd.env("RERUN_STRICT", "1"); // any misuse of the API should cause a failure
 
