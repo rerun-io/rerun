@@ -36,7 +36,6 @@ egui_tiles.workspace = true
 egui.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-once_cell.workspace = true
 parking_lot.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true

@@ -1207,7 +1207,7 @@ impl TimePanel {
         let mut found_last_clicked_items = false;
         let mut found_shift_clicked_items = false;
 
-        streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
+        let _ignored = streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
             let item = entity_or_component.item();
 
             if &item == anchor_item {
@@ -1785,13 +1785,13 @@ fn copy_time_properties_context_menu(
             let time = format!("{}", time.floor().as_i64());
             re_log::info!("Copied hovered timestamp: {}", time);
             ui.ctx().copy_text(time);
-        };
+        }
     } else if let Some(time) = time_ctrl.time_int() {
         if ui.button("Copy current timestamp").clicked() {
             let time = format!("{}", time.as_i64());
             re_log::info!("Copied current timestamp: {}", time);
             ui.ctx().copy_text(time);
-        };
+        }
     }
 
     if ui.button("Copy current timeline name").clicked() {

@@ -130,7 +130,8 @@ pub fn execute_systems_for_all_views<'a>(
     tree.active_tiles()
         .into_par_iter()
         .filter_map(|tile_id| {
-            tree.tiles.get(tile_id).and_then(|tile| match tile {
+            let tile = tree.tiles.get(tile_id)?;
+            match tile {
                 egui_tiles::Tile::Pane(view_id) => views.get(view_id).and_then(|view| {
                     let Some(view_state) = view_states.get(*view_id) else {
                         debug_assert!(false, "View state for view {view_id:?} not found. That shouldn't be possible since we just ensured they exist above.");
@@ -141,7 +142,7 @@ pub fn execute_systems_for_all_views<'a>(
                     Some((*view_id, result))
                 }),
                 egui_tiles::Tile::Container(_) => None,
-            })
+            }
         })
         .collect::<HashMap<_, _>>()
 }

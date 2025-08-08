@@ -637,7 +637,7 @@ impl tonic::service::Interceptor for TracingExtractorInterceptor {
 
         impl opentelemetry::propagation::Extractor for MetadataMap<'_> {
             fn get(&self, key: &str) -> Option<&str> {
-                self.0.get(key).and_then(|metadata| metadata.to_str().ok())
+                self.0.get(key)?.to_str().ok()
             }
 
             fn keys(&self) -> Vec<&str> {

@@ -303,9 +303,7 @@ impl LatestAtResults {
     /// Returns the `RowId` for the specified component.
     #[inline]
     pub fn component_row_id(&self, component_descr: &ComponentDescriptor) -> Option<RowId> {
-        self.components
-            .get(component_descr)
-            .and_then(|unit| unit.row_id())
+        self.components.get(component_descr)?.row_id()
     }
 
     /// Returns the raw data for the specified component.
@@ -325,13 +323,12 @@ impl LatestAtResults {
         log_level: re_log::Level,
         component_descr: &ComponentDescriptor,
     ) -> Option<Vec<C>> {
-        self.components.get(component_descr).and_then(|unit| {
-            self.ok_or_log_err(
-                log_level,
-                component_descr,
-                unit.component_batch(component_descr)?,
-            )
-        })
+        let unit = self.components.get(component_descr)?;
+        self.ok_or_log_err(
+            log_level,
+            component_descr,
+            unit.component_batch(component_descr)?,
+        )
     }
 
     /// Returns the deserialized data for the specified component.
@@ -351,9 +348,8 @@ impl LatestAtResults {
         &self,
         component_descr: &ComponentDescriptor,
     ) -> Option<Vec<C>> {
-        self.components
-            .get(component_descr)
-            .and_then(|unit| unit.component_batch(component_descr)?.ok())
+        let unit = self.components.get(component_descr)?;
+        unit.component_batch(component_descr)?.ok()
     }
 
     // --- Instance ---
@@ -368,13 +364,12 @@ impl LatestAtResults {
         component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
-        self.components.get(component_descr).and_then(|unit| {
-            self.ok_or_log_err(
-                log_level,
-                component_descr,
-                unit.component_instance_raw(component_descr, instance_index)?,
-            )
-        })
+        let unit = self.components.get(component_descr)?;
+        self.ok_or_log_err(
+            log_level,
+            component_descr,
+            unit.component_instance_raw(component_descr, instance_index)?,
+        )
     }
 
     /// Returns the raw data for the specified component at the given instance index.
@@ -400,10 +395,9 @@ impl LatestAtResults {
         component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
-        self.components.get(component_descr).and_then(|unit| {
-            unit.component_instance_raw(component_descr, instance_index)?
-                .ok()
-        })
+        let unit = self.components.get(component_descr)?;
+        unit.component_instance_raw(component_descr, instance_index)?
+            .ok()
     }
 
     /// Returns the deserialized data for the specified component at the given instance index.
@@ -417,13 +411,12 @@ impl LatestAtResults {
         instance_index: usize,
         component_descr: &ComponentDescriptor,
     ) -> Option<C> {
-        self.components.get(component_descr).and_then(|unit| {
-            self.ok_or_log_err(
-                log_level,
-                component_descr,
-                unit.component_instance(component_descr, instance_index)?,
-            )
-        })
+        let unit = self.components.get(component_descr)?;
+        self.ok_or_log_err(
+            log_level,
+            component_descr,
+            unit.component_instance(component_descr, instance_index)?,
+        )
     }
 
     /// Returns the deserialized data for the specified component at the given instance index.
@@ -452,10 +445,9 @@ impl LatestAtResults {
         component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<C> {
-        self.components.get(component_descr).and_then(|unit| {
-            unit.component_instance(component_descr, instance_index)?
-                .ok()
-        })
+        let unit = self.components.get(component_descr)?;
+        unit.component_instance(component_descr, instance_index)?
+            .ok()
     }
 
     // --- Mono ---
@@ -469,13 +461,12 @@ impl LatestAtResults {
         log_level: re_log::Level,
         component_descr: &ComponentDescriptor,
     ) -> Option<ArrowArrayRef> {
-        self.components.get(component_descr).and_then(|unit| {
-            self.ok_or_log_err(
-                log_level,
-                component_descr,
-                unit.component_mono_raw(component_descr)?,
-            )
-        })
+        let unit = self.components.get(component_descr)?;
+        self.ok_or_log_err(
+            log_level,
+            component_descr,
+            unit.component_mono_raw(component_descr)?,
+        )
     }
 
     /// Returns the raw data for the specified component, assuming a mono-batch.
@@ -497,9 +488,8 @@ impl LatestAtResults {
         &self,
         component_descr: &ComponentDescriptor,
     ) -> Option<ArrowArrayRef> {
-        self.components
-            .get(component_descr)
-            .and_then(|unit| unit.component_mono_raw(component_descr)?.ok())
+        let unit = self.components.get(component_descr)?;
+        unit.component_mono_raw(component_descr)?.ok()
     }
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
@@ -512,13 +502,12 @@ impl LatestAtResults {
         component_descr: &ComponentDescriptor,
         log_level: re_log::Level,
     ) -> Option<C> {
-        self.components.get(component_descr).and_then(|unit| {
-            self.ok_or_log_err(
-                log_level,
-                component_descr,
-                unit.component_mono(component_descr)?,
-            )
-        })
+        let unit = self.components.get(component_descr)?;
+        self.ok_or_log_err(
+            log_level,
+            component_descr,
+            unit.component_mono(component_descr)?,
+        )
     }
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
@@ -537,9 +526,8 @@ impl LatestAtResults {
         &self,
         component_descr: &ComponentDescriptor,
     ) -> Option<C> {
-        self.components
-            .get(component_descr)
-            .and_then(|unit| unit.component_mono(component_descr)?.ok())
+        let unit = self.components.get(component_descr)?;
+        unit.component_mono(component_descr)?.ok()
     }
 
     // ---
@@ -702,10 +690,8 @@ impl LatestAtCache {
             .latest_at_relevant_chunks(query, entity_path, component_descr)
             .into_iter()
             .filter_map(|chunk| {
-                chunk
-                    .latest_at(query, component_descr)
-                    .into_unit()
-                    .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
+                let chunk = chunk.latest_at(query, component_descr).into_unit()?;
+                chunk.index(&query.timeline()).map(|index| (index, chunk))
             })
             .max_by_key(|(index, _chunk)| *index)?;
 

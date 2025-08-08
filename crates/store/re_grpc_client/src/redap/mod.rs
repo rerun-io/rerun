@@ -1,6 +1,3 @@
-use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
-use tokio_stream::{Stream, StreamExt as _};
-
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_types::{
@@ -10,10 +7,13 @@ use re_log_types::{
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
+use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::{
     catalog::v1alpha1::ext::ReadDatasetEntryResponse, frontend::v1alpha1::GetChunksRequest,
 };
 use re_uri::{DatasetDataUri, Origin, TimeSelection};
+
+use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{
     ConnectionClient, ConnectionRegistryHandle, MAX_DECODING_MESSAGE_SIZE, StreamError,
@@ -246,31 +246,26 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
             // not going to make this one single pipeline any faster, but it will prevent starvation of
             // the Tokio runtime (which would slow down every other futures currently scheduled!).
             tokio::task::spawn_blocking(move || {
-                resp.map_err(Into::<StreamError>::into).and_then(|r| {
-                    let _span = tracing::trace_span!(
-                        "get_chunks::batch_decode",
-                        num_chunks = r.chunks.len()
-                    )
-                    .entered();
+                let r = resp.map_err(Into::<StreamError>::into)?;
+                let _span =
+                    tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
+                        .entered();
 
-                    r.chunks
-                        .into_iter()
-                        .map(|arrow_msg| {
-                            let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+                r.chunks
+                    .into_iter()
+                    .map(|arrow_msg| {
+                        let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
-                            let arrow_msg =
-                                re_log_encoding::protobuf_conversions::arrow_msg_from_proto(
-                                    &arrow_msg,
-                                )
+                        let arrow_msg =
+                            re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
                                 .map_err(Into::<StreamError>::into)?;
 
-                            let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
-                                .map_err(Into::<StreamError>::into)?;
+                        let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                            .map_err(Into::<StreamError>::into)?;
 
-                            Ok((chunk, partition_id))
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                })
+                        Ok((chunk, partition_id))
+                    })
+                    .collect::<Result<Vec<_>, _>>()
             })
         })
         .map(|res| {
@@ -285,27 +280,27 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
     response.map(|resp| {
-        resp.map_err(Into::into).and_then(|r| {
-            let _span =
-                tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
-                    .entered();
+        let resp = resp?;
 
-            r.chunks
-                .into_iter()
-                .map(|arrow_msg| {
-                    let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+        let _span =
+            tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len())
+                .entered();
 
-                    let arrow_msg =
-                        re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                            .map_err(Into::<StreamError>::into)?;
+        resp.chunks
+            .into_iter()
+            .map(|arrow_msg| {
+                let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
-                    let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                let arrow_msg =
+                    re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
                         .map_err(Into::<StreamError>::into)?;
 
-                    Ok((chunk, partition_id))
-                })
-                .collect::<Result<Vec<_>, _>>()
-        })
+                let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                    .map_err(Into::<StreamError>::into)?;
+
+                Ok((chunk, partition_id))
+            })
+            .collect::<Result<Vec<_>, _>>()
     })
 }
 

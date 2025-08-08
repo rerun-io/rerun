@@ -1,6 +1,5 @@
 use std::{collections::HashMap, path::PathBuf, task::Poll};
 
-use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use poll_promise::Promise;
 
@@ -146,7 +145,8 @@ struct VersionCache(
 
 impl VersionCache {
     fn global<R>(f: impl FnOnce(&mut Self) -> R) -> R {
-        static CACHE: Lazy<Mutex<VersionCache>> = Lazy::new(|| Mutex::new(VersionCache::default()));
+        static CACHE: std::sync::LazyLock<Mutex<VersionCache>> =
+            std::sync::LazyLock::new(|| Mutex::new(VersionCache::default()));
         f(&mut CACHE.lock())
     }
 

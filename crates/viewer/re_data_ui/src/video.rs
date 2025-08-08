@@ -573,5 +573,5 @@ fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat
                 .on_hover_text("Matrix coefficients used to convert the pixel data to RGB.");
             });
         }
-    };
+    }
 }

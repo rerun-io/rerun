@@ -1045,7 +1045,7 @@ impl MaximizeAnimationState {
                     animating_view_id = Some(view_id);
                 }
             }
-        };
+        }
 
         // Prevent glitches when the viewport has changed size since the animation started.
         let animated_rect = animated_rect.intersect(viewport_rect);

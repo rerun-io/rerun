@@ -1,13 +1,12 @@
 #![allow(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::OnceLock};
 
 use ahash::{HashMap, HashSet};
 use glam::Affine3A;
 use itertools::Either;
 use nohash_hasher::{IntMap, IntSet};
 
-use once_cell::sync::OnceCell;
 use re_chunk_store::{
     ChunkStore, ChunkStoreSubscriberHandle, LatestAtQuery, PerStoreChunkSubscriber,
 };
@@ -371,11 +370,11 @@ impl TransformsForEntity {
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
         self.pinhole_projections
+            .as_ref()?
+            .range(..query.at().inc())
+            .next_back()?
+            .1
             .as_ref()
-            .and_then(|pinhole_projections| {
-                pinhole_projections.range(..query.at().inc()).next_back()
-            })
-            .and_then(|(_time, projection)| projection.as_ref())
     }
 }
 
@@ -384,7 +383,7 @@ impl TransformCacheStoreSubscriber {
     ///
     /// Lazily registers the subscriber if it hasn't been registered yet.
     pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
-        static SUBSCRIPTION: OnceCell<ChunkStoreSubscriberHandle> = OnceCell::new();
+        static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
         *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
     }
 
@@ -2225,7 +2224,7 @@ mod tests {
                     [(timeline, 2)],
                     &archetypes::Clear::new(false),
                 );
-            };
+            }
             entity_db
                 .add_chunk(&Arc::new(chunk.build().unwrap()))
                 .unwrap();
@@ -2288,7 +2287,7 @@ mod tests {
                     [(timeline, 2)],
                     &archetypes::Clear::new(true),
                 );
-            };
+            }
             entity_db
                 .add_chunk(&Arc::new(parent_chunk.build().unwrap()))
                 .unwrap();

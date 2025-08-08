@@ -171,7 +171,7 @@ impl LeRobotDataset {
     pub fn read_episode_data(&self, episode: EpisodeIndex) -> Result<RecordBatch, LeRobotError> {
         if self.metadata.episodes.get(episode.0).is_none() {
             return Err(LeRobotError::InvalidEpisodeIndex(episode));
-        };
+        }
 
         let episode_data_path = self.metadata.info.episode_data_path(episode)?;
         let episode_parquet_file = self.path.join(episode_data_path);

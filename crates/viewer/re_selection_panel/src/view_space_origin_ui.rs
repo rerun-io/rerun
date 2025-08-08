@@ -212,7 +212,7 @@ fn view_space_origin_widget_editing_ui(
 
     if control_flow.is_continue() && !egui::Popup::is_id_open(ui.ctx(), popup_id) {
         control_flow = ControlFlow::Break(None);
-    };
+    }
 
     control_flow
 }

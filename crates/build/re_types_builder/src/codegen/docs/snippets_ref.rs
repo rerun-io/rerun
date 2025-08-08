@@ -468,7 +468,6 @@ fn collect_snippets_recursively<'o>(
             for obj in objs {
                 if contains_whole_word(&contents, &obj.name) {
                     set.insert(*obj);
-                    continue;
                 }
             }
         }
@@ -637,7 +636,7 @@ impl<'o> KnownObjects<'o> {
                 }
 
                 ObjectKind::Datatype => {}
-            };
+            }
         }
 
         Self {

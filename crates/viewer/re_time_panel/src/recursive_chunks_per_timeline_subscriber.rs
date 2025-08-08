@@ -1,8 +1,7 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use egui::ahash::HashMap;
 use nohash_hasher::IntMap;
-use once_cell::sync::OnceCell;
 
 use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle,
@@ -55,7 +54,7 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
     ///
     /// Lazily registers the subscriber if it hasn't been registered yet.
     pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
-        static SUBSCRIPTION: OnceCell<ChunkStoreSubscriberHandle> = OnceCell::new();
+        static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
         *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
     }
 

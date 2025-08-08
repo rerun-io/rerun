@@ -22,19 +22,18 @@ impl Chunk {
         component_descr: &ComponentDescriptor,
         row_index: usize,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        self.components.get(component_descr).and_then(|list_array| {
-            if list_array.len() > row_index {
-                list_array
-                    .is_valid(row_index)
-                    .then(|| Ok(list_array.value(row_index)))
-            } else {
-                Some(Err(crate::ChunkError::IndexOutOfBounds {
-                    kind: "row".to_owned(),
-                    len: list_array.len(),
-                    index: row_index,
-                }))
-            }
-        })
+        let list_array = self.components.get(component_descr)?;
+        if list_array.len() > row_index {
+            list_array
+                .is_valid(row_index)
+                .then(|| Ok(list_array.value(row_index)))
+        } else {
+            Some(Err(crate::ChunkError::IndexOutOfBounds {
+                kind: "row".to_owned(),
+                len: list_array.len(),
+                index: row_index,
+            }))
+        }
     }
 
     /// Returns the deserialized data for the specified component.
@@ -224,12 +223,9 @@ impl UnitChunkShared {
                 .next()
                 .map(|row_id| (TimeInt::STATIC, row_id))
         } else {
-            self.timelines.get(timeline).and_then(|time_column| {
-                time_column
-                    .times()
-                    .next()
-                    .and_then(|time| self.row_ids().next().map(|row_id| (time, row_id)))
-            })
+            let time_column = self.timelines.get(timeline)?;
+            let time = time_column.times().next()?;
+            self.row_ids().next().map(|row_id| (time, row_id))
         }
     }
 
@@ -273,9 +269,8 @@ impl UnitChunkShared {
         component_descr: &ComponentDescriptor,
     ) -> Option<ArrowArrayRef> {
         debug_assert!(self.num_rows() == 1);
-        self.components
-            .get(component_descr)
-            .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
+        let list_array = self.components.get(component_descr)?;
+        list_array.is_valid(0).then(|| list_array.value(0))
     }
 
     /// Returns the deserialized data for the specified component.

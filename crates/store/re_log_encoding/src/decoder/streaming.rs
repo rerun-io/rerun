@@ -328,7 +328,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                     }
 
                     std::task::Poll::Pending => return std::task::Poll::Pending,
-                };
+                }
             }
 
             // Now that we've tried at least once to get a chunk out without reading any data, life
@@ -406,7 +406,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 
                 re_log::trace!("Reached end of stream, iterator complete");
                 return std::task::Poll::Ready(None);
-            };
+            }
 
             let decoded = if opts.keep_decoded_protobuf {
                 file::decoder::decode_bytes_to_transport(kind, encoded)?

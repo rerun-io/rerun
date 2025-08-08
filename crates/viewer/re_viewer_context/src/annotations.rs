@@ -156,8 +156,10 @@ impl ResolvedAnnotationInfo {
             Some(label.to_owned())
         } else {
             self.annotation_info
+                .as_ref()?
+                .label
                 .as_ref()
-                .and_then(|info| info.label.as_ref().map(|label| label.to_string()))
+                .map(|label| label.to_string())
         }
     }
 
@@ -166,9 +168,7 @@ impl ResolvedAnnotationInfo {
         if let Some(label) = label {
             Some(label)
         } else {
-            self.annotation_info
-                .as_ref()
-                .and_then(|info| info.label.clone())
+            self.annotation_info.as_ref()?.label.clone()
         }
     }
 }

@@ -1,5 +1,6 @@
+use std::sync::OnceLock;
+
 use nohash_hasher::IntMap;
-use once_cell::sync::OnceCell;
 
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
@@ -61,7 +62,7 @@ impl MaxImageDimensionsStoreSubscriber {
     ///
     /// Lazily registers the subscriber if it hasn't been registered yet.
     pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
-        static SUBSCRIPTION: OnceCell<ChunkStoreSubscriberHandle> = OnceCell::new();
+        static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
         *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
     }
 }
@@ -142,13 +143,11 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                 // Size detection for various types of components.
                 if descr.component_type == Some(components::ImageFormat::name()) {
                     for new_dim in list_array.iter().filter_map(|array| {
-                        array.and_then(|array| {
-                            let array = arrow::array::ArrayRef::from(array);
-                            components::ImageFormat::from_arrow(&array)
-                                .ok()?
-                                .into_iter()
-                                .next()
-                        })
+                        let array = arrow::array::ArrayRef::from(array?);
+                        components::ImageFormat::from_arrow(&array)
+                            .ok()?
+                            .into_iter()
+                            .next()
                     }) {
                         max_dim.width = max_dim.width.max(new_dim.width);
                         max_dim.height = max_dim.height.max(new_dim.height);

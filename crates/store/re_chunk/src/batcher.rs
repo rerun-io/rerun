@@ -713,7 +713,7 @@ fn batching_thread(
                     }
 
                     Command::Shutdown => break,
-                };
+                }
             },
 
             recv(rx_tick) -> _ => {

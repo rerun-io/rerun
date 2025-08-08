@@ -43,7 +43,7 @@ pub fn edit_radius_ui(
                 abs_value = 0.1;
             } else {
                 abs_value = 2.5;
-            };
+            }
         }
 
         if is_scene_units {

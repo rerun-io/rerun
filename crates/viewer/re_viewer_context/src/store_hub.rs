@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::LazyLock};
 
 use ahash::{HashMap, HashMapExt as _, HashSet};
 use anyhow::Context as _;
@@ -189,10 +189,10 @@ impl StoreHub {
     /// All of the returned references to blueprints and recordings will have a
     /// matching [`ApplicationId`].
     pub fn read_context(&mut self) -> (StorageContext<'_>, Option<StoreContext<'_>>) {
-        static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
-            once_cell::sync::Lazy::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
-        static EMPTY_CACHES: once_cell::sync::Lazy<Caches> =
-            once_cell::sync::Lazy::new(|| Caches::new(re_log_types::StoreId::empty_recording()));
+        static EMPTY_ENTITY_DB: LazyLock<EntityDb> =
+            LazyLock::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
+        static EMPTY_CACHES: LazyLock<Caches> =
+            LazyLock::new(|| Caches::new(re_log_types::StoreId::empty_recording()));
 
         let store_context = 'ctx: {
             // If we have an app-id, then use it to look up the blueprint.
@@ -462,9 +462,7 @@ impl StoreHub {
     /// The recording id for the active recording.
     #[inline]
     pub fn active_store_id(&self) -> Option<&StoreId> {
-        self.active_recording_or_table
-            .as_ref()
-            .and_then(|e| e.recording_ref())
+        self.active_recording_or_table.as_ref()?.recording_ref()
     }
 
     /// Directly access the [`EntityDb`] for the active recording.
@@ -496,16 +494,15 @@ impl StoreHub {
     /// present if there's an active recording.
     #[inline]
     pub fn active_caches(&self) -> Option<&Caches> {
-        self.active_store_id().and_then(|store_id| {
-            let caches = self.caches_per_recording.get(store_id);
+        let store_id = self.active_store_id()?;
+        let caches = self.caches_per_recording.get(store_id);
 
-            debug_assert!(
-                caches.is_some(),
-                "active recordings should always have associated caches",
-            );
+        debug_assert!(
+            caches.is_some(),
+            "active recordings should always have associated caches",
+        );
 
-            caches
-        })
+        caches
     }
 
     /// Change the active/visible recording id.
@@ -553,8 +550,8 @@ impl StoreHub {
     }
 
     pub fn default_blueprint_for_app(&self, app_id: &ApplicationId) -> Option<&EntityDb> {
-        self.default_blueprint_id_for_app(app_id)
-            .and_then(|id| self.store_bundle.get(id))
+        let id = self.default_blueprint_id_for_app(app_id)?;
+        self.store_bundle.get(id)
     }
 
     /// Change which blueprint is the default for a given [`ApplicationId`]
@@ -588,14 +585,14 @@ impl StoreHub {
 
     /// What is the active blueprint for the active application?
     pub fn active_blueprint_id(&self) -> Option<&StoreId> {
-        self.active_app()
-            .and_then(|app_id| self.active_blueprint_id_for_app(app_id))
+        let app_id = self.active_app()?;
+        self.active_blueprint_id_for_app(app_id)
     }
 
     /// Active blueprint for currently active application.
     pub fn active_blueprint(&self) -> Option<&EntityDb> {
-        self.active_blueprint_id()
-            .and_then(|id| self.store_bundle.get(id))
+        let id = self.active_blueprint_id()?;
+        self.store_bundle.get(id)
     }
 
     pub fn active_blueprint_id_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
@@ -603,8 +600,8 @@ impl StoreHub {
     }
 
     pub fn active_blueprint_for_app(&self, app_id: &ApplicationId) -> Option<&EntityDb> {
-        self.active_blueprint_id_for_app(app_id)
-            .and_then(|id| self.store_bundle.get(id))
+        let id = self.active_blueprint_id_for_app(app_id)?;
+        self.store_bundle.get(id)
     }
 
     /// Make blueprint active for a given [`ApplicationId`]

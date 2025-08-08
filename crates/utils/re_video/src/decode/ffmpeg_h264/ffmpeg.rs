@@ -577,7 +577,7 @@ impl FrameBuffer {
                     self.next_frame_nr = Some(frame_info.frame_nr + 1);
                     break oldest_pending.remove_entry().1;
                 }
-            };
+            }
 
             // We haven't received the frame info for this frame yet.
             let Ok(frame_info) = frame_info_rx.recv() else {

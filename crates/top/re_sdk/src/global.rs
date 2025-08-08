@@ -1,9 +1,8 @@
 //! Keeps track of global and thread-local [`RecordingStream`]s and handles fallback logic between
 //! them.
 
-use std::cell::RefCell;
+use std::{cell::RefCell, sync::OnceLock};
 
-use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 
 use crate::{RecordingStream, StoreKind};
@@ -64,12 +63,12 @@ impl Drop for ThreadLocalRecording {
     }
 }
 
-static GLOBAL_DATA_RECORDING: OnceCell<RwLock<Option<RecordingStream>>> = OnceCell::new();
+static GLOBAL_DATA_RECORDING: OnceLock<RwLock<Option<RecordingStream>>> = OnceLock::new();
 thread_local! {
     static LOCAL_DATA_RECORDING: RefCell<ThreadLocalRecording> = Default::default();
 }
 
-static GLOBAL_BLUEPRINT_RECORDING: OnceCell<RwLock<Option<RecordingStream>>> = OnceCell::new();
+static GLOBAL_BLUEPRINT_RECORDING: OnceLock<RwLock<Option<RecordingStream>>> = OnceLock::new();
 thread_local! {
     static LOCAL_BLUEPRINT_RECORDING: RefCell<ThreadLocalRecording> = Default::default();
 }

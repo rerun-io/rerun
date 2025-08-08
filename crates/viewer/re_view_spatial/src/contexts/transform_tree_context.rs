@@ -119,7 +119,7 @@ impl TransformInfo {
 /// * the query time
 ///    * TODO(#723): ranges aren't taken into account yet
 /// * TODO(andreas): the queried entities. Right now we determine transforms for ALL entities in the scene.
-///                  since 3D views tend to display almost everything that's mostly fine, but it's very wasteful when they don't.
+///   since 3D views tend to display almost everything that's mostly fine, but it's very wasteful when they don't.
 ///
 /// The renderer then uses this reference space as its world space,
 /// making world and reference space equivalent for a given view.

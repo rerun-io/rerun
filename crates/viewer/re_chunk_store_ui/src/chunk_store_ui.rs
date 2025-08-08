@@ -322,7 +322,7 @@ impl DatastoreUi {
                         ui.label(format_time_range(timeline, time_range, timestamp_format));
                     } else {
                         ui.label("-");
-                    };
+                    }
                 });
             }
 

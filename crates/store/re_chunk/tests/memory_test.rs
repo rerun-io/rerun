@@ -82,8 +82,7 @@ fn concat_does_allocate() {
         total_size_bytes,
     ) = memory_use(|| {
         let unconcatenated = memory_use(|| {
-            std::iter::repeat(NUM_SCALARS as usize / 10)
-                .take(10)
+            std::iter::repeat_n(NUM_SCALARS as usize / 10, 10)
                 .map(|_| as_array_ref(ArrowInt64Array::from((0..NUM_SCALARS / 10).collect_vec())))
                 .collect_vec()
         });

@@ -337,15 +337,13 @@ pub fn doc_as_lines(
                 ..
             } = &example.base;
 
-            for line in &example.lines {
-                if line.contains("```") {
-                    reporter.error(
-                        virtpath,
-                        fqname,
-                        format!("Example {path:?} contains ``` in it, so we can't embed it in the Rust API docs."),
-                    );
-                    continue;
-                }
+            if example.lines.iter().any(|line| line.contains("```")) {
+                reporter.error(
+                    virtpath,
+                    fqname,
+                    format!("Example {path:?} contains ``` in it, so we can't embed it in the Rust API docs."),
+                );
+                continue;
             }
 
             if let Some(title) = title {

@@ -103,7 +103,7 @@ impl Mesh3DVisualizer {
                     self.0
                         .add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_instance);
                 }
-            };
+            }
         }
     }
 }

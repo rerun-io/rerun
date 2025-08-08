@@ -197,16 +197,15 @@ impl App {
                 .and_then(|storage| {
                     // This re-implements: `eframe::get_value` so we can customize the warning message.
                     // TODO(#2849): More thorough error-handling.
-                    storage.get_string(eframe::APP_KEY).and_then(|value| {
-                        match ron::from_str(&value) {
-                            Ok(value) => Some(value),
-                            Err(err) => {
-                                re_log::warn!("Failed to restore application state. This is expected if you have just upgraded Rerun versions.");
-                                re_log::debug!("Failed to decode RON for app state: {err}");
-                                None
-                            }
+                    let value = storage.get_string(eframe::APP_KEY)?;
+                    match ron::from_str(&value) {
+                        Ok(value) => Some(value),
+                        Err(err) => {
+                            re_log::warn!("Failed to restore application state. This is expected if you have just upgraded Rerun versions.");
+                            re_log::debug!("Failed to decode RON for app state: {err}");
+                            None
                         }
-                    })
+                    }
                 })
                 .unwrap_or_default()
         } else {
@@ -1611,7 +1610,7 @@ impl App {
                         re_log::debug!("Overwritten table store with id: `{}`", table.id);
                     } else {
                         re_log::debug!("Inserted table store with id: `{}`", table.id);
-                    };
+                    }
                     self.command_sender.send_system(SystemCommand::SetSelection(
                         re_viewer_context::Item::TableId(table.id.clone()),
                     ));
@@ -1912,9 +1911,7 @@ impl App {
     }
 
     pub fn recording_db(&self) -> Option<&EntityDb> {
-        self.store_hub
-            .as_ref()
-            .and_then(|store_hub| store_hub.active_recording())
+        self.store_hub.as_ref()?.active_recording()
     }
 
     pub fn recording_config_mut(
@@ -1937,6 +1934,8 @@ impl App {
         storage_ctx: &StorageContext<'_>,
         command_sender: &CommandSender,
     ) {
+        #![allow(clippy::needless_continue)] // false positive, depending on target_arche
+
         preview_files_being_dropped(egui_ctx);
 
         let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
@@ -1992,6 +1991,7 @@ impl App {
                         },
                     ),
                 ));
+
                 continue;
             }
 
@@ -2082,7 +2082,7 @@ impl App {
                 // Tell JS to toggle fullscreen.
                 if let Err(err) = options.on_toggle.call0() {
                     re_log::error!("{}", crate::web_tools::string_from_js_value(err));
-                };
+                }
             }
         }
     }
@@ -2751,7 +2751,7 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     let messages = store_context.blueprint.to_messages(None).map(|mut msg| {
         if let Ok(msg) = &mut msg {
             msg.set_store_id(new_store_id.clone());
-        };
+        }
         msg
     });
 
