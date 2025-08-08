@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package rerun.common.v1alpha1;
 
+import "google/protobuf/any.proto";
+
 // TODO(cmc): aren't most of the definitions in here dead code?
 
 // supported encoder versions for encoding data
@@ -220,6 +222,28 @@ message ComponentDescriptor {
 // tasks subsystem
 message TaskId {
   string id = 1;
+}
+
+// `ChunkKey` uniquely identifies a chunk and contains information about its location
+// in the data store.
+message ChunkKey {
+  // Unique chunk identifier
+  Tuid chunk_id = 1;
+
+  // Where is the data for this chunk stored (e.g. s3://bucket/file or file:///path/to/file)?
+  optional string url = 2;
+
+  // In which kind of data source is chunk stored (rrd, mcap, etc.)
+  // TODO(zehiko) this should be DataSourceKind, but need to first move it to common.proto
+  ChunkStoreKind store_kind = 4;
+
+  // Additional details about the chunk's location that are data source specific.
+  google.protobuf.Any location_details = 3;
+}
+
+enum ChunkStoreKind {
+  CHUNK_STORE_KIND_UNSPECIFIED = 0;
+  CHUNK_STORE_KIND_RRD = 1;
 }
 
 // Mirrors `re_build_info::BuildInfo`.

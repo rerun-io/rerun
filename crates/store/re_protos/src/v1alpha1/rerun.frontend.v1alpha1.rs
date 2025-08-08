@@ -297,6 +297,25 @@ impl ::prost::Name for GetChunksRequest {
         "/rerun.frontend.v1alpha1.GetChunksRequest".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchChunksRequest {
+    /// The location of the chunks to fetch. Note that we don't support client side streaming of chunks
+    /// as there's no plan to support it on grpc-web at the moment.
+    ///
+    /// Chunks to fetch (described by their `ChunkKey`)
+    #[prost(message, repeated, tag = "1")]
+    pub chunk_keys: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::ChunkKey>,
+}
+impl ::prost::Name for FetchChunksRequest {
+    const NAME: &'static str = "FetchChunksRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.FetchChunksRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.FetchChunksRequest".into()
+    }
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct GetTableSchemaRequest {
     #[prost(message, optional, tag = "1")]
@@ -915,6 +934,33 @@ pub mod frontend_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        /// Fetch chunks given the chunks location
+        /// TODO(zehiko) rename to GetChunks once we get rid of existing GetChunks
+        pub async fn fetch_chunks(
+            &mut self,
+            request: impl tonic::IntoRequest<super::FetchChunksRequest>,
+        ) -> std::result::Result<
+            tonic::Response<
+                tonic::codec::Streaming<
+                    super::super::super::manifest_registry::v1alpha1::FetchChunksResponse,
+                >,
+            >,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.frontend.v1alpha1.FrontendService/FetchChunks",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.frontend.v1alpha1.FrontendService",
+                "FetchChunks",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
         /// Register a foreign table as a new table entry in the catalog.
         pub async fn register_table(
             &mut self,
@@ -1292,6 +1338,20 @@ pub mod frontend_service_server {
             &self,
             request: tonic::Request<super::GetChunksRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
+        /// Server streaming response type for the FetchChunks method.
+        type FetchChunksStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<
+                    super::super::super::manifest_registry::v1alpha1::FetchChunksResponse,
+                    tonic::Status,
+                >,
+            > + std::marker::Send
+            + 'static;
+        /// Fetch chunks given the chunks location
+        /// TODO(zehiko) rename to GetChunks once we get rid of existing GetChunks
+        async fn fetch_chunks(
+            &self,
+            request: tonic::Request<super::FetchChunksRequest>,
+        ) -> std::result::Result<tonic::Response<Self::FetchChunksStream>, tonic::Status>;
         /// Register a foreign table as a new table entry in the catalog.
         async fn register_table(
             &self,
@@ -2211,6 +2271,51 @@ pub mod frontend_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetChunksSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.frontend.v1alpha1.FrontendService/FetchChunks" => {
+                    #[allow(non_camel_case_types)]
+                    struct FetchChunksSvc<T: FrontendService>(pub Arc<T>);
+                    impl<T: FrontendService>
+                        tonic::server::ServerStreamingService<super::FetchChunksRequest>
+                        for FetchChunksSvc<T>
+                    {
+                        type Response =
+                            super::super::super::manifest_registry::v1alpha1::FetchChunksResponse;
+                        type ResponseStream = T::FetchChunksStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::FetchChunksRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as FrontendService>::fetch_chunks(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = FetchChunksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
