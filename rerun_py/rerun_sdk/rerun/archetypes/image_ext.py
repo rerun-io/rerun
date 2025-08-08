@@ -263,6 +263,33 @@ class ImageExt:
             color_model=image_format_arrow["color_model"],
         )
 
+    def as_pil_image(self: Any) -> PILImage.Image:
+        """Convert the image to a PIL Image."""
+
+        image_format = self.image_format()
+
+        # TODO(jleibs): Support conversions here
+        if image_format.pixel_format is not None:
+            raise ValueError(
+                f"Converting image with pixel_format {image_format.pixel_format} into PIL is not yet supported"
+            )
+
+        buf = self.buffer.as_arrow_array().values.to_numpy().view(image_format.channel_datatype.to_np_dtype())
+
+        # Note: np array shape is always (height, width, channels)
+        if image_format.color_model == ColorModel.L:
+            image = buf.reshape(image_format.height, image_format.width)
+        else:
+            image = buf.reshape(image_format.height, image_format.width, image_format.color_model.num_channels())
+
+        # PIL assumes L or RGB[A]:
+        if image_format.color_model == ColorModel.BGR:
+            image = image[:, :, ::-1]
+        elif image_format.color_model == ColorModel.BGRA:
+            image = image[:, :, [2, 1, 0, 3]]
+
+        return PILImage.fromarray(image)
+
     def compress(self: Any, jpeg_quality: int = 95) -> EncodedImage | Image:
         """
         Compress the given image as a JPEG.
