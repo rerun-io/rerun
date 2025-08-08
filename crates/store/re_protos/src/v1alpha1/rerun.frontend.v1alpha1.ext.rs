@@ -1,8 +1,8 @@
 use re_log_types::{EntityPath, EntryId};
 
 use crate::v1alpha1::rerun_common_v1alpha1;
-use crate::v1alpha1::rerun_common_v1alpha1_ext::{IfDuplicateBehavior, ScanParameters};
-use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::{DataSource, Query};
+use crate::v1alpha1::rerun_common_v1alpha1_ext::{DataSource, IfDuplicateBehavior, ScanParameters};
+use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::Query;
 use crate::{TypeConversionError, missing_field};
 
 // --- GetPartitionTableSchemaRequest ---

@@ -1,6 +1,10 @@
 use std::hash::Hasher;
+use std::sync::Arc;
 
+use arrow::array::{Array, ArrayRef, StringArray};
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
+
+use re_arrow_util::ArrowArrayDowncastRef as _;
 
 use re_log_types::{RecordingId, StoreKind, TableId, external::re_types_core::ComponentDescriptor};
 
@@ -641,6 +645,171 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
             archetype: archetype.map(Into::into),
             component: component.into(),
             component_type: component_type.map(Into::into),
+        })
+    }
+}
+
+// --- DataSource --
+
+// NOTE: Match the values of the Protobuf definition to keep life simple.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum DataSourceKind {
+    Rrd = 1,
+}
+
+impl TryFrom<crate::common::v1alpha1::DataSourceKind> for DataSourceKind {
+    type Error = TypeConversionError;
+
+    fn try_from(kind: crate::common::v1alpha1::DataSourceKind) -> Result<Self, Self::Error> {
+        match kind {
+            crate::common::v1alpha1::DataSourceKind::Rrd => Ok(Self::Rrd),
+
+            crate::common::v1alpha1::DataSourceKind::Unspecified => {
+                return Err(TypeConversionError::InvalidField {
+                    package_name: "rerun.common.v1alpha1",
+                    type_name: "DataSourceKind",
+                    field_name: "",
+                    reason: "enum value unspecified".to_owned(),
+                });
+            }
+        }
+    }
+}
+
+impl TryFrom<i32> for DataSourceKind {
+    type Error = TypeConversionError;
+
+    fn try_from(kind: i32) -> Result<Self, Self::Error> {
+        let kind = crate::common::v1alpha1::DataSourceKind::try_from(kind)?;
+        kind.try_into()
+    }
+}
+
+impl From<DataSourceKind> for crate::common::v1alpha1::DataSourceKind {
+    fn from(value: DataSourceKind) -> Self {
+        match value {
+            DataSourceKind::Rrd => Self::Rrd,
+        }
+    }
+}
+
+impl DataSourceKind {
+    pub fn to_arrow(self) -> ArrayRef {
+        match self {
+            Self::Rrd => {
+                let rec_type = StringArray::from_iter_values(["rrd".to_owned()]);
+                Arc::new(rec_type)
+            }
+        }
+    }
+
+    pub fn many_to_arrow(types: Vec<Self>) -> ArrayRef {
+        let data = types
+            .into_iter()
+            .map(|typ| match typ {
+                Self::Rrd => "rrd",
+            })
+            .collect::<Vec<_>>();
+        Arc::new(StringArray::from(data))
+    }
+
+    pub fn from_arrow(array: &dyn Array) -> Result<Self, TypeConversionError> {
+        let resource_type = array.try_downcast_array_ref::<StringArray>()?.value(0);
+
+        match resource_type {
+            "rrd" => Ok(Self::Rrd),
+            _ => Err(TypeConversionError::ArrowError(
+                ArrowError::InvalidArgumentError(format!("unknown resource type {resource_type}")),
+            )),
+        }
+    }
+
+    pub fn many_from_arrow(array: &dyn Array) -> Result<Vec<Self>, TypeConversionError> {
+        let string_array = array.try_downcast_array_ref::<StringArray>()?;
+
+        (0..string_array.len())
+            .map(|i| {
+                let resource_type = string_array.value(i);
+                match resource_type {
+                    "rrd" => Ok(Self::Rrd),
+                    _ => Err(TypeConversionError::ArrowError(
+                        ArrowError::InvalidArgumentError(format!(
+                            "unknown resource type {resource_type}"
+                        )),
+                    )),
+                }
+            })
+            .collect()
+    }
+}
+
+#[test]
+fn datasourcekind_roundtrip() {
+    let kind = DataSourceKind::Rrd;
+    let kind: crate::common::v1alpha1::DataSourceKind = kind.into();
+    let kind = DataSourceKind::try_from(kind).unwrap();
+    assert_eq!(DataSourceKind::Rrd, kind);
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DataSource {
+    pub storage_url: url::Url,
+    pub layer: String,
+    pub kind: DataSourceKind,
+}
+
+impl DataSource {
+    pub const DEFAULT_LAYER: &str = "base";
+
+    pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            layer: Self::DEFAULT_LAYER.to_owned(),
+            kind: DataSourceKind::Rrd,
+        })
+    }
+
+    pub fn new_rrd_layer(
+        layer: impl AsRef<str>,
+        storage_url: impl AsRef<str>,
+    ) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            layer: layer.as_ref().into(),
+            kind: DataSourceKind::Rrd,
+        })
+    }
+}
+
+impl From<DataSource> for crate::common::v1alpha1::DataSource {
+    fn from(value: DataSource) -> Self {
+        crate::common::v1alpha1::DataSource {
+            storage_url: Some(value.storage_url.to_string()),
+            layer: Some(value.layer),
+            typ: value.kind as i32,
+        }
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::DataSource> for DataSource {
+    type Error = TypeConversionError;
+
+    fn try_from(data_source: crate::common::v1alpha1::DataSource) -> Result<Self, Self::Error> {
+        let storage_url = data_source
+            .storage_url
+            .ok_or_else(|| missing_field!(crate::common::v1alpha1::DataSource, "storage_url"))?
+            .parse()?;
+
+        let layer = data_source
+            .layer
+            .unwrap_or_else(|| Self::DEFAULT_LAYER.to_owned());
+
+        let kind = DataSourceKind::try_from(data_source.typ)?;
+
+        Ok(Self {
+            storage_url,
+            layer,
+            kind,
         })
     }
 }
