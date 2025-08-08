@@ -1989,6 +1989,8 @@ impl App {
                         },
                     ),
                 ));
+
+                #[allow(clippy::needless_continue)] // false positive, depending on target_arche
                 continue;
             }
 
