@@ -4,7 +4,7 @@
 //! - State object
 //! - URL
 //!
-//! Ideally we wouldn't have to, but we want two things:
+//! Two things are handled here:
 //! - Listen to `popstate` events and handle navigations client-side,
 //!   so that the forward/back buttons can be used to navigate between
 //!   examples and the welcome screen.
@@ -12,39 +12,38 @@
 //!   an example or a redap entry, for direct link sharing.
 // TODO: above is simpler once we use our re_uri scheme here as well
 
-use crate::web_tools::{JsResultExt as _, url_to_receiver, window};
+use std::sync::{Arc, OnceLock};
+
 use js_sys::wasm_bindgen;
 use parking_lot::Mutex;
+use wasm_bindgen::{JsCast as _, JsError, JsValue, closure::Closure, prelude::wasm_bindgen};
+use web_sys::{History, UrlSearchParams};
+
+use crate::web_tools::{CategorizedEndpoint, JsResultExt as _, endpoint_to_receiver, window};
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
-use std::sync::Arc;
-use std::sync::OnceLock;
-use wasm_bindgen::JsCast as _;
-use wasm_bindgen::JsError;
-use wasm_bindgen::JsValue;
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::prelude::wasm_bindgen;
-use web_sys::History;
-use web_sys::UrlSearchParams;
 
 #[derive(Clone, Default, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct HistoryEntry {
-    // TODO: let's use datastructures from re_uri
-    /// Data source URL
-    ///
-    /// We support loading multiple URLs at the same time
-    ///
-    /// `?url=`
-    urls: Vec<String>,
+    /// Typically this is either one or none, but we support multiple http urls.
+    // TODO: we only ever set a single one. On startup we should set the "base" for the first one.
+    endpoints: Vec<CategorizedEndpoint>,
 }
 
 // Builder methods
 impl HistoryEntry {
     pub const KEY: &'static str = "__rerun";
 
-    /// Set the URL of the RRD to load when using this entry.
-    #[inline]
+    /// Set the URL of the RRD to load/navigate to when using this entry.
+    // TODO: it's always loading right now.
     pub fn rrd_url(mut self, url: String) -> Self {
-        self.urls.push(url);
+        self.endpoints.push(CategorizedEndpoint::HttpRrd(url));
+        self
+    }
+
+    /// Set the Redap URI to load/navigate to when using this entry.
+    pub fn redap_uri(mut self, uri: re_uri::RedapUri) -> Self {
+        self.endpoints
+            .push(CategorizedEndpoint::RerunGrpcStream(uri));
         self
     }
 }
@@ -55,8 +54,8 @@ impl HistoryEntry {
         use std::fmt::Write as _;
 
         let params = UrlSearchParams::new()?;
-        for url in &self.urls {
-            params.append("url", url);
+        for endpoint in &self.endpoints {
+            params.append("url", &endpoint.to_string());
         }
         let mut out = "?".to_owned();
         write!(&mut out, "{}", params.to_string()).ok();
@@ -149,7 +148,7 @@ fn handle_popstate(
         return;
     }
 
-    if new_state.is_none() || new_state.as_ref().is_some_and(|v| v.urls.is_empty()) {
+    if new_state.is_none() || new_state.as_ref().is_some_and(|v| v.endpoints.is_empty()) {
         // TODO: go to the initial screen instead of always going to the welcome screen.
         re_log::debug!("popstate: go to welcome screen");
         re_redap_browser::switch_to_welcome_screen(command_sender);
@@ -164,9 +163,9 @@ fn handle_popstate(
     };
 
     let follow_if_http = false;
-    for url in &entry.urls {
+    for url in &entry.endpoints {
         // we continue in case of errors because some receivers may be valid
-        let Some(receiver) = url_to_receiver(
+        let Some(receiver) = endpoint_to_receiver(
             connection_registry,
             egui_ctx.clone(),
             follow_if_http,

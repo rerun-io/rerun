@@ -80,6 +80,21 @@ pub struct StartupOptions {
     pub enable_history: bool,
 }
 
+impl StartupOptions {
+    /// Returns `StartupOptions::enable_history` on web, and `false` on native.
+    pub fn enable_web_history(&self) -> bool {
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.enable_history
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            false
+        }
+    }
+}
+
 impl Default for StartupOptions {
     fn default() -> Self {
         Self {

@@ -500,7 +500,7 @@ impl App {
                 self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
                 update_web_address_bar(
-                    self.startup_options.enable_history,
+                    self.startup_options.enable_web_history(),
                     store_hub,
                     &self.state.navigation.peek(),
                 );
@@ -509,7 +509,7 @@ impl App {
             SystemCommand::CloseApp(app_id) => {
                 store_hub.close_app(&app_id);
                 update_web_address_bar(
-                    self.startup_options.enable_history,
+                    self.startup_options.enable_web_history(),
                     store_hub,
                     &self.state.navigation.peek(),
                 );
@@ -528,7 +528,7 @@ impl App {
                     }
                 }
                 update_web_address_bar(
-                    self.startup_options.enable_history,
+                    self.startup_options.enable_web_history(),
                     store_hub,
                     &self.state.navigation.peek(),
                 );
@@ -538,7 +538,7 @@ impl App {
                 // TODO(#9464): Find a better successor here.
                 store_hub.remove(&entry);
                 update_web_address_bar(
-                    self.startup_options.enable_history,
+                    self.startup_options.enable_web_history(),
                     store_hub,
                     &self.state.navigation.peek(),
                 );
@@ -749,7 +749,7 @@ impl App {
 
                 self.state.selection_state.set_selection(item);
                 update_web_address_bar(
-                    self.startup_options.enable_history,
+                    self.startup_options.enable_web_history(),
                     store_hub,
                     &self.state.navigation.peek(),
                 );

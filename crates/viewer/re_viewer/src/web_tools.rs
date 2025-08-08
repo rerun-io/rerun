@@ -80,7 +80,9 @@ pub fn window() -> Result<Window, JsValue> {
     web_sys::window().ok_or_else(|| js_error("failed to get window object"))
 }
 
-enum EndpointCategory {
+/// Valid URLs for the `url` parameter.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum CategorizedEndpoint {
     /// Could be a local path (`/foo.rrd`) or a remote url (`http://foo.com/bar.rrd`).
     ///
     /// Could be a link to either an `.rrd` recording or a `.rbl` blueprint.
@@ -93,7 +95,17 @@ enum EndpointCategory {
     WebEventListener(String),
 }
 
-impl EndpointCategory {
+impl std::fmt::Display for CategorizedEndpoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::HttpRrd(url) => write!(f, "{}", url),
+            Self::RerunGrpcStream(uri) => write!(f, "{}", uri),
+            Self::WebEventListener(url) => write!(f, "{}", url),
+        }
+    }
+}
+
+impl CategorizedEndpoint {
     fn categorize_uri(uri: String) -> Self {
         if let Ok(uri) = uri.parse() {
             return Self::RerunGrpcStream(uri);
@@ -116,13 +128,30 @@ pub fn url_to_receiver(
     url: String,
     command_sender: CommandSender,
 ) -> Option<re_smart_channel::Receiver<re_log_types::LogMsg>> {
+    endpoint_to_receiver(
+        connection_registry,
+        egui_ctx,
+        follow_if_http,
+        CategorizedEndpoint::categorize_uri(url),
+        command_sender,
+    )
+}
+
+/// Start receiving from the given categorized endpoint.
+pub fn endpoint_to_receiver(
+    connection_registry: &ConnectionRegistryHandle,
+    egui_ctx: egui::Context,
+    follow_if_http: bool,
+    endpoint: CategorizedEndpoint,
+    command_sender: CommandSender,
+) -> Option<re_smart_channel::Receiver<re_log_types::LogMsg>> {
     let ui_waker = Box::new(move || {
         // Spend a few more milliseconds decoding incoming messages,
         // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
         egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
     });
-    match EndpointCategory::categorize_uri(url) {
-        EndpointCategory::HttpRrd(url) => Some(
+    match endpoint {
+        CategorizedEndpoint::HttpRrd(url) => Some(
             re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                 url,
                 follow_if_http,
@@ -130,7 +159,7 @@ pub fn url_to_receiver(
             ),
         ),
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::DatasetData(uri)) => {
+        CategorizedEndpoint::RerunGrpcStream(re_uri::RedapUri::DatasetData(uri)) => {
             let on_cmd = Box::new(move |cmd| match cmd {
                 re_grpc_client::Command::SetLoopSelection {
                     recording_id,
@@ -150,22 +179,22 @@ pub fn url_to_receiver(
             ))
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(uri)) => {
+        CategorizedEndpoint::RerunGrpcStream(re_uri::RedapUri::Catalog(uri)) => {
             command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
             None
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Entry(uri)) => {
+        CategorizedEndpoint::RerunGrpcStream(re_uri::RedapUri::Entry(uri)) => {
             command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
             command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
             None
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) => Some(
+        CategorizedEndpoint::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) => Some(
             re_grpc_client::message_proxy::read::stream(uri, Some(ui_waker)),
         ),
 
-        EndpointCategory::WebEventListener(url) => {
+        CategorizedEndpoint::WebEventListener(url) => {
             // Process an rrd when it's posted via `window.postMessage`
             let (tx, rx) = re_smart_channel::smart_channel(
                 re_smart_channel::SmartMessageSource::RrdWebEventCallback,
