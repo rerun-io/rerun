@@ -66,6 +66,9 @@ table Pinhole (
   /// This is only used for visualization purposes, and does not affect the projection itself.
   image_plane_distance: rerun.components.ImagePlaneDistance ("attr.rerun.component_optional", nullable, order: 4000);
 
-  /// An optional color of the pinhole wireframe.
+  /// Color of the camera wireframe.
   color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 5000);
+
+  /// Width of the camera wireframe lines.
+  line_width: rerun.components.Scalar ("attr.rerun.component_optional", nullable, order: 6000);
 }

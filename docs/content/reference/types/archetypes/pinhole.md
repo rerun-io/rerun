@@ -17,6 +17,7 @@ Camera perspective projection (a.k.a. intrinsics).
 * `camera_xyz`: [`ViewCoordinates`](../components/view_coordinates.md)
 * `image_plane_distance`: [`ImagePlaneDistance`](../components/image_plane_distance.md)
 * `color`: [`Color`](../components/color.md)
+* `line_width`: [`Scalar`](../components/scalar.md)
 
 
 ## Can be shown in

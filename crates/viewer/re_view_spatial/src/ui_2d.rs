@@ -356,6 +356,7 @@ fn setup_target_config(
             ),
             resolution,
             color: None,
+            line_width: None,
         }
     };
     let pinhole_rect = Rect::from_min_size(

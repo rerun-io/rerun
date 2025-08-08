@@ -25,12 +25,15 @@ namespace rerun::archetypes {
                 .value_or_throw();
         archetype.color =
             ComponentBatch::empty<rerun::components::Color>(Descriptor_color).value_or_throw();
+        archetype.line_width =
+            ComponentBatch::empty<rerun::components::Scalar>(Descriptor_line_width)
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> Pinhole::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(6);
         if (image_from_camera.has_value()) {
             columns.push_back(image_from_camera.value().partitioned(lengths_).value_or_throw());
         }
@@ -45,6 +48,9 @@ namespace rerun::archetypes {
         }
         if (color.has_value()) {
             columns.push_back(color.value().partitioned(lengths_).value_or_throw());
+        }
+        if (line_width.has_value()) {
+            columns.push_back(line_width.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -65,6 +71,9 @@ namespace rerun::archetypes {
         if (color.has_value()) {
             return columns(std::vector<uint32_t>(color.value().length(), 1));
         }
+        if (line_width.has_value()) {
+            return columns(std::vector<uint32_t>(line_width.value().length(), 1));
+        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::archetypes
@@ -76,7 +85,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(5);
+        cells.reserve(6);
 
         if (archetype.image_from_camera.has_value()) {
             cells.push_back(archetype.image_from_camera.value());
@@ -92,6 +101,9 @@ namespace rerun {
         }
         if (archetype.color.has_value()) {
             cells.push_back(archetype.color.value());
+        }
+        if (archetype.line_width.has_value()) {
+            cells.push_back(archetype.line_width.value());
         }
 
         return rerun::take_ownership(std::move(cells));

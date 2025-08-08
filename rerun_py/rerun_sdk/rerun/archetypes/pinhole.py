@@ -86,6 +86,7 @@ class Pinhole(PinholeExt, Archetype):
             camera_xyz=None,
             image_plane_distance=None,
             color=None,
+            line_width=None,
         )
 
     @classmethod
@@ -105,6 +106,7 @@ class Pinhole(PinholeExt, Archetype):
         camera_xyz: datatypes.ViewCoordinatesLike | None = None,
         image_plane_distance: datatypes.Float32Like | None = None,
         color: datatypes.Rgba32Like | None = None,
+        line_width: datatypes.Float64Like | None = None,
     ) -> Pinhole:
         """
         Update only some specific fields of a `Pinhole`.
@@ -157,7 +159,9 @@ class Pinhole(PinholeExt, Archetype):
 
             This is only used for visualization purposes, and does not affect the projection itself.
         color:
-            An optional color of the pinhole wireframe.
+            Color of the camera wireframe.
+        line_width:
+            Width of the camera wireframe lines.
 
         """
 
@@ -169,6 +173,7 @@ class Pinhole(PinholeExt, Archetype):
                 "camera_xyz": camera_xyz,
                 "image_plane_distance": image_plane_distance,
                 "color": color,
+                "line_width": line_width,
             }
 
             if clear_unset:
@@ -194,6 +199,7 @@ class Pinhole(PinholeExt, Archetype):
         camera_xyz: datatypes.ViewCoordinatesArrayLike | None = None,
         image_plane_distance: datatypes.Float32ArrayLike | None = None,
         color: datatypes.Rgba32ArrayLike | None = None,
+        line_width: datatypes.Float64ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -249,7 +255,9 @@ class Pinhole(PinholeExt, Archetype):
 
             This is only used for visualization purposes, and does not affect the projection itself.
         color:
-            An optional color of the pinhole wireframe.
+            Color of the camera wireframe.
+        line_width:
+            Width of the camera wireframe lines.
 
         """
 
@@ -261,6 +269,7 @@ class Pinhole(PinholeExt, Archetype):
                 camera_xyz=camera_xyz,
                 image_plane_distance=image_plane_distance,
                 color=color,
+                line_width=line_width,
             )
 
         batches = inst.as_component_batches()
@@ -273,6 +282,7 @@ class Pinhole(PinholeExt, Archetype):
             "Pinhole:camera_xyz": camera_xyz,
             "Pinhole:image_plane_distance": image_plane_distance,
             "Pinhole:color": color,
+            "Pinhole:line_width": line_width,
         }
         columns = []
 
@@ -379,7 +389,16 @@ class Pinhole(PinholeExt, Archetype):
         default=None,
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
-    # An optional color of the pinhole wireframe.
+    # Color of the camera wireframe.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    line_width: components.ScalarBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ScalarBatch._converter,  # type: ignore[misc]
+    )
+    # Width of the camera wireframe lines.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

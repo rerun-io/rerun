@@ -10,6 +10,7 @@ pub struct Pinhole {
     pub image_from_camera: glam::Mat3,
     pub resolution: glam::Vec2,
     pub color: Option<components::Color>,
+    pub line_width: Option<f32>,
 }
 
 impl Pinhole {
@@ -133,6 +134,7 @@ pub fn query_pinhole_and_view_coordinates_from_store_without_blueprint(
             image_from_camera: pinhole_projection.0.into(),
             resolution: resolution.into(),
             color: None,
+            line_width: None,
         },
         camera_xyz,
     ))

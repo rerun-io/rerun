@@ -168,7 +168,8 @@ impl CamerasVisualizer {
             ),
         ];
 
-        let radius = re_renderer::Size::new_ui_points(1.0);
+        let radius =
+            re_renderer::Size::new_ui_points(pinhole_properties.pinhole.line_width.unwrap_or(1.0));
         let instance_path_for_picking =
             re_entity_db::InstancePathHash::instance(ent_path, instance);
         let instance_layer_id =
@@ -271,12 +272,15 @@ impl VisualizerSystem for CamerasVisualizer {
                 )
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
             let color = query_results.get_mono::<components::Color>(&Pinhole::descriptor_color());
+            let line_width =
+                query_results.get_mono::<components::Scalar>(&Pinhole::descriptor_line_width());
 
             let component_data = CameraComponentDataWithFallbacks {
                 pinhole: crate::Pinhole {
                     image_from_camera: pinhole_projection.0.into(),
                     resolution: resolution.into(),
                     color,
+                    line_width: line_width.map(|s| s.0.0 as f32),
                 },
                 camera_xyz,
                 image_plane_distance: image_plane_distance.into(),

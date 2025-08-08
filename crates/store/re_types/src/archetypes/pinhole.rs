@@ -140,8 +140,11 @@ pub struct Pinhole {
     /// This is only used for visualization purposes, and does not affect the projection itself.
     pub image_plane_distance: Option<SerializedComponentBatch>,
 
-    /// An optional color of the pinhole wireframe.
+    /// Color of the camera wireframe.
     pub color: Option<SerializedComponentBatch>,
+
+    /// Width of the camera wireframe lines.
+    pub line_width: Option<SerializedComponentBatch>,
 }
 
 impl Pinhole {
@@ -204,6 +207,18 @@ impl Pinhole {
             component_type: Some("rerun.components.Color".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::line_width`].
+    ///
+    /// The corresponding component is [`crate::components::Scalar`].
+    #[inline]
+    pub fn descriptor_line_width() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.Pinhole".into()),
+            component: "Pinhole:line_width".into(),
+            component_type: Some("rerun.components.Scalar".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
@@ -212,16 +227,17 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]>
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [Pinhole::descriptor_resolution()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Pinhole::descriptor_camera_xyz(),
             Pinhole::descriptor_image_plane_distance(),
             Pinhole::descriptor_color(),
+            Pinhole::descriptor_line_width(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             Pinhole::descriptor_image_from_camera(),
@@ -229,12 +245,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
             Pinhole::descriptor_camera_xyz(),
             Pinhole::descriptor_image_plane_distance(),
             Pinhole::descriptor_color(),
+            Pinhole::descriptor_line_width(),
         ]
     });
 
 impl Pinhole {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 impl ::re_types_core::Archetype for Pinhole {
@@ -301,12 +318,18 @@ impl ::re_types_core::Archetype for Pinhole {
         let color = arrays_by_descr
             .get(&Self::descriptor_color())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_color()));
+        let line_width = arrays_by_descr
+            .get(&Self::descriptor_line_width())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_line_width())
+            });
         Ok(Self {
             image_from_camera,
             resolution,
             camera_xyz,
             image_plane_distance,
             color,
+            line_width,
         })
     }
 }
@@ -321,6 +344,7 @@ impl ::re_types_core::AsComponents for Pinhole {
             self.camera_xyz.clone(),
             self.image_plane_distance.clone(),
             self.color.clone(),
+            self.line_width.clone(),
         ]
         .into_iter()
         .flatten()
@@ -343,6 +367,7 @@ impl Pinhole {
             camera_xyz: None,
             image_plane_distance: None,
             color: None,
+            line_width: None,
         }
     }
 
@@ -376,6 +401,10 @@ impl Pinhole {
             color: Some(SerializedComponentBatch::new(
                 crate::components::Color::arrow_empty(),
                 Self::descriptor_color(),
+            )),
+            line_width: Some(SerializedComponentBatch::new(
+                crate::components::Scalar::arrow_empty(),
+                Self::descriptor_line_width(),
             )),
         }
     }
@@ -414,6 +443,9 @@ impl Pinhole {
             self.color
                 .map(|color| color.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.line_width
+                .map(|line_width| line_width.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -431,12 +463,14 @@ impl Pinhole {
         let len_camera_xyz = self.camera_xyz.as_ref().map(|b| b.array.len());
         let len_image_plane_distance = self.image_plane_distance.as_ref().map(|b| b.array.len());
         let len_color = self.color.as_ref().map(|b| b.array.len());
+        let len_line_width = self.line_width.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_image_from_camera)
             .or(len_resolution)
             .or(len_camera_xyz)
             .or(len_image_plane_distance)
             .or(len_color)
+            .or(len_line_width)
             .unwrap_or(0);
         self.columns(std::iter::repeat(1).take(len))
     }
@@ -573,7 +607,7 @@ impl Pinhole {
         self
     }
 
-    /// An optional color of the pinhole wireframe.
+    /// Color of the camera wireframe.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = try_serialize_field(Self::descriptor_color(), [color]);
@@ -592,6 +626,26 @@ impl Pinhole {
         self.color = try_serialize_field(Self::descriptor_color(), color);
         self
     }
+
+    /// Width of the camera wireframe lines.
+    #[inline]
+    pub fn with_line_width(mut self, line_width: impl Into<crate::components::Scalar>) -> Self {
+        self.line_width = try_serialize_field(Self::descriptor_line_width(), [line_width]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Scalar`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_line_width`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_line_width(
+        mut self,
+        line_width: impl IntoIterator<Item = impl Into<crate::components::Scalar>>,
+    ) -> Self {
+        self.line_width = try_serialize_field(Self::descriptor_line_width(), line_width);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for Pinhole {
@@ -602,5 +656,6 @@ impl ::re_byte_size::SizeBytes for Pinhole {
             + self.camera_xyz.heap_size_bytes()
             + self.image_plane_distance.heap_size_bytes()
             + self.color.heap_size_bytes()
+            + self.line_width.heap_size_bytes()
     }
 }
