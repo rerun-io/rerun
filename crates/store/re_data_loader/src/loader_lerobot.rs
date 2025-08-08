@@ -83,7 +83,7 @@ impl DataLoader for LeRobotDatasetLoader {
         let application_id = settings
             .application_id
             .clone()
-            .unwrap_or(ApplicationId(filepath.display().to_string()));
+            .unwrap_or(filepath.display().to_string().into());
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -180,24 +180,17 @@ fn prepare_episode_chunks(
     for episode in &dataset.metadata.episodes {
         let episode = episode.index;
 
-        let store_id = StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            format!("episode_{}", episode.0),
-        );
+        let store_id = StoreId::recording(application_id.clone(), format!("episode_{}", episode.0));
         let set_store_info = LoadedData::LogMsg(
             LeRobotDatasetLoader::name(&LeRobotDatasetLoader),
-            prepare_store_info(
-                application_id.clone(),
-                &store_id,
-                re_log_types::FileSource::Sdk,
-            ),
+            prepare_store_info(&store_id, re_log_types::FileSource::Sdk),
         );
 
         if tx.send(set_store_info).is_err() {
             break;
         }
 
-        store_ids.push((episode, store_id.clone()));
+        store_ids.push((episode, store_id));
     }
 
     store_ids
@@ -260,7 +253,7 @@ pub fn load_episode(
                         "Unsupported channel count {num_channels} (shape: {:?}) for LeRobot dataset; Only 1- and 3-channel images are supported",
                         feature.shape
                     ),
-                };
+                }
             }
             DType::Int64 if feature_key == "task_index" => {
                 // special case int64 task_index columns
@@ -446,7 +439,9 @@ fn load_episode_video(
 enum ScalarChunkIterator {
     Empty(std::iter::Empty<Chunk>),
     Batch(Box<dyn ExactSizeIterator<Item = Chunk>>),
-    Single(std::iter::Once<Chunk>),
+
+    // Boxed, because `Chunk` is huge, and by extension so is `std::iter::Once<Chunk>`.
+    Single(Box<std::iter::Once<Chunk>>),
 }
 
 impl Iterator for ScalarChunkIterator {
@@ -505,9 +500,9 @@ fn load_scalar(
                 format!("Failed to cast scalar feature {entity_path} to Float64")
             })?;
 
-            Ok(ScalarChunkIterator::Single(std::iter::once(
+            Ok(ScalarChunkIterator::Single(Box::new(std::iter::once(
                 make_scalar_entity_chunk(entity_path, timelines, &sliced)?,
-            )))
+            ))))
         }
         DataType::Float32 | DataType::Float64 => {
             let feature_data = data.column_by_name(feature_key).ok_or_else(|| {
@@ -521,9 +516,9 @@ fn load_scalar(
                 format!("Failed to cast scalar feature {entity_path} to Float64")
             })?;
 
-            Ok(ScalarChunkIterator::Single(std::iter::once(
+            Ok(ScalarChunkIterator::Single(Box::new(std::iter::once(
                 make_scalar_entity_chunk(entity_path, timelines, &sliced)?,
-            )))
+            ))))
         }
         _ => {
             re_log::warn_once!(

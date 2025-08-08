@@ -1,5 +1,5 @@
 use itertools::izip;
-use re_chunk_store::ResolvedTimeRange;
+use re_chunk_store::AbsoluteTimeRange;
 use re_entity_db::EntityPath;
 use re_log_types::{TimeInt, TimePoint};
 use re_query::{clamped_zip_1x2, range_zip_1x2};
@@ -50,7 +50,7 @@ impl VisualizerSystem for TextLogSystem {
         re_tracing::profile_function!();
 
         let query =
-            re_chunk_store::RangeQuery::new(view_query.timeline, ResolvedTimeRange::EVERYTHING)
+            re_chunk_store::RangeQuery::new(view_query.timeline, AbsoluteTimeRange::EVERYTHING)
                 .keep_extra_timelines(true);
 
         for data_result in view_query.iter_visible_data_results(Self::identifier()) {

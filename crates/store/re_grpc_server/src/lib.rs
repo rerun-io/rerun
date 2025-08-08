@@ -316,9 +316,14 @@ pub fn spawn_with_recv(
         }
     });
     tokio::spawn(async move {
+        let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
+
         loop {
             let msg = match broadcast_log_rx.recv().await {
-                Ok(msg) => re_log_encoding::protobuf_conversions::log_msg_from_proto(msg),
+                Ok(msg) => re_log_encoding::protobuf_conversions::log_msg_from_proto(
+                    &mut app_id_cache,
+                    msg,
+                ),
                 Err(broadcast::error::RecvError::Closed) => {
                     re_log::debug!("message proxy server shut down, closing receiver");
                     channel_log_tx.quit(None).ok();
@@ -350,7 +355,6 @@ pub fn spawn_with_recv(
                 }
                 Err(err) => {
                     re_log::error!("dropping LogMsg due to failed decode: {err}");
-                    continue;
                 }
             }
         }
@@ -385,7 +389,6 @@ pub fn spawn_with_recv(
                 }
                 Err(err) => {
                     re_log::error!("dropping table due to failed decode: {err}");
-                    continue;
                 }
             }
         }
@@ -600,7 +603,7 @@ impl EventLoop {
         if max_bytes >= self.ordered_message_bytes {
             // We're not using too much memory.
             return;
-        };
+        }
 
         {
             re_tracing::profile_scope!("Drop messages");
@@ -694,7 +697,7 @@ impl MessageProxy {
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
             re_log::error!("Error accepting new client: {err}");
             return Box::pin(tokio_stream::empty());
-        };
+        }
         let (history, log_channel, _) = match receiver.await {
             Ok(v) => v,
             Err(err) => {
@@ -736,7 +739,7 @@ impl MessageProxy {
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
             re_log::error!("Error accepting new client: {err}");
             return Box::pin(tokio_stream::empty());
-        };
+        }
         let (history, _, table_channel) = match receiver.await {
             Ok(v) => v,
             Err(err) => {
@@ -857,9 +860,7 @@ mod tests {
     use re_chunk::RowId;
     use re_log_encoding::Compression;
     use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
-    use re_log_types::{
-        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
-    };
+    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
     use re_protos::sdk_comms::v1alpha1::{
         message_proxy_service_client::MessageProxyServiceClient,
         message_proxy_service_server::MessageProxyServiceServer,
@@ -900,13 +901,12 @@ mod tests {
     /// Generates `n` log messages wrapped in a `SetStoreInfo` at the start and `BlueprintActivationCommand` at the end,
     /// to exercise message ordering.
     fn fake_log_stream_blueprint(n: usize) -> Vec<LogMsg> {
-        let store_id = StoreId::random(StoreKind::Blueprint);
+        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
 
         let mut messages = Vec::new();
         messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::new(),
             info: StoreInfo {
-                application_id: ApplicationId("test".to_owned()),
                 store_id: store_id.clone(),
                 cloned_from: None,
                 store_source: StoreSource::RustSdk {
@@ -949,13 +949,12 @@ mod tests {
     }
 
     fn fake_log_stream_recording(n: usize) -> Vec<LogMsg> {
-        let store_id = StoreId::random(StoreKind::Recording);
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
 
         let mut messages = Vec::new();
         messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::new(),
             info: StoreInfo {
-                application_id: ApplicationId("test".to_owned()),
                 store_id: store_id.clone(),
                 cloned_from: None,
                 store_source: StoreSource::RustSdk {
@@ -1033,9 +1032,11 @@ mod tests {
         log_stream: &mut tonic::Response<tonic::Streaming<ReadMessagesResponse>>,
         n: usize,
     ) -> Vec<LogMsg> {
-        let mut stream_ref = log_stream
-            .get_mut()
-            .map(|result| log_msg_from_proto(result.unwrap().log_msg.unwrap()).unwrap());
+        let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
+
+        let mut stream_ref = log_stream.get_mut().map(|result| {
+            log_msg_from_proto(&mut app_id_cache, result.unwrap().log_msg.unwrap()).unwrap()
+        });
 
         let mut messages = Vec::new();
         for _ in 0..n {
@@ -1219,9 +1220,13 @@ mod tests {
             let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
             tokio::pin!(timeout_stream);
             let timeout_result = timeout_stream.try_next().await;
+            let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
             match timeout_result {
                 Ok(Some(value)) => {
-                    actual.push(log_msg_from_proto(value.unwrap().log_msg.unwrap()).unwrap());
+                    actual.push(
+                        log_msg_from_proto(&mut app_id_cache, value.unwrap().log_msg.unwrap())
+                            .unwrap(),
+                    );
                 }
 
                 // Stream closed | Timed out
@@ -1263,9 +1268,13 @@ mod tests {
             let timeout_stream = log_stream.get_mut().timeout(Duration::from_millis(100));
             tokio::pin!(timeout_stream);
             let timeout_result = timeout_stream.try_next().await;
+            let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
             match timeout_result {
                 Ok(Some(value)) => {
-                    actual.push(log_msg_from_proto(value.unwrap().log_msg.unwrap()).unwrap());
+                    actual.push(
+                        log_msg_from_proto(&mut app_id_cache, value.unwrap().log_msg.unwrap())
+                            .unwrap(),
+                    );
                 }
 
                 // Stream closed | Timed out

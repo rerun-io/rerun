@@ -13,11 +13,12 @@ use re_sorbet::ComponentColumnDescriptor;
 
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
 use crate::manifest_registry::v1alpha1::{
-    CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
-    RegisterWithDatasetResponse, ScanPartitionTableResponse, VectorDistanceMetric,
+    GetDatasetSchemaResponse, RegisterWithDatasetResponse, ScanPartitionTableResponse,
+    VectorDistanceMetric,
 };
 use crate::v1alpha1::rerun_common_v1alpha1_ext::PartitionId;
-use crate::{TypeConversionError, invalid_field, missing_field};
+use crate::{TypeConversionError, missing_field};
+
 // --- QueryDataset ---
 
 #[derive(Debug, Clone)]
@@ -285,75 +286,8 @@ impl From<QueryLatestAt> for crate::manifest_registry::v1alpha1::QueryLatestAt {
 #[derive(Debug, Clone)]
 pub struct QueryRange {
     pub index: String,
-    pub index_range: re_log_types::ResolvedTimeRange,
+    pub index_range: re_log_types::AbsoluteTimeRange,
 }
-
-// --- CreatePartitionManifestsResponse ---
-
-impl CreatePartitionManifestsResponse {
-    pub const FIELD_ID: &str = "id";
-    pub const FIELD_UPDATED_AT: &str = "updated_at";
-    pub const FIELD_ERROR: &str = "error";
-
-    /// The Arrow schema of the dataframe in [`Self::data`].
-    pub fn schema() -> Schema {
-        Schema::new(vec![
-            Field::new(Self::FIELD_ID, DataType::Utf8, false),
-            Field::new(
-                Self::FIELD_UPDATED_AT,
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                true,
-            ),
-            Field::new(Self::FIELD_ERROR, DataType::Utf8, true),
-        ])
-    }
-
-    /// Helper to simplify instantiation of the dataframe in [`Self::data`].
-    pub fn create_dataframe(
-        partition_ids: Vec<String>,
-        updated_ats: Vec<Option<jiff::Timestamp>>,
-        errors: Vec<Option<String>>,
-    ) -> arrow::error::Result<RecordBatch> {
-        let updated_ats = updated_ats
-            .into_iter()
-            .map(|ts| ts.map(|ts| ts.as_nanosecond() as i64)) // ~300 years should be fine
-            .collect::<Vec<_>>();
-
-        let schema = Arc::new(Self::schema());
-        let columns: Vec<ArrayRef> = vec![
-            Arc::new(StringArray::from(partition_ids)),
-            Arc::new(TimestampNanosecondArray::from(updated_ats)),
-            Arc::new(StringArray::from(errors)),
-        ];
-
-        RecordBatch::try_new(schema, columns)
-    }
-}
-
-// TODO(#9430): I'd love if I could do this, but this creates a nasty circular dep with `re_log_encoding`.
-#[cfg(all(unix, windows))] // always statically false
-impl TryFrom<RecordBatch> for CreatePartitionManifestsResponse {
-    type Error = tonic::Status;
-
-    fn try_from(batch: RecordBatch) -> Result<Self, Self::Error> {
-        if !Self::schema().contains(batch.schema()) {
-            let typ = std::any::type_name::<Self>();
-            return Err(tonic::Status::internal(format!(
-                "invalid schema for {typ}: expected {:?} but got {:?}",
-                Self::schema(),
-                batch.schema(),
-            )));
-        }
-
-        use re_log_encoding::codec::wire::encoder::Encode as _;
-        batch
-            .encode()
-            .map(|data| Self { data: Some(data) })
-            .map_err(|err| tonic::Status::internal(format!("failed to encode chunk: {err}")))?;
-    }
-}
-
-// TODO(#9430): the other way around would be nice too, but same problem.
 
 // --- GetDatasetSchemaResponse ---
 
@@ -381,6 +315,7 @@ impl GetDatasetSchemaResponse {
 
 impl RegisterWithDatasetResponse {
     pub const PARTITION_ID: &str = "rerun_partition_id";
+    pub const PARTITION_LAYER: &str = "rerun_partition_layer";
     pub const PARTITION_TYPE: &str = "rerun_partition_type";
     pub const STORAGE_URL: &str = "rerun_storage_url";
     pub const TASK_ID: &str = "rerun_task_id";
@@ -389,6 +324,7 @@ impl RegisterWithDatasetResponse {
     pub fn schema() -> Schema {
         Schema::new(vec![
             Field::new(Self::PARTITION_ID, DataType::Utf8, false),
+            Field::new(Self::PARTITION_LAYER, DataType::Utf8, false),
             Field::new(Self::PARTITION_TYPE, DataType::Utf8, false),
             Field::new(Self::STORAGE_URL, DataType::Utf8, false),
             Field::new(Self::TASK_ID, DataType::Utf8, false),
@@ -398,6 +334,7 @@ impl RegisterWithDatasetResponse {
     /// Helper to simplify instantiation of the dataframe in [`Self::data`].
     pub fn create_dataframe(
         partition_ids: Vec<String>,
+        partition_layers: Vec<String>,
         partition_types: Vec<String>,
         storage_urls: Vec<String>,
         task_ids: Vec<String>,
@@ -405,6 +342,7 @@ impl RegisterWithDatasetResponse {
         let schema = Arc::new(Self::schema());
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
+            Arc::new(StringArray::from(partition_layers)),
             Arc::new(StringArray::from(partition_types)),
             Arc::new(StringArray::from(storage_urls)),
             Arc::new(StringArray::from(task_ids)),
@@ -418,7 +356,7 @@ impl RegisterWithDatasetResponse {
 #[derive(Debug)]
 pub struct RegisterWithDatasetTaskDescriptor {
     pub partition_id: PartitionId,
-    pub partition_type: PartitionType,
+    pub partition_type: DataSourceKind,
     pub storage_url: url::Url,
     pub task_id: TaskId,
 }
@@ -488,65 +426,51 @@ impl ScanPartitionTableResponse {
 
 // --- DataSource --
 
-#[derive(Debug)]
-pub struct DataSource {
-    pub storage_url: url::Url,
-    pub kind: DataSourceKind,
+// NOTE: Match the values of the Protobuf definition to keep life simple.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum DataSourceKind {
+    Rrd = 1,
 }
 
-impl DataSource {
-    pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
-        Ok(Self {
-            storage_url: storage_url.as_ref().parse()?,
-            kind: DataSourceKind::Rrd,
-        })
-    }
-}
-
-impl From<DataSource> for crate::manifest_registry::v1alpha1::DataSource {
-    fn from(value: DataSource) -> Self {
-        crate::manifest_registry::v1alpha1::DataSource {
-            storage_url: Some(value.storage_url.to_string()),
-            typ: value.kind as i32,
-        }
-    }
-}
-
-impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
+impl TryFrom<crate::manifest_registry::v1alpha1::DataSourceKind> for DataSourceKind {
     type Error = TypeConversionError;
 
     fn try_from(
-        data_source: crate::manifest_registry::v1alpha1::DataSource,
+        kind: crate::manifest_registry::v1alpha1::DataSourceKind,
     ) -> Result<Self, Self::Error> {
-        let storage_url = data_source
-            .storage_url
-            .ok_or_else(|| {
-                missing_field!(
-                    crate::manifest_registry::v1alpha1::DataSource,
-                    "storage_url"
-                )
-            })?
-            .parse()?;
+        match kind {
+            crate::manifest_registry::v1alpha1::DataSourceKind::Rrd => Ok(Self::Rrd),
 
-        let kind = DataSourceKind::try_from(data_source.typ)?;
-        if kind == DataSourceKind::Unspecified {
-            return Err(invalid_field!(
-                crate::manifest_registry::v1alpha1::DataSource,
-                "typ",
-                "data source kind is unspecified"
-            ));
+            crate::manifest_registry::v1alpha1::DataSourceKind::Unspecified => {
+                return Err(TypeConversionError::InvalidField {
+                    package_name: "rerun.manifest_registry.v1alpha1",
+                    type_name: "DataSourceKind",
+                    field_name: "",
+                    reason: "enum value unspecified".to_owned(),
+                });
+            }
         }
-
-        Ok(Self { storage_url, kind })
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum PartitionType {
-    Rrd,
+impl TryFrom<i32> for DataSourceKind {
+    type Error = TypeConversionError;
+
+    fn try_from(kind: i32) -> Result<Self, Self::Error> {
+        let kind = crate::manifest_registry::v1alpha1::DataSourceKind::try_from(kind)?;
+        kind.try_into()
+    }
 }
 
-impl PartitionType {
+impl From<DataSourceKind> for crate::manifest_registry::v1alpha1::DataSourceKind {
+    fn from(value: DataSourceKind) -> Self {
+        match value {
+            DataSourceKind::Rrd => Self::Rrd,
+        }
+    }
+}
+
+impl DataSourceKind {
     pub fn to_arrow(self) -> ArrayRef {
         match self {
             Self::Rrd => {
@@ -596,40 +520,81 @@ impl PartitionType {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct PartitionDescriptor {
-    pub storage_url: String,
-    pub partition_type: PartitionType,
+#[test]
+fn datasourcekind_roundtrip() {
+    let kind = DataSourceKind::Rrd;
+    let kind: crate::manifest_registry::v1alpha1::DataSourceKind = kind.into();
+    let kind = DataSourceKind::try_from(kind).unwrap();
+    assert_eq!(DataSourceKind::Rrd, kind);
 }
 
-impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for PartitionDescriptor {
-    type Error = tonic::Status;
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DataSource {
+    pub storage_url: url::Url,
+    pub layer: String,
+    pub kind: DataSourceKind,
+}
 
-    fn try_from(
-        value: crate::manifest_registry::v1alpha1::DataSource,
-    ) -> Result<Self, Self::Error> {
+impl DataSource {
+    pub const DEFAULT_LAYER: &str = "base";
+
+    pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
         Ok(Self {
-            storage_url: value
-                .storage_url
-                .ok_or_else(|| tonic::Status::invalid_argument("query_data is required"))?,
+            storage_url: storage_url.as_ref().parse()?,
+            layer: Self::DEFAULT_LAYER.to_owned(),
+            kind: DataSourceKind::Rrd,
+        })
+    }
 
-            partition_type: DataSourceKind::try_from(value.typ)
-                .map_err(|err| {
-                    tonic::Status::invalid_argument(format!(
-                        "{} is not a valid DataSourceKind: {err}",
-                        value.typ
-                    ))
-                })?
-                .into(),
+    pub fn new_rrd_layer(
+        layer: impl AsRef<str>,
+        storage_url: impl AsRef<str>,
+    ) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            layer: layer.as_ref().into(),
+            kind: DataSourceKind::Rrd,
         })
     }
 }
 
-impl From<DataSourceKind> for PartitionType {
-    fn from(value: DataSourceKind) -> Self {
-        match value {
-            DataSourceKind::Unspecified | DataSourceKind::Rrd => Self::Rrd,
+impl From<DataSource> for crate::manifest_registry::v1alpha1::DataSource {
+    fn from(value: DataSource) -> Self {
+        crate::manifest_registry::v1alpha1::DataSource {
+            storage_url: Some(value.storage_url.to_string()),
+            layer: Some(value.layer),
+            typ: value.kind as i32,
         }
+    }
+}
+
+impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        data_source: crate::manifest_registry::v1alpha1::DataSource,
+    ) -> Result<Self, Self::Error> {
+        let storage_url = data_source
+            .storage_url
+            .ok_or_else(|| {
+                missing_field!(
+                    crate::manifest_registry::v1alpha1::DataSource,
+                    "storage_url"
+                )
+            })?
+            .parse()?;
+
+        let layer = data_source
+            .layer
+            .unwrap_or_else(|| Self::DEFAULT_LAYER.to_owned());
+
+        let kind = DataSourceKind::try_from(data_source.typ)?;
+
+        Ok(Self {
+            storage_url,
+            layer,
+            kind,
+        })
     }
 }
 

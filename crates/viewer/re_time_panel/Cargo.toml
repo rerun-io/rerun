@@ -41,7 +41,6 @@ re_viewport_blueprint.workspace = true
 egui.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-once_cell.workspace = true
 serde.workspace = true
 smallvec.workspace = true
 vec1.workspace = true

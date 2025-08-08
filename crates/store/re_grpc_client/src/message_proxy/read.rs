@@ -63,12 +63,13 @@ async fn stream_async(
         .map_err(TonicStatusError)?
         .into_inner();
 
+    let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
     loop {
         match stream.try_next().await {
             Ok(Some(ReadMessagesResponse {
                 log_msg: Some(log_msg_proto),
             })) => {
-                let mut log_msg = log_msg_from_proto(log_msg_proto)?;
+                let mut log_msg = log_msg_from_proto(&mut app_id_cache, log_msg_proto)?;
 
                 // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:
                 log_msg.insert_arrow_record_batch_metadata(

@@ -31,6 +31,10 @@ class AffixFuzzer12(ComponentMixin):
 
     many_strings_required: list[str] = field()
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AffixFuzzer12Ext in affix_fuzzer12_ext.py
+        return len(self.many_strings_required)
+
 
 AffixFuzzer12Like = AffixFuzzer12
 AffixFuzzer12ArrayLike = Union[

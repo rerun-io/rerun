@@ -41,7 +41,7 @@ fn main() -> anyhow::Result<()> {
         "/lattice",
         &GraphNodes::new(nodes)
             .with_colors(colors)
-            .with_labels(coordinates.clone().map(|(x, y)| format!("({}, {})", x, y))),
+            .with_labels(coordinates.clone().map(|(x, y)| format!("({x}, {y})"))),
     )?;
 
     let mut edges = Vec::new();

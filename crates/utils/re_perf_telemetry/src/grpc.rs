@@ -3,7 +3,7 @@
 /// Implements [`tower_http::trace::MakeSpan`] where the trace name is the gRPC method name.
 ///
 /// We keep track of a bunch of relevant in-house state associated with the span in `SpanMetadata`.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct GrpcMakeSpan {
     gauge: opentelemetry::metrics::Gauge<u64>,
 }
@@ -592,10 +592,10 @@ impl tonic::service::Interceptor for TracingInjectorInterceptor {
 
         impl opentelemetry::propagation::Injector for MetadataMap<'_> {
             fn set(&mut self, key: &str, value: String) {
-                if let Ok(key) = tonic::metadata::MetadataKey::from_bytes(key.as_bytes()) {
-                    if let Ok(val) = tonic::metadata::MetadataValue::try_from(&value) {
-                        self.0.insert(key, val);
-                    }
+                if let Ok(key) = tonic::metadata::MetadataKey::from_bytes(key.as_bytes())
+                    && let Ok(val) = tonic::metadata::MetadataValue::try_from(&value)
+                {
+                    self.0.insert(key, val);
                 }
             }
         }
@@ -637,7 +637,7 @@ impl tonic::service::Interceptor for TracingExtractorInterceptor {
 
         impl opentelemetry::propagation::Extractor for MetadataMap<'_> {
             fn get(&self, key: &str) -> Option<&str> {
-                self.0.get(key).and_then(|metadata| metadata.to_str().ok())
+                self.0.get(key)?.to_str().ok()
             }
 
             fn keys(&self) -> Vec<&str> {

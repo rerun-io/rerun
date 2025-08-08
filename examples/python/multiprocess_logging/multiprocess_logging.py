@@ -14,7 +14,7 @@ import rerun as rr  # pip install rerun-sdk
 # Python does not guarantee that the normal atexit-handlers will be called at the
 # termination of a multiprocessing.Process. Explicitly add the `shutdown_at_exit`
 # decorator to ensure data is flushed when the task completes.
-@rr.shutdown_at_exit
+@rr.shutdown_at_exit  # type: ignore[misc]
 def task(child_index: int) -> None:
     # In the new process, we always need to call init with the same `application_id`.
     # By default, the `recording_id`` will match the `recording_id`` of the parent process,

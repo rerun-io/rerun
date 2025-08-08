@@ -90,7 +90,7 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
     let view_class_registry = ctx.viewer_context.view_class_registry();
     let recording = ctx.viewer_context.recording();
     let maybe_visualizable_entities = view_class_registry
-        .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
+        .maybe_visualizable_entities_for_visualizer_systems(recording.store_id());
 
     for entry in view_class_registry.iter_registry() {
         let Some(suggested_origin) = entry

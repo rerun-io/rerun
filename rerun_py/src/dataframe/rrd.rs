@@ -4,7 +4,7 @@ use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::{PyResult, pyclass, pyfunction, pymethods};
 
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
-use re_log_types::{StoreId, StoreKind};
+use re_log_types::StoreId;
 
 use super::PyRecording;
 
@@ -23,7 +23,7 @@ impl PyRRDArchive {
     fn num_recordings(&self) -> usize {
         self.datasets
             .iter()
-            .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
+            .filter(|(id, _)| id.is_recording())
             .count()
     }
 
@@ -32,7 +32,7 @@ impl PyRRDArchive {
     fn all_recordings(&self) -> Vec<PyRecording> {
         self.datasets
             .iter()
-            .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
+            .filter(|(id, _)| id.is_recording())
             .map(|(_, store)| {
                 let cache = re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(
                     store.clone(),

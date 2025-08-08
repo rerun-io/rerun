@@ -150,9 +150,7 @@ impl ViewProperty {
         &self,
         component_descr: &ComponentDescriptor,
     ) -> Option<re_chunk::RowId> {
-        self.query_results
-            .get(component_descr)
-            .and_then(|unit| unit.row_id())
+        self.query_results.get(component_descr)?.row_id()
     }
 
     pub fn component_raw(
@@ -160,8 +158,8 @@ impl ViewProperty {
         component_descr: &ComponentDescriptor,
     ) -> Option<arrow::array::ArrayRef> {
         self.query_results
-            .get(component_descr)
-            .and_then(|unit| unit.component_batch_raw(component_descr))
+            .get(component_descr)?
+            .component_batch_raw(component_descr)
     }
 
     fn component_or_fallback_raw(
@@ -170,10 +168,10 @@ impl ViewProperty {
         component_descr: &ComponentDescriptor,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) -> arrow::array::ArrayRef {
-        if let Some(value) = self.component_raw(component_descr) {
-            if value.len() > 0 {
-                return value;
-            }
+        if let Some(value) = self.component_raw(component_descr)
+            && !value.is_empty()
+        {
+            return value;
         }
 
         fallback_provider.fallback_for(&self.query_context(ctx), component_descr)

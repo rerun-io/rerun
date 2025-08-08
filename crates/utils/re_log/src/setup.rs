@@ -125,17 +125,17 @@ impl Drop for PanicOnWarnScope {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn env_var_bool(name: &str) -> Option<bool> {
-    std::env::var(name).ok()
-        .and_then(|s| match s.to_lowercase().as_str() {
-            "0" | "false" | "off" | "no" => Some(false),
-            "1" | "true" | "on" | "yes" => Some(true),
-            _ => {
-                crate::warn!(
-                    "Invalid value for environment variable {name}={s:?}. Expected 'on' or 'off'. It will be ignored"
-                );
-                None
-            }
-        })
+    let s = std::env::var(name).ok()?;
+    match s.to_lowercase().as_str() {
+        "0" | "false" | "off" | "no" => Some(false),
+        "1" | "true" | "on" | "yes" => Some(true),
+        _ => {
+            crate::warn!(
+                "Invalid value for environment variable {name}={s:?}. Expected 'on' or 'off'. It will be ignored"
+            );
+            None
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

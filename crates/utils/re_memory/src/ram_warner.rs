@@ -48,15 +48,16 @@ impl RamLimitWarner {
         if !self.has_warned {
             let used = crate::MemoryUse::capture();
             let used = used.counted.or(used.resident);
-            if let Some(used) = used {
-                if 0 <= used && self.warn_limit <= used as u64 {
-                    self.has_warned = true;
-                    re_log::warn!(
-                        "RAM usage is {} (with a total of {} system RAM). You may want to start Rerun with the --memory-limit flag to limit RAM usage.",
-                        re_format::format_bytes(used as _),
-                        re_format::format_bytes(self.total_ram_in_bytes as _),
-                    );
-                }
+            if let Some(used) = used
+                && 0 <= used
+                && self.warn_limit <= used as u64
+            {
+                self.has_warned = true;
+                re_log::warn!(
+                    "RAM usage is {} (with a total of {} system RAM). You may want to start Rerun with the --memory-limit flag to limit RAM usage.",
+                    re_format::format_bytes(used as _),
+                    re_format::format_bytes(self.total_ram_in_bytes as _),
+                );
             }
         }
     }

@@ -53,6 +53,10 @@ EXECUTABLE_EXTENSION = ""
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
 
+# TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
+[target.osx-arm64.activation.env]
+AR = "${PIXI_PROJECT_ROOT}/.pixi/envs/default/bin/llvm-ar"
+
 # python-dev
 
 [feature.python-dev.activation.env]
@@ -313,8 +317,11 @@ misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
 py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
-py-lint = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore"
-
+# Get non-internal things that are ok to not check rerun on
+py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+# Need to run this in env with rerun installed
+py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore"
+py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun"] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
@@ -596,7 +603,7 @@ pytest = ">=7"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.9.6.*"
-semver = ">=2.13,<2.14"
+semver = ">=3.0,<3.1"
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
@@ -636,6 +643,7 @@ buf = "1.*"             # not available for linux-aarch64
 buf = "1.*"             # not available for linux-aarch64
 libgfortran5 = ">=14"   # Fixes issues with OpenCV
 meilisearch = "1.5.1.*" # not available for linux-aarch64
+llvm-tools = "16.0.6.*" # TODO(rust-lang/stacker#127)
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64
@@ -685,7 +693,7 @@ numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi d
 # This is very similar to `pixi run py-build`, and dispatches to maturin by way of PEP621.
 # However, pixi doesn't know how to track the rust dependencies of the python package, so
 # you still need to `pixi run py-build` in the correct environment if you change the rust code.
-rerun-sdk = { path = "rerun_py", editable = true }
+rerun-sdk = { path = "rerun_py", editable = true, extras = ["all"] }
 
 # The same applies to the notebook.
 # However, in order to build rerun-notebook and thus to even activate environments with the
@@ -719,7 +727,7 @@ av = ">=14.2.0"
 # Torch is needed to run the rerun unit tests.
 # This dependency is here to get torch into the pixi cache because it's large and installing it
 # during the wheel-test task itself is otherwise painful.
-torch = "==2.6.0" # This must match the torch version in any package we install during `wheel-test`
+torch = "==2.8.0" # This must match the torch version in any package we install during `wheel-test`
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
@@ -735,8 +743,8 @@ numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi d
 
 
 [feature.python-pypi.pypi-dependencies]
-rerun-sdk = "==0.24.0a6"
-rerun-notebook = "==0.24.0a6"
+rerun-sdk = { version = "==0.24.0", extras = ["all"] }
+rerun-notebook = "==0.24.0"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
@@ -759,7 +767,7 @@ umap-learn = "==0.5.7"
 [feature.examples-common.pypi-dependencies]
 # External deps
 av = ">=14.2.0"
-datafusion = "==45.2.0"
+datafusion = "==47.0.0"
 jupyter = ">=1.0"
 polars = ">=0.12.0"
 

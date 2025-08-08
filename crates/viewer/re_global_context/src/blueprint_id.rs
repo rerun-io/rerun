@@ -1,7 +1,5 @@
 use std::hash::BuildHasher as _;
 
-use once_cell::sync::Lazy;
-
 use re_log_types::{EntityPath, EntityPathPart};
 
 pub trait BlueprintIdRegistry {
@@ -164,7 +162,8 @@ macro_rules! define_blueprint_id_type {
             }
 
             fn registry_path() -> &'static EntityPath {
-                static REGISTRY_PATH: Lazy<EntityPath> = Lazy::new(|| $registry::REGISTRY.into());
+                static REGISTRY_PATH: std::sync::LazyLock<EntityPath> =
+                    std::sync::LazyLock::new(|| $registry::REGISTRY.into());
                 &REGISTRY_PATH
             }
         }

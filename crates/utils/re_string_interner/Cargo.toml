@@ -26,7 +26,6 @@ serde = ["dep:serde"]
 [dependencies]
 ahash.workspace = true
 nohash-hasher.workspace = true
-once_cell.workspace = true
 parking_lot.workspace = true
 static_assertions.workspace = true
 

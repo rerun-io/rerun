@@ -454,16 +454,16 @@ impl BranchNode {
         for ci in 0..NUM_CHILDREN_IN_NODE {
             let child_addr = my_addr + ci * child_size;
             let child_range = RangeU64::new(child_addr, child_addr + (child_size - 1));
-            if range.intersects(child_range) {
-                if let Some(child) = &mut self.children[ci as usize] {
-                    if range.contains_all_of(child_range) {
-                        count_loss += child.total_count();
+            if range.intersects(child_range)
+                && let Some(child) = &mut self.children[ci as usize]
+            {
+                if range.contains_all_of(child_range) {
+                    count_loss += child.total_count();
+                    self.children[ci as usize] = None;
+                } else {
+                    count_loss += child.remove(child_addr, child_level, range);
+                    if child.is_empty() {
                         self.children[ci as usize] = None;
-                    } else {
-                        count_loss += child.remove(child_addr, child_level, range);
-                        if child.is_empty() {
-                            self.children[ci as usize] = None;
-                        }
                     }
                 }
             }
@@ -489,10 +489,10 @@ impl BranchNode {
 
         for ci in 0..NUM_CHILDREN_IN_NODE {
             let child_addr = my_addr + ci * child_size;
-            if let Some(child) = &self.children[ci as usize] {
-                if let Some(min_key) = child.min_key(child_addr, child_level) {
-                    return Some(min_key);
-                }
+            if let Some(child) = &self.children[ci as usize]
+                && let Some(min_key) = child.min_key(child_addr, child_level)
+            {
+                return Some(min_key);
             }
         }
         None
@@ -505,10 +505,10 @@ impl BranchNode {
 
         for ci in (0..NUM_CHILDREN_IN_NODE).rev() {
             let child_addr = my_addr + ci * child_size;
-            if let Some(child) = &self.children[ci as usize] {
-                if let Some(max_key) = child.max_key(child_addr, child_level) {
-                    return Some(max_key);
-                }
+            if let Some(child) = &self.children[ci as usize]
+                && let Some(max_key) = child.max_key(child_addr, child_level)
+            {
+                return Some(max_key);
             }
         }
         None
@@ -525,13 +525,13 @@ impl BranchNode {
         for ci in 0..NUM_CHILDREN_IN_NODE {
             let child_addr = my_addr + ci * child_size;
             let child_range = RangeU64::new(child_addr, child_addr + (child_size - 1));
-            if range.intersects(child_range) {
-                if let Some(child) = &self.children[ci as usize] {
-                    if range.contains_all_of(child_range) {
-                        total_count += child.total_count();
-                    } else {
-                        total_count += child.range_count(child_addr, child_level, range);
-                    }
+            if range.intersects(child_range)
+                && let Some(child) = &self.children[ci as usize]
+            {
+                if range.contains_all_of(child_range) {
+                    total_count += child.total_count();
+                } else {
+                    total_count += child.range_count(child_addr, child_level, range);
                 }
             }
         }
@@ -545,11 +545,11 @@ impl SparseLeaf {
     fn increment(mut self, level: Level, abs_addr: u64, inc: u32) -> Node {
         let index = self.addrs.partition_point(|&addr| addr < abs_addr);
 
-        if let (Some(addr), Some(count)) = (self.addrs.get_mut(index), self.counts.get_mut(index)) {
-            if *addr == abs_addr {
-                *count += inc;
-                return Node::SparseLeaf(self);
-            }
+        if let (Some(addr), Some(count)) = (self.addrs.get_mut(index), self.counts.get_mut(index))
+            && *addr == abs_addr
+        {
+            *count += inc;
+            return Node::SparseLeaf(self);
         }
 
         if self.addrs.len() < MAX_SPARSE_LEAF_LEN {
@@ -583,22 +583,22 @@ impl SparseLeaf {
 
         let index = self.addrs.partition_point(|&addr| addr < abs_addr);
 
-        if let (Some(addr), Some(count)) = (self.addrs.get_mut(index), self.counts.get_mut(index)) {
-            if *addr == abs_addr {
-                return if dec < *count {
-                    *count -= dec;
-                    dec
-                } else {
-                    let count_loss = *count;
+        if let (Some(addr), Some(count)) = (self.addrs.get_mut(index), self.counts.get_mut(index))
+            && *addr == abs_addr
+        {
+            return if dec < *count {
+                *count -= dec;
+                dec
+            } else {
+                let count_loss = *count;
 
-                    // The bucket is now empty - remove it:
-                    self.addrs.remove(index);
-                    self.counts.remove(index);
-                    debug_assert_eq!(self.addrs.len(), self.counts.len());
+                // The bucket is now empty - remove it:
+                self.addrs.remove(index);
+                self.counts.remove(index);
+                debug_assert_eq!(self.addrs.len(), self.counts.len());
 
-                    count_loss
-                };
-            }
+                count_loss
+            };
         }
 
         0 // not found
@@ -757,37 +757,35 @@ impl Iterator for TreeIterator<'_> {
                             min: child_addr,
                             max: child_addr + (child_size - 1),
                         };
-                        if self.range.intersects(child_range) {
-                            if let Some(Some(child)) = node.children.get(it.index) {
-                                it.index += 1;
+                        if self.range.intersects(child_range)
+                            && let Some(Some(child)) = node.children.get(it.index)
+                        {
+                            it.index += 1;
 
-                                if child_size <= self.cutoff_size
-                                    && self.range.contains_all_of(child_range)
-                                {
-                                    // We can return the whole child, but first find a tight range of it:
-                                    if let (Some(min_key), Some(max_key)) = (
-                                        child.min_key(child_addr, child_level),
-                                        child.max_key(child_addr, child_level),
-                                    ) {
-                                        return Some((
-                                            RangeU64::new(min_key, max_key),
-                                            child.total_count(),
-                                        ));
-                                    } else {
-                                        unreachable!(
-                                            "A `BranchNode` can only have non-empty children"
-                                        );
-                                    }
+                            if child_size <= self.cutoff_size
+                                && self.range.contains_all_of(child_range)
+                            {
+                                // We can return the whole child, but first find a tight range of it:
+                                if let (Some(min_key), Some(max_key)) = (
+                                    child.min_key(child_addr, child_level),
+                                    child.max_key(child_addr, child_level),
+                                ) {
+                                    return Some((
+                                        RangeU64::new(min_key, max_key),
+                                        child.total_count(),
+                                    ));
+                                } else {
+                                    unreachable!("A `BranchNode` can only have non-empty children");
                                 }
-
-                                self.stack.push(NodeIterator {
-                                    level: child_level,
-                                    abs_addr: child_addr,
-                                    node: child,
-                                    index: 0,
-                                });
-                                continue 'outer;
                             }
+
+                            self.stack.push(NodeIterator {
+                                level: child_level,
+                                abs_addr: child_addr,
+                                node: child,
+                                index: 0,
+                            });
+                            continue 'outer;
                         }
                         it.index += 1;
                     }

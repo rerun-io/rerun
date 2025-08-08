@@ -40,17 +40,11 @@ impl RedapUri {
         }
     }
 
-    fn partition_id(&self) -> Option<&str> {
+    pub fn store_id(&self) -> Option<StoreId> {
         match self {
-            Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) => None,
-            Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.partition_id.as_str()),
+            Self::Catalog(_) | Self::Entry(_) | Self::Proxy(_) => None,
+            Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.store_id()),
         }
-    }
-
-    pub fn recording_id(&self) -> Option<StoreId> {
-        self.partition_id().map(|partition_id| {
-            StoreId::from_string(re_log_types::StoreKind::Recording, partition_id.to_owned())
-        })
     }
 }
 
@@ -135,11 +129,9 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unnecessary_fallible_conversions)]
-
     use re_log_types::DataPath;
 
-    use crate::{Fragment, Scheme, TimeRange};
+    use crate::{Fragment, Scheme, TimeSelection};
 
     use super::*;
     use core::net::Ipv4Addr;
@@ -286,10 +278,9 @@ mod tests {
         assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
-            Some(TimeRange {
+            Some(TimeSelection {
                 timeline: re_log_types::Timeline::new_sequence("timeline"),
-                min: 100.try_into().unwrap(),
-                max: 200.try_into().unwrap(),
+                range: re_log_types::AbsoluteTimeRange::new(100, 200),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -321,10 +312,12 @@ mod tests {
         assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
-            Some(TimeRange {
+            Some(TimeSelection {
                 timeline: re_log_types::Timeline::new_timestamp("log_time"),
-                min: 1_640_995_203_123_456_789.try_into().unwrap(),
-                max: 1_640_995_213_123_456_789.try_into().unwrap(),
+                range: re_log_types::AbsoluteTimeRange::new(
+                    1_640_995_203_123_456_789,
+                    1_640_995_213_123_456_789,
+                ),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -359,10 +352,12 @@ mod tests {
             assert_eq!(partition_id, "pid");
             assert_eq!(
                 time_range,
-                Some(TimeRange {
+                Some(TimeSelection {
                     timeline: re_log_types::Timeline::new_duration("timeline"),
-                    min: re_log_types::TimeInt::from_secs(1.23).try_into().unwrap(),
-                    max: re_log_types::TimeInt::from_secs(72.0).try_into().unwrap(),
+                    range: re_log_types::AbsoluteTimeRange::new(
+                        re_log_types::TimeInt::from_secs(1.23),
+                        re_log_types::TimeInt::from_secs(72.0),
+                    ),
                 })
             );
             assert_eq!(fragment, Default::default());
@@ -431,10 +426,7 @@ mod tests {
         let url = "http://wrong-scheme:1234/recording/12345";
         let address: Result<RedapUri, _> = url.parse();
 
-        assert!(matches!(
-            address.unwrap_err(),
-            super::Error::InvalidScheme { .. }
-        ));
+        assert!(matches!(address.unwrap_err(), super::Error::InvalidScheme));
     }
 
     #[test]

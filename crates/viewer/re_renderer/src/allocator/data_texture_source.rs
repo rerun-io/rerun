@@ -43,12 +43,12 @@ pub struct DataTextureSource<'a, T: Pod + Send + Sync> {
     ///
     /// 1. fill the last buffer to its maximum capacity before starting writing to the next,
     ///    allow arbitrary amount of empty buffers
-    ///      -> Pro: makes the final gpu copies easy, we don't have to juggle weird offsets and several copies per buffer!
-    ///      -> Con: may need to spread writes over several buffers
+    ///    - Pro: makes the final gpu copies easy, we don't have to juggle weird offsets and several copies per buffer!
+    ///    - Con: may need to spread writes over several buffers
     /// 2. create a new buffer whenever a write doesn't fully fit into the active buffer,
     ///    even if the last buffer has some remaining capacity, allow arbitrary amount of half-filled buffers
-    ///      -> Pro: All writes can go to a single buffer, which is simpler & faster.
-    ///      -> Con: We waste space and copying to the texture is harder
+    ///    - Pro: All writes can go to a single buffer, which is simpler & faster.
+    ///    - Con: We waste space and copying to the texture is harder
     ///
     /// We're going with option (1)!
     ///
@@ -157,7 +157,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
     /// * have a total capacity for at least as many elements as requested, clamping total size to [`max_num_elements_per_data_texture`]
     /// * be at least double the size of the last buffer
     /// * keep it easy to copy to textures by always being a multiple of the maximum row size we use for data textures
-    ///      -> this massively simplifies the buffer->texture copy logic!
+    ///   - this massively simplifies the buffer->texture copy logic!
     pub fn reserve(&mut self, num_elements: usize) -> Result<usize, CpuWriteGpuReadError> {
         let remaining_capacity = self.remaining_capacity();
         if remaining_capacity >= num_elements {

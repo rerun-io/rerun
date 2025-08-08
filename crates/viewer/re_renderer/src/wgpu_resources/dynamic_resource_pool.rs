@@ -93,17 +93,17 @@ where
         let mut state = self.state.write();
 
         // First check if we can reclaim a resource we have around from a previous frame.
-        if desc.allow_reuse() {
-            if let Entry::Occupied(mut entry) = state.last_frame_deallocated.entry(desc.clone()) {
-                re_log::trace!(?desc, "Reclaimed previously discarded resource");
+        if desc.allow_reuse()
+            && let Entry::Occupied(mut entry) = state.last_frame_deallocated.entry(desc.clone())
+        {
+            re_log::trace!(?desc, "Reclaimed previously discarded resource");
 
-                let handle = entry.get_mut().pop().unwrap();
-                if entry.get().is_empty() {
-                    entry.remove();
-                }
-
-                return state.all_resources[handle].clone();
+            let handle = entry.get_mut().pop().unwrap();
+            if entry.get().is_empty() {
+                entry.remove();
             }
+
+            return state.all_resources[handle].clone();
         }
 
         // Otherwise create a new resource

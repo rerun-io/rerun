@@ -16,7 +16,7 @@ use rerun::{
     ChunkStoreEvent, ChunkStoreSubscriber, ComponentDescriptor, EntityPath, StoreId,
     external::{
         anyhow, re_build_info, re_chunk_store, re_log,
-        re_log_types::{ResolvedTimeRange, TimelineName},
+        re_log_types::{AbsoluteTimeRange, TimelineName},
     },
     time::{TimeInt, TimeType},
 };
@@ -110,14 +110,14 @@ impl ChunkStoreSubscriber for ComponentsPerRecording {
                 // if first occurrence, speak!
                 if event.delta() > 0 && *count == 0 {
                     println!(
-                        "New component introduced in recording {}: {}!",
+                        "New component introduced in recording {:?}: {}!",
                         event.store_id, component_descr,
                     );
                 }
                 // if last occurrence, speak!
                 else if event.delta() < 0 && *count <= event.delta().unsigned_abs() {
                     println!(
-                        "Component retired from recording {}: {}!",
+                        "Component retired from recording {:?}: {}!",
                         event.store_id, component_descr,
                     );
                 }
@@ -133,8 +133,8 @@ impl ChunkStoreSubscriber for ComponentsPerRecording {
         println!("Component stats");
         println!("---------------");
 
-        for (recording, per_component) in &self.counters {
-            println!("  Recording '{recording}':"); // NOLINT
+        for (store_id, per_component) in &self.counters {
+            println!("  Recording '{store_id:?}':"); // NOLINT
             for (component, counter) in per_component {
                 println!("    {component}: {counter} occurrences");
             }
@@ -202,7 +202,7 @@ impl ChunkStoreSubscriber for TimeRangesPerEntity {
         for (entity_path, per_timeline) in &self.times {
             println!("  {entity_path}:");
             for (timeline, times) in per_timeline {
-                let time_range = ResolvedTimeRange::new(
+                let time_range = AbsoluteTimeRange::new(
                     times
                         .first_key_value()
                         .map_or(TimeInt::MIN, |(time, _)| *time),

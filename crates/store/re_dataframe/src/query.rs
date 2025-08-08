@@ -29,7 +29,7 @@ use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
     IndexValue, QueryExpression, SparseFillStrategy,
 };
-use re_log_types::ResolvedTimeRange;
+use re_log_types::AbsoluteTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, RowIdColumnDescriptor, TimeColumnSelector,
@@ -205,18 +205,18 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // 4. Perform the query and keep track of all the relevant chunks.
         let query = {
             let index_range = if self.query.filtered_index.is_none() {
-                ResolvedTimeRange::EMPTY // static-only
+                AbsoluteTimeRange::EMPTY // static-only
             } else if let Some(using_index_values) = self.query.using_index_values.as_ref() {
                 using_index_values
                     .first()
                     .and_then(|start| using_index_values.last().map(|end| (start, end)))
-                    .map_or(ResolvedTimeRange::EMPTY, |(start, end)| {
-                        ResolvedTimeRange::new(*start, *end)
+                    .map_or(AbsoluteTimeRange::EMPTY, |(start, end)| {
+                        AbsoluteTimeRange::new(*start, *end)
                     })
             } else {
                 self.query
                     .filtered_index_range
-                    .unwrap_or(ResolvedTimeRange::EVERYTHING)
+                    .unwrap_or(AbsoluteTimeRange::EVERYTHING)
             };
 
             RangeQuery::new(filtered_index, index_range)
@@ -487,10 +487,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         .fetch_chunks(store, cache, query, &column.entity_path, [&column.into()])
                         .unwrap_or_default();
 
-                    if let Some(pov) = self.query.filtered_is_not_null.as_ref() {
-                        if column.matches(pov) {
-                            view_pov_chunks_idx = Some(idx);
-                        }
+                    if let Some(pov) = self.query.filtered_is_not_null.as_ref()
+                        && column.matches(pov)
+                    {
+                        view_pov_chunks_idx = Some(idx);
                     }
 
                     chunks
@@ -1001,7 +1001,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         cursor: cur_cursor_value,
                         row_id: cur_row_id,
                     });
-                };
+                }
             }
         }
 
@@ -1171,46 +1171,45 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .map(|(view_idx, streaming_state)| {
                 // NOTE: Reminder: the only reason the streaming state could be `None` here is
                 // because this column does not have data for the current index value (i.e. `null`).
-                streaming_state.as_ref().and_then(|streaming_state| {
-                    let list_array = match streaming_state {
-                        StreamingJoinState::StreamingJoinState(s) => {
-                            debug_assert!(
-                                s.chunk.components().iter().count() <= 1,
-                                "cannot possibly get more than one component with this query"
-                            );
+                let streaming_state = streaming_state.as_ref()?;
+                let list_array = match streaming_state {
+                    StreamingJoinState::StreamingJoinState(s) => {
+                        debug_assert!(
+                            s.chunk.components().iter().count() <= 1,
+                            "cannot possibly get more than one component with this query"
+                        );
 
-                            s.chunk
-                                .components()
-                                .iter()
-                                .next()
-                                .map(|(_, list_array)| list_array.slice(s.cursor as usize, 1))
+                        s.chunk
+                            .components()
+                            .iter()
+                            .next()
+                            .map(|(_, list_array)| list_array.slice(s.cursor as usize, 1))
 
-                        }
+                    }
 
-                        StreamingJoinState::Retrofilled(unit) => {
-                            let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| if let ColumnDescriptor::Component(descr) = col {
-                                if let Some(component_type) = descr.component_type  { component_type.sanity_check(); }
-                                Some(re_types_core::ComponentDescriptor {
-                                    component_type: descr.component_type,
-                                    archetype: descr.archetype,
-                                    component: descr.component,
-                                })
-                            } else {
-                                None
-                            })?;
-                            unit.components().get(&component_desc).cloned()
-                        }
-                    };
+                    StreamingJoinState::Retrofilled(unit) => {
+                        let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| if let ColumnDescriptor::Component(descr) = col {
+                            if let Some(component_type) = descr.component_type  { component_type.sanity_check(); }
+                            Some(re_types_core::ComponentDescriptor {
+                                component_type: descr.component_type,
+                                archetype: descr.archetype,
+                                component: descr.component,
+                            })
+                        } else {
+                            None
+                        })?;
+                        unit.components().get(&component_desc).cloned()
+                    }
+                };
 
 
-                    debug_assert!(
-                        list_array.is_some(),
-                        "This must exist or the chunk wouldn't have been sliced/retrofilled to start with."
-                    );
+                debug_assert!(
+                    list_array.is_some(),
+                    "This must exist or the chunk wouldn't have been sliced/retrofilled to start with."
+                );
 
-                    // NOTE: This cannot possibly return None, see assert above.
-                    list_array
-                })
+                // NOTE: This cannot possibly return None, see assert above.
+                list_array
             })
             .collect();
 
@@ -1339,7 +1338,7 @@ mod tests {
 
     use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimePoint};
     use re_chunk_store::{
-        ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, ResolvedTimeRange, TimeInt,
+        AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, TimeInt,
     };
     use re_format_arrow::format_record_batch;
     use re_log_types::{
@@ -1494,7 +1493,7 @@ mod tests {
         let filtered_index = Some(TimelineName::new("frame_nr"));
         let query = QueryExpression {
             filtered_index,
-            filtered_index_range: Some(ResolvedTimeRange::new(30, 60)),
+            filtered_index_range: Some(AbsoluteTimeRange::new(30, 60)),
             ..Default::default()
         };
         eprintln!("{query:#?}:");
@@ -2311,7 +2310,7 @@ mod tests {
         re_log::setup_logging();
 
         let store = ChunkStore::new_handle(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             ChunkStoreConfig::COMPACTION_DISABLED,
         );
 
@@ -2519,7 +2518,7 @@ mod tests {
     /// repeated timestamps, duplicated chunks, partial multi-timelines, flat and recursive clears, etc.
     fn create_nasty_store() -> anyhow::Result<ChunkStore> {
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             ChunkStoreConfig::COMPACTION_DISABLED,
         );
 

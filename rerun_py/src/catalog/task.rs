@@ -84,7 +84,7 @@ impl PyTasks {
     pub fn status_table(&self, py: Python<'_>) -> PyResult<PyDataFusionTable> {
         let connection = self.client.borrow(py).connection().clone();
 
-        // TODO(dataplatform/issues#709): we'd use `OperationId` here if we had it.
+        // TODO(rerun-io/dataplatform#709): we'd use `OperationId` here if we had it.
         let hash = Hash64::hash(&self.ids);
         let name = format!("__tasks_{:x}__", hash.hash64());
 

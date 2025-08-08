@@ -4,7 +4,7 @@ use insta::Settings;
 use re_chunk::{Chunk, ChunkId, RowId};
 use re_chunk_store::ChunkStore;
 use re_log_types::{
-    EntityPath, Timestamp, build_frame_nr, build_log_time,
+    ApplicationId, EntityPath, Timestamp, build_frame_nr, build_log_time,
     example_components::{MyColor, MyIndex, MyPoints},
 };
 use re_types_core::ComponentBatch as _;
@@ -15,8 +15,9 @@ fn format_chunk_store() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let mut store = ChunkStore::new(
-        re_log_types::StoreId::from_string(
+        re_log_types::StoreId::new(
             re_log_types::StoreKind::Recording,
+            ApplicationId::from("test_app"),
             "test_id".to_owned(),
         ),
         Default::default(),

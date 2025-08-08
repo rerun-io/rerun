@@ -77,16 +77,17 @@ impl ::re_types_core::Loggable for Mat4x4 {
                     .into_iter()
                     .flat_map(|v| match v {
                         Some(v) => itertools::Either::Left(v.into_iter()),
-                        None => itertools::Either::Right(
-                            std::iter::repeat(Default::default()).take(16usize),
-                        ),
+                        None => itertools::Either::Right(std::iter::repeat_n(
+                            Default::default(),
+                            16usize,
+                        )),
                     })
                     .collect();
                 let data0_inner_validity: Option<arrow::buffer::NullBuffer> =
                     data0_validity.as_ref().map(|validity| {
                         validity
                             .iter()
-                            .map(|b| std::iter::repeat(b).take(16usize))
+                            .map(|b| std::iter::repeat_n(b, 16usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()

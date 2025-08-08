@@ -112,6 +112,10 @@ impl ::prost::Name for BlueprintActivationCommand {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StoreInfo {
     /// User-chosen name of the application doing the logging.
+    ///
+    /// This is deprecated and kept for backward compatibility.
+    /// TODO(#10730): turn that into `reserved` statement when removing backward compatibility
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub application_id: ::core::option::Option<super::super::common::v1alpha1::ApplicationId>,
     /// Unique ID of the recording.

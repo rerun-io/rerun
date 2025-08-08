@@ -58,7 +58,7 @@ fn main() {
     };
 
     let mut decoder = re_video::new_decoder(
-        &video_path.to_string(),
+        video_path,
         &video,
         &re_video::DecodeSettings::default(),
         on_output,

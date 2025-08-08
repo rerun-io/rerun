@@ -33,7 +33,7 @@ impl CommandSender {
                     re_log::error!("File saving failed: {err}");
                 } else {
                     re_log::info!("{file_name} saved.");
-                };
+                }
             });
         }
 

@@ -109,7 +109,7 @@ impl MemoryHistory {
                     viewer_cache_size,
                 } = stats;
 
-                match store_id.kind {
+                match store_id.kind() {
                     re_log_types::StoreKind::Blueprint => {
                         sum_blueprints += store_stats.total().total_size_bytes;
                     }

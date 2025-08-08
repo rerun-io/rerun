@@ -121,7 +121,7 @@ impl DragDropAddress {
                     );
                 }
             }
-        };
+        }
     }
 }
 
@@ -193,14 +193,14 @@ pub fn dimension_mapping_ui(
                     &mut drop_target,
                 );
                 ui.horizontal(|ui| {
-                    if let Some(mut width) = slice_selection.width {
-                        if ui.toggle_value(&mut width.invert, "Flip").changed() {
-                            slice_property.save_blueprint_component(
-                                ctx,
-                                &archetypes::TensorSliceSelection::descriptor_width(),
-                                &width,
-                            );
-                        }
+                    if let Some(mut width) = slice_selection.width
+                        && ui.toggle_value(&mut width.invert, "Flip").changed()
+                    {
+                        slice_property.save_blueprint_component(
+                            ctx,
+                            &archetypes::TensorSliceSelection::descriptor_width(),
+                            &width,
+                        );
                     }
                     ui.label("width");
                 });
@@ -217,14 +217,14 @@ pub fn dimension_mapping_ui(
                 );
 
                 ui.horizontal(|ui| {
-                    if let Some(mut height) = slice_selection.height {
-                        if ui.toggle_value(&mut height.invert, "Flip").changed() {
-                            slice_property.save_blueprint_component(
-                                ctx,
-                                &archetypes::TensorSliceSelection::descriptor_height(),
-                                &height,
-                            );
-                        }
+                    if let Some(mut height) = slice_selection.height
+                        && ui.toggle_value(&mut height.invert, "Flip").changed()
+                    {
+                        slice_property.save_blueprint_component(
+                            ctx,
+                            &archetypes::TensorSliceSelection::descriptor_height(),
+                            &height,
+                        );
                     }
                     ui.label("height");
                 });

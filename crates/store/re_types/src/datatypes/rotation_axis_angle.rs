@@ -98,7 +98,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                 axis_validity.as_ref().map(|validity| {
                                     validity
                                         .iter()
-                                        .map(|b| std::iter::repeat(b).take(3usize))
+                                        .map(|b| std::iter::repeat_n(b, 3usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()

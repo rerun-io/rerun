@@ -261,9 +261,10 @@ fn format_dataframe_with_metadata(
 
         outer_table.add_row(vec![table.trim_fmt()]);
         outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
-        outer_table.set_constraints(
-            std::iter::repeat(comfy_table::ColumnConstraint::ContentWidth).take(num_columns),
-        );
+        outer_table.set_constraints(std::iter::repeat_n(
+            comfy_table::ColumnConstraint::ContentWidth,
+            num_columns,
+        ));
         outer_table
     } else {
         table
@@ -414,10 +415,10 @@ fn format_dataframe_without_metadata(
     // NOTE: `Percentage` only works for terminals that report their sizes.
     if table.width().is_some() {
         let percentage = comfy_table::Width::Percentage((100.0 / num_columns as f32) as u16);
-        table.set_constraints(
-            std::iter::repeat(comfy_table::ColumnConstraint::UpperBoundary(percentage))
-                .take(num_columns),
-        );
+        table.set_constraints(std::iter::repeat_n(
+            comfy_table::ColumnConstraint::UpperBoundary(percentage),
+            num_columns,
+        ));
     }
 
     (num_columns, table)

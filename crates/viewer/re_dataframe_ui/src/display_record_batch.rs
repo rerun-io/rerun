@@ -240,27 +240,27 @@ impl DisplayComponentColumn {
 
             let blob = Blob::from_arrow(&data_to_display).ok();
 
-            if let Some(blob) = blob.as_ref().and_then(|b| b.first()) {
-                if Self::is_blob_image(blob) {
-                    variant_name = Some(VariantName::from(REDAP_THUMBNAIL_VARIANT));
+            if let Some(blob) = blob.as_ref().and_then(|b| b.first())
+                && Self::is_blob_image(blob)
+            {
+                variant_name = Some(VariantName::from(REDAP_THUMBNAIL_VARIANT));
 
-                    // TODO(ab): we should find an alternative to using content-hashing to generate cache
-                    // keys.
-                    //
-                    // Generate a content-based cache key if we don't have one already. This is needed
-                    // because without cache key, the image thumbnail will no be displayed by the component
-                    // ui.
-                    if row_id.is_none() {
-                        re_tracing::profile_scope!("Blob hash");
+                // TODO(ab): we should find an alternative to using content-hashing to generate cache
+                // keys.
+                //
+                // Generate a content-based cache key if we don't have one already. This is needed
+                // because without cache key, the image thumbnail will no be displayed by the component
+                // ui.
+                if row_id.is_none() {
+                    re_tracing::profile_scope!("Blob hash");
 
-                        // cap the max amount of data to hash to 9 KiB
-                        const SECTION_LENGTH: usize = 3 * 1024;
+                    // cap the max amount of data to hash to 9 KiB
+                    const SECTION_LENGTH: usize = 3 * 1024;
 
-                        // TODO(andreas, ab): This is a hack to create a pretend-row-id from the content hash.
-                        row_id = Some(RowId::from_u128(
-                            quick_partial_hash(blob.as_ref(), SECTION_LENGTH).hash64() as _,
-                        ));
-                    }
+                    // TODO(andreas, ab): This is a hack to create a pretend-row-id from the content hash.
+                    row_id = Some(RowId::from_u128(
+                        quick_partial_hash(blob.as_ref(), SECTION_LENGTH).hash64() as _,
+                    ));
                 }
             }
 
@@ -304,7 +304,9 @@ pub enum DisplayColumn {
         time_data: ArrowScalarBuffer<i64>,
         time_nulls: Option<ArrowNullBuffer>,
     },
-    Component(DisplayComponentColumn),
+
+    // Boxed for size reasons.
+    Component(Box<DisplayComponentColumn>),
 }
 
 impl DisplayColumn {
@@ -333,13 +335,15 @@ impl DisplayColumn {
                     time_nulls,
                 })
             }
-            ColumnDescriptorRef::Component(desc) => Ok(Self::Component(DisplayComponentColumn {
-                entity_path: desc.entity_path.clone(),
-                component_descr: desc.component_descriptor(),
-                component_data: ComponentData::try_new(desc, column_data)?,
-                row_ids: None,
-                variant_name: column_blueprint.variant_ui,
-            })),
+            ColumnDescriptorRef::Component(desc) => {
+                Ok(Self::Component(Box::new(DisplayComponentColumn {
+                    entity_path: desc.entity_path.clone(),
+                    component_descr: desc.component_descriptor(),
+                    component_data: ComponentData::try_new(desc, column_data)?,
+                    row_ids: None,
+                    variant_name: column_blueprint.variant_ui,
+                })))
+            }
         }
     }
 
@@ -366,11 +370,11 @@ impl DisplayColumn {
         row_index: usize,
         instance_index: Option<u64>,
     ) {
-        if let Some(instance_index) = instance_index {
-            if instance_index >= self.instance_count(row_index) {
-                // do not display anything for out-of-bound instance index
-                return;
-            }
+        if let Some(instance_index) = instance_index
+            && instance_index >= self.instance_count(row_index)
+        {
+            // do not display anything for out-of-bound instance index
+            return;
         }
 
         match self {
@@ -461,10 +465,10 @@ impl DisplayRecordBatch {
                     DisplayColumn::try_new(&column_descriptor, column_blueprint, &column_data);
 
                 // find the batch row ids, if any
-                if batch_row_ids.is_none() {
-                    if let Ok(DisplayColumn::RowId { row_ids }) = &column {
-                        batch_row_ids = Some(Arc::clone(row_ids));
-                    }
+                if batch_row_ids.is_none()
+                    && let Ok(DisplayColumn::RowId { row_ids }) = &column
+                {
+                    batch_row_ids = Some(Arc::clone(row_ids));
                 }
 
                 column
@@ -474,8 +478,8 @@ impl DisplayRecordBatch {
         // If we have row_ids, give a reference to all component columns.
         if let Some(batch_row_ids) = batch_row_ids {
             for column in &mut columns {
-                if let DisplayColumn::Component(DisplayComponentColumn { row_ids, .. }) = column {
-                    *row_ids = Some(Arc::clone(&batch_row_ids));
+                if let DisplayColumn::Component(column) = column {
+                    column.row_ids = Some(Arc::clone(&batch_row_ids));
                 }
             }
         }

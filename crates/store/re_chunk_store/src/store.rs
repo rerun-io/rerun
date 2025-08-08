@@ -535,7 +535,7 @@ impl std::fmt::Display for ChunkStore {
 
         f.write_str("ChunkStore {\n")?;
 
-        f.write_str(&indent::indent_all_by(4, format!("id: {id}\n")))?;
+        f.write_str(&indent::indent_all_by(4, format!("id: {id:?}\n")))?;
         f.write_str(&indent::indent_all_by(4, format!("config: {config:?}\n")))?;
 
         f.write_str(&indent::indent_all_by(4, "stats: {\n"))?;
@@ -742,7 +742,7 @@ impl ChunkStore {
 
                 re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
                     let Some(store) = stores.get_mut(&store_id) else {
-                        anyhow::bail!("unknown store ID: {store_id}");
+                        anyhow::bail!("unknown store ID: {store_id:?}");
                     };
 
                     let chunk = Chunk::from_arrow_msg(&msg)
@@ -790,7 +790,7 @@ impl ChunkStore {
 
                 re_log_types::LogMsg::ArrowMsg(store_id, msg) => {
                     let Some(store) = stores.get_mut(&store_id) else {
-                        anyhow::bail!("unknown store ID: {store_id}");
+                        anyhow::bail!("unknown store ID: {store_id:?}");
                     };
 
                     let chunk = Chunk::from_arrow_msg(&msg)

@@ -47,7 +47,7 @@ function re_viewer_js() {
   // for any functions that reference them within the module.
   //
   // we do this so that we don't leak globals across web viewer instantiations:
-  // https://github.com/rustwasm/wasm-bindgen/issues/3130
+  // https://github.com/wasm-bindgen/wasm-bindgen/issues/3130
   //
   // this is HIGHLY sensitive to the exact output of `wasm-bindgen`, so if
   // the output changes, this will need to be updated.

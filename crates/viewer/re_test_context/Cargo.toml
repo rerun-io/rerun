@@ -38,7 +38,6 @@ egui-wgpu.workspace = true
 egui.workspace = true
 egui_kittest.workspace = true
 jiff.workspace = true
-once_cell.workspace = true
 parking_lot.workspace = true
 pollster.workspace = true
 wgpu.workspace = true

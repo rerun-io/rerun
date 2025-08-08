@@ -260,7 +260,7 @@ impl ViewportBlueprint {
                 .hub
                 .store_bundle()
                 .entity_dbs()
-                .any(|db| db.app_id() == Some(app_id)),
+                .any(|db| db.application_id() == app_id),
 
             Item::DataSource(_)
             | Item::TableId(_)
@@ -639,10 +639,10 @@ impl ViewportBlueprint {
     /// Set the kind of the provided container.
     pub fn set_container_kind(&self, container_id: ContainerId, kind: egui_tiles::ContainerKind) {
         // no-op check
-        if let Some(container) = self.container(&container_id) {
-            if container.container_kind == kind {
-                return;
-            }
+        if let Some(container) = self.container(&container_id)
+            && container.container_kind == kind
+        {
+            return;
         }
 
         self.enqueue_command(ViewportCommand::SetContainerKind(container_id, kind));
@@ -891,21 +891,20 @@ impl ViewportBlueprint {
 
         // Now save any contents that are a container back to the blueprint
         for (tile_id, contents) in &contents_from_tile_id {
-            if let Contents::Container(container_id) = contents {
-                if let Some(egui_tiles::Tile::Container(container)) = self.tree.tiles.get(*tile_id)
-                {
-                    let visible = self.tree.is_visible(*tile_id);
+            if let Contents::Container(container_id) = contents
+                && let Some(egui_tiles::Tile::Container(container)) = self.tree.tiles.get(*tile_id)
+            {
+                let visible = self.tree.is_visible(*tile_id);
 
-                    // TODO(jleibs): Make this only update the changed fields.
-                    let blueprint = ContainerBlueprint::from_egui_tiles_container(
-                        *container_id,
-                        container,
-                        visible,
-                        &contents_from_tile_id,
-                    );
+                // TODO(jleibs): Make this only update the changed fields.
+                let blueprint = ContainerBlueprint::from_egui_tiles_container(
+                    *container_id,
+                    container,
+                    visible,
+                    &contents_from_tile_id,
+                );
 
-                    blueprint.save_to_blueprint_store(ctx);
-                }
+                blueprint.save_to_blueprint_store(ctx);
             }
         }
 

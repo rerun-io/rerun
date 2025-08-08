@@ -33,6 +33,10 @@ class GeoLineString(GeoLineStringExt, ComponentMixin):
 
     lat_lon: list[datatypes.DVec2D] = field()
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of GeoLineStringExt in geo_line_string_ext.py
+        return len(self.lat_lon)
+
 
 if TYPE_CHECKING:
     GeoLineStringLike = Union[GeoLineString, datatypes.DVec2DArrayLike, npt.NDArray[np.float64]]

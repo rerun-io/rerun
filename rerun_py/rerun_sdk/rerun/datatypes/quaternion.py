@@ -41,6 +41,10 @@ class Quaternion(QuaternionExt):
         # You can define your own __array__ function as a member of QuaternionExt in quaternion_ext.py
         return np.asarray(self.xyzw, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of QuaternionExt in quaternion_ext.py
+        return len(self.xyzw)
+
 
 QuaternionLike = Quaternion
 QuaternionArrayLike = Union[

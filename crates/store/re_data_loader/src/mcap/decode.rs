@@ -1,19 +1,20 @@
 //! Utilities for decoding MCAP messages into Rerun chunks.
 
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, hash_map::Entry},
+    sync::Arc,
+};
 
 use anyhow::Context as _;
-use mcap::Message;
 
 use re_chunk::{
     Chunk, EntityPath, TimeColumn, TimeColumnBuilder, TimePoint, Timeline, TimelineName,
     external::nohash_hasher::{IntMap, IsEnabled},
 };
 use re_log_types::TimeCell;
-use re_sorbet::SorbetSchema;
 use thiserror::Error;
 
-use super::schema::UnsupportedSchemaMessageParser;
+use super::schema::{RawMcapMessageParser, protobuf::ProtobufMessageParser};
 
 pub type SchemaName = String;
 
@@ -49,9 +50,6 @@ pub trait SchemaPlugin {
     /// The name should exactly match the schema name found in the MCAP file.
     fn name(&self) -> SchemaName;
 
-    /// Parses the schema definition from an MCAP channel, and returns a [`SorbetSchema`].
-    fn parse_schema(&self, channel: &mcap::Channel<'_>) -> Result<SorbetSchema, PluginError>;
-
     /// Creates a new [`McapMessageParser`] instance for processing messages from this channel.
     ///
     /// This method is called once per channel/entity path combination when the first
@@ -67,7 +65,6 @@ pub trait SchemaPlugin {
     /// # use anyhow::Error;
     /// # use mcap::Channel;
     /// # use re_chunk::Chunk;
-    /// # use re_sorbet::SorbetSchema;
     /// # use re_data_loader::mcap::decode::{
     /// #     McapMessageParser, ParserContext, PluginError, SchemaName, SchemaPlugin,
     /// # };
@@ -91,9 +88,6 @@ pub trait SchemaPlugin {
     /// # impl SchemaPlugin for MyPlugin {
     /// #     fn name(&self) -> SchemaName {
     /// #         "my_schema".into()
-    /// #     }
-    /// #     fn parse_schema(&self, _channel: &Channel<'_>) -> Result<SorbetSchema, PluginError> {
-    /// #         unreachable!()
     /// #     }
     /// fn create_message_parser(
     ///     &self,
@@ -170,6 +164,10 @@ impl MessageDecoderRegistry {
         self
     }
 
+    pub fn has_schema(&self, schema: &SchemaName) -> bool {
+        self.0.contains_key(schema)
+    }
+
     /// Registers a new schema plugin using its [`Default`] implementation.
     pub fn register_default<T: SchemaPlugin + Default + 'static>(&mut self) -> &mut Self {
         self.register(T::default())
@@ -196,25 +194,48 @@ impl IsEnabled for ChannelId {}
 /// Decodes batches of messages from an MCAP into Rerun chunks using previously registered parsers.
 pub struct McapChunkDecoder<'a> {
     registry: &'a MessageDecoderRegistry,
-    channel_counts: IntMap<ChannelId, usize>,
-    parsers: IntMap<EntityPath, (ParserContext, Box<dyn McapMessageParser>)>,
+    per_channel_counts: IntMap<ChannelId, usize>,
+    parsers: IntMap<ChannelId, (ParserContext, Box<dyn McapMessageParser>)>,
+}
+
+// TODO(grtlr): This needs cleaning up when we revisit the data loader architecture and introduce "layers".
+fn create_fallback(
+    entity_path: EntityPath,
+    num_rows: usize,
+    schema: &Arc<::mcap::Schema<'_>>,
+) -> Result<(ParserContext, Box<dyn McapMessageParser>), PluginError> {
+    Ok(match schema.encoding.as_str() {
+        "protobuf" => (
+            ParserContext::new(entity_path),
+            Box::new(
+                ProtobufMessageParser::try_new(num_rows, schema)
+                    .map_err(|err| PluginError::Other(err.into()))?,
+            ) as Box<dyn McapMessageParser>,
+        ),
+        // TODO(grtlr): Add new schemas, such as `jsonschema` here.
+        _ => (
+            ParserContext::new(entity_path.clone()),
+            Box::new(RawMcapMessageParser::new(num_rows)) as Box<dyn McapMessageParser>,
+        ),
+    })
 }
 
 impl<'a> McapChunkDecoder<'a> {
     pub fn new(
         registry: &'a MessageDecoderRegistry,
-        channel_counts: IntMap<ChannelId, usize>,
+        per_channel_counts: IntMap<ChannelId, usize>,
     ) -> Self {
         Self {
             registry,
-            channel_counts,
-            parsers: IntMap::default(),
+            per_channel_counts,
+            parsers: Default::default(),
         }
     }
 
     /// Decode the next message in the chunk
-    pub fn decode_next(&mut self, msg: &Message<'_>) -> Result<(), PluginError> {
+    pub fn decode_next(&mut self, msg: &::mcap::Message<'_>) -> Result<(), PluginError> {
         let channel = msg.channel.as_ref();
+        let channel_id = ChannelId(channel.id);
         let entity_path = EntityPath::from(channel.topic.as_str());
         let timepoint = TimePoint::from([
             (
@@ -237,7 +258,7 @@ impl<'a> McapChunkDecoder<'a> {
         };
 
         let num_rows = *self
-            .channel_counts
+            .per_channel_counts
             .get(&ChannelId(channel.id))
             .unwrap_or_else(|| {
                 re_log::warn_once!(
@@ -249,21 +270,13 @@ impl<'a> McapChunkDecoder<'a> {
             });
 
         let Some(plugin) = self.registry.0.get(&schema.name) else {
-            let mcap::Schema {
-                id: _,
-                name,
-                encoding: _,
-                data: _,
-            } = schema.as_ref();
-
-            re_log::warn_once!("No loader for schema {name:?}");
-
-            let (ctx, parser) = self.parsers.entry(entity_path.clone()).or_insert_with(|| {
-                (
-                    ParserContext::new(entity_path.clone()),
-                    Box::new(UnsupportedSchemaMessageParser::new(num_rows)),
-                )
-            });
+            let (ctx, parser) = match self.parsers.entry(channel_id) {
+                Entry::Occupied(occupied) => occupied.into_mut(),
+                Entry::Vacant(vacant_entry) => {
+                    let fallback = create_fallback(entity_path.clone(), num_rows, schema)?;
+                    vacant_entry.insert_entry(fallback).into_mut()
+                }
+            };
 
             ctx.add_timepoint(timepoint);
 
@@ -273,8 +286,7 @@ impl<'a> McapChunkDecoder<'a> {
                 .map_err(PluginError::Other);
         };
 
-        // TODO(#10724): Add support for logging warnings directly to Rerun
-        let (ctx, parser) = self.parsers.entry(entity_path.clone()).or_insert_with(|| {
+        let (ctx, parser) = self.parsers.entry(channel_id).or_insert_with(|| {
             (
                 ParserContext::new(entity_path.clone()),
                 plugin.create_message_parser(channel, num_rows),

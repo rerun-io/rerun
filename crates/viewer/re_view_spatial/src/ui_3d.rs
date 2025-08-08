@@ -287,10 +287,10 @@ impl View3DState {
         }
 
         // Don't restart interpolation if we're already on it.
-        if let Some(eye_interpolation) = &self.eye_interpolation {
-            if eye_interpolation.target_view_eye == Some(target) {
-                return;
-            }
+        if let Some(eye_interpolation) = &self.eye_interpolation
+            && eye_interpolation.target_view_eye == Some(target)
+        {
+            return;
         }
 
         if let Some(start) = self.view_eye {
@@ -609,15 +609,15 @@ impl SpatialView3D {
         }
 
         // Allow to restore the camera state with escape if a camera was tracked before.
-        if response.hovered() && ui.input(|i| i.key_pressed(TRACKED_OBJECT_RESTORE_KEY)) {
-            if let Some(camera_before_tracked_entity) = state.state_3d.camera_before_tracked_entity
-            {
-                state
-                    .state_3d
-                    .interpolate_to_eye(camera_before_tracked_entity);
-                state.state_3d.camera_before_tracked_entity = None;
-                state.state_3d.tracked_entity = None;
-            }
+        if response.hovered()
+            && ui.input(|i| i.key_pressed(TRACKED_OBJECT_RESTORE_KEY))
+            && let Some(camera_before_tracked_entity) = state.state_3d.camera_before_tracked_entity
+        {
+            state
+                .state_3d
+                .interpolate_to_eye(camera_before_tracked_entity);
+            state.state_3d.camera_before_tracked_entity = None;
+            state.state_3d.tracked_entity = None;
         }
 
         for selected_context in ctx.selection_state().selection_item_contexts() {
@@ -878,38 +878,38 @@ fn show_projections_from_2d_space(
 ) {
     match item_context {
         ItemContext::TwoD { space_2d, pos } => {
-            if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
-                if let Some(pinhole) = cam.pinhole.as_ref() {
-                    // Render a thick line to the actual z value if any and a weaker one as an extension
-                    // If we don't have a z value, we only render the thick one.
-                    let depth = if 0.0 < pos.z && pos.z.is_finite() {
-                        pos.z
-                    } else {
-                        cam.picture_plane_distance
-                    };
-                    let stop_in_image_plane = pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
+            if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d)
+                && let Some(pinhole) = cam.pinhole.as_ref()
+            {
+                // Render a thick line to the actual z value if any and a weaker one as an extension
+                // If we don't have a z value, we only render the thick one.
+                let depth = if 0.0 < pos.z && pos.z.is_finite() {
+                    pos.z
+                } else {
+                    cam.picture_plane_distance
+                };
+                let stop_in_image_plane = pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
 
-                    let world_from_image = glam::Affine3A::from(cam.world_from_camera)
-                        * glam::Affine3A::from_mat3(
-                            cam.pinhole_view_coordinates
-                                .from_other(&image_view_coordinates()),
-                        );
-                    let stop_in_world = world_from_image.transform_point3(stop_in_image_plane);
+                let world_from_image = glam::Affine3A::from(cam.world_from_camera)
+                    * glam::Affine3A::from_mat3(
+                        cam.pinhole_view_coordinates
+                            .from_other(&image_view_coordinates()),
+                    );
+                let stop_in_world = world_from_image.transform_point3(stop_in_image_plane);
 
-                    let origin = cam.position();
+                let origin = cam.position();
 
-                    if let Some(dir) = (stop_in_world - origin).try_normalize() {
-                        let ray = macaw::Ray3::from_origin_dir(origin, dir);
+                if let Some(dir) = (stop_in_world - origin).try_normalize() {
+                    let ray = macaw::Ray3::from_origin_dir(origin, dir);
 
-                        let thick_ray_length = (stop_in_world - origin).length();
-                        add_picking_ray(
-                            line_builder,
-                            ray,
-                            &state.bounding_boxes.smoothed,
-                            thick_ray_length,
-                            ray_color,
-                        );
-                    }
+                    let thick_ray_length = (stop_in_world - origin).length();
+                    add_picking_ray(
+                        line_builder,
+                        ray,
+                        &state.bounding_boxes.smoothed,
+                        thick_ray_length,
+                        ray_color,
+                    );
                 }
             }
         }
@@ -919,25 +919,22 @@ fn show_projections_from_2d_space(
             ..
         } => {
             let current_tracked_entity = state.state_3d.tracked_entity.as_ref();
-            if current_tracked_entity != Some(tracked_entity) {
-                if let Some(tracked_camera) = space_cameras
+            if current_tracked_entity != Some(tracked_entity)
+                && let Some(tracked_camera) = space_cameras
                     .iter()
                     .find(|cam| &cam.ent_path == tracked_entity)
-                {
-                    let cam_to_pos = *pos - tracked_camera.position();
-                    let distance = cam_to_pos.length();
-                    let ray = macaw::Ray3::from_origin_dir(
-                        tracked_camera.position(),
-                        cam_to_pos / distance,
-                    );
-                    add_picking_ray(
-                        line_builder,
-                        ray,
-                        &state.bounding_boxes.current,
-                        distance,
-                        ray_color,
-                    );
-                }
+            {
+                let cam_to_pos = *pos - tracked_camera.position();
+                let distance = cam_to_pos.length();
+                let ray =
+                    macaw::Ray3::from_origin_dir(tracked_camera.position(), cam_to_pos / distance);
+                add_picking_ray(
+                    line_builder,
+                    ray,
+                    &state.bounding_boxes.current,
+                    distance,
+                    ray_color,
+                );
             }
         }
         ItemContext::ThreeD { .. }

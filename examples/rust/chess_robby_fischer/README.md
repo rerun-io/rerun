@@ -174,7 +174,7 @@ fn stl_to_mesh3d(mesh: &IndexedMesh, color: impl Into<rerun::Color> + Clone) -> 
                 face.vertices[2] as u32,
             ))
         }))
-        .with_vertex_colors(std::iter::repeat(color).take(mesh.vertices.len()))
+        .with_vertex_colors(std::iter::repeat_n(color, mesh.vertices.len()))
         .with_vertex_normals(normals)
 }
 ```

@@ -119,7 +119,7 @@ impl TransformInfo {
 /// * the query time
 ///    * TODO(#723): ranges aren't taken into account yet
 /// * TODO(andreas): the queried entities. Right now we determine transforms for ALL entities in the scene.
-///                  since 3D views tend to display almost everything that's mostly fine, but it's very wasteful when they don't.
+///   since 3D views tend to display almost everything that's mostly fine, but it's very wasteful when they don't.
 ///
 /// The renderer then uses this reference space as its world space,
 /// making world and reference space equivalent for a given view.
@@ -170,7 +170,7 @@ impl ViewContextSystem for TransformTreeContext {
         // TODO(andreas): This is a rather annoying sync point between different views.
         // We could alleviate this by introducing a per view class (not instance) method that is called
         // before system execution.
-        TransformCacheStoreSubscriber::access_mut(&ctx.recording().store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(ctx.recording().store_id(), |cache| {
             cache.apply_all_updates(ctx.recording());
         });
 
@@ -190,7 +190,7 @@ impl ViewContextSystem for TransformTreeContext {
 
         let time_query = ctx.current_query();
 
-        TransformCacheStoreSubscriber::access(&ctx.recording().store_id(), |cache| {
+        TransformCacheStoreSubscriber::access(ctx.recording().store_id(), |cache| {
             let transforms = cache.transforms_for_timeline(query.timeline);
 
             // Child transforms of this space

@@ -1,9 +1,8 @@
 use std::hash::Hasher;
-use std::sync::Arc;
 
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 
-use re_log_types::{StoreKind, TableId, external::re_types_core::ComponentDescriptor};
+use re_log_types::{RecordingId, StoreKind, TableId, external::re_types_core::ComponentDescriptor};
 
 use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
 use crate::{TypeConversionError, invalid_field, missing_field};
@@ -140,6 +139,12 @@ impl From<PartitionId> for crate::common::v1alpha1::PartitionId {
     }
 }
 
+impl AsRef<str> for PartitionId {
+    fn as_ref(&self) -> &str {
+        self.id.as_str()
+    }
+}
+
 // shortcuts
 
 impl From<String> for crate::common::v1alpha1::PartitionId {
@@ -250,8 +255,8 @@ impl TryFrom<crate::common::v1alpha1::EntityPath> for re_log_types::EntityPath {
     }
 }
 
-impl From<re_log_types::ResolvedTimeRange> for crate::common::v1alpha1::TimeRange {
-    fn from(value: re_log_types::ResolvedTimeRange) -> Self {
+impl From<re_log_types::AbsoluteTimeRange> for crate::common::v1alpha1::TimeRange {
+    fn from(value: re_log_types::AbsoluteTimeRange) -> Self {
         Self {
             start: value.min().as_i64(),
             end: value.max().as_i64(),
@@ -259,7 +264,7 @@ impl From<re_log_types::ResolvedTimeRange> for crate::common::v1alpha1::TimeRang
     }
 }
 
-impl From<crate::common::v1alpha1::TimeRange> for re_log_types::ResolvedTimeRange {
+impl From<crate::common::v1alpha1::TimeRange> for re_log_types::AbsoluteTimeRange {
     fn from(value: crate::common::v1alpha1::TimeRange) -> Self {
         Self::new(
             re_log_types::TimeInt::new_temporal(value.start),
@@ -268,15 +273,15 @@ impl From<crate::common::v1alpha1::TimeRange> for re_log_types::ResolvedTimeRang
     }
 }
 
-impl From<re_log_types::ResolvedTimeRange> for crate::common::v1alpha1::IndexRange {
-    fn from(value: re_log_types::ResolvedTimeRange) -> Self {
+impl From<re_log_types::AbsoluteTimeRange> for crate::common::v1alpha1::IndexRange {
+    fn from(value: re_log_types::AbsoluteTimeRange) -> Self {
         Self {
             time_range: Some(value.into()),
         }
     }
 }
 
-impl TryFrom<crate::common::v1alpha1::IndexRange> for re_log_types::ResolvedTimeRange {
+impl TryFrom<crate::common::v1alpha1::IndexRange> for re_log_types::AbsoluteTimeRange {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::IndexRange) -> Result<Self, Self::Error> {
@@ -335,14 +340,16 @@ impl From<re_log_types::TimelineName> for crate::common::v1alpha1::IndexColumnSe
 impl From<crate::common::v1alpha1::ApplicationId> for re_log_types::ApplicationId {
     #[inline]
     fn from(value: crate::common::v1alpha1::ApplicationId) -> Self {
-        Self(value.id)
+        Self::from(value.id)
     }
 }
 
 impl From<re_log_types::ApplicationId> for crate::common::v1alpha1::ApplicationId {
     #[inline]
     fn from(value: re_log_types::ApplicationId) -> Self {
-        Self { id: value.0 }
+        Self {
+            id: value.to_string(),
+        }
     }
 }
 
@@ -367,12 +374,54 @@ impl From<re_log_types::StoreKind> for crate::common::v1alpha1::StoreKind {
     }
 }
 
-impl From<crate::common::v1alpha1::StoreId> for re_log_types::StoreId {
+/// The store id failed to deserialize due to missing application id.
+///
+/// This may happen when migrating older RRD (before application ID was moved to `StoreId`). This
+/// error can be recovered from if the application ID is known.
+//TODO(#10730): this is specifically for 0.24 back compat. Switch to `TypeConversionError` when cleaning up.
+#[derive(Debug, Clone)]
+pub struct StoreIdMissingApplicationIdError {
+    pub store_kind: re_log_types::StoreKind,
+    pub recording_id: RecordingId,
+}
+
+impl StoreIdMissingApplicationIdError {
+    /// Recover the store ID by providing the application ID.
+    pub fn recover(self, application_id: re_log_types::ApplicationId) -> re_log_types::StoreId {
+        re_log_types::StoreId::new(self.store_kind, application_id, self.recording_id)
+    }
+
     #[inline]
-    fn from(value: crate::common::v1alpha1::StoreId) -> Self {
-        Self {
-            kind: value.kind().into(),
-            id: Arc::new(value.id),
+    pub fn into_type_conversion_error(self, msg: impl Into<String>) -> TypeConversionError {
+        TypeConversionError::LegacyStoreIdError(format!(
+            "{} (kind: {}, recording_id: {})",
+            msg.into(),
+            self.store_kind,
+            self.recording_id
+        ))
+    }
+}
+
+/// Convert a store id
+impl TryFrom<crate::common::v1alpha1::StoreId> for re_log_types::StoreId {
+    type Error = StoreIdMissingApplicationIdError;
+
+    #[inline]
+    fn try_from(value: crate::common::v1alpha1::StoreId) -> Result<Self, Self::Error> {
+        let store_kind = value.kind().into();
+        let recording_id = RecordingId::from(value.recording_id);
+
+        //TODO(#10730): switch to `TypeConversionError` when cleaning up 0.24 back compat
+        match value.application_id {
+            None => Err(StoreIdMissingApplicationIdError {
+                store_kind,
+                recording_id,
+            }),
+            Some(application_id) => Ok(re_log_types::StoreId::new(
+                store_kind,
+                application_id,
+                recording_id,
+            )),
         }
     }
 }
@@ -380,10 +429,11 @@ impl From<crate::common::v1alpha1::StoreId> for re_log_types::StoreId {
 impl From<re_log_types::StoreId> for crate::common::v1alpha1::StoreId {
     #[inline]
     fn from(value: re_log_types::StoreId) -> Self {
-        let kind: crate::common::v1alpha1::StoreKind = value.kind.into();
+        let kind: crate::common::v1alpha1::StoreKind = value.kind().into();
         Self {
             kind: kind as i32,
-            id: String::clone(&*value.id),
+            recording_id: value.recording_id().as_str().to_owned(),
+            application_id: Some(value.application_id().clone().into()),
         }
     }
 }
@@ -714,23 +764,23 @@ mod tests {
 
     #[test]
     fn time_range_conversion() {
-        let time_range = re_log_types::ResolvedTimeRange::new(
+        let time_range = re_log_types::AbsoluteTimeRange::new(
             re_log_types::TimeInt::new_temporal(123456789),
             re_log_types::TimeInt::new_temporal(987654321),
         );
         let proto_time_range: crate::common::v1alpha1::TimeRange = time_range.into();
-        let time_range2: re_log_types::ResolvedTimeRange = proto_time_range.into();
+        let time_range2: re_log_types::AbsoluteTimeRange = proto_time_range.into();
         assert_eq!(time_range, time_range2);
     }
 
     #[test]
     fn index_range_conversion() {
-        let time_range = re_log_types::ResolvedTimeRange::new(
+        let time_range = re_log_types::AbsoluteTimeRange::new(
             re_log_types::TimeInt::new_temporal(123456789),
             re_log_types::TimeInt::new_temporal(987654321),
         );
         let proto_index_range: crate::common::v1alpha1::IndexRange = time_range.into();
-        let time_range2: re_log_types::ResolvedTimeRange = proto_index_range.try_into().unwrap();
+        let time_range2: re_log_types::AbsoluteTimeRange = proto_index_range.try_into().unwrap();
         assert_eq!(time_range, time_range2);
     }
 
@@ -747,7 +797,7 @@ mod tests {
 
     #[test]
     fn application_id_conversion() {
-        let application_id = re_log_types::ApplicationId("test".to_owned());
+        let application_id = re_log_types::ApplicationId::from("test");
         let proto_application_id: crate::common::v1alpha1::ApplicationId =
             application_id.clone().into();
         let application_id2: re_log_types::ApplicationId = proto_application_id.into();
@@ -764,12 +814,13 @@ mod tests {
 
     #[test]
     fn store_id_conversion() {
-        let store_id = re_log_types::StoreId::from_string(
+        let store_id = re_log_types::StoreId::new(
             re_log_types::StoreKind::Recording,
-            "test_recording".to_owned(),
+            "test_app_id",
+            "test_recording",
         );
         let proto_store_id: crate::common::v1alpha1::StoreId = store_id.clone().into();
-        let store_id2: re_log_types::StoreId = proto_store_id.into();
+        let store_id2: re_log_types::StoreId = proto_store_id.try_into().unwrap();
         assert_eq!(store_id, store_id2);
     }
 

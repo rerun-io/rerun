@@ -5,17 +5,17 @@
 //! Texture coordinates:
 //! * origin top left
 //! * full texture ([left; right], [top; bottom]):
-//!     ([0; 1], [0; 1])
+//!   ([0; 1], [0; 1])
 //!
 //! NDC:
 //! * origin center
 //! * full screen ([left; right], [top; bottom]):
-//!     ([-1; 1], [1; -1])
+//!   ([-1; 1], [1; -1])
 //!
 //! Pixel coordinates:
 //! * origin top left
 //! * full screen ([left; right], [top; bottom]):
-//!      ([0; `screen_extent.x`], [0; `screen_extent.y`])
+//!   ([0; `screen_extent.x`], [0; `screen_extent.y`])
 
 use crate::rect::RectF32;
 

@@ -1,5 +1,5 @@
 use re_grpc_client::{ConnectionRegistryHandle, message_proxy};
-use re_log_types::LogMsg;
+use re_log_types::{LogMsg, RecordingId};
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 use re_uri::RedapUri;
 
@@ -125,7 +125,7 @@ impl DataSource {
 
     pub fn file_name(&self) -> Option<String> {
         match self {
-            Self::RrdHttpUrl { uri: url, .. } => url.split('/').last().map(|r| r.to_owned()),
+            Self::RrdHttpUrl { uri: url, .. } => url.split('/').next_back().map(|r| r.to_owned()),
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(_, path) => path.file_name().map(|s| s.to_string_lossy().to_string()),
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
@@ -169,16 +169,14 @@ impl DataSource {
                     SmartChannelSource::File(path.clone()),
                 );
 
-                // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
+                // This recording will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
                 // or not.
-                let shared_store_id =
-                    re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+                let shared_recording_id = RecordingId::random();
                 let settings = re_data_loader::DataLoaderSettings {
-                    opened_application_id: file_source.recommended_application_id().cloned(),
-                    opened_store_id: file_source.recommended_recording_id().cloned(),
+                    opened_store_id: file_source.recommended_store_id().cloned(),
                     force_store_info: file_source.force_store_info(),
-                    ..re_data_loader::DataLoaderSettings::recommended(shared_store_id)
+                    ..re_data_loader::DataLoaderSettings::recommended(shared_recording_id)
                 };
                 re_data_loader::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
@@ -201,13 +199,11 @@ impl DataSource {
                 // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
                 // or not.
-                let shared_store_id =
-                    re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+                let shared_recording_id = RecordingId::random();
                 let settings = re_data_loader::DataLoaderSettings {
-                    opened_application_id: file_source.recommended_application_id().cloned(),
-                    opened_store_id: file_source.recommended_recording_id().cloned(),
+                    opened_store_id: file_source.recommended_store_id().cloned(),
                     force_store_info: file_source.force_store_info(),
-                    ..re_data_loader::DataLoaderSettings::recommended(shared_store_id)
+                    ..re_data_loader::DataLoaderSettings::recommended(shared_recording_id)
                 };
                 re_data_loader::load_from_file_contents(
                     &settings,
@@ -312,7 +308,7 @@ pub enum DataSourceCommand {
     SetLoopSelection {
         recording_id: re_log_types::StoreId,
         timeline: re_log_types::Timeline,
-        time_range: re_log_types::ResolvedTimeRangeF,
+        time_range: re_log_types::AbsoluteTimeRangeF,
     },
 }
 
@@ -368,8 +364,7 @@ fn test_data_source_from_uri() {
     ];
 
     let file_source = FileSource::DragAndDrop {
-        recommended_application_id: None,
-        recommended_recording_id: None,
+        recommended_store_id: None,
         force_store_info: false,
     };
 
