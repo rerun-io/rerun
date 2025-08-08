@@ -1984,7 +1984,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     component_type : "rerun.components.ImagePlaneDistance".into(),
                     docstring_md :
                     "The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.\n\nThis is only used for visualization purposes, and does not affect the projection itself.",
-                    is_required : false, },
+                    is_required : false, }, ArchetypeFieldReflection { name : "color",
+                    display_name : "Color", component_type : "rerun.components.Color"
+                    .into(), docstring_md :
+                    "An optional color of the pinhole wireframe.", is_required : false,
+                    },
                 ],
             },
         ),

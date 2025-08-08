@@ -9,6 +9,7 @@ use crate::resolution_of_image_at;
 pub struct Pinhole {
     pub image_from_camera: glam::Mat3,
     pub resolution: glam::Vec2,
+    pub color: Option<components::Color>,
 }
 
 impl Pinhole {
@@ -131,6 +132,7 @@ pub fn query_pinhole_and_view_coordinates_from_store_without_blueprint(
         Pinhole {
             image_from_camera: pinhole_projection.0.into(),
             resolution: resolution.into(),
+            color: None,
         },
         camera_xyz,
     ))
