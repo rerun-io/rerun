@@ -280,12 +280,12 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
     response.map(|resp| {
-        let r = resp.map_err(Into::into)?;
+        let resp = resp?;
 
         let _span =
-            tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len()).entered();
+            tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len()).entered();
 
-        r.chunks
+        resp.chunks
             .into_iter()
             .map(|arrow_msg| {
                 let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
