@@ -31,6 +31,7 @@ fn test_error_size() {
 }
 
 impl AsRef<tonic::Status> for TonicStatusError {
+    #[inline]
     fn as_ref(&self) -> &tonic::Status {
         &self.0
     }
