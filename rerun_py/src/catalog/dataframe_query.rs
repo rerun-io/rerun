@@ -487,6 +487,7 @@ impl PyDataframeQueryView {
                 connection.connection_registry().clone(),
                 dataset_id,
                 &self.query_expression,
+                &self.partition_ids,
             )
             .await
         })

@@ -59,6 +59,7 @@ impl DataframeQueryTableProvider {
         connection: ConnectionRegistryHandle,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
+        partition_ids: &[impl AsRef<str> + Sync],
     ) -> Result<Self, DataFusionError> {
         use futures::StreamExt as _;
 
@@ -133,7 +134,10 @@ impl DataframeQueryTableProvider {
 
         let dataset_query = QueryDatasetRequest {
             dataset_id: Some(dataset_id.into()),
-            partition_ids: vec![],
+            partition_ids: partition_ids
+                .iter()
+                .map(|id| id.as_ref().to_owned().into())
+                .collect(),
             chunk_ids: vec![],
             entity_paths: entity_paths
                 .into_iter()
