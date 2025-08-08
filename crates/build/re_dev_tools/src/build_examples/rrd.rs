@@ -40,7 +40,7 @@ impl Rrd {
         let progress = MultiProgress::new();
         let results: Vec<anyhow::Result<PathBuf>> = examples
             .into_par_iter()
-            .map(|example| example.build(&progress, &self.output_dir))
+            .map(|example| example.build_rrd(&progress, &self.output_dir))
             .collect();
 
         let mut num_failed = 0;
@@ -73,7 +73,7 @@ impl Rrd {
 }
 
 impl Example {
-    fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<PathBuf> {
+    fn build_rrd(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<PathBuf> {
         let tempdir = tempfile::tempdir()?;
 
         let initial_rrd_path = tempdir.path().join(&self.name).with_extension("rrd");
