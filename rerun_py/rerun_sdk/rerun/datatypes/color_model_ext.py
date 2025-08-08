@@ -12,6 +12,8 @@ class ColorModelExt:
     """Extension for [ColorModel][rerun.datatypes.ColorModel]."""
 
     def num_channels(self) -> int:
+        from . import ColorModel
+
         """Returns the number of channels for this color model."""
         if self == ColorModel.L:
             return 1
