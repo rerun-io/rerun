@@ -11,7 +11,7 @@ dependencies = [
   "rerun-sdk",
   "timm==1.0.15",
   "torch==2.8.0",              # This must match the version captured in pixi.toml
-  "transformers",
+  "transformers>=4.55.0",
 ]
 
 [project.scripts]
