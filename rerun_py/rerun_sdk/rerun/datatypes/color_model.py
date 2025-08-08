@@ -13,6 +13,7 @@ import pyarrow as pa
 from .._baseclasses import (
     BaseBatch,
 )
+from .color_model_ext import ColorModelExt
 
 __all__ = ["ColorModel", "ColorModelArrayLike", "ColorModelBatch", "ColorModelLike"]
 
@@ -20,7 +21,7 @@ __all__ = ["ColorModel", "ColorModelArrayLike", "ColorModelBatch", "ColorModelLi
 from enum import Enum
 
 
-class ColorModel(Enum):
+class ColorModel(ColorModelExt, Enum):
     """
     **Datatype**: Specified what color components are present in an [`archetypes.Image`][rerun.archetypes.Image].
 
