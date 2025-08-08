@@ -33906,7 +33906,7 @@ packages:
 - pypi: examples/python/segment_anything_model
   name: segment-anything-model
   version: 0.1.0
-  sha256: 629f9fea089b574a5404d57e27c5f454e1b63ab023f4d104c683f9650b58ef7e
+  sha256: ac45b3defcd03e201ecd5f178f50fa08a612ae773100e3af36ffc4a55ad32148
   requires_dist:
   - segment-anything @ git+https://github.com/facebookresearch/segment-anything.git
   - numpy
@@ -33914,7 +33914,7 @@ packages:
   - requests>=2.31,<3
   - rerun-sdk
   - torch==2.8.0
-  - torchvision
+  - torchvision==0.23.0
   - tqdm
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/semver-3.0.4-pyhd8ed1ab_0.conda

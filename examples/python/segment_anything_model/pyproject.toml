@@ -9,7 +9,7 @@ dependencies = [
   "requests>=2.31,<3",
   "rerun-sdk",
   "torch==2.8.0",                                                                    # This must match the version captured in pixi.toml
-  "torchvision",
+  "torchvision==0.23.0",
   "tqdm",
 ]
 
