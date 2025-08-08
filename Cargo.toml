@@ -738,7 +738,7 @@ let_underscore_untyped = "allow"
 missing_assert_message = "allow"
 missing_errors_doc = "allow"
 ref_option = "allow"
-significant_drop_tightening = "allow" # An update of parking_lot made this trigger in a lot of places. TODO(emilk): fix those places
+significant_drop_tightening = "allow"  # An update of parking_lot made this trigger in a lot of places. TODO(emilk): fix those places
 unnecessary_debug_formatting = "allow"
 
 [patch.crates-io]
