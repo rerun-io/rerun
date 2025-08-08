@@ -9,7 +9,7 @@ dependencies = [
   "pillow",
   "requests>=2.31,<3",
   "rerun-sdk",
-  "timm==1.0.15",
+  "timm==1.0.19",
   "torch==2.8.0",              # This must match the version captured in pixi.toml
   "transformers>=4.55.0",
 ]
