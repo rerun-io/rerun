@@ -40,8 +40,6 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
 use tracing::Instrument as _;
 
-const DEFAULT_OUTPUT_PARTITIONS: usize = 14;
-
 /// This parameter sets the back pressure that either the streaming provider
 /// can place on the CPU worker thread or the CPU worker thread can place on
 /// the IO stream.
@@ -143,10 +141,12 @@ impl RecordBatchStream for DataframePartitionStream {
 
 impl PartitionStreamExec {
     #[tracing::instrument(level = "info", skip_all)]
+    #[allow(clippy::too_many_arguments)]
     pub fn try_new(
         table_schema: &SchemaRef,
         sort_index: Option<Index>,
         projection: Option<&Vec<usize>>,
+        num_partitions: usize,
         chunk_info_batches: Arc<Vec<RecordBatch>>,
         mut query_expression: QueryExpression,
         client: ConnectionClient,
@@ -212,7 +212,6 @@ impl PartitionStreamExec {
             EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), &orderings);
 
         let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
-        let num_partitions = DEFAULT_OUTPUT_PARTITIONS;
 
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(

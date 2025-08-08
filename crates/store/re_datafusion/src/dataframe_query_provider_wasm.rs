@@ -4,24 +4,17 @@ use crate::dataframe_query_common::{
 use arrow::array::{Array, RecordBatch, StringArray};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
-use async_trait::async_trait;
-use datafusion::catalog::Session;
 use datafusion::common::hash_utils::HashValue as _;
 use datafusion::common::{exec_datafusion_err, exec_err, plan_err};
 use datafusion::config::ConfigOptions;
-use datafusion::datasource::TableType;
 use datafusion::execution::{RecordBatchStream, TaskContext};
-use datafusion::logical_expr::Expr;
 use datafusion::physical_expr::expressions::Column;
 use datafusion::physical_expr::{
     EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
 };
-use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
-use datafusion::{
-    catalog::TableProvider, error::DataFusionError, execution::SendableRecordBatchStream,
-};
+use datafusion::{error::DataFusionError, execution::SendableRecordBatchStream};
 use futures_util::{Stream, StreamExt as _};
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
@@ -39,24 +32,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::runtime::Handle;
-
-/// Sets the size for output record batches in rows. The last batch will likely be smaller.
-/// The default for Data Fusion is 8192, which leads to a 256Kb record batch on average for
-/// rows with 32b of data. We are setting this lower as a reasonable first guess to avoid
-/// the pitfall of executing a single row at a time, but we will likely want to consider
-/// at some point moving to a dynamic sizing.
-const DEFAULT_BATCH_SIZE: usize = 2048;
-const DEFAULT_OUTPUT_PARTITIONS: usize = 14;
-
-#[derive(Debug)]
-pub struct DataframeQueryTableProvider {
-    pub schema: SchemaRef,
-    query_expression: QueryExpression,
-    sort_index: Option<Index>,
-    chunk_info_batches: Arc<Vec<RecordBatch>>,
-    client: ConnectionClient,
-    chunk_request: GetChunksRequest,
-}
 
 #[derive(Debug)]
 pub(crate) struct PartitionStreamExec {
@@ -84,45 +59,6 @@ pub struct DataframePartitionStream {
     query_expression: QueryExpression,
     remaining_partition_ids: Vec<String>,
     dataset_id: EntryId, // TODO(tsaucer) delete?
-}
-
-#[async_trait]
-impl TableProvider for DataframeQueryTableProvider {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.schema)
-    }
-
-    fn table_type(&self) -> TableType {
-        TableType::Base
-    }
-
-    #[tracing::instrument(level = "info", skip_all)]
-    async fn scan(
-        &self,
-        _state: &dyn Session,
-        projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
-        limit: Option<usize>,
-    ) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
-        PartitionStreamExec::try_new(
-            &self.schema,
-            self.sort_index,
-            projection,
-            Arc::clone(&self.chunk_info_batches),
-            self.query_expression.clone(),
-            self.client.clone(),
-            self.chunk_request.clone(),
-        )
-        .map(Arc::new)
-        .map(|exec| {
-            Arc::new(CoalesceBatchesExec::new(exec, DEFAULT_BATCH_SIZE).with_fetch(limit))
-                as Arc<dyn ExecutionPlan>
-        })
-    }
 }
 
 impl DataframePartitionStream {
@@ -252,10 +188,12 @@ fn prepend_string_column_schema(schema: &Schema, column_name: &str) -> Schema {
 
 impl PartitionStreamExec {
     #[tracing::instrument(level = "info", skip_all)]
+    #[allow(clippy::too_many_arguments)]
     pub fn try_new(
         table_schema: &SchemaRef,
         sort_index: Option<Index>,
         projection: Option<&Vec<usize>>,
+        num_partitions: usize,
         chunk_info_batches: Arc<Vec<RecordBatch>>,
         query_expression: QueryExpression,
         client: ConnectionClient,
@@ -297,7 +235,6 @@ impl PartitionStreamExec {
             EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), &orderings);
 
         let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
-        let num_partitions = DEFAULT_OUTPUT_PARTITIONS;
 
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(
