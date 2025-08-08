@@ -186,10 +186,10 @@ impl App {
         let connection_registry =
             connection_registry.unwrap_or_else(re_grpc_client::ConnectionRegistry::new);
 
-        if let Some(storage) = creation_context.storage {
-            if let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY) {
-                connection_registry.load_tokens(tokens);
-            }
+        if let Some(storage) = creation_context.storage
+            && let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY)
+        {
+            connection_registry.load_tokens(tokens);
         }
 
         let mut state: AppState = if startup_options.persist_state {
@@ -1785,12 +1785,11 @@ impl App {
             let entity_db = store_hub.entity_db_mut(store_id);
             if msg_will_add_new_store && entity_db.store_kind() == StoreKind::Recording {
                 #[cfg(feature = "analytics")]
-                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                    if let Some(event) =
+                if let Some(analytics) = re_analytics::Analytics::global_or_init()
+                    && let Some(event) =
                         crate::viewer_analytics::event::open_recording(&self.app_env, entity_db)
-                    {
-                        analytics.record(event);
-                    }
+                {
+                    analytics.record(event);
                 }
 
                 if let Some(event_dispatcher) = self.event_dispatcher.as_ref() {

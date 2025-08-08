@@ -319,15 +319,15 @@ impl SelectionPanel {
                         .lookup_result_by_path(entity_path)
                         .cloned();
 
-                    if let Some(data_result) = &data_result {
-                        if let Some(view) = viewport.view(view_id) {
-                            visible_interactive_toggle_ui(
-                                &view.bundle_context_with_states(ctx, view_states),
-                                ui,
-                                ctx.lookup_query_result(*view_id),
-                                data_result,
-                            );
-                        }
+                    if let Some(data_result) = &data_result
+                        && let Some(view) = viewport.view(view_id)
+                    {
+                        visible_interactive_toggle_ui(
+                            &view.bundle_context_with_states(ctx, view_states),
+                            ui,
+                            ctx.lookup_query_result(*view_id),
+                            data_result,
+                        );
                     }
                 }
             }

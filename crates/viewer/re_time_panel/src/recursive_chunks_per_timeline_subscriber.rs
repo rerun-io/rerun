@@ -117,23 +117,22 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
             // Recursively remove chunks.
             let mut next_path = Some(chunk.entity_path().clone());
             while let Some(path) = next_path {
-                if let Some(chunks_per_entity) = chunks_per_entities.get_mut(&path.hash()) {
-                    if chunks_per_entity
+                if let Some(chunks_per_entity) = chunks_per_entities.get_mut(&path.hash())
+                    && chunks_per_entity
                         .recursive_chunks_info
                         .remove(&chunk.id())
                         .is_some()
+                {
+                    if let Some(new_total_num_events) = chunks_per_entity
+                        .total_num_events
+                        .checked_sub(chunk.num_events_cumulative())
                     {
-                        if let Some(new_total_num_events) = chunks_per_entity
-                            .total_num_events
-                            .checked_sub(chunk.num_events_cumulative())
-                        {
-                            chunks_per_entity.total_num_events = new_total_num_events;
-                        } else {
-                            re_log::error_once!(
-                                "Total number of recursive events for {:?} for went negative",
-                                path
-                            );
-                        }
+                        chunks_per_entity.total_num_events = new_total_num_events;
+                    } else {
+                        re_log::error_once!(
+                            "Total number of recursive events for {:?} for went negative",
+                            path
+                        );
                     }
                 }
                 next_path = path.parent();

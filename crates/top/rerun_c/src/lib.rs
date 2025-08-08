@@ -496,10 +496,10 @@ fn rr_recording_stream_new_impl(
         .store_source(re_sdk::external::re_log_types::StoreSource::CSdk)
         .default_enabled(default_enabled);
 
-    if !(recording_id.is_null() || recording_id.is_empty()) {
-        if let Ok(recording_id) = recording_id.as_str("recording_id") {
-            rec_builder = rec_builder.recording_id(recording_id);
-        }
+    if !(recording_id.is_null() || recording_id.is_empty())
+        && let Ok(recording_id) = recording_id.as_str("recording_id")
+    {
+        rec_builder = rec_builder.recording_id(recording_id);
     }
 
     if store_kind == CStoreKind::Blueprint {

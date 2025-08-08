@@ -113,10 +113,10 @@ impl<W: std::io::Write> DroppableEncoder<W> {
 
 impl<W: std::io::Write> std::ops::Drop for DroppableEncoder<W> {
     fn drop(&mut self) {
-        if !self.is_finished {
-            if let Err(err) = self.finish() {
-                re_log::warn!("encoder couldn't be finished: {err}");
-            }
+        if !self.is_finished
+            && let Err(err) = self.finish()
+        {
+            re_log::warn!("encoder couldn't be finished: {err}");
         }
     }
 }

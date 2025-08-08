@@ -398,13 +398,13 @@ impl ViewClass for SpatialView3D {
                     ui.markdown_ui("Set with `rerun.ViewCoordinates`.");
                 });
 
-                if let Some(eye) = &state.state_3d.view_eye {
-                    if let Some(eye_up) = eye.eye_up() {
-                        ui.label(format!(
-                            "Current camera-eye up-axis is {}",
-                            format_vector(eye_up)
-                        ));
-                    }
+                if let Some(eye) = &state.state_3d.view_eye
+                    && let Some(eye_up) = eye.eye_up()
+                {
+                    ui.label(format!(
+                        "Current camera-eye up-axis is {}",
+                        format_vector(eye_up)
+                    ));
                 }
 
                 ui.re_checkbox(&mut state.state_3d.show_axes, "Show origin axes")

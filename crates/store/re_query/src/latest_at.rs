@@ -166,12 +166,11 @@ impl QueryCache {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
-                if let Some(index) = cached.index(&query.timeline()) {
-                    if component_descr == &archetypes::Clear::descriptor_is_recursive()
-                        || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
-                    {
-                        results.add(component_descr.clone(), index, cached);
-                    }
+                if let Some(index) = cached.index(&query.timeline())
+                    && (component_descr == &archetypes::Clear::descriptor_is_recursive()
+                        || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater)
+                {
+                    results.add(component_descr.clone(), index, cached);
                 }
             }
         }

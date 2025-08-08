@@ -10,14 +10,14 @@ pub(crate) struct MoveContentsToNewContainerAction(pub ContainerKind);
 
 impl ContextMenuAction for MoveContentsToNewContainerAction {
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
-        if let Some((parent_container, _)) = ctx.clicked_item_enclosing_container_and_position() {
-            if matches!(
+        if let Some((parent_container, _)) = ctx.clicked_item_enclosing_container_and_position()
+            && matches!(
                 parent_container.container_kind,
                 ContainerKind::Vertical | ContainerKind::Horizontal
-            ) && parent_container.container_kind == self.0
-            {
-                return false;
-            }
+            )
+            && parent_container.container_kind == self.0
+        {
+            return false;
         }
 
         ctx.selection.iter().all(|(item, _)| match item {

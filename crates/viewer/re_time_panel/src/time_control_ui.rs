@@ -71,21 +71,21 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
     #[allow(clippy::unused_self)]
     pub fn fps_ui(&self, time_control: &mut TimeControl, ui: &mut egui::Ui) {
-        if time_control.time_type() == TimeType::Sequence {
-            if let Some(mut fps) = time_control.fps() {
-                ui.scope(|ui| {
-                    ui.spacing_mut().interact_size -= egui::Vec2::new(0., 4.);
+        if time_control.time_type() == TimeType::Sequence
+            && let Some(mut fps) = time_control.fps()
+        {
+            ui.scope(|ui| {
+                ui.spacing_mut().interact_size -= egui::Vec2::new(0., 4.);
 
-                    ui.add(
-                        egui::DragValue::new(&mut fps)
-                            .suffix(" FPS")
-                            .speed(1)
-                            .range(0.0..=f32::INFINITY),
-                    )
-                    .on_hover_text("Frames per second");
-                });
-                time_control.set_fps(fps);
-            }
+                ui.add(
+                    egui::DragValue::new(&mut fps)
+                        .suffix(" FPS")
+                        .speed(1)
+                        .range(0.0..=f32::INFINITY),
+                )
+                .on_hover_text("Frames per second");
+            });
+            time_control.set_fps(fps);
         }
     }
 

@@ -797,28 +797,28 @@ fn run_impl(
             .collect_vec();
 
         #[cfg(feature = "web_viewer")]
-        if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::RerunGrpcStream {
+        if data_sources.len() == 1
+            && args.web_viewer
+            && let DataSource::RerunGrpcStream {
                 uri: re_uri::RedapUri::Proxy(uri),
                 ..
             } = data_sources[0].clone()
-            {
-                // Special case! We are connecting a web-viewer to a gRPC address.
-                // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
+        {
+            // Special case! We are connecting a web-viewer to a gRPC address.
+            // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
 
-                WebViewerConfig {
-                    bind_ip: args.bind.to_string(),
-                    web_port: args.web_viewer_port,
-                    connect_to: Some(uri.to_string()),
-                    force_wgpu_backend: args.renderer,
-                    video_decoder: args.video_decoder,
-                    open_browser: true,
-                }
-                .host_web_viewer()?
-                .block();
-
-                return Ok(());
+            WebViewerConfig {
+                bind_ip: args.bind.to_string(),
+                web_port: args.web_viewer_port,
+                connect_to: Some(uri.to_string()),
+                force_wgpu_backend: args.renderer,
+                video_decoder: args.video_decoder,
+                open_browser: true,
             }
+            .host_web_viewer()?
+            .block();
+
+            return Ok(());
         }
 
         let command_sender = command_sender.clone();

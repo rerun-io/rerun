@@ -384,10 +384,10 @@ impl Drop for ChunkBatcherInner {
     fn drop(&mut self) {
         // Drop the receiving end of the chunk stream first and foremost, so that we don't block
         // even if the output channel is bounded and currently full.
-        if let Some(rx_chunks) = self.rx_chunks.take() {
-            if !rx_chunks.is_empty() {
-                re_log::warn!("Dropping data");
-            }
+        if let Some(rx_chunks) = self.rx_chunks.take()
+            && !rx_chunks.is_empty()
+        {
+            re_log::warn!("Dropping data");
         }
 
         // NOTE: The command channel is private, if we're here, nothing is currently capable of

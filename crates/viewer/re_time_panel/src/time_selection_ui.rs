@@ -145,12 +145,11 @@ pub fn loop_selection_ui(
         if is_pointer_in_timeline
             && !is_anything_being_dragged
             && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
+            && let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x)
         {
-            if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                time_ctrl.set_loop_selection(AbsoluteTimeRangeF::point(time));
-                time_ctrl.set_looping(Looping::Selection);
-                ui.ctx().set_dragged_id(right_edge_id);
-            }
+            time_ctrl.set_loop_selection(AbsoluteTimeRangeF::point(time));
+            time_ctrl.set_looping(Looping::Selection);
+            ui.ctx().set_dragged_id(right_edge_id);
         }
     }
 }

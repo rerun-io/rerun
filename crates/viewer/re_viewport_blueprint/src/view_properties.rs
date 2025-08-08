@@ -168,10 +168,10 @@ impl ViewProperty {
         component_descr: &ComponentDescriptor,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) -> arrow::array::ArrayRef {
-        if let Some(value) = self.component_raw(component_descr) {
-            if !value.is_empty() {
-                return value;
-            }
+        if let Some(value) = self.component_raw(component_descr)
+            && !value.is_empty()
+        {
+            return value;
         }
 
         fallback_provider.fallback_for(&self.query_context(ctx), component_descr)

@@ -506,11 +506,11 @@ fn quote_arrow_field_deserializer(
     _ = is_nullable; // not yet used, will be needed very soon
 
     // If the inner object is an enum, then dispatch to its deserializer.
-    if let DataType::Object { fqname, .. } = datatype {
-        if objects.get(fqname).is_some_and(|obj| obj.is_enum()) {
-            let fqname_use = quote_fqname_as_type_path(fqname);
-            return quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter());
-        }
+    if let DataType::Object { fqname, .. } = datatype
+        && objects.get(fqname).is_some_and(|obj| obj.is_enum())
+    {
+        let fqname_use = quote_fqname_as_type_path(fqname);
+        return quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter());
     }
 
     match datatype.to_logical_type() {

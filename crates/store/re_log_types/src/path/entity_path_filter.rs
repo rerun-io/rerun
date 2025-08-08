@@ -475,10 +475,10 @@ impl EntityPathFilter {
                 ResolvedEntityPathRule::parse_strict(&rule, subst_env).map(|r| (r, effect))
             })
             .inspect(|maybe_rule| {
-                if let Ok((ResolvedEntityPathRule { resolved_path, .. }, _)) = maybe_rule {
-                    if resolved_path.starts_with(&EntityPath::properties()) {
-                        seen_properties = true;
-                    }
+                if let Ok((ResolvedEntityPathRule { resolved_path, .. }, _)) = maybe_rule
+                    && resolved_path.starts_with(&EntityPath::properties())
+                {
+                    seen_properties = true;
                 }
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;

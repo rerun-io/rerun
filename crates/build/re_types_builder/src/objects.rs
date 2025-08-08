@@ -127,45 +127,45 @@ impl Objects {
             let objects_copy = this.objects.clone(); // borrowck, the lazy way
             for obj in this.objects.values_mut() {
                 for field in &mut obj.fields {
-                    if field.is_transparent() {
-                        if let Some(target_fqname) = field.typ.fqname() {
-                            let mut target_obj = objects_copy[target_fqname].clone();
-                            assert!(
-                                target_obj.fields.len() == 1,
-                                "field '{}' is marked transparent but points to object '{}' which \
+                    if field.is_transparent()
+                        && let Some(target_fqname) = field.typ.fqname()
+                    {
+                        let mut target_obj = objects_copy[target_fqname].clone();
+                        assert!(
+                            target_obj.fields.len() == 1,
+                            "field '{}' is marked transparent but points to object '{}' which \
                                     doesn't have exactly one field (found {} fields instead)",
-                                field.fqname,
-                                target_obj.fqname,
-                                target_obj.fields.len(),
-                            );
+                            field.fqname,
+                            target_obj.fqname,
+                            target_obj.fields.len(),
+                        );
 
-                            let ObjectField {
-                                fqname,
-                                typ,
-                                attrs,
-                                datatype,
-                                ..
-                            } = target_obj.fields.pop().unwrap();
+                        let ObjectField {
+                            fqname,
+                            typ,
+                            attrs,
+                            datatype,
+                            ..
+                        } = target_obj.fields.pop().unwrap();
 
-                            field.typ = typ;
-                            field.datatype = datatype;
+                        field.typ = typ;
+                        field.datatype = datatype;
 
-                            // TODO(cmc): might want to do something smarter at some point regarding attrs.
+                        // TODO(cmc): might want to do something smarter at some point regarding attrs.
 
-                            // NOTE: Transparency (or lack thereof) of the target field takes precedence.
-                            if let transparency @ Some(_) =
-                                attrs.try_get::<String>(&fqname, crate::ATTR_TRANSPARENT)
-                            {
-                                field.attrs.0.insert(
-                                    crate::ATTR_TRANSPARENT.to_owned(),
-                                    transparency.clone(),
-                                );
-                            } else {
-                                field.attrs.0.remove(crate::ATTR_TRANSPARENT);
-                            }
-
-                            done = false;
+                        // NOTE: Transparency (or lack thereof) of the target field takes precedence.
+                        if let transparency @ Some(_) =
+                            attrs.try_get::<String>(&fqname, crate::ATTR_TRANSPARENT)
+                        {
+                            field
+                                .attrs
+                                .0
+                                .insert(crate::ATTR_TRANSPARENT.to_owned(), transparency.clone());
+                        } else {
+                            field.attrs.0.remove(crate::ATTR_TRANSPARENT);
                         }
+
+                        done = false;
                     }
                 }
             }

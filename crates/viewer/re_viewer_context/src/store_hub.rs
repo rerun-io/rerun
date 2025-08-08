@@ -202,28 +202,27 @@ impl StoreHub {
 
             // Defensive coding: Check that default and active blueprints exists,
             // in case some of our book-keeping is broken.
-            if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id) {
-                if !self.store_bundle.contains(blueprint_id) {
-                    self.default_blueprint_by_app_id.remove(&app_id);
-                }
+            if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id)
+                && !self.store_bundle.contains(blueprint_id)
+            {
+                self.default_blueprint_by_app_id.remove(&app_id);
             }
-            if let Some(blueprint_id) = self.active_blueprint_by_app_id.get(&app_id) {
-                if !self.store_bundle.contains(blueprint_id) {
-                    self.active_blueprint_by_app_id.remove(&app_id);
-                }
+            if let Some(blueprint_id) = self.active_blueprint_by_app_id.get(&app_id)
+                && !self.store_bundle.contains(blueprint_id)
+            {
+                self.active_blueprint_by_app_id.remove(&app_id);
             }
 
             // If there's no active blueprint for this app, we must use the default blueprint, UNLESS
             // we're about to enable heuristics for this app.
             if !self.active_blueprint_by_app_id.contains_key(&app_id)
                 && !self.should_enable_heuristics_by_app_id.contains(&app_id)
+                && let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id).cloned()
             {
-                if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id).cloned() {
-                    self.set_cloned_blueprint_active_for_app(&blueprint_id)
-                        .unwrap_or_else(|err| {
-                            re_log::warn!("Failed to make blueprint active: {err}");
-                        });
-                }
+                self.set_cloned_blueprint_active_for_app(&blueprint_id)
+                    .unwrap_or_else(|err| {
+                        re_log::warn!("Failed to make blueprint active: {err}");
+                    });
             }
 
             let active_blueprint = {
@@ -391,10 +390,10 @@ impl StoreHub {
     pub fn set_active_app(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
         // try to load one from the persisted store
-        if !self.active_blueprint_by_app_id.contains_key(&app_id) {
-            if let Err(err) = self.try_to_load_persisted_blueprint(&app_id) {
-                re_log::warn!("Failed to load persisted blueprint: {err}");
-            }
+        if !self.active_blueprint_by_app_id.contains_key(&app_id)
+            && let Err(err) = self.try_to_load_persisted_blueprint(&app_id)
+        {
+            re_log::warn!("Failed to load persisted blueprint: {err}");
         }
 
         if self.active_application_id.as_ref() == Some(&app_id) {
@@ -563,10 +562,10 @@ impl StoreHub {
             .context("missing blueprint")?;
 
         // TODO(#6282): Improve this error message.
-        if let Some(validator) = &self.persistence.validator {
-            if !(validator)(blueprint) {
-                anyhow::bail!("Blueprint failed validation");
-            }
+        if let Some(validator) = &self.persistence.validator
+            && !(validator)(blueprint)
+        {
+            anyhow::bail!("Blueprint failed validation");
         }
 
         re_log::trace!(
@@ -625,10 +624,10 @@ impl StoreHub {
             .context("missing blueprint")?;
 
         // TODO(#6282): Improve this error message.
-        if let Some(validator) = &self.persistence.validator {
-            if !(validator)(blueprint) {
-                anyhow::bail!("Blueprint failed validation");
-            }
+        if let Some(validator) = &self.persistence.validator
+            && !(validator)(blueprint)
+        {
+            anyhow::bail!("Blueprint failed validation");
         }
 
         let new_blueprint = blueprint.clone_with_new_id(new_id.clone())?;
@@ -649,11 +648,11 @@ impl StoreHub {
 
     /// Clear the currently active blueprint
     pub fn clear_active_blueprint(&mut self) {
-        if let Some(app_id) = &self.active_application_id {
-            if let Some(blueprint_id) = self.active_blueprint_by_app_id.remove(app_id) {
-                re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id:?}");
-                self.remove_store(&blueprint_id);
-            }
+        if let Some(app_id) = &self.active_application_id
+            && let Some(blueprint_id) = self.active_blueprint_by_app_id.remove(app_id)
+        {
+            re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id:?}");
+            self.remove_store(&blueprint_id);
         }
     }
 
@@ -797,14 +796,14 @@ impl StoreHub {
                 }
 
                 let mut protected_time_ranges = IntMap::default();
-                if let Some(undo) = undo_state.get(blueprint_id) {
-                    if let Some(time) = undo.oldest_undo_point() {
-                        // Save everything that we could want to undo to:
-                        protected_time_ranges.insert(
-                            crate::blueprint_timeline(),
-                            AbsoluteTimeRange::new(time, re_chunk::TimeInt::MAX),
-                        );
-                    }
+                if let Some(undo) = undo_state.get(blueprint_id)
+                    && let Some(time) = undo.oldest_undo_point()
+                {
+                    // Save everything that we could want to undo to:
+                    protected_time_ranges.insert(
+                        crate::blueprint_timeline(),
+                        AbsoluteTimeRange::new(time, re_chunk::TimeInt::MAX),
+                    );
                 }
 
                 let store_events = blueprint.gc(&GarbageCollectionOptions {

@@ -268,11 +268,11 @@ impl DataResultTree {
         handle: DataResultHandle,
         visitor: &mut impl FnMut(&'a DataResultNode) -> bool,
     ) {
-        if let Some(result) = self.data_results.get(handle) {
-            if visitor(result) {
-                for child in &result.children {
-                    self.visit_recursive(*child, visitor);
-                }
+        if let Some(result) = self.data_results.get(handle)
+            && visitor(result)
+        {
+            for child in &result.children {
+                self.visit_recursive(*child, visitor);
             }
         }
     }

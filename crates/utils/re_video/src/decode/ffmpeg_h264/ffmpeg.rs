@@ -437,18 +437,18 @@ impl Drop for FFmpegProcessAndListener {
         if false {
             {
                 re_tracing::profile_scope!("shutdown write thread");
-                if let Some(write_thread) = self.write_thread.take() {
-                    if write_thread.join().is_err() {
-                        re_log::error!("Failed to join ffmpeg listener thread.");
-                    }
+                if let Some(write_thread) = self.write_thread.take()
+                    && write_thread.join().is_err()
+                {
+                    re_log::error!("Failed to join ffmpeg listener thread.");
                 }
             }
             {
                 re_tracing::profile_scope!("shutdown listen thread");
-                if let Some(listen_thread) = self.listen_thread.take() {
-                    if listen_thread.join().is_err() {
-                        re_log::error!("Failed to join ffmpeg listener thread.");
-                    }
+                if let Some(listen_thread) = self.listen_thread.take()
+                    && listen_thread.join().is_err()
+                {
+                    re_log::error!("Failed to join ffmpeg listener thread.");
                 }
             }
         }

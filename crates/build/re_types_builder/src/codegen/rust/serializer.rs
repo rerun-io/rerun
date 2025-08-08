@@ -490,20 +490,20 @@ fn quote_arrow_field_serializer(
     };
 
     // If the inner object is an enum, then dispatch to its serializer.
-    if let Some(obj) = inner_obj {
-        if obj.is_enum() {
-            let fqname_use = quote_fqname_as_type_path(&obj.fqname);
-            let option_wrapper = if elements_are_nullable {
-                quote! {}
-            } else {
-                quote! { .into_iter().map(Some) }
-            };
+    if let Some(obj) = inner_obj
+        && obj.is_enum()
+    {
+        let fqname_use = quote_fqname_as_type_path(&obj.fqname);
+        let option_wrapper = if elements_are_nullable {
+            quote! {}
+        } else {
+            quote! { .into_iter().map(Some) }
+        };
 
-            return quote! {{
-                _ = #validity_src;
-                #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
-            }};
-        }
+        return quote! {{
+            _ = #validity_src;
+            #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
+        }};
     }
 
     let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
