@@ -307,27 +307,16 @@ class ImageExt:
 
         """
 
-        from PIL import Image as PILImage
-
         from ..archetypes import EncodedImage
 
         with catch_and_log_exceptions(context="Image compression"):
             if self.format is None:
                 raise ValueError("Cannot JPEG compress an image without a known image_format")
 
-            image_format_arrow = self.format.as_arrow_array()[0].as_py()
+            if self.buffer is None:
+                raise ValueError("Cannot JPEG compress an image without data")
 
-            image_format = ImageFormat(
-                width=image_format_arrow["width"],
-                height=image_format_arrow["height"],
-                pixel_format=image_format_arrow["pixel_format"],
-                channel_datatype=image_format_arrow["channel_datatype"],
-                color_model=image_format_arrow["color_model"],
-            )
-
-            # TODO(jleibs): Support conversions here
-            if image_format.pixel_format is not None:
-                raise ValueError(f"Cannot JPEG compress an image with pixel_format {image_format.pixel_format}")
+            image_format = self.image_format()
 
             if image_format.color_model not in (ColorModel.L, ColorModel.RGB, ColorModel.BGR):
                 raise ValueError(
@@ -341,27 +330,8 @@ class ImageExt:
                     f"Cannot JPEG compress an image of datatype {image_format.channel_datatype}. Only U8 is supported.",
                 )
 
-            buf = None
-            if self.buffer is not None:
-                buf = self.buffer.as_arrow_array().values.to_numpy().view(image_format.channel_datatype.to_np_dtype())
+            pil_image = self.as_pil_image()
 
-            if buf is None:
-                raise ValueError("Cannot JPEG compress an image without data")
-
-            # Note: np array shape is always (height, width, channels)
-            if image_format.color_model == ColorModel.L:
-                image = buf.reshape(image_format.height, image_format.width)
-            else:
-                image = buf.reshape(image_format.height, image_format.width, 3)
-
-            # PIL doesn't understand BGR.
-            if image_format.color_model == ColorModel.BGR:
-                mode = "RGB"
-                image = image[:, :, ::-1]
-            else:
-                mode = str(image_format.color_model)
-
-            pil_image = PILImage.fromarray(image).convert(mode)
             output = BytesIO()
             pil_image.save(output, format="JPEG", quality=jpeg_quality)
             jpeg_bytes = output.getvalue()
