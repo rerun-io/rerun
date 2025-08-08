@@ -15,6 +15,12 @@ mod provider;
 mod service;
 mod token;
 
+#[cfg(feature = "cli")]
+pub mod cli;
+
+#[cfg(feature = "cli")]
+pub mod workos;
+
 pub use service::client;
 pub use token::{Jwt, TokenError};
 
