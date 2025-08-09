@@ -62,6 +62,15 @@ pub enum ChunkError {
     InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
 }
 
+#[test]
+fn test_error_size() {
+    assert!(
+        std::mem::size_of::<ChunkError>() <= 72,
+        "Size of error is {} bytes. Let's try to keep errors small.",
+        std::mem::size_of::<ChunkError>()
+    );
+}
+
 pub type ChunkResult<T> = Result<T, ChunkError>;
 
 // ---

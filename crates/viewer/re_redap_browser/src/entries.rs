@@ -42,7 +42,7 @@ pub enum EntryError {
     /// You usually want to use [`EntryError::tonic_status`] instead
     /// (there are multiple variants holding [`tonic::Status`]).
     #[error(transparent)]
-    TonicError(#[from] tonic::Status),
+    TonicError(Box<tonic::Status>),
 
     #[error(transparent)]
     ConnectionError(#[from] ConnectionError),
@@ -60,15 +60,36 @@ pub enum EntryError {
     SorbetError(#[from] SorbetError),
 
     #[error(transparent)]
-    DataFusionError(#[from] DataFusionError),
+    DataFusionError(Box<DataFusionError>),
+}
+
+#[test]
+fn test_error_size() {
+    assert!(
+        std::mem::size_of::<EntryError>() <= 80,
+        "Size of error is {} bytes. Let's try to keep errors small.",
+        std::mem::size_of::<EntryError>()
+    );
+}
+
+impl From<tonic::Status> for EntryError {
+    fn from(status: tonic::Status) -> Self {
+        Self::TonicError(Box::new(status))
+    }
+}
+
+impl From<DataFusionError> for EntryError {
+    fn from(err: DataFusionError) -> Self {
+        Self::DataFusionError(Box::new(err))
+    }
 }
 
 impl EntryError {
     fn tonic_status(&self) -> Option<&tonic::Status> {
         // Be explicit here so we don't miss any future variants that might have a `tonic::Status`.
         match self {
-            Self::TonicError(status) => Some(status),
-            Self::StreamError(StreamError::TonicStatus(status)) => Some(&status.0),
+            Self::TonicError(status) => Some(status.as_ref()),
+            Self::StreamError(StreamError::TonicStatus(status)) => Some(status.as_ref()),
             #[cfg(not(target_arch = "wasm32"))]
             Self::StreamError(StreamError::Transport(_)) => None,
             Self::StreamError(

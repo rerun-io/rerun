@@ -105,7 +105,7 @@ impl FromStr for InstancePath {
 
         if let Some(component_descriptor) = component_descriptor {
             return Err(PathParseError::UnexpectedComponentDescriptor(
-                component_descriptor,
+                component_descriptor.into(),
             ));
         }
 

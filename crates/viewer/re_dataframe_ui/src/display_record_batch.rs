@@ -12,7 +12,6 @@ use arrow::{
     buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::DataType as ArrowDataType,
 };
-use thiserror::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
@@ -29,7 +28,7 @@ use re_viewer_context::{UiLayout, VariantName, ViewerContext};
 
 use crate::table_blueprint::ColumnBlueprint;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum DisplayRecordBatchError {
     #[error("Bad column for timeline '{timeline}': {error}")]
     BadTimeColumn {

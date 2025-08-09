@@ -134,7 +134,16 @@ pub enum VideoStreamProcessingError {
     MissingCodec,
 
     #[error("Failed to read codec - {0}")]
-    FailedReadingCodec(re_chunk::ChunkError),
+    FailedReadingCodec(Box<re_chunk::ChunkError>),
+}
+
+#[test]
+fn test_error_size() {
+    assert!(
+        std::mem::size_of::<VideoStreamProcessingError>() <= 64,
+        "Size of error is {} bytes. Let's try to keep errors small.",
+        std::mem::size_of::<VideoStreamProcessingError>()
+    );
 }
 
 pub type SharablePlayableVideoStream = Arc<RwLock<PlayableVideoStream>>;
@@ -232,7 +241,7 @@ fn load_video_data_from_chunks(
         .last()
         .and_then(|chunk| chunk.component_instance::<components::VideoCodec>(&codec_descr, 0, 0))
         .ok_or(VideoStreamProcessingError::MissingCodec)?
-        .map_err(VideoStreamProcessingError::FailedReadingCodec)?;
+        .map_err(|err| VideoStreamProcessingError::FailedReadingCodec(Box::new(err)))?;
     let codec = match last_codec {
         components::VideoCodec::H264 => re_video::VideoCodec::H264,
         // components::VideoCodec::H265 => re_video::VideoCodec::H265,

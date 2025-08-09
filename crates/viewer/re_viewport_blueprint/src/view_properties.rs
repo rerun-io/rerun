@@ -12,7 +12,7 @@ use re_viewer_context::{
 #[derive(thiserror::Error, Debug)]
 pub enum ViewPropertyQueryError {
     #[error(transparent)]
-    SerializationError(#[from] re_types::DeserializationError),
+    DeserializationError(#[from] re_types::DeserializationError),
 
     #[error(transparent)]
     ComponentFallbackError(#[from] ComponentFallbackError),
@@ -21,7 +21,7 @@ pub enum ViewPropertyQueryError {
 impl From<ViewPropertyQueryError> for ViewSystemExecutionError {
     fn from(val: ViewPropertyQueryError) -> Self {
         match val {
-            ViewPropertyQueryError::SerializationError(err) => err.into(),
+            ViewPropertyQueryError::DeserializationError(err) => err.into(),
             ViewPropertyQueryError::ComponentFallbackError(err) => err.into(),
         }
     }

@@ -38,3 +38,12 @@ pub enum SorbetError {
     #[error("Failed to deserialize chunk ID: {0}")]
     ChunkIdDeserializationError(String),
 }
+
+#[test]
+fn test_error_size() {
+    assert!(
+        std::mem::size_of::<SorbetError>() <= 64,
+        "Size of error is {} bytes. Let's try to keep errors small.",
+        std::mem::size_of::<SorbetError>()
+    );
+}
