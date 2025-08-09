@@ -830,9 +830,7 @@ impl RecordingStream {
         use std::ops::Deref as _;
         match &self.inner {
             Either::Left(strong) => strong.deref().as_ref().map(f),
-            Either::Right(weak) => weak
-                .upgrade()
-                .and_then(|strong| strong.deref().as_ref().map(f)),
+            Either::Right(weak) => weak.upgrade()?.deref().as_ref().map(f),
         }
     }
 

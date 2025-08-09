@@ -23,7 +23,7 @@ impl<T> UniformBufferSizeCheck<T> {
     /// But this leads to more unsafe code, harder to avoid holes in write combined memory access
     /// and potentially undefined values in the padding bytes on GPU.
     const CHECK: () = assert!(
-        std::mem::size_of::<T>() % 256 == 0 && std::mem::size_of::<T>() > 0,
+        std::mem::size_of::<T>().is_multiple_of(256) && std::mem::size_of::<T>() > 0,
         "Uniform buffers need to have a size that is a multiple of 256 bytes.
  Use types like `F32RowPadded` or `PaddingRow` to pad out as needed."
     );

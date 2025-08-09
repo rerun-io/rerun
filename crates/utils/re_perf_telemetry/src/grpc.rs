@@ -32,7 +32,7 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
         let email = request
             .headers()
             .get("authorization")
-            .and_then(|auth| auth.to_str().ok().and_then(|s| s.strip_prefix("Bearer ")))
+            .and_then(|auth| auth.to_str().ok()?.strip_prefix("Bearer "))
             .and_then(|token| token.split('.').skip(1).take(1).next())
             .and_then(|data| {
                 use base64::{Engine as _, engine::general_purpose};

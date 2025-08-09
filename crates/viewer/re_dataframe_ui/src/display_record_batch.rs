@@ -400,7 +400,7 @@ impl DisplayColumn {
                     .as_ref()
                     .is_none_or(|nulls| nulls.is_valid(row_index));
 
-                if let (true, Some(value)) = (is_valid, time_data.get(row_index)) {
+                if is_valid && let Some(value) = time_data.get(row_index) {
                     match TimeInt::try_from(*value) {
                         Ok(timestamp) => {
                             ui.label(

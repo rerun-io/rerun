@@ -32,7 +32,7 @@ where
     <f32 as Mul<T>>::Output: Add,
 {
     let tf = t.fract();
-    if t as u32 % 2 == 0 {
+    if (t as u32).is_multiple_of(2) {
         (1.0 - tf) * a + tf * b
     } else {
         tf * a + (1.0 - tf) * b

@@ -73,7 +73,7 @@ impl Mesh3D {
                     });
                 }
             }
-        } else if num_vertices % 9 != 0 {
+        } else if !num_vertices.is_multiple_of(9) {
             return Err(Mesh3DError::PositionsAreNotTriangles(num_vertices));
         }
 

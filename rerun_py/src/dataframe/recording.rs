@@ -119,9 +119,9 @@ impl PyRecording {
 
             Ok(contents)
         } else {
-            return Err(PyTypeError::new_err(
+            Err(PyTypeError::new_err(
                 "Could not interpret `contents` as a ViewContentsLike. Top-level type must be a string or a dictionary.",
-            ));
+            ))
         }
     }
 }

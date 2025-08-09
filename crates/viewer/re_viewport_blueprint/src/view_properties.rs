@@ -124,7 +124,7 @@ impl ViewProperty {
         component_descr: &ComponentDescriptor,
     ) -> Result<Option<C>, DeserializationError> {
         self.component_array(component_descr)
-            .map(|v| v.and_then(|v| v.into_iter().next()))
+            .map(|v| v?.into_iter().next())
     }
 
     /// Get the component array for a given type, not using any fallbacks.

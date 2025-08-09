@@ -291,13 +291,13 @@ impl Chunk {
             // Filter out the recording time component from both lhs and rhs.
             let lhs_components = components
                 .iter()
-                .filter(|&(desc, _list_array)| (desc != &recording_time_descriptor))
+                .filter(|&(desc, _list_array)| desc != &recording_time_descriptor)
                 .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
                 .collect::<IntMap<_, _>>();
             let rhs_components = rhs
                 .components
                 .iter()
-                .filter(|&(desc, _list_array)| (desc != &recording_time_descriptor))
+                .filter(|&(desc, _list_array)| desc != &recording_time_descriptor)
                 .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
                 .collect::<IntMap<_, _>>();
 

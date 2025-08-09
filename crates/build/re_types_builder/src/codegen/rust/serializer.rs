@@ -851,8 +851,8 @@ fn quote_arrow_field_serializer(
             //
             // This workaround does not apply if we don't have any validity on the outer type.
             // (as it is always the case with unions where the nullability is encoded as a separate variant)
-            let quoted_inner_validity = if let (true, DataType::FixedSizeList(_, count)) =
-                (elements_are_nullable, datatype.to_logical_type())
+            let quoted_inner_validity = if elements_are_nullable
+                && let DataType::FixedSizeList(_, count) = datatype.to_logical_type()
             {
                 quote! {
                     let #inner_validity_ident: Option<arrow::buffer::NullBuffer> =

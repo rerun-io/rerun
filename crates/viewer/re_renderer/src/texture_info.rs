@@ -89,7 +89,10 @@ impl Texture2DBufferInfo {
         re_tracing::profile_function!();
 
         assert_eq!(buffer.len() as wgpu::BufferAddress, self.buffer_size_padded);
-        assert!(self.bytes_per_row_unpadded % std::mem::size_of::<T>() as u32 == 0);
+        assert!(
+            self.bytes_per_row_unpadded
+                .is_multiple_of(std::mem::size_of::<T>() as u32)
+        );
 
         // Due to https://github.com/gfx-rs/wgpu/issues/3508 the data might be completely unaligned,
         // so much, that we can't even interpret it as e.g. a u32 slice.
