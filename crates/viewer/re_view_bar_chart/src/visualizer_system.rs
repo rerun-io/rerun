@@ -14,17 +14,17 @@ use re_viewer_context::{
     VisualizerSystem, auto_color_for_entity_path,
 };
 
+#[derive(Default)]
+pub struct BarChartData {
+    pub abscissa: datatypes::TensorData,
+    pub values: datatypes::TensorData,
+    pub color: components::Color,
+}
+
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
 pub struct BarChartVisualizerSystem {
-    pub charts: BTreeMap<
-        EntityPath,
-        (
-            datatypes::TensorData,
-            datatypes::TensorData,
-            components::Color,
-        ),
-    >,
+    pub charts: BTreeMap<EntityPath, BarChartData>,
 }
 
 impl IdentifiedViewSystem for BarChartVisualizerSystem {
@@ -62,7 +62,11 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                 let color = results.get_mono_with_fallback(&BarChart::descriptor_color(), self);
                 self.charts.insert(
                     data_result.entity_path.clone(),
-                    (abscissa.0.clone(), tensor.0.clone(), color),
+                    BarChartData {
+                        abscissa: abscissa.0.clone(),
+                        values: tensor.0.clone(),
+                        color,
+                    },
                 );
             }
         }

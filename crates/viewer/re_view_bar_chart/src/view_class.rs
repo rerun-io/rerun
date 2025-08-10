@@ -19,7 +19,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use super::visualizer_system::BarChartVisualizerSystem;
+use super::visualizer_system::{BarChartData, BarChartVisualizerSystem};
 
 #[derive(Default)]
 pub struct BarChartView;
@@ -230,8 +230,16 @@ impl ViewClass for BarChartView {
                     .color(color)
                 }
 
-                for (ent_path, (index, tensor, color)) in charts {
-                    let arg: ::arrow::buffer::ScalarBuffer<f64> = match &index.buffer {
+                for (
+                    ent_path,
+                    BarChartData {
+                        abscissa,
+                        values: tensor,
+                        color,
+                    },
+                ) in charts
+                {
+                    let arg: ::arrow::buffer::ScalarBuffer<f64> = match &abscissa.buffer {
                         TensorBuffer::U8(data) => data.iter().map(|v| *v as f64).collect(),
                         TensorBuffer::U16(data) => data.iter().map(|v| *v as f64).collect(),
                         TensorBuffer::U32(data) => data.iter().map(|v| *v as f64).collect(),
