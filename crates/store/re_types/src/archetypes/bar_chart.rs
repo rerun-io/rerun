@@ -108,16 +108,16 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    std::sync::Lazy::new(|| {
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| {
         [
             BarChart::descriptor_color(),
             BarChart::descriptor_abscissa(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::Lazy<[ComponentDescriptor; 3usize]> =
-    std::sync::Lazy::new(|| {
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+    std::sync::LazyLock::new(|| {
         [
             BarChart::descriptor_values(),
             BarChart::descriptor_color(),
