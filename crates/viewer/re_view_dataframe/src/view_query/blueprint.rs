@@ -70,7 +70,7 @@ impl Query {
             .component_or_empty::<components::FilterByRange>(
                 &DataframeQuery::descriptor_filter_by_range(),
             )?
-            .map(|range_filter| (AbsoluteTimeRange::new(range_filter.start, range_filter.end)))
+            .map(|range_filter| AbsoluteTimeRange::new(range_filter.start, range_filter.end))
             .unwrap_or(AbsoluteTimeRange::EVERYTHING))
     }
 
