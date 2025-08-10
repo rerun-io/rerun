@@ -119,9 +119,9 @@ impl PyRecording {
 
             Ok(contents)
         } else {
-            return Err(PyTypeError::new_err(
+            Err(PyTypeError::new_err(
                 "Could not interpret `contents` as a ViewContentsLike. Top-level type must be a string or a dictionary.",
-            ));
+            ))
         }
     }
 }
@@ -245,20 +245,11 @@ impl PyRecording {
 
     /// The recording ID of the recording.
     fn recording_id(&self) -> String {
-        self.store.read().id().as_str().to_owned()
+        self.store.read().id().recording_id().to_string()
     }
 
     /// The application ID of the recording.
-    fn application_id(&self) -> PyResult<String> {
-        Ok(self
-            .store
-            .read()
-            .store_info()
-            .ok_or(PyValueError::new_err(
-                "Recording is missing application id.",
-            ))?
-            .application_id
-            .as_str()
-            .to_owned())
+    fn application_id(&self) -> String {
+        self.store.read().id().application_id().to_string()
     }
 }

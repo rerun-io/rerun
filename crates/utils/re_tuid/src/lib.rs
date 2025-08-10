@@ -253,10 +253,11 @@ impl Tuid {
 #[inline]
 fn monotonic_nanos_since_epoch() -> u64 {
     // This can maybe be optimized
-    use once_cell::sync::Lazy;
+
     use web_time::Instant;
 
-    static START_TIME: Lazy<(u64, Instant)> = Lazy::new(|| (nanos_since_epoch(), Instant::now()));
+    static START_TIME: std::sync::LazyLock<(u64, Instant)> =
+        std::sync::LazyLock::new(|| (nanos_since_epoch(), Instant::now()));
     START_TIME.0 + START_TIME.1.elapsed().as_nanos() as u64
 }
 

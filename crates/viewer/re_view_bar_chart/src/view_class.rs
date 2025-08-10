@@ -376,5 +376,5 @@ re_viewer_context::impl_component_fallback_provider!(BarChartView => [Corner2D])
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| BarChartView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| BarChartView.help(ctx));
 }

@@ -268,7 +268,7 @@ impl ViewClass for MapView {
                 "Zoom level {zoom_level} rejected by walkers (probably means that it is not \
                 supported by the configured map provider)"
             );
-        };
+        }
 
         //
         // Map UI
@@ -634,5 +634,5 @@ fn picking_gpu(
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| MapView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| MapView.help(ctx));
 }

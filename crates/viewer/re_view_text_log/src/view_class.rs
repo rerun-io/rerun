@@ -375,20 +375,20 @@ fn table_ui(
                             .unwrap_or(re_log_types::TimeInt::STATIC);
                         item_ui::time_button(ctx, ui, timeline, row_time);
 
-                        if let Some(global_time) = global_time {
-                            if timeline == global_timeline.name() {
-                                #[allow(clippy::comparison_chain)]
-                                if global_time < row_time {
-                                    // We've past the global time - it is thus above this row.
-                                    if current_time_y.is_none() {
-                                        current_time_y = Some(ui.max_rect().top());
-                                    }
-                                } else if global_time == row_time {
-                                    // This row is exactly at the current time.
-                                    // We could draw the current time exactly onto this row, but that would look bad,
-                                    // so let's draw it under instead. It looks better in the "following" mode.
-                                    current_time_y = Some(ui.max_rect().bottom());
+                        if let Some(global_time) = global_time
+                            && timeline == global_timeline.name()
+                        {
+                            #[allow(clippy::comparison_chain)]
+                            if global_time < row_time {
+                                // We've past the global time - it is thus above this row.
+                                if current_time_y.is_none() {
+                                    current_time_y = Some(ui.max_rect().top());
                                 }
+                            } else if global_time == row_time {
+                                // This row is exactly at the current time.
+                                // We could draw the current time exactly onto this row, but that would look bad,
+                                // so let's draw it under instead. It looks better in the "following" mode.
+                                current_time_y = Some(ui.max_rect().bottom());
                             }
                         }
                     });
@@ -455,5 +455,5 @@ fn calc_row_height(tokens: &DesignTokens, table_style: re_ui::TableStyle, entry:
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TextView.help(ctx));
+    re_test_context::TestContext::test_help_view(|ctx| TextView.help(ctx));
 }

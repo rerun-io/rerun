@@ -1,9 +1,45 @@
 # Rerun changelog
 
+
+## [0.24.1](https://github.com/rerun-io/rerun/compare/0.24.0...0.24.1) - 2025-08-07 - Bug fixes
+
+#### 🌊 C++ API
+- Fix `rerun_cpp` CMake link errors [#10756](https://github.com/rerun-io/rerun/pull/10756) (thanks [@reinar](https://github.com/reinar)!)
+- Fix C++ interface for `VideoStream` [#10745](https://github.com/rerun-io/rerun/pull/10745)
+- Fix C++ Arrow build [#10799](https://github.com/rerun-io/rerun/pull/10799)
+
+#### 🐍 Python API
+- Explicitly import `pyarrow.compute` in `url_generation.py` [#10690](https://github.com/rerun-io/rerun/pull/10690)
+- Add `rerun-sdk[datafusion]` and `rerun-sdk[all]` [#10696](https://github.com/rerun-io/rerun/pull/10696)
+
+#### 🦀 Rust API
+- Fix unnecessary `rfd` and wayland dependencies in SDK crate [#10802](https://github.com/rerun-io/rerun/pull/10802)
+
+#### 🪳 Bug fixes
+- Make `parking_lot` dependency version stricter to prevent import failure [#10732](https://github.com/rerun-io/rerun/pull/10732) (thanks [@sdd](https://github.com/sdd)!)
+- Use `ui.warning_label()` in more places [#10697](https://github.com/rerun-io/rerun/pull/10697)
+- Fix colors sometimes being wrong in plot view [#10713](https://github.com/rerun-io/rerun/pull/10713)
+- Fix breaking example in `rerun_notebook/example.ipynb` [#10706](https://github.com/rerun-io/rerun/pull/10706) (thanks [@glk0](https://github.com/glk0)!)
+- Fix GUI hickup when starting native video player [#10797](https://github.com/rerun-io/rerun/pull/10797)
+- Improve command palette in light mode [#10825](https://github.com/rerun-io/rerun/pull/10825)
+
+#### 🌁 Viewer improvements
+- Add time range query params when opening a time_range-based url [#10819](https://github.com/rerun-io/rerun/pull/10819)
+
+#### 🖼 UI improvements
+- Better component UI for Arrow `StructArray` [#10748](https://github.com/rerun-io/rerun/pull/10748)
+
+#### 🕸️ Web
+- Make `@rerun-io/web-viewer-react` compatible with React 19 [#10809](https://github.com/rerun-io/rerun/pull/10809)
+
+#### 📈 Analytics
+- Add some analytics events [#10793](https://github.com/rerun-io/rerun/pull/10793)
+
+
 ## [0.24.0](https://github.com/rerun-io/rerun/compare/0.23.4...0.24.0) - 2025-07-16 - Tagged components, Video Stream, light mode and more
 
-* 📖 [Release blogpost](https://rerun.io/blog/release-0.24#speculative-link)
-* 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-24#speculative-link)
+* 📖 [Release blogpost](https://rerun.io/blog/release-0.24)
+* 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-24)
 
 ### ✨ Overview & highlights
 
@@ -35,7 +71,7 @@ rr.log("path", rr.Mesh3D(vertex_positions=vertices, vertex_colors=[0x00FF00FF]))
 
 Rerun previously supported video only in the form of MP4 files,
 so it was not possible to stream live encoded video to Rerun.
-The new [`VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream#speculative-link) archetype remedies that!
+The new [`VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream) archetype remedies that!
 
 [<img src="https://static.rerun.io/camera_video_stream/b2f8f61eb62424aa942bdb5183e49246cf417e60/480w.png">](https://static.rerun.io/camera_video_stream/b2f8f61eb62424aa942bdb5183e49246cf417e60/full.png)
 
@@ -83,8 +119,8 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 
 #### 👀 Other highlights in short
 
-* New [`Cylinder`](https://rerun.io/docs/reference/types/archetypes/cylinders3d#speculative-link) archetype
-* [`AnyValues`](https://github.com/rerun-io/rerun/blob/0.24.0/crates/store/re_types/src/any_values.rs#speculative-link) utility for Rust
+* New [`Cylinder`](https://rerun.io/docs/reference/types/archetypes/cylinders3d) archetype
+* [`AnyValues`](https://github.com/rerun-io/rerun/blob/0.24.0/crates/store/re_types/src/any_values.rs) utility for Rust
 * [`rerun rrd stats`](https://github.com/rerun-io/rerun/pull/10593) for retrieving statistics about rrd files
 * [`rerun rrd route`](https://github.com/rerun-io/rerun/pull/10607) command to manipulate .rrd files on transport level
 * Much faster & better compaction for both `rerun rrd compact` and automatic in-Viewer compaction
@@ -92,8 +128,6 @@ You can now log URDF files directly to Rerun using the `log_file` API.
 * View3D's eye control type & speed can now be changed from blueprint (and as such is persisted over session!) more properties will follow in the future. (thanks to @jccampagne)
 
 ### 🔎 Details
-
-TODO(andreas): Update this list before final release.
 
 #### 🪵 Log API
 - Remove deprecated `Scalar`, `SeriesLine`, `SeriesPoint` archetypes [#9892](https://github.com/rerun-io/rerun/pull/9892)
@@ -133,7 +167,7 @@ TODO(andreas): Update this list before final release.
 - Notebook auto-sizing [#10554](https://github.com/rerun-io/rerun/pull/10554)
 - Add `RegisterTable` rpc, `LanceTable` message, and related proto changes [#10538](https://github.com/rerun-io/rerun/pull/10538)
 - Add `open_url`/`close_url` notebook APIs [#10602](https://github.com/rerun-io/rerun/pull/10602)
-- AnyValue Torch Performance Improvement [#10647](https://github.com/rerun-io/rerun/pull/10647) (thanks [@ntjohnson1](https://github.com/ntjohnson1)!)
+- AnyValue Torch Performance Improvement [#10647](https://github.com/rerun-io/rerun/pull/10647)
 - Make it easier to disable the 3D line grid in Python (blueprint) [#10621](https://github.com/rerun-io/rerun/pull/10621)
 - Add `to_arrow_reader()` to `TableEntry` and `DataFusionTable` [#10601](https://github.com/rerun-io/rerun/pull/10601)
 - Make it possible to configure batcher explicitly via python APIs [#10657](https://github.com/rerun-io/rerun/pull/10657)
@@ -158,6 +192,7 @@ TODO(andreas): Update this list before final release.
 - Fix integer overflow in `TimeSeriesView` for too large timestamps [#10310](https://github.com/rerun-io/rerun/pull/10310)
 - Fix `SIGBUS` startup crash on some Mac systems [#10334](https://github.com/rerun-io/rerun/pull/10334)
 - Silence harmeless "Unrecognized present mode" warning [#10379](https://github.com/rerun-io/rerun/pull/10379)
+- Fix copy and cut from notebook cells [#10401](https://github.com/rerun-io/rerun/pull/10401)
 - Fix videos re-decoding on some ui interactions [#10420](https://github.com/rerun-io/rerun/pull/10420)
 - Fix video stuttering on Firefox & Safari when encountering b-frames [#10405](https://github.com/rerun-io/rerun/pull/10405)
 - Fix pixel picking ui width changing rapidly by padding values [#10481](https://github.com/rerun-io/rerun/pull/10481)
@@ -168,7 +203,6 @@ TODO(andreas): Update this list before final release.
 - Fix visible time range documentation on property inheritance [#10618](https://github.com/rerun-io/rerun/pull/10618)
 - Remove redundant ffmpeg install check [#10635](https://github.com/rerun-io/rerun/pull/10635)
 - Make rerun menu scrollable if there is not enough space [#10642](https://github.com/rerun-io/rerun/pull/10642)
-- Fix copy and cut from notebook cells [#10401](https://github.com/rerun-io/rerun/pull/10401)
 
 #### 🌁 Viewer improvements
 - Basic ability to show components that only differ by archetype/field name on same entity [#9877](https://github.com/rerun-io/rerun/pull/9877)
@@ -200,6 +234,7 @@ TODO(andreas): Update this list before final release.
 - Compaction: performance & quality improvements [#10594](https://github.com/rerun-io/rerun/pull/10594)
 - `rrd stats`: add transport-layer only fast path [#10605](https://github.com/rerun-io/rerun/pull/10605)
 - `rrd stats`: parallelize decompression [#10606](https://github.com/rerun-io/rerun/pull/10606)
+- Add documentation for all things compaction [#10674](https://github.com/rerun-io/rerun/pull/10674)
 
 #### 🧑‍🏫 Examples
 - Fix custom view example not instantiating visualizer by default [#9762](https://github.com/rerun-io/rerun/pull/9762)
@@ -219,6 +254,7 @@ TODO(andreas): Update this list before final release.
 - Document changes to `VisualizerOverride` [#10486](https://github.com/rerun-io/rerun/pull/10486)
 - Improve documentation around `AnyValues` and custom data [#10589](https://github.com/rerun-io/rerun/pull/10589)
 - Add juxtaposition of `SeriesLines` and `SeriesPoints` to `visualizer-overrides` snippet [#10637](https://github.com/rerun-io/rerun/pull/10637)
+- Micro-batching snippets [#10662](https://github.com/rerun-io/rerun/pull/10662)
 
 #### 🖼 UI improvements
 - Introduce a DataFusion-backed table widget [#9764](https://github.com/rerun-io/rerun/pull/9764)
@@ -262,7 +298,7 @@ TODO(andreas): Update this list before final release.
 
 #### 🧑‍💻 Dev-experience
 - Show stderr output of external dataloaders [#10087](https://github.com/rerun-io/rerun/pull/10087)
-- Dynamically Set Active Partition URL and Select Time Window [#10557](https://github.com/rerun-io/rerun/pull/10557) (thanks [@ntjohnson1](https://github.com/ntjohnson1)!)
+- Dynamically Set Active Partition URL and Select Time Window [#10557](https://github.com/rerun-io/rerun/pull/10557)
 - Log a warning when starting the viewer from inside a Docker container [#10306](https://github.com/rerun-io/rerun/pull/10306)
 
 #### 🗣 Refactors

@@ -98,7 +98,7 @@ impl SchemaBuilder {
                                 .iter()
                                 .any(|descr| descr == &component_descriptor);
                         }
-                    };
+                    }
 
                     column_descriptor
                 })

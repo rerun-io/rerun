@@ -207,14 +207,13 @@ impl ItemCollection {
     }
 
     pub fn are_all_items_same_kind(&self) -> Option<&'static str> {
-        if let Some(first_item) = self.first_item() {
-            if self
+        if let Some(first_item) = self.first_item()
+            && self
                 .iter_items()
                 .skip(1)
                 .all(|item| std::mem::discriminant(first_item) == std::mem::discriminant(item))
-            {
-                return Some(first_item.kind());
-            }
+        {
+            return Some(first_item.kind());
         }
         None
     }
@@ -297,7 +296,11 @@ impl ItemCollection {
                 },
 
                 Item::AppId(id) => Some((ClipboardTextDesc::AppId, id.to_string())),
-                Item::StoreId(id) => Some((ClipboardTextDesc::StoreId, id.to_string())),
+
+                // TODO(ab): it is not very meaningful to copy the `StoreId` representation, but
+                // that's the best we can do for now. In the future, we should have URIs for
+                // in-memory recordings, and that's what we should copy here.
+                Item::StoreId(id) => Some((ClipboardTextDesc::StoreId, format!("{id:?}"))),
 
                 Item::DataResult(_, instance_path) | Item::InstancePath(instance_path) => Some((
                     ClipboardTextDesc::EntityPath,
@@ -390,10 +393,10 @@ impl ApplicationSelectionState {
         // Purge selection of invalid items.
         let selection_this_frame = self.selection_this_frame.get_mut();
         selection_this_frame.retain(|item, _| item_retain_condition(item));
-        if selection_this_frame.is_empty() {
-            if let Some(fallback_selection) = fallback_selection {
-                *selection_this_frame = ItemCollection::from(fallback_selection);
-            }
+        if selection_this_frame.is_empty()
+            && let Some(fallback_selection) = fallback_selection
+        {
+            *selection_this_frame = ItemCollection::from(fallback_selection);
         }
 
         // Hovering needs to be refreshed every frame: If it wasn't hovered last frame, it's no longer hovered!

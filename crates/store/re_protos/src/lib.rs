@@ -35,6 +35,9 @@ mod v1alpha1 {
     #[path = "./rerun.log_msg.v1alpha1.rs"]
     pub mod rerun_log_msg_v1alpha1;
 
+    #[path = "./rerun.log_msg.v1alpha1.ext.rs"]
+    pub mod rerun_log_msg_v1alpha1_ext;
+
     #[path = "./rerun.sdk_comms.v1alpha1.rs"]
     pub mod rerun_sdk_comms_v1alpha1;
 
@@ -69,6 +72,9 @@ pub mod common {
 pub mod log_msg {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
+        pub mod ext {
+            pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
+        }
     }
 }
 
@@ -157,6 +163,13 @@ pub enum TypeConversionError {
 
     #[error("could not parse url: {0}")]
     UrlParseError(#[from] url::ParseError),
+
+    #[error("internal error: {0}")]
+    InternalError(String),
+
+    //TODO(#10730): delete when removing 0.24 back compat
+    #[error("unexpected legacy `StoreId`: {0}")]
+    LegacyStoreIdError(String),
 }
 
 impl TypeConversionError {
@@ -262,15 +275,15 @@ mod sizes {
     impl SizeBytes for crate::log_msg::v1alpha1::StoreInfo {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
+            #[expect(deprecated)]
             let Self {
-                application_id,
+                application_id: _,
                 store_id,
                 store_source,
                 store_version,
             } = self;
 
-            application_id.heap_size_bytes()
-                + store_id.heap_size_bytes()
+            store_id.heap_size_bytes()
                 + store_source.heap_size_bytes()
                 + store_version.heap_size_bytes()
         }
@@ -288,9 +301,15 @@ mod sizes {
     impl SizeBytes for crate::common::v1alpha1::StoreId {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
-            let Self { kind, id } = self;
+            let Self {
+                kind,
+                recording_id,
+                application_id,
+            } = self;
 
-            kind.heap_size_bytes() + id.heap_size_bytes()
+            kind.heap_size_bytes()
+                + recording_id.heap_size_bytes()
+                + application_id.heap_size_bytes()
         }
     }
 

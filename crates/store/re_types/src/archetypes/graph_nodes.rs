@@ -148,14 +148,14 @@ impl GraphNodes {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [GraphNodes::descriptor_node_ids()]);
+static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [GraphNodes::descriptor_node_ids()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
+    std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
-    once_cell::sync::Lazy::new(|| {
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+    std::sync::LazyLock::new(|| {
         [
             GraphNodes::descriptor_positions(),
             GraphNodes::descriptor_colors(),
@@ -165,8 +165,8 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
-    once_cell::sync::Lazy::new(|| {
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
+    std::sync::LazyLock::new(|| {
         [
             GraphNodes::descriptor_node_ids(),
             GraphNodes::descriptor_positions(),
@@ -390,7 +390,7 @@ impl GraphNodes {
             .or(len_show_labels)
             .or(len_radii)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// A list of node IDs.

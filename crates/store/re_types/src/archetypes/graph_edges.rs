@@ -89,17 +89,17 @@ impl GraphEdges {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [GraphEdges::descriptor_edges()]);
+static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [GraphEdges::descriptor_edges()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [GraphEdges::descriptor_graph_type()]);
+static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [GraphEdges::descriptor_graph_type()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
+    std::sync::LazyLock::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| {
         [
             GraphEdges::descriptor_edges(),
             GraphEdges::descriptor_graph_type(),
@@ -246,7 +246,7 @@ impl GraphEdges {
         let len_edges = self.edges.as_ref().map(|b| b.array.len());
         let len_graph_type = self.graph_type.as_ref().map(|b| b.array.len());
         let len = None.or(len_edges).or(len_graph_type).unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// A list of node tuples.

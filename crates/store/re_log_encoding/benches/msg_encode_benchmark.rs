@@ -104,7 +104,7 @@ fn mono_points_arrow(c: &mut Criterion) {
     }
 
     {
-        let store_id = StoreId::random(StoreKind::Recording);
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
         let mut group = c.benchmark_group("mono_points_arrow");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {
@@ -173,7 +173,7 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
     }
 
     {
-        let store_id = StoreId::random(StoreKind::Recording);
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
         let mut group = c.benchmark_group("mono_points_arrow_batched");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {
@@ -243,7 +243,7 @@ fn batch_points_arrow(c: &mut Criterion) {
     }
 
     {
-        let store_id = StoreId::random(StoreKind::Recording);
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
         let mut group = c.benchmark_group("batch_points_arrow");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {

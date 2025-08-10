@@ -117,22 +117,22 @@ impl EncodedImage {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [EncodedImage::descriptor_blob()]);
+static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [EncodedImage::descriptor_blob()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [EncodedImage::descriptor_media_type()]);
+static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [EncodedImage::descriptor_media_type()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| {
         [
             EncodedImage::descriptor_opacity(),
             EncodedImage::descriptor_draw_order(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
-    once_cell::sync::Lazy::new(|| {
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+    std::sync::LazyLock::new(|| {
         [
             EncodedImage::descriptor_blob(),
             EncodedImage::descriptor_media_type(),
@@ -322,7 +322,7 @@ impl EncodedImage {
             .or(len_opacity)
             .or(len_draw_order)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The encoded content of some image file, e.g. a PNG or JPEG.

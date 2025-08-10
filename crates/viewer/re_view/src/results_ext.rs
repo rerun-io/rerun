@@ -109,9 +109,7 @@ impl HybridLatestAtResults<'_> {
 
 pub enum HybridResults<'a> {
     LatestAt(LatestAtQuery, HybridLatestAtResults<'a>),
-
-    // Boxed because of size difference between variants
-    Range(RangeQuery, Box<HybridRangeResults<'a>>),
+    Range(RangeQuery, HybridRangeResults<'a>),
 }
 
 impl HybridResults<'_> {
@@ -192,7 +190,7 @@ impl<'a> From<(LatestAtQuery, HybridLatestAtResults<'a>)> for HybridResults<'a> 
 impl<'a> From<(RangeQuery, HybridRangeResults<'a>)> for HybridResults<'a> {
     #[inline]
     fn from((query, results): (RangeQuery, HybridRangeResults<'a>)) -> Self {
-        Self::Range(query, Box::new(results))
+        Self::Range(query, results)
     }
 }
 

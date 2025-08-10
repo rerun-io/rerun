@@ -1,7 +1,8 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
-use re_viewport::test_context_ext::TestContextExt as _;
+use re_test_context::TestContext;
+use re_test_viewport::TestContextExt as _;
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -161,8 +162,8 @@ fn run_view_ui_and_save_snapshot(
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
-        .build(|ctx| {
-            test_context.run_with_single_view(ctx, view_id);
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
         });
 
     harness.run();

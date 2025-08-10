@@ -78,7 +78,7 @@ impl StatsCommand {
                         }
 
                         huh => anyhow::bail!("unknown Compression: {huh}"),
-                    };
+                    }
 
                     tx_uncompressed.send(Ok(
                         re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(msg),
@@ -146,13 +146,14 @@ impl StatsCommand {
                 )
             }
 
+            let msg_count = num_msgs + 1;
             let check_in_interval = 10_000;
-            if (num_msgs + 1) % check_in_interval == 0 {
+            if msg_count % check_in_interval == 0 {
                 let msgs_per_sec =
                     check_in_interval as f64 / last_checkpoint.elapsed().as_secs_f64();
                 last_checkpoint = std::time::Instant::now();
                 re_log::info!(
-                    "processed {num_msgs} messages so far, current speed is {msgs_per_sec:.2} msg/s"
+                    "processed {msg_count} messages so far, current speed is {msgs_per_sec:.2} msg/s"
                 );
                 re_tracing::reexports::puffin::GlobalProfiler::lock().new_frame();
             }

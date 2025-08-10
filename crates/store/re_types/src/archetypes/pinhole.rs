@@ -191,22 +191,22 @@ impl Pinhole {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [Pinhole::descriptor_image_from_camera()]);
+static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [Pinhole::descriptor_image_from_camera()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [Pinhole::descriptor_resolution()]);
+static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [Pinhole::descriptor_resolution()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| {
         [
             Pinhole::descriptor_camera_xyz(),
             Pinhole::descriptor_image_plane_distance(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
-    once_cell::sync::Lazy::new(|| {
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+    std::sync::LazyLock::new(|| {
         [
             Pinhole::descriptor_image_from_camera(),
             Pinhole::descriptor_resolution(),
@@ -406,7 +406,7 @@ impl Pinhole {
             .or(len_camera_xyz)
             .or(len_image_plane_distance)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// Camera projection, from image coordinates to view coordinates.

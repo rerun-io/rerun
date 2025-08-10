@@ -4,10 +4,11 @@
 
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
+use re_test_context::TestContext;
+use re_test_viewport::TestContextExt as _;
 use re_types::{Archetype as _, archetypes::Points2D, datatypes::VisibleTimeRange};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{ViewClass as _, ViewId, test_context::TestContext};
-use re_viewport::test_context_ext::TestContextExt as _;
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn intra_timestamp_data(test_context: &mut TestContext) {
@@ -367,8 +368,8 @@ fn run_view_ui_and_save_snapshot(
     let mut harness = test_context
         .setup_kittest_for_rendering()
         .with_size(size)
-        .build(|ctx| {
-            test_context.run_with_single_view(ctx, view_id);
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
         });
 
     harness.run();

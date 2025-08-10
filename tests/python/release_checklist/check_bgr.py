@@ -71,8 +71,7 @@ def download_example_image_as_rgb() -> npt.NDArray[np.uint8]:
     # https://mortenhannemose.github.io/assets/img/Lena_512.png
     url = "https://mortenhannemose.github.io/assets/img/Lena_512.png"
     response = requests.get(url)
-    image = Image.open(BytesIO(response.content))
-    image = image.convert("RGB")
+    image = Image.open(BytesIO(response.content)).convert("RGB")
     return np.array(image)
 
 

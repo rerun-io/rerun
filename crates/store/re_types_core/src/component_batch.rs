@@ -28,7 +28,7 @@ pub trait ComponentBatch {
     fn to_arrow_list_array(&self) -> SerializationResult<ArrowListArray> {
         let array = self.to_arrow()?;
         let offsets =
-            arrow::buffer::OffsetBuffer::from_lengths(std::iter::repeat(1).take(array.len()));
+            arrow::buffer::OffsetBuffer::from_lengths(std::iter::repeat_n(1, array.len()));
         let nullable = true;
         let field = arrow::datatypes::Field::new("item", array.data_type().clone(), nullable);
         ArrowListArray::try_new(field.into(), offsets, array, None).map_err(|err| err.into())

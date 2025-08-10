@@ -189,14 +189,14 @@ impl Arrows2D {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [Arrows2D::descriptor_vectors()]);
+static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [Arrows2D::descriptor_vectors()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [Arrows2D::descriptor_origins()]);
+static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [Arrows2D::descriptor_origins()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
-    once_cell::sync::Lazy::new(|| {
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
+    std::sync::LazyLock::new(|| {
         [
             Arrows2D::descriptor_radii(),
             Arrows2D::descriptor_colors(),
@@ -207,8 +207,8 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
-    once_cell::sync::Lazy::new(|| {
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
+    std::sync::LazyLock::new(|| {
         [
             Arrows2D::descriptor_vectors(),
             Arrows2D::descriptor_origins(),
@@ -466,7 +466,7 @@ impl Arrows2D {
             .or(len_draw_order)
             .or(len_class_ids)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// All the vectors for each arrow in the batch.

@@ -1,13 +1,12 @@
 #![allow(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::OnceLock};
 
 use ahash::{HashMap, HashSet};
 use glam::Affine3A;
 use itertools::Either;
 use nohash_hasher::{IntMap, IntSet};
 
-use once_cell::sync::OnceCell;
 use re_chunk_store::{
     ChunkStore, ChunkStoreSubscriberHandle, LatestAtQuery, PerStoreChunkSubscriber,
 };
@@ -371,11 +370,11 @@ impl TransformsForEntity {
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
         self.pinhole_projections
+            .as_ref()?
+            .range(..query.at().inc())
+            .next_back()?
+            .1
             .as_ref()
-            .and_then(|pinhole_projections| {
-                pinhole_projections.range(..query.at().inc()).next_back()
-            })
-            .and_then(|(_time, projection)| projection.as_ref())
     }
 }
 
@@ -384,7 +383,7 @@ impl TransformCacheStoreSubscriber {
     ///
     /// Lazily registers the subscriber if it hasn't been registered yet.
     pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
-        static SUBSCRIPTION: OnceCell<ChunkStoreSubscriberHandle> = OnceCell::new();
+        static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
         *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
     }
 
@@ -443,14 +442,13 @@ impl TransformCacheStoreSubscriber {
                 TimeInt::MIN,
             );
 
-            if aspects.contains(TransformAspect::Tree) {
-                if let Some(transform) =
+            if aspects.contains(TransformAspect::Tree)
+                && let Some(transform) =
                     query_and_resolve_tree_transform_at_entity(&entity_path, entity_db, &query)
-                {
-                    static_transforms
-                        .tree_transforms
-                        .insert(TimeInt::STATIC, transform);
-                }
+            {
+                static_transforms
+                    .tree_transforms
+                    .insert(TimeInt::STATIC, transform);
             }
             if aspects.contains(TransformAspect::Pose) {
                 let poses =
@@ -577,20 +575,18 @@ impl TransformCacheStoreSubscriber {
                         entity_entry.tree_transforms.split_off(&min_time);
                     invalidated_times.extend(invalidated_tree_transforms.into_keys());
                 }
-                if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear) {
-                    if let Some(pose_transforms) = &mut entity_entry.pose_transforms {
-                        let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
-                        invalidated_times.extend(invalidated_pose_transforms.into_keys());
-                    }
+                if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear)
+                    && let Some(pose_transforms) = &mut entity_entry.pose_transforms
+                {
+                    let invalidated_pose_transforms = pose_transforms.split_off(&min_time);
+                    invalidated_times.extend(invalidated_pose_transforms.into_keys());
                 }
                 if aspects
                     .intersects(TransformAspect::PinholeOrViewCoordinates | TransformAspect::Clear)
+                    && let Some(pinhole_projections) = &mut entity_entry.pinhole_projections
                 {
-                    if let Some(pinhole_projections) = &mut entity_entry.pinhole_projections {
-                        let invalidated_pinhole_projections =
-                            pinhole_projections.split_off(&min_time);
-                        invalidated_times.extend(invalidated_pinhole_projections.into_keys());
-                    }
+                    let invalidated_pinhole_projections = pinhole_projections.split_off(&min_time);
+                    invalidated_times.extend(invalidated_pinhole_projections.into_keys());
                 }
             }
 
@@ -740,15 +736,15 @@ impl TransformCacheStoreSubscriber {
                     if aspects.contains(TransformAspect::Tree) {
                         per_entity.tree_transforms.remove(&time);
                     }
-                    if aspects.contains(TransformAspect::Pose) {
-                        if let Some(pose_transforms) = &mut per_entity.pose_transforms {
-                            pose_transforms.remove(&time);
-                        }
+                    if aspects.contains(TransformAspect::Pose)
+                        && let Some(pose_transforms) = &mut per_entity.pose_transforms
+                    {
+                        pose_transforms.remove(&time);
                     }
-                    if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
-                        if let Some(pinhole_projections) = &mut per_entity.pinhole_projections {
-                            pinhole_projections.remove(&time);
-                        }
+                    if aspects.contains(TransformAspect::PinholeOrViewCoordinates)
+                        && let Some(pinhole_projections) = &mut per_entity.pinhole_projections
+                    {
+                        pinhole_projections.remove(&time);
                     }
                 }
 
@@ -1246,7 +1242,7 @@ mod tests {
     ];
 
     fn apply_all_updates(entity_db: &EntityDb) {
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             cache.apply_all_updates(entity_db);
         });
     }
@@ -1293,8 +1289,11 @@ mod tests {
     }
 
     fn new_entity_db_with_subscriber_registered() -> EntityDb {
-        let entity_db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        TransformCacheStoreSubscriber::access(&entity_db.store_id(), |_| {
+        let entity_db = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+        TransformCacheStoreSubscriber::access(entity_db.store_id(), |_| {
             // Make sure the subscriber is registered.
         });
         entity_db
@@ -1326,7 +1325,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk0)).unwrap();
         entity_db.add_chunk(&Arc::new(chunk1)).unwrap();
 
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
             assert!(
@@ -1390,7 +1389,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1477,7 +1476,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1592,7 +1591,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1681,7 +1680,7 @@ mod tests {
             );
 
             // Check that the transform cache has the expected transforms.
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
                 let transforms = transforms_per_timeline
@@ -1743,7 +1742,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline_name = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
@@ -1820,7 +1819,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -1931,7 +1930,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2065,7 +2064,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2132,7 +2131,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2164,7 +2163,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Check that the transform cache has the expected changed transforms.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             let timeline = *timeline.name();
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2222,7 +2221,7 @@ mod tests {
                     [(timeline, 2)],
                     &archetypes::Clear::new(false),
                 );
-            };
+            }
             entity_db
                 .add_chunk(&Arc::new(chunk.build().unwrap()))
                 .unwrap();
@@ -2239,7 +2238,7 @@ mod tests {
                 entity_db.add_chunk(&Arc::new(chunk)).unwrap();
             }
 
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 let timeline = *timeline.name();
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2285,7 +2284,7 @@ mod tests {
                     [(timeline, 2)],
                     &archetypes::Clear::new(true),
                 );
-            };
+            }
             entity_db
                 .add_chunk(&Arc::new(parent_chunk.build().unwrap()))
                 .unwrap();
@@ -2316,7 +2315,7 @@ mod tests {
                 }
             }
 
-            TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
                 let timeline = *timeline.name();
                 cache.apply_all_updates(&entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(timeline);
@@ -2355,7 +2354,7 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk)).unwrap();
 
         // Apply some updates to the transform before GC pass.
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             cache.apply_all_updates(&entity_db);
         });
 
@@ -2373,7 +2372,7 @@ mod tests {
 
         entity_db.gc(&GarbageCollectionOptions::gc_everything());
 
-        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+        TransformCacheStoreSubscriber::access_mut(entity_db.store_id(), |cache| {
             assert!(
                 cache.transforms_for_timeline(*timeline.name()).per_entity
                     == cache.static_timeline.per_entity

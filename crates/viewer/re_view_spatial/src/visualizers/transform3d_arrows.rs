@@ -259,7 +259,7 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
 
             if scene_size.is_finite() && scene_size > 0.0 {
                 return (scene_size * 0.05).into();
-            };
+            }
         }
 
         // Otherwise 0.3 is a reasonable default.

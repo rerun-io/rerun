@@ -300,10 +300,9 @@ macro_rules! declare_new_type {
 
 // ----------------------------------------------------------------------------
 
-use once_cell::sync::Lazy;
 use parking_lot::Mutex;
-static GLOBAL_INTERNER: Lazy<Mutex<StringInterner>> =
-    Lazy::new(|| Mutex::new(StringInterner::default()));
+static GLOBAL_INTERNER: std::sync::LazyLock<Mutex<StringInterner>> =
+    std::sync::LazyLock::new(|| Mutex::new(StringInterner::default()));
 
 pub fn bytes_used() -> usize {
     GLOBAL_INTERNER.lock().bytes_used()

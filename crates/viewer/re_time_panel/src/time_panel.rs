@@ -11,7 +11,7 @@ use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, TimeReal,
+    AbsoluteTimeRange, ApplicationId, ComponentPath, EntityPath, TimeInt, TimeReal,
 };
 use re_types::blueprint::components::PanelState;
 use re_types::reflection::ComponentDescriptorExt as _;
@@ -204,9 +204,9 @@ impl TimePanel {
         let tokens = ui.tokens();
 
         // Invalidate the filter widget if the store id has changed.
-        if self.filter_state_app_id.as_ref() != Some(&ctx.store_context.app_id) {
+        if self.filter_state_app_id.as_ref() != Some(ctx.store_context.application_id()) {
             self.filter_state = Default::default();
-            self.filter_state_app_id = Some(ctx.store_context.app_id.clone());
+            self.filter_state_app_id = Some(ctx.store_context.application_id().clone());
         }
 
         self.data_density_graph_painter.begin_frame(ui.ctx());
@@ -1051,19 +1051,17 @@ impl TimePanel {
         if ctx
             .egui_ctx()
             .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
+            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
         {
-            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
-                collapse_id.set_open(ctx.egui_ctx(), true);
-            }
+            collapse_id.set_open(ctx.egui_ctx(), true);
         }
 
         if ctx
             .egui_ctx()
             .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
+            && let Some(collapse_id) = self.collapse_scope().item(item.clone())
         {
-            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
-                collapse_id.set_open(ctx.egui_ctx(), false);
-            }
+            collapse_id.set_open(ctx.egui_ctx(), false);
         }
 
         if ctx
@@ -1207,7 +1205,7 @@ impl TimePanel {
         let mut found_last_clicked_items = false;
         let mut found_shift_clicked_items = false;
 
-        streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
+        let _ignored = streams_tree_data.visit(ctx, entity_db, |entity_or_component| {
             let item = entity_or_component.item();
 
             if &item == anchor_item {
@@ -1475,7 +1473,7 @@ fn highlight_timeline_row(
 }
 
 fn paint_range_highlight(
-    highlighted_range: ResolvedTimeRange,
+    highlighted_range: AbsoluteTimeRange,
     time_ranges_ui: &TimeRangesUi,
     painter: &egui::Painter,
     rect: Rect,
@@ -1679,11 +1677,13 @@ fn paint_time_ranges_gaps(
         let gap_edge = *segment.x.start() as f32;
 
         if zig_zag_first_and_last_edges {
+            // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
             // Left side of first segment - paint as a very wide gap that we only see the right side of
-            paint_time_gap(gap_edge - 100_000.0, gap_edge);
+            paint_time_gap(gap_edge - 10_000.0, gap_edge);
         } else {
+            // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
             painter.rect_filled(
-                Rect::from_min_max(pos2(gap_edge - 100_000.0, top), pos2(gap_edge, bottom)),
+                Rect::from_min_max(pos2(gap_edge - 10_000.0, top), pos2(gap_edge, bottom)),
                 0.0,
                 fill_color,
             );
@@ -1751,18 +1751,17 @@ fn interact_with_streams_rect(
         zoom_factor *= (response.drag_delta().y * 0.01).exp();
     }
 
-    if delta_x != 0.0 {
-        if let Some(new_view_range) = time_ranges_ui.pan(-delta_x) {
-            time_ctrl.set_time_view(new_view_range);
-        }
+    if delta_x != 0.0
+        && let Some(new_view_range) = time_ranges_ui.pan(-delta_x)
+    {
+        time_ctrl.set_time_view(new_view_range);
     }
 
-    if zoom_factor != 1.0 {
-        if let Some(pointer_pos) = pointer_pos {
-            if let Some(new_view_range) = time_ranges_ui.zoom_at(pointer_pos.x, zoom_factor) {
-                time_ctrl.set_time_view(new_view_range);
-            }
-        }
+    if zoom_factor != 1.0
+        && let Some(pointer_pos) = pointer_pos
+        && let Some(new_view_range) = time_ranges_ui.zoom_at(pointer_pos.x, zoom_factor)
+    {
+        time_ctrl.set_time_view(new_view_range);
     }
 
     if response.double_clicked() {
@@ -1783,13 +1782,13 @@ fn copy_time_properties_context_menu(
             let time = format!("{}", time.floor().as_i64());
             re_log::info!("Copied hovered timestamp: {}", time);
             ui.ctx().copy_text(time);
-        };
-    } else if let Some(time) = time_ctrl.time_int() {
-        if ui.button("Copy current timestamp").clicked() {
-            let time = format!("{}", time.as_i64());
-            re_log::info!("Copied current timestamp: {}", time);
-            ui.ctx().copy_text(time);
-        };
+        }
+    } else if let Some(time) = time_ctrl.time_int()
+        && ui.button("Copy current timestamp").clicked()
+    {
+        let time = format!("{}", time.as_i64());
+        re_log::info!("Copied current timestamp: {}", time);
+        ui.ctx().copy_text(time);
     }
 
     if ui.button("Copy current timeline name").clicked() {
@@ -1821,45 +1820,42 @@ fn time_marker_ui(
     let mut is_hovering_time_cursor = false;
 
     // show current time as a line:
-    if let Some(time) = time_ctrl.time() {
-        if let Some(mut x) = time_ranges_ui.x_from_time_f32(time) {
-            if timeline_rect.x_range().contains(x) {
-                let line_rect =
-                    Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
-                        .expand(interact_radius);
+    if let Some(time) = time_ctrl.time()
+        && let Some(mut x) = time_ranges_ui.x_from_time_f32(time)
+        && timeline_rect.x_range().contains(x)
+    {
+        let line_rect = Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
+            .expand(interact_radius);
 
-                let sense = if time_area_double_clicked {
-                    egui::Sense::hover()
-                } else {
-                    egui::Sense::drag()
-                };
+        let sense = if time_area_double_clicked {
+            egui::Sense::hover()
+        } else {
+            egui::Sense::drag()
+        };
 
-                let response = ui
-                    .interact(line_rect, time_drag_id, sense)
-                    .on_hover_and_drag_cursor(timeline_cursor_icon);
+        let response = ui
+            .interact(line_rect, time_drag_id, sense)
+            .on_hover_and_drag_cursor(timeline_cursor_icon);
 
-                is_hovering_time_cursor = response.hovered();
+        is_hovering_time_cursor = response.hovered();
 
-                if response.dragged() {
-                    if let Some(pointer_pos) = pointer_pos {
-                        if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                            let time = time_ranges_ui.clamp_time(time);
-                            time_ctrl.set_time(time);
-                            time_ctrl.pause();
+        if response.dragged()
+            && let Some(pointer_pos) = pointer_pos
+            && let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x)
+        {
+            let time = time_ranges_ui.clamp_time(time);
+            time_ctrl.set_time(time);
+            time_ctrl.pause();
 
-                            x = pointer_pos.x; // avoid frame-delay
-                        }
-                    }
-                }
-
-                ui.paint_time_cursor(
-                    time_area_painter,
-                    &response,
-                    x,
-                    Rangef::new(timeline_rect.top(), ui.max_rect().bottom()),
-                );
-            }
+            x = pointer_pos.x; // avoid frame-delay
         }
+
+        ui.paint_time_cursor(
+            time_area_painter,
+            &response,
+            x,
+            Rangef::new(timeline_rect.top(), ui.max_rect().bottom()),
+        );
     }
 
     // "click here to view time here"
@@ -1927,5 +1923,5 @@ fn time_marker_ui(
 
 #[test]
 fn test_help_view() {
-    re_viewer_context::test_context::TestContext::test_help_view(help);
+    re_test_context::TestContext::test_help_view(help);
 }

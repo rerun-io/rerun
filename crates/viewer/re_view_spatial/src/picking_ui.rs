@@ -223,7 +223,7 @@ pub fn picking(
                 }
             }
         });
-    };
+    }
 
     ctx.handle_select_hover_drag_interactions(&response, hovered_items, false);
 
@@ -254,10 +254,7 @@ fn get_pixel_picking_info(
         iter_pickable_rects(&system_output.view_systems)
             .find(|i| i.ent_path.hash() == hit.instance_path_hash.entity_path_hash)
             .and_then(|picked_rect| {
-                if matches!(
-                    picked_rect.source_data,
-                    PickableRectSourceData::ErrorPlaceholder
-                ) {
+                if matches!(picked_rect.source_data, PickableRectSourceData::Placeholder) {
                     return None;
                 }
 

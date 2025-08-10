@@ -128,6 +128,8 @@ fn top_bar_ui(
         if cfg!(debug_assertions) {
             multi_pass_warning_dot_ui(ui);
         }
+
+        show_warnings(frame, ui);
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -148,43 +150,66 @@ fn top_bar_ui(
         if !app.is_screenshotting() {
             connection_status_ui(ui, app.msg_receive_set());
         }
+    });
+}
 
-        if let Some(wgpu) = frame.wgpu_render_state() {
-            let info = wgpu.adapter.get_info();
-            if info.device_type == wgpu::DeviceType::Cpu {
-                // TODO(emilk): we could consider logging this as a warning instead,
-                // and relying on the notification panel to show it.
-                // However, this let's us customize the message a bit more, with links etc.
-                ui.hyperlink_to(
-                    egui::RichText::new("⚠ Software rasterizer ⚠")
-                        .small()
-                        .color(ui.visuals().warn_fg_color),
-                    "https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues",
-                )
-                .on_hover_ui(|ui| {
-                    ui.label("Software rasterizer detected - expect poor performance.");
-                    ui.label(
-                        "Rerun requires hardware accelerated graphics (i.e. a GPU) for good performance.",
-                    );
-                    ui.label("Click for troubleshooting.");
-                    ui.add_space(8.0);
-                    ui.label(format!(
-                        "wgpu adapter {}",
-                        re_renderer::adapter_info_summary(&info)
-                    ));
-                });
-            }
-        }
+fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui) {
+    // We could log these as warning instead and relying on the notification panel to show it.
+    // However, there are a few benefits of instead showing it like this:
+    // * it's more visible
+    // * it will be captured in screenshots in bug reports etc
+    // * it let's us customize the message a bit more, with links etc.
 
+    if cfg!(debug_assertions) {
         // Warn if in debug build
-        if cfg!(debug_assertions) && !app.is_screenshotting() {
-            ui.vertical_centered(|ui| {
-                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
-                egui::warn_if_debug_build(ui);
+        ui.label(
+            egui::RichText::new("⚠ Debug build")
+                .small()
+                .color(ui.visuals().warn_fg_color),
+        )
+        .on_hover_text("egui was compiled with debug assertions enabled.");
+    }
+
+    show_software_rasterizer_warning(frame, ui);
+
+    if crate::docker_detection::is_docker() {
+        ui.hyperlink_to(
+            egui::RichText::new("⚠ Docker")
+                .small()
+                .color(ui.visuals().warn_fg_color),
+            "https://github.com/rerun-io/rerun/issues/6835",
+        )
+        .on_hover_ui(|ui| {
+            ui.label("It looks like the Rerun Viewer is running inside a Docker container. This is not officially supported, and may lead to subtle bugs. ");
+            ui.label("Click for more info.");
+        });
+    }
+}
+
+fn show_software_rasterizer_warning(frame: &eframe::Frame, ui: &mut egui::Ui) {
+    if let Some(wgpu) = frame.wgpu_render_state() {
+        let info = wgpu.adapter.get_info();
+        if info.device_type == wgpu::DeviceType::Cpu {
+            ui.hyperlink_to(
+                egui::RichText::new("⚠ Software rasterizer")
+                    .small()
+                    .color(ui.visuals().warn_fg_color),
+                "https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues",
+            )
+            .on_hover_ui(|ui| {
+                ui.label("Software rasterizer detected - expect poor performance.");
+                ui.label(
+                    "Rerun requires hardware accelerated graphics (i.e. a GPU) for good performance.",
+                );
+                ui.label("Click for troubleshooting.");
+                ui.add_space(8.0);
+                ui.label(format!(
+                    "wgpu adapter {}",
+                    re_renderer::adapter_info_summary(&info)
+                ));
             });
         }
-    });
+    }
 }
 
 /// Show an orange dot to warn about multi-pass layout in egui.

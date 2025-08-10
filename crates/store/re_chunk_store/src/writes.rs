@@ -349,46 +349,43 @@ impl ChunkStore {
         self.chunks_per_chunk_id.insert(chunk.id(), chunk.clone());
         // NOTE: ⚠️Make sure to recompute the Row ID range! The chunk might have been compacted
         // with another one, which might or might not have modified the range.
-        if let Some(min_row_id) = chunk.row_id_range().map(|(min, _)| min) {
-            if self
+        if let Some(min_row_id) = chunk.row_id_range().map(|(min, _)| min)
+            && self
                 .chunk_ids_per_min_row_id
                 .insert(min_row_id, chunk.id())
                 .is_some()
-            {
-                re_log::warn!(
-                    chunk_id = %chunk.id(),
-                    row_id = %row_id_range.0,
-                    "detected duplicated RowId in the data, this will lead to undefined behavior"
-                );
-            }
+        {
+            re_log::warn!(
+                chunk_id = %chunk.id(),
+                row_id = %row_id_range.0,
+                "detected duplicated RowId in the data, this will lead to undefined behavior"
+            );
         }
 
         for (name, columns) in chunk.timelines() {
             let new_typ = columns.timeline().typ();
-            if let Some(old_typ) = self.time_type_registry.insert(*name, new_typ) {
-                if old_typ != new_typ {
-                    re_log::warn_once!(
-                        "Timeline '{name}' changed type from {old_typ:?} to {new_typ:?}. \
+            if let Some(old_typ) = self.time_type_registry.insert(*name, new_typ)
+                && old_typ != new_typ
+            {
+                re_log::warn_once!(
+                    "Timeline '{name}' changed type from {old_typ:?} to {new_typ:?}. \
                         Rerun does not support using different types for the same timeline.",
-                    );
-                }
+                );
             }
         }
 
         for (component_descr, list_array) in chunk.components().iter() {
-            if let Some(component_type) = component_descr.component_type {
-                if let Some(old_typ) = self
+            if let Some(component_type) = component_descr.component_type
+                && let Some(old_typ) = self
                     .type_registry
                     .insert(component_type, list_array.value_type())
-                {
-                    if old_typ != list_array.value_type() {
-                        re_log::warn_once!(
-                            "Component column '{}' changed type from {old_typ:?} to {:?}",
-                            component_type,
-                            list_array.value_type()
-                        );
-                    }
-                }
+                && old_typ != list_array.value_type()
+            {
+                re_log::warn_once!(
+                    "Component column '{}' changed type from {old_typ:?} to {:?}",
+                    component_type,
+                    list_array.value_type()
+                );
             }
 
             let (descr, column_metadata_state, datatype) = self
@@ -741,7 +738,7 @@ mod tests {
         re_log::setup_logging();
 
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -931,7 +928,7 @@ mod tests {
     fn no_components() -> anyhow::Result<()> {
         re_log::setup_logging();
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -996,7 +993,7 @@ mod tests {
         re_log::setup_logging();
 
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 
@@ -1174,7 +1171,7 @@ mod tests {
             // Insert `chunk1` then `chunk2`.
 
             let mut store = ChunkStore::new(
-                re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
                 ChunkStoreConfig {
                     enable_changelog: false,
                     chunk_max_bytes: u64::MAX,
@@ -1203,7 +1200,7 @@ mod tests {
             // Insert `chunk2` then `chunk1`.
 
             let mut store = ChunkStore::new(
-                re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
                 ChunkStoreConfig {
                     enable_changelog: false,
                     chunk_max_bytes: u64::MAX,

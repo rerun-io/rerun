@@ -97,9 +97,10 @@ Update the change log. It should include:
   - Editorialize the changelog if necessary
   - Make sure the changelog includes instructions for handling any breaking changes
 
+Remove all the `attr.docs.unreleased` attributes in all `.fbs` files, followed by `pixi run codegen`.
+
 Remove the speculative link markers (`?speculative-link`).
 
-Remove all the `attr.docs.unreleased` attributes in all `.fbs` files, followed by `pixi run codegen`.
 
 Once you're done, commit and push onto the release branch.
 

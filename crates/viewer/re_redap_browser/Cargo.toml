@@ -43,7 +43,6 @@ egui.workspace = true
 futures.workspace = true
 itertools.workspace = true
 serde.workspace = true
-smallvec.workspace = true
 thiserror.workspace = true
 url.workspace = true
 

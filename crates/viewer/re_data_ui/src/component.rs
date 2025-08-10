@@ -3,7 +3,7 @@ use egui::NumExt as _;
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, Instance, TimeInt, TimePoint};
-use re_ui::{ContextExt as _, SyntaxHighlighting as _, UiExt as _};
+use re_ui::{SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -64,10 +64,10 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     .store()
                     .num_static_events_for_component(entity_path, component_descriptor);
                 if static_message_count > 1 {
-                    ui.label(ui.ctx().warning_text(format!(
-                        "Static component value was overridden {} times",
+                    ui.warning_label(format!(
+                        "Static component value was overridden {} times.",
                         static_message_count.saturating_sub(1),
-                    )))
+                    ))
                     .on_hover_text(
                         "When a static component is logged multiple times, only the last value \
                         is stored. Previously logged values are overwritten and not \
@@ -83,7 +83,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     );
                 if temporal_message_count > 0 {
                     ui.error_label(format!(
-                        "Static component has {} event{} logged on timelines",
+                        "Static component has {} event{} logged on timelines.",
                         temporal_message_count,
                         if temporal_message_count > 1 { "s" } else { "" }
                     ))
@@ -129,23 +129,22 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
 
         if num_instances <= 1 {
             // Allow editing recording properties:
-            if entity_path.starts_with(&EntityPath::properties()) {
-                if let Some(array) = self.unit.component_batch_raw(component_descriptor) {
-                    if ctx.component_ui_registry().try_show_edit_ui(
-                        ctx,
-                        ui,
-                        re_viewer_context::EditTarget {
-                            store_id: ctx.recording_id(),
-                            timepoint: TimePoint::STATIC,
-                            entity_path: entity_path.clone(),
-                        },
-                        array.as_ref(),
-                        component_descriptor.clone(),
-                        !ui_layout.is_single_line(),
-                    ) {
-                        return;
-                    }
-                }
+            if entity_path.starts_with(&EntityPath::properties())
+                && let Some(array) = self.unit.component_batch_raw(component_descriptor)
+                && ctx.component_ui_registry().try_show_edit_ui(
+                    ctx,
+                    ui,
+                    re_viewer_context::EditTarget {
+                        store_id: ctx.store_id().clone(),
+                        timepoint: TimePoint::STATIC,
+                        entity_path: entity_path.clone(),
+                    },
+                    array.as_ref(),
+                    component_descriptor.clone(),
+                    !ui_layout.is_single_line(),
+                )
+            {
+                return;
             }
 
             ctx.component_ui_registry().component_ui(

@@ -24,4 +24,4 @@ int64
 
 ## Used by
 
-* [`RecordingInfo`](../archetypes/recording_info.md?speculative-link)
+* [`RecordingInfo`](../archetypes/recording_info.md)

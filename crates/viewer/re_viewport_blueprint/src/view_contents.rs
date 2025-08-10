@@ -532,13 +532,12 @@ impl<'a> DataQueryPropertyResolver<'a> {
                         {
                             if let Ok(visible_time_ranges) =
                                 blueprint_components::VisibleTimeRange::from_arrow(&component_data)
-                            {
-                                if let Some(time_range) = visible_time_ranges.iter().find(|range| {
+                                && let Some(time_range) = visible_time_ranges.iter().find(|range| {
                                     range.timeline.as_str() == active_timeline.name().as_str()
-                                }) {
-                                    property_overrides.query_range =
-                                        QueryRange::TimeRange(time_range.0.range.clone());
-                                }
+                                })
+                            {
+                                property_overrides.query_range =
+                                    QueryRange::TimeRange(time_range.0.range.clone());
                             }
                         }
                         // Visible override.
@@ -553,11 +552,10 @@ impl<'a> DataQueryPropertyResolver<'a> {
                         // Interactive override.
                         else if component_descr
                             == blueprint_archetypes::EntityBehavior::descriptor_interactive()
+                            && let Some(interactive_array) = component_data.as_boolean_opt()
                         {
-                            if let Some(interactive_array) = component_data.as_boolean_opt() {
-                                // We already checked for non-empty above, so this should be safe.
-                                property_overrides.interactive = interactive_array.value(0);
-                            }
+                            // We already checked for non-empty above, so this should be safe.
+                            property_overrides.interactive = interactive_array.value(0);
                         }
 
                         // TODO(andreas): Why not keep the component data while we're here? Could speed up things a lot down the line.
@@ -646,8 +644,14 @@ mod tests {
     fn test_query_results() {
         let space_env = EntityPathSubs::empty();
 
-        let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        let blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+        let mut recording = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+        let blueprint = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Blueprint,
+            "test_app",
+        ));
 
         let timeline_frame = Timeline::new_sequence("frame");
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
@@ -687,11 +691,10 @@ mod tests {
             });
 
         let ctx = StoreContext {
-            app_id: re_log_types::ApplicationId::unknown(),
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,
-            caches: &Caches::new(recording.store_id()),
+            caches: &Caches::new(recording.store_id().clone()),
             should_enable_heuristics: false,
         };
 

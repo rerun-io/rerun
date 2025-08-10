@@ -40,6 +40,10 @@ class Range1D(Range1DExt):
         # You can define your own __array__ function as a member of Range1DExt in range1d_ext.py
         return np.asarray(self.range, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of Range1DExt in range1d_ext.py
+        return len(self.range)
+
 
 if TYPE_CHECKING:
     Range1DLike = Union[Range1D, npt.NDArray[Any], npt.ArrayLike, Sequence[float], slice]

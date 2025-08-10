@@ -35,4 +35,5 @@ egui_plot.workspace = true
 egui.workspace = true
 
 [dev-dependencies]
-re_viewport = { workspace = true, features = ["testing"] }
+re_test_viewport.workspace = true
+re_test_context.workspace = true

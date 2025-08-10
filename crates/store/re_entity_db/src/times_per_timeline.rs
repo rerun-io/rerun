@@ -91,7 +91,7 @@ impl ChunkStoreSubscriber for TimesPerTimeline {
                     if delta < 0 {
                         *count = count.checked_sub(delta.unsigned_abs()).unwrap_or_else(|| {
                             re_log::debug!(
-                                store_id = %event.store_id,
+                                store_id = ?event.store_id,
                                 entity_path = %event.chunk.entity_path(),
                                 current = count,
                                 removed = delta.unsigned_abs(),
@@ -102,7 +102,7 @@ impl ChunkStoreSubscriber for TimesPerTimeline {
                     } else {
                         *count = count.checked_add(delta.unsigned_abs()).unwrap_or_else(|| {
                             re_log::debug!(
-                                store_id = %event.store_id,
+                                store_id = ?event.store_id,
                                 entity_path = %event.chunk.entity_path(),
                                 current = count,
                                 removed = delta.unsigned_abs(),

@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut app = re_viewer::App::new(
                 main_thread_token,
                 re_viewer::build_info(),
-                &app_env,
+                app_env,
                 startup_options,
                 cc,
                 None,

@@ -27,6 +27,8 @@ service FrontendService {
 
   rpc DeleteEntry(rerun.catalog.v1alpha1.DeleteEntryRequest) returns (rerun.catalog.v1alpha1.DeleteEntryResponse) {}
 
+  rpc UpdateEntry(rerun.catalog.v1alpha1.UpdateEntryRequest) returns (rerun.catalog.v1alpha1.UpdateEntryResponse) {}
+
   rpc CreateDatasetEntry(rerun.catalog.v1alpha1.CreateDatasetEntryRequest) returns (rerun.catalog.v1alpha1.CreateDatasetEntryResponse) {}
   rpc ReadDatasetEntry(rerun.catalog.v1alpha1.ReadDatasetEntryRequest) returns (rerun.catalog.v1alpha1.ReadDatasetEntryResponse) {}
   rpc UpdateDatasetEntry(rerun.catalog.v1alpha1.UpdateDatasetEntryRequest) returns (rerun.catalog.v1alpha1.UpdateDatasetEntryResponse) {}
@@ -165,6 +167,11 @@ message CreateIndexRequest {
 
   // List of specific partitions that will be indexed (all if left empty).
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
+
+  // List of specific partition layers that will be indexed (all if left empty).
+  //
+  // If non-empty, this must match the length of `partition_ids`.
+  repeated string partition_layers = 5;
 
   rerun.manifest_registry.v1alpha1.IndexConfig config = 3;
 

@@ -156,8 +156,10 @@ impl ResolvedAnnotationInfo {
             Some(label.to_owned())
         } else {
             self.annotation_info
+                .as_ref()?
+                .label
                 .as_ref()
-                .and_then(|info| info.label.as_ref().map(|label| label.to_string()))
+                .map(|label| label.to_string())
         }
     }
 
@@ -166,9 +168,7 @@ impl ResolvedAnnotationInfo {
         if let Some(label) = label {
             Some(label)
         } else {
-            self.annotation_info
-                .as_ref()
-                .and_then(|info| info.label.clone())
+            self.annotation_info.as_ref()?.label.clone()
         }
     }
 }
@@ -189,7 +189,7 @@ impl ResolvedAnnotationInfos {
     pub fn iter(&self) -> impl Iterator<Item = &ResolvedAnnotationInfo> {
         use itertools::Either;
         match self {
-            Self::Same(n, info) => Either::Left(std::iter::repeat(info).take(*n)),
+            Self::Same(n, info) => Either::Left(std::iter::repeat_n(info, *n)),
             Self::Many(infos) => Either::Right(infos.iter()),
         }
     }

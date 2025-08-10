@@ -31,7 +31,7 @@ from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import git
 import requests
@@ -324,8 +324,8 @@ def bump_dependency_versions(
             update_to = pin_prefix + str(new_version)
             ctx.bump(
                 f"{crate}.{dependency.name}",
-                info["version"],
-                update_to,
+                str(info["version"]),
+                cast(VersionInfo, update_to),
             )
             info["version"] = update_to
 
@@ -444,7 +444,21 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
                 dry_run=False,
                 capture=True,
             )
+
+            if not is_already_published(version, crate):
+                # Theoretically this shouldn't be needed… but sometimes it is.
+                print(f"{R}Waiting for {name} to become available…")
+                time.sleep(2)  # give crates.io some time to index the new crate
+                num_retries = 0
+                while not is_already_published(version, crate):
+                    time.sleep(3)
+                    num_retries += 1
+                    if num_retries > 10:
+                        print(f"{R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway.")
+                        return
+
             print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
+
             break
         except subprocess.CalledProcessError as e:
             error_message = e.stdout.decode("utf-8").strip()
@@ -646,7 +660,7 @@ def print_version(
         current_version = current_version.finalize_version()
 
     if pre_id:
-        sys.stdout.write(str(current_version.prerelease.split(".", 1)[0]))
+        sys.stdout.write(str(current_version.prerelease.split(".", 1)[0]))  # type: ignore[union-attr]
         sys.stdout.flush()
     else:
         sys.stdout.write(str(current_version))

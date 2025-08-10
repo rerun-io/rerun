@@ -148,10 +148,10 @@ impl WebViewerServer {
     /// Includes `http://` prefix
     pub fn server_url(&self) -> String {
         let local_addr = self.inner.server.server_addr();
-        if let Some(local_addr) = local_addr.clone().to_ip() {
-            if local_addr.ip().is_unspecified() {
-                return format!("http://localhost:{}", local_addr.port());
-            }
+        if let Some(local_addr) = local_addr.clone().to_ip()
+            && local_addr.ip().is_unspecified()
+        {
+            return format!("http://localhost:{}", local_addr.port());
         }
         format!("http://{local_addr}")
     }

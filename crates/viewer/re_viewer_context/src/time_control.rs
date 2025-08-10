@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_chunk::TimelineName;
 use re_entity_db::{TimeCounts, TimesPerTimeline};
 use re_log_types::{
-    Duration, ResolvedTimeRange, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType, Timeline,
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, Timeline,
 };
 
 use crate::NeedsRepaint;
@@ -22,8 +22,8 @@ pub struct TimeView {
     pub time_spanned: f64,
 }
 
-impl From<ResolvedTimeRange> for TimeView {
-    fn from(value: ResolvedTimeRange) -> Self {
+impl From<AbsoluteTimeRange> for TimeView {
+    fn from(value: AbsoluteTimeRange) -> Self {
         Self {
             min: value.min().into(),
             time_spanned: value.abs_length() as f64,
@@ -42,7 +42,7 @@ struct TimeState {
 
     /// Selected time range, if any.
     #[serde(default)]
-    loop_selection: Option<ResolvedTimeRangeF>,
+    loop_selection: Option<AbsoluteTimeRangeF>,
 
     /// The time range we are currently zoomed in on.
     ///
@@ -165,7 +165,7 @@ pub struct TimeControl {
     ///
     /// This is used during UI interactions. E.g. to show visual history range that's highlighted.
     #[serde(skip)]
-    pub highlighted_range: Option<ResolvedTimeRange>,
+    pub highlighted_range: Option<AbsoluteTimeRange>,
 }
 
 impl Default for TimeControl {
@@ -291,10 +291,10 @@ impl TimeControl {
                     }
                 }
 
-                if let Some(loop_range) = loop_range {
-                    if loop_range.max < state.current.time {
-                        state.current.time = loop_range.min; // loop!
-                    }
+                if let Some(loop_range) = loop_range
+                    && loop_range.max < state.current.time
+                {
+                    state.current.time = loop_range.min; // loop!
                 }
 
                 NeedsRepaint::Yes
@@ -470,11 +470,11 @@ impl TimeControl {
     }
 
     pub fn restart(&mut self, times_per_timeline: &TimesPerTimeline) {
-        if let Some(stats) = times_per_timeline.get(self.timeline.name()) {
-            if let Some(state) = self.states.get_mut(self.timeline.name()) {
-                state.current.time = min(&stats.per_time).into();
-                self.following = false;
-            }
+        if let Some(stats) = times_per_timeline.get(self.timeline.name())
+            && let Some(state) = self.states.get_mut(self.timeline.name())
+        {
+            state.current.time = min(&stats.per_time).into();
+            self.following = false;
         }
     }
 
@@ -506,15 +506,14 @@ impl TimeControl {
             // the beginning in play mode.
 
             // Start from beginning if we are at the end:
-            if let Some(stats) = times_per_timeline.get(self.timeline.name()) {
-                if let Some(state) = self.states.get_mut(self.timeline.name()) {
-                    if max(&stats.per_time) <= state.current.time {
-                        state.current.time = min(&stats.per_time).into();
-                        self.playing = true;
-                        self.following = false;
-                        return;
-                    }
-                }
+            if let Some(stats) = times_per_timeline.get(self.timeline.name())
+                && let Some(state) = self.states.get_mut(self.timeline.name())
+                && max(&stats.per_time) <= state.current.time
+            {
+                state.current.time = min(&stats.per_time).into();
+                self.playing = true;
+                self.following = false;
+                return;
             }
 
             if self.following {
@@ -609,7 +608,7 @@ impl TimeControl {
     }
 
     /// The current loop range, iff selection looping is turned on.
-    pub fn active_loop_selection(&self) -> Option<ResolvedTimeRangeF> {
+    pub fn active_loop_selection(&self) -> Option<AbsoluteTimeRangeF> {
         if self.looping == Looping::Selection {
             self.states
                 .get(self.timeline().name())?
@@ -621,7 +620,7 @@ impl TimeControl {
     }
 
     /// The full range of times for the current timeline
-    pub fn full_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<ResolvedTimeRange> {
+    pub fn full_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<AbsoluteTimeRange> {
         times_per_timeline
             .get(self.timeline().name())
             .map(|stats| range(&stats.per_time))
@@ -630,7 +629,7 @@ impl TimeControl {
     /// The selected slice of time that is called the "loop selection".
     ///
     /// This can still return `Some` even if looping is currently off.
-    pub fn loop_selection(&self) -> Option<ResolvedTimeRangeF> {
+    pub fn loop_selection(&self) -> Option<AbsoluteTimeRangeF> {
         self.states
             .get(self.timeline().name())?
             .current
@@ -638,7 +637,7 @@ impl TimeControl {
     }
 
     /// Set the current loop selection without enabling looping.
-    pub fn set_loop_selection(&mut self, selection: ResolvedTimeRangeF) {
+    pub fn set_loop_selection(&mut self, selection: AbsoluteTimeRangeF) {
         self.states
             .entry(*self.timeline.name())
             .or_insert_with(|| TimeStateEntry::new(selection.min))
@@ -730,8 +729,8 @@ fn max(values: &TimeCounts) -> TimeInt {
     *values.keys().next_back().unwrap_or(&TimeInt::MIN)
 }
 
-fn range(values: &TimeCounts) -> ResolvedTimeRange {
-    ResolvedTimeRange::new(min(values), max(values))
+fn range(values: &TimeCounts) -> AbsoluteTimeRange {
+    AbsoluteTimeRange::new(min(values), max(values))
 }
 
 /// Pick the timeline that should be the default, prioritizing user-defined ones.
@@ -781,7 +780,7 @@ fn step_back_time(time: TimeReal, values: &TimeCounts) -> TimeInt {
 fn step_fwd_time_looped(
     time: TimeReal,
     values: &TimeCounts,
-    loop_range: &ResolvedTimeRangeF,
+    loop_range: &AbsoluteTimeRangeF,
 ) -> TimeReal {
     if time < loop_range.min || loop_range.max <= time {
         loop_range.min
@@ -801,7 +800,7 @@ fn step_fwd_time_looped(
 fn step_back_time_looped(
     time: TimeReal,
     values: &TimeCounts,
-    loop_range: &ResolvedTimeRangeF,
+    loop_range: &AbsoluteTimeRangeF,
 ) -> TimeReal {
     if time <= loop_range.min || loop_range.max < time {
         loop_range.max

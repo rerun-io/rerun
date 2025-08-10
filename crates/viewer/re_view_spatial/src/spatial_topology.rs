@@ -1,4 +1,4 @@
-use once_cell::sync::OnceCell;
+use std::sync::OnceLock;
 
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
@@ -118,7 +118,7 @@ impl SpatialTopologyStoreSubscriber {
     ///
     /// Lazily registers the subscriber if it hasn't been registered yet.
     pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
-        static SUBSCRIPTION: OnceCell<ChunkStoreSubscriberHandle> = OnceCell::new();
+        static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
         *SUBSCRIPTION.get_or_init(|| ChunkStore::register_subscriber(Box::<Self>::default()))
     }
 }
@@ -247,7 +247,7 @@ impl SpatialTopology {
                 entity_reference = &entity_storage;
             } else {
                 return EntityPath::root().hash();
-            };
+            }
         }
     }
 
@@ -274,7 +274,7 @@ impl SpatialTopology {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Pinhole);
             } else if added_component == ViewCoordinates::name() {
                 new_heuristic_hints.insert(HeuristicHints::ViewCoordinates3d);
-            };
+            }
         }
 
         // Do we already know about this entity in general?
@@ -292,7 +292,7 @@ impl SpatialTopology {
             }
         } else {
             self.add_new_entity(entity_path, new_subspace_connections);
-        };
+        }
 
         if !new_heuristic_hints.is_empty() {
             let subspace = self

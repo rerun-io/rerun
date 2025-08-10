@@ -105,10 +105,10 @@ mod design_token_access {
 
                     let mut watcher: RecommendedWatcher = match Watcher::new(
                         move |res: Result<Event, notify::Error>| {
-                            if let Ok(event) = res {
-                                if event.kind.is_modify() {
-                                    tx.send(()).ok();
-                                }
+                            if let Ok(event) = res
+                                && event.kind.is_modify()
+                            {
+                                tx.send(()).ok();
                             }
                         },
                         notify::Config::default(),

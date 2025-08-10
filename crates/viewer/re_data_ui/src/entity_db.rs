@@ -21,34 +21,34 @@ impl crate::DataUi for EntityDb {
         _db: &re_entity_db::EntityDb,
     ) {
         if ui_layout.is_single_line() {
-            // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
-            let mut string = self.store_id().to_string();
+            // TODO(emilk): standardize this formatting with that in `entity_db_button_ui` (this is
+            // probably dead code, as `entity_db_button_ui` is actually used in all single line
+            // contexts).
+            let mut string = self.store_id().recording_id().to_string();
             if let Some(data_source) = &self.data_source {
                 string += &format!(", {data_source}");
             }
-            if let Some(store_info) = self.store_info() {
-                string += &format!(", {}", store_info.application_id);
-            }
+            string += &format!(", {}", self.store_id().application_id());
+
             ui.label(string);
             return;
         }
 
         egui::Grid::new("entity_db").num_columns(2).show(ui, |ui| {
             {
-                ui.grid_left_hand_label(&format!("{} ID", self.store_id().kind));
-                ui.label(self.store_id().to_string());
+                ui.grid_left_hand_label(&format!("{} ID", self.store_id().kind()));
+                ui.label(self.store_id().recording_id().to_string());
                 ui.end_row();
             }
 
             if let Some(SmartChannelSource::RedapGrpcStream { uri: re_uri::DatasetDataUri { partition_id, .. }, .. }) = &self.data_source {
                 ui.grid_left_hand_label("Partition ID");
-                ui.label(partition_id.to_string());
+                ui.label(partition_id);
                 ui.end_row();
             }
 
             if let Some(store_info) = self.store_info() {
                 let re_log_types::StoreInfo {
-                    application_id,
                     store_id,
                     cloned_from,
                     store_source,
@@ -62,7 +62,7 @@ impl crate::DataUi for EntityDb {
                 }
 
                 ui.grid_left_hand_label("Application ID");
-                app_id_button_ui(ctx, ui, application_id);
+                app_id_button_ui(ctx, ui, store_id.application_id());
                 ui.end_row();
 
                 ui.grid_left_hand_label("Source");
@@ -80,45 +80,41 @@ impl crate::DataUi for EntityDb {
                 }
 
                 ui.grid_left_hand_label("Kind");
-                ui.label(store_id.kind.to_string());
+                ui.label(store_id.kind().to_string());
                 ui.end_row();
             }
 
             let show_last_modified_time = !ctx.global_context.is_test; // Hide in tests because it is non-deterministic (it's based on `RowId`).
-            if show_last_modified_time {
-                if let Some(latest_row_id) = self.latest_row_id() {
-                    if let Ok(nanos_since_epoch) =
-                        i64::try_from(latest_row_id.nanos_since_epoch())
-                    {
-                        let time = re_log_types::Timestamp::from_nanos_since_epoch(nanos_since_epoch);
-                        ui.grid_left_hand_label("Modified");
-                        ui.label(time.format(ctx.app_options().timestamp_format));
-                        ui.end_row();
-                    }
-                }
+            if show_last_modified_time
+                && let Some(latest_row_id) = self.latest_row_id()
+                && let Ok(nanos_since_epoch) =
+                    i64::try_from(latest_row_id.nanos_since_epoch())
+            {
+                let time = re_log_types::Timestamp::from_nanos_since_epoch(nanos_since_epoch);
+                ui.grid_left_hand_label("Modified");
+                ui.label(time.format(ctx.app_options().timestamp_format));
+                ui.end_row();
             }
 
             if let Some(tl_name) = self.timelines().keys()
                 .find(|k| **k == re_log_types::TimelineName::log_time())
+                && let Some(range) = self.time_range_for(tl_name)
+                && let delta_ns = (range.max() - range.min()).as_i64()
+                && delta_ns > 0
             {
-                if let Some(range) = self.time_range_for(tl_name) {
-                    let delta_ns = (range.max() - range.min()).as_i64();
-                    if delta_ns > 0 {
-                        let duration = SignedDuration::from_nanos(delta_ns);
+                let duration = SignedDuration::from_nanos(delta_ns);
 
-                        let printer = SpanPrinter::new()
-                            .fractional(Some(FractionalUnit::Second))
-                            .precision(Some(2));
+                let printer = SpanPrinter::new()
+                    .fractional(Some(FractionalUnit::Second))
+                    .precision(Some(2));
 
-                        let pretty = printer.duration_to_string(&duration);
+                let pretty = printer.duration_to_string(&duration);
 
 
-                        ui.grid_left_hand_label("Duration");
-                        ui.label(pretty)
-                            .on_hover_text("Duration between earliest and latest log_time.");
-                        ui.end_row();
-                    }
-                }
+                ui.grid_left_hand_label("Duration");
+                ui.label(pretty)
+                    .on_hover_text("Duration between earliest and latest log_time.");
+                ui.end_row();
             }
 
 
@@ -200,21 +196,19 @@ impl crate::DataUi for EntityDb {
             StoreKind::Recording => {
                 if false {
                     // Just confusing and unnecessary to show this.
-                    if store_id.as_ref() == hub.active_recording_id() {
+                    if store_id == hub.active_store_id() {
                         ui.add_space(8.0);
                         ui.label("This is the active recording.");
                     }
                 }
             }
             StoreKind::Blueprint => {
-                let active_app_id = &ctx.store_context.app_id;
-                let is_active_app_id = self.app_id() == Some(active_app_id);
+                let active_app_id = ctx.store_context.application_id();
+                let is_active_app_id = self.application_id() == active_app_id;
 
                 if is_active_app_id {
-                    let is_default =
-                        hub.default_blueprint_id_for_app(active_app_id) == store_id.as_ref();
-                    let is_active =
-                        hub.active_blueprint_id_for_app(active_app_id) == store_id.as_ref();
+                    let is_default = hub.default_blueprint_id_for_app(active_app_id) == store_id;
+                    let is_active = hub.active_blueprint_id_for_app(active_app_id) == store_id;
 
                     match (is_default, is_active) {
                         (false, false) => {}
@@ -224,17 +218,13 @@ impl crate::DataUi for EntityDb {
 
                             if let Some(active_blueprint) =
                                 hub.active_blueprint_for_app(active_app_id)
+                                && active_blueprint.cloned_from() == Some(self.store_id())
                             {
-                                if active_blueprint.cloned_from() == Some(self.store_id()).as_ref()
-                                {
-                                    // The active blueprint is a clone of the selected blueprint.
-                                    if self.latest_row_id() == active_blueprint.latest_row_id() {
-                                        ui.label(
-                                            "The active blueprint is a clone of this blueprint.",
-                                        );
-                                    } else {
-                                        ui.label("The active blueprint is a modified clone of this blueprint.");
-                                    }
+                                // The active blueprint is a clone of the selected blueprint.
+                                if self.latest_row_id() == active_blueprint.latest_row_id() {
+                                    ui.label("The active blueprint is a clone of this blueprint.");
+                                } else {
+                                    ui.label("The active blueprint is a modified clone of this blueprint.");
                                 }
                             }
                         }

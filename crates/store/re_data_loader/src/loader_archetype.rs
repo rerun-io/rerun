@@ -1,7 +1,7 @@
 use itertools::Either;
 
 use re_chunk::{Chunk, RowId};
-use re_log_types::{EntityPath, TimePoint};
+use re_log_types::{ApplicationId, EntityPath, TimePoint};
 use re_types::ComponentBatch;
 use re_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_types::components::VideoTimestamp;
@@ -131,10 +131,15 @@ impl DataLoader for ArchetypeLoader {
             )?);
         }
 
-        let store_id = settings
-            .opened_store_id
-            .clone()
-            .unwrap_or_else(|| settings.store_id.clone());
+        let store_id = settings.opened_store_id.clone().unwrap_or_else(|| {
+            re_log_types::StoreId::recording(
+                settings
+                    .application_id
+                    .clone()
+                    .unwrap_or_else(ApplicationId::random),
+                settings.recording_id.clone(),
+            )
+        });
         for row in rows {
             let data = LoadedData::Chunk(Self::name(&Self), store_id.clone(), row);
             if tx.send(data).is_err() {

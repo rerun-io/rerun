@@ -11,7 +11,7 @@ from rerun.components import (
     LineStrip2DArrayLike,
     LineStrip2DBatch,
 )
-from rerun.datatypes import ClassIdArrayLike, Float32ArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2D
+from rerun.datatypes import ClassIdArrayLike, Float32ArrayLike, Float32Like, Rgba32ArrayLike, Utf8ArrayLike, Vec2D
 
 from .common_arrays import (
     class_ids_arrays,
@@ -84,7 +84,7 @@ def test_line_strips2d() -> None:
         radii = cast(Optional[Float32ArrayLike], radii)
         colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
-        draw_order = cast(Optional[Float32ArrayLike], draw_order)
+        draw_order = cast(Optional[Float32Like], draw_order)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
 
         print(

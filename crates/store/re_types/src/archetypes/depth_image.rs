@@ -202,19 +202,19 @@ impl DepthImage {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
+static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| {
         [
             DepthImage::descriptor_buffer(),
             DepthImage::descriptor_format(),
         ]
     });
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
+    std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
-    once_cell::sync::Lazy::new(|| {
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+    std::sync::LazyLock::new(|| {
         [
             DepthImage::descriptor_meter(),
             DepthImage::descriptor_colormap(),
@@ -224,8 +224,8 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]>
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
-    once_cell::sync::Lazy::new(|| {
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+    std::sync::LazyLock::new(|| {
         [
             DepthImage::descriptor_buffer(),
             DepthImage::descriptor_format(),
@@ -468,7 +468,7 @@ impl DepthImage {
             .or(len_point_fill_ratio)
             .or(len_draw_order)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The raw depth image data.

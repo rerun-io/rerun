@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut rerun_app = re_viewer::App::new(
                 main_thread_token,
                 re_viewer::build_info(),
-                &app_env,
+                app_env,
                 startup_options,
                 cc,
                 None,
@@ -108,7 +108,7 @@ impl MyApp {
 /// Show the content of the log database.
 fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
     if let Some(store_info) = entity_db.store_info() {
-        ui.label(format!("Application ID: {}", store_info.application_id));
+        ui.label(format!("Application ID: {}", store_info.application_id()));
     }
 
     // There can be many timelines, but the `log_time` timeline is always there:

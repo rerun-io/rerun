@@ -182,61 +182,61 @@ impl DragAndDropManager {
     ///
     /// This should be called once per frame.
     pub fn payload_cursor_ui(&self, ctx: &egui::Context) {
-        if let Some(payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ctx) {
-            if let Some(pointer_pos) = ctx.pointer_interact_pos() {
-                let icon = match payload.as_ref() {
-                    DragAndDropPayload::Contents { .. } => &re_ui::icons::DND_MOVE,
-                    DragAndDropPayload::Entities { .. } => &re_ui::icons::DND_ADD_TO_EXISTING,
-                    // don't draw anything for invalid selection
-                    DragAndDropPayload::Invalid => return,
-                };
+        if let Some(payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ctx)
+            && let Some(pointer_pos) = ctx.pointer_interact_pos()
+        {
+            let icon = match payload.as_ref() {
+                DragAndDropPayload::Contents { .. } => &re_ui::icons::DND_MOVE,
+                DragAndDropPayload::Entities { .. } => &re_ui::icons::DND_ADD_TO_EXISTING,
+                // don't draw anything for invalid selection
+                DragAndDropPayload::Invalid => return,
+            };
 
-                let layer_id = egui::LayerId::new(
-                    egui::Order::Tooltip,
-                    egui::Id::new("drag_and_drop_payload_layer"),
-                );
+            let layer_id = egui::LayerId::new(
+                egui::Order::Tooltip,
+                egui::Id::new("drag_and_drop_payload_layer"),
+            );
 
-                let mut ui = egui::Ui::new(
-                    ctx.clone(),
-                    egui::Id::new("rerun_drag_and_drop_payload_ui"),
-                    egui::UiBuilder::new().layer_id(layer_id),
-                );
+            let mut ui = egui::Ui::new(
+                ctx.clone(),
+                egui::Id::new("rerun_drag_and_drop_payload_ui"),
+                egui::UiBuilder::new().layer_id(layer_id),
+            );
 
-                let feedback = self.feedback.load();
+            let feedback = self.feedback.load();
 
-                match feedback {
-                    DragAndDropFeedback::Accept => {
-                        ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
-                        ui.set_opacity(0.8);
-                    }
-
-                    DragAndDropFeedback::Ignore => {
-                        ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
-                        ui.set_opacity(0.5);
-                    }
-                    DragAndDropFeedback::Reject => {
-                        ctx.set_cursor_icon(egui::CursorIcon::NoDrop);
-                        ui.set_opacity(0.5);
-                    }
+            match feedback {
+                DragAndDropFeedback::Accept => {
+                    ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
+                    ui.set_opacity(0.8);
                 }
 
-                let payload_is_currently_droppable = feedback == DragAndDropFeedback::Accept;
-                let response = drag_pill_frame(ui.tokens(), payload_is_currently_droppable)
-                    .show(&mut ui, |ui| {
-                        let text_color = ui.visuals().widgets.inactive.text_color();
-
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 2.0;
-
-                            ui.small_icon(icon, Some(text_color));
-                            ui.label(egui::RichText::new(payload.to_string()).color(text_color));
-                        });
-                    })
-                    .response;
-
-                let delta = pointer_pos - response.rect.right_bottom();
-                ctx.transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
+                DragAndDropFeedback::Ignore => {
+                    ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
+                    ui.set_opacity(0.5);
+                }
+                DragAndDropFeedback::Reject => {
+                    ctx.set_cursor_icon(egui::CursorIcon::NoDrop);
+                    ui.set_opacity(0.5);
+                }
             }
+
+            let payload_is_currently_droppable = feedback == DragAndDropFeedback::Accept;
+            let response = drag_pill_frame(ui.tokens(), payload_is_currently_droppable)
+                .show(&mut ui, |ui| {
+                    let text_color = ui.visuals().widgets.inactive.text_color();
+
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = 2.0;
+
+                        ui.small_icon(icon, Some(text_color));
+                        ui.label(egui::RichText::new(payload.to_string()).color(text_color));
+                    });
+                })
+                .response;
+
+            let delta = pointer_pos - response.rect.right_bottom();
+            ctx.transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
         }
     }
 }

@@ -241,7 +241,7 @@ fn build_strings_chunks(paths: &[EntityPath], num_strings: usize) -> Vec<Arc<Chu
 
 fn insert_chunks<'a>(msgs: impl Iterator<Item = &'a Arc<Chunk>>) -> (QueryCache, ChunkStoreHandle) {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());

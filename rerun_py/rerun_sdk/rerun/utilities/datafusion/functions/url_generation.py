@@ -1,8 +1,16 @@
 from __future__ import annotations
 
 import pyarrow as pa
-from datafusion import Expr, ScalarUDF, col, udf
+import pyarrow.compute
 from rerun_bindings import DatasetEntry
+
+from rerun.error_utils import RerunOptionalDependencyError
+
+HAS_DATAFUSION = True
+try:
+    from datafusion import Expr, ScalarUDF, col, udf
+except ModuleNotFoundError:
+    HAS_DATAFUSION = False
 
 
 def partition_url(
@@ -36,6 +44,8 @@ def partition_url(
         to seek along. By default this will use the same string as timestamp_col.
 
     """
+    if not HAS_DATAFUSION:
+        raise RerunOptionalDependencyError("datafusion", "datafusion")
     if partition_id_col is None:
         partition_id_col = col("rerun_partition_id")
     if isinstance(partition_id_col, str):
@@ -62,6 +72,8 @@ def partition_url_udf(dataset: DatasetEntry) -> ScalarUDF:
     This function will generate a UDF that expects one column of input,
     a string containing the Partition ID.
     """
+    if not HAS_DATAFUSION:
+        raise RerunOptionalDependencyError("datafusion", "datafusion")
 
     def inner_udf(partition_id_arr: pa.Array) -> pa.Array:
         return pa.compute.binary_join_element_wise(
@@ -80,6 +92,8 @@ def partition_url_with_timeref_udf(dataset: DatasetEntry, timeline_name: str) ->
     This function will generate a UDF that expects two columns of input,
     a string containing the Partition ID and the timestamp in nanoseconds.
     """
+    if not HAS_DATAFUSION:
+        raise RerunOptionalDependencyError("datafusion", "datafusion")
 
     def inner_udf(partition_id_arr: pa.Array, timestamp_arr: pa.Array) -> pa.Array:
         timestamp_us = pa.compute.cast(timestamp_arr, pa.timestamp("us"))

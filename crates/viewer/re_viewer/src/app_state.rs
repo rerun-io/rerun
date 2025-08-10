@@ -5,7 +5,7 @@ use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_grpc_client::ConnectionRegistryHandle;
-use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId, TableId};
+use re_log_types::{AbsoluteTimeRangeF, LogMsg, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
@@ -149,9 +149,9 @@ impl AppState {
     pub fn loop_selection(
         &self,
         store_context: Option<&StoreContext<'_>>,
-    ) -> Option<(TimelineName, ResolvedTimeRangeF)> {
+    ) -> Option<(TimelineName, AbsoluteTimeRangeF)> {
         let rec_id = store_context.as_ref()?.recording.store_id();
-        let rec_cfg = self.recording_configs.get(&rec_id)?;
+        let rec_cfg = self.recording_configs.get(rec_id)?;
 
         // is there an active loop selection?
         let time_ctrl = rec_cfg.time_ctrl.read();
@@ -249,10 +249,10 @@ impl AppState {
 
                 let selection_change = selection_state.on_frame_start(
                     |item| {
-                        if let Item::StoreId(store_id) = item {
-                            if store_id.is_empty_recording() {
-                                return false;
-                            }
+                        if let Item::StoreId(store_id) = item
+                            && store_id.is_empty_recording()
+                        {
+                            return false;
                         }
 
                         viewport_ui.blueprint.is_item_valid(storage_context, item)
@@ -260,14 +260,14 @@ impl AppState {
                     Some(Item::StoreId(store_context.recording.store_id().clone())),
                 );
 
-                if let SelectionChange::SelectionChanged(selection) = selection_change {
-                    if let Some(event_dispatcher) = event_dispatcher {
-                        event_dispatcher.on_selection_change(
-                            store_context.recording,
-                            selection,
-                            &viewport_ui.blueprint,
-                        );
-                    }
+                if let SelectionChange::SelectionChanged(selection) = selection_change
+                    && let Some(event_dispatcher) = event_dispatcher
+                {
+                    event_dispatcher.on_selection_change(
+                        store_context.recording,
+                        selection,
+                        &viewport_ui.blueprint,
+                    );
                 }
 
                 // The root container cannot be dragged.
@@ -277,9 +277,9 @@ impl AppState {
                 let recording = store_context.recording;
 
                 let maybe_visualizable_entities_per_visualizer = view_class_registry
-                    .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
+                    .maybe_visualizable_entities_for_visualizer_systems(recording.store_id());
                 let indicated_entities_per_visualizer =
-                    view_class_registry.indicated_entities_per_visualizer(&recording.store_id());
+                    view_class_registry.indicated_entities_per_visualizer(recording.store_id());
 
                 // Execute the queries for every `View`
                 let mut query_results = {
@@ -596,7 +596,7 @@ impl AppState {
                             }
 
                             DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // handled above
-                        };
+                        }
                     },
                 );
 
@@ -627,7 +627,9 @@ impl AppState {
                             DisplayMode::LocalRecordings => {
                                 // If we are here and the "default" app id is selected,
                                 // we should instead switch to the welcome screen.
-                                if ctx.store_context.app_id == StoreHub::welcome_screen_app_id() {
+                                if ctx.store_context.application_id()
+                                    == &StoreHub::welcome_screen_app_id()
+                                {
                                     ctx.command_sender().send_system(
                                         SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
                                             re_redap_browser::EXAMPLES_ORIGIN.clone(),

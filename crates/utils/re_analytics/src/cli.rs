@@ -29,10 +29,10 @@ pub fn clear() -> Result<(), CliError> {
         std::io::stdin().read_line(&mut input)?;
 
         if input.trim() == "y" {
-            if let Err(err) = std::fs::remove_dir_all(dir) {
-                if err.kind() != std::io::ErrorKind::NotFound {
-                    return Err(err.into());
-                }
+            if let Err(err) = std::fs::remove_dir_all(dir)
+                && err.kind() != std::io::ErrorKind::NotFound
+            {
+                return Err(err.into());
             }
             eprintln!("Deleted {dir:?}");
         }

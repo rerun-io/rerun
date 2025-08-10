@@ -20,7 +20,7 @@ all-features = true
 
 [features]
 default = []
-testing = ["re_viewer_context/testing", "smallvec/serde"]
+testing = ["smallvec/serde"]
 
 [dependencies]
 re_chunk_store.workspace = true
@@ -41,13 +41,12 @@ re_viewport_blueprint.workspace = true
 egui.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-once_cell.workspace = true
 serde.workspace = true
 smallvec.workspace = true
 vec1.workspace = true
 
 [dev-dependencies]
-re_viewer_context = { workspace = true, features = ["testing"] }
+re_test_context.workspace = true
 
 anyhow.workspace = true
 criterion.workspace = true

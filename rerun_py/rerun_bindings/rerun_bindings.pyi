@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Optional, Self
 
+import datafusion as dfn
 import pyarrow as pa
 from rerun.catalog import CatalogClient
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
@@ -436,7 +437,7 @@ class RecordingView:
 
     @deprecated(
         """Use `view(index=None)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-24?speculative-link for more details.""",
+        See: https://www.rerun.io/docs/reference/migration/migration-0-24 for more details.""",
     )
     def select_static(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
         """
@@ -1272,6 +1273,17 @@ class Entry:
     def delete(self) -> None:
         """Delete this entry from the catalog."""
 
+    def update(self, *, name: str | None = None) -> None:
+        """
+        Update this entry's properties.
+
+        Parameters
+        ----------
+        name : str | None
+            New name for the entry
+
+        """
+
 class DatasetEntry(Entry):
     @property
     def manifest_url(self) -> str:
@@ -1345,7 +1357,7 @@ class DatasetEntry(Entry):
 
         """
 
-    def register(self, recording_uri: str, timeout_secs: int = 60) -> str:
+    def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
         """
         Register a RRD URI to the dataset and wait for completion.
 
@@ -1355,7 +1367,10 @@ class DatasetEntry(Entry):
         Parameters
         ----------
         recording_uri: str
-            The URI of the RRD to register
+            The URI of the RRD to register.
+
+        recording_layer: str
+            The layer to which the recording will be registered to.
 
         timeout_secs: int
             The timeout after which this method raises a `TimeoutError` if the task is not completed.
@@ -1367,7 +1382,7 @@ class DatasetEntry(Entry):
 
         """
 
-    def register_batch(self, recording_uris: list[str]) -> Tasks:
+    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str] = []) -> Tasks:
         """
         Register a batch of RRD URIs to the dataset and return a handle to the tasks.
 
@@ -1377,7 +1392,14 @@ class DatasetEntry(Entry):
         Parameters
         ----------
         recording_uris: list[str]
-            The URIs of the RRDs to register
+            The URIs of the RRDs to register.
+
+        recording_layers: list[str]
+            The layers to which the recordings will be registered to:
+            * When empty, this defaults to `["base"]`.
+            * If longer than `recording_uris`, `recording_layers` will be truncated.
+            * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
+              I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
 
         """
 
@@ -1491,7 +1513,7 @@ class TableEntry(Entry):
     def __datafusion_table_provider__(self) -> Any:
         """Returns a DataFusion table provider capsule."""
 
-    def df(self) -> Any:
+    def df(self) -> dfn.DataFrame:
         """Registers the table with the DataFusion context and return a DataFrame."""
 
     def to_arrow_reader(self) -> pa.RecordBatchReader:
@@ -1658,7 +1680,7 @@ class DataframeQueryView:
 
         """
 
-    def df(self) -> Any:
+    def df(self) -> dfn.DataFrame:
         """Register this view to the global DataFusion context and return a DataFrame."""
 
     def to_arrow_reader(self) -> pa.RecordBatchReader:
@@ -1689,7 +1711,7 @@ class CatalogClientInternal:
 
     def create_dataset(self, name: str) -> DatasetEntry: ...
     def register_table(self, name: str, url: str) -> TableEntry: ...
-    def ctx(self) -> Any: ...
+    def ctx(self) -> dfn.SessionContext: ...
 
     # ---
 
@@ -1699,7 +1721,7 @@ class DataFusionTable:
     def __datafusion_table_provider__(self) -> Any:
         """Returns a DataFusion table provider capsule."""
 
-    def df(self) -> Any:
+    def df(self) -> dfn.DataFrame:
         """Register this view to the global DataFusion context and return a DataFrame."""
 
     def to_arrow_reader(self) -> pa.RecordBatchReader:

@@ -102,22 +102,22 @@ impl BarChart {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [BarChart::descriptor_values()]);
+static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [BarChart::descriptor_values()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
+    std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
+static OPTIONAL_COMPONENTS: std::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    std::sync::Lazy::new(|| {
         [
             BarChart::descriptor_color(),
             BarChart::descriptor_abscissa(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
-    once_cell::sync::Lazy::new(|| {
+static ALL_COMPONENTS: std::sync::Lazy<[ComponentDescriptor; 3usize]> =
+    std::sync::Lazy::new(|| {
         [
             BarChart::descriptor_values(),
             BarChart::descriptor_color(),
@@ -287,7 +287,7 @@ impl BarChart {
             .or(len_color)
             .or(len_abscissa)
             .unwrap_or(0);
-        self.columns(std::iter::repeat(1).take(len))
+        self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The values. Should always be a 1-dimensional tensor (i.e. a vector).

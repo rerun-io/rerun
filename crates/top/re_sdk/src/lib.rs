@@ -164,18 +164,17 @@ const RERUN_ENV_VAR: &str = "RERUN";
 
 /// Helper to get the value of the `RERUN` environment variable.
 fn get_rerun_env() -> Option<bool> {
-    std::env::var(RERUN_ENV_VAR)
-        .ok()
-        .and_then(|s| match s.to_lowercase().as_str() {
-            "0" | "false" | "off" => Some(false),
-            "1" | "true" | "on" => Some(true),
-            _ => {
-                re_log::warn!(
-                    "Invalid value for environment variable {RERUN_ENV_VAR}={s:?}. Expected 'on' or 'off'. It will be ignored"
-                );
-                None
-            }
-        })
+    let s = std::env::var(RERUN_ENV_VAR).ok()?;
+    match s.to_lowercase().as_str() {
+        "0" | "false" | "off" => Some(false),
+        "1" | "true" | "on" => Some(true),
+        _ => {
+            re_log::warn!(
+                "Invalid value for environment variable {RERUN_ENV_VAR}={s:?}. Expected 'on' or 'off'. It will be ignored"
+            );
+            None
+        }
+    }
 }
 
 /// Checks the `RERUN` environment variable. If not found, returns the argument.
@@ -215,9 +214,10 @@ pub fn decide_logging_enabled(default_enabled: bool) -> bool {
 pub fn new_store_info(
     application_id: impl Into<re_log_types::ApplicationId>,
 ) -> re_log_types::StoreInfo {
+    let store_id = StoreId::random(StoreKind::Recording, application_id.into());
+
     re_log_types::StoreInfo {
-        application_id: application_id.into(),
-        store_id: StoreId::random(StoreKind::Recording),
+        store_id,
         cloned_from: None,
         store_source: re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),

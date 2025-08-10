@@ -3,7 +3,7 @@ use egui::PopupCloseBehavior;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{
-    EntityPath, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
+    AbsoluteTimeRange, EntityPath, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
 };
 use re_sorbet::ColumnSelector;
 use re_types::blueprint::components;
@@ -144,13 +144,13 @@ impl Query {
         });
 
         if changed {
-            self.save_filter_by_range(ctx, ResolvedTimeRange::new(start, end));
+            self.save_filter_by_range(ctx, AbsoluteTimeRange::new(start, end));
         }
 
         if should_display_time_range {
             let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
             if Some(time_ctrl.timeline()) == timeline {
-                time_ctrl.highlighted_range = Some(ResolvedTimeRange::new(start, end));
+                time_ctrl.highlighted_range = Some(AbsoluteTimeRange::new(start, end));
             }
         }
 

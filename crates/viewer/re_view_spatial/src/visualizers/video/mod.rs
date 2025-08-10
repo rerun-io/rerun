@@ -104,12 +104,27 @@ fn visualize_video_frame_texture(
     }
 }
 
-fn show_video_error(
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum VideoPlaybackIssueSeverity {
+    /// The video can't be played back due to a proper error.
+    ///
+    /// E.g. invalid data provided, decoder problems, not supported etc.
+    Error,
+
+    /// The video can't be played back right now, but it may not actually be an error.
+    ///
+    /// E.g. not having the necessary data yet.
+    Informational,
+}
+
+#[expect(clippy::too_many_arguments)]
+fn show_video_playback_issue(
     ctx: &ViewContext<'_>,
     visualizer_data: &mut SpatialViewVisualizerData,
     highlight: &re_viewer_context::ViewOutlineMasks,
     world_from_entity: glam::Affine3A,
     error_string: String,
+    severity: VideoPlaybackIssueSeverity,
     video_size: glam::Vec2,
     entity_path: &EntityPath,
 ) {
@@ -198,9 +213,14 @@ fn show_video_error(
         ),
         egui::vec2(video_error_rect_size.x * 3.0, video_error_rect_size.y),
     );
+
+    let style = match severity {
+        VideoPlaybackIssueSeverity::Error => UiLabelStyle::Error,
+        VideoPlaybackIssueSeverity::Informational => UiLabelStyle::Default,
+    };
     visualizer_data.ui_labels.push(UiLabel {
         text: error_string,
-        style: UiLabelStyle::Error,
+        style,
         target: UiLabelTarget::Rect(label_target_rect),
         labeled_instance: re_entity_db::InstancePathHash::entity_all(entity_path),
     });
@@ -224,7 +244,7 @@ fn show_video_error(
         PickableTexturedRect {
             ent_path: entity_path.clone(),
             textured_rect: error_rect,
-            source_data: PickableRectSourceData::ErrorPlaceholder,
+            source_data: PickableRectSourceData::Placeholder,
         },
         ctx.view_class_identifier,
     );

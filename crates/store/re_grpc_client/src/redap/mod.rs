@@ -1,5 +1,3 @@
-use tokio_stream::{Stream, StreamExt as _};
-
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_types::{
@@ -9,10 +7,13 @@ use re_log_types::{
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
+use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::{
     catalog::v1alpha1::ext::ReadDatasetEntryResponse, frontend::v1alpha1::GetChunksRequest,
 };
-use re_uri::{DatasetDataUri, Origin, TimeRange};
+use re_uri::{DatasetDataUri, Origin, TimeSelection};
+
+use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{
     ConnectionClient, ConnectionRegistryHandle, MAX_DECODING_MESSAGE_SIZE, StreamError,
@@ -23,7 +24,7 @@ pub enum Command {
     SetLoopSelection {
         recording_id: re_log_types::StoreId,
         timeline: re_log_types::Timeline,
-        time_range: re_log_types::ResolvedTimeRangeF,
+        time_range: re_log_types::AbsoluteTimeRangeF,
     },
 }
 
@@ -245,31 +246,26 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
             // not going to make this one single pipeline any faster, but it will prevent starvation of
             // the Tokio runtime (which would slow down every other futures currently scheduled!).
             tokio::task::spawn_blocking(move || {
-                resp.map_err(Into::<StreamError>::into).and_then(|r| {
-                    let _span = tracing::trace_span!(
-                        "get_chunks::batch_decode",
-                        num_chunks = r.chunks.len()
-                    )
-                    .entered();
+                let r = resp.map_err(Into::<StreamError>::into)?;
+                let _span =
+                    tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
+                        .entered();
 
-                    r.chunks
-                        .into_iter()
-                        .map(|arrow_msg| {
-                            let partition_id = arrow_msg.store_id.clone().map(|id| id.id);
+                r.chunks
+                    .into_iter()
+                    .map(|arrow_msg| {
+                        let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
-                            let arrow_msg =
-                                re_log_encoding::protobuf_conversions::arrow_msg_from_proto(
-                                    &arrow_msg,
-                                )
+                        let arrow_msg =
+                            re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
                                 .map_err(Into::<StreamError>::into)?;
 
-                            let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
-                                .map_err(Into::<StreamError>::into)?;
+                        let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                            .map_err(Into::<StreamError>::into)?;
 
-                            Ok((chunk, partition_id))
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                })
+                        Ok((chunk, partition_id))
+                    })
+                    .collect::<Result<Vec<_>, _>>()
             })
         })
         .map(|res| {
@@ -284,27 +280,27 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
     response.map(|resp| {
-        resp.map_err(Into::into).and_then(|r| {
-            let _span =
-                tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
-                    .entered();
+        let resp = resp?;
 
-            r.chunks
-                .into_iter()
-                .map(|arrow_msg| {
-                    let partition_id = arrow_msg.store_id.clone().map(|id| id.id);
+        let _span =
+            tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len())
+                .entered();
 
-                    let arrow_msg =
-                        re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                            .map_err(Into::<StreamError>::into)?;
+        resp.chunks
+            .into_iter()
+            .map(|arrow_msg| {
+                let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
-                    let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                let arrow_msg =
+                    re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
                         .map_err(Into::<StreamError>::into)?;
 
-                    Ok((chunk, partition_id))
-                })
-                .collect::<Result<Vec<_>, _>>()
-        })
+                let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                    .map_err(Into::<StreamError>::into)?;
+
+                Ok((chunk, partition_id))
+            })
+            .collect::<Result<Vec<_>, _>>()
     })
 }
 
@@ -335,20 +331,20 @@ pub async fn stream_blueprint_and_partition_from_server(
         .into_inner()
         .try_into()?;
 
+    let recording_store_id = uri.store_id();
+
     if let Some((blueprint_dataset, blueprint_partition)) =
         response.dataset_entry.dataset_details.default_bluprint()
     {
         re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
-        // It may be tempting to use the partition id to build the `StoreId` here, but we require
-        // store ids to be unique within a Viewer session (see e.g. `StoreBundle`), and partition
-        // ids are only unique within a given dataset.
-        // This is a hack be cause
-        // TODO(#7950)
-        let blueprint_store_id = StoreId::random(StoreKind::Blueprint);
+        // For blueprint, we can use a random recording ID
+        let blueprint_store_id = StoreId::random(
+            StoreKind::Blueprint,
+            recording_store_id.application_id().clone(),
+        );
 
         let blueprint_store_info = StoreInfo {
-            application_id: uri.dataset_id.to_string().into(),
             store_id: blueprint_store_id.clone(),
             cloned_from: None,
             store_source: StoreSource::Unknown,
@@ -385,9 +381,7 @@ pub async fn stream_blueprint_and_partition_from_server(
     }
 
     let store_info = StoreInfo {
-        application_id: uri.dataset_id.to_string().into(),
-        // See note above about `StoreId::random`.
-        store_id: StoreId::random(StoreKind::Recording),
+        store_id: recording_store_id,
         cloned_from: None,
         store_source: StoreSource::Unknown,
         store_version: None,
@@ -424,7 +418,7 @@ async fn stream_partition_from_server(
     tx: &re_smart_channel::Sender<LogMsg>,
     dataset_id: EntryId,
     partition_id: PartitionId,
-    time_range: Option<TimeRange>,
+    time_range: Option<TimeSelection>,
     on_cmd: &(dyn Fn(Command) + Send + Sync),
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
@@ -458,7 +452,26 @@ async fn stream_partition_from_server(
                 fuzzy_descriptors: vec![],
                 exclude_static_data: true,
                 exclude_temporal_data: false,
-                query: None,
+                query: time_range.clone().map(|time_range| {
+                    Query {
+                        range: Some(QueryRange {
+                            index: time_range.timeline.name().to_string(),
+                            index_range: time_range.clone().into(),
+                        }),
+                        latest_at: Some(QueryLatestAt {
+                            index: Some(time_range.timeline.name().to_string()),
+                            at: time_range.range.min(),
+                        }),
+                        columns_always_include_everything: false,
+                        columns_always_include_chunk_ids: false,
+                        columns_always_include_byte_offsets: false,
+                        columns_always_include_entity_paths: false,
+                        columns_always_include_static_indexes: false,
+                        columns_always_include_global_indexes: false,
+                        columns_always_include_component_indexes: false,
+                    }
+                    .into()
+                }),
             })
             .await?
             .into_inner()

@@ -2,7 +2,7 @@ use re_log_encoding::decoder::Decoder;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::Receiver;
-use re_log_types::{ApplicationId, StoreId};
+use re_log_types::ApplicationId;
 
 use crate::{DataLoader as _, LoadedData};
 
@@ -63,7 +63,10 @@ impl crate::DataLoader for RrdLoader {
                                 &filepath,
                                 &tx,
                                 decoder,
-                                settings.opened_application_id.as_ref(),
+                                settings
+                                    .opened_store_id
+                                    .as_ref()
+                                    .map(|store_id| store_id.application_id()),
                                 // We never want to patch blueprints' store IDs, only their app IDs.
                                 None,
                             );
@@ -130,7 +133,10 @@ impl crate::DataLoader for RrdLoader {
         // * We never want to patch blueprints' store IDs, only their app IDs.
         // * We neer use import semantics at all for .rrd files.
         let forced_application_id = if extension == "rbl" {
-            settings.opened_application_id.as_ref()
+            settings
+                .opened_store_id
+                .as_ref()
+                .map(|store_id| store_id.application_id())
         } else {
             None
         };
@@ -153,7 +159,7 @@ fn decode_and_stream<R: std::io::Read>(
     tx: &std::sync::mpsc::Sender<crate::LoadedData>,
     decoder: Decoder<R>,
     forced_application_id: Option<&ApplicationId>,
-    forced_store_id: Option<&StoreId>,
+    forced_recording_id: Option<&String>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 
@@ -166,28 +172,35 @@ fn decode_and_stream<R: std::io::Read>(
             }
         };
 
-        let msg = if forced_application_id.is_some() || forced_store_id.is_some() {
+        let msg = if forced_application_id.is_some() || forced_recording_id.is_some() {
             match msg {
                 re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
+                    let mut store_id = set_store_info.info.store_id.clone();
+                    if let Some(forced_application_id) = forced_application_id {
+                        store_id = store_id.with_application_id(forced_application_id.clone());
+                    }
+                    if let Some(forced_recording_id) = forced_recording_id {
+                        store_id = store_id.with_recording_id(forced_recording_id.clone());
+                    }
+
                     re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
                         info: re_log_types::StoreInfo {
-                            application_id: forced_application_id
-                                .cloned()
-                                .unwrap_or(set_store_info.info.application_id),
-                            store_id: forced_store_id
-                                .cloned()
-                                .unwrap_or(set_store_info.info.store_id),
+                            store_id,
                             ..set_store_info.info
                         },
                         ..set_store_info
                     })
                 }
 
-                re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
-                    re_log_types::LogMsg::ArrowMsg(
-                        forced_store_id.cloned().unwrap_or(store_id),
-                        arrow_msg,
-                    )
+                re_log_types::LogMsg::ArrowMsg(mut store_id, arrow_msg) => {
+                    if let Some(forced_application_id) = forced_application_id {
+                        store_id = store_id.with_application_id(forced_application_id.clone());
+                    }
+                    if let Some(forced_recording_id) = forced_recording_id {
+                        store_id = store_id.with_recording_id(forced_recording_id.clone());
+                    }
+
+                    re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg)
                 }
 
                 re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
@@ -256,15 +269,18 @@ impl std::io::Read for RetryableFileReader {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         loop {
             match self.reader.read(buf) {
-                Ok(0) => self.block_until_file_changes()?,
+                Ok(0) => {
+                    self.block_until_file_changes()?;
+                }
                 Ok(n) => {
                     return Ok(n);
                 }
-                Err(err) => match err.kind() {
-                    std::io::ErrorKind::Interrupted => continue,
-                    _ => return Err(err),
-                },
-            };
+                Err(err) => {
+                    if err.kind() == std::io::ErrorKind::Interrupted {
+                        return Err(err);
+                    }
+                }
+            }
         }
     }
 }
@@ -291,8 +307,8 @@ impl RetryableFileReader {
                             )),
                             _ => Ok(0),
                         },
-                        Ok(Err(err)) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
-                        Err(err) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
+                        Ok(Err(err)) => Err(std::io::Error::other(err)),
+                        Err(err) => Err(std::io::Error::other(err)),
                     }
                 }
             }
@@ -305,9 +321,7 @@ mod tests {
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_encoding::encoder::DroppableEncoder;
-    use re_log_types::{
-        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
-    };
+    use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     use super::*;
 
@@ -346,8 +360,7 @@ mod tests {
             LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: *RowId::new(),
                 info: StoreInfo {
-                    application_id: ApplicationId("test".to_owned()),
-                    store_id: StoreId::random(StoreKind::Recording),
+                    store_id: StoreId::random(StoreKind::Recording, "test_app"),
                     cloned_from: None,
                     store_source: StoreSource::RustSdk {
                         rustc_version: String::new(),
