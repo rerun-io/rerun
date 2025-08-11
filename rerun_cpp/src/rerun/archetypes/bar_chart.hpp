@@ -27,13 +27,20 @@ namespace rerun::archetypes {
     ///
     /// ```cpp
     /// #include <rerun.hpp>
+    /// #include <vector>
     ///
     /// int main() {
     ///     const auto rec = rerun::RecordingStream("rerun_example_bar_chart");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     rec.log("bar_chart", rerun::BarChart::i64({8, 4, 0, 9, 1, 4, 1, 6, 9, 0}));
-    ///     rec.log("bar_chart_custom_abscissa", rerun::BarChart::i64({8, 4, 0, 9, 1, 4}).with_abscissa({0, 1, 3, 4, 7, 11}));
+    ///
+    ///     auto abscissa = std::vector<int64_t>{0, 1, 3, 4, 7, 11};
+    ///     rec.log(
+    ///         "bar_chart_custom_abscissa",
+    ///         rerun::BarChart::i64({8, 4, 0, 9, 1, 4})
+    ///             .with_abscissa(rerun::TensorData({abscissa.size()}, abscissa))
+    ///     );
     /// }
     /// ```
     struct BarChart {
