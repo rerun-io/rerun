@@ -12,4 +12,12 @@ pub enum Error {
 
     #[error("failed to parse token")]
     MalformedToken,
+
+    #[cfg(feature = "workos")]
+    #[error("failed to fetch JWKS from external provider")]
+    JwksFetchError,
+
+    #[cfg(feature = "workos")]
+    #[error("no external provider configured")]
+    NoExternalProvider,
 }

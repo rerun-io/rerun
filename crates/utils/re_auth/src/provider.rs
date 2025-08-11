@@ -1,7 +1,10 @@
 use std::time::Duration;
 
 use base64::{Engine as _, engine::general_purpose};
-use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use jsonwebtoken::{
+    Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, decode_header, encode,
+    jwk::JwkSet,
+};
 
 use crate::{Error, Jwt};
 
@@ -15,22 +18,68 @@ const AUDIENCE: &str = "redap";
 /// In the future, we will need to support asymmetric schemes too.
 ///
 /// The key is stored unencrypted in memory.
-#[derive(Clone, PartialEq, Eq)]
-#[repr(transparent)]
+#[derive(Debug, Clone)]
 pub struct RedapProvider {
-    secret_key: Vec<u8>,
+    secret_key: SecretKey,
+
+    #[cfg(feature = "workos")]
+    external: Option<ExternalProvider>,
 }
 
-impl std::fmt::Debug for RedapProvider {
+#[cfg(feature = "workos")]
+#[derive(Debug, Clone)]
+struct ExternalProvider {
+    /// Public keys provided to us by WorkOS
+    keys: JwkSet,
+
+    /// Expected organization ID
+    org_id: String,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct SecretKey(Vec<u8>);
+
+impl SecretKey {
+    #[inline]
+    pub fn reveal(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Generates a new secret key.
+    pub fn generate(rng: impl rand::Rng) -> Self {
+        // 32 bytes or 256 bits
+        let secret_key = generate_secret_key(rng, 32);
+
+        debug_assert_eq!(
+            secret_key.len() * size_of::<u8>() * 8,
+            256,
+            "The resulting secret should be 256 bits."
+        );
+
+        SecretKey(secret_key)
+    }
+
+    /// Decodes a [`base64`] encoded secret key.
+    pub fn from_base64(base64: impl AsRef<str>) -> Result<Self, Error> {
+        Ok(SecretKey(
+            general_purpose::STANDARD.decode(base64.as_ref())?,
+        ))
+    }
+
+    /// Encodes the secret key as a [`base64`] string.
+    pub fn to_base64(&self) -> String {
+        general_purpose::STANDARD.encode(&self.0)
+    }
+}
+
+impl std::fmt::Debug for SecretKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RedapProvider")
-            .field("secret_key", &"********")
-            .finish()
+        f.write_str("********")
     }
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct Claims {
+pub struct RedapClaims {
     /// The issuer of the token.
     ///
     /// Could be an identity provider or the storage node directly.
@@ -49,6 +98,34 @@ pub struct Claims {
 
     /// Issued at time of the token.
     pub iat: u64,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
+pub enum Claims {
+    #[cfg(feature = "workos")]
+    WorkOs(crate::workos::Claims),
+
+    Redap(RedapClaims),
+}
+
+impl Claims {
+    /// Subject, usually the user ID.
+    pub fn sub(&self) -> &str {
+        match self {
+            #[cfg(feature = "workos")]
+            Claims::WorkOs(claims) => claims.sub.as_str(),
+            Claims::Redap(claims) => claims.sub.as_str(),
+        }
+    }
+
+    pub fn iss(&self) -> &str {
+        match self {
+            #[cfg(feature = "workos")]
+            Claims::WorkOs(claims) => claims.iss.as_str(),
+            Claims::Redap(claims) => claims.iss.as_str(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -79,13 +156,31 @@ impl Default for VerificationOptions {
     }
 }
 
-impl From<VerificationOptions> for Validation {
-    fn from(options: VerificationOptions) -> Self {
-        let mut validation = Self::new(Algorithm::HS256);
-        validation.set_audience(&[AUDIENCE.to_owned()]);
-        validation.set_required_spec_claims(&["exp", "sub", "aud", "iss"]);
-        validation.leeway = options.leeway.map_or(0, |leeway| leeway.as_secs());
-        validation
+enum KeyProvider {
+    #[cfg(feature = "workos")]
+    WorkOs,
+    Redap,
+}
+
+impl VerificationOptions {
+    fn for_provider(self, provider: KeyProvider) -> Validation {
+        match provider {
+            #[cfg(feature = "workos")]
+            KeyProvider::WorkOs => {
+                let mut validation = Validation::new(Algorithm::RS256);
+                validation.set_issuer(&[crate::workos::DEFAULT_ISSUER]);
+                validation.validate_exp = true;
+                validation.leeway = self.leeway.map_or(0, |leeway| leeway.as_secs());
+                validation
+            }
+            KeyProvider::Redap => {
+                let mut validation = Validation::new(Algorithm::HS256);
+                validation.set_audience(&[AUDIENCE.to_owned()]);
+                validation.set_required_spec_claims(&["exp", "sub", "aud", "iss"]);
+                validation.leeway = self.leeway.map_or(0, |leeway| leeway.as_secs());
+                validation
+            }
+        }
     }
 }
 
@@ -95,29 +190,44 @@ fn generate_secret_key(mut rng: impl rand::Rng, length: usize) -> Vec<u8> {
 }
 
 impl RedapProvider {
-    /// Generates a new secret key.
-    pub fn generate(rng: impl rand::Rng) -> Self {
-        // 32 bytes or 256 bits
-        let secret_key = generate_secret_key(rng, 32);
-
-        debug_assert_eq!(
-            secret_key.len() * size_of::<u8>() * 8,
-            256,
-            "The resulting secret should be 256 bits."
-        );
-
-        Self { secret_key }
+    /// Create an authentication provider from a secret key.
+    pub fn from_secret_key(secret_key: SecretKey) -> Self {
+        Self {
+            secret_key,
+            #[cfg(feature = "workos")]
+            external: None,
+        }
     }
 
-    /// Decodes a [`base64`] encoded secret key.
-    pub fn from_base64(base64: impl AsRef<str>) -> Result<Self, Error> {
-        let secret_key = general_purpose::STANDARD.decode(base64.as_ref())?;
-        Ok(Self { secret_key })
+    /// Create an authentication provider from a secret key encoded as base64.
+    pub fn from_secret_key_base64(secret_key: &str) -> Result<Self, Error> {
+        Ok(Self {
+            secret_key: SecretKey::from_base64(secret_key)?,
+            #[cfg(feature = "workos")]
+            external: None,
+        })
     }
 
-    /// Encodes the secret key as a [`base64`] string.
-    pub fn to_base64(&self) -> String {
-        general_purpose::STANDARD.encode(&self.secret_key)
+    /// Add external keys to the key set.
+    ///
+    /// These must be fetched from a remote host.
+    #[cfg(feature = "workos")]
+    pub async fn with_external_provider(self, org_id: impl Into<String>) -> Result<Self, Error> {
+        // TODO: fetch these less often
+        // TODO: better error
+        let ctx = crate::workos::AuthContext::load().await.map_err(|err| {
+            re_log::debug!("failed to fetch external keys: {err}");
+            Error::JwksFetchError
+        })?;
+        let keys = std::sync::Arc::unwrap_or_clone(ctx.jwks);
+        let org_id = org_id.into();
+
+        let external = ExternalProvider { keys, org_id };
+
+        Ok(Self {
+            secret_key: self.secret_key,
+            external: Some(external),
+        })
     }
 
     /// Generates a new JWT token that is valid for the given duration.
@@ -136,18 +246,18 @@ impl RedapProvider {
     ) -> Result<Jwt, Error> {
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?;
 
-        let claims = Claims {
+        let claims = Claims::Redap(RedapClaims {
             iss: issuer.into(),
             sub: subject.into(),
             aud: AUDIENCE.to_owned(),
             exp: (now + duration).as_secs(),
             iat: now.as_secs(),
-        };
+        });
 
         let token = encode(
             &Header::default(),
             &claims,
-            &EncodingKey::from_secret(&self.secret_key),
+            &EncodingKey::from_secret(self.secret_key.reveal()),
         )?;
 
         Ok(Jwt(token))
@@ -155,13 +265,64 @@ impl RedapProvider {
 
     /// Checks if a provided `token` is valid for a given `scope`.
     pub fn verify(&self, token: &Jwt, options: VerificationOptions) -> Result<Claims, Error> {
-        let validation = options.into();
+        let header = decode_header(token.as_str())?;
+        #[cfg(feature = "workos")]
+        let (key, validation) = match &header.kid {
+            Some(kid) => {
+                // we don't supply key ID, so assume this comes from external provider
+                let Some(external) = &self.external else {
+                    return Err(Error::NoExternalProvider);
+                };
 
-        let token_data = decode::<Claims>(
-            &token.0,
-            &DecodingKey::from_secret(&self.secret_key),
-            &validation,
-        )?;
+                let key = match external.keys.find(kid) {
+                    Some(key) => key,
+                    None => {
+                        // TODO: better error?
+                        re_log::debug!("no key with id {kid} found");
+                        return Err(Error::MalformedToken);
+                    }
+                };
+                let key = DecodingKey::from_jwk(key)?;
+                let validation = options.for_provider(KeyProvider::WorkOs);
+                (key, validation)
+            }
+
+            None => {
+                let key = DecodingKey::from_secret(self.secret_key.reveal());
+                let validation = options.for_provider(KeyProvider::Redap);
+                (key, validation)
+            }
+        };
+
+        #[cfg(not(feature = "workos"))]
+        let (key, validation) = {
+            let key = DecodingKey::from_secret(self.secret_key.reveal());
+            let validation = options.for_provider(KeyProvider::Redap);
+            (key, validation)
+        };
+
+        let token_data = decode::<Claims>(&token.0, &key, &validation)?;
+
+        match &token_data.claims {
+            #[cfg(feature = "workos")]
+            Claims::WorkOs(claims) => {
+                let external = self
+                    .external
+                    .as_ref()
+                    .expect("bug: verified external key without external provider configured");
+                if claims.org_id.as_ref() != Some(&external.org_id) {
+                    // TODO: better error
+                    re_log::debug!(
+                        "verification failed: organization ID was not {}",
+                        external.org_id
+                    );
+                    return Err(Error::MalformedToken);
+                }
+            }
+            Claims::Redap(_) => {
+                // no additional verification
+            }
+        }
 
         Ok(token_data.claims)
     }

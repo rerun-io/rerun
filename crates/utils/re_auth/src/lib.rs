@@ -18,7 +18,7 @@ mod token;
 #[cfg(feature = "cli")]
 pub mod cli;
 
-#[cfg(feature = "cli")]
+#[cfg(feature = "workos")]
 pub mod workos;
 
 pub use service::client;
@@ -27,7 +27,7 @@ pub use token::{Jwt, TokenError};
 #[cfg(not(target_arch = "wasm32"))]
 pub use error::Error;
 #[cfg(not(target_arch = "wasm32"))]
-pub use provider::{Claims, RedapProvider, VerificationOptions};
+pub use provider::{Claims, RedapProvider, SecretKey, VerificationOptions};
 #[cfg(not(target_arch = "wasm32"))]
 pub use service::server;
 
