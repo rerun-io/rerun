@@ -36,12 +36,8 @@ workos = [
   "dep:directories",
   "dep:const_format",
   "dep:ehttp",
-  "dep:indicatif",
   "dep:serde",
   "dep:serde_json",
-  "dep:tiny_http",
-  "dep:url",
-  "dep:webbrowser",
 ]
 
 [dependencies]
