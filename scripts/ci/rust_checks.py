@@ -3,7 +3,7 @@
 """
 Run various rust checks for CI.
 
-You can run the script via pixi which will make sure that the web build is around and up-to-date:
+You can run the script via pixi:
     pixi run rs-check
 
 Alternatively you can also run it directly via python:
