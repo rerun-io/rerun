@@ -17,9 +17,6 @@ workspace = true
 [features]
 cli = [
   "dep:base64",
-  "dep:directories",
-  "dep:const_format",
-  "dep:ehttp",
   "dep:indicatif",
   "dep:serde",
   "dep:serde_json",
@@ -30,11 +27,10 @@ cli = [
   "workos",
 ]
 
-# TODO: figure out which dependencies belong under which feature
 workos = [
   "dep:base64",
-  "dep:directories",
   "dep:const_format",
+  "dep:directories",
   "dep:ehttp",
   "dep:serde",
   "dep:serde_json",
