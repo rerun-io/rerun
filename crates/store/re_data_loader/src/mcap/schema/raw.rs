@@ -22,6 +22,7 @@ impl RawMcapMessageParser {
 
 impl McapMessageParser for RawMcapMessageParser {
     fn append(&mut self, _ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
         self.data.values().values().append_slice(&msg.data);
         self.data.values().append(true);
         self.data.append(true);
@@ -29,6 +30,7 @@ impl McapMessageParser for RawMcapMessageParser {
     }
 
     fn finalize(self: Box<Self>, ctx: ParserContext) -> anyhow::Result<Vec<re_chunk::Chunk>> {
+        re_tracing::profile_function!();
         let Self { mut data } = *self;
 
         let entity_path = ctx.entity_path().clone();
