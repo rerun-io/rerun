@@ -1,4 +1,4 @@
-use crate::arrow_ui::ArrowNode;
+use crate::arrow_node::ArrowNode;
 use arrow::array::{Array, AsArray, StructArray, UnionArray};
 use std::sync::Arc;
 
@@ -108,17 +108,17 @@ impl<'a> ChildNodes<'a> {
     }
 
     /// Ui is needed to style the name of `InlineKeyMap` nodes
-    pub fn get_child(&self, index: usize) -> crate::arrow_ui::ArrowNode<'a> {
+    pub fn get_child(&self, index: usize) -> ArrowNode<'a> {
         assert!(index < self.len(), "Index out of bounds: {index}");
         match self {
-            ChildNodes::List(list) => crate::arrow_ui::ArrowNode::new(list.clone(), index),
+            ChildNodes::List(list) => ArrowNode::new(list.clone(), index),
             ChildNodes::Struct {
                 parent_index: struct_index,
                 array,
             } => {
                 let column = array.column(index);
                 let name = array.column_names()[index];
-                crate::arrow_ui::ArrowNode::new(&**column, *struct_index).with_field_name(name)
+                ArrowNode::new(&**column, *struct_index).with_field_name(name)
             }
             ChildNodes::InlineKeyMap {
                 keys,
@@ -135,11 +135,9 @@ impl<'a> ChildNodes<'a> {
                 let actual_index = index / 2;
 
                 if is_key {
-                    crate::arrow_ui::ArrowNode::new(keys.clone(), actual_index)
-                        .with_field_name("key")
+                    ArrowNode::new(keys.clone(), actual_index).with_field_name("key")
                 } else {
-                    crate::arrow_ui::ArrowNode::new(values.clone(), actual_index)
-                        .with_field_name("value")
+                    ArrowNode::new(values.clone(), actual_index).with_field_name("value")
                 }
             }
             ChildNodes::Map {
@@ -151,11 +149,9 @@ impl<'a> ChildNodes<'a> {
                 let actual_index = index / 2;
 
                 if is_key {
-                    crate::arrow_ui::ArrowNode::new(keys.clone(), actual_index)
-                        .with_field_name("key")
+                    ArrowNode::new(keys.clone(), actual_index).with_field_name("key")
                 } else {
-                    crate::arrow_ui::ArrowNode::new(values.clone(), actual_index)
-                        .with_field_name("value")
+                    ArrowNode::new(values.clone(), actual_index).with_field_name("value")
                 }
             }
             ChildNodes::Union {
@@ -178,15 +174,9 @@ impl<'a> ChildNodes<'a> {
     }
 }
 
-pub trait NodeIterator<'a>:
-    Iterator<Item = crate::arrow_ui::ArrowNode<'a>> + ExactSizeIterator
-{
-}
+pub trait NodeIterator<'a>: Iterator<Item = ArrowNode<'a>> + ExactSizeIterator {}
 
-impl<'a, I: Iterator<Item = crate::arrow_ui::ArrowNode<'a>> + ExactSizeIterator> NodeIterator<'a>
-    for I
-{
-}
+impl<'a, I: Iterator<Item = ArrowNode<'a>> + ExactSizeIterator> NodeIterator<'a> for I {}
 
 #[derive(Debug, Clone)]
 pub enum MaybeArc<'a> {
