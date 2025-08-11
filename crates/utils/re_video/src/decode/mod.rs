@@ -252,21 +252,13 @@ pub fn new_decoder(
         }
 
         #[cfg(with_ffmpeg)]
-        crate::VideoCodec::H264 | crate::VideoCodec::H265 => {
-            let codec_name = match video.codec {
-                crate::VideoCodec::H264 => "h264",
-                crate::VideoCodec::H265 => "hevc",
-                _ => unreachable!(),
-            };
-            re_log::trace!("Decoding {}…", codec_name);
-            Ok(Box::new(FFmpegCliDecoder::new(
-                debug_name.to_owned(),
-                &video.encoding_details,
-                on_output,
-                decode_settings.ffmpeg_path.clone(),
-                codec_name,
-            )?))
-        }
+        crate::VideoCodec::H264 | crate::VideoCodec::H265 => Ok(Box::new(FFmpegCliDecoder::new(
+            debug_name.to_owned(),
+            &video.encoding_details,
+            on_output,
+            decode_settings.ffmpeg_path.clone(),
+            &video.codec,
+        )?)),
 
         _ => Err(DecodeError::UnsupportedCodec(
             video.human_readable_codec_string(),

@@ -4,7 +4,6 @@ use h264_reader::{
     push::NalInterest,
 };
 
-use cros_codecs::codec::h265::parser::{Nalu, NaluType, Parser, Sps};
 use std::io::Cursor;
 
 use crate::{
@@ -166,6 +165,8 @@ fn detect_h264_annexb_gop(
 }
 
 pub fn detect_h265_annexb_gop(data: &[u8]) -> Result<GopStartDetection, DetectGopStartError> {
+    use cros_codecs::codec::h265::parser::{Nalu, NaluType, Parser, Sps};
+
     let mut parser = Parser::default();
     let mut details: Option<VideoEncodingDetails> = None;
     let mut idr_found = false;

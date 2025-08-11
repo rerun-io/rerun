@@ -210,7 +210,7 @@ impl FFmpegProcessAndListener {
         on_output: Arc<OutputCallback>,
         encoding_details: &Option<VideoEncodingDetails>,
         ffmpeg_path: Option<&std::path::Path>,
-        codec: &'static str,
+        codec: &crate::VideoCodec,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
@@ -257,6 +257,12 @@ impl FFmpegProcessAndListener {
             FfmpegCommand::new()
         };
 
+        let codec_str = match codec {
+            crate::VideoCodec::H264 => "h264",
+            crate::VideoCodec::H265 => "hevc",
+            _ => unreachable!(),
+        };
+
         let mut ffmpeg = ffmpeg_command
             // Keep banner enabled so we can check on the version more easily.
             //.hide_banner()
@@ -272,7 +278,7 @@ impl FFmpegProcessAndListener {
                 "0",
             ])
             // Keep in mind that all arguments that are about the input, need to go before!
-            .format(codec) // TODO(andreas): should we check ahead of time whether this is available?
+            .format(codec_str) // TODO(andreas): should we check ahead of time whether this is available?
             //.fps_mode("0")
             .input("-") // stdin is our input!
             // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
@@ -829,7 +835,7 @@ pub struct FFmpegCliDecoder {
     ffmpeg: FFmpegProcessAndListener,
     on_output: Arc<OutputCallback>,
     ffmpeg_path: Option<std::path::PathBuf>,
-    codec: &'static str,
+    codec: crate::VideoCodec,
 }
 
 impl FFmpegCliDecoder {
@@ -838,7 +844,7 @@ impl FFmpegCliDecoder {
         encoding_details: &Option<VideoEncodingDetails>,
         on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
         ffmpeg_path: Option<std::path::PathBuf>,
-        codec: &'static str,
+        codec: &crate::VideoCodec,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
@@ -883,7 +889,7 @@ impl FFmpegCliDecoder {
             ffmpeg,
             on_output,
             ffmpeg_path,
-            codec,
+            codec: *codec,
         })
     }
 }
@@ -918,7 +924,7 @@ impl AsyncDecoder for FFmpegCliDecoder {
             self.on_output.clone(),
             &video_descr.encoding_details,
             self.ffmpeg_path.as_deref(),
-            self.codec,
+            &self.codec,
         )?;
         Ok(())
     }
@@ -1070,7 +1076,6 @@ fn write_hevc_chunk_to_nalu_stream(
     chunk: &Chunk,
     state: &mut NaluStreamState,
 ) -> Result<(), Error> {
-    // Determine NAL length size from hvcC (length_size_minus_one is 0-based)
     let nal_len_size = (hvcc.hvcc.contents.length_size_minus_one as usize & 0x03) + 1;
     let mut hvcc_ps: Vec<Vec<u8>> = Vec::new();
 
@@ -1110,9 +1115,7 @@ fn write_hevc_chunk_to_nalu_stream(
         let nalu = &data[i..i + len];
         i += len;
 
-        // Write Annex B start code + payload using write_bytes helper
         write_bytes(out, ANNEXB_NAL_START_CODE)?;
-
         write_bytes(out, nalu)?;
     }
 
