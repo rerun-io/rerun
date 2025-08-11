@@ -25,3 +25,14 @@ We depend on a number of third party libraries, most notably:
 If you want to learn more about the different parts of the SDK & Viewer and how they work, check out
 [this architecture overview](https://github.com/rerun-io/rerun/blob/latest/ARCHITECTURE.md)
 for an introduction.
+
+
+Commercial Platform
+-------------------
+Rerun's commercial offering provides managed infrastructure to ingest, store, analyze, and stream large amounts of robotics-style data.
+
+Built around Rerun's open source data model, it makes data pipelines simple to build and easy to operate with built-in visual debugging and prepare data for machine learning.
+
+Rerun's platform provides a single database interface to operate on data from multiple sources, including MCAP, proprietary log-formats, LeRobot Datasets, and multimodal table formats like Lance.
+
+The Rerun Platform is under development with select partners. [Get in touch](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ) if you'd like to be one of them.
