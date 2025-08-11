@@ -19,14 +19,17 @@ use parking_lot::Mutex;
 use wasm_bindgen::{JsCast as _, JsError, JsValue, closure::Closure, prelude::wasm_bindgen};
 use web_sys::{History, UrlSearchParams};
 
-use crate::web_tools::{CategorizedEndpoint, JsResultExt as _, endpoint_to_receiver, window};
-use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
+use crate::{
+    open_url::{ViewerContentUrl, open_content_url_in_viewer},
+    web_tools::{JsResultExt as _, window},
+};
+use re_viewer_context::CommandSender;
 
 #[derive(Clone, Default, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct HistoryEntry {
     /// Typically this is either one or none, but we support multiple http urls.
     // TODO: we only ever set a single one. On startup we should set the "base" for the first one.
-    endpoints: Vec<CategorizedEndpoint>,
+    endpoints: Vec<ViewerContentUrl>,
 }
 
 // Builder methods
@@ -36,14 +39,13 @@ impl HistoryEntry {
     /// Set the URL of the RRD to load/navigate to when using this entry.
     // TODO: it's always loading right now.
     pub fn rrd_url(mut self, url: String) -> Self {
-        self.endpoints.push(CategorizedEndpoint::HttpRrd(url));
+        self.endpoints.push(ViewerContentUrl::HttpRrd(url));
         self
     }
 
     /// Set the Redap URI to load/navigate to when using this entry.
     pub fn redap_uri(mut self, uri: re_uri::RedapUri) -> Self {
-        self.endpoints
-            .push(CategorizedEndpoint::RerunGrpcStream(uri));
+        self.endpoints.push(ViewerContentUrl::RerunGrpcStream(uri));
         self
     }
 }
@@ -86,11 +88,10 @@ pub fn install_popstate_listener(app: &mut crate::App) -> Result<(), JsValue> {
     let egui_ctx = app.egui_ctx.clone();
     let command_sender = app.command_sender.clone();
 
-    let connection_registry = app.connection_registry().clone();
     let closure = Closure::wrap(Box::new({
         move |event: web_sys::PopStateEvent| {
             let new_state = deserialize_from_state(&event.state())?;
-            handle_popstate(&connection_registry, &egui_ctx, &command_sender, new_state);
+            handle_popstate(&egui_ctx, &command_sender, new_state);
             Ok(())
         }
     }) as Box<EventListener<_>>);
@@ -133,7 +134,6 @@ impl Drop for PopstateListener {
 }
 
 fn handle_popstate(
-    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
     egui_ctx: &egui::Context,
     command_sender: &CommandSender,
     new_state: Option<HistoryEntry>,
@@ -163,26 +163,15 @@ fn handle_popstate(
     };
 
     let follow_if_http = false;
+    let select_redap_source_when_loaded = true;
     for url in &entry.endpoints {
-        // we continue in case of errors because some receivers may be valid
-        let Some(receiver) = endpoint_to_receiver(
-            connection_registry,
-            egui_ctx.clone(),
+        open_content_url_in_viewer(
+            egui_ctx,
             follow_if_http,
+            select_redap_source_when_loaded,
             url.clone(),
-            command_sender.clone(),
-        ) else {
-            continue;
-        };
-
-        // TODO: why kill old recordings?
-        // TODO: am I doing this right?
-        command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
-            receiver.source().clone(),
-        ));
-        // TODO: we still need this in case the receiver was removed.
-        command_sender.send_system(SystemCommand::AddReceiver(receiver));
-
+            &command_sender,
+        );
         re_log::debug!("popstate: add receiver {url:?}");
     }
 

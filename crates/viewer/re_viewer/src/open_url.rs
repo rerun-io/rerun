@@ -35,6 +35,7 @@ pub enum ViewerContentUrl {
     /// An eventListener for rrd posted from containing html
     ///
     /// Only available on the web viewer.
+    // TODO(andreas): maybe we can remove this? This is only used for `legacy_notebook.py`.
     WebEventListener(String),
 }
 
@@ -164,6 +165,7 @@ pub fn open_content_url_in_viewer(
 
         #[cfg(target_arch = "wasm32")]
         ViewerContentUrl::WebEventListener(url) => {
+            use re_log::ResultExt as _;
             use std::{ops::ControlFlow, sync::Arc};
 
             // Process an rrd when it's posted via `window.postMessage`

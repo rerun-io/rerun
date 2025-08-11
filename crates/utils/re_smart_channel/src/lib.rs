@@ -29,7 +29,7 @@ pub enum SmartChannelSource {
     /// The channel was created in the context of loading an `.rrd` file over http.
     ///
     /// The `follow` flag indicates whether the viewer should open the stream in `Following` mode rather than `Playing` mode.
-    // TODO: why is this follow mode thing in here?
+    // TODO(andreas): having follow in here is a bit weird. This should be part of the link fragments instead.
     RrdHttpStream { url: String, follow: bool },
 
     /// The channel was created in the context of loading an `.rrd` file from a `postMessage`

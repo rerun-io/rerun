@@ -13,7 +13,7 @@ use wasm_bindgen::prelude::*;
 use re_log::ResultExt as _;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
-use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
@@ -206,7 +206,7 @@ impl WebHandle {
         let follow_if_http = follow_if_http.unwrap_or(false);
         let select_redap_source_when_loaded = true;
         try_open_url_in_viewer(
-            app.egui_ctx.clone(),
+            &app.egui_ctx,
             follow_if_http,
             select_redap_source_when_loaded,
             url.to_owned(),
@@ -798,10 +798,12 @@ fn create_app(
 
     if let Some(urls) = url {
         let follow_if_http = false;
+        let select_redap_source_when_loaded = true;
         for url in urls.into_inner() {
             try_open_url_in_viewer(
-                cc.egui_ctx.clone(),
+                &cc.egui_ctx,
                 follow_if_http,
+                select_redap_source_when_loaded,
                 url,
                 &app.command_sender,
             );
