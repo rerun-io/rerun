@@ -37,7 +37,7 @@ all-features = true # Will also enable the `__disable_server` feature, meaning t
 ## This crate embeds the web viewer `.wasm`, and so before building this crate you must build the `.wasm` using `pixi run rerun-build-web-release`.
 ##
 ## If for some reason you need to build this crate _without_ the `.wasm` being built, then you can do so in one of two ways:
-## * Use `--features __disable_server` when building this crate (or `--all-features).
+## * Use `--features __disable_server` when building this crate (or `--all-features`).
 ## * Compile with the env-var `RERUN_DISABLE_WEB_VIEWER_SERVER=1`
 ##
 ## This will cause this crate to build despite the `.wasm` being missing, BUT it will panic at runtime!
