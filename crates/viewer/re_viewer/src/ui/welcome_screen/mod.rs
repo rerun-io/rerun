@@ -25,7 +25,6 @@ impl WelcomeScreen {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        command_sender: &re_viewer_context::CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         log_sources: &[Arc<SmartChannelSource>],
     ) {
@@ -60,8 +59,7 @@ impl WelcomeScreen {
                     } else if welcome_screen_state.hide_examples {
                         no_data_ui::no_data_ui(ui);
                     } else {
-                        self.example_page
-                            .ui(ui, command_sender, &welcome_section_ui);
+                        self.example_page.ui(ui, &welcome_section_ui);
                     }
                 });
             });

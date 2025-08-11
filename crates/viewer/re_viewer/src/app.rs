@@ -564,11 +564,6 @@ impl App {
                 });
             }
 
-            SystemCommand::ClearSourceAndItsStores(source) => {
-                self.rx_log.retain(|r| r.source() != &source);
-                store_hub.retain_recordings(|db| db.data_source.as_ref() != Some(&source));
-            }
-
             SystemCommand::AddReceiver(rx) => {
                 re_log::debug!("Received AddReceiver");
                 self.add_log_receiver(rx);
