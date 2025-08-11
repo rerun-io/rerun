@@ -24,7 +24,7 @@ pub enum ViewerContentUrl {
     HttpRrd(String),
 
     /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/recording/1234`
-    RerunGrpcStream(re_uri::RedapUri),
+    RerunGrpcStream(Box<re_uri::RedapUri>),
 
     /// A URL that points to an entity within the currently active recording.
     ///
@@ -42,12 +42,11 @@ pub enum ViewerContentUrl {
 impl std::fmt::Display for ViewerContentUrl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::HttpRrd(url) => write!(f, "{}", url),
-            Self::RerunGrpcStream(uri) => write!(f, "{}", uri),
+            Self::WebEventListener(url) | Self::HttpRrd(url) => write!(f, "{url}"),
+            Self::RerunGrpcStream(uri) => write!(f, "{uri}"),
             Self::IntraRecordingEntitySelection { selection } => {
-                write!(f, "{INTRA_RECORDING_URL_SCHEME}{}", selection)
+                write!(f, "{INTRA_RECORDING_URL_SCHEME}{selection}")
             }
-            Self::WebEventListener(url) => write!(f, "{}", url),
         }
     }
 }
@@ -55,8 +54,9 @@ impl std::fmt::Display for ViewerContentUrl {
 impl ViewerContentUrl {
     /// Categorizes a URI into a [`CategorizedContentUrl`] if it's a URI that can be opened within the viewer.
     pub fn categorize_url(uri: String) -> Option<Self> {
+        #[expect(clippy::manual_map)]
         if let Ok(uri) = uri.parse::<re_uri::RedapUri>() {
-            Some(Self::RerunGrpcStream(uri))
+            Some(Self::RerunGrpcStream(Box::new(uri)))
         } else if uri.starts_with(WEB_EVENT_LISTENER_SCHEME) {
             Some(Self::WebEventListener(uri))
         } else if (uri.starts_with("http") || uri.starts_with("https"))
@@ -115,15 +115,6 @@ pub fn open_content_url_in_viewer(
     // Most of everything we do in here is sending commands. Make sure we process them!
     egui_ctx.request_repaint();
 
-    // For streaming in data spend a few more milliseconds decoding incoming messages,
-    // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
-    let ui_waker = {
-        let egui_ctx = egui_ctx.clone();
-        Box::new(move || {
-            egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
-        })
-    };
-
     match endpoint {
         ViewerContentUrl::HttpRrd(url) => {
             re_log::debug!("Opening rrd HTTP Stream: {url:?}");
@@ -141,7 +132,7 @@ pub fn open_content_url_in_viewer(
 
             command_sender.send_system(SystemCommand::LoadDataSource(
                 re_data_source::DataSource::RerunGrpcStream {
-                    uri,
+                    uri: *uri,
                     select_when_loaded: select_redap_source_when_loaded,
                 },
             ));
@@ -168,6 +159,7 @@ pub fn open_content_url_in_viewer(
         #[cfg(target_arch = "wasm32")]
         ViewerContentUrl::WebEventListener(url) => {
             use re_log::ResultExt as _;
+            use re_log_encoding::stream_rrd_from_http::HttpMessage;
             use std::{ops::ControlFlow, sync::Arc};
 
             // Process an rrd when it's posted via `window.postMessage`
@@ -175,10 +167,11 @@ pub fn open_content_url_in_viewer(
                 re_smart_channel::SmartMessageSource::RrdWebEventCallback,
                 re_smart_channel::SmartChannelSource::RrdWebEventListener,
             );
+            let egui_ctx = egui_ctx.clone();
             re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(Arc::new({
                 move |msg| {
-                    ui_waker();
-                    use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                    egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+
                     match msg {
                         HttpMessage::LogMsg(msg) => {
                             if tx.send(msg).is_ok() {

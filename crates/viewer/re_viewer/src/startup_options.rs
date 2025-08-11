@@ -82,6 +82,7 @@ pub struct StartupOptions {
 
 impl StartupOptions {
     /// Returns `StartupOptions::enable_history` on web, and `false` on native.
+    #[allow(clippy::unused_self)] // Only used on web.
     pub fn enable_web_history(&self) -> bool {
         #[cfg(target_arch = "wasm32")]
         {

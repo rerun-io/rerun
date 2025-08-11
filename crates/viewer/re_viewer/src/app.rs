@@ -502,7 +502,7 @@ impl App {
                 update_web_address_bar(
                     self.startup_options.enable_web_history(),
                     store_hub,
-                    &self.state.navigation.peek(),
+                    self.state.navigation.peek(),
                 );
             }
 
@@ -511,7 +511,7 @@ impl App {
                 update_web_address_bar(
                     self.startup_options.enable_web_history(),
                     store_hub,
-                    &self.state.navigation.peek(),
+                    self.state.navigation.peek(),
                 );
             }
 
@@ -530,7 +530,7 @@ impl App {
                 update_web_address_bar(
                     self.startup_options.enable_web_history(),
                     store_hub,
-                    &self.state.navigation.peek(),
+                    self.state.navigation.peek(),
                 );
             }
 
@@ -540,7 +540,7 @@ impl App {
                 update_web_address_bar(
                     self.startup_options.enable_web_history(),
                     store_hub,
-                    &self.state.navigation.peek(),
+                    self.state.navigation.peek(),
                 );
             }
 
@@ -594,11 +594,35 @@ impl App {
                 // we don't want to switch out to it while the user browses a server.
 
                 // Check if we've already loaded this data source and should just switch to it.
+                //
+                // Go through all sources that are still loading and those that are already in the store_hub.
+                // (if we look only at the one from the store_hub, we might miss those that haven't hit it yet)
+                let active_sources = self.rx_log.sources();
+                let store_sources = store_hub
+                    .store_bundle()
+                    .entity_dbs()
+                    .filter_map(|db| db.data_source.as_ref());
+                let mut all_sources = active_sources
+                    .iter()
+                    .map(|src| src.as_ref())
+                    .chain(store_sources);
+
                 match &data_source {
                     DataSource::RrdHttpUrl { url, follow } => {
                         // TODO:
                     }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    DataSource::FilePath(file_source, _path) => {
+                        // TODO:
+                    }
+
                     DataSource::FileContents(file_source, file_contents) => {
+                        // TODO:
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    DataSource::Stdin => {
                         // TODO:
                     }
 
@@ -607,19 +631,6 @@ impl App {
                         select_when_loaded,
                     } => {
                         let uri_without_fragment = uri.clone().without_fragment();
-
-                        // Go through all sources that are still loading and those that are already in the store_hub.
-                        // (if we look only at the one from the store_hub, we might miss those that haven't hit it yet)
-                        let active_sources = self.rx_log.sources();
-                        let store_sources = store_hub
-                            .store_bundle()
-                            .entity_dbs()
-                            .filter_map(|db| db.data_source.as_ref());
-                        let mut all_sources = active_sources
-                            .iter()
-                            .map(|src| src.as_ref())
-                            .chain(store_sources);
-
                         if all_sources.any(|source| {
                             if let SmartChannelSource::RedapGrpcStream { uri, .. } = source {
                                 // Ignore the fragment, it's not part of the data source.
@@ -814,7 +825,7 @@ impl App {
                 update_web_address_bar(
                     self.startup_options.enable_web_history(),
                     store_hub,
-                    &self.state.navigation.peek(),
+                    self.state.navigation.peek(),
                 );
             }
 

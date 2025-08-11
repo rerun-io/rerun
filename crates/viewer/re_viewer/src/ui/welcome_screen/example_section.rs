@@ -347,7 +347,7 @@ impl ExampleSection {
                                     ui.input_mut(|i| i.pointer = Default::default());
 
                                     ui.ctx().open_url(egui::output::OpenUrl {
-                                        url: example.desc.rrd_url.to_owned(),
+                                        url: example.desc.rrd_url.clone(),
                                         new_tab: false,
                                     });
                                 }
