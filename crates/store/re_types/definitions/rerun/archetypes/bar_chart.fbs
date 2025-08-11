@@ -6,7 +6,7 @@ namespace rerun.archetypes;
 ///
 /// The bar heights will be the provided values, and the x coordinates of the bars will be the provided abscissa or default to the index of the provided values.
 ///
-/// \example archetypes/bar_chart title="Simple bar chart" image="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/1200w.png"
+/// \example archetypes/bar_chart title="Simple bar chart" image="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/1200w.png"
 table BarChart (
   "attr.docs.category": "Plotting",
   "attr.docs.view_types": "BarChartView",

@@ -23,7 +23,7 @@ namespace rerun::archetypes {
     /// ## Example
     ///
     /// ### Simple bar chart
-    /// ![image](https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/full.png)
+    /// ![image](https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
