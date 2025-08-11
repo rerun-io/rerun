@@ -1,4 +1,5 @@
 use crate::arrow_node::ArrowNode;
+use crate::arrow_view::ArrowView;
 use crate::child_nodes;
 use crate::datatype_ui::datatype_ui;
 use arrow::array::AsArray;
@@ -135,10 +136,15 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
 }
 
 fn array_items_ui(ui: &mut egui::Ui, array: &dyn Array) {
-    dbg!(array.len(), array.data_type());
-    for i in 0..array.len() {
-        let node = ArrowNode::new(array, i);
-        node.ui(ui);
+    // dbg!(array.len(), array.data_type());
+    // for i in 0..array.len() {
+    //     let node = ArrowNode::new(array, i);
+    //     node.ui(ui);
+    // }
+
+    let view = ArrowView::new(array);
+    for i in 0..view.len() {
+        view.node(i).ui(ui);
     }
 }
 

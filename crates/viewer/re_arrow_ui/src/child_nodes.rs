@@ -1,13 +1,16 @@
 use crate::arrow_node::ArrowNode;
+use crate::arrow_view::ArrowView;
 use arrow::array::{Array, AsArray, StructArray, UnionArray};
+use std::ops::Deref;
 use std::sync::Arc;
 
 /// Iterator over child nodes of an Arrow array.
 ///
 /// For some kinds, this will hold a reference to the parent array and an index.
 /// For others (lists), it will hold a reference to the child array.
+#[derive(Debug, Clone)]
 pub enum ChildNodes<'a> {
-    List(Arc<dyn Array>),
+    List(ArrowView<'a>),
     Struct {
         parent_index: usize,
         array: &'a StructArray,
@@ -39,13 +42,13 @@ impl<'a> ChildNodes<'a> {
             }
         } else if let Some(list) = array.as_list_opt::<i32>() {
             let value = list.value(index);
-            ChildNodes::List(value.clone())
+            ChildNodes::List(ArrowView::new_ref(value.into()))
         } else if let Some(list) = array.as_list_opt::<i64>() {
             let value = list.value(index);
-            ChildNodes::List(value.clone())
+            ChildNodes::List(ArrowView::new_ref(value.into()))
         } else if let Some(list_array) = array.as_fixed_size_list_opt() {
             let value = list_array.value(index);
-            ChildNodes::List(value.clone())
+            ChildNodes::List(ArrowView::new_ref(value.into()))
         } else if let Some(dict_array) = array.as_any_dictionary_opt() {
             if !dict_array.keys().data_type().is_nested() {
                 ChildNodes::InlineKeyMap {
@@ -74,11 +77,12 @@ impl<'a> ChildNodes<'a> {
             //         parent_index: index,
             //     }
             // }
-            let entries = map_array.entries();
-            ChildNodes::Struct {
-                parent_index: index,
-                array: entries,
-            }
+            // let entries = map_array.entries();
+            // ChildNodes::Struct {
+            //     parent_index: index,
+            //     array: entries,
+            // }
+            ChildNodes::List(ArrowView::new(array))
         } else if let Some(union_array) = array.as_union_opt() {
             ChildNodes::Union {
                 array: union_array,
@@ -99,7 +103,7 @@ impl<'a> ChildNodes<'a> {
                 array,
             } => array.num_columns(),
             ChildNodes::InlineKeyMap { keys, .. } => keys.as_ref().len() * 2, // TODO: Implement inline thingy
-            ChildNodes::Map { keys, .. } => keys.as_ref().len() * 2,
+            ChildNodes::Map { .. } => 2,
             ChildNodes::Union {
                 array: _union_array,
                 parent_index: _,
@@ -108,17 +112,22 @@ impl<'a> ChildNodes<'a> {
     }
 
     /// Ui is needed to style the name of `InlineKeyMap` nodes
-    pub fn get_child(&self, index: usize) -> ArrowNode<'a> {
+    pub fn get_child(&'a self, index: usize) -> ArrowNode<'a> {
         assert!(index < self.len(), "Index out of bounds: {index}");
         match self {
-            ChildNodes::List(list) => ArrowNode::new(list.clone(), index),
+            ChildNodes::List(list) => list.node(index),
             ChildNodes::Struct {
                 parent_index: struct_index,
                 array,
             } => {
                 let column = array.column(index);
                 let name = array.column_names()[index];
-                ArrowNode::new(&**column, *struct_index).with_field_name(name)
+                ArrowNode::new(
+                    &**column,
+                    *struct_index,
+                    ChildNodes::new(column as &dyn Array, *struct_index),
+                )
+                .with_field_name(name)
             }
             ChildNodes::InlineKeyMap {
                 keys,
@@ -126,18 +135,21 @@ impl<'a> ChildNodes<'a> {
                 parent_index,
             } => {
                 // TODO: Implement inline node
-                // let key_node = crate::arrow_ui::ArrowNode::new(keys.clone(), *parent_index);
-                // let key_job = key_node.layout_job(ui);
-                // crate::arrow_ui::ArrowNode::new(values.clone(), *parent_index)
-                //     .with_field_name(key_job)
 
-                let is_key = index % 2 == 0;
-                let actual_index = index / 2;
-
-                if is_key {
-                    ArrowNode::new(keys.clone(), actual_index).with_field_name("key")
+                if index == 0 {
+                    ArrowNode::new(
+                        keys.clone(),
+                        *parent_index,
+                        ChildNodes::new(keys.as_ref(), *parent_index),
+                    )
+                    .with_field_name("key")
                 } else {
-                    ArrowNode::new(values.clone(), actual_index).with_field_name("value")
+                    ArrowNode::new(
+                        values.clone(),
+                        *parent_index,
+                        ChildNodes::new(values.as_ref(), *parent_index),
+                    )
+                    .with_field_name("value")
                 }
             }
             ChildNodes::Map {
@@ -145,13 +157,20 @@ impl<'a> ChildNodes<'a> {
                 values,
                 parent_index,
             } => {
-                let is_key = index % 2 == 0;
-                let actual_index = index / 2;
-
-                if is_key {
-                    ArrowNode::new(keys.clone(), actual_index).with_field_name("key")
+                if index == 0 {
+                    ArrowNode::new(
+                        keys.clone(),
+                        *parent_index,
+                        ChildNodes::new(keys.as_ref(), *parent_index),
+                    )
+                    .with_field_name("key")
                 } else {
-                    ArrowNode::new(values.clone(), actual_index).with_field_name("value")
+                    ArrowNode::new(
+                        values.clone(),
+                        *parent_index,
+                        ChildNodes::new(values.as_ref(), *parent_index),
+                    )
+                    .with_field_name("value")
                 }
             }
             ChildNodes::Union {
@@ -164,7 +183,12 @@ impl<'a> ChildNodes<'a> {
                 let variant_name = names
                     .get(variant_index as usize)
                     .expect("Variant index should be valid");
-                ArrowNode::new(child.clone(), *parent_index).with_field_name(*variant_name)
+                ArrowNode::new(
+                    child.clone(),
+                    *parent_index,
+                    ChildNodes::new(child.as_ref(), *parent_index),
+                )
+                .with_field_name(*variant_name)
             }
         }
     }
@@ -184,8 +208,8 @@ pub enum MaybeArc<'a> {
     Arc(arrow::array::ArrayRef),
 }
 
-impl MaybeArc<'_> {
-    pub fn as_ref(&self) -> &dyn Array {
+impl<'a> MaybeArc<'a> {
+    pub fn as_ref(&'a self) -> &'a dyn Array {
         match self {
             MaybeArc::Array(array) => *array,
             MaybeArc::Arc(arc) => arc.as_ref(),

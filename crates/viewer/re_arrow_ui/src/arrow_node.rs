@@ -1,4 +1,5 @@
 use crate::child_nodes;
+use crate::child_nodes::ChildNodes;
 use crate::datatype_ui::datatype_ui;
 use arrow::datatypes::DataType;
 use egui::text::LayoutJob;
@@ -11,14 +12,20 @@ pub struct ArrowNode<'a> {
     array: child_nodes::MaybeArc<'a>,
     index: usize,
     field_name: Option<WidgetText>, // TODO: Can be &str?
+    child_nodes: Option<ChildNodes<'a>>,
 }
 
 impl<'a> ArrowNode<'a> {
-    pub fn new(array: impl Into<child_nodes::MaybeArc<'a>>, index: usize) -> Self {
+    pub fn new(
+        array: impl Into<child_nodes::MaybeArc<'a>>,
+        index: usize,
+        child_nodes: Option<ChildNodes<'a>>,
+    ) -> Self {
         ArrowNode {
             array: array.into(),
             index,
             field_name: None,
+            child_nodes,
         }
     }
 
@@ -61,7 +68,7 @@ impl<'a> ArrowNode<'a> {
         let format_strong = Self::text_format_strong(ui);
         let format_base = Self::text_format_base(ui);
 
-        if let Some(children) = child_nodes::ChildNodes::new(self.array.as_ref(), self.index) {
+        if let Some(children) = self.child_nodes.clone() {
             let len = children.len();
             const MAX_INLINE_ITEMS: usize = 3;
 
@@ -126,6 +133,7 @@ impl<'a> ArrowNode<'a> {
             array,
             index,
             field_name,
+            child_nodes,
         } = &self;
 
         let array = child_nodes::MaybeArc::as_ref(array);
@@ -196,8 +204,7 @@ impl<'a> ArrowNode<'a> {
             })
             .show_only_when_collapsed(false);
 
-        let maybe_children = child_nodes::ChildNodes::new(array, *index);
-        let response = if let Some(children) = maybe_children {
+        let response = if let Some(children) = child_nodes {
             item.show_hierarchical_with_children(ui, id, false, content, |ui| {
                 // We create a new scope so properties are only aligned on a single level
                 ui.list_item_scope(id.with("scope"), |ui| {
