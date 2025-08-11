@@ -357,7 +357,7 @@ pub struct User {
 ///
 /// Every time it's used, you should first check if it's expired, and refresh it if so.
 ///
-/// To produce one from a JWT, use [`Context::verify_token`].
+/// To produce one from a JWT, use [`AuthContext::verify_token`].
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct AccessToken {
     token: String,
