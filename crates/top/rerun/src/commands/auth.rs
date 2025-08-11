@@ -9,11 +9,8 @@ pub enum AuthCommands {
 
 #[derive(Debug, Clone, Parser)]
 pub struct LoginCommand {
-    // TODO: default should be `rerun.io` prod
-    #[clap(
-        long,
-        default_value = "https://landing-git-jan-login-page-rerun.vercel.app/login"
-    )]
+    // TODO(jan): default should be `rerun.io` prod
+    #[clap(long, default_value = "https://rerun.io/login")]
     login_url: String,
 
     // Double-negative because it's an opt-out flag.
