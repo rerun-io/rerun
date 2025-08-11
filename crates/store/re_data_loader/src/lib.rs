@@ -481,10 +481,8 @@ pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
-#[cfg(not(target_arch = "wasm32"))]
+/// 3rd party formats with built-in support.
 pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap"];
-#[cfg(target_arch = "wasm32")]
-pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &[];
 
 // TODO(#4555): Add catch-all builtin `DataLoader` for text files
 pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
