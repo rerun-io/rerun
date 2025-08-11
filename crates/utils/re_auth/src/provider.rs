@@ -3,7 +3,6 @@ use std::time::Duration;
 use base64::{Engine as _, engine::general_purpose};
 use jsonwebtoken::{
     Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, decode_header, encode,
-    jwk::JwkSet,
 };
 
 use crate::{Error, Jwt};
@@ -30,7 +29,7 @@ pub struct RedapProvider {
 #[derive(Debug, Clone)]
 struct ExternalProvider {
     /// Public keys provided to us by WorkOS
-    keys: JwkSet,
+    keys: jsonwebtoken::jwk::JwkSet,
 
     /// Expected organization ID
     org_id: String,
@@ -265,9 +264,8 @@ impl RedapProvider {
 
     /// Checks if a provided `token` is valid for a given `scope`.
     pub fn verify(&self, token: &Jwt, options: VerificationOptions) -> Result<Claims, Error> {
-        let header = decode_header(token.as_str())?;
         #[cfg(feature = "workos")]
-        let (key, validation) = match &header.kid {
+        let (key, validation) = match decode_header(token.as_str())?.kid {
             Some(kid) => {
                 // we don't supply key ID, so assume this comes from external provider
                 let Some(external) = &self.external else {
