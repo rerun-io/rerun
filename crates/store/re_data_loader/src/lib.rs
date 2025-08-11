@@ -502,10 +502,17 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
 
 /// Is this a supported file extension by any of our builtin [`DataLoader`]s?
 pub fn is_supported_file_extension(extension: &str) -> bool {
-    SUPPORTED_IMAGE_EXTENSIONS.contains(&extension)
-        || SUPPORTED_VIDEO_EXTENSIONS.contains(&extension)
-        || SUPPORTED_MESH_EXTENSIONS.contains(&extension)
-        || SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension)
-        || SUPPORTED_RERUN_EXTENSIONS.contains(&extension)
-        || SUPPORTED_TEXT_EXTENSIONS.contains(&extension)
+    debug_assert!(
+        !extension.starts_with('.'),
+        "Expected extion without period, but got {extension:?}"
+    );
+    let extension = extension.to_lowercase();
+    supported_extensions().any(|ext| ext == extension)
+}
+
+#[test]
+fn test_supported_extensions() {
+    assert!(is_supported_file_extension("rrd"));
+    assert!(is_supported_file_extension("mcap"));
+    assert!(is_supported_file_extension("png"));
 }
