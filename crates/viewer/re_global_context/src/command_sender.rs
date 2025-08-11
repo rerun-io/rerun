@@ -18,7 +18,9 @@ pub enum SystemCommand {
     /// Close this app and all its recordings.
     CloseApp(re_log_types::ApplicationId),
 
-    /// Load some data.
+    /// Load data from a given data source.
+    ///
+    /// Will not load any new data if the source is already one of the active data sources.
     LoadDataSource(DataSource),
 
     /// Add a new receiver for log messages.

@@ -589,32 +589,100 @@ impl App {
             }
 
             SystemCommand::LoadDataSource(data_source) => {
-                // Note that we *do not* change the display mode here.
+                // Note that we *do not* change the display mode here unconditionally.
                 // For instance if the datasource is a blueprint for a dataset that may be loaded later,
                 // we don't want to switch out to it while the user browses a server.
 
-                let egui_ctx = egui_ctx.clone();
+                // Check if we've already loaded this data source and should just switch to it.
+                match &data_source {
+                    DataSource::RrdHttpUrl { url, follow } => {
+                        // TODO:
+                    }
+                    DataSource::FileContents(file_source, file_contents) => {
+                        // TODO:
+                    }
+
+                    DataSource::RerunGrpcStream {
+                        uri: re_uri::RedapUri::DatasetData(uri),
+                        select_when_loaded,
+                    } => {
+                        let uri_without_fragment = uri.clone().without_fragment();
+
+                        // Go through all sources that are still loading and those that are already in the store_hub.
+                        // (if we look only at the one from the store_hub, we might miss those that haven't hit it yet)
+                        let active_sources = self.rx_log.sources();
+                        let store_sources = store_hub
+                            .store_bundle()
+                            .entity_dbs()
+                            .filter_map(|db| db.data_source.as_ref());
+                        let mut all_sources = active_sources
+                            .iter()
+                            .map(|src| src.as_ref())
+                            .chain(store_sources);
+
+                        if all_sources.any(|source| {
+                            if let SmartChannelSource::RedapGrpcStream { uri, .. } = source {
+                                // Ignore the fragment, it's not part of the data source.
+                                // (do *not* ignore the query though as it changes what we load)
+                                uri.clone().without_fragment() == uri_without_fragment
+                            } else {
+                                false
+                            }
+                        }) {
+                            // We're already receiving from the exact same data source!
+                            // But we still should select if requested according to the fragments if any.
+                            if *select_when_loaded {
+                                // First make the recording itself active.
+                                // `go_to_dataset_data` may override the selection again, but this is important regardless,
+                                // since `go_to_dataset_data` does not change the active recording.
+                                drop(all_sources);
+                                self.make_store_active_and_highlight(
+                                    store_hub,
+                                    egui_ctx,
+                                    &uri.store_id(),
+                                );
+                            }
+
+                            // Note that applying the fragment changes the per-recording settings like the active time cursor.
+                            // Therefore, we apply it even when `select_when_loaded` is false.
+                            self.go_to_dataset_data(uri);
+
+                            return;
+                        }
+                    }
+
+                    DataSource::RerunGrpcStream {
+                        uri: _,
+                        select_when_loaded: _,
+                    } => {
+                        // Other URI types don't need the skipping code here as they won't add a data source anyways.
+                    }
+                }
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread
                 // on any new message. On web we cannot spawn threads, so instead we need
                 // to supply a waker that is called when new messages arrive in background tasks
-                let waker = Box::new(move || {
-                    // Spend a few more milliseconds decoding incoming messages,
-                    // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
-                    egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
-                });
-
-                let command_sender = self.command_sender.clone();
-                let on_cmd = Box::new(move |cmd| match cmd {
-                    re_data_source::DataSourceCommand::SetLoopSelection {
-                        recording_id,
-                        timeline,
-                        time_range,
-                    } => command_sender.send_system(SystemCommand::SetLoopSelection {
-                        store_id: recording_id,
-                        timeline,
-                        time_range,
-                    }),
-                });
+                let waker = {
+                    let egui_ctx = egui_ctx.clone();
+                    Box::new(move || {
+                        // Spend a few more milliseconds decoding incoming messages,
+                        // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+                        egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+                    })
+                };
+                let on_cmd = {
+                    let command_sender = self.command_sender.clone();
+                    Box::new(move |cmd| match cmd {
+                        re_data_source::DataSourceCommand::SetLoopSelection {
+                            recording_id,
+                            timeline,
+                            time_range,
+                        } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                            store_id: recording_id,
+                            timeline,
+                            time_range,
+                        }),
+                    })
+                };
 
                 match data_source
                     .clone()
@@ -802,6 +870,9 @@ impl App {
         }
     }
 
+    /// Applies the fragment of a dataset data URI to the viewer.
+    ///
+    /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, uri: &re_uri::DatasetDataUri) {
         let re_uri::Fragment { focus, when } = uri.fragment.clone();
 
@@ -1724,19 +1795,7 @@ impl App {
                         match store_id.kind() {
                             StoreKind::Recording => {
                                 re_log::trace!("Opening a new recording: '{store_id:?}'");
-                                store_hub.set_active_recording_id(store_id.clone());
-
-                                // Also select the new recording:
-                                self.command_sender.send_system(SystemCommand::SetSelection(
-                                    re_viewer_context::Item::StoreId(store_id.clone()),
-                                ));
-
-                                // If the viewer is in the background, tell the user that it has received something new.
-                                egui_ctx.send_viewport_cmd(
-                                    egui::ViewportCommand::RequestUserAttention(
-                                        egui::UserAttentionType::Informational,
-                                    ),
-                                );
+                                self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
                             }
                             StoreKind::Blueprint => {
                                 // We wait with activating blueprints until they are fully loaded,
@@ -1819,6 +1878,26 @@ impl App {
                 break; // don't block the main thread for too long
             }
         }
+    }
+
+    /// Makes the given store active and request user attention if Rerun in the background.
+    fn make_store_active_and_highlight(
+        &self,
+        store_hub: &mut StoreHub,
+        egui_ctx: &egui::Context,
+        store_id: &StoreId,
+    ) {
+        store_hub.set_active_recording_id(store_id.clone());
+
+        // Also select the new recording:
+        self.command_sender.send_system(SystemCommand::SetSelection(
+            re_viewer_context::Item::StoreId(store_id.clone()),
+        ));
+
+        // If the viewer is in the background, tell the user that it has received something new.
+        egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
+            egui::UserAttentionType::Informational,
+        ));
     }
 
     /// After loading some data; check if the loaded data makes sense.

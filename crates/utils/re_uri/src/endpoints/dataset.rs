@@ -106,6 +106,21 @@ impl DatasetDataUri {
         self
     }
 
+    /// Returns [`Self`] without any (optional) `#fragment`.
+    pub fn without_fragment(mut self) -> Self {
+        let Self {
+            origin: _,       // Mandatory
+            dataset_id: _,   // Mandatory
+            partition_id: _, // Mandatory
+            time_range: _,
+            fragment,
+        } = &mut self;
+
+        *fragment = Default::default();
+
+        self
+    }
+
     pub fn store_id(&self) -> StoreId {
         StoreId::new(
             re_log_types::StoreKind::Recording,
