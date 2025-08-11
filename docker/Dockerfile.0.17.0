@@ -1,0 +1,14 @@
+# -----------------------------------------------------------------------------
+# Dockerfile for running Rerun SDK version 0.17.0 with NVIDIA PyTorch base
+# Includes necessary system dependencies for GUI and Vulkan support
+# -----------------------------------------------------------------------------
+
+FROM nvcr.io/nvidia/pytorch:23.12-py3
+
+RUN apt update && apt install -q -y --no-install-recommends \
+    libgtk-3-dev \
+    libxkbcommon-x11-0 \
+    vulkan-tools
+
+RUN pip install -U pip && pip install \
+    rerun-sdk==0.17.0
