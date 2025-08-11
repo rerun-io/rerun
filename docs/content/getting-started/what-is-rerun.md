@@ -92,7 +92,7 @@ Rerun provides query APIs that make it easy to extract clean datasets from your 
 
 ## Getting started
 
-Ready to start visualizing your multimodal data? Check out our [Quick Start guide](./quick-start) to get up and running with Rerun in just a few minutes.
+Ready to start visualizing your multimodal data? Check out our [Quick Start guide](/getting-started/quick-start) to get up and running with Rerun in just a few minutes.
 
 
 ## Can't find what you're looking for?
