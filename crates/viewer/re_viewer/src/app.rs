@@ -589,130 +589,7 @@ impl App {
             }
 
             SystemCommand::LoadDataSource(data_source) => {
-                // Note that we *do not* change the display mode here unconditionally.
-                // For instance if the datasource is a blueprint for a dataset that may be loaded later,
-                // we don't want to switch out to it while the user browses a server.
-
-                // Check if we've already loaded this data source and should just switch to it.
-                //
-                // Go through all sources that are still loading and those that are already in the store_hub.
-                // (if we look only at the one from the store_hub, we might miss those that haven't hit it yet)
-                let active_sources = self.rx_log.sources();
-                let store_sources = store_hub
-                    .store_bundle()
-                    .entity_dbs()
-                    .filter_map(|db| db.data_source.as_ref());
-                let mut all_sources = active_sources
-                    .iter()
-                    .map(|src| src.as_ref())
-                    .chain(store_sources);
-
-                match &data_source {
-                    DataSource::RrdHttpUrl { url, follow } => {
-                        // TODO:
-                    }
-
-                    #[cfg(not(target_arch = "wasm32"))]
-                    DataSource::FilePath(file_source, _path) => {
-                        // TODO:
-                    }
-
-                    DataSource::FileContents(file_source, file_contents) => {
-                        // TODO:
-                    }
-
-                    #[cfg(not(target_arch = "wasm32"))]
-                    DataSource::Stdin => {
-                        // TODO:
-                    }
-
-                    DataSource::RerunGrpcStream {
-                        uri: re_uri::RedapUri::DatasetData(uri),
-                        select_when_loaded,
-                    } => {
-                        let uri_without_fragment = uri.clone().without_fragment();
-                        if all_sources.any(|source| {
-                            if let SmartChannelSource::RedapGrpcStream { uri, .. } = source {
-                                // Ignore the fragment, it's not part of the data source.
-                                // (do *not* ignore the query though as it changes what we load)
-                                uri.clone().without_fragment() == uri_without_fragment
-                            } else {
-                                false
-                            }
-                        }) {
-                            // We're already receiving from the exact same data source!
-                            // But we still should select if requested according to the fragments if any.
-                            if *select_when_loaded {
-                                // First make the recording itself active.
-                                // `go_to_dataset_data` may override the selection again, but this is important regardless,
-                                // since `go_to_dataset_data` does not change the active recording.
-                                drop(all_sources);
-                                self.make_store_active_and_highlight(
-                                    store_hub,
-                                    egui_ctx,
-                                    &uri.store_id(),
-                                );
-                            }
-
-                            // Note that applying the fragment changes the per-recording settings like the active time cursor.
-                            // Therefore, we apply it even when `select_when_loaded` is false.
-                            self.go_to_dataset_data(uri);
-
-                            return;
-                        }
-                    }
-
-                    DataSource::RerunGrpcStream {
-                        uri: _,
-                        select_when_loaded: _,
-                    } => {
-                        // Other URI types don't need the skipping code here as they won't add a data source anyways.
-                    }
-                }
-                // On native, `add_receiver` spawns a thread that wakes up the ui thread
-                // on any new message. On web we cannot spawn threads, so instead we need
-                // to supply a waker that is called when new messages arrive in background tasks
-                let waker = {
-                    let egui_ctx = egui_ctx.clone();
-                    Box::new(move || {
-                        // Spend a few more milliseconds decoding incoming messages,
-                        // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
-                        egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
-                    })
-                };
-                let on_cmd = {
-                    let command_sender = self.command_sender.clone();
-                    Box::new(move |cmd| match cmd {
-                        re_data_source::DataSourceCommand::SetLoopSelection {
-                            recording_id,
-                            timeline,
-                            time_range,
-                        } => command_sender.send_system(SystemCommand::SetLoopSelection {
-                            store_id: recording_id,
-                            timeline,
-                            time_range,
-                        }),
-                    })
-                };
-
-                match data_source
-                    .clone()
-                    .stream(&self.connection_registry, on_cmd, Some(waker))
-                {
-                    Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
-
-                    Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
-                        self.add_redap_server(uri.origin.clone());
-                    }
-
-                    Ok(re_data_source::StreamSource::EntryUri(uri)) => {
-                        self.select_redap_entry(&uri);
-                    }
-
-                    Err(err) => {
-                        re_log::error!("Failed to open data source: {}", re_error::format(err));
-                    }
-                }
+                self.load_datasource(store_hub, egui_ctx, &data_source);
             }
 
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
@@ -877,6 +754,180 @@ impl App {
                 if let Err(err) = self.background_tasks.spawn_file_saver(file_saver) {
                     re_log::error!("Failed to save file: {err}");
                 }
+            }
+        }
+    }
+
+    /// Loads a data source into the viewer.
+    ///
+    /// Tries to detect whether the datasource is already present (either still streaming in or already loaded),
+    /// and if so, will not load the data again.
+    /// Instead, it will only perform any kind of selection/mode-switching operations associated with loading the given data source.
+    ///
+    /// Note that we *do not* change the display mode here _unconditionally_.
+    /// For instance if the datasource is a blueprint for a dataset that may be loaded later,
+    /// we don't want to switch out to it while the user browses a server.
+    fn load_datasource(
+        &mut self,
+        store_hub: &mut StoreHub,
+        egui_ctx: &egui::Context,
+        data_source: &DataSource,
+    ) {
+        // Check if we've already loaded this data source and should just switch to it.
+        //
+        // Go through all sources that are still loading and those that are already in the store_hub.
+        // (if we look only at the one from the store_hub, we might miss those that haven't hit it yet)
+        let active_sources = self.rx_log.sources();
+        let store_sources = store_hub
+            .store_bundle()
+            .entity_dbs()
+            .filter_map(|db| db.data_source.as_ref().map(|ds| (ds, Some(db))));
+        // Note that sources that are active may also be referenced in the store hub.
+        // Therefore, it's important to look at the store hub ones first if we want to know what entity_db they're associated with.
+        let mut all_sources =
+            store_sources.chain(active_sources.iter().map(|src| (src.as_ref(), None)));
+
+        match data_source {
+            DataSource::RrdHttpUrl { url, follow } => {
+                if let Some((_source, entity_db)) = all_sources.find(|(source, _entity_db)| {
+                    if let SmartChannelSource::RrdHttpStream { url: other_url, .. } = source {
+                        url == other_url
+                    } else {
+                        false
+                    }
+                }) {
+                    if let Some(entity_db) = entity_db {
+                        if *follow {
+                            let rec_cfg = self.state.recording_config_mut(entity_db);
+                            let time_ctrl = rec_cfg.time_ctrl.get_mut();
+                            time_ctrl.set_play_state(
+                                entity_db.times_per_timeline(),
+                                PlayState::Following,
+                            );
+                        }
+
+                        let store_id = entity_db.store_id().clone();
+                        drop(all_sources);
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
+                    }
+                    return;
+                }
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::FilePath(_file_source, path) => {
+                let new_source = SmartChannelSource::File(path.clone());
+                if let Some((_source, entity_db)) =
+                    all_sources.find(|(source, _entity_db)| *source == &new_source)
+                {
+                    if let Some(entity_db) = entity_db {
+                        let store_id = entity_db.store_id().clone();
+                        drop(all_sources);
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
+                    }
+                    return;
+                }
+            }
+
+            DataSource::FileContents(_file_source, _file_contents) => {
+                // For raw file contents we currently can't determine whether we're already receiving them.
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::Stdin => {
+                if let Some((_source, entity_db)) =
+                    all_sources.find(|(source, _entity_db)| *source == &SmartChannelSource::Stdin)
+                {
+                    if let Some(entity_db) = entity_db {
+                        let store_id = entity_db.store_id().clone();
+                        drop(all_sources);
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
+                    }
+                    return;
+                }
+            }
+
+            DataSource::RerunGrpcStream {
+                uri: re_uri::RedapUri::DatasetData(uri),
+                select_when_loaded,
+            } => {
+                let uri_without_fragment = uri.clone().without_fragment();
+                if all_sources.any(|(source, _entity_db)| {
+                    if let SmartChannelSource::RedapGrpcStream { uri, .. } = source {
+                        // Ignore the fragment, it's not part of the data source.
+                        // (do *not* ignore the query though as it changes what we load)
+                        uri.clone().without_fragment() == uri_without_fragment
+                    } else {
+                        false
+                    }
+                }) {
+                    // We're already receiving from the exact same data source!
+                    // But we still should select if requested according to the fragments if any.
+                    if *select_when_loaded {
+                        // First make the recording itself active.
+                        // `go_to_dataset_data` may override the selection again, but this is important regardless,
+                        // since `go_to_dataset_data` does not change the active recording.
+                        drop(all_sources);
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, &uri.store_id());
+                    }
+
+                    // Note that applying the fragment changes the per-recording settings like the active time cursor.
+                    // Therefore, we apply it even when `select_when_loaded` is false.
+                    self.go_to_dataset_data(uri);
+
+                    return;
+                }
+            }
+
+            DataSource::RerunGrpcStream {
+                uri: _,
+                select_when_loaded: _,
+            } => {
+                // Other URI types don't need the skipping code here as they won't add a data source anyways.
+            }
+        }
+        // On native, `add_receiver` spawns a thread that wakes up the ui thread
+        // on any new message. On web we cannot spawn threads, so instead we need
+        // to supply a waker that is called when new messages arrive in background tasks
+        let waker = {
+            let egui_ctx = egui_ctx.clone();
+            Box::new(move || {
+                // Spend a few more milliseconds decoding incoming messages,
+                // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+            })
+        };
+        let on_cmd = {
+            let command_sender = self.command_sender.clone();
+            Box::new(move |cmd| match cmd {
+                re_data_source::DataSourceCommand::SetLoopSelection {
+                    recording_id,
+                    timeline,
+                    time_range,
+                } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                    store_id: recording_id,
+                    timeline,
+                    time_range,
+                }),
+            })
+        };
+
+        match data_source
+            .clone()
+            .stream(&self.connection_registry, on_cmd, Some(waker))
+        {
+            Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
+
+            Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
+                self.add_redap_server(uri.origin.clone());
+            }
+
+            Ok(re_data_source::StreamSource::EntryUri(uri)) => {
+                self.select_redap_entry(&uri);
+            }
+
+            Err(err) => {
+                re_log::error!("Failed to open data source: {}", re_error::format(err));
             }
         }
     }
