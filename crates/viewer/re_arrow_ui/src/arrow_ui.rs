@@ -1,7 +1,4 @@
-mod child_nodes;
-
-use crate::list_item::{LabelContent, PropertyContent, list_item_scope};
-use crate::{UiExt, UiLayout};
+use crate::child_nodes;
 use arrow::array::AsArray;
 use arrow::{
     array::Array,
@@ -9,11 +6,12 @@ use arrow::{
     error::ArrowError,
     util::display::{ArrayFormatter, FormatOptions},
 };
-use eframe::epaint::StrokeKind;
 use egui::text::LayoutJob;
-use egui::{Id, Response, RichText, Stroke, TextFormat, TextStyle, Ui, WidgetText};
+use egui::{Id, Response, RichText, Stroke, StrokeKind, TextFormat, TextStyle, Ui, WidgetText};
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
+use re_ui::{UiExt, UiLayout};
 use std::ops::Range;
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
@@ -247,14 +245,14 @@ fn array_items_ui(ui: &mut egui::Ui, array: &dyn Array) {
     }
 }
 
-struct ArrowNode<'a> {
+pub struct ArrowNode<'a> {
     array: child_nodes::MaybeArc<'a>,
     index: usize,
     field_name: Option<WidgetText>, // TODO: Can be &str?
 }
 
 impl<'a> ArrowNode<'a> {
-    fn new(array: impl Into<child_nodes::MaybeArc<'a>>, index: usize) -> Self {
+    pub fn new(array: impl Into<child_nodes::MaybeArc<'a>>, index: usize) -> Self {
         ArrowNode {
             array: array.into(),
             index,
@@ -262,7 +260,7 @@ impl<'a> ArrowNode<'a> {
         }
     }
 
-    fn with_field_name(mut self, field_name: impl Into<WidgetText>) -> Self {
+    pub fn with_field_name(mut self, field_name: impl Into<WidgetText>) -> Self {
         self.field_name = Some(field_name.into());
         self
     }

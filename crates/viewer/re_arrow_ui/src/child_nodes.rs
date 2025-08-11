@@ -1,3 +1,4 @@
+use crate::arrow_ui::ArrowNode;
 use arrow::array::{Array, AsArray, StructArray, UnionArray};
 use std::sync::Arc;
 
@@ -32,28 +33,28 @@ pub enum ChildNodes<'a> {
 impl<'a> ChildNodes<'a> {
     pub fn new(array: &'a dyn Array, index: usize) -> Option<Self> {
         let child_nodes = if let Some(struct_array) = array.as_struct_opt() {
-            crate::arrow_ui::child_nodes::ChildNodes::Struct {
+            ChildNodes::Struct {
                 parent_index: index,
                 array: struct_array,
             }
         } else if let Some(list) = array.as_list_opt::<i32>() {
             let value = list.value(index);
-            crate::arrow_ui::child_nodes::ChildNodes::List(value.clone())
+            ChildNodes::List(value.clone())
         } else if let Some(list) = array.as_list_opt::<i64>() {
             let value = list.value(index);
-            crate::arrow_ui::child_nodes::ChildNodes::List(value.clone())
+            ChildNodes::List(value.clone())
         } else if let Some(list_array) = array.as_fixed_size_list_opt() {
             let value = list_array.value(index);
-            crate::arrow_ui::child_nodes::ChildNodes::List(value.clone())
+            ChildNodes::List(value.clone())
         } else if let Some(dict_array) = array.as_any_dictionary_opt() {
             if !dict_array.keys().data_type().is_nested() {
-                crate::arrow_ui::child_nodes::ChildNodes::InlineKeyMap {
+                ChildNodes::InlineKeyMap {
                     keys: dict_array.keys().into(),
                     values: dict_array.values().clone().into(),
                     parent_index: index,
                 }
             } else {
-                crate::arrow_ui::child_nodes::ChildNodes::Map {
+                ChildNodes::Map {
                     keys: dict_array.keys().into(),
                     values: dict_array.values().clone().into(),
                     parent_index: index,
@@ -61,25 +62,25 @@ impl<'a> ChildNodes<'a> {
             }
         } else if let Some(map_array) = array.as_map_opt() {
             // if !map_array.keys().data_type().is_nested() {
-            //     crate::arrow_ui::child_nodes::ChildNodes::InlineKeyMap {
+            //     ChildNodes::InlineKeyMap {
             //         keys: map_array.keys().clone().into(),
             //         values: map_array.values().clone().into(),
             //         parent_index: index,
             //     }
             // } else {
-            //     crate::arrow_ui::child_nodes::ChildNodes::Map {
+            //     ChildNodes::Map {
             //         keys: map_array.keys().clone().into(),
             //         values: map_array.values().clone().into(),
             //         parent_index: index,
             //     }
             // }
             let entries = map_array.entries();
-            crate::arrow_ui::child_nodes::ChildNodes::Struct {
+            ChildNodes::Struct {
                 parent_index: index,
                 array: entries,
             }
         } else if let Some(union_array) = array.as_union_opt() {
-            crate::arrow_ui::child_nodes::ChildNodes::Union {
+            ChildNodes::Union {
                 array: union_array,
                 parent_index: index,
             }
@@ -167,8 +168,7 @@ impl<'a> ChildNodes<'a> {
                 let variant_name = names
                     .get(variant_index as usize)
                     .expect("Variant index should be valid");
-                crate::arrow_ui::ArrowNode::new(child.clone(), *parent_index)
-                    .with_field_name(*variant_name)
+                ArrowNode::new(child.clone(), *parent_index).with_field_name(*variant_name)
             }
         }
     }
