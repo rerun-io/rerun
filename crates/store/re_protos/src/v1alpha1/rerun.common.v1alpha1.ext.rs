@@ -1,15 +1,11 @@
 use std::hash::Hasher;
-use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, StringArray};
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
-
-use re_arrow_util::ArrowArrayDowncastRef as _;
 
 use re_log_types::{RecordingId, StoreKind, TableId, external::re_types_core::ComponentDescriptor};
 
 use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
-use crate::{TypeConversionError, invalid_field, missing_field};
+use crate::{TypeConversionError, common, invalid_field, missing_field};
 
 // --- Arrow ---
 
@@ -649,107 +645,11 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
     }
 }
 
-// --- DataSource --
-
-// NOTE: Match the values of the Protobuf definition to keep life simple.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
-)]
-pub enum DataSourceKind {
-    Rrd = 1,
-}
-
-impl TryFrom<crate::common::v1alpha1::DataSourceKind> for DataSourceKind {
-    type Error = TypeConversionError;
-
-    fn try_from(kind: crate::common::v1alpha1::DataSourceKind) -> Result<Self, Self::Error> {
-        match kind {
-            crate::common::v1alpha1::DataSourceKind::Rrd => Ok(Self::Rrd),
-
-            crate::common::v1alpha1::DataSourceKind::Unspecified => {
-                return Err(TypeConversionError::InvalidField {
-                    package_name: "rerun.common.v1alpha1",
-                    type_name: "DataSourceKind",
-                    field_name: "",
-                    reason: "enum value unspecified".to_owned(),
-                });
-            }
-        }
-    }
-}
-
-impl TryFrom<i32> for DataSourceKind {
-    type Error = TypeConversionError;
-
-    fn try_from(kind: i32) -> Result<Self, Self::Error> {
-        let kind = crate::common::v1alpha1::DataSourceKind::try_from(kind)?;
-        kind.try_into()
-    }
-}
-
-impl From<DataSourceKind> for crate::common::v1alpha1::DataSourceKind {
-    fn from(value: DataSourceKind) -> Self {
-        match value {
-            DataSourceKind::Rrd => Self::Rrd,
-        }
-    }
-}
-
-impl DataSourceKind {
-    pub fn to_arrow(self) -> ArrayRef {
-        match self {
-            Self::Rrd => {
-                let rec_type = StringArray::from_iter_values(["rrd".to_owned()]);
-                Arc::new(rec_type)
-            }
-        }
-    }
-
-    pub fn many_to_arrow(types: Vec<Self>) -> ArrayRef {
-        let data = types
-            .into_iter()
-            .map(|typ| match typ {
-                Self::Rrd => "rrd",
-            })
-            .collect::<Vec<_>>();
-        Arc::new(StringArray::from(data))
-    }
-
-    pub fn from_arrow(array: &dyn Array) -> Result<Self, TypeConversionError> {
-        let resource_type = array.try_downcast_array_ref::<StringArray>()?.value(0);
-
-        match resource_type {
-            "rrd" => Ok(Self::Rrd),
-            _ => Err(TypeConversionError::ArrowError(
-                ArrowError::InvalidArgumentError(format!("unknown resource type {resource_type}")),
-            )),
-        }
-    }
-
-    pub fn many_from_arrow(array: &dyn Array) -> Result<Vec<Self>, TypeConversionError> {
-        let string_array = array.try_downcast_array_ref::<StringArray>()?;
-
-        (0..string_array.len())
-            .map(|i| {
-                let resource_type = string_array.value(i);
-                match resource_type {
-                    "rrd" => Ok(Self::Rrd),
-                    _ => Err(TypeConversionError::ArrowError(
-                        ArrowError::InvalidArgumentError(format!(
-                            "unknown resource type {resource_type}"
-                        )),
-                    )),
-                }
-            })
-            .collect()
-    }
-}
-
 // --- ChunkKey ---
 
 #[derive(Debug, Clone)]
 pub struct ChunkKey {
-    pub location: DataSource,
+    pub location_url: url::Url,
     pub location_details: prost_types::Any,
 }
 
@@ -757,90 +657,93 @@ impl TryFrom<crate::common::v1alpha1::ChunkKey> for ChunkKey {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::ChunkKey) -> Result<Self, Self::Error> {
-        let location = value
-            .location
-            .ok_or_else(|| missing_field!(crate::common::v1alpha1::ChunkKey, "location"))?
-            .try_into()?;
+        let location_url = value
+            .location_url
+            .ok_or(missing_field!(
+                crate::common::v1alpha1::ChunkKey,
+                "location_url"
+            ))?
+            .parse()?;
 
-        let location_details = value
-            .location_details
-            .ok_or_else(|| missing_field!(crate::common::v1alpha1::ChunkKey, "location_details"))?;
+        let location_details = value.location_details.ok_or(missing_field!(
+            crate::common::v1alpha1::ChunkKey,
+            "location_details"
+        ))?;
 
         Ok(Self {
-            location,
+            location_url,
             location_details,
         })
     }
 }
 
-#[test]
-fn datasourcekind_roundtrip() {
-    let kind = DataSourceKind::Rrd;
-    let kind: crate::common::v1alpha1::DataSourceKind = kind.into();
-    let kind = DataSourceKind::try_from(kind).unwrap();
-    assert_eq!(DataSourceKind::Rrd, kind);
+#[derive(Debug, Clone)]
+pub struct RrdLocationDetails {
+    pub chunk_id: re_chunk::ChunkId,
+    pub offset: u64,
+    pub length: u64,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct DataSource {
-    pub storage_url: url::Url,
-    pub layer: String,
-    pub kind: DataSourceKind,
-}
+impl TryFrom<crate::common::v1alpha1::RrdLocationDetails> for RrdLocationDetails {
+    type Error = TypeConversionError;
 
-impl DataSource {
-    pub const DEFAULT_LAYER: &str = "base";
+    fn try_from(value: crate::common::v1alpha1::RrdLocationDetails) -> Result<Self, Self::Error> {
+        let tuid = value.chunk_id.ok_or(missing_field!(
+            crate::common::v1alpha1::RrdLocationDetails,
+            "chunk_id"
+        ))?;
+        let id: re_tuid::Tuid = tuid.try_into()?;
+        let chunk_id = re_chunk::ChunkId::from_u128(id.as_u128());
 
-    pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
-        Ok(Self {
-            storage_url: storage_url.as_ref().parse()?,
-            layer: Self::DEFAULT_LAYER.to_owned(),
-            kind: DataSourceKind::Rrd,
+        let offset = value.offset.ok_or(missing_field!(
+            crate::common::v1alpha1::RrdLocationDetails,
+            "offset"
+        ))?;
+
+        let length = value.length.ok_or(missing_field!(
+            crate::common::v1alpha1::RrdLocationDetails,
+            "length"
+        ))?;
+
+        Ok(RrdLocationDetails {
+            chunk_id,
+            offset,
+            length,
         })
     }
-
-    pub fn new_rrd_layer(
-        layer: impl AsRef<str>,
-        storage_url: impl AsRef<str>,
-    ) -> Result<Self, url::ParseError> {
-        Ok(Self {
-            storage_url: storage_url.as_ref().parse()?,
-            layer: layer.as_ref().into(),
-            kind: DataSourceKind::Rrd,
-        })
-    }
 }
 
-impl From<DataSource> for crate::common::v1alpha1::DataSource {
-    fn from(value: DataSource) -> Self {
-        crate::common::v1alpha1::DataSource {
-            storage_url: Some(value.storage_url.to_string()),
-            layer: Some(value.layer),
-            typ: value.kind as i32,
+impl From<RrdLocationDetails> for crate::common::v1alpha1::RrdLocationDetails {
+    fn from(value: RrdLocationDetails) -> Self {
+        let tuid = common::v1alpha1::Tuid::from(re_tuid::Tuid::from_u128(value.chunk_id.as_u128()));
+        Self {
+            chunk_id: Some(tuid),
+            offset: Some(value.offset),
+            length: Some(value.length),
         }
     }
 }
 
-impl TryFrom<crate::common::v1alpha1::DataSource> for DataSource {
-    type Error = TypeConversionError;
+// --- ChunkLocationDetails ---
 
-    fn try_from(data_source: crate::common::v1alpha1::DataSource) -> Result<Self, Self::Error> {
-        let storage_url = data_source
-            .storage_url
-            .ok_or_else(|| missing_field!(crate::common::v1alpha1::DataSource, "storage_url"))?
-            .parse()?;
+#[allow(dead_code)]
+trait ChunkLocationDetails {
+    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError>;
 
-        let layer = data_source
-            .layer
-            .unwrap_or_else(|| Self::DEFAULT_LAYER.to_owned());
+    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError>
+    where
+        Self: Sized;
+}
 
-        let kind = DataSourceKind::try_from(data_source.typ)?;
+impl ChunkLocationDetails for RrdLocationDetails {
+    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
+        let as_proto: crate::common::v1alpha1::RrdLocationDetails = self.clone().into();
+        Ok(prost_types::Any::from_msg(&as_proto)?)
+    }
 
-        Ok(Self {
-            storage_url,
-            layer,
-            kind,
-        })
+    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
+        let as_proto = any.to_msg::<crate::common::v1alpha1::RrdLocationDetails>()?;
+        Ok(as_proto.try_into()?)
     }
 }
 

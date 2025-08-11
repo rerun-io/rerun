@@ -1,10 +1,8 @@
 use re_log_types::{EntityPath, EntryId};
 
 use crate::v1alpha1::rerun_common_v1alpha1;
-use crate::v1alpha1::rerun_common_v1alpha1_ext::{
-    ChunkKey, DataSource, IfDuplicateBehavior, ScanParameters,
-};
-use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::Query;
+use crate::v1alpha1::rerun_common_v1alpha1_ext::{ChunkKey, IfDuplicateBehavior, ScanParameters};
+use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::{DataSource, Query};
 use crate::{TypeConversionError, missing_field};
 
 // --- GetPartitionTableSchemaRequest ---
@@ -154,6 +152,7 @@ impl TryFrom<crate::frontend::v1alpha1::GetChunksRequest> for GetChunksRequest {
 #[derive(Debug, Clone)]
 pub struct FetchChunksRequest {
     pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
+    pub partition_layers: Vec<String>,
     pub chunk_keys: Vec<ChunkKey>,
 }
 
@@ -167,6 +166,8 @@ impl TryFrom<crate::frontend::v1alpha1::FetchChunksRequest> for FetchChunksReque
                 .into_iter()
                 .map(TryInto::try_into)
                 .collect::<Result<Vec<_>, _>>()?,
+
+            partition_layers: value.partition_layers,
 
             chunk_keys: value
                 .chunk_keys

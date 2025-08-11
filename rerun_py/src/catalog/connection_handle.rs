@@ -5,7 +5,7 @@ use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError};
-use re_protos::common::v1alpha1::ext::DataSource;
+use re_protos::manifest_registry::v1alpha1::ext::DataSource;
 use tracing::Instrument as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;

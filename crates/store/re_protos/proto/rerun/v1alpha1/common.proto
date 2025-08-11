@@ -224,32 +224,25 @@ message TaskId {
   string id = 1;
 }
 
-message DataSource {
-  // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
-  optional string storage_url = 1;
-
-  /// Which Partition Layer should this data source be registered to?
-  ///
-  /// Defaults to `base` if unspecified.
-  optional string layer = 3;
-
-  // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
-  DataSourceKind typ = 2;
-}
-
-enum DataSourceKind {
-  DATA_SOURCE_KIND_UNSPECIFIED = 0;
-  DATA_SOURCE_KIND_RRD = 1;
-}
-
 // `ChunkKey` uniquely identifies a chunk and contains information about its location
 // in the data store.
 message ChunkKey {
-  // Basic data source information (type, storage URL)
-  DataSource location = 2;
+  // where is the chunk stored (S3, local file, etc)
+  optional string location_url = 2;
 
-  // Additional details about the chunk's location that are data source kind specific.
+  // additional details about the chunk's location that are specific to specific partition type (data source kind)
   google.protobuf.Any location_details = 3;
+}
+
+message RrdLocationDetails {
+  // Chunk unique identifier
+  rerun.common.v1alpha1.Tuid chunk_id = 1;
+
+  // Byte offset of the chunk within the data source
+  optional uint64 offset = 2;
+
+  // Byte length of the chunk within the data source
+  optional uint64 length = 3;
 }
 
 // Mirrors `re_build_info::BuildInfo`.

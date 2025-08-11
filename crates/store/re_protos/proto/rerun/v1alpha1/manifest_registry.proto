@@ -117,9 +117,27 @@ service ManifestRegistryService {
 
 // --- Write data ---
 
+message DataSource {
+  // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
+  optional string storage_url = 1;
+
+  /// Which Partition Layer should this data source be registered to?
+  ///
+  /// Defaults to `base` if unspecified.
+  optional string layer = 3;
+
+  // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
+  DataSourceKind typ = 2;
+}
+
+enum DataSourceKind {
+  DATA_SOURCE_KIND_UNSPECIFIED = 0;
+  DATA_SOURCE_KIND_RRD = 1;
+}
+
 message RegisterWithDatasetRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
-  repeated rerun.common.v1alpha1.DataSource data_sources = 2;
+  repeated DataSource data_sources = 2;
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
 }
 
@@ -485,11 +503,14 @@ message FetchChunksRequest {
   // in the response metadata
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 1;
 
+  // Same as with partition ids, we need to know layer for each chunk
+  repeated string partition_layers = 2;
+
   // The location of the chunks to fetch. Note that we don't support client side streaming of chunks
   // as there's no plan to support it on grpc-web at the moment.
   //
   // Chunks to fetch (described by their `ChunkKey`)
-  repeated rerun.common.v1alpha1.ChunkKey chunk_keys = 2;
+  repeated rerun.common.v1alpha1.ChunkKey chunk_keys = 3;
 }
 
 message FetchChunksResponse {

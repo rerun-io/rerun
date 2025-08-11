@@ -386,38 +386,14 @@ impl ::prost::Name for TaskId {
         "/rerun.common.v1alpha1.TaskId".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DataSource {
-    /// Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
-    #[prost(string, optional, tag = "1")]
-    pub storage_url: ::core::option::Option<::prost::alloc::string::String>,
-    /// / Which Partition Layer should this data source be registered to?
-    /// /
-    /// / Defaults to `base` if unspecified.
-    #[prost(string, optional, tag = "3")]
-    pub layer: ::core::option::Option<::prost::alloc::string::String>,
-    /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
-    #[prost(enumeration = "DataSourceKind", tag = "2")]
-    pub typ: i32,
-}
-impl ::prost::Name for DataSource {
-    const NAME: &'static str = "DataSource";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.DataSource".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.DataSource".into()
-    }
-}
 /// `ChunkKey` uniquely identifies a chunk and contains information about its location
 /// in the data store.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChunkKey {
-    /// Basic data source information (type, storage URL)
-    #[prost(message, optional, tag = "2")]
-    pub location: ::core::option::Option<DataSource>,
-    /// Additional details about the chunk's location that are data source kind specific.
+    /// where is the chunk stored (S3, local file, etc)
+    #[prost(string, optional, tag = "2")]
+    pub location_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// additional details about the chunk's location that are specific to specific partition type (data source kind)
     #[prost(message, optional, tag = "3")]
     pub location_details: ::core::option::Option<::prost_types::Any>,
 }
@@ -429,6 +405,28 @@ impl ::prost::Name for ChunkKey {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.ChunkKey".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct RrdLocationDetails {
+    /// Chunk unique identifier
+    #[prost(message, optional, tag = "1")]
+    pub chunk_id: ::core::option::Option<Tuid>,
+    /// Byte offset of the chunk within the data source
+    #[prost(uint64, optional, tag = "2")]
+    pub offset: ::core::option::Option<u64>,
+    /// Byte length of the chunk within the data source
+    #[prost(uint64, optional, tag = "3")]
+    pub length: ::core::option::Option<u64>,
+}
+impl ::prost::Name for RrdLocationDetails {
+    const NAME: &'static str = "RrdLocationDetails";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.RrdLocationDetails".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.RrdLocationDetails".into()
     }
 }
 /// Mirrors `re_build_info::BuildInfo`.
@@ -649,32 +647,6 @@ impl IfDuplicateBehavior {
             "IF_DUPLICATE_BEHAVIOR_OVERWRITE" => Some(Self::Overwrite),
             "IF_DUPLICATE_BEHAVIOR_SKIP" => Some(Self::Skip),
             "IF_DUPLICATE_BEHAVIOR_ERROR" => Some(Self::Error),
-            _ => None,
-        }
-    }
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum DataSourceKind {
-    Unspecified = 0,
-    Rrd = 1,
-}
-impl DataSourceKind {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::Unspecified => "DATA_SOURCE_KIND_UNSPECIFIED",
-            Self::Rrd => "DATA_SOURCE_KIND_RRD",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "DATA_SOURCE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
-            "DATA_SOURCE_KIND_RRD" => Some(Self::Rrd),
             _ => None,
         }
     }

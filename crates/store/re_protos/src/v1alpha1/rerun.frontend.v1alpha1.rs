@@ -31,7 +31,8 @@ pub struct RegisterWithDatasetRequest {
     #[prost(message, optional, tag = "1")]
     pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(message, repeated, tag = "2")]
-    pub data_sources: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::DataSource>,
+    pub data_sources:
+        ::prost::alloc::vec::Vec<super::super::manifest_registry::v1alpha1::DataSource>,
     #[prost(
         enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
         tag = "3"
@@ -302,11 +303,14 @@ pub struct FetchChunksRequest {
     /// in the response metadata
     #[prost(message, repeated, tag = "1")]
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
+    /// Same as with partition ids, we need to know layer for each chunk
+    #[prost(string, repeated, tag = "2")]
+    pub partition_layers: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// The location of the chunks to fetch. Note that we don't support client side streaming of chunks
     /// as there's no plan to support it on grpc-web at the moment.
     ///
     /// Chunks to fetch (described by their `ChunkKey`)
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag = "3")]
     pub chunk_keys: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::ChunkKey>,
 }
 impl ::prost::Name for FetchChunksRequest {

@@ -1,4 +1,4 @@
-use re_protos::common::v1alpha1::ext::{DataSource, DataSourceKind};
+use re_protos::manifest_registry::v1alpha1::ext::{DataSource, DataSourceKind};
 use tokio_stream::StreamExt as _;
 use tonic::codegen::{Body, StdError};
 
