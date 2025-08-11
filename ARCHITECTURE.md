@@ -120,14 +120,15 @@ Update instructions:
 
 ### SDK/CLI/Wasm top-level crates
 
-| Crate     | Description                          |
-| --------- | ------------------------------------ | ------------------------ | --- |
-| rerun-cli | Rerun native CLI binary crate        |
-| Rerun     | Rerun Rust SDK and Viewer shim crate |
-| rerun_c   | Rerun C SDK                          |
-| rerun_py  | Rerun Python SDK                     |
-| re_sdk    | Rerun logging SDK                    |
-| <!--      | re_renderer_examples                 | Examples for re_renderer | --> |
+| Crate        | Description                          |
+| ------------ | ------------------------------------ | ------------------------ | --- |
+| rerun-cli    | Rerun native CLI binary crate        |
+| Rerun        | Rerun Rust SDK and Viewer shim crate |
+| rerun_c      | Rerun C SDK                          |
+| rerun_py     | Rerun Python SDK                     |
+| rerun_server | In-memory server example             |
+| re_sdk       | Rerun logging SDK                    |
+| <!--         | re_renderer_examples                 | Examples for re_renderer | --> |
 
 ### Viewer crates
 
