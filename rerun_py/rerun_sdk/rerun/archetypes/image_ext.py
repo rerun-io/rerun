@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Union, cast
 
 import numpy as np
 import numpy.typing as npt
+from PIL import Image as PILImage
 
 from ..components import ImageFormat
 from ..datatypes import (
@@ -18,8 +19,6 @@ from ..datatypes import (
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from PIL import Image as PILImage
-
     ImageLike = Union[
         npt.NDArray[np.float16],
         npt.NDArray[np.float32],
@@ -41,8 +40,6 @@ if TYPE_CHECKING:
 
 
 def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
-    from PIL import Image as PILImage
-
     # isinstance is 4x faster than catching AttributeError
     if isinstance(tensor, np.ndarray):
         return tensor

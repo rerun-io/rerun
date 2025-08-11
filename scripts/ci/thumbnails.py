@@ -5,15 +5,17 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import requests
 from frontmatter import load_frontmatter
 from PIL import Image
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 Frontmatter = dict[str, Any]
 

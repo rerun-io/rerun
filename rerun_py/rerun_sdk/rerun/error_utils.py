@@ -5,10 +5,12 @@ import inspect
 import os
 import threading
 import warnings
-from types import TracebackType
-from typing import Any, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
-from .recording_stream import RecordingStream
+if TYPE_CHECKING:
+    from types import TracebackType
+
+    from .recording_stream import RecordingStream
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 

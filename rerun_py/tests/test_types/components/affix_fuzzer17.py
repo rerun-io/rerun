@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -16,7 +16,8 @@ from rerun._baseclasses import (
     ComponentMixin,
 )
 
-from .. import datatypes
+if TYPE_CHECKING:
+    from .. import datatypes
 
 __all__ = ["AffixFuzzer17", "AffixFuzzer17ArrayLike", "AffixFuzzer17Batch", "AffixFuzzer17Like"]
 

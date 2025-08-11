@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, cast
 
 import pyarrow as pa
@@ -9,6 +8,8 @@ import pyarrow as pa
 from .keypoint_pair_ext import _keypoint_pair_converter
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from .. import DescribedComponentBatch
     from . import (
         AnnotationInfo,

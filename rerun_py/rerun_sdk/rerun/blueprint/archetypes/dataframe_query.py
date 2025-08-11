@@ -5,15 +5,19 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from attrs import define, field
 
-from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
 from .dataframe_query_ext import DataframeQueryExt
+
+if TYPE_CHECKING:
+    from ... import datatypes
 
 __all__ = ["DataframeQuery"]
 

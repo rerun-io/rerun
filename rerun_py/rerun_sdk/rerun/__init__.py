@@ -3,8 +3,7 @@ from __future__ import annotations
 import functools
 import random
 import sys
-from typing import Any, Callable, TypeVar, cast
-from uuid import UUID
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import numpy as np
 
@@ -107,9 +106,6 @@ from .archetypes import (
 from .archetypes.boxes2d_ext import (
     Box2DFormat as Box2DFormat,
 )
-from .blueprint.api import (
-    BlueprintLike as BlueprintLike,
-)
 from .components import (
     AlbedoFactor as AlbedoFactor,
     GraphEdge as GraphEdge,
@@ -196,6 +192,13 @@ from .time import (
     set_time_sequence as set_time_sequence,
 )
 from .web import serve_web_viewer as serve_web_viewer
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from .blueprint.api import (
+        BlueprintLike as BlueprintLike,
+    )
 
 # =====================================
 # UTILITIES

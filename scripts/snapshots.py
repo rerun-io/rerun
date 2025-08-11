@@ -10,14 +10,17 @@ pixi run snapshot --help
 from __future__ import annotations
 
 import argparse
-from collections.abc import Iterator
 from pathlib import Path
 from sys import stderr
+from typing import TYPE_CHECKING
 
 import numpy as np
 import PIL.Image as Image
 import rerun as rr
 import rerun.blueprint as rrb
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 CRATES_DIR = Path(__file__).parent.parent / "crates"
 

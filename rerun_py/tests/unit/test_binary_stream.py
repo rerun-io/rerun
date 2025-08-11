@@ -8,11 +8,13 @@ import subprocess
 import tempfile
 import threading
 import time
-from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import rerun as rr
 import rerun.blueprint as rrb
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @rr.thread_local_stream("rerun_example_binary_stream")
