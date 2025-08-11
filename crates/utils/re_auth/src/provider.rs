@@ -1,9 +1,7 @@
 use std::time::Duration;
 
 use base64::{Engine as _, engine::general_purpose};
-use jsonwebtoken::{
-    Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, decode_header, encode,
-};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 
 use crate::{Error, Jwt};
 
@@ -28,7 +26,8 @@ pub struct RedapProvider {
 #[cfg(feature = "workos")]
 #[derive(Debug, Clone)]
 struct ExternalProvider {
-    /// Public keys provided to us by WorkOS
+    /// Public keys provided to us by external authn/z provider
+    // Currently, this comes from WorkOS
     keys: jsonwebtoken::jwk::JwkSet,
 
     /// Expected organization ID
@@ -55,14 +54,12 @@ impl SecretKey {
             "The resulting secret should be 256 bits."
         );
 
-        SecretKey(secret_key)
+        Self(secret_key)
     }
 
     /// Decodes a [`base64`] encoded secret key.
     pub fn from_base64(base64: impl AsRef<str>) -> Result<Self, Error> {
-        Ok(SecretKey(
-            general_purpose::STANDARD.decode(base64.as_ref())?,
-        ))
+        Ok(Self(general_purpose::STANDARD.decode(base64.as_ref())?))
     }
 
     /// Encodes the secret key as a [`base64`] string.
@@ -113,16 +110,16 @@ impl Claims {
     pub fn sub(&self) -> &str {
         match self {
             #[cfg(feature = "workos")]
-            Claims::WorkOs(claims) => claims.sub.as_str(),
-            Claims::Redap(claims) => claims.sub.as_str(),
+            Self::WorkOs(claims) => claims.sub.as_str(),
+            Self::Redap(claims) => claims.sub.as_str(),
         }
     }
 
     pub fn iss(&self) -> &str {
         match self {
             #[cfg(feature = "workos")]
-            Claims::WorkOs(claims) => claims.iss.as_str(),
-            Claims::Redap(claims) => claims.iss.as_str(),
+            Self::WorkOs(claims) => claims.iss.as_str(),
+            Self::Redap(claims) => claims.iss.as_str(),
         }
     }
 }
@@ -155,6 +152,7 @@ impl Default for VerificationOptions {
     }
 }
 
+#[derive(Clone, Copy)]
 enum KeyProvider {
     #[cfg(feature = "workos")]
     WorkOs,
@@ -215,7 +213,7 @@ impl RedapProvider {
         // TODO(jan): fetch these less often
         let ctx = crate::workos::AuthContext::load().await.map_err(|err| {
             re_log::debug!("failed to fetch external keys: {err}");
-            Error::ContextLoadError(err)
+            Error::ContextLoad(err)
         })?;
         let keys = std::sync::Arc::unwrap_or_clone(ctx.jwks);
         let org_id = org_id.into();
@@ -264,30 +262,24 @@ impl RedapProvider {
     /// Checks if a provided `token` is valid for a given `scope`.
     pub fn verify(&self, token: &Jwt, options: VerificationOptions) -> Result<Claims, Error> {
         #[cfg(feature = "workos")]
-        let (key, validation) = match decode_header(token.as_str())?.kid {
-            Some(kid) => {
-                // we don't supply key ID, so assume this comes from external provider
-                let Some(external) = &self.external else {
-                    return Err(Error::NoExternalProvider);
-                };
+        let (key, validation) = if let Some(kid) = jsonwebtoken::decode_header(token.as_str())?.kid
+        {
+            // we don't supply key ID, so assume this comes from external provider
+            let Some(external) = &self.external else {
+                return Err(Error::NoExternalProvider);
+            };
 
-                let key = match external.keys.find(&kid) {
-                    Some(key) => key,
-                    None => {
-                        re_log::debug!("no key with id {kid} found");
-                        return Err(Error::InvalidToken);
-                    }
-                };
-                let key = DecodingKey::from_jwk(key)?;
-                let validation = options.for_provider(KeyProvider::WorkOs);
-                (key, validation)
-            }
-
-            None => {
-                let key = DecodingKey::from_secret(self.secret_key.reveal());
-                let validation = options.for_provider(KeyProvider::Redap);
-                (key, validation)
-            }
+            let Some(key) = external.keys.find(&kid) else {
+                re_log::debug!("no key with id {kid} found");
+                return Err(Error::InvalidToken);
+            };
+            let key = DecodingKey::from_jwk(key)?;
+            let validation = options.for_provider(KeyProvider::WorkOs);
+            (key, validation)
+        } else {
+            let key = DecodingKey::from_secret(self.secret_key.reveal());
+            let validation = options.for_provider(KeyProvider::Redap);
+            (key, validation)
         };
 
         #[cfg(not(feature = "workos"))]

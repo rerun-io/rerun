@@ -7,10 +7,10 @@ use crate::workos::{self, AuthContext, Credentials};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("failed to bind listener: {0}")]
-    BindError(std::io::Error),
+    Bind(std::io::Error),
 
     #[error("HTTP server error: {0}")]
-    HttpError(std::io::Error),
+    Http(std::io::Error),
 
     #[error("failed to open browser: {0}")]
     WebBrowser(std::io::Error),
@@ -140,7 +140,7 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
         p.inc(1);
         let Some(req) = server
             .recv_timeout(Duration::from_millis(100))
-            .map_err(Error::HttpError)?
+            .map_err(Error::Http)?
         else {
             continue;
         };
@@ -153,12 +153,12 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
                         .cors()
                         .with_header(header(b"Allow", b"GET, HEAD, OPTIONS")),
                 )
-                .map_err(Error::HttpError)?;
+                .map_err(Error::Http)?;
                 continue;
             }
             tiny_http::Method::Head => {
                 req.respond(tiny_http::Response::empty(200).cors())
-                    .map_err(Error::HttpError)?;
+                    .map_err(Error::Http)?;
                 continue;
             }
             _ => {
@@ -167,23 +167,21 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
                         .cors()
                         .with_header(header(b"Allow", b"GET, HEAD, OPTIONS")),
                 )
-                .map_err(Error::HttpError)?;
+                .map_err(Error::Http)?;
                 continue;
             }
         }
 
-        let url = match url::Url::parse(&format!("http://{}{}", server.server_addr(), req.url())) {
-            Ok(url) => url,
-            Err(_) => {
-                req.respond(tiny_http::Response::empty(400).cors())
-                    .map_err(Error::HttpError)?;
-                continue;
-            }
+        let Ok(url) = url::Url::parse(&format!("http://{}{}", server.server_addr(), req.url()))
+        else {
+            req.respond(tiny_http::Response::empty(400).cors())
+                .map_err(Error::Http)?;
+            continue;
         };
 
         if url.path() != "/callback" {
             req.respond(tiny_http::Response::empty(404).cors())
-                .map_err(Error::HttpError)?;
+                .map_err(Error::Http)?;
             continue;
         }
 
@@ -194,7 +192,7 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
                     .with_status_code(400)
                     .cors(),
             )
-            .map_err(Error::HttpError)?;
+            .map_err(Error::Http)?;
             continue;
         };
 
@@ -208,7 +206,7 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
                         .with_status_code(400)
                         .cors(),
                 )
-                .map_err(Error::HttpError)?;
+                .map_err(Error::Http)?;
                 continue;
             }
         };
@@ -222,13 +220,13 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
                         .with_status_code(400)
                         .cors(),
                 )
-                .map_err(Error::HttpError)?;
+                .map_err(Error::Http)?;
                 continue;
             }
         };
 
         req.respond(tiny_http::Response::empty(200).cors())
-            .map_err(Error::HttpError)?;
+            .map_err(Error::Http)?;
         break response;
     };
 
@@ -309,6 +307,7 @@ struct Impersonator {
     reason: Option<String>,
 }
 
+#[allow(clippy::upper_case_acronyms)] // It's better than a serde(rename)
 #[derive(Debug, Clone, serde::Deserialize)]
 enum AuthenticationMethod {
     SSO,

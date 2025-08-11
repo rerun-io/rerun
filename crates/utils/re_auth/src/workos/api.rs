@@ -1,8 +1,6 @@
 //! HTTP Client for Rerun's Auth API.
-//!
-//! Rerun Auth API wraps WorkOS.
 
-use super::*;
+use super::{RefreshToken, User};
 
 const API_BASE_URL: &str = "https://landing-git-jan-login-page-rerun.vercel.app/api";
 
@@ -49,7 +47,7 @@ async fn post<Body: serde::Serialize, Res: serde::de::DeserializeOwned>(
         }
     }
 
-    Ok(serde_json::from_reader(std::io::Cursor::new(res.bytes)).map_err(Error::Deserialize)?)
+    serde_json::from_reader(std::io::Cursor::new(res.bytes)).map_err(Error::Deserialize)
 }
 
 #[derive(serde::Serialize)]

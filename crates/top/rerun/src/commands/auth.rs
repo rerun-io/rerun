@@ -29,7 +29,7 @@ impl AuthCommands {
             .block_on(re_auth::workos::AuthContext::load())?;
 
         match self {
-            AuthCommands::Login(args) => {
+            Self::Login(args) => {
                 let options = re_auth::cli::LoginOptions {
                     login_page_url: &args.login_url,
                     open_browser: !args.no_open_browser,

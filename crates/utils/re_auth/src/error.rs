@@ -18,7 +18,7 @@ pub enum Error {
 
     #[cfg(feature = "workos")]
     #[error("failed to load external provider JWKS: {0}")]
-    ContextLoadError(crate::workos::ContextLoadError),
+    ContextLoad(crate::workos::ContextLoadError),
 
     #[cfg(feature = "workos")]
     #[error(

@@ -161,14 +161,14 @@ impl AuthContext {
         }
 
         let jwks = serde_json::from_slice(&res.bytes)?;
-        Ok(AuthContext {
+        Ok(Self {
             jwks: Arc::new(jwks),
         })
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     fn load_from_cache() -> Result<Self, ContextLoadError> {
-        let path = Self::path().ok_or_else(|| ContextLoadError::UnknownConfigLocation)?;
+        let path = Self::path().ok_or(ContextLoadError::UnknownConfigLocation)?;
         let jwks = match std::fs::read_to_string(&path) {
             Ok(data) => data,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
@@ -178,7 +178,7 @@ impl AuthContext {
             Err(err) => return Err(err.into()),
         };
         let jwks = serde_json::from_str(&jwks)?;
-        Ok(AuthContext {
+        Ok(Self {
             jwks: Arc::new(jwks),
         })
     }
@@ -194,7 +194,7 @@ impl AuthContext {
     fn store_in_cache(&self) {
         use re_log::ResultExt as _;
 
-        let path = match Self::path().ok_or_else(|| ContextLoadError::UnknownConfigLocation) {
+        let path = match Self::path().ok_or(ContextLoadError::UnknownConfigLocation) {
             Ok(path) => path,
             Err(err) => {
                 re_log::debug!("failed to get config directory: {err}");
@@ -219,10 +219,7 @@ impl AuthContext {
     pub fn verify_token(&self, jwt: Jwt) -> Result<Option<AccessToken>, VerifyError> {
         // 1. Decode header to get `kid`
         let header = decode_header(jwt.as_str())?;
-        let kid = header
-            .kid
-            .as_ref()
-            .ok_or_else(|| VerifyError::MissingKeyId)?;
+        let kid = header.kid.as_ref().ok_or(VerifyError::MissingKeyId)?;
         let key = self
             .jwks
             .find(kid)
@@ -233,7 +230,7 @@ impl AuthContext {
         let mut validation = Validation::new(Algorithm::RS256);
         validation.set_issuer(&[DEFAULT_ISSUER]);
         validation.validate_exp = true;
-        let token = match decode::<Claims>(&jwt.as_str(), &key, &validation) {
+        let token = match decode::<Claims>(jwt.as_str(), &key, &validation) {
             Ok(v) => v,
             Err(err) => match err.kind() {
                 jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
@@ -266,7 +263,7 @@ impl Credentials {
         let config = CredentialsConfig::load()?;
 
         match config {
-            Some(config) => Ok(Some(Credentials {
+            Some(config) => Ok(Some(Self {
                 user: config.user,
                 refresh_token: config.refresh,
                 access_token: config.access,
@@ -342,7 +339,7 @@ impl Credentials {
         context: &AuthContext,
         res: api::AuthenticationResponse,
     ) -> Result<Self, CredentialsError> {
-        Ok(Credentials {
+        Ok(Self {
             user: res.user,
             refresh_token: RefreshToken(res.refresh_token),
             access_token: Some(
@@ -400,7 +397,7 @@ pub(crate) struct RefreshToken(String);
 
 impl RefreshToken {
     fn private_clone(&self) -> Self {
-        RefreshToken(self.0.clone())
+        Self(self.0.clone())
     }
 }
 
@@ -423,7 +420,7 @@ impl CredentialsConfig {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn load() -> Result<Option<Self>, CredentialsError> {
-        let path = Self::path().ok_or_else(|| CredentialsError::UnknownConfigLocation)?;
+        let path = Self::path().ok_or(CredentialsError::UnknownConfigLocation)?;
         re_log::trace!("credentials load from `{}`", path.display());
         let data = match std::fs::read_to_string(&path) {
             Ok(data) => data,
@@ -438,7 +435,7 @@ impl CredentialsConfig {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn store(&self) -> Result<(), CredentialsStoreError> {
-        let path = Self::path().ok_or_else(|| CredentialsStoreError::UnknownConfigLocation)?;
+        let path = Self::path().ok_or(CredentialsStoreError::UnknownConfigLocation)?;
         re_log::trace!("credentials store in `{}`", path.display());
         std::fs::write(&path, serde_json::to_string_pretty(self)?)?;
         Ok(())
