@@ -8982,6 +8982,7 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "document-features",
  "re_analytics",
+ "re_build_tools",
  "re_log",
  "thiserror 1.0.69",
  "tiny_http",
