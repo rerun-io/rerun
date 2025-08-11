@@ -5,7 +5,7 @@ use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 use re_log_types::{RecordingId, StoreKind, TableId, external::re_types_core::ComponentDescriptor};
 
 use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
-use crate::{TypeConversionError, common, invalid_field, missing_field};
+use crate::{TypeConversionError, invalid_field, missing_field};
 
 // --- Arrow ---
 
@@ -715,7 +715,8 @@ impl TryFrom<crate::common::v1alpha1::RrdLocationDetails> for RrdLocationDetails
 
 impl From<RrdLocationDetails> for crate::common::v1alpha1::RrdLocationDetails {
     fn from(value: RrdLocationDetails) -> Self {
-        let tuid = common::v1alpha1::Tuid::from(re_tuid::Tuid::from_u128(value.chunk_id.as_u128()));
+        let tuid =
+            crate::common::v1alpha1::Tuid::from(re_tuid::Tuid::from_u128(value.chunk_id.as_u128()));
         Self {
             chunk_id: Some(tuid),
             offset: Some(value.offset),

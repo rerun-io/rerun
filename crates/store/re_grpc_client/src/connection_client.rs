@@ -1,4 +1,3 @@
-use re_protos::manifest_registry::v1alpha1::ext::{DataSource, DataSourceKind};
 use tokio_stream::StreamExt as _;
 use tonic::codegen::{Body, StdError};
 
@@ -28,7 +27,7 @@ use re_protos::{
     },
     manifest_registry::v1alpha1::{
         RegisterWithDatasetResponse, ScanPartitionTableResponse,
-        ext::RegisterWithDatasetTaskDescriptor,
+        ext::{DataSource, DataSourceKind, RegisterWithDatasetTaskDescriptor},
     },
     missing_field,
 };

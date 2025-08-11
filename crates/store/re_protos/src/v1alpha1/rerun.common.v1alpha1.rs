@@ -386,14 +386,13 @@ impl ::prost::Name for TaskId {
         "/rerun.common.v1alpha1.TaskId".into()
     }
 }
-/// `ChunkKey` uniquely identifies a chunk and contains information about its location
-/// in the data store.
+/// `ChunkKey` provides chunk location details in the data store.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChunkKey {
     /// where is the chunk stored (S3, local file, etc)
     #[prost(string, optional, tag = "2")]
     pub location_url: ::core::option::Option<::prost::alloc::string::String>,
-    /// additional details about the chunk's location that are specific to specific partition type (data source kind)
+    /// additional details about the chunk's location that are specific to the underlying data source (partition type)
     #[prost(message, optional, tag = "3")]
     pub location_details: ::core::option::Option<::prost_types::Any>,
 }
@@ -412,10 +411,10 @@ pub struct RrdLocationDetails {
     /// Chunk unique identifier
     #[prost(message, optional, tag = "1")]
     pub chunk_id: ::core::option::Option<Tuid>,
-    /// Byte offset of the chunk within the data source
+    /// byte offset of the chunk within the data source
     #[prost(uint64, optional, tag = "2")]
     pub offset: ::core::option::Option<u64>,
-    /// Byte length of the chunk within the data source
+    /// Chunk's length in bytes
     #[prost(uint64, optional, tag = "3")]
     pub length: ::core::option::Option<u64>,
 }

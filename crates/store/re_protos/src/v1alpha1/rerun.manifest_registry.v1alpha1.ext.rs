@@ -480,7 +480,7 @@ impl TryFrom<crate::manifest_registry::v1alpha1::DataSourceKind> for DataSourceK
 
             crate::manifest_registry::v1alpha1::DataSourceKind::Unspecified => {
                 return Err(TypeConversionError::InvalidField {
-                    package_name: "rerun.common.v1alpha1",
+                    package_name: "rerun.manifest_registry.v1alpha1",
                     type_name: "DataSourceKind",
                     field_name: "",
                     reason: "enum value unspecified".to_owned(),
@@ -560,7 +560,7 @@ impl DataSourceKind {
 #[test]
 fn datasourcekind_roundtrip() {
     let kind = DataSourceKind::Rrd;
-    let kind: crate::common::v1alpha1::DataSourceKind = kind.into();
+    let kind: crate::manifest_registry::v1alpha1::DataSourceKind = kind.into();
     let kind = DataSourceKind::try_from(kind).unwrap();
     assert_eq!(DataSourceKind::Rrd, kind);
 }

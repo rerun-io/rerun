@@ -224,13 +224,12 @@ message TaskId {
   string id = 1;
 }
 
-// `ChunkKey` uniquely identifies a chunk and contains information about its location
-// in the data store.
+// `ChunkKey` provides chunk location details in the data store.
 message ChunkKey {
   // where is the chunk stored (S3, local file, etc)
   optional string location_url = 2;
 
-  // additional details about the chunk's location that are specific to specific partition type (data source kind)
+  // additional details about the chunk's location that are specific to the underlying data source (partition type)
   google.protobuf.Any location_details = 3;
 }
 
@@ -238,10 +237,10 @@ message RrdLocationDetails {
   // Chunk unique identifier
   rerun.common.v1alpha1.Tuid chunk_id = 1;
 
-  // Byte offset of the chunk within the data source
+  // byte offset of the chunk within the data source
   optional uint64 offset = 2;
 
-  // Byte length of the chunk within the data source
+  // Chunk's length in bytes
   optional uint64 length = 3;
 }
 
