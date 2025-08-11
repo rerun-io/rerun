@@ -718,7 +718,8 @@ impl FrontendService for FrontendHandler {
                 ];
 
                 for (timeline_name, (data_type, starts, ends)) in timelines {
-                    let (starts, ends) = arrays_from_timelines(data_type, starts, ends)?;
+                    let (starts, ends) = arrays_from_timelines(&data_type, starts, ends)
+                        .map_err(tonic::Status::internal)?;
 
                     output_fields.push(Field::new(
                         format!("{timeline_name}:start"),
@@ -911,10 +912,10 @@ impl FrontendService for FrontendHandler {
 }
 
 fn arrays_from_timelines(
-    data_type: DataType,
+    data_type: &DataType,
     starts: Vec<Option<i64>>,
     ends: Vec<Option<i64>>,
-) -> Result<(ArrayRef, ArrayRef), tonic::Status> {
+) -> Result<(ArrayRef, ArrayRef), &'static str> {
     let (starts, ends) = match data_type {
         DataType::Int64 => (
             Arc::new(Int64Array::from(starts)) as ArrayRef,
@@ -942,9 +943,7 @@ fn arrays_from_timelines(
             Arc::new(DurationNanosecondArray::from(ends)) as ArrayRef,
         ),
         _ => {
-            return Err(tonic::Status::internal(format!(
-                "Unexpected timeline data type: {data_type}"
-            )));
+            return Err("Unexpected timeline data type for index");
         }
     };
 
