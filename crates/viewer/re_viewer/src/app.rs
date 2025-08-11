@@ -570,6 +570,20 @@ impl App {
             }
 
             SystemCommand::ChangeDisplayMode(display_mode) => {
+                // Update web-navigation bar if this isn't about local recordings.
+                //
+                // Recordings are on selection since recording change always comes with a selection change.
+                // It's important to not do that here because otherwise we might miss on anchors etc. or even
+                // _which_ recording is about to be selected.
+                // I.e. if we update navigation bar here, this would become order dependent.
+                if display_mode != DisplayMode::LocalRecordings {
+                    update_web_address_bar(
+                        self.startup_options.enable_web_history(),
+                        store_hub,
+                        &display_mode,
+                    );
+                }
+
                 self.state.navigation.replace(display_mode);
             }
 
@@ -909,6 +923,10 @@ impl App {
 
             Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
                 self.add_redap_server(uri.origin.clone());
+                self.command_sender
+                    .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+                        uri.origin.clone(),
+                    )));
             }
 
             Ok(re_data_source::StreamSource::EntryUri(uri)) => {
