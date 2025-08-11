@@ -5,14 +5,14 @@ order: 1100
 
 To learn more about Rerun, the company, visit our Website at [https://www.rerun.io/](https://www.rerun.io/).
 
-Code & License
---------------
+## Code & License
+
 The Rerun SDK & Viewer are open source, all code is available on [GitHub](https://github.com/rerun-io/rerun/) and open for contributions.
 Licensing is permissive, the project is dual licensed under [MIT](https://github.com/rerun-io/rerun/blob/main/LICENSE-MIT) & [Apache 2.0](https://github.com/rerun-io/rerun/blob/main/LICENSE-APACHE).
 
 
-Under the hood
---------------
+## Under the hood
+
 The software is almost entirely written in [Rust](https://www.rust-lang.org/), a modern, fast and safe programming language.
 If you're curious about why we love Rust, checkout our [blog](https://www.rerun.io/blog/why-rust), where we talk about some of the reasons.
 
@@ -27,8 +27,8 @@ If you want to learn more about the different parts of the SDK & Viewer and how 
 for an introduction.
 
 
-Commercial Platform
--------------------
+## Commercial Platform
+
 Rerun's commercial offering provides managed infrastructure to ingest, store, analyze, and stream large amounts of robotics-style data.
 
 Built around Rerun's open source data model, it makes data pipelines simple to build and easy to operate with built-in visual debugging and prepare data for machine learning.
