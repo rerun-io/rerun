@@ -8,7 +8,10 @@ use crate::{
     StableIndexDeque, Time, Timescale,
     demux::{ChromaSubsamplingModes, SamplesStatistics, VideoEncodingDetails},
     h264::encoding_details_from_h264_sps,
+    h265::encoding_details_from_h265_sps,
 };
+use cros_codecs::codec::h265::parser::{Nalu as H265Nalu, Parser as H265Parser};
+use std::io::Cursor;
 
 impl VideoDataDescription {
     pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
@@ -184,6 +187,36 @@ fn codec_details_from_stds(
                     stsd: Some(stsd),
                     ..details
                 });
+        }
+    }
+    if let re_mp4::StsdBoxContent::Hev1(hvc1_box) = &stsd.contents {
+        let hvcc = &*hvc1_box.hvcc;
+
+        for array in &hvcc.arrays {
+            if array.nal_unit_type == 33 {
+                // 33 == SPS
+                for nal in &array.nalus {
+                    // Prepend Annex B start code
+                    let mut annexb = Vec::with_capacity(4 + nal.size as usize);
+                    annexb.extend_from_slice(&[0, 0, 0, 1]);
+                    annexb.extend_from_slice(&nal.data);
+
+                    let mut parser = H265Parser::default();
+                    let mut rdr = Cursor::new(annexb.as_slice());
+
+                    if let Ok(nalu) = H265Nalu::next(&mut rdr) {
+                        let sps_ref = parser
+                            .parse_sps(&nalu)
+                            .map_err(|_| VideoLoadError::NoVideoTrack)?;
+                        let details = encoding_details_from_h265_sps(sps_ref);
+
+                        return Ok(VideoEncodingDetails {
+                            stsd: Some(stsd.clone()),
+                            ..details
+                        });
+                    }
+                }
+            }
         }
     }
 

@@ -324,7 +324,12 @@ impl FFmpegProcessAndListener {
             })
             .expect("Failed to spawn ffmpeg listener thread");
 
-        let avcc = encoding_details.as_ref().and_then(|e| e.avcc()).cloned();
+        let codec_meta = encoding_details
+            .as_ref()
+            .and_then(|e| e.stsd.as_ref())
+            .and_then(CodecMeta::from_stsd)
+            .unwrap_or(CodecMeta::RawBytestream);
+
         let write_thread = std::thread::Builder::new()
             .name(format!("ffmpeg-writer for {debug_name}"))
             .spawn({
@@ -339,7 +344,7 @@ impl FFmpegProcessAndListener {
                         &mut ffmpeg_stdin,
                         &frame_data_rx,
                         on_output.as_ref(),
-                        &avcc,
+                        &codec_meta,
                     );
                 }
             })
@@ -460,7 +465,7 @@ fn write_ffmpeg_input(
     ffmpeg_stdin: &mut dyn std::io::Write,
     frame_data_rx: &Receiver<FFmpegFrameData>,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
-    avcc: &Option<re_mp4::Avc1Box>,
+    codec_meta: &CodecMeta,
 ) {
     let mut state = NaluStreamState::default();
 
@@ -487,12 +492,14 @@ fn write_ffmpeg_input(
             }
         };
 
-        let write_result = if let Some(avcc) = avcc {
-            write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state)
-        } else {
-            // If there was no AVCC box, we assume the data is already in Annex B format.
-            // TODO(andreas): feels a bit implicit, would be nice to make this more clear.
-            write_bytes(ffmpeg_stdin, &chunk.data)
+        let write_result = match codec_meta {
+            CodecMeta::Avc(avcc) => {
+                write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state)
+            }
+            CodecMeta::Hevc(hvcc) => {
+                write_hevc_chunk_to_nalu_stream(hvcc, ffmpeg_stdin, &chunk, &mut state)
+            }
+            CodecMeta::RawBytestream => write_bytes(ffmpeg_stdin, &chunk.data),
         };
 
         if let Err(err) = write_result {
@@ -1057,6 +1064,61 @@ fn write_avc_chunk_to_nalu_stream(
     Ok(())
 }
 
+fn write_hevc_chunk_to_nalu_stream(
+    hvcc: &re_mp4::HevcBox,
+    out: &mut dyn std::io::Write,
+    chunk: &Chunk,
+    state: &mut NaluStreamState,
+) -> Result<(), Error> {
+    // Determine NAL length size from hvcC (length_size_minus_one is 0-based)
+    let nal_len_size = (hvcc.hvcc.contents.length_size_minus_one as usize & 0x03) + 1;
+    let mut hvcc_ps: Vec<Vec<u8>> = Vec::new();
+
+    for arr in &hvcc.hvcc.arrays {
+        let t = arr.nal_unit_type;
+        if t == 32 || t == 33 || t == 34 {
+            // VPS/SPS/PPS = 32/33/34
+            for nalu in &arr.nalus {
+                hvcc_ps.push(nalu.data.clone());
+            }
+        }
+    }
+
+    if chunk.is_sync && !state.previous_frame_was_idr {
+        for ps in &hvcc_ps {
+            write_bytes(out, ANNEXB_NAL_START_CODE)?;
+            write_bytes(out, ps)?;
+        }
+        state.previous_frame_was_idr = true;
+    } else {
+        state.previous_frame_was_idr = false;
+    }
+
+    let data = &chunk.data;
+    let mut i = 0usize;
+    while i + nal_len_size <= data.len() {
+        let mut len: usize = 0;
+        for &b in &data[i..i + nal_len_size] {
+            len = (len << 8) | (b as usize);
+        }
+        i += nal_len_size;
+
+        if i + len > data.len() {
+            return Err(Error::BadVideoData("Not enough bytes to".to_owned()));
+        }
+
+        let nalu = &data[i..i + len];
+        i += len;
+
+        // Write Annex B start code + payload using write_bytes helper
+        write_bytes(out, ANNEXB_NAL_START_CODE)?;
+
+        write_bytes(out, nalu)?;
+    }
+
+    Ok(())
+}
+
 /// Ignore some common output from ffmpeg.
 fn should_ignore_log_msg(msg: &str) -> bool {
     let patterns = [
@@ -1117,6 +1179,24 @@ fn sanitize_ffmpeg_log_message(msg: &str) -> String {
     }
 
     msg
+}
+
+#[derive(Clone)]
+enum CodecMeta {
+    RawBytestream, // generic “pass-through” label for any format that’s ready to feed to the decoder as-is.
+    Avc(re_mp4::Avc1Box),
+    Hevc(re_mp4::HevcBox),
+}
+
+impl CodecMeta {
+    fn from_stsd(stsd: &re_mp4::StsdBox) -> Option<Self> {
+        use re_mp4::StsdBoxContent::*;
+        match &stsd.contents {
+            Avc1(avc) => Some(CodecMeta::Avc(avc.clone())),
+            Hev1(hevc) | Hvc1(hevc) => Some(CodecMeta::Hevc(hevc.clone())),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
