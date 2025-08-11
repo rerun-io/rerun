@@ -641,6 +641,7 @@ where
                 Ok(())
             }
 
+            #[cfg(feature = "auth")]
             Command::Auth(cmd) => {
                 let runtime =
                     re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
