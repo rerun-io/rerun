@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 __all__ = ["TextDocumentView"]
 
-
-from typing import TYPE_CHECKING
 
 from ..api import View, ViewContentsLike
 

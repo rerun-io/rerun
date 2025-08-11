@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 __all__ = ["TensorView"]
 
-
-from typing import TYPE_CHECKING
 
 from .. import archetypes as blueprint_archetypes, components as blueprint_components
 from ..api import View, ViewContentsLike
