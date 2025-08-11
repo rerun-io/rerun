@@ -196,46 +196,52 @@ impl DataframeQueryTableProvider {
         })
     }
 
-    fn column_to_selector(column: &Column) -> Option<ComponentColumnSelector> {
+    fn selector_from_column(column: &Column) -> Option<ComponentColumnSelector> {
         ComponentColumnSelector::from_str(column.name()).ok()
     }
 
-    fn compute_column_is_not_null_filter(
+    fn is_neq_null(expr: &Expr) -> Option<&Column> {
+        match expr {
+            Expr::IsNotNull(inner) => {
+                if let Expr::Column(col) = inner.as_ref() {
+                    return Some(col);
+                }
+            }
+            Expr::Not(inner) => {
+                if let Expr::IsNull(col_expr) = inner.as_ref()
+                    && let Expr::Column(col) = col_expr.as_ref()
+                {
+                    return Some(col);
+                }
+            }
+            Expr::BinaryExpr(binary) => {
+                if binary.op == Operator::NotEq
+                    && let (Expr::Column(col), Expr::Literal(sv))
+                    | (Expr::Literal(sv), Expr::Column(col)) =
+                        (binary.left.as_ref(), binary.right.as_ref())
+                    && sv.is_null()
+                {
+                    return Some(col);
+                }
+            }
+            _ => {}
+        }
+
+        None
+    }
+
+    /// For a given input expression, check to see if it can match the supported
+    /// row filtering. We can currently filter out rows for which a specific
+    /// component of one entity is not null. We do this by checking the column
+    /// name matches the entity path and component naming conventions, which
+    /// should always be true at the level of this call. We attempt to match
+    /// a few different logically equivalent variants the user may pass.
+    fn compute_column_is_neq_null_filter(
         filters: &[&Expr],
-    ) -> Result<Vec<Option<ComponentColumnSelector>>, DataFusionError> {
+    ) -> Vec<Option<ComponentColumnSelector>> {
         filters
             .iter()
-            .map(|expr| {
-                match expr {
-                    Expr::IsNotNull(inner) => {
-                        if let Expr::Column(col) = inner.as_ref() {
-                            return Ok(Self::column_to_selector(col));
-                        }
-                    }
-                    Expr::Not(inner) => {
-                        if let Expr::IsNull(col_expr) = inner.as_ref() {
-                            if let Expr::Column(col) = col_expr.as_ref() {
-                                return Ok(Self::column_to_selector(col));
-                            }
-                        }
-                    }
-                    Expr::BinaryExpr(binary) => {
-                        if binary.op == Operator::NotEq {
-                            if let (Expr::Column(col), Expr::Literal(sv))
-                            | (Expr::Literal(sv), Expr::Column(col)) =
-                                (binary.left.as_ref(), binary.right.as_ref())
-                            {
-                                if sv.is_null() {
-                                    return Ok(Self::column_to_selector(col));
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-
-                Ok(None)
-            })
+            .map(|expr| Self::is_neq_null(expr).and_then(Self::selector_from_column))
             .collect()
     }
 }
@@ -266,7 +272,7 @@ impl TableProvider for DataframeQueryTableProvider {
 
         // Find the first column selection that is a component
         let filters = filters.iter().collect::<Vec<_>>();
-        query_expression.filtered_is_not_null = Self::compute_column_is_not_null_filter(&filters)?
+        query_expression.filtered_is_not_null = Self::compute_column_is_neq_null_filter(&filters)
             .into_iter()
             .flatten()
             .next();
@@ -292,7 +298,7 @@ impl TableProvider for DataframeQueryTableProvider {
         &self,
         filters: &[&Expr],
     ) -> datafusion::common::Result<Vec<TableProviderFilterPushDown>> {
-        let filter_columns = Self::compute_column_is_not_null_filter(filters)?;
+        let filter_columns = Self::compute_column_is_neq_null_filter(filters);
         let non_null_columns = filter_columns.iter().flatten().collect::<Vec<_>>();
         if let Some(col) = non_null_columns.first() {
             let col = *col;
