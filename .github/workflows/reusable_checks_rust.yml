@@ -147,7 +147,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - runs_on: "macos-15"
+          - runs_on: "macos-15-large"
             name: "macos"
           - runs_on: "windows-latest-8-cores"
             name: "windows"
