@@ -727,8 +727,7 @@ impl From<RrdLocationDetails> for crate::common::v1alpha1::RrdLocationDetails {
 
 // --- ChunkLocationDetails ---
 
-#[allow(dead_code)]
-trait ChunkLocationDetails {
+pub trait ChunkLocationDetails {
     fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError>;
 
     fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError>
