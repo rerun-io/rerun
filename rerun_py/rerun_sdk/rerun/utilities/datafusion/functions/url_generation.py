@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pyarrow as pa
 import pyarrow.compute
-from rerun_bindings import DatasetEntry
 
 from rerun.error_utils import RerunOptionalDependencyError
+
+if TYPE_CHECKING:
+    from rerun_bindings import DatasetEntry
 
 HAS_DATAFUSION = True
 try:

@@ -5,18 +5,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Union
 
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
 )
-
-from .. import datatypes
 
 __all__ = ["AffixFuzzer3", "AffixFuzzer3ArrayLike", "AffixFuzzer3Batch", "AffixFuzzer3Like"]
 
@@ -40,6 +35,13 @@ class AffixFuzzer3:
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    import numpy as np
+    import numpy.typing as npt
+
+    from .. import datatypes
+
     AffixFuzzer3Like = Union[
         AffixFuzzer3,
         None,

@@ -6,10 +6,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
@@ -18,6 +16,10 @@ from rerun._baseclasses import (
 from rerun._converters import (
     to_np_float16,
 )
+
+if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
 
 __all__ = ["AffixFuzzer21", "AffixFuzzer21ArrayLike", "AffixFuzzer21Batch", "AffixFuzzer21Like"]
 

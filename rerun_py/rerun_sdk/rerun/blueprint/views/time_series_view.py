@@ -3,20 +3,23 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
-
-from ..._baseclasses import (
-    DescribedComponentBatch,
-)
-
 __all__ = ["TimeSeriesView"]
 
 
-from ... import datatypes
-from ..._baseclasses import AsComponents
-from ...datatypes import EntityPathLike, Utf8Like
+from typing import TYPE_CHECKING
+
 from .. import archetypes as blueprint_archetypes, components as blueprint_components
 from ..api import View, ViewContentsLike
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+
+    from ... import datatypes
+    from ..._baseclasses import (
+        AsComponents,
+        DescribedComponentBatch,
+    )
+    from ...datatypes import EntityPathLike, Utf8Like
 
 
 class TimeSeriesView(View):

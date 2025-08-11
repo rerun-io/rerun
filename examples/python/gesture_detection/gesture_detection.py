@@ -7,9 +7,8 @@ import argparse
 import itertools
 import logging
 import os
-from collections.abc import Iterable
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 import cv2
 import mediapipe as mp
@@ -20,7 +19,11 @@ import rerun.blueprint as rrb
 import tqdm
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-from mediapipe.tasks.python.components.containers import NormalizedLandmark
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from mediapipe.tasks.python.components.containers import NormalizedLandmark
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "hand_gestures"

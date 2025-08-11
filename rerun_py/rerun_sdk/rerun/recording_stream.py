@@ -4,24 +4,26 @@ import contextvars
 import functools
 import inspect
 import uuid
-from collections.abc import Iterable
-from datetime import datetime, timedelta
-from pathlib import Path
-from types import TracebackType
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
-import numpy as np
-from rerun_bindings import (
-    ChunkBatcherConfig as ChunkBatcherConfig,
-)
 from typing_extensions import deprecated
 
 import rerun as rr
 from rerun import bindings
-from rerun.memory import MemoryRecording
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from datetime import datetime, timedelta
+    from pathlib import Path
+    from types import TracebackType
+
+    import numpy as np
+    from rerun_bindings import (
+        ChunkBatcherConfig as ChunkBatcherConfig,
+    )
+
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
+    from rerun.memory import MemoryRecording
     from rerun.sinks import LogSinkLike
 
     from ._send_columns import TimeColumnLike

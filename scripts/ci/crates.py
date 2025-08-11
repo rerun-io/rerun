@@ -25,13 +25,12 @@ import shutil
 import subprocess
 import sys
 import time
-from collections.abc import Generator
 from datetime import datetime, timezone
 from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import git
 import requests
@@ -39,6 +38,9 @@ import tomlkit
 from colorama import Fore, init as colorama_init
 from dag import DAG, RateLimiter
 from semver import VersionInfo
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 CARGO_PATH = shutil.which("cargo") or "cargo"
 DEFAULT_PRE_ID = "alpha"

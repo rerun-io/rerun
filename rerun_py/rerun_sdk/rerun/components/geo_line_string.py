@@ -13,7 +13,6 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
@@ -39,6 +38,8 @@ class GeoLineString(GeoLineStringExt, ComponentMixin):
 
 
 if TYPE_CHECKING:
+    from .. import datatypes
+
     GeoLineStringLike = Union[GeoLineString, datatypes.DVec2DArrayLike, npt.NDArray[np.float64]]
 else:
     GeoLineStringLike = Any

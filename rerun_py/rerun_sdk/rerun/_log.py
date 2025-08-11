@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import pyarrow as pa
 import rerun_bindings as bindings
 
-from ._baseclasses import AsComponents, ComponentDescriptor, DescribedComponentBatch
 from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
-from .recording_stream import RecordingStream
+
+if TYPE_CHECKING:
+    import pyarrow as pa
+
+    from ._baseclasses import AsComponents, ComponentDescriptor, DescribedComponentBatch
+    from .recording_stream import RecordingStream
 
 
 @catch_and_log_exceptions()

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections
-from collections.abc import Sequence
 from math import prod
 from typing import TYPE_CHECKING, Any, Final, Protocol, Union
 
@@ -22,6 +21,8 @@ class TorchTensorLike(Protocol):
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from . import TensorBufferLike, TensorDataArrayLike, TensorDataLike
 
     TensorLike = Union[TensorDataLike, TorchTensorLike]

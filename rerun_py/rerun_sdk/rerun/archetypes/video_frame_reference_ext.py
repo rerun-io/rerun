@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
 from typing_extensions import deprecated
 
 from .. import components, datatypes
-from .._baseclasses import ComponentColumnList
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from .._baseclasses import ComponentColumnList
 
 
 class VideoFrameReferenceExt:
