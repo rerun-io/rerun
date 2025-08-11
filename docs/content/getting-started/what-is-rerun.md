@@ -10,9 +10,10 @@ It helps you understand and improve complex processes that include rich multimod
 It is used in many industries, including robotics, spatial and embodied AI, generative media, industrial processing, simulation, security, and health.
 
 Users love Rerun because it:
+
 1. Makes it easy to visualize and understand complex data.
 2. Provides a flexible and scalable data model.
-3. Allows you to prepare your data for machine learning.
+3. Allows you to prepare your multimodal and robotics data for machine learning.
 
 ## Open source: visualization and log handling
 
@@ -32,9 +33,10 @@ Rerun's platform provides a single database interface to operate on data from mu
 
 The Rerun Platform is under development with select partners. [Get in touch](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ) if you'd like to be one of them.
 
-## How do you use it?
+## How do you use Rerun?
 
-Rerun is toolkit for analyzing multimodal data. Users can:
+Rerun is a toolkit for analyzing multimodal data. Users can:
+
 1. Log multimodal data with the rerun-sdk from your code or load it from storage
 2. View live or recorded data in the standalone viewer or embedded in your app
 3. Build layouts and customize visualizations interactively in the UI or through the SDK
@@ -56,7 +58,7 @@ Here's a visual overview of what Rerun can do:
 
 Rerun excels any time you have sensors, or 2D or 3D state evolving over time, where normal debugging tools fall short.
 
-### Example use case
+## A use case where Rerun excels
 
 Say you're building a vacuum cleaning robot and it keeps running into walls. You first need to understand why it's doing that.
 
