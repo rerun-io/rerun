@@ -15,7 +15,7 @@ pub enum DataSource {
     ///
     /// Could be either an `.rrd` recording or a `.rbl` blueprint.
     RrdHttpUrl {
-        uri: String,
+        url: String,
 
         /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
         follow: bool,
@@ -56,7 +56,7 @@ impl DataSource {
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
     #[cfg_attr(target_arch = "wasm32", allow(clippy::needless_pass_by_value))]
-    pub fn from_uri(_file_source: re_log_types::FileSource, uri: String) -> Self {
+    pub fn from_uri(_file_source: re_log_types::FileSource, url: String) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
         {
             use itertools::Itertools as _;
@@ -97,22 +97,22 @@ impl DataSource {
             //
             // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
             // throwing errors when we shouldn't), we just make reading from standard input explicit.
-            if uri == "-" {
+            if url == "-" {
                 return Self::Stdin;
             }
 
-            let path = std::path::Path::new(&uri).to_path_buf();
+            let path = std::path::Path::new(&url).to_path_buf();
 
-            if uri.starts_with("file://") || path.exists() {
+            if url.starts_with("file://") || path.exists() {
                 return Self::FilePath(_file_source, path);
             }
 
-            if looks_like_a_file_path(&uri) {
+            if looks_like_a_file_path(&url) {
                 return Self::FilePath(_file_source, path);
             }
         }
 
-        if let Ok(uri) = uri.as_str().parse::<RedapUri>() {
+        if let Ok(uri) = url.as_str().parse::<RedapUri>() {
             return Self::RerunGrpcStream {
                 uri,
                 select_when_loaded: true,
@@ -120,12 +120,12 @@ impl DataSource {
         }
 
         // by default, we just assume an rrd over http
-        Self::RrdHttpUrl { uri, follow: false }
+        Self::RrdHttpUrl { url, follow: false }
     }
 
     pub fn file_name(&self) -> Option<String> {
         match self {
-            Self::RrdHttpUrl { uri: url, .. } => url.split('/').next_back().map(|r| r.to_owned()),
+            Self::RrdHttpUrl { url, .. } => url.split('/').next_back().map(|r| r.to_owned()),
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(_, path) => path.file_name().map(|s| s.to_string_lossy().to_string()),
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
@@ -156,7 +156,7 @@ impl DataSource {
         re_tracing::profile_function!();
 
         match self {
-            Self::RrdHttpUrl { uri: url, follow } => Ok(StreamSource::LogMessages(
+            Self::RrdHttpUrl { url, follow } => Ok(StreamSource::LogMessages(
                 re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                     url, follow, on_msg,
                 ),

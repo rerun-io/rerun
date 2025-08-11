@@ -126,12 +126,14 @@ pub fn open_content_url_in_viewer(
 
     match endpoint {
         ViewerContentUrl::HttpRrd(url) => {
-            let receiver = re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
-                url,
-                follow_if_http,
-                Some(ui_waker),
-            );
-            command_sender.send_system(SystemCommand::AddReceiver(receiver));
+            re_log::debug!("Opening rrd HTTP Stream: {url:?}");
+
+            command_sender.send_system(SystemCommand::LoadDataSource(
+                re_data_source::DataSource::RrdHttpUrl {
+                    url,
+                    follow: follow_if_http,
+                },
+            ));
         }
 
         ViewerContentUrl::RerunGrpcStream(uri) => {
@@ -201,6 +203,7 @@ pub fn open_content_url_in_viewer(
                 }
             }));
 
+            // TODO: make this work via the `LoadDataSource` command instead.
             command_sender.send_system(SystemCommand::AddReceiver(rx));
         }
     }
