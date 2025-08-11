@@ -674,6 +674,10 @@ impl FrontendService for FrontendHandler {
                         chunk_byte_len.push(chunk.heap_size_bytes());
                     });
 
+                // The output schema of `query_dataset` contains information about
+                // the chunks such as the start and end times of each timeline.
+                // We will need to compute the schema based on which indices exist
+                // in the store.
                 let mut output_fields = vec![
                     Field::new(
                         "chunk_partition_id",
@@ -714,38 +718,7 @@ impl FrontendService for FrontendHandler {
                 ];
 
                 for (timeline_name, (data_type, starts, ends)) in timelines {
-                    let (starts, ends) = match data_type {
-                        DataType::Int64 => (
-                            Arc::new(Int64Array::from(starts)) as ArrayRef,
-                            Arc::new(Int64Array::from(ends)) as ArrayRef,
-                        ),
-                        // downcast_value!(time_array, Int64Array).reinterpret_cast::<Int64Type>(),
-                        DataType::Timestamp(TimeUnit::Second, _) => (
-                            Arc::new(TimestampSecondArray::from(starts)) as ArrayRef,
-                            Arc::new(TimestampSecondArray::from(ends)) as ArrayRef,
-                        ),
-                        DataType::Timestamp(TimeUnit::Millisecond, _) => (
-                            Arc::new(TimestampMillisecondArray::from(starts)) as ArrayRef,
-                            Arc::new(TimestampMillisecondArray::from(ends)) as ArrayRef,
-                        ),
-                        DataType::Timestamp(TimeUnit::Microsecond, _) => (
-                            Arc::new(TimestampMicrosecondArray::from(starts)) as ArrayRef,
-                            Arc::new(TimestampMicrosecondArray::from(ends)) as ArrayRef,
-                        ),
-                        DataType::Timestamp(TimeUnit::Nanosecond, _) => (
-                            Arc::new(TimestampNanosecondArray::from(starts)) as ArrayRef,
-                            Arc::new(TimestampNanosecondArray::from(ends)) as ArrayRef,
-                        ),
-                        DataType::Duration(TimeUnit::Nanosecond) => (
-                            Arc::new(DurationNanosecondArray::from(starts)) as ArrayRef,
-                            Arc::new(DurationNanosecondArray::from(ends)) as ArrayRef,
-                        ),
-                        _ => {
-                            return Err(tonic::Status::internal(format!(
-                                "Unexpected timeline data type: {data_type}"
-                            )));
-                        }
-                    };
+                    let (starts, ends) = arrays_from_timelines(data_type, starts, ends)?;
 
                     output_fields.push(Field::new(
                         format!("{timeline_name}:start"),
@@ -935,4 +908,45 @@ impl FrontendService for FrontendHandler {
             "do_maintenance not implemented",
         ))
     }
+}
+
+fn arrays_from_timelines(
+    data_type: DataType,
+    starts: Vec<Option<i64>>,
+    ends: Vec<Option<i64>>,
+) -> Result<(ArrayRef, ArrayRef), tonic::Status> {
+    let (starts, ends) = match data_type {
+        DataType::Int64 => (
+            Arc::new(Int64Array::from(starts)) as ArrayRef,
+            Arc::new(Int64Array::from(ends)) as ArrayRef,
+        ),
+        // downcast_value!(time_array, Int64Array).reinterpret_cast::<Int64Type>(),
+        DataType::Timestamp(TimeUnit::Second, _) => (
+            Arc::new(TimestampSecondArray::from(starts)) as ArrayRef,
+            Arc::new(TimestampSecondArray::from(ends)) as ArrayRef,
+        ),
+        DataType::Timestamp(TimeUnit::Millisecond, _) => (
+            Arc::new(TimestampMillisecondArray::from(starts)) as ArrayRef,
+            Arc::new(TimestampMillisecondArray::from(ends)) as ArrayRef,
+        ),
+        DataType::Timestamp(TimeUnit::Microsecond, _) => (
+            Arc::new(TimestampMicrosecondArray::from(starts)) as ArrayRef,
+            Arc::new(TimestampMicrosecondArray::from(ends)) as ArrayRef,
+        ),
+        DataType::Timestamp(TimeUnit::Nanosecond, _) => (
+            Arc::new(TimestampNanosecondArray::from(starts)) as ArrayRef,
+            Arc::new(TimestampNanosecondArray::from(ends)) as ArrayRef,
+        ),
+        DataType::Duration(TimeUnit::Nanosecond) => (
+            Arc::new(DurationNanosecondArray::from(starts)) as ArrayRef,
+            Arc::new(DurationNanosecondArray::from(ends)) as ArrayRef,
+        ),
+        _ => {
+            return Err(tonic::Status::internal(format!(
+                "Unexpected timeline data type: {data_type}"
+            )));
+        }
+    };
+
+    Ok((starts, ends))
 }
