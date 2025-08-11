@@ -23,7 +23,7 @@ It’s easy to get started and can be used as a stand alone library.
 The data model is a time aware Entity Component System (ECS), designed for domains like robotics and XR.
 The project includes a custom database query engine and rendering engine, both built around this model.
 
-## Commercial: data stack for Physical AI
+## Commercial: data stack for physical AI
 
 Rerun's commercial offering provides managed infrastructure to ingest, store, analyze, and stream large amounts of robotics-style data.
 
@@ -64,7 +64,7 @@ Say you're building a vacuum cleaning robot and it keeps running into walls. You
 
 You need some tool to debug it, but a normal debugger isn't gonna be helpful. Similarly, just logging text won't be very helpful either. The robot may log "Going through doorway" but that won't explain why it thinks the wall is a door.
 
-#### Rerun: A visualization toolkit
+#### Rerun: a multimodal visualization toolkit
 
 What you need is a visual and temporal debugger, that can log all the different representations of the world the robots holds in its little head, such as:
 
@@ -78,13 +78,13 @@ What you need is a visual and temporal debugger, that can log all the different 
 
 You also want to see how all these streams of data evolve over time so you can go back and pinpoint exactly what went wrong, when and why.
 
-#### Visual Debugging
+#### Visual debugging
 
 Maybe it turns out that a glare from the sun hit one of the sensors in the wrong way, confusing the segmentation network leading to bad object detection. Or maybe it was a bug in the lidar scanning code. Or maybe the robot thought it was somewhere else in the apartment, because its odometry was broken. Or it could be one of a thousand other things. **Rerun helps you find out!**
 
 But seeing the world from the point of the view of the robot is not just for debugging - it will also give you ideas on how to improve the algorithms, new test cases to set up for model training, or datasets to collect. It will also let you explain the brains of the robot to your colleagues, boss, and customers. And so on. Seeing is believing, and an image is worth a thousand words, and multimodal temporal logging is worth a thousand images :).
 
-#### Helping your Robot improve
+#### Helping your robot improve
 
 While seeing and understanding your data is core to making progress in robotics, there is one more thing:
 You can also use the data you collected for visualization to create new datasets for training and evaluating the ML models and AI algorithms that power your robot.
@@ -92,7 +92,7 @@ Rerun provides query APIs that make it easy to extract clean datasets from your 
 
 ## Getting started
 
-Ready to start visualizing your multimodal data? Check out our [Quick Start guide](/docs/getting-started/quick-start) to get up and running with Rerun in just a few minutes.
+Ready to start visualizing your multimodal data? Check out our [Quick Start guide](./quick-start) to get up and running with Rerun in just a few minutes.
 
 
 ## Can't find what you're looking for?
