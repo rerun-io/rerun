@@ -20,16 +20,14 @@ use wasm_bindgen::{JsCast as _, JsError, JsValue, closure::Closure, prelude::was
 use web_sys::{History, UrlSearchParams};
 
 use crate::{
-    open_url::{ViewerContentUrl, open_content_url_in_viewer},
+    open_url::try_open_url_in_viewer,
     web_tools::{JsResultExt as _, window},
 };
 use re_viewer_context::CommandSender;
 
 #[derive(Clone, Default, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct HistoryEntry {
-    /// Typically this is either one or none, but we support multiple http urls.
-    // TODO: we only ever set a single one. On startup we should set the "base" for the first one.
-    endpoints: Vec<ViewerContentUrl>,
+    urls: Vec<String>,
 }
 
 // Builder methods
@@ -39,13 +37,13 @@ impl HistoryEntry {
     /// Set the URL of the RRD to load/navigate to when using this entry.
     // TODO: it's always loading right now.
     pub fn rrd_url(mut self, url: String) -> Self {
-        self.endpoints.push(ViewerContentUrl::HttpRrd(url));
+        self.urls.push(url);
         self
     }
 
     /// Set the Redap URI to load/navigate to when using this entry.
     pub fn redap_uri(mut self, uri: re_uri::RedapUri) -> Self {
-        self.endpoints.push(ViewerContentUrl::RerunGrpcStream(uri));
+        self.urls.push(uri.to_string());
         self
     }
 }
@@ -56,8 +54,8 @@ impl HistoryEntry {
         use std::fmt::Write as _;
 
         let params = UrlSearchParams::new()?;
-        for endpoint in &self.endpoints {
-            params.append("url", &endpoint.to_string());
+        for url in &self.urls {
+            params.append("url", url);
         }
         let mut out = "?".to_owned();
         write!(&mut out, "{}", params.to_string()).ok();
@@ -148,7 +146,7 @@ fn handle_popstate(
         return;
     }
 
-    if new_state.is_none() || new_state.as_ref().is_some_and(|v| v.endpoints.is_empty()) {
+    if new_state.is_none() || new_state.as_ref().is_some_and(|v| v.urls.is_empty()) {
         // TODO: go to the initial screen instead of always going to the welcome screen.
         re_log::debug!("popstate: go to welcome screen");
         re_redap_browser::switch_to_welcome_screen(command_sender);
@@ -164,14 +162,18 @@ fn handle_popstate(
 
     let follow_if_http = false;
     let select_redap_source_when_loaded = true;
-    for url in &entry.endpoints {
-        open_content_url_in_viewer(
+    for url in &entry.urls {
+        if try_open_url_in_viewer(
             egui_ctx,
+            url,
             follow_if_http,
             select_redap_source_when_loaded,
-            url.clone(),
             &command_sender,
-        );
+        )
+        .is_err()
+        {
+            re_log::warn!("Failed to open URL: {url}");
+        }
         re_log::debug!("popstate: add receiver {url:?}");
     }
 

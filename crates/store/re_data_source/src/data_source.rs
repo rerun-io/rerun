@@ -54,9 +54,9 @@ impl DataSource {
     /// Tried to classify a URI into a [`DataSource`].
     ///
     /// Tries to figure out if it looks like a local path,
-    /// a web-socket address, or a http url.
-    #[cfg_attr(target_arch = "wasm32", allow(clippy::needless_pass_by_value))]
-    pub fn from_uri(_file_source: re_log_types::FileSource, url: String) -> Self {
+    /// a web-socket address, a grpc url, a http url, etc.
+    #[cfg_attr(target_arch = "wasm32", expect(clippy::needless_pass_by_value))]
+    pub fn from_uri(_file_source: re_log_types::FileSource, url: &str) -> Option<Self> {
         #[cfg(not(target_arch = "wasm32"))]
         {
             use itertools::Itertools as _;
@@ -98,29 +98,35 @@ impl DataSource {
             // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
             // throwing errors when we shouldn't), we just make reading from standard input explicit.
             if url == "-" {
-                return Self::Stdin;
+                return Some(Self::Stdin);
             }
 
-            let path = std::path::Path::new(&url).to_path_buf();
+            let path = std::path::Path::new(url).to_path_buf();
 
             if url.starts_with("file://") || path.exists() {
-                return Self::FilePath(_file_source, path);
+                return Some(Self::FilePath(_file_source, path));
             }
 
-            if looks_like_a_file_path(&url) {
-                return Self::FilePath(_file_source, path);
+            if looks_like_a_file_path(url) {
+                return Some(Self::FilePath(_file_source, path));
             }
         }
 
-        if let Ok(uri) = url.as_str().parse::<RedapUri>() {
-            return Self::RerunGrpcStream {
+        if let Ok(uri) = url.parse::<RedapUri>() {
+            Some(Self::RerunGrpcStream {
                 uri,
                 select_when_loaded: true,
-            };
+            })
+        } else if (url.starts_with("http") || url.starts_with("https"))
+            && (url.ends_with(".rrd") || url.ends_with(".rbl"))
+        {
+            Some(Self::RrdHttpUrl {
+                url: url.to_owned(),
+                follow: false,
+            })
+        } else {
+            None
         }
-
-        // by default, we just assume an rrd over http
-        Self::RrdHttpUrl { url, follow: false }
     }
 
     pub fn file_name(&self) -> Option<String> {
@@ -370,8 +376,8 @@ fn test_data_source_from_uri() {
 
     for uri in file {
         if !matches!(
-            DataSource::from_uri(file_source.clone(), uri.to_owned()),
-            DataSource::FilePath { .. }
+            DataSource::from_uri(file_source.clone(), uri),
+            Some(DataSource::FilePath { .. })
         ) {
             eprintln!("Expected {uri:?} to be categorized as FilePath");
             failed = true;
@@ -380,8 +386,8 @@ fn test_data_source_from_uri() {
 
     for uri in http {
         if !matches!(
-            DataSource::from_uri(file_source.clone(), uri.to_owned()),
-            DataSource::RrdHttpUrl { .. }
+            DataSource::from_uri(file_source.clone(), uri),
+            Some(DataSource::RrdHttpUrl { .. })
         ) {
             eprintln!("Expected {uri:?} to be categorized as RrdHttpUrl");
             failed = true;
@@ -390,8 +396,8 @@ fn test_data_source_from_uri() {
 
     for uri in grpc {
         if !matches!(
-            DataSource::from_uri(file_source.clone(), uri.to_owned()),
-            DataSource::RerunGrpcStream { .. }
+            DataSource::from_uri(file_source.clone(), uri),
+            Some(DataSource::RerunGrpcStream { .. })
         ) {
             eprintln!("Expected {uri:?} to be categorized as MessageProxy");
             failed = true;

@@ -873,23 +873,24 @@ pub(crate) fn recording_config_entry<'cfgs>(
 ///
 /// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
 fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &CommandSender) {
-    struct OpenUrl {
-        categorized_url: open_url::ViewerContentUrl,
-        select_redap_source_when_loaded: bool,
-    }
-    let mut internal_urls = Vec::new();
+    let mut opened_any_url = false;
+    let follow_if_http = false;
 
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                if let Some(categorized_url) =
-                    open_url::ViewerContentUrl::categorize_url(open_url.url.clone())
-                {
-                    internal_urls.push(OpenUrl {
-                        categorized_url,
-                        select_redap_source_when_loaded: open_url.new_tab,
-                    });
+                let select_redap_source_when_loaded = open_url.new_tab;
 
+                if open_url::try_open_url_in_viewer(
+                    egui_ctx,
+                    &open_url.url,
+                    follow_if_http,
+                    select_redap_source_when_loaded,
+                    command_sender,
+                )
+                .is_ok()
+                {
+                    opened_any_url = true;
                     // We handled the URL, therefore egui shouldn't do anything anymore with it.
                     return false;
                 } else {
@@ -901,21 +902,9 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
         });
     });
 
-    // Need to call outside of egui_ctx.output_mut, otherwise the repaint request inside open_categorized_url
-    // will cause a deadlock.
-    for url in internal_urls {
-        let follow_if_http = false;
-
-        open_url::open_content_url_in_viewer(
-            egui_ctx,
-            follow_if_http,
-            url.select_redap_source_when_loaded,
-            url.categorized_url,
-            command_sender,
-        );
-
-        // NOTE: we do NOT change the display mode here.
-        // Instead we rely on `select_redap_source_when_loaded` to trigger the selection once the data is loaded.
+    if opened_any_url {
+        // Make sure we process commands that were sent by the `try_open_content_url_in_viewer` call.
+        egui_ctx.request_repaint();
     }
 }
 

@@ -201,17 +201,21 @@ impl WebHandle {
         let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
-        // TODO: how to test that this still works?
+
         // TODO(andreas): should follow_if_http be part of the fragments?
         let follow_if_http = follow_if_http.unwrap_or(false);
         let select_redap_source_when_loaded = true;
-        try_open_url_in_viewer(
+        if try_open_url_in_viewer(
             &app.egui_ctx,
+            url,
             follow_if_http,
             select_redap_source_when_loaded,
-            url.to_owned(),
             &app.command_sender,
-        );
+        )
+        .is_err()
+        {
+            re_log::warn!("Failed to open URL: {url}");
+        }
     }
 
     #[wasm_bindgen]
@@ -800,13 +804,17 @@ fn create_app(
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
         for url in urls.into_inner() {
-            try_open_url_in_viewer(
-                &cc.egui_ctx,
+            if try_open_url_in_viewer(
+                &app.egui_ctx,
+                &url,
                 follow_if_http,
                 select_redap_source_when_loaded,
-                url,
                 &app.command_sender,
-            );
+            )
+            .is_err()
+            {
+                re_log::warn!("Failed to open URL: {url}");
+            }
         }
     }
 
