@@ -1,4 +1,5 @@
 use crate::arrow_node::ArrowNode;
+use crate::arrow_ui::make_formatter;
 use crate::arrow_view::ArrayView;
 use arrow::array::{Array, AsArray, StructArray, UnionArray};
 use std::ops::Deref;
@@ -15,13 +16,6 @@ pub enum ChildNodes<'a> {
         parent_index: usize,
         array: &'a StructArray,
     },
-    /// Map where the key is shown as the node name
-    InlineKeyMap {
-        keys: MaybeArc<'a>,
-        values: MaybeArc<'a>,
-        parent_index: usize,
-    },
-    /// Map where key and value are shown as separate nodes
     Map {
         keys: MaybeArc<'a>,
         values: MaybeArc<'a>,
@@ -50,19 +44,20 @@ impl<'a> ChildNodes<'a> {
             let value = list_array.value(index);
             ChildNodes::List(ArrayView::new_ref(value.into()))
         } else if let Some(dict_array) = array.as_any_dictionary_opt() {
-            if !dict_array.keys().data_type().is_nested() {
-                ChildNodes::InlineKeyMap {
-                    keys: dict_array.keys().into(),
-                    values: dict_array.values().clone().into(),
-                    parent_index: index,
-                }
-            } else {
-                ChildNodes::Map {
-                    keys: dict_array.keys().into(),
-                    values: dict_array.values().clone().into(),
-                    parent_index: index,
-                }
-            }
+            // if !dict_array.keys().data_type().is_nested() {
+            //     ChildNodes::InlineKeyMap {
+            //         keys: dict_array.keys().into(),
+            //         values: dict_array.values().clone().into(),
+            //         parent_index: index,
+            //     }
+            // } else {
+            //     ChildNodes::Map {
+            //         keys: dict_array.keys().into(),
+            //         values: dict_array.values().clone().into(),
+            //         parent_index: index,
+            //     }
+            // }
+            todo!()
         } else if let Some(map_array) = array.as_map_opt() {
             // if !map_array.keys().data_type().is_nested() {
             //     ChildNodes::InlineKeyMap {
@@ -82,7 +77,8 @@ impl<'a> ChildNodes<'a> {
             //     parent_index: index,
             //     array: entries,
             // }
-            ChildNodes::List(ArrayView::new(array))
+            // ChildNodes::List(ArrayView::new(array))
+            todo!()
         } else if let Some(union_array) = array.as_union_opt() {
             ChildNodes::Union {
                 array: union_array,
@@ -102,8 +98,9 @@ impl<'a> ChildNodes<'a> {
                 parent_index: _,
                 array,
             } => array.num_columns(),
-            ChildNodes::InlineKeyMap { keys, .. } => keys.as_ref().len() * 2, // TODO: Implement inline thingy
-            ChildNodes::Map { .. } => 2,
+            ChildNodes::Map { .. } => {
+                2 // key and value
+            }
             ChildNodes::Union {
                 array: _union_array,
                 parent_index: _,
@@ -128,29 +125,6 @@ impl<'a> ChildNodes<'a> {
                     ChildNodes::new(column as &dyn Array, *struct_index),
                 )
                 .with_field_name(name)
-            }
-            ChildNodes::InlineKeyMap {
-                keys,
-                values,
-                parent_index,
-            } => {
-                // TODO: Implement inline node
-
-                if index == 0 {
-                    ArrowNode::new(
-                        keys.clone(),
-                        *parent_index,
-                        ChildNodes::new(keys.as_ref(), *parent_index),
-                    )
-                    .with_field_name("key")
-                } else {
-                    ArrowNode::new(
-                        values.clone(),
-                        *parent_index,
-                        ChildNodes::new(values.as_ref(), *parent_index),
-                    )
-                    .with_field_name("value")
-                }
             }
             ChildNodes::Map {
                 keys,
