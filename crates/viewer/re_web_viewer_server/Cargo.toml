@@ -30,7 +30,7 @@ include = [
 workspace = true
 
 [package.metadata.docs.rs]
-all-features = true  # Will also enable the `__disable_server` feature, meaning the docs will build even without a .wasm binary
+all-features = true # Will also enable the `__disable_server` feature, meaning the docs will build even without a .wasm binary
 
 
 [features]
