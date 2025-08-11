@@ -781,22 +781,17 @@ impl App {
         let store_sources = store_hub
             .store_bundle()
             .entity_dbs()
-            .filter_map(|db| db.data_source.as_ref().map(|ds| (ds, Some(db))));
-        // Note that sources that are active may also be referenced in the store hub.
-        // Therefore, it's important to look at the store hub ones first if we want to know what entity_db they're associated with.
-        let mut all_sources =
-            store_sources.chain(active_sources.iter().map(|src| (src.as_ref(), None)));
+            .filter_map(|db| db.data_source.as_ref());
+        let mut all_sources = store_sources.chain(active_sources.iter().map(|s| s.as_ref()));
 
         match data_source {
             DataSource::RrdHttpUrl { url, follow } => {
-                if let Some((_source, entity_db)) = all_sources.find(|(source, _entity_db)| {
-                    if let SmartChannelSource::RrdHttpStream { url: other_url, .. } = source {
-                        url == other_url
-                    } else {
-                        false
-                    }
-                }) {
-                    if let Some(entity_db) = entity_db {
+                let new_source = SmartChannelSource::RrdHttpStream {
+                    url: url.clone(),
+                    follow: *follow,
+                };
+                if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
+                    if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
                         if *follow {
                             let rec_cfg = self.state.recording_config_mut(entity_db);
                             let time_ctrl = rec_cfg.time_ctrl.get_mut();
@@ -817,13 +812,13 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             DataSource::FilePath(_file_source, path) => {
                 let new_source = SmartChannelSource::File(path.clone());
-                if let Some((_source, entity_db)) =
-                    all_sources.find(|(source, _entity_db)| *source == &new_source)
-                {
-                    if let Some(entity_db) = entity_db {
+                if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
+                    if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
                         let store_id = entity_db.store_id().clone();
-                        drop(all_sources);
-                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
+                        if store_id.is_recording() {
+                            drop(all_sources);
+                            self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
+                        }
                     }
                     return;
                 }
@@ -835,10 +830,9 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             DataSource::Stdin => {
-                if let Some((_source, entity_db)) =
-                    all_sources.find(|(source, _entity_db)| *source == &SmartChannelSource::Stdin)
-                {
-                    if let Some(entity_db) = entity_db {
+                let new_source = SmartChannelSource::Stdin;
+                if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
+                    if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
                         let store_id = entity_db.store_id().clone();
                         drop(all_sources);
                         self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
@@ -851,16 +845,11 @@ impl App {
                 uri: re_uri::RedapUri::DatasetData(uri),
                 select_when_loaded,
             } => {
-                let uri_without_fragment = uri.clone().without_fragment();
-                if all_sources.any(|(source, _entity_db)| {
-                    if let SmartChannelSource::RedapGrpcStream { uri, .. } = source {
-                        // Ignore the fragment, it's not part of the data source.
-                        // (do *not* ignore the query though as it changes what we load)
-                        uri.clone().without_fragment() == uri_without_fragment
-                    } else {
-                        false
-                    }
-                }) {
+                let new_source = SmartChannelSource::RedapGrpcStream {
+                    uri: uri.clone(),
+                    select_when_loaded: *select_when_loaded,
+                };
+                if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     // We're already receiving from the exact same data source!
                     // But we still should select if requested according to the fragments if any.
                     if *select_when_loaded {
@@ -3044,7 +3033,7 @@ fn update_web_address_bar(
 
             match data_source {
                 SmartChannelSource::RrdHttpStream { url, follow: _ } => {
-                    Some(HistoryEntry::default().rrd_url(url.clone()))
+                    Some(HistoryEntry::rrd_url(url.clone()))
                 }
 
                 SmartChannelSource::File(_path_buf) => {
@@ -3061,9 +3050,9 @@ fn update_web_address_bar(
                 SmartChannelSource::RedapGrpcStream {
                     uri,
                     select_when_loaded: _,
-                } => Some(
-                    HistoryEntry::default().redap_uri(re_uri::RedapUri::DatasetData(uri.clone())),
-                ),
+                } => Some(HistoryEntry::redap_uri(re_uri::RedapUri::DatasetData(
+                    uri.clone(),
+                ))),
 
                 SmartChannelSource::MessageProxy(_proxy_uri) => {
                     // TODO:
@@ -3076,13 +3065,12 @@ fn update_web_address_bar(
             None
         }
         DisplayMode::RedapEntry(_entry_id) => {
-            // TODO: implement this for non-tables.
+            // TODO(andreas): Implement this.
             None
         }
-        DisplayMode::RedapServer(_origin) => {
-            // TODO: implement this
-            None
-        }
+        DisplayMode::RedapServer(origin) => Some(HistoryEntry::redap_uri(
+            re_uri::RedapUri::Catalog(re_uri::CatalogUri::new(origin.clone())),
+        )),
         DisplayMode::ChunkStoreBrowser => {
             // As of writing the store browser is more of a debugging feature.
             // Could change the url fragments in the future.

@@ -35,16 +35,19 @@ impl HistoryEntry {
     pub const KEY: &'static str = "__rerun";
 
     /// Set the URL of the RRD to load/navigate to when using this entry.
-    // TODO: it's always loading right now.
-    pub fn rrd_url(mut self, url: String) -> Self {
-        self.urls.push(url);
-        self
+    pub fn rrd_url(url: String) -> Self {
+        Self { urls: vec![url] }
     }
 
     /// Set the Redap URI to load/navigate to when using this entry.
-    pub fn redap_uri(mut self, uri: re_uri::RedapUri) -> Self {
-        self.urls.push(uri.to_string());
-        self
+    pub fn redap_uri(uri: re_uri::RedapUri) -> Self {
+        if uri.origin() == &*re_redap_browser::EXAMPLES_ORIGIN {
+            Self::default()
+        } else {
+            Self {
+                urls: vec![uri.to_string()],
+            }
+        }
     }
 }
 
@@ -278,10 +281,8 @@ impl private::Sealed for History {}
 impl HistoryExt for History {
     fn push_entry(&self, entry: HistoryEntry) -> Result<(), JsValue> {
         // Check if this is the exact same entry as before, if so don't do anything.
-        if let Some(current_entry) = self.current_entry()? {
-            if current_entry == entry {
-                return Ok(());
-            }
+        if self.current_entry()?.unwrap_or_default() == entry {
+            return Ok(());
         }
 
         let state = get_updated_state(self, &entry)?;

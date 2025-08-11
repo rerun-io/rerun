@@ -168,6 +168,20 @@ impl SmartChannelSource {
             Self::Sdk => "Waiting for logging data from SDK".to_owned(),
         }
     }
+
+    /// Compares two channel sources but ignores any URI fragments and other selection/state only guides
+    /// that don't affect what data is loaded.
+    pub fn is_same_ignoring_uri_fragments(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::RedapGrpcStream { uri: uri1, .. }, Self::RedapGrpcStream { uri: uri2, .. }) => {
+                uri1.clone().without_fragment() == uri2.clone().without_fragment()
+            }
+            (Self::RrdHttpStream { url: url1, .. }, Self::RrdHttpStream { url: url2, .. }) => {
+                url1 == url2
+            }
+            _ => self == other,
+        }
+    }
 }
 
 /// Identifies who/what sent a particular message in a smart channel.
