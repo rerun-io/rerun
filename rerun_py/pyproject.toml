@@ -149,6 +149,7 @@ lint.select = [
   "FA",      # Force from __future__ import annotations
   "I",       # Isort
   "ISC",     # Ensure implicit string concat syntax
+  "TC",      # Ensure that all type comments are valid
   "TID",     # flake8-tidy-imports
   "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   "UP",      # pyupgrade (ensures idomatic code for supported python version)
