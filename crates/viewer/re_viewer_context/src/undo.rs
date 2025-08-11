@@ -25,7 +25,7 @@ pub struct BlueprintUndoState {
     /// If `None`, use the max time of the blueprint timeline.
     current_time: Option<TimeInt>,
 
-    /// The keys forms a set of interesting times to undo/redo to.
+    /// The keys form a set of interesting times to undo/redo to.
     ///
     /// When the user drags a slider or similar, we get new events
     /// recorded on each frame. The user presumably wants to undo the whole
