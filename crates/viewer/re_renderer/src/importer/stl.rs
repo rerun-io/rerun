@@ -28,17 +28,21 @@ pub fn load_stl_from_buffer(
 
     let (normals, triangles): (Vec<_>, Vec<_>) = reader
         .into_iter()
-        .map(|triangle| triangle.unwrap())
-        .map(|triangle| {
-            (
-                [triangle.normal.0, triangle.normal.0, triangle.normal.0],
-                [
-                    triangle.vertices[0].0,
-                    triangle.vertices[1].0,
-                    triangle.vertices[2].0,
-                ],
-            )
+        .map(|triangle_res| {
+            triangle_res.map(|triangle| {
+                (
+                    [triangle.normal.0, triangle.normal.0, triangle.normal.0],
+                    [
+                        triangle.vertices[0].0,
+                        triangle.vertices[1].0,
+                        triangle.vertices[2].0,
+                    ],
+                )
+            })
         })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(StlImportError::StlIoError)?
+        .into_iter()
         .unzip();
 
     let num_vertices = triangles.len() * 3;
