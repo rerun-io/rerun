@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use directories::ProjectDirs;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header, jwk::JwkSet};
 use re_log::ResultExt;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::Jwt;
 
@@ -28,7 +28,7 @@ const WORKOS_CLIENT_ID: &str = match option_env!("WORKOS_CLIENT_ID") {
     Some(v) => v,
     None => "client_01JZ3JVQW6JNVXME6HV9G4VR0H",
 };
-const DEFAULT_ISSUER: &str = const_format::concatcp!(ISSUER_URL_BASE, "/", WORKOS_CLIENT_ID);
+pub const DEFAULT_ISSUER: &str = const_format::concatcp!(ISSUER_URL_BASE, "/", WORKOS_CLIENT_ID);
 const JWKS_URL: &str = const_format::concatcp!(JWKS_URL_BASE, "/", WORKOS_CLIENT_ID);
 
 #[derive(Debug, thiserror::Error)]
@@ -41,29 +41,42 @@ pub enum FetchJwksError {
 }
 
 #[allow(dead_code)] // fields may become used at some point in the near future
-#[derive(Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    #[serde(rename = "iss")]
-    issuer: String,
-    // TODO: better names
-    sub: String,
-    act: Option<Act>,
-    org_id: Option<String>,
-    role: Option<String>,
-    permissions: Option<Vec<String>>,
-    entitlements: Option<Vec<String>>,
-    // session id
-    sid: String,
-    // token id
-    jti: String,
-    // expires at
-    exp: i64,
-    // issued at
-    iat: i64,
+    /// Issuer
+    pub iss: String,
+
+    /// Subject
+    pub sub: String,
+
+    /// Actor
+    pub act: Option<Act>,
+
+    /// Organization ID
+    pub org_id: Option<String>,
+
+    /// Role
+    pub role: Option<String>,
+
+    pub permissions: Option<Vec<String>>,
+
+    pub entitlements: Option<Vec<String>>,
+
+    /// Session ID
+    pub sid: String,
+
+    /// Token ID
+    pub jti: String,
+
+    /// Expires at
+    pub exp: i64,
+
+    /// Issued at
+    pub iat: i64,
 }
 
 #[allow(dead_code)] // fields may become used at some point in the near future
-#[derive(Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Act {
     sub: String,
 }
@@ -101,7 +114,7 @@ pub enum ContextLoadError {
 }
 
 pub struct AuthContext {
-    jwks: Arc<JwkSet>,
+    pub jwks: Arc<JwkSet>,
 }
 
 impl AuthContext {
@@ -177,7 +190,7 @@ impl AuthContext {
         else {
             return;
         };
-        let Some(content) = serde_json::to_string_pretty(&self.jwks).ok_or_log_error() else {
+        let Some(content) = serde_json::to_string_pretty(&*self.jwks).ok_or_log_error() else {
             return;
         };
         std::fs::write(&path, content).ok_or_log_error();
@@ -239,7 +252,7 @@ impl Credentials {
             Some(config) => Ok(Some(Credentials {
                 user: config.user,
                 refresh_token: config.refresh,
-                access_token: None,
+                access_token: config.access,
             })),
             None => Ok(None),
         }
@@ -250,6 +263,7 @@ impl Credentials {
         re_log::trace!("storing credentials");
         CredentialsConfig {
             refresh: self.refresh_token.private_clone(),
+            access: self.access_token.clone(),
             user: self.user.clone(),
         }
         .store()
@@ -322,6 +336,10 @@ impl Credentials {
         })
     }
 
+    pub fn access_token(&self) -> Option<&AccessToken> {
+        self.access_token.as_ref()
+    }
+
     /// The currently authenticated user.
     pub fn user(&self) -> &User {
         &self.user
@@ -340,7 +358,7 @@ pub struct User {
 /// Every time it's used, you should first check if it's expired, and refresh it if so.
 ///
 /// To produce one from a JWT, use [`Context::verify_token`].
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct AccessToken {
     token: String,
     expires_at: i64,
@@ -373,6 +391,7 @@ impl RefreshToken {
 #[derive(serde::Deserialize, serde::Serialize)]
 struct CredentialsConfig {
     refresh: RefreshToken,
+    access: Option<AccessToken>,
     user: User,
 }
 

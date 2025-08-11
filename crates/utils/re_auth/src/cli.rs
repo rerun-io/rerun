@@ -62,6 +62,7 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
     if !options.force_login {
         if let Ok(Some(mut credentials)) = workos::Credentials::load() {
             // Try to do a refresh to validate the token
+            // TODO(jan): call redap `/verify-token` instead
             match credentials.refresh(context).await {
                 Ok(_) => {
                     println!(
@@ -78,7 +79,7 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
                         "Note: Credentials were already present on the machine, but validating them failed:\n    {err}"
                     );
                     println!("This is normal if you haven't used your credentials in some time.");
-                    // continue
+                    // fallthrough
                 }
             }
         }
@@ -216,9 +217,7 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
     p.set_message("Verifying login...");
     let credentials = Credentials::verify_auth_response(context, auth.into())?;
 
-    // 5. Store the refresh token
-    // The access token lives only in memory, because it's short-lived.
-    // Refresh tokens last between a few hours to a few days, so that's what we store on the user's machine.
+    // 5. Store credentials
     credentials.store()?;
 
     p.finish_and_clear();
