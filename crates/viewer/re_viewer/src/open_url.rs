@@ -1,11 +1,3 @@
-//! Methods & structs for handling opening arbitrary URLs inside the viewer for both native and web.
-//!
-//! As opposed to opening them in a new tab.
-//!
-//! This is the highest level way of opening arbitrary URLs inside the viewer.
-//! The only higher level way of opening URLs is `ui.ctx().open_url(...)` which will
-//! open the URL in a browser if it's not a content URL that we can open inside the viewer.
-
 use re_data_source::DataSource;
 use re_viewer_context::{CommandSender, Item, SystemCommand, SystemCommandSender as _};
 
@@ -17,12 +9,18 @@ pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 
 /// Tries to open a content URL inside the viewer.
 ///
+/// This is for handling opening arbitrary URLs inside the viewer
+/// (as opposed to opening them in a new tab) for both native and web.
 /// Supported are:
 /// * any URL that can be interpreted as a [`DataSource`]
 /// * intra-recording links (typically links to an entity)
 /// * web event listeners
 ///
-/// Returns `Ok(())` if the URL was opened successfully, `Err(())` if the URL was not a valid content URL,
+/// This is the highest level way of opening arbitrary URLs inside the viewer.
+/// The only higher level way of opening URLs is `ui.ctx().open_url(...)` which will
+/// open the URL in a browser if it's not a content URL that we can open inside the viewer.
+///
+/// Returns `Ok(())` if the URL schema was recognized, `Err(())` if the URL was not a valid content URL.
 pub fn try_open_url_in_viewer(
     _egui_ctx: &egui::Context,
     url: &str,
