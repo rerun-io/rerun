@@ -6,12 +6,13 @@ from typing import TYPE_CHECKING, Any
 
 import rerun_bindings as bindings
 
+from ._baseclasses import AsComponents  # noqa: TC001
 from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
     import pyarrow as pa
 
-    from ._baseclasses import AsComponents, ComponentDescriptor, DescribedComponentBatch
+    from ._baseclasses import ComponentDescriptor, DescribedComponentBatch
     from .recording_stream import RecordingStream
 
 
