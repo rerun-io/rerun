@@ -145,7 +145,7 @@ impl BlueprintUndoState {
         // then you don't want an undo-point each time you pause the mouse - only on mouse-up!
         // So we still need a call to `is_interacting`, no matter what.
         // We must also make sure that this doesn't ignore actual bugs
-        // (writing spurious data to the bluprint store each frame -
+        // (writing spurious data to the blueprint store each frame -
         // see https://github.com/rerun-io/rerun/issues/10304 and the comment below for more info).
 
         // Don't store too many undo-points:
