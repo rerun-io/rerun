@@ -73,7 +73,7 @@ def run_cargo(
     # We shouldn't require the web viewer .wasm to exist before running clippy, unit tests, etc:
     additional_env_vars["RERUN_DISABLE_WEB_VIEWER_SERVER"] = "1"
 
-    # Explicitly TRACY to avoid macOS failure on CI, that looks like this:
+    # Disable TRACY to avoid macOS failure on CI, that looks like this:
     # > Tracy Profiler initialization failure: CPU doesn't support invariant TSC.
     # > Define TRACY_NO_INVARIANT_CHECK=1 to ignore this error, *if you know what you are doing*.
     # > Alternatively you may rebuild the application with the TRACY_TIMER_FALLBACK define to use lower resolution timer.
