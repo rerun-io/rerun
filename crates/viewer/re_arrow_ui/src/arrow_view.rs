@@ -5,7 +5,7 @@ use arrow::datatypes::DataType;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
-pub enum ArrowView<'a> {
+pub enum ArrayView<'a> {
     List(MaybeArc<'a>),
     /// A list of maps
     MapArray(&'a MapArray),
@@ -14,7 +14,7 @@ pub enum ArrowView<'a> {
     Map(StructArray),
 }
 
-impl<'a> ArrowView<'a> {
+impl<'a> ArrayView<'a> {
     pub fn new(array: &'a dyn Array) -> Self {
         if let Some(map_array) = array.as_map_opt() {
             if map_array.len() > 1 {
@@ -41,10 +41,10 @@ impl<'a> ArrowView<'a> {
 
     pub fn as_array(&self) -> &dyn Array {
         match self {
-            ArrowView::List(list) => list.as_ref(),
-            ArrowView::MapArray(list) => list as &dyn Array,
-            ArrowView::MapArrayOwned(list) => list as &dyn Array,
-            ArrowView::Map(list) => list as &dyn Array,
+            ArrayView::List(list) => list.as_ref(),
+            ArrayView::MapArray(list) => list as &dyn Array,
+            ArrayView::MapArrayOwned(list) => list as &dyn Array,
+            ArrayView::Map(list) => list as &dyn Array,
         }
     }
 
@@ -61,11 +61,11 @@ impl<'a> ArrowView<'a> {
         match self {
             Self::MapArray(map) => {
                 let array = map.value(index);
-                Some(ChildNodes::List(ArrowView::Map(array)))
+                Some(ChildNodes::List(ArrayView::Map(array)))
             }
             Self::MapArrayOwned(map) => {
                 let array = map.value(index);
-                Some(ChildNodes::List(ArrowView::Map(array)))
+                Some(ChildNodes::List(ArrayView::Map(array)))
             }
             Self::Map(struct_array) => Some(ChildNodes::Map {
                 keys: struct_array.column(0).clone().into(),

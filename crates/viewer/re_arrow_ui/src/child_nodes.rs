@@ -1,5 +1,5 @@
 use crate::arrow_node::ArrowNode;
-use crate::arrow_view::ArrowView;
+use crate::arrow_view::ArrayView;
 use arrow::array::{Array, AsArray, StructArray, UnionArray};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -10,7 +10,7 @@ use std::sync::Arc;
 /// For others (lists), it will hold a reference to the child array.
 #[derive(Debug, Clone)]
 pub enum ChildNodes<'a> {
-    List(ArrowView<'a>),
+    List(ArrayView<'a>),
     Struct {
         parent_index: usize,
         array: &'a StructArray,
@@ -42,13 +42,13 @@ impl<'a> ChildNodes<'a> {
             }
         } else if let Some(list) = array.as_list_opt::<i32>() {
             let value = list.value(index);
-            ChildNodes::List(ArrowView::new_ref(value.into()))
+            ChildNodes::List(ArrayView::new_ref(value.into()))
         } else if let Some(list) = array.as_list_opt::<i64>() {
             let value = list.value(index);
-            ChildNodes::List(ArrowView::new_ref(value.into()))
+            ChildNodes::List(ArrayView::new_ref(value.into()))
         } else if let Some(list_array) = array.as_fixed_size_list_opt() {
             let value = list_array.value(index);
-            ChildNodes::List(ArrowView::new_ref(value.into()))
+            ChildNodes::List(ArrayView::new_ref(value.into()))
         } else if let Some(dict_array) = array.as_any_dictionary_opt() {
             if !dict_array.keys().data_type().is_nested() {
                 ChildNodes::InlineKeyMap {
@@ -82,7 +82,7 @@ impl<'a> ChildNodes<'a> {
             //     parent_index: index,
             //     array: entries,
             // }
-            ChildNodes::List(ArrowView::new(array))
+            ChildNodes::List(ArrayView::new(array))
         } else if let Some(union_array) = array.as_union_opt() {
             ChildNodes::Union {
                 array: union_array,
