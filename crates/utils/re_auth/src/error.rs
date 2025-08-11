@@ -13,11 +13,16 @@ pub enum Error {
     #[error("failed to parse token")]
     MalformedToken,
 
-    #[cfg(feature = "workos")]
-    #[error("failed to fetch JWKS from external provider")]
-    JwksFetchError,
+    #[error("token verification failed")]
+    InvalidToken,
 
     #[cfg(feature = "workos")]
-    #[error("no external provider configured")]
+    #[error("failed to load external provider JWKS: {0}")]
+    ContextLoadError(crate::workos::ContextLoadError),
+
+    #[cfg(feature = "workos")]
+    #[error(
+        "no external provider configured, configure one using `RedapProvider::with_external_provider`"
+    )]
     NoExternalProvider,
 }

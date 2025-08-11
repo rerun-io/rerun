@@ -1,8 +1,6 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
-use directories::ProjectDirs;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header, jwk::JwkSet};
-use re_log::ResultExt;
 use serde::{Deserialize, Serialize};
 
 use crate::Jwt;
@@ -12,8 +10,9 @@ use crate::Jwt;
 /// during network transit.
 const SOFT_EXPIRE_SECS: i64 = 60;
 
-fn project_dirs() -> Option<ProjectDirs> {
-    ProjectDirs::from("", "", "rerun")
+#[cfg(not(target_arch = "wasm32"))]
+fn project_dirs() -> Option<directories::ProjectDirs> {
+    directories::ProjectDirs::from("", "", "rerun")
 }
 
 pub mod api;
@@ -21,9 +20,9 @@ pub mod api;
 const ISSUER_URL_BASE: &str = "https://api.workos.com/user_management";
 const JWKS_URL_BASE: &str = "https://api.workos.com/sso/jwks";
 
-// TODO: This is the client ID for the WorkOS public staging environment
-//       should be replaced by our actual client ID at some point.
-//       When doing so, don't forget to replace it everywhere. :)
+// TODO(jan): This is the client ID for the WorkOS public staging environment
+// should be replaced by our actual client ID at some point.
+// When doing so, don't forget to replace it everywhere. :)
 const WORKOS_CLIENT_ID: &str = match option_env!("WORKOS_CLIENT_ID") {
     Some(v) => v,
     None => "client_01JZ3JVQW6JNVXME6HV9G4VR0H",
@@ -118,11 +117,10 @@ pub struct AuthContext {
 }
 
 impl AuthContext {
-    const FILENAME: &str = "context.json";
-
     pub async fn load() -> Result<Self, ContextLoadError> {
-        // TODO: for server usage, we can't easily cache on disk
-        // TODO: set our own TTL for this, refetch when it's about to expire
+        // TODO(jan): for server usage, we should cache in some other way
+        // TODO(jan): set our own TTL for this, refetch when it's about to expire
+
         // 1. try to load from disk cache
         match Self::load_from_cache() {
             Ok(cached) => {
@@ -142,9 +140,12 @@ impl AuthContext {
         Ok(this)
     }
 
-    fn path() -> Option<PathBuf> {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn path() -> Option<std::path::PathBuf> {
+        const FILENAME: &str = "context.json";
+
         let project_dirs = project_dirs()?;
-        let path = project_dirs.cache_dir().join(Self::FILENAME);
+        let path = project_dirs.cache_dir().join(FILENAME);
         Some(path)
     }
 
@@ -165,6 +166,7 @@ impl AuthContext {
         })
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn load_from_cache() -> Result<Self, ContextLoadError> {
         let path = Self::path().ok_or_else(|| ContextLoadError::UnknownConfigLocation)?;
         let jwks = match std::fs::read_to_string(&path) {
@@ -181,19 +183,34 @@ impl AuthContext {
         })
     }
 
+    // TODO(jan): implement when integrating directly in the Viewer
+    #[cfg(target_arch = "wasm32")]
+    fn load_from_cache() -> Result<Self, ContextLoadError> {
+        unimplemented!()
+    }
+
     /// Note: This is just a cache, so we're ok with it failing.
+    #[cfg(not(target_arch = "wasm32"))]
     fn store_in_cache(&self) {
-        // TODO: should we be so vocal here?
-        let Some(path) = Self::path()
-            .ok_or_else(|| ContextLoadError::UnknownConfigLocation)
-            .ok_or_log_error()
-        else {
-            return;
+        use re_log::ResultExt as _;
+
+        let path = match Self::path().ok_or_else(|| ContextLoadError::UnknownConfigLocation) {
+            Ok(path) => path,
+            Err(err) => {
+                re_log::debug!("failed to get config directory: {err}");
+                return;
+            }
         };
         let Some(content) = serde_json::to_string_pretty(&*self.jwks).ok_or_log_error() else {
             return;
         };
         std::fs::write(&path, content).ok_or_log_error();
+    }
+
+    // TODO(jan): implement when integrating directly in the Viewer
+    #[cfg(target_arch = "wasm32")]
+    fn store_in_cache(&self) {
+        unimplemented!()
     }
 
     /// Validate a JWT.
@@ -396,12 +413,12 @@ struct CredentialsConfig {
 }
 
 impl CredentialsConfig {
-    const FILENAME: &str = "credentials.json";
-
     #[cfg(not(target_arch = "wasm32"))]
-    fn path() -> Option<PathBuf> {
+    fn path() -> Option<std::path::PathBuf> {
+        const FILENAME: &str = "credentials.json";
+
         let project_dirs = project_dirs()?;
-        Some(project_dirs.config_local_dir().join(Self::FILENAME))
+        Some(project_dirs.config_local_dir().join(FILENAME))
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -416,7 +433,6 @@ impl CredentialsConfig {
             },
         };
 
-        // TODO: request fresh auth on deserialization failure
         Ok(serde_json::from_str(&data)?)
     }
 
@@ -434,7 +450,7 @@ impl CredentialsConfig {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn store(&self) -> Result<(), CredentialsError> {
+    fn store(&self) -> Result<(), CredentialsStoreError> {
         todo!("persist in localstorage")
     }
 }

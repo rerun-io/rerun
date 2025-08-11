@@ -9,7 +9,6 @@ pub enum AuthCommands {
 
 #[derive(Debug, Clone, Parser)]
 pub struct LoginCommand {
-    // TODO(jan): default should be `rerun.io` prod
     #[clap(long, default_value = "https://rerun.io/login")]
     login_url: String,
 

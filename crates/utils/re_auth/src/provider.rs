@@ -212,11 +212,10 @@ impl RedapProvider {
     /// These must be fetched from a remote host.
     #[cfg(feature = "workos")]
     pub async fn with_external_provider(self, org_id: impl Into<String>) -> Result<Self, Error> {
-        // TODO: fetch these less often
-        // TODO: better error
+        // TODO(jan): fetch these less often
         let ctx = crate::workos::AuthContext::load().await.map_err(|err| {
             re_log::debug!("failed to fetch external keys: {err}");
-            Error::JwksFetchError
+            Error::ContextLoadError(err)
         })?;
         let keys = std::sync::Arc::unwrap_or_clone(ctx.jwks);
         let org_id = org_id.into();
@@ -272,12 +271,11 @@ impl RedapProvider {
                     return Err(Error::NoExternalProvider);
                 };
 
-                let key = match external.keys.find(kid) {
+                let key = match external.keys.find(&kid) {
                     Some(key) => key,
                     None => {
-                        // TODO: better error?
                         re_log::debug!("no key with id {kid} found");
-                        return Err(Error::MalformedToken);
+                        return Err(Error::InvalidToken);
                     }
                 };
                 let key = DecodingKey::from_jwk(key)?;
@@ -309,12 +307,11 @@ impl RedapProvider {
                     .as_ref()
                     .expect("bug: verified external key without external provider configured");
                 if claims.org_id.as_ref() != Some(&external.org_id) {
-                    // TODO: better error
                     re_log::debug!(
                         "verification failed: organization ID was not {}",
                         external.org_id
                     );
-                    return Err(Error::MalformedToken);
+                    return Err(Error::InvalidToken);
                 }
             }
             Claims::Redap(_) => {

@@ -60,27 +60,46 @@ pub struct LoginOptions<'a> {
 /// and doesn't perform the login flow if so, unless `options.force_login` is set to `true`.
 pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(), Error> {
     if !options.force_login {
-        if let Ok(Some(mut credentials)) = workos::Credentials::load() {
-            // Try to do a refresh to validate the token
-            // TODO(jan): call redap `/verify-token` instead
-            match credentials.refresh(context).await {
-                Ok(_) => {
-                    println!(
-                        "You're already logged in as {}, and your credentials are valid.",
-                        credentials.user().email
-                    );
-                    println!("Use `rerun auth login --force` if you'd like to login again anyway.");
-                    println!("Note: We've refreshed your credentials.");
-                    credentials.store()?;
-                    return Ok(());
+        // NOTE: If the loading fails for whatever reason, we debug log the error
+        // and have the user login again as if nothing happened.
+        match workos::Credentials::load() {
+            Ok(Some(mut credentials)) => {
+                // Try to do a refresh to validate the token
+                // TODO(jan): call redap `/verify-token` instead
+                match credentials.refresh(context).await {
+                    Ok(_) => {
+                        println!(
+                            "You're already logged in as {}, and your credentials are valid.",
+                            credentials.user().email
+                        );
+                        println!(
+                            "Use `rerun auth login --force` if you'd like to login again anyway."
+                        );
+                        println!("Note: We've refreshed your credentials.");
+                        credentials.store()?;
+                        return Ok(());
+                    }
+                    Err(err) => {
+                        println!(
+                            "Note: Credentials were already present on the machine, but validating them failed:\n    {err}"
+                        );
+                        println!(
+                            "This is normal if you haven't used your credentials in some time."
+                        );
+                        // Credentials are bad, fallthrough to login path.
+                    }
                 }
-                Err(err) => {
-                    println!(
-                        "Note: Credentials were already present on the machine, but validating them failed:\n    {err}"
-                    );
-                    println!("This is normal if you haven't used your credentials in some time.");
-                    // fallthrough
-                }
+            }
+
+            Ok(None) => {
+                // No credentials yet, login as usual.
+            }
+
+            Err(err) => {
+                re_log::debug!(
+                    "validating credentials failed, logging user in again anyway. reason: {err}"
+                );
+                // fallthrough
             }
         }
     }
