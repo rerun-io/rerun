@@ -10,7 +10,6 @@
 //!   examples and the welcome screen.
 //! - Add a `?url` query param to the address bar when navigating to
 //!   an example or a redap entry, for direct link sharing.
-// TODO: above is simpler once we use our re_uri scheme here as well
 
 use std::sync::{Arc, OnceLock};
 
@@ -25,41 +24,32 @@ use crate::{
 };
 use re_viewer_context::CommandSender;
 
-#[derive(Clone, Default, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct HistoryEntry {
-    urls: Vec<String>,
+    /// The URL to load/navigate to when using this entry.
+    ///
+    /// Note that the `url` parameter actually supports several urls, but
+    /// for navigation purposes we only support a single one.
+    url: String,
 }
 
 // Builder methods
 impl HistoryEntry {
-    pub const KEY: &'static str = "__rerun";
+    const KEY: &'static str = "__rerun";
 
-    /// Set the URL of the RRD to load/navigate to when using this entry.
-    pub fn rrd_url(url: String) -> Self {
-        Self { urls: vec![url] }
-    }
-
-    /// Set the Redap URI to load/navigate to when using this entry.
-    pub fn redap_uri(uri: re_uri::RedapUri) -> Self {
-        if uri.origin() == &*re_redap_browser::EXAMPLES_ORIGIN {
+    pub fn new(url: String) -> Self {
+        if url == re_redap_browser::EXAMPLES_ORIGIN.as_url() {
             Self::default()
         } else {
-            Self {
-                urls: vec![uri.to_string()],
-            }
+            Self { url }
         }
     }
-}
 
-// Serialization
-impl HistoryEntry {
     pub fn to_query_string(&self) -> Result<String, JsValue> {
         use std::fmt::Write as _;
 
         let params = UrlSearchParams::new()?;
-        for url in &self.urls {
-            params.append("url", url);
-        }
+        params.append("url", &self.url);
         let mut out = "?".to_owned();
         write!(&mut out, "{}", params.to_string()).ok();
 
@@ -149,8 +139,7 @@ fn handle_popstate(
         return;
     }
 
-    if new_state.is_none() || new_state.as_ref().is_some_and(|v| v.urls.is_empty()) {
-        // TODO: go to the initial screen instead of always going to the welcome screen.
+    if new_state.is_none() || new_state.as_ref().is_some_and(|v| v.url.is_empty()) {
         re_log::debug!("popstate: go to welcome screen");
         re_redap_browser::switch_to_welcome_screen(command_sender);
         egui_ctx.request_repaint();
@@ -165,20 +154,18 @@ fn handle_popstate(
 
     let follow_if_http = false;
     let select_redap_source_when_loaded = true;
-    for url in &entry.urls {
-        if try_open_url_in_viewer(
-            egui_ctx,
-            url,
-            follow_if_http,
-            select_redap_source_when_loaded,
-            &command_sender,
-        )
-        .is_err()
-        {
-            re_log::warn!("Failed to open URL: {url}");
-        }
-        re_log::debug!("popstate: add receiver {url:?}");
+    if try_open_url_in_viewer(
+        egui_ctx,
+        &entry.url,
+        follow_if_http,
+        select_redap_source_when_loaded,
+        &command_sender,
+    )
+    .is_err()
+    {
+        re_log::warn!("Failed to open URL: {}", entry.url);
     }
+    re_log::debug!("popstate: add receiver {}", entry.url);
 
     set_stored_history_entry(Some(entry));
     egui_ctx.request_repaint();

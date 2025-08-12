@@ -3027,79 +3027,20 @@ fn update_web_address_bar(
     if !enable_history {
         return None;
     }
+    let Some(url) = crate::open_url::display_mode_to_content_url(store_hub, display_mode) else {
+        return None;
+    };
 
     re_log::debug!("Updating navigation bar");
-
-    // TODO: most of this should probably live in `history.rs`
-    // TODO: Handle unnecessary changes.
 
     use crate::history::{HistoryEntry, HistoryExt as _, history};
     use crate::web_tools::JsResultExt as _;
 
-    let new_history_entry = match display_mode {
-        DisplayMode::Settings => {
-            // Not much point in updating address for the settings screen.
-            None
-        }
-        DisplayMode::LocalRecordings => {
-            // Local recordings includes those downloaded from rrd urls
-            // (as of writing this includes the sample recordings!)
-            // If it's one of those we want to update the address bar accordingly.
-
-            let active_recording = store_hub.active_recording()?;
-            let data_source = active_recording.data_source.as_ref()?;
-
-            match data_source {
-                SmartChannelSource::RrdHttpStream { url, follow: _ } => {
-                    Some(HistoryEntry::rrd_url(url.clone()))
-                }
-
-                SmartChannelSource::File(_path_buf) => {
-                    // Can't share links to local files.
-                    None
-                }
-                SmartChannelSource::RrdWebEventListener
-                | SmartChannelSource::JsChannel { .. }
-                | SmartChannelSource::Sdk
-                | SmartChannelSource::Stdin => {
-                    // Can't share links to live streams / local events.
-                    None
-                }
-                SmartChannelSource::RedapGrpcStream {
-                    uri,
-                    select_when_loaded: _,
-                } => Some(HistoryEntry::redap_uri(re_uri::RedapUri::DatasetData(
-                    uri.clone(),
-                ))),
-
-                SmartChannelSource::MessageProxy(_proxy_uri) => {
-                    // TODO:
-                    None
-                }
-            }
-        }
-        DisplayMode::LocalTable(_table_id) => {
-            // We can't share links to local tables, so can't update the url.
-            None
-        }
-        DisplayMode::RedapEntry(_entry_id) => {
-            // TODO(andreas): Implement this.
-            None
-        }
-        DisplayMode::RedapServer(origin) => Some(HistoryEntry::redap_uri(
-            re_uri::RedapUri::Catalog(re_uri::CatalogUri::new(origin.clone())),
-        )),
-        DisplayMode::ChunkStoreBrowser => {
-            // As of writing the store browser is more of a debugging feature.
-            // Could change the url fragments in the future.
-            None
-        }
-    };
-
-    if let Some(new_history_entry) = new_history_entry {
-        if let Some(history) = history().ok_or_log_js_error() {
-            history.push_entry(new_history_entry).ok_or_log_js_error();
-        }
+    if let Some(history) = history().ok_or_log_js_error() {
+        // TODO(andreas): don't push if only the fragments change.
+        history
+            .push_entry(HistoryEntry::new(url))
+            .ok_or_log_js_error();
     }
 
     Some(())

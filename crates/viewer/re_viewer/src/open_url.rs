@@ -1,7 +1,10 @@
 use re_data_source::DataSource;
-use re_viewer_context::{CommandSender, Item, SystemCommand, SystemCommandSender as _};
+use re_smart_channel::SmartChannelSource;
+use re_viewer_context::{
+    CommandSender, DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _,
+};
 
-/// A URL that points to a a selection (typically an entity) within the currently active recording.
+/// A URL that points to a selection (typically an entity) within the currently active recording.
 pub const INTRA_RECORDING_URL_SCHEME: &str = "recording://";
 
 /// An eventListener for rrd posted from containing html
@@ -111,6 +114,83 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, url: &str, command_sender
         }
     }));
 
-    // TODO: make this work via the `LoadDataSource` command instead.
     command_sender.send_system(SystemCommand::AddReceiver(rx));
+}
+
+/// Tries to create a content URL for the current display mode that can be shared.
+///
+/// Note that the returned URL does not contain the "web viewer hosting" part.
+/// I.e. you can import this URL in a Rerun viewer but you can't necessarily put it in your browser address bar.
+///
+/// Returns `None` if the current state can't be shared with a url.
+// TODO(andreas): We'll need this for our "share link" editor again, but with lots more knobs. Probably need to split this.
+//                We can likely have a more structured one for redap urls and have this higher level function use that (share editor is only planned for redap urls)
+// TODO(andreas): Should have anchors for selection etc. when supported.
+#[allow(unused)] // only used in web viewer as of writing
+pub fn display_mode_to_content_url(
+    store_hub: &StoreHub,
+    display_mode: &DisplayMode,
+) -> Option<String> {
+    re_log::debug!("Updating navigation bar");
+
+    match display_mode {
+        DisplayMode::Settings => {
+            // Not much point in updating address for the settings screen.
+            None
+        }
+        DisplayMode::LocalRecordings => {
+            // Local recordings includes those downloaded from rrd urls
+            // (as of writing this includes the sample recordings!)
+            // If it's one of those we want to update the address bar accordingly.
+
+            let active_recording = store_hub.active_recording()?;
+            let data_source = active_recording.data_source.as_ref()?;
+
+            match data_source {
+                SmartChannelSource::RrdHttpStream { url, follow: _ } => Some(url.clone()),
+
+                SmartChannelSource::File(_path_buf) => {
+                    // Can't share links to local files.
+                    None
+                }
+
+                SmartChannelSource::RrdWebEventListener
+                | SmartChannelSource::JsChannel { .. }
+                | SmartChannelSource::Sdk
+                | SmartChannelSource::Stdin => {
+                    // Can't share links to live streams / local events.
+                    None
+                }
+
+                SmartChannelSource::RedapGrpcStream {
+                    uri,
+                    select_when_loaded: _,
+                } => Some(uri.to_string()),
+
+                SmartChannelSource::MessageProxy(proxy_uri) => Some(proxy_uri.to_string()),
+            }
+        }
+
+        DisplayMode::LocalTable(_table_id) => {
+            // We can't share links to local tables, so can't update the url.
+            None
+        }
+
+        DisplayMode::RedapEntry(_entry_id) => {
+            // TODO(andreas): Implement this.
+            None
+        }
+
+        DisplayMode::RedapServer(origin) => {
+            // `as_url` on the origin gives us an http link.
+            // We want a rerun link here instead.
+            Some(re_uri::RedapUri::Catalog(re_uri::CatalogUri::new(origin.clone())).to_string())
+        }
+
+        DisplayMode::ChunkStoreBrowser => {
+            // As of writing the store browser is more of a debugging feature.
+            // Could change the url fragments in the future.
+            None
+        }
+    }
 }
