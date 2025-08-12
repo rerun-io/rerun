@@ -20,7 +20,6 @@ all-features = true
 
 [features]
 default = []
-#testing = ["dep:serde", "smallvec/serde", "re_viewer_context/testing"]  #TODO
 
 [dependencies]
 re_data_ui.workspace = true
