@@ -15,7 +15,7 @@ This document describes the technical architecture of Rerun.
 
 ### Logging APIs
 
-It all starts with logging. You can log rich data (point clouds, images, etc) with either our Python SDK or our Rust SDK.
+It all starts with logging. You can log rich data (point clouds, images, etc.) with either our Python SDK or our Rust SDK.
 
 The logging SDK:s encodes the data using Apache Arrow (see more below).
 
@@ -70,7 +70,7 @@ We use [`eframe`](https://github.com/emilk/egui/tree/master/crates/eframe), the 
 Wasm (short for [WebAssembly](https://webassembly.org/)) is a binary instruction format supported by all major browser.
 The Rerun Viewer can be compiled to Wasm and run in a browser.
 
-Threading support in Wasm is nascent, so care must we taken that we don't spawn any threads when compiling for `wasm32`.
+Threading support in Wasm is nascent, so care must be taken that we don't spawn any threads when compiling for `wasm32`.
 
 Wasm has no access to the host system, except via JS calls (something that may change once [WASI](https://wasi.dev/) rolls out), so when compiling for `wasm32` you can NOT use the Rust standard library to:
 
@@ -89,7 +89,7 @@ In fact, the whole of the Rerun Viewer is written in an immediate mode style. Ea
 The advantage of immediate mode is that is removes all state management. There is no callbacks that are called when some state has already changed, and the state of the blueprint is always in sync with what you see on screen.
 
 Immediate mode is also a forcing function, forcing us to relentlessly optimize our code.
-This leads to a very responsive GUI, where there is no "hickups" when switching data source or doing time scrubbing.
+This leads to a very responsive GUI, where there is no "hiccups" when switching data source or doing time scrubbing.
 
 Of course, this will only take us so far. In the future we plan on caching queries and work submitted to the renderer so that we don't perform unnecessary work each frame. We also plan on doing larger operation in background threads. This will be necessary in order to support viewing large datasets, e.g. several million points. The plan is still to do so within an immediate mode framework, retaining most of the advantages of stateless code.
 
@@ -120,14 +120,14 @@ Update instructions:
 
 ### SDK/CLI/Wasm top-level crates
 
-| Crate     | Description                          |
-| --------- | ------------------------------------ | ------------------------ | --- |
-| rerun-cli | Rerun native CLI binary crate        |
-| Rerun     | Rerun Rust SDK and Viewer shim crate |
-| rerun_c   | Rerun C SDK                          |
-| rerun_py  | Rerun Python SDK                     |
-| re_sdk    | Rerun logging SDK                    |
-| <!--      | re_renderer_examples                 | Examples for re_renderer | --> |
+| Crate                | Description                          |
+|----------------------|--------------------------------------|
+| rerun-cli            | Rerun native CLI binary crate        |
+| Rerun                | Rerun Rust SDK and Viewer shim crate |
+| rerun_c              | Rerun C SDK                          |
+| rerun_py             | Rerun Python SDK                     |
+| rerun_server         | In-memory server example             |
+| re_sdk               | Rerun logging SDK                    |
 
 ### Viewer crates
 
@@ -158,19 +158,20 @@ Update instructions:
 
 ##### UI support crates
 
-| Crate                 | Description                                                          |
-| --------------------- | -------------------------------------------------------------------- |
-| re_context_menu       | Support crate for context menu and actions.                          |
-| re_data_ui            | Provides UI elements for Rerun component data for the Rerun Viewer.  |
-| re_renderer           | A wgpu-based renderer for all your visualization needs.              |
-| re_ui                 | Rerun GUI theme and helpers, built around egui                       |
-| re_viewer_context     | Rerun Viewer state that is shared with the viewer's code components. |
-| re_viewport_blueprint | The data model description of the viewport panel.                    |
+| Crate                  | Description                                                          |
+|------------------------|----------------------------------------------------------------------|
+| re_context_menu        | Support crate for context menu and actions.                          |
+| re_data_ui             | Provides UI elements for Rerun component data for the Rerun Viewer.  |
+| re_renderer            | A wgpu-based renderer for all your visualization needs.              |
+| re_renderer_examples   | Examples for re_renderer                                             |
+| re_ui                  | Rerun GUI theme and helpers, built around egui                       |
+| re_viewer_context      | Rerun Viewer state that is shared with the viewer's code components. |
+| re_viewport_blueprint  | The data model description of the viewport panel.                    |
 
 ### Application-level store
 
 | Crate           | Description                                                     |
-| --------------- | --------------------------------------------------------------- |
+|-----------------|-----------------------------------------------------------------|
 | re_dataframe    | The Rerun public data APIs.                                     |
 | re_datafusion   | DataFusion interfaces to Rerun gRPC queries                     |
 | re_entity_db    | In-memory storage of Rerun entities                             |
@@ -182,7 +183,7 @@ Update instructions:
 ### Low-level store
 
 | Crate           | Description                                                                                   |
-| --------------- | --------------------------------------------------------------------------------------------- |
+|-----------------|-----------------------------------------------------------------------------------------------|
 | re_chunk        | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
 | re_chunk_store  | An in-memory time series database for Rerun log data, based on Apache Arrow.                  |
 | re_format_arrow | Formatting of Apache Arrow tables.                                                            |
@@ -193,7 +194,7 @@ Update instructions:
 ### Data flow
 
 | Crate                | Description                                                       |
-| -------------------- | ----------------------------------------------------------------- |
+|----------------------|-------------------------------------------------------------------|
 | re_data_loader       | Handles loading of Rerun data from file using data loader plugins |
 | re_data_source       | Handles loading of Rerun data from different sources              |
 | re_grpc_client       | Communicate with the Rerun Data Platform over gRPC                |
@@ -203,7 +204,7 @@ Update instructions:
 ### Build support
 
 | Crate             | Description                                                      |
-| ----------------- | ---------------------------------------------------------------- |
+|-------------------|------------------------------------------------------------------|
 | re_build_info     | Information about the build. Use together with re_build_tools    |
 | re_build_tools    | build.rs helpers for generating build info                       |
 | re_dev_tools      | Various tools for Rerun development. Each tool has a subcommand. |
@@ -213,7 +214,7 @@ Update instructions:
 ### Utilities
 
 | Crate              | Description                                                                          |
-| ------------------ | ------------------------------------------------------------------------------------ |
+|--------------------|--------------------------------------------------------------------------------------|
 | re_analytics       | Rerun's analytics SDK                                                                |
 | re_arrow_util      | Helpers for working with arrow                                                       |
 | re_auth            | Authentication and authorization helpers                                             |
@@ -225,7 +226,7 @@ Update instructions:
 | re_format          | Miscellaneous tools to format and parse numbers, durations, etc.                     |
 | re_int_histogram   | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
 | re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
-| re_mcap_ros2       | Deserialization of a subset of ROS2 messages.
+| re_mcap_ros2       | Deserialization of a subset of ROS2 messages.                                        |
 | re_memory          | Run-time memory tracking and profiling.                                              |
 | re_perf_telemetry  | In and out of process performance profiling utilities for Rerun & Redap              |
 | re_smart_channel   | A channel that keeps track of latency and queue length.                              |
@@ -239,7 +240,7 @@ Update instructions:
 ### Test crates
 
 | Crate              | Description                                                   |
-| ------------------ | ------------------------------------------------------------- |
+|--------------------|---------------------------------------------------------------|
 | re_test_context    | Provides a test context that builds on `re_viewer_context.    |
 | re_test_viewport   | Extends the `re_test_context` with viewport-related features. |
 
