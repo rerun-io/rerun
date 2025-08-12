@@ -392,7 +392,7 @@ impl PyDataframeQueryView {
         let capsule_name = cr"datafusion_table_provider".into();
 
         let runtime = get_tokio_runtime().handle().clone();
-        let provider = FFI_TableProvider::new(provider, false, Some(runtime));
+        let provider = FFI_TableProvider::new(provider, true, Some(runtime));
 
         PyCapsule::new(py, provider, Some(capsule_name))
     }
