@@ -37,6 +37,8 @@ impl DataLoader for McapLoader {
             return Err(DataLoaderError::Incompatible(path)); // simply not interested
         }
 
+        re_tracing::profile_function!();
+
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
         // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
@@ -67,6 +69,8 @@ impl DataLoader for McapLoader {
         if filepath.is_dir() || filepath.extension().is_none_or(|ext| ext != "mcap") {
             return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
         }
+
+        re_tracing::profile_function!();
 
         let settings = settings.clone();
 
@@ -237,6 +241,8 @@ fn load_mcap(
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
 ) -> Result<(), DataLoaderError> {
+    re_tracing::profile_function!();
+
     let store_id = settings.recommended_store_id();
 
     if tx
@@ -345,6 +351,7 @@ fn load_mcap(
     }
 
     for chunk in &summary.chunk_indexes {
+        re_tracing::profile_scope!("mcap-chunk");
         let channel_counts = mcap::util::get_chunk_message_count(chunk, &summary, mcap)?;
 
         re_log::trace!(
@@ -355,10 +362,11 @@ fn load_mcap(
 
         let mut decoder = mcap::decode::McapChunkDecoder::new(&registry, channel_counts);
 
-        summary
+        let messages = summary
             .stream_chunk(mcap, chunk)
-            .map_err(|err| DataLoaderError::Other(err.into()))?
-            .for_each(|msg| match msg {
+            .map_err(|err| DataLoaderError::Other(err.into()))?;
+        for msg in messages {
+            match msg {
                 Ok(message) => {
                     if let Err(err) = decoder.decode_next(&message) {
                         re_log::error!(
@@ -370,8 +378,10 @@ fn load_mcap(
                 Err(err) => {
                     re_log::error!("Failed to read message from MCAP file: {err}");
                 }
-            });
+            }
+        }
 
+        re_tracing::profile_scope!("finish");
         for chunk in decoder.finish() {
             if let Ok(chunk) = chunk {
                 if tx
