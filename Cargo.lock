@@ -3257,9 +3257,12 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59a81c221a1e4dad06cb9c9deb19aea1193a5eea084e8cd42d869068132bf876"
 dependencies = [
+ "async-channel",
  "document-features",
  "futures-util",
  "js-sys",
+ "serde",
+ "serde_json",
  "ureq",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -7187,12 +7190,20 @@ name = "re_auth"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
  "base64 0.22.1",
+ "const_format",
+ "directories",
+ "ehttp",
+ "indicatif",
  "jsonwebtoken",
  "rand 0.8.5",
  "re_log",
  "serde",
+ "serde_json",
  "thiserror 1.0.69",
+ "tiny_http",
  "tonic",
+ "url",
+ "webbrowser",
 ]
 
 [[package]]
@@ -9209,6 +9220,7 @@ dependencies = [
  "puffin",
  "rayon",
  "re_analytics",
+ "re_auth",
  "re_build_info",
  "re_build_tools",
  "re_byte_size",

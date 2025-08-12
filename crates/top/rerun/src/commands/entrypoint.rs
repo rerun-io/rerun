@@ -21,6 +21,9 @@ use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
 
+#[cfg(feature = "auth")]
+use super::auth::AuthCommands;
+
 // ---
 
 const LONG_ABOUT: &str = r#"
@@ -548,6 +551,11 @@ enum Command {
     /// Example: `rerun man > docs/content/reference/cli.md`
     #[command(name = "man")]
     Manual,
+
+    /// Authentication with the redap.
+    #[cfg(feature = "auth")]
+    #[command(subcommand)]
+    Auth(AuthCommands),
 }
 
 /// Run the Rerun application and return an exit code.
@@ -631,6 +639,13 @@ where
                 );
                 println!("{web_header}\n\n{man}");
                 Ok(())
+            }
+
+            #[cfg(feature = "auth")]
+            Command::Auth(cmd) => {
+                let runtime =
+                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
+                cmd.run(&runtime).map_err(Into::into)
             }
         }
     } else {
