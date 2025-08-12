@@ -254,7 +254,7 @@ pub fn find_non_empty_dim_indices(shape: &[u64]) -> SmallVec<[usize; 4]> {
 
     // 0 is always a valid index.
     let mut min = non_unit_indices.next().unwrap_or(0);
-    let mut max = non_unit_indices.last().unwrap_or(min);
+    let mut max = non_unit_indices.next_back().unwrap_or(min);
 
     // Note, these are inclusive ranges.
 

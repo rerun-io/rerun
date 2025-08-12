@@ -154,7 +154,7 @@ impl ViewerContext<'_> {
 
     /// The `StoreId` of the active recording.
     #[inline]
-    pub fn recording_id(&self) -> re_log_types::StoreId {
+    pub fn store_id(&self) -> &re_log_types::StoreId {
         self.store_context.recording.store_id()
     }
 
@@ -255,26 +255,26 @@ impl ViewerContext<'_> {
 
             egui::DragAndDrop::set_payload(&response.ctx, payload);
         } else if response.clicked() {
-            if response.double_clicked() {
-                if let Some(item) = interacted_items.first_item() {
-                    // Double click always selects the whole instance and nothing else.
-                    let item = if let Item::DataResult(view_id, instance) = item {
-                        interacted_items = Item::DataResult(
-                            *view_id,
-                            InstancePath::entity_all(instance.entity_path.clone()),
-                        )
-                        .into();
-                        interacted_items
-                            .first_item()
-                            .expect("That item was just added")
-                    } else {
-                        item
-                    };
+            if response.double_clicked()
+                && let Some(item) = interacted_items.first_item()
+            {
+                // Double click always selects the whole instance and nothing else.
+                let item = if let Item::DataResult(view_id, instance) = item {
+                    interacted_items = Item::DataResult(
+                        *view_id,
+                        InstancePath::entity_all(instance.entity_path.clone()),
+                    )
+                    .into();
+                    interacted_items
+                        .first_item()
+                        .expect("That item was just added")
+                } else {
+                    item
+                };
 
-                    self.global_context
-                        .command_sender
-                        .send_system(crate::SystemCommand::SetFocus(item.clone()));
-                }
+                self.global_context
+                    .command_sender
+                    .send_system(crate::SystemCommand::SetFocus(item.clone()));
             }
 
             let modifiers = response.ctx.input(|i| i.modifiers);
@@ -347,9 +347,7 @@ impl ViewerContext<'_> {
     ///
     /// It excludes the globally hardcoded welcome screen app ID.
     pub fn has_active_recording(&self) -> bool {
-        self.recording()
-            .app_id()
-            .is_some_and(|active_app_id| active_app_id != &StoreHub::welcome_screen_app_id())
+        self.recording().application_id() != &StoreHub::welcome_screen_app_id()
     }
 }
 

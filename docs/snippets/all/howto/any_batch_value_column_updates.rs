@@ -32,8 +32,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "/",
         [times],
         [
-            one_per_timestamp.partitioned(std::iter::repeat(1).take(STEPS as _))?,
-            ten_per_timestamp.partitioned(std::iter::repeat(10).take(STEPS as _))?,
+            one_per_timestamp.partitioned(std::iter::repeat_n(1, STEPS as _))?,
+            ten_per_timestamp.partitioned(std::iter::repeat_n(10, STEPS as _))?,
         ],
     )?;
 

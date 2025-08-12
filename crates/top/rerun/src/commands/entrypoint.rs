@@ -797,28 +797,28 @@ fn run_impl(
             .collect_vec();
 
         #[cfg(feature = "web_viewer")]
-        if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::RerunGrpcStream {
+        if data_sources.len() == 1
+            && args.web_viewer
+            && let DataSource::RerunGrpcStream {
                 uri: re_uri::RedapUri::Proxy(uri),
                 ..
             } = data_sources[0].clone()
-            {
-                // Special case! We are connecting a web-viewer to a gRPC address.
-                // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
+        {
+            // Special case! We are connecting a web-viewer to a gRPC address.
+            // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
 
-                WebViewerConfig {
-                    bind_ip: args.bind.to_string(),
-                    web_port: args.web_viewer_port,
-                    connect_to: Some(uri.to_string()),
-                    force_wgpu_backend: args.renderer,
-                    video_decoder: args.video_decoder,
-                    open_browser: true,
-                }
-                .host_web_viewer()?
-                .block();
-
-                return Ok(());
+            WebViewerConfig {
+                bind_ip: args.bind.to_string(),
+                web_port: args.web_viewer_port,
+                connect_to: Some(uri.to_string()),
+                force_wgpu_backend: args.renderer,
+                video_decoder: args.video_decoder,
+                open_browser: true,
             }
+            .host_web_viewer()?
+            .block();
+
+            return Ok(());
         }
 
         let command_sender = command_sender.clone();
@@ -830,7 +830,7 @@ fn run_impl(
                     timeline,
                     time_range,
                 } => command_sender.send_system(SystemCommand::SetLoopSelection {
-                    rec_id: recording_id,
+                    store_id: recording_id,
                     timeline,
                     time_range,
                 }),
@@ -1060,17 +1060,24 @@ fn run_impl(
         {
             let tokio_runtime_handle = tokio_runtime_handle.clone();
 
-            return re_viewer::run_native_app(
+            // Start catching `re_log::info/warn/error` messages
+            // so we can show them in the notification panel.
+            // In particular: create this before calling `run_native_app`
+            // so we catch any warnings produced during startup.
+            let text_log_rx = re_viewer::register_text_log_receiver();
+
+            re_viewer::run_native_app(
                 _main_thread_token,
                 Box::new(move |cc| {
                     let mut app = re_viewer::App::with_commands(
                         _main_thread_token,
                         _build_info,
-                        &call_source.app_env(),
+                        call_source.app_env(),
                         startup_options,
                         cc,
                         Some(connection_registry),
                         re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+                        text_log_rx,
                         (command_sender, command_receiver),
                     );
                     for rx in rxs_log {
@@ -1101,7 +1108,7 @@ fn run_impl(
                 }),
                 args.renderer.as_deref(),
             )
-            .map_err(|err| err.into());
+            .map_err(|err| err.into())
         }
         #[cfg(not(feature = "native_viewer"))]
         {
@@ -1137,7 +1144,7 @@ fn assert_receive_into_entity_db(
 
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
-                        let mut_db = match msg.store_id().kind {
+                        let mut_db = match msg.store_id().kind() {
                             re_log_types::StoreKind::Recording => rec.get_or_insert_with(|| {
                                 re_entity_db::EntityDb::new(msg.store_id().clone())
                             }),

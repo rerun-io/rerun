@@ -97,12 +97,12 @@ Of course, this will only take us so far. In the future we plan on caching queri
 
 Here is an overview of the crates included in the project:
 
- <picture>
-  <img src="https://static.rerun.io/crates/f0d1980df7e22fc76ca202c9c63efa587acd2543/full.png" alt="Diagram of all crates in the Rerun ecosystem.">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/f0d1980df7e22fc76ca202c9c63efa587acd2543/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/f0d1980df7e22fc76ca202c9c63efa587acd2543/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/f0d1980df7e22fc76ca202c9c63efa587acd2543/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/f0d1980df7e22fc76ca202c9c63efa587acd2543/1200w.png">
+<picture>
+  <img src="https://static.rerun.io/crates/ddd5c73bb6df63125e7806c28fee1f01418cf15c/full.png" alt="Diagram of all crates in the Rerun ecosystem.">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/ddd5c73bb6df63125e7806c28fee1f01418cf15c/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/ddd5c73bb6df63125e7806c28fee1f01418cf15c/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/ddd5c73bb6df63125e7806c28fee1f01418cf15c/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/ddd5c73bb6df63125e7806c28fee1f01418cf15c/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -225,6 +225,7 @@ Update instructions:
 | re_format          | Miscellaneous tools to format and parse numbers, durations, etc.                     |
 | re_int_histogram   | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
 | re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
+| re_mcap_ros2       | Deserialization of a subset of ROS2 messages.
 | re_memory          | Run-time memory tracking and profiling.                                              |
 | re_perf_telemetry  | In and out of process performance profiling utilities for Rerun & Redap              |
 | re_smart_channel   | A channel that keeps track of latency and queue length.                              |

@@ -182,10 +182,7 @@ impl VisualizerCollection {
     pub fn iter_visualizer_data<SpecificData: 'static>(
         &self,
     ) -> impl Iterator<Item = &'_ SpecificData> {
-        self.iter().filter_map(|visualizer| {
-            visualizer
-                .data()
-                .and_then(|data| data.downcast_ref::<SpecificData>())
-        })
+        self.iter()
+            .filter_map(|visualizer| visualizer.data()?.downcast_ref::<SpecificData>())
     }
 }

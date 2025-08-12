@@ -15,6 +15,10 @@ include.workspace = true
 [lints]
 workspace = true
 
+[features]
+default = []
+testing = ["re_global_context/testing"]
+
 [dependencies]
 re_arrow_util.workspace = true
 re_byte_size.workspace = true
@@ -56,7 +60,6 @@ linked-hash-map.workspace = true
 macaw.workspace = true
 ndarray.workspace = true
 nohash-hasher.workspace = true
-once_cell.workspace = true
 parking_lot = { workspace = true, features = ["serde"] }
 serde.workspace = true
 slotmap.workspace = true

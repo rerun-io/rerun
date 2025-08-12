@@ -1,8 +1,8 @@
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use re_chunk::{LatestAtQuery, TimeInt};
 use re_entity_db::EntityDb;
-use re_log_types::ResolvedTimeRange;
+use re_log_types::AbsoluteTimeRange;
 
 use crate::blueprint_timeline;
 
@@ -25,7 +25,7 @@ pub struct BlueprintUndoState {
     /// If `None`, use the max time of the blueprint timeline.
     current_time: Option<TimeInt>,
 
-    /// Interesting times to undo/redo to.
+    /// The keys form a set of interesting times to undo/redo to.
     ///
     /// When the user drags a slider or similar, we get new events
     /// recorded on each frame. The user presumably wants to undo the whole
@@ -33,7 +33,11 @@ pub struct BlueprintUndoState {
     ///
     /// So we use a heuristic to estimate when such interactions start/stop,
     /// and add them to this set.
-    inflection_points: BTreeSet<TimeInt>,
+    ///
+    /// The value is the frame number when the event happened,
+    /// and is used in debug builds to detect bugs
+    /// where we create undo-points every frame.
+    inflection_points: BTreeMap<TimeInt, u64>,
 }
 
 impl BlueprintUndoState {
@@ -45,7 +49,9 @@ impl BlueprintUndoState {
 
     /// How far back in time can we undo?
     pub fn oldest_undo_point(&self) -> Option<TimeInt> {
-        self.inflection_points.first().copied()
+        self.inflection_points
+            .first_key_value()
+            .map(|(key, _)| *key)
     }
 
     pub fn blueprint_query(&self) -> LatestAtQuery {
@@ -71,9 +77,9 @@ impl BlueprintUndoState {
             .current_time
             .unwrap_or_else(|| max_blueprint_time(blueprint_db));
 
-        if let Some(previous) = self.inflection_points.range(..time).next_back().copied() {
+        if let Some((previous, _)) = self.inflection_points.range(..time).next_back() {
             re_log::trace!("Undo");
-            self.current_time = Some(previous);
+            self.current_time = Some(*previous);
         } else {
             // nothing to undo to
             re_log::debug!("Nothing to undo");
@@ -83,7 +89,11 @@ impl BlueprintUndoState {
     pub fn redo(&mut self) {
         if let Some(time) = self.current_time {
             re_log::trace!("Redo");
-            self.current_time = self.inflection_points.range(time.inc()..).next().copied();
+            self.current_time = self
+                .inflection_points
+                .range(time.inc()..)
+                .next()
+                .map(|(key, _)| *key);
         } else {
             // If we have no time, we're at latest, and have nothing to redo
             re_log::debug!("Nothing to redo");
@@ -105,7 +115,7 @@ impl BlueprintUndoState {
             // Drop everything after the current timeline time
             let events = blueprint_db.drop_time_range(
                 &blueprint_timeline(),
-                ResolvedTimeRange::new(first_dropped_event_time, re_chunk::TimeInt::MAX),
+                AbsoluteTimeRange::new(first_dropped_event_time, re_chunk::TimeInt::MAX),
             );
 
             re_log::trace!("{} chunks affected when clearing redo buffer", events.len());
@@ -114,28 +124,64 @@ impl BlueprintUndoState {
 
     // Call each frame
     pub fn update(&mut self, egui_ctx: &egui::Context, blueprint_db: &EntityDb) {
+        re_tracing::profile_function!();
+
         if is_interacting(egui_ctx) {
-            return;
+            return; // Don't create undo points while we're still interacting.
         }
+
+        let frame_nr = egui_ctx.cumulative_frame_nr();
 
         // Nothing is happening - remember this as a time to undo to.
         let time = max_blueprint_time(blueprint_db);
-        let inserted = self.inflection_points.insert(time);
+        let inserted = self.inflection_points.insert(time, frame_nr).is_none();
         if inserted {
             re_log::trace!("Inserted new inflection point at {time:?}");
         }
 
         // TODO(emilk): we should _also_ look for long streaks of changes (changes every frame)
         // and disregard those, in case we miss something in `is_interacting`.
-        // Note that this on its own won't enough though - if you drag a slider,
+        // Note that this on its own isn't enough: if you drag a slider,
         // then you don't want an undo-point each time you pause the mouse - only on mouse-up!
+        // So we still need a call to `is_interacting`, no matter what.
+        // We must also make sure that this doesn't ignore actual bugs
+        // (writing spurious data to the blueprint store each frame -
+        // see https://github.com/rerun-io/rerun/issues/10304 and the comment below for more info).
 
         // Don't store too many undo-points:
-        while let Some(first) = self.inflection_points.first().copied() {
+        while let Some(first) = self
+            .inflection_points
+            .first_key_value()
+            .map(|(key, _)| *key)
+        {
             if MAX_UNDOS < self.inflection_points.len() {
                 self.inflection_points.remove(&first);
             } else {
                 break;
+            }
+        }
+
+        if cfg!(debug_assertions) {
+            // A bug we've seen before is that something ends up creating undo-points every frame.
+            // This causes undo to effectively break, but it won't be obvious unless you try to undo.
+            // So it is important that we catch this problem early.
+            // See https://github.com/rerun-io/rerun/issues/10304 for more.
+
+            // We use a simple approach here: if we're adding too many undo points
+            // in a short amount of time, that's likely because of a bug.
+
+            let n = 10;
+            let mut latest_iter = self.inflection_points.iter().rev();
+            let latest = latest_iter.next();
+            let n_back = latest_iter.nth(n - 1);
+            if let (Some((_, latest_frame_nr)), Some((_, n_back_frame_nr))) = (latest, n_back) {
+                let num_frames: u64 = latest_frame_nr - n_back_frame_nr;
+                if num_frames <= 2 * n as u64 {
+                    // We've added `n` undo points in under 2*n frames. Very suspicious!
+                    re_log::warn!(
+                        "[DEBUG]: We added {n} undo points in {num_frames} frames. This likely means Undo is broken. Please investigate!"
+                    );
+                }
             }
         }
     }

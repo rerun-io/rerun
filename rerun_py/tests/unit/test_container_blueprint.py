@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from collections.abc import Sequence
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from rerun.blueprint.archetypes.container_blueprint import ContainerBlueprint
 from rerun.blueprint.components.active_tab import ActiveTab, ActiveTabBatch
@@ -20,6 +19,9 @@ from rerun.datatypes.uint32 import UInt32ArrayLike
 from rerun.datatypes.utf8 import Utf8Like
 
 from .common_arrays import none_empty_or_value
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def test_container_blueprint() -> None:

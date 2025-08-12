@@ -40,6 +40,10 @@ class AffixFuzzer11(ComponentMixin):
         # You can define your own __array__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
         return np.asarray(self.many_floats_optional, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AffixFuzzer11Ext in affix_fuzzer11_ext.py
+        return len(self.many_floats_optional) if self.many_floats_optional is not None else 0
+
 
 AffixFuzzer11Like = AffixFuzzer11
 AffixFuzzer11ArrayLike = Union[

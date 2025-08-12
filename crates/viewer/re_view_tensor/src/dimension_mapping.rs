@@ -80,10 +80,10 @@ fn make_width_height_valid(
     }
 
     // If height.dimension == width.dimension, remove height and go from there, pretending it was not set.
-    if let (Some(some_width), Some(some_height)) = (&*width, &*height) {
-        if some_width.dimension == some_height.dimension {
-            height.take();
-        }
+    if let (Some(some_width), Some(some_height)) = (&*width, &*height)
+        && some_width.dimension == some_height.dimension
+    {
+        height.take();
     }
 
     // If there's more than two dimensions, force width and height to be set.
@@ -187,7 +187,7 @@ fn make_slider_valid(
     } else {
         // If no slider were specified, create a default one for each dimension that isn't covered by width/height
         *slider = Some(indices.iter().map(|index| index.dimension.into()).collect());
-    };
+    }
 }
 
 #[allow(clippy::collapsible_else_if)]

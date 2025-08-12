@@ -11,11 +11,9 @@ from typing import TYPE_CHECKING, Any, Union
 import pyarrow as pa
 from attrs import define, field
 
-from ... import datatypes
 from ..._baseclasses import (
     BaseBatch,
 )
-from ...blueprint import datatypes as blueprint_datatypes
 from .selected_columns_ext import SelectedColumnsExt
 
 __all__ = ["SelectedColumns", "SelectedColumnsArrayLike", "SelectedColumnsBatch", "SelectedColumnsLike"]
@@ -43,6 +41,9 @@ class SelectedColumns(SelectedColumnsExt):
 
 
 if TYPE_CHECKING:
+    from ... import datatypes
+    from ...blueprint import datatypes as blueprint_datatypes
+
     SelectedColumnsLike = Union[
         SelectedColumns, Sequence[Union[blueprint_datatypes.ComponentColumnSelectorLike, datatypes.Utf8Like]]
     ]

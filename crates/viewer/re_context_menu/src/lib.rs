@@ -2,8 +2,9 @@
 
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
+use std::sync::OnceLock;
+
 use egui::Popup;
-use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
 use re_log_types::TableId;
@@ -140,7 +141,7 @@ fn context_menu_ui_for_item_with_context_impl(
                 SelectionUpdateBehavior::Ignore => {
                     show_context_menu(&item_collection);
                 }
-            };
+            }
         });
 }
 
@@ -153,8 +154,8 @@ fn action_list(
 ) -> &'static Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>> {
     use egui_tiles::ContainerKind;
 
-    static CONTEXT_MENU_ACTIONS: OnceCell<Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>>> =
-        OnceCell::new();
+    static CONTEXT_MENU_ACTIONS: OnceLock<Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>>> =
+        OnceLock::new();
 
     static_assertions::const_assert_eq!(ContainerKind::ALL.len(), 4);
 
@@ -264,12 +265,15 @@ impl<'a> ContextMenuContext<'a> {
     /// Valid only for views, containers, and data results. For data results, the parent and
     /// position of the enclosing view is considered.
     pub fn clicked_item_enclosing_container_id_and_position(&self) -> Option<(ContainerId, usize)> {
-        match self.clicked_item {
-            Item::View(view_id) | Item::DataResult(view_id, _) => Some(Contents::View(*view_id)),
-            Item::Container(container_id) => Some(Contents::Container(*container_id)),
-            _ => None,
-        }
-        .and_then(|c: Contents| self.viewport_blueprint.find_parent_and_position_index(&c))
+        let contents = match self.clicked_item {
+            Item::View(view_id) | Item::DataResult(view_id, _) => Contents::View(*view_id),
+            Item::Container(container_id) => Contents::Container(*container_id),
+            _ => {
+                return None;
+            }
+        };
+        self.viewport_blueprint
+            .find_parent_and_position_index(&contents)
     }
 
     /// Return the clicked item's parent container and position within it.
@@ -279,12 +283,10 @@ impl<'a> ContextMenuContext<'a> {
     pub fn clicked_item_enclosing_container_and_position(
         &self,
     ) -> Option<(&'a ContainerBlueprint, usize)> {
-        self.clicked_item_enclosing_container_id_and_position()
-            .and_then(|(container_id, pos)| {
-                self.viewport_blueprint
-                    .container(&container_id)
-                    .map(|container| (container, pos))
-            })
+        let (container_id, pos) = self.clicked_item_enclosing_container_id_and_position()?;
+        self.viewport_blueprint
+            .container(&container_id)
+            .map(|container| (container, pos))
     }
 
     pub fn egui_context(&self) -> &egui::Context {

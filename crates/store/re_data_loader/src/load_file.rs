@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use ahash::{HashMap, HashMapExt as _};
-use re_log_types::{ApplicationId, FileSource, LogMsg};
+use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
 use crate::{DataLoader as _, DataLoaderError, LoadedData, RrdLoader};
@@ -23,6 +23,8 @@ pub fn load_from_path(
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
     tx: &Sender<LogMsg>,
 ) -> Result<(), DataLoaderError> {
+    use re_log_types::ApplicationId;
+
     re_tracing::profile_function!(path.to_string_lossy());
 
     if !path.exists() {
@@ -35,15 +37,15 @@ pub fn load_from_path(
 
     re_log::info!("Loading {path:?}…");
 
-    // When loading a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot
-    // loader handles this automatically.
-    let settings = if crate::lerobot::is_lerobot_dataset(path) {
-        &crate::DataLoaderSettings {
-            force_store_info: false,
-            ..settings.clone()
-        }
-    } else {
-        settings
+    let application_id = path
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .map(ApplicationId::from);
+    let settings = &crate::DataLoaderSettings {
+        // When loading a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot loader handles this automatically.
+        force_store_info: !crate::lerobot::is_lerobot_dataset(path),
+        application_id,
+        ..settings.clone()
     };
 
     let rx = load(settings, path, None)?;
@@ -84,7 +86,6 @@ pub fn load_from_file_contents(
 
 /// Prepares an adequate [`re_log_types::StoreInfo`] [`LogMsg`] given the input.
 pub(crate) fn prepare_store_info(
-    application_id: re_log_types::ApplicationId,
     store_id: &re_log_types::StoreId,
     file_source: FileSource,
 ) -> LogMsg {
@@ -97,7 +98,6 @@ pub(crate) fn prepare_store_info(
     LogMsg::SetStoreInfo(SetStoreInfo {
         row_id: *re_chunk::RowId::new(),
         info: re_log_types::StoreInfo {
-            application_id,
             store_id: store_id.clone(),
             cloned_from: None,
             store_source,
@@ -135,19 +135,21 @@ pub(crate) fn load(
             struct CompatibleLoaderFound;
             let (tx_feedback, rx_feedback) = std::sync::mpsc::channel::<CompatibleLoaderFound>();
 
-            // Prevent passing RRD paths to external (and other) loaders.
+            // When loading a file type with native support (.rrd, .mcap, .png, …)
+            // then we don't need the overhead and noise of external data loaders:
             // See <https://github.com/rerun-io/rerun/issues/6530>.
             let loaders = {
                 use crate::DataLoader as _;
                 use rayon::iter::Either;
 
                 let extension = crate::extension(path);
-                if crate::SUPPORTED_RERUN_EXTENSIONS.contains(&extension.as_str()) {
+                if crate::is_supported_file_extension(&extension) {
                     Either::Left(
                         crate::iter_loaders()
-                            .filter(|loader| loader.name() == crate::RrdLoader.name()),
+                            .filter(|loader| loader.name() != crate::ExternalLoader.name()),
                     )
                 } else {
+                    // We need to use an external dataloader
                     Either::Right(crate::iter_loaders())
                 }
             };
@@ -335,11 +337,7 @@ pub(crate) fn send(
                     || (!tracked.already_has_store_info && !is_a_preexisting_recording);
 
                 if should_send_new_store_info {
-                    let app_id = settings
-                        .opened_application_id
-                        .clone()
-                        .unwrap_or_else(ApplicationId::random);
-                    let store_info = prepare_store_info(app_id, &store_id, file_source.clone());
+                    let store_info = prepare_store_info(&store_id, file_source.clone());
                     tx.send(store_info).ok();
                 }
             }

@@ -6,7 +6,7 @@ use itertools::{Either, Itertools as _};
 
 use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
 use re_log_types::{
-    ResolvedTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
+    AbsoluteTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
 };
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::StoreContext;
@@ -322,7 +322,7 @@ impl DatastoreUi {
                         ui.label(format_time_range(timeline, time_range, timestamp_format));
                     } else {
                         ui.label("-");
-                    };
+                    }
                 });
             }
 
@@ -398,9 +398,15 @@ impl DatastoreUi {
         list_item::list_item_scope(ui, "chunk store info", |ui| {
             let stats = chunk_store.stats().total();
             ui.list_item_collapsible_noninteractive_label("Info", false, |ui| {
+                // Note: no need to print the store kind, because it's selected by the top-level toggle.
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Store ID")
-                        .value_text(chunk_store.id().to_string()),
+                    list_item::PropertyContent::new("Application ID")
+                        .value_text(chunk_store.id().application_id().to_string()),
+                );
+
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Recording ID")
+                        .value_text(chunk_store.id().recording_id().to_string()),
                 );
 
                 ui.list_item_flat_noninteractive(
@@ -459,7 +465,7 @@ impl DatastoreUi {
 
 fn format_time_range(
     timeline: &Timeline,
-    time_range: &ResolvedTimeRange,
+    time_range: &AbsoluteTimeRange,
     timestamp_format: TimestampFormat,
 ) -> String {
     if time_range.min() == time_range.max() {

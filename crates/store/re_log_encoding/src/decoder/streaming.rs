@@ -180,7 +180,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             opts,
             encoding_opts,
             reader,
-            unprocessed_bytes: BytesMut::new(),
+            unprocessed_bytes: BytesMut::default(),
             expect_more_data: false,
             num_bytes_read: FileHeader::SIZE as _,
         })
@@ -197,7 +197,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             opts,
             encoding_opts,
             reader,
-            unprocessed_bytes: BytesMut::new(),
+            unprocessed_bytes: BytesMut::default(),
             expect_more_data: false,
             num_bytes_read: FileHeader::SIZE as _,
         }
@@ -221,6 +221,63 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        // It is super important that we don't needlessly poll on the underlying async reader.
+        //
+        // In most real-world scenarios, the underlying async reader will be some kind of object
+        // store client, which generally tries to fetch 1MiB ranges on every poll.
+        //
+        // 1MiB is the upper-boundary that we target for the size of a single, perfectly compacted chunk.
+        // In practice, chunks very rarely come anywhere close to that size, so you can expect
+        // anywhere between 10 to 100 chunks to fit in that 1MiB.
+        // If we were to blindly poll on the underlying reader every time we poll on the decoder,
+        // we would therefore be accumulating unprocessed data way faster than we can yield chunks
+        // (since by definition we can only yield a single chunk per call to `poll_next`).
+        //
+        // Normally this would just be somewhat bad: the `unprocessed_bytes` buffer would grow
+        // unnecessarily large and we'd be sad for it.
+        // In practice, it's much worse than that because it prevents some very specific
+        // optimizations from the `bytes` crate from triggering. Specifically, the `bytes` crate has a
+        // bunch of heuristics that will try and re-use buffer space, even going through the motions of
+        // shifting/copying the data if it's deemed worth it, when `extend()` and `advance()` are interleaved
+        // repeatedly (like we do here). These heuristics are based on the difference between the
+        // head capacity of the internal buffer versus the current position of the cursor.
+        //
+        // When polling too aggressively, this internal head capacity and the internal cursor end up
+        // completely out of sync, and these heuristics are never hit.
+        // The end result is an internal buffer that grows indefinitely large, instead of consistently
+        // maintaining a size that is a single-digit factor away from the size of the biggest chunk
+        // in the stream (or 1MiB).
+        //
+        // ---
+        //
+        //     let mut buf = BytesMut::new();
+        //     for _ in 0..1_000_000 {
+        //         buf.extend_from_slice(&[0; 100][..]);
+        //     }
+        //     eprintln!("cap={} len={} mem={}", buf.capacity(), buf.len(), re_memory::MemoryUse::capture().counted);
+        //
+        // Outputs: cap=104,857,600 len=100,000,000 mem=104,857,600
+        //
+        //     let mut buf = BytesMut::new();
+        //     for _ in 0..1_000_000 {
+        //         buf.extend_from_slice(&[0; 100][..]);
+        //         buf.advance(100);
+        //     }
+        //     eprintln!("cap={} len={} mem={}", buf.capacity(), buf.len(), re_memory::MemoryUse::capture().counted);
+        //
+        // Outputs: cap=0 len=0 mem=100
+        //
+        //     let mut buf = BytesMut::new();
+        //     for _ in 0..1_000_000 {
+        //         buf.extend_from_slice(&[0; 100][..]);
+        //         buf.advance(90);
+        //     }
+        //     eprintln!("cap={} len={} mem={}", buf.capacity(), buf.len(), re_memory::MemoryUse::capture().counted);
+        //
+        // Outputs: cap=24,056,110 len=10,000,000 mem=26,214,400
+        // ```
+        let mut should_read_more_data = self.unprocessed_bytes.is_empty();
+
         loop {
             let Self {
                 opts,
@@ -234,34 +291,49 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             let serializer = encoding_opts.serializer;
             let mut buf_length = 0;
 
-            // poll_fill_buf() implicitly handles the EOF case, so we don't need to check for it
-            match Pin::new(reader).poll_fill_buf(cx) {
-                std::task::Poll::Ready(Ok([])) => {
-                    if unprocessed_bytes.is_empty() {
-                        return std::task::Poll::Ready(None);
+            fn consume_if_needed<R: AsyncBufRead + Unpin>(reader: &mut R, buf_length: usize) {
+                // Many implementers of `AsyncBufRead` panic when trying to poll them unexpectedly
+                // (and this can be unexpected in this case because we might have bypassed polling,
+                // see `should_read_more_data`).
+                if buf_length > 0 {
+                    Pin::new(reader).consume(buf_length);
+                }
+            }
+
+            if should_read_more_data {
+                // poll_fill_buf() implicitly handles the EOF case, so we don't need to check for it
+                match Pin::new(reader).poll_fill_buf(cx) {
+                    std::task::Poll::Ready(Ok([])) => {
+                        if unprocessed_bytes.is_empty() {
+                            return std::task::Poll::Ready(None);
+                        }
+                        // there's more unprocessed data, but there's nothing in the underlying
+                        // bytes stream - this indicates a corrupted stream
+                        if *expect_more_data {
+                            warn!(
+                                "There's {} unprocessed data, but not enough for decoding a full message",
+                                unprocessed_bytes.len()
+                            );
+                            return std::task::Poll::Ready(None);
+                        }
                     }
-                    // there's more unprocessed data, but there's nothing in the underlying
-                    // bytes stream - this indicates a corrupted stream
-                    if *expect_more_data {
-                        warn!(
-                            "There's {} unprocessed data, but not enough for decoding a full message",
-                            unprocessed_bytes.len()
-                        );
-                        return std::task::Poll::Ready(None);
+
+                    std::task::Poll::Ready(Ok(buf)) => {
+                        unprocessed_bytes.extend_from_slice(buf);
+                        buf_length = buf.len();
                     }
-                }
 
-                std::task::Poll::Ready(Ok(buf)) => {
-                    unprocessed_bytes.extend_from_slice(buf);
-                    buf_length = buf.len();
-                }
+                    std::task::Poll::Ready(Err(err)) => {
+                        return std::task::Poll::Ready(Some(Err(DecodeError::Read(err))));
+                    }
 
-                std::task::Poll::Ready(Err(err)) => {
-                    return std::task::Poll::Ready(Some(Err(DecodeError::Read(err))));
+                    std::task::Poll::Pending => return std::task::Poll::Pending,
                 }
+            }
 
-                std::task::Poll::Pending => return std::task::Poll::Pending,
-            };
+            // Now that we've tried at least once to get a chunk out without reading any data, life
+            // can go on as usual.
+            should_read_more_data = true;
 
             // check if this is a start of a new concatenated file
             if unprocessed_bytes.len() >= FileHeader::SIZE
@@ -275,13 +347,15 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         self.version = CrateVersion::max(self.version, version);
                         self.encoding_opts = options;
 
-                        Pin::new(&mut self.reader).consume(buf_length);
+                        consume_if_needed(&mut self.reader, buf_length);
                         self.unprocessed_bytes.advance(FileHeader::SIZE);
                         self.num_bytes_read += FileHeader::SIZE as u64;
 
                         continue;
                     }
-                    Err(err) => return std::task::Poll::Ready(Some(Err(err))),
+                    Err(err) => {
+                        return std::task::Poll::Ready(Some(Err(err)));
+                    }
                 }
             }
 
@@ -291,7 +365,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                     if unprocessed_bytes.len() < header_size {
                         // Not enough data to read the header, need to wait for more
                         self.expect_more_data = true;
-                        Pin::new(&mut self.reader).consume(buf_length);
+                        consume_if_needed(&mut self.reader, buf_length);
 
                         continue;
                     }
@@ -301,7 +375,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                     if unprocessed_bytes.len() < header.len as usize + header_size {
                         // Not enough data to read the message, need to wait for more
                         self.expect_more_data = true;
-                        Pin::new(&mut self.reader).consume(buf_length);
+                        consume_if_needed(&mut self.reader, buf_length);
 
                         continue;
                     }
@@ -326,13 +400,13 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         "Reached end of stream, but it seems we have a concatenated file, continuing"
                     );
 
-                    Pin::new(&mut self.reader).consume(buf_length);
+                    consume_if_needed(&mut self.reader, buf_length);
                     continue;
                 }
 
                 re_log::trace!("Reached end of stream, iterator complete");
                 return std::task::Poll::Ready(None);
-            };
+            }
 
             let decoded = if opts.keep_decoded_protobuf {
                 file::decoder::decode_bytes_to_transport(kind, encoded)?
@@ -343,7 +417,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 opts.keep_encoded_protobuf.then(|| encoded.to_vec().into());
             let version = self.version;
 
-            Pin::new(&mut self.reader).consume(buf_length);
+            consume_if_needed(&mut self.reader, buf_length);
             self.unprocessed_bytes.advance(processed_length);
             self.expect_more_data = false;
 
@@ -412,10 +486,11 @@ mod tests {
                 .await
                 .unwrap();
 
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             let decoded_messages: Vec<re_log_types::LogMsg> = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(msg).unwrap())
+                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
                 .collect::<Vec<_>>()
                 .await;
 
@@ -451,10 +526,11 @@ mod tests {
                 .await
                 .unwrap();
 
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             let decoded_messages = decoder
                 .map(Result::unwrap)
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(msg).unwrap())
+                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
                 .collect::<Vec<_>>()
                 .await;
 
@@ -491,6 +567,8 @@ mod tests {
                 .unwrap();
 
             let mut decoded_messages = decoder.collect::<Result<Vec<_>, _>>().await.unwrap();
+
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             for msg_expected in &mut decoded_messages {
                 let data = &data[msg_expected.byte_span.try_cast::<usize>().unwrap().range()];
 
@@ -502,11 +580,13 @@ mod tests {
                     let header = file::MessageHeader::from_bytes(header_data).unwrap();
 
                     let data = &data[header_size..];
-                    let msg = file::decoder::decode_bytes_to_app(header.kind, data)
-                        .unwrap()
-                        .unwrap();
+                    let msg =
+                        file::decoder::decode_bytes_to_app(&mut app_id_cache, header.kind, data)
+                            .unwrap()
+                            .unwrap();
 
                     let msg_expected = file::decoder::decode_transport_to_app(
+                        &mut app_id_cache,
                         msg_expected.decoded_transport().unwrap().unwrap(),
                     )
                     .unwrap();
@@ -514,10 +594,11 @@ mod tests {
                 }
             }
 
+            let mut app_id_cache = crate::app_id_injector::CachingApplicationIdInjector::default();
             let decoded_messages = decoded_messages
                 .iter_mut()
                 .filter_map(|msg| msg.decoded_transport().unwrap())
-                .map(|msg| file::decoder::decode_transport_to_app(msg).unwrap())
+                .map(|msg| file::decoder::decode_transport_to_app(&mut app_id_cache, msg).unwrap())
                 .collect::<Vec<_>>();
 
             similar_asserts::assert_eq!(decoded_messages, messages);

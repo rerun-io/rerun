@@ -15,12 +15,14 @@ from __future__ import annotations
 
 import argparse
 import time
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from github import Github
 from github.GitRelease import GitRelease
-from github.Repository import Repository
 from google.cloud import storage
+
+if TYPE_CHECKING:
+    from github.Repository import Repository
 
 Assets = dict[str, storage.Blob]
 

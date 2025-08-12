@@ -1,7 +1,7 @@
 use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
-use re_log_types::{ResolvedTimeRangeF, StoreId};
+use re_log_types::{AbsoluteTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
 use crate::RecordingOrTable;
@@ -96,7 +96,7 @@ pub enum SystemCommand {
 
     /// Set the active timeline and time for the given recording.
     SetActiveTime {
-        rec_id: StoreId,
+        store_id: StoreId,
         timeline: re_chunk::Timeline,
         time: Option<re_log_types::TimeReal>,
     },
@@ -105,9 +105,9 @@ pub enum SystemCommand {
     ///
     /// This also sets the active timeline and activates the loop selection.
     SetLoopSelection {
-        rec_id: StoreId,
+        store_id: StoreId,
         timeline: Timeline,
-        time_range: ResolvedTimeRangeF,
+        time_range: AbsoluteTimeRangeF,
     },
 
     /// Sets the focus to the given item.

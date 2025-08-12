@@ -57,18 +57,17 @@ impl BackgroundTasks {
     ///
     /// Panics if `T` does not match the actual return value of the promise.
     pub fn poll_promise<T: Any>(&mut self, name: impl AsRef<str>) -> Option<T> {
-        self.promises
-            .remove(name.as_ref())
-            .and_then(|promise| match promise.try_take() {
-                Ok(any) => Some(
-                    *any.downcast::<T>()
-                        .expect("Downcast failure in poll_promise"),
-                ),
-                Err(promise) => {
-                    self.promises.insert(name.as_ref().to_owned(), promise);
-                    None
-                }
-            })
+        let promise = self.promises.remove(name.as_ref())?;
+        match promise.try_take() {
+            Ok(any) => Some(
+                *any.downcast::<T>()
+                    .expect("Downcast failure in poll_promise"),
+            ),
+            Err(promise) => {
+                self.promises.insert(name.as_ref().to_owned(), promise);
+                None
+            }
+        }
     }
 
     pub fn poll_file_saver_promise(&mut self) -> Option<anyhow::Result<PathBuf>> {

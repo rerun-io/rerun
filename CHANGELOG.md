@@ -1,5 +1,41 @@
 # Rerun changelog
 
+
+## [0.24.1](https://github.com/rerun-io/rerun/compare/0.24.0...0.24.1) - 2025-08-07 - Bug fixes
+
+#### 🌊 C++ API
+- Fix `rerun_cpp` CMake link errors [#10756](https://github.com/rerun-io/rerun/pull/10756) (thanks [@reinar](https://github.com/reinar)!)
+- Fix C++ interface for `VideoStream` [#10745](https://github.com/rerun-io/rerun/pull/10745)
+- Fix C++ Arrow build [#10799](https://github.com/rerun-io/rerun/pull/10799)
+
+#### 🐍 Python API
+- Explicitly import `pyarrow.compute` in `url_generation.py` [#10690](https://github.com/rerun-io/rerun/pull/10690)
+- Add `rerun-sdk[datafusion]` and `rerun-sdk[all]` [#10696](https://github.com/rerun-io/rerun/pull/10696)
+
+#### 🦀 Rust API
+- Fix unnecessary `rfd` and wayland dependencies in SDK crate [#10802](https://github.com/rerun-io/rerun/pull/10802)
+
+#### 🪳 Bug fixes
+- Make `parking_lot` dependency version stricter to prevent import failure [#10732](https://github.com/rerun-io/rerun/pull/10732) (thanks [@sdd](https://github.com/sdd)!)
+- Use `ui.warning_label()` in more places [#10697](https://github.com/rerun-io/rerun/pull/10697)
+- Fix colors sometimes being wrong in plot view [#10713](https://github.com/rerun-io/rerun/pull/10713)
+- Fix breaking example in `rerun_notebook/example.ipynb` [#10706](https://github.com/rerun-io/rerun/pull/10706) (thanks [@glk0](https://github.com/glk0)!)
+- Fix GUI hickup when starting native video player [#10797](https://github.com/rerun-io/rerun/pull/10797)
+- Improve command palette in light mode [#10825](https://github.com/rerun-io/rerun/pull/10825)
+
+#### 🌁 Viewer improvements
+- Add time range query params when opening a time_range-based url [#10819](https://github.com/rerun-io/rerun/pull/10819)
+
+#### 🖼 UI improvements
+- Better component UI for Arrow `StructArray` [#10748](https://github.com/rerun-io/rerun/pull/10748)
+
+#### 🕸️ Web
+- Make `@rerun-io/web-viewer-react` compatible with React 19 [#10809](https://github.com/rerun-io/rerun/pull/10809)
+
+#### 📈 Analytics
+- Add some analytics events [#10793](https://github.com/rerun-io/rerun/pull/10793)
+
+
 ## [0.24.0](https://github.com/rerun-io/rerun/compare/0.23.4...0.24.0) - 2025-07-16 - Tagged components, Video Stream, light mode and more
 
 * 📖 [Release blogpost](https://rerun.io/blog/release-0.24)

@@ -9,10 +9,12 @@ from __future__ import annotations
 import io
 import pathlib
 import warnings
-from typing import IO
+from typing import IO, TYPE_CHECKING
 
 from .archetypes import EncodedImage, Image
-from .datatypes import Float32Like
+
+if TYPE_CHECKING:
+    from .datatypes import Float32Like
 
 
 class ImageFormat:

@@ -83,11 +83,22 @@ on_success = "back" # so that we don't open the browser at each change
 
 # You can run your application and have the result displayed in bacon,
 # *if* it makes sense for this crate. You can run an example the same
-# way. Don't forget the `--color always` part or the errors won't be
-# properly parsed.
+# way.
 [jobs.run]
 command = ["pixi", "run", "rerun"]
 need_stdout = true
+on_success = "back"
+
+[jobs.codegen]
+command = ["pixi", "run", "codegen"]
+need_stdout = true
+on_success = "back"
+
+[jobs.codegen-proto]
+command = ["pixi", "run", "codegen-protos"]
+need_stdout = true
+on_success = "back"
+
 
 # You may define here keybindings that would be specific to
 # a project, for example a shortcut to launch a specific job.
@@ -101,3 +112,5 @@ t = "job:test"
 r = "job:run"
 a = "job:wasm"
 n = "job:nextest"
+g = "job:codegen"
+p = "job:codegen-proto"

@@ -80,7 +80,7 @@ impl DataLoader for UrdfDataLoader {
         let robot = urdf_rs::read_file(&filepath)
             .with_context(|| format!("Path: {}", filepath.display()))?;
 
-        log_robot(robot, &filepath, &tx, &settings.store_id)
+        log_robot(robot, &filepath, &tx, &settings.recommended_store_id())
             .with_context(|| "Failed to load URDF file!")?;
 
         Ok(())
@@ -102,7 +102,7 @@ impl DataLoader for UrdfDataLoader {
         let robot = urdf_rs::read_from_string(&String::from_utf8_lossy(&contents))
             .with_context(|| format!("Path: {}", filepath.display()))?;
 
-        log_robot(robot, &filepath, &tx, &settings.store_id)
+        log_robot(robot, &filepath, &tx, &settings.recommended_store_id())
             .with_context(|| "Failed to load URDF file!")?;
 
         Ok(())
@@ -548,22 +548,22 @@ fn log_geometry(
                             *r as f32, *g as f32, *b as f32, *a as f32,
                         ),
                     );
-                };
+                }
                 if texture.is_some() {
                     re_log::warn_once!("Material texture not supported"); // TODO(emilk): support textures
                 }
             }
 
-            if let Some(scale) = scale {
-                if scale != &urdf_rs::Vec3([1.0; 3]) {
-                    let urdf_rs::Vec3([x, y, z]) = *scale;
-                    send_archetype(
-                        tx,
-                        store_id,
-                        entity_path.clone(),
-                        &Transform3D::update_fields().with_scale([x as f32, y as f32, z as f32]),
-                    )?;
-                }
+            if let Some(scale) = scale
+                && scale != &urdf_rs::Vec3([1.0; 3])
+            {
+                let urdf_rs::Vec3([x, y, z]) = *scale;
+                send_archetype(
+                    tx,
+                    store_id,
+                    entity_path.clone(),
+                    &Transform3D::update_fields().with_scale([x as f32, y as f32, z as f32]),
+                )?;
             }
 
             send_archetype(tx, store_id, entity_path, &asset3d)?;

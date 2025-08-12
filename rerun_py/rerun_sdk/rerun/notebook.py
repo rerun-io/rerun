@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Callable, Literal
 
-import numpy as np
 import pyarrow
 import pyarrow.ipc as ipc
 from pyarrow import RecordBatch
@@ -15,17 +13,27 @@ from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
 
 if TYPE_CHECKING:
+    from datetime import datetime, timedelta
+
+    import numpy as np
+
     from .blueprint import BlueprintLike
 
 
 from rerun import bindings
-from rerun_notebook import ErrorWidget as _ErrorWidget, Viewer as _Viewer
+from rerun.error_utils import RerunOptionalDependencyError
 
 from .event import (
     ViewerEvent as ViewerEvent,
     _viewer_event_from_json_str,
 )
 from .recording_stream import RecordingStream, get_data_recording
+
+HAS_NOTEBOOK = True
+try:
+    from rerun_notebook import ErrorWidget as _ErrorWidget, Viewer as _Viewer
+except ModuleNotFoundError:
+    HAS_NOTEBOOK = False
 
 _default_width = 640
 _default_height = 480
@@ -111,7 +119,8 @@ class Viewer:
             Defaults to `False` if `url` is provided, and `True` otherwise.
 
         """
-
+        if not HAS_NOTEBOOK:
+            raise RerunOptionalDependencyError("rerun-notebook", "notebook")
         self._error_widget = _ErrorWidget()
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,

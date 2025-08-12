@@ -16,8 +16,8 @@ use re_chunk::{
 };
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
-    StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt, TimePoint, Timeline,
-    TimelineName,
+    RecordingId, StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt, TimePoint,
+    Timeline, TimelineName,
 };
 use re_types::archetypes::RecordingInfo;
 use re_types::components::Timestamp;
@@ -122,7 +122,7 @@ pub type RecordingStreamResult<T> = Result<T, RecordingStreamError>;
 pub struct RecordingStreamBuilder {
     application_id: ApplicationId,
     store_kind: StoreKind,
-    store_id: Option<StoreId>,
+    recording_id: Option<RecordingId>,
     store_source: Option<StoreSource>,
 
     default_enabled: bool,
@@ -155,7 +155,30 @@ impl RecordingStreamBuilder {
         Self {
             application_id,
             store_kind: StoreKind::Recording,
-            store_id: None,
+            recording_id: None,
+            store_source: None,
+
+            default_enabled: true,
+            enabled: None,
+
+            batcher_config: None,
+            batcher_hooks: BatcherHooks::NONE,
+
+            should_send_properties: true,
+            recording_info: RecordingInfo::new()
+                .with_start_time(re_types::components::Timestamp::now()),
+        }
+    }
+
+    /// Create a new [`RecordingStreamBuilder`] with the given [`StoreId`].
+    //
+    // NOTE: track_caller so that we can see if we are being called from an official example.
+    #[track_caller]
+    pub fn from_store_id(store_id: &StoreId) -> Self {
+        Self {
+            application_id: store_id.application_id().clone(),
+            store_kind: store_id.kind(),
+            recording_id: Some(store_id.recording_id().clone()),
             store_source: None,
 
             default_enabled: true,
@@ -205,11 +228,8 @@ impl RecordingStreamBuilder {
     /// When explicitly setting a `RecordingId`, the initial chunk that contains the recording
     /// properties will not be sent.
     #[inline]
-    pub fn recording_id(mut self, recording_id: impl Into<String>) -> Self {
-        self.store_id = Some(StoreId::from_string(
-            StoreKind::Recording,
-            recording_id.into(),
-        ));
+    pub fn recording_id(mut self, recording_id: impl Into<RecordingId>) -> Self {
+        self.recording_id = Some(recording_id.into());
         self.send_properties(false)
     }
 
@@ -239,22 +259,6 @@ impl RecordingStreamBuilder {
     #[inline]
     pub fn send_properties(mut self, should_send: bool) -> Self {
         self.should_send_properties = should_send;
-        self
-    }
-
-    /// Set the [`StoreId`] for this context.
-    ///
-    /// If you're logging from multiple processes and want all the messages to end up as the same
-    /// store, you must make sure they all set the same [`StoreId`] using this function.
-    ///
-    /// Note that many stores can share the same [`ApplicationId`], but they all have
-    /// unique [`StoreId`]s.
-    ///
-    /// The default is to use a random [`StoreId`].
-    #[inline]
-    pub fn store_id(mut self, store_id: StoreId) -> Self {
-        self.store_kind = store_id.kind;
-        self.store_id = Some(store_id);
         self
     }
 
@@ -732,7 +736,7 @@ impl RecordingStreamBuilder {
         let Self {
             application_id,
             store_kind,
-            store_id,
+            recording_id,
             store_source,
             default_enabled: _,
             enabled: _,
@@ -742,14 +746,17 @@ impl RecordingStreamBuilder {
             recording_info,
         } = self;
 
-        let store_id = store_id.unwrap_or(StoreId::random(store_kind));
+        let store_id = StoreId::new(
+            store_kind,
+            application_id,
+            recording_id.unwrap_or_else(RecordingId::random),
+        );
         let store_source = store_source.unwrap_or_else(|| StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         });
 
         let store_info = StoreInfo {
-            application_id,
             store_id,
             cloned_from: None,
             store_source,
@@ -823,9 +830,7 @@ impl RecordingStream {
         use std::ops::Deref as _;
         match &self.inner {
             Either::Left(strong) => strong.deref().as_ref().map(f),
-            Either::Right(weak) => weak
-                .upgrade()
-                .and_then(|strong| strong.deref().as_ref().map(f)),
+            Either::Right(weak) => weak.upgrade()?.deref().as_ref().map(f),
         }
     }
 
@@ -866,11 +871,11 @@ impl Drop for RecordingStream {
         // itself, because the dataloader threads -- by definition -- will have to send data into
         // this very recording, therefore we must make sure that at least one strong handle still lives
         // on until they are all finished.
-        if let Either::Left(strong) = &mut self.inner {
-            if Arc::strong_count(strong) == 1 {
-                // Keep the recording alive until all dataloaders are finished.
-                self.with(|inner| inner.wait_for_dataloaders());
-            }
+        if let Either::Left(strong) = &mut self.inner
+            && Arc::strong_count(strong) == 1
+        {
+            // Keep the recording alive until all dataloaders are finished.
+            self.with(|inner| inner.wait_for_dataloaders());
         }
     }
 }
@@ -962,8 +967,7 @@ impl RecordingStreamInner {
 
         {
             re_log::debug!(
-                app_id = %store_info.application_id,
-                rec_id = %store_info.store_id,
+                store_id = ?store_info.store_id,
                 "Setting StoreInfo",
             );
             sink.send(
@@ -1077,7 +1081,9 @@ impl RecordingStream {
         batcher_hooks: BatcherHooks,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
-        let sink = (store_info.store_id.kind == StoreKind::Recording)
+        let sink = store_info
+            .store_id
+            .is_recording()
             .then(forced_sink_path)
             .flatten()
             .map_or(sink, |path| {
@@ -1425,9 +1431,8 @@ impl RecordingStream {
         );
 
         let mut settings = crate::DataLoaderSettings {
-            application_id: Some(store_info.application_id.clone()),
-            opened_application_id: None,
-            store_id: store_info.store_id.clone(),
+            application_id: Some(store_info.application_id().clone()),
+            recording_id: store_info.recording_id().clone(),
             opened_store_id: None,
             force_store_info: false,
             entity_path_prefix,
@@ -1450,7 +1455,6 @@ impl RecordingStream {
         };
 
         if prefer_current_recording {
-            settings.opened_application_id = Some(store_info.application_id.clone());
             settings.opened_store_id = Some(store_info.store_id);
         }
 
@@ -1532,8 +1536,7 @@ fn forwarding_thread(
                 // Send the recording info to the new sink. This is idempotent.
                 {
                     re_log::debug!(
-                        app_id = %store_info.application_id,
-                        rec_id = %store_info.store_id,
+                        store_id = ?store_info.store_id,
                         "Setting StoreInfo",
                     );
                     new_sink.send(
@@ -1716,9 +1719,7 @@ impl RecordingStream {
                 let time =
                     TimeInt::new_temporal(re_log_types::Timestamp::now().nanos_since_epoch());
 
-                let repeated_time = std::iter::repeat(time.as_i64())
-                    .take(chunk.num_rows())
-                    .collect();
+                let repeated_time = std::iter::repeat_n(time.as_i64(), chunk.num_rows()).collect();
 
                 let time_column = TimeColumn::new(Some(true), time_timeline, repeated_time);
 
@@ -1739,7 +1740,7 @@ impl RecordingStream {
                     .tick
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                let repeated_tick = std::iter::repeat(tick).take(chunk.num_rows()).collect();
+                let repeated_tick = std::iter::repeat_n(tick, chunk.num_rows()).collect();
 
                 let tick_chunk = TimeColumn::new(Some(true), tick_timeline, repeated_tick);
 
@@ -2261,7 +2262,7 @@ impl RecordingStream {
                 self.record_msg(activation_cmd.into());
             } else {
                 re_log::warn!(
-                    "Blueprint ID mismatch when sending blueprint: {} != {}. Ignoring activation.",
+                    "Blueprint ID mismatch when sending blueprint: {:?} != {:?}. Ignoring activation.",
                     blueprint_id,
                     activation_cmd.blueprint_id
                 );
@@ -3121,8 +3122,22 @@ mod tests {
 
     const CONFIG_CHANGE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
 
+    fn clear_environment() {
+        // SAFETY: only used in tests.
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::remove_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED");
+            std::env::remove_var("RERUN_FLUSH_NUM_BYTES");
+            std::env::remove_var("RERUN_FLUSH_NUM_ROWS");
+            std::env::remove_var("RERUN_FLUSH_TICK_SECS");
+            std::env::remove_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED");
+        }
+    }
+
     #[test]
     fn test_sink_dependent_batcher_config() {
+        clear_environment();
+
         let (tx, rx) = std::sync::mpsc::channel();
 
         let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
@@ -3138,14 +3153,18 @@ mod tests {
         let new_config = rx
             .recv_timeout(CONFIG_CHANGE_TIMEOUT)
             .expect("no config change message received within timeout");
-        assert_eq!(new_config, ChunkBatcherConfig::DEFAULT); // buffered sink uses the default config.
+        assert_eq!(
+            new_config,
+            ChunkBatcherConfig::from_env().unwrap(),
+            "Buffered sink should uses the config from the environment"
+        );
 
         // Change sink to our custom sink. Will it take over the setting?
         let injected_config = ChunkBatcherConfig {
             flush_tick: std::time::Duration::from_secs(123),
             flush_num_bytes: 123,
             flush_num_rows: 123,
-            ..ChunkBatcherConfig::DEFAULT
+            ..new_config
         };
         rec.set_sink(Box::new(BatcherConfigTestSink {
             config: injected_config.clone(),
@@ -3176,6 +3195,8 @@ mod tests {
 
     #[test]
     fn test_explicit_batcher_config() {
+        clear_environment();
+
         // This environment variable should *not* override the explicit config.
         let _scoped_env_guard = ScopedEnvVarSet::new("RERUN_FLUSH_TICK_SECS", "456");
         let explicit_config = ChunkBatcherConfig {

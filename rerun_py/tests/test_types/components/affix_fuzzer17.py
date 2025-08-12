@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -16,7 +16,8 @@ from rerun._baseclasses import (
     ComponentMixin,
 )
 
-from .. import datatypes
+if TYPE_CHECKING:
+    from .. import datatypes
 
 __all__ = ["AffixFuzzer17", "AffixFuzzer17ArrayLike", "AffixFuzzer17Batch", "AffixFuzzer17Like"]
 
@@ -32,6 +33,10 @@ class AffixFuzzer17(ComponentMixin):
         self.__attrs_init__(many_optional_unions=many_optional_unions)
 
     many_optional_unions: list[datatypes.AffixFuzzer3] | None = field(default=None)
+
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AffixFuzzer17Ext in affix_fuzzer17_ext.py
+        return len(self.many_optional_unions) if self.many_optional_unions is not None else 0
 
 
 AffixFuzzer17Like = AffixFuzzer17

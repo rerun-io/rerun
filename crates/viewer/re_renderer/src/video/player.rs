@@ -29,10 +29,10 @@ pub struct PlayerConfiguration {
     ///
     /// Discarded alternatives:
     /// * use video time based tolerance:
-    ///   -> makes it depend on playback speed whether we hit the threshold or not
+    ///   - makes it depend on playback speed whether we hit the threshold or not
     /// * use a wall clock time based tolerance:
-    ///   -> any seek operation that leads to waiting for the decoder to catch up,
-    ///      would cause us to show in-progress frames until the tolerance is hit
+    ///   - any seek operation that leads to waiting for the decoder to catch up,
+    ///     would cause us to show in-progress frames until the tolerance is hit
     pub tolerated_output_delay_in_num_frames: usize,
 
     /// If we haven't seen new samples in this amount of time, we assume the video has ended
@@ -137,16 +137,16 @@ impl VideoPlayer {
             description.human_readable_codec_string()
         );
 
-        if let Some(details) = description.encoding_details.as_ref() {
-            if let Some(bit_depth) = details.bit_depth {
-                #[allow(clippy::comparison_chain)]
-                if bit_depth < 8 {
-                    re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
-                } else if 8 < bit_depth {
-                    re_log::warn_once!(
-                        "{debug_name}: HDR videos not supported. See https://github.com/rerun-io/rerun/issues/7594 for more."
-                    );
-                }
+        if let Some(details) = description.encoding_details.as_ref()
+            && let Some(bit_depth) = details.bit_depth
+        {
+            #[allow(clippy::comparison_chain)]
+            if bit_depth < 8 {
+                re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
+            } else if 8 < bit_depth {
+                re_log::warn_once!(
+                    "{debug_name}: HDR videos not supported. See https://github.com/rerun-io/rerun/issues/7594 for more."
+                );
             }
         }
 

@@ -158,11 +158,11 @@ impl ForceLayoutProvider {
         let nodes = request.all_nodes().map(|(id, template)| {
             let node = fj::Node::from(template);
 
-            if template.fixed_position.is_none() {
-                if let Some(rect) = layout.get_node(&id) {
-                    let pos = rect.center();
-                    return node.position(pos.x as f64, pos.y as f64);
-                }
+            if template.fixed_position.is_none()
+                && let Some(rect) = layout.get_node(&id)
+            {
+                let pos = rect.center();
+                return node.position(pos.x as f64, pos.y as f64);
             }
 
             node

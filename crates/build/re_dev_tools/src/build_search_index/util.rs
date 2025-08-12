@@ -123,10 +123,7 @@ impl CheckStatus for std::process::ExitStatus {
         if self.success() {
             Ok(())
         } else {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                ExitCode(self.code().unwrap_or(-1)),
-            ))
+            Err(io::Error::other(ExitCode(self.code().unwrap_or(-1))))
         }
     }
 }

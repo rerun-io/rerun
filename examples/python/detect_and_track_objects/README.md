@@ -4,6 +4,7 @@ tags = ["2D", "Hugging face", "Object detection", "Object tracking", "OpenCV"]
 thumbnail = "https://static.rerun.io/detect-and-track-objects/63d7684ab1504c86a5375cb5db0fc515af433e08/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
+allow_warnings = true # TODO(emilk): torch produces a warning because of `transformers` (I think?). We should fix that, if we can.
 -->
 
 Visualize object detection and segmentation using the [Huggingface's Transformers](https://huggingface.co/docs/transformers/index) and [CSRT](https://arxiv.org/pdf/1611.08461.pdf) from OpenCV.

@@ -181,7 +181,7 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
                 props.remove(PROP_ALPHA);
 
                 this.color = Some(Color::new((r, g, b, a)));
-            };
+            }
 
             if let Some(radius) = props.get(PROP_RADIUS).and_then(f32) {
                 props.remove(PROP_RADIUS);

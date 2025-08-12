@@ -76,7 +76,7 @@ impl TestContextExt for TestContext {
                 let mut query_results = HashMap::default();
 
                 self.run(egui_ctx, |ctx| {
-                    viewport_blueprint.visit_contents::<()>(&mut |contents, _| {
+                    let _ignored = viewport_blueprint.visit_contents::<()>(&mut |contents, _| {
                         if let Contents::View(view_id) = contents {
                             let view_blueprint = viewport_blueprint
                                 .view(view_id)
@@ -97,7 +97,7 @@ impl TestContextExt for TestContext {
 
                             let indicated_entities_per_visualizer = ctx
                                 .view_class_registry()
-                                .indicated_entities_per_visualizer(&ctx.recording().store_id());
+                                .indicated_entities_per_visualizer(ctx.recording().store_id());
 
                             let mut data_query_result = view_blueprint.contents.execute_query(
                                 ctx.store_context,

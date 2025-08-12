@@ -80,8 +80,8 @@ pub trait PerStoreChunkSubscriber: Send + Sync + Default {
 }
 
 /// All registered [`ChunkStoreSubscriber`]s.
-static SUBSCRIBERS: once_cell::sync::Lazy<RwLock<Vec<SharedStoreSubscriber>>> =
-    once_cell::sync::Lazy::new(|| RwLock::new(Vec::new()));
+static SUBSCRIBERS: std::sync::LazyLock<RwLock<Vec<SharedStoreSubscriber>>> =
+    std::sync::LazyLock::new(|| RwLock::new(Vec::new()));
 
 #[derive(Debug, Clone, Copy)]
 pub struct ChunkStoreSubscriberHandle(u32);
@@ -131,10 +131,9 @@ impl ChunkStore {
         mut f: F,
     ) -> Option<T> {
         let subscribers = SUBSCRIBERS.read();
-        subscribers.get(handle as usize).and_then(|subscriber| {
-            let subscriber = subscriber.read();
-            subscriber.as_any().downcast_ref::<V>().map(&mut f)
-        })
+        let subscriber = subscribers.get(handle as usize)?;
+        let subscriber = subscriber.read();
+        subscriber.as_any().downcast_ref::<V>().map(&mut f)
     }
 
     /// Passes a reference to the downcasted subscriber to the given `FnOnce` callback.
@@ -145,10 +144,9 @@ impl ChunkStore {
         f: F,
     ) -> Option<T> {
         let subscribers = SUBSCRIBERS.read();
-        subscribers.get(handle as usize).and_then(|subscriber| {
-            let subscriber = subscriber.read();
-            subscriber.as_any().downcast_ref::<V>().map(f)
-        })
+        let subscriber = subscribers.get(handle as usize)?;
+        let subscriber = subscriber.read();
+        subscriber.as_any().downcast_ref::<V>().map(f)
     }
 
     /// Passes a mutable reference to the downcasted subscriber to the given callback.
@@ -159,10 +157,9 @@ impl ChunkStore {
         mut f: F,
     ) -> Option<T> {
         let subscribers = SUBSCRIBERS.read();
-        subscribers.get(handle as usize).and_then(|subscriber| {
-            let mut subscriber = subscriber.write();
-            subscriber.as_any_mut().downcast_mut::<V>().map(&mut f)
-        })
+        let subscriber = subscribers.get(handle as usize)?;
+        let mut subscriber = subscriber.write();
+        subscriber.as_any_mut().downcast_mut::<V>().map(&mut f)
     }
 
     /// Registers a [`PerStoreChunkSubscriber`] type so it gets automatically notified when data gets added and/or
@@ -194,13 +191,13 @@ impl ChunkStore {
         mut f: F,
     ) -> Option<T> {
         let subscribers = SUBSCRIBERS.read();
-        subscribers.get(handle as usize).and_then(|subscriber| {
-            let subscriber = subscriber.read();
-            subscriber
-                .as_any()
-                .downcast_ref::<PerStoreStoreSubscriberWrapper<S>>()
-                .and_then(|wrapper| wrapper.get(store_id).map(&mut f))
-        })
+        let subscriber = subscribers.get(handle as usize)?;
+        let subscriber = subscriber.read();
+        subscriber
+            .as_any()
+            .downcast_ref::<PerStoreStoreSubscriberWrapper<S>>()?
+            .get(store_id)
+            .map(&mut f)
     }
 
     /// Passes a reference to the downcasted per-store subscriber to the given `FnOnce` callback.
@@ -216,13 +213,12 @@ impl ChunkStore {
         f: F,
     ) -> Option<T> {
         let subscribers = SUBSCRIBERS.read();
-        subscribers.get(handle as usize).and_then(|subscriber| {
-            let subscriber = subscriber.read();
-            subscriber
-                .as_any()
-                .downcast_ref::<PerStoreStoreSubscriberWrapper<S>>()
-                .and_then(|wrapper| wrapper.get(store_id).map(f))
-        })
+        let subscriber = subscribers.get(handle as usize)?;
+        let subscriber = subscriber.read();
+        subscriber
+            .as_any()
+            .downcast_ref::<PerStoreStoreSubscriberWrapper<S>>()
+            .and_then(|wrapper| wrapper.get(store_id).map(f))
     }
 
     /// Passes a mutable reference to the downcasted per-store subscriber to the given callback.
@@ -238,13 +234,12 @@ impl ChunkStore {
         mut f: F,
     ) -> Option<T> {
         let subscribers = SUBSCRIBERS.read();
-        subscribers.get(handle as usize).and_then(|subscriber| {
-            let mut subscriber = subscriber.write();
-            subscriber
-                .as_any_mut()
-                .downcast_mut::<PerStoreStoreSubscriberWrapper<S>>()
-                .and_then(|wrapper| wrapper.get_mut(store_id).map(&mut f))
-        })
+        let subscriber = subscribers.get(handle as usize)?;
+        let mut subscriber = subscriber.write();
+        subscriber
+            .as_any_mut()
+            .downcast_mut::<PerStoreStoreSubscriberWrapper<S>>()
+            .and_then(|wrapper| wrapper.get_mut(store_id).map(&mut f))
     }
 
     /// Called by [`ChunkStore`]'s mutating methods to notify subscriber subscribers of upcoming events.
@@ -362,11 +357,11 @@ mod tests {
     #[test]
     fn store_subscriber() -> anyhow::Result<()> {
         let mut store1 = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
         let mut store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
 

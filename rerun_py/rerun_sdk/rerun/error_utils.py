@@ -5,10 +5,12 @@ import inspect
 import os
 import threading
 import warnings
-from types import TracebackType
-from typing import Any, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
-from .recording_stream import RecordingStream
+if TYPE_CHECKING:
+    from types import TracebackType
+
+    from .recording_stream import RecordingStream
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 
@@ -267,3 +269,14 @@ def deprecated_param(name: str, *, use_instead: str | None = None, since: str | 
         return cast(T, wrapper)
 
     return decorator
+
+
+class RerunOptionalDependencyError(ImportError):
+    """Raised when an optional dependency is not installed."""
+
+    def __init__(self, package: str, optional_dep: str) -> None:
+        super().__init__(
+            f"'{package}' could not be imported. "
+            f"Please install it, or install rerun as rerun[{optional_dep}]/rerun[all] "
+            "to use this functionality."
+        )

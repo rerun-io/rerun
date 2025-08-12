@@ -249,20 +249,16 @@ impl SnippetsRefCodeGenerator {
                         panic!("Snippet {} contained reference to deprecated object '{}'. Please migrate the snippet. Migration notice: {deprecation_summary}", snippet.name_qualified, obj.fqname);
                     }
 
-                    if obj.kind == ObjectKind::Archetype {
-                        if let Some(opt_outs) = archetype_opt_outs.get(&obj.name) {
-                            if opt_outs.contains(&snippet.name_qualified) {
-                                return false;
-                            }
-                        }
+                    if obj.kind == ObjectKind::Archetype
+                        && let Some(opt_outs) = archetype_opt_outs.get(&obj.name)
+                        && opt_outs.contains(&snippet.name_qualified) {
+                        return false;
                     }
 
-                    if obj.kind == ObjectKind::Component {
-                        if let Some(opt_outs) = component_opt_outs.get(&obj.name) {
-                            if opt_outs.contains(&snippet.name_qualified) {
-                                return false;
-                            }
-                        }
+                    if obj.kind == ObjectKind::Component
+                        && let Some(opt_outs) = component_opt_outs.get(&obj.name)
+                        && opt_outs.contains(&snippet.name_qualified) {
+                        return false;
                     }
 
                     true
@@ -468,7 +464,6 @@ fn collect_snippets_recursively<'o>(
             for obj in objs {
                 if contains_whole_word(&contents, &obj.name) {
                     set.insert(*obj);
-                    continue;
                 }
             }
         }
@@ -637,7 +632,7 @@ impl<'o> KnownObjects<'o> {
                 }
 
                 ObjectKind::Datatype => {}
-            };
+            }
         }
 
         Self {

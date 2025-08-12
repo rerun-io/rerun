@@ -58,11 +58,7 @@ impl AssetVideo {
         let Some(media_type) = self
             .media_type
             .as_ref()
-            .and_then(|mt| {
-                MediaType::from_arrow(&mt.array)
-                    .ok()
-                    .and_then(|mt| mt.first().cloned())
-            })
+            .and_then(|mt| MediaType::from_arrow(&mt.array).ok()?.first().cloned())
             .or_else(|| MediaType::guess_from_data(blob_bytes))
         else {
             return Err(re_video::VideoLoadError::UnrecognizedMimeType);

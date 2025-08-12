@@ -19,7 +19,7 @@ use re_types_core::{Archetype as _, ComponentBatch as _};
 #[test]
 fn simple_query() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -60,7 +60,7 @@ fn simple_query() {
 #[test]
 fn simple_query_with_differently_tagged_components() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -116,7 +116,7 @@ fn simple_query_with_differently_tagged_components() {
 #[test]
 fn static_query() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -177,7 +177,7 @@ fn invalidation() {
             .unwrap_or(TimeInt::STATIC);
 
         let store = ChunkStore::new_handle(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             Default::default(),
         );
         let mut caches = QueryCache::new(store.clone());
@@ -440,7 +440,7 @@ fn invalidation() {
 #[test]
 fn invalidation_of_future_optionals() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());
@@ -557,7 +557,7 @@ fn invalidation_of_future_optionals() {
 #[test]
 fn static_invalidation() {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
     let mut caches = QueryCache::new(store.clone());

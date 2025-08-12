@@ -4,7 +4,7 @@ use itertools::{Itertools as _, izip};
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, RangeQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_log_types::{ResolvedTimeRange, TimeType, Timeline, build_frame_nr};
+use re_log_types::{AbsoluteTimeRange, TimeType, Timeline, build_frame_nr};
 use re_types_core::Archetype as _;
 
 use re_query::{RangeResults, clamped_zip_1x2, range_zip_1x2};
@@ -17,7 +17,7 @@ fn main() -> anyhow::Result<()> {
 
     let entity_path = "points";
     let timeline = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = RangeQuery::new(*timeline.name(), ResolvedTimeRange::EVERYTHING);
+    let query = RangeQuery::new(*timeline.name(), AbsoluteTimeRange::EVERYTHING);
     eprintln!("query:{query:?}");
 
     let caches = re_query::QueryCache::new(store.clone());
@@ -99,7 +99,7 @@ fn main() -> anyhow::Result<()> {
 
 fn store() -> anyhow::Result<ChunkStoreHandle> {
     let store = ChunkStore::new_handle(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
         Default::default(),
     );
 

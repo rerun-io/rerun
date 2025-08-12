@@ -306,7 +306,7 @@ impl DeviceCaps {
             re_log::warn!(
                 "Running on a GPU/graphics driver with very limited abilitites. Consider updating your driver."
             );
-        };
+        }
 
         Ok(caps)
     }

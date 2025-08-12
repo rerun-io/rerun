@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-import numbers
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
+
+if TYPE_CHECKING:
+    import numbers
 
 
 class RadiusExt:

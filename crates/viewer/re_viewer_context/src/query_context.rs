@@ -1,5 +1,6 @@
+use std::sync::LazyLock;
+
 use ahash::HashMap;
-use once_cell::sync::Lazy;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
@@ -171,8 +172,7 @@ impl DataResultTree {
     }
 
     pub fn root_node(&self) -> Option<&DataResultNode> {
-        self.root_handle
-            .and_then(|handle| self.data_results.get(handle))
+        self.data_results.get(self.root_handle?)
     }
 
     /// Depth-first traversal of the tree, calling `visitor` on each result.
@@ -212,17 +212,16 @@ impl DataResultTree {
     ) -> Option<&DataResultNode> {
         let mut result = None;
 
-        starting_node.or_else(|| self.root_node()).and_then(|node| {
-            self.visit_from_node(node, &mut |node| {
-                if predicate(node) {
-                    result = Some(node);
-                }
+        let node = starting_node.or_else(|| self.root_node())?;
+        self.visit_from_node(node, &mut |node| {
+            if predicate(node) {
+                result = Some(node);
+            }
 
-                // keep recursing until we find something
-                result.is_none()
-            });
-            result
-        })
+            // keep recursing until we find something
+            result.is_none()
+        });
+        result
     }
 
     /// Look up a [`DataResult`] in the tree based on its handle.
@@ -269,17 +268,17 @@ impl DataResultTree {
         handle: DataResultHandle,
         visitor: &mut impl FnMut(&'a DataResultNode) -> bool,
     ) {
-        if let Some(result) = self.data_results.get(handle) {
-            if visitor(result) {
-                for child in &result.children {
-                    self.visit_recursive(*child, visitor);
-                }
+        if let Some(result) = self.data_results.get(handle)
+            && visitor(result)
+        {
+            for child in &result.children {
+                self.visit_recursive(*child, visitor);
             }
         }
     }
 }
 
-static EMPTY_QUERY: Lazy<DataQueryResult> = Lazy::<DataQueryResult>::new(Default::default);
+static EMPTY_QUERY: LazyLock<DataQueryResult> = LazyLock::new(Default::default);
 
 impl ViewerContext<'_> {
     pub fn lookup_query_result(&self, id: ViewId) -> &DataQueryResult {

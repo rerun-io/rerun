@@ -226,24 +226,23 @@ fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
 
     for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
         let mut metadata = field.metadata().clone();
-        if let Some(archetype) = metadata.get_mut("rerun.archetype") {
-            if let Some(archetype_rename) = archetype_renames.get(archetype.as_str()) {
-                re_log::debug_once!(
-                    "Migrating {archetype:?} to {:?}…",
-                    archetype_rename.new_name
-                );
+        if let Some(archetype) = metadata.get_mut("rerun.archetype")
+            && let Some(archetype_rename) = archetype_renames.get(archetype.as_str())
+        {
+            re_log::debug_once!(
+                "Migrating {archetype:?} to {:?}…",
+                archetype_rename.new_name
+            );
 
-                // Rename archetype:
-                *archetype = archetype_rename.new_name.to_owned();
+            // Rename archetype:
+            *archetype = archetype_rename.new_name.to_owned();
 
-                // Renmame fields:
-                if let Some(archetype_field) = metadata.get_mut("rerun.archetype_field") {
-                    if let Some(new_field_name) =
-                        archetype_rename.field_renames.get(archetype_field.as_str())
-                    {
-                        *archetype_field = (*new_field_name).to_owned();
-                    }
-                }
+            // Renmame fields:
+            if let Some(archetype_field) = metadata.get_mut("rerun.archetype_field")
+                && let Some(new_field_name) =
+                    archetype_rename.field_renames.get(archetype_field.as_str())
+            {
+                *archetype_field = (*new_field_name).to_owned();
             }
         }
 

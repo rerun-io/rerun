@@ -6,15 +6,17 @@ import logging
 import os
 import pathlib
 import time
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 from uuid import uuid4
 
 import anywidget
 import jupyter_ui_poll
 import traitlets
 from ipywidgets import HTML
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 try:
     __version__ = importlib.metadata.version("rerun_notebook")
@@ -99,7 +101,7 @@ if ASSET_ENV is None:
     if "RERUN_DEV_ENVIRONMENT" in os.environ:
         ASSET_ENV = "serve-local"
     else:
-        ASSET_ENV = f"https://app.rerun.io/version/{__version__}/widget.js"
+        ASSET_ENV = f"https://app.rerun.io/version/{__version__}/notebook/widget.js"
 
 if ASSET_ENV == ASSET_MAGIC_SERVE:  # localhost widget
     from .asset_server import serve_assets

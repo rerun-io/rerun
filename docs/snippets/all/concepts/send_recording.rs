@@ -13,15 +13,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("Expected exactly one recording in the archive")?;
 
     // Use the same app and recording IDs as the original.
-    if let Some(store_info) = store.store_info().cloned() {
-        let new_recording = rerun::RecordingStreamBuilder::new(store_info.application_id.clone())
-            .store_id(store_id)
-            .spawn()?;
+    let new_recording = rerun::RecordingStreamBuilder::from_store_id(&store_id).spawn()?;
 
-        // Forward all chunks to the new recording stream.
-        for chunk in store.iter_chunks() {
-            new_recording.send_chunk((**chunk).clone());
-        }
+    // Forward all chunks to the new recording stream.
+    for chunk in store.iter_chunks() {
+        new_recording.send_chunk((**chunk).clone());
     }
 
     Ok(())

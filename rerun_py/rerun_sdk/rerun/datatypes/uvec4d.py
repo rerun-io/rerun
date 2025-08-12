@@ -39,6 +39,10 @@ class UVec4D:
         # You can define your own __array__ function as a member of UVec4DExt in uvec4d_ext.py
         return np.asarray(self.xyzw, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of UVec4DExt in uvec4d_ext.py
+        return len(self.xyzw)
+
 
 if TYPE_CHECKING:
     UVec4DLike = Union[UVec4D, npt.NDArray[Any], npt.ArrayLike, Sequence[int]]

@@ -21,11 +21,15 @@ rr.script_teardown(args)
 
 from __future__ import annotations
 
-from argparse import ArgumentParser, Namespace
-from uuid import UUID
+from typing import TYPE_CHECKING
 
 import rerun as rr
-from rerun.recording_stream import RecordingStream
+
+if TYPE_CHECKING:
+    from argparse import ArgumentParser, Namespace
+    from uuid import UUID
+
+    from rerun.recording_stream import RecordingStream
 
 
 def script_add_args(parser: ArgumentParser) -> None:

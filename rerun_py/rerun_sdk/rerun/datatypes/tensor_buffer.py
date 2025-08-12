@@ -5,11 +5,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Union
 
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
@@ -85,6 +82,11 @@ class TensorBuffer(TensorBufferExt):
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    import numpy as np
+    import numpy.typing as npt
+
     TensorBufferLike = Union[
         TensorBuffer,
         npt.NDArray[np.float16],

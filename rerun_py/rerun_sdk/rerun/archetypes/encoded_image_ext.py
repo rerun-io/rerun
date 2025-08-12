@@ -3,13 +3,13 @@ from __future__ import annotations
 import pathlib
 from typing import IO, TYPE_CHECKING, Any, Union
 
-import numpy as np
-import numpy.typing as npt
-
-from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
+
+    from .. import datatypes
     from ..datatypes import Float32Like
 
     ImageLike = Union[

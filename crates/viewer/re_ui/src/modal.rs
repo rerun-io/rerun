@@ -163,7 +163,7 @@ impl ModalWrapper {
             area = area.default_height(default_height);
         }
 
-        let modal_response = egui::Modal::new(id.with("modal"))
+        egui::Modal::new(id.with("modal"))
             .frame(Frame::new())
             .area(area)
             .show(ctx, |ui| {
@@ -273,9 +273,7 @@ impl ModalWrapper {
                     }
                 })
                 .inner
-            });
-
-        modal_response
+            })
     }
 
     /// Display a title bar in our own style.

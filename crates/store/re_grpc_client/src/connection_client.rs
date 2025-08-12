@@ -11,10 +11,10 @@ use re_protos::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
         ReadDatasetEntryRequest, ReadTableEntryRequest,
         ext::{
-            CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails, LanceTable,
-            ProviderDetails as _, ReadDatasetEntryResponse, ReadTableEntryResponse,
-            RegisterTableResponse, TableEntry, UpdateDatasetEntryRequest,
-            UpdateDatasetEntryResponse,
+            CreateDatasetEntryResponse, DatasetDetails, DatasetEntry, EntryDetails,
+            EntryDetailsUpdate, LanceTable, ProviderDetails as _, ReadDatasetEntryResponse,
+            ReadTableEntryResponse, RegisterTableResponse, TableEntry, UpdateDatasetEntryRequest,
+            UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
         },
     },
     common::v1alpha1::{
@@ -27,7 +27,7 @@ use re_protos::{
     },
     manifest_registry::v1alpha1::{
         RegisterWithDatasetResponse, ScanPartitionTableResponse,
-        ext::{DataSource, PartitionType, RegisterWithDatasetTaskDescriptor},
+        ext::{DataSource, DataSourceKind, RegisterWithDatasetTaskDescriptor},
     },
     missing_field,
 };
@@ -101,14 +101,40 @@ where
         Ok(())
     }
 
+    /// Update the provided entry.
+    pub async fn update_entry(
+        &mut self,
+        entry_id: EntryId,
+        entry_details_update: EntryDetailsUpdate,
+    ) -> Result<EntryDetails, StreamError> {
+        let response: UpdateEntryResponse = self
+            .inner()
+            .update_entry(tonic::Request::new(
+                UpdateEntryRequest {
+                    id: entry_id,
+                    entry_details_update,
+                }
+                .into(),
+            ))
+            .await?
+            .into_inner()
+            .try_into()?;
+
+        Ok(response.entry_details)
+    }
+
     /// Create a new dataset entry.
     pub async fn create_dataset_entry(
         &mut self,
         name: String,
+        entry_id: Option<EntryId>,
     ) -> Result<DatasetEntry, StreamError> {
         let response: CreateDatasetEntryResponse = self
             .inner()
-            .create_dataset_entry(CreateDatasetEntryRequest { name: Some(name) })
+            .create_dataset_entry(CreateDatasetEntryRequest {
+                name: Some(name),
+                id: entry_id.map(Into::into),
+            })
             .await?
             .into_inner()
             .try_into()?;
@@ -266,7 +292,7 @@ where
         };
 
         let partition_id_column = get_string_array(RegisterWithDatasetResponse::PARTITION_ID)?;
-        let partition_type_column = PartitionType::many_from_arrow(
+        let partition_type_column = DataSourceKind::many_from_arrow(
             response
                 .column_by_name(RegisterWithDatasetResponse::PARTITION_TYPE)
                 .ok_or_else(|| {

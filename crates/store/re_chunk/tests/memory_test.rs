@@ -3,7 +3,10 @@
 // https://github.com/rust-lang/rust-clippy/issues/10011
 #![cfg(test)]
 
-use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+use std::{
+    iter::repeat_n,
+    sync::atomic::{AtomicUsize, Ordering::Relaxed},
+};
 
 thread_local! {
     static LIVE_BYTES_IN_THREAD: AtomicUsize = const { AtomicUsize::new(0) };
@@ -79,8 +82,7 @@ fn concat_does_allocate() {
         total_size_bytes,
     ) = memory_use(|| {
         let unconcatenated = memory_use(|| {
-            std::iter::repeat(NUM_SCALARS as usize / 10)
-                .take(10)
+            std::iter::repeat_n(NUM_SCALARS as usize / 10, 10)
                 .map(|_| as_array_ref(ArrowInt64Array::from((0..NUM_SCALARS / 10).collect_vec())))
                 .collect_vec()
         });
@@ -170,9 +172,7 @@ fn filter_does_allocate() {
                 let scalars = ArrowInt64Array::from((0..NUM_SCALARS).collect_vec());
                 ArrowListArray::new(
                     ArrowField::new("item", scalars.data_type().clone(), false).into(),
-                    ArrowOffsetBuffer::from_lengths(
-                        std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
-                    ),
+                    ArrowOffsetBuffer::from_lengths(repeat_n(NUM_SCALARS as usize / 10, 10)),
                     as_array_ref(scalars),
                     None,
                 )
@@ -227,19 +227,13 @@ fn filter_empty_or_full_is_noop() {
                 let scalars = ArrowInt64Array::from((0..NUM_SCALARS).collect_vec());
                 ArrowListArray::new(
                     ArrowField::new("item", scalars.data_type().clone(), false).into(),
-                    ArrowOffsetBuffer::from_lengths(
-                        std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
-                    ),
+                    ArrowOffsetBuffer::from_lengths(repeat_n(NUM_SCALARS as usize / 10, 10)),
                     as_array_ref(scalars),
                     None,
                 )
             });
 
-            let filter = ArrowBooleanArray::from(
-                std::iter::repeat(true)
-                    .take(unfiltered.0.len())
-                    .collect_vec(),
-            );
+            let filter = ArrowBooleanArray::from(vec![true; unfiltered.0.len()]);
             let filtered = memory_use(|| re_arrow_util::filter_array(&unfiltered.0, &filter));
 
             (unfiltered, filtered)
@@ -294,9 +288,7 @@ fn take_does_not_allocate() {
                 let scalars = ArrowInt64Array::from((0..NUM_SCALARS).collect_vec());
                 ArrowListArray::new(
                     ArrowField::new("item", scalars.data_type().clone(), false).into(),
-                    ArrowOffsetBuffer::from_lengths(
-                        std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
-                    ),
+                    ArrowOffsetBuffer::from_lengths(repeat_n(NUM_SCALARS as usize / 10, 10)),
                     as_array_ref(scalars),
                     None,
                 )
@@ -354,9 +346,7 @@ fn take_empty_or_full_is_noop() {
                 let scalars = ArrowInt64Array::from((0..NUM_SCALARS).collect_vec());
                 ArrowListArray::new(
                     ArrowField::new("item", scalars.data_type().clone(), false).into(),
-                    ArrowOffsetBuffer::from_lengths(
-                        std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
-                    ),
+                    ArrowOffsetBuffer::from_lengths(repeat_n(NUM_SCALARS as usize / 10, 10)),
                     as_array_ref(scalars),
                     None,
                 )

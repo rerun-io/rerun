@@ -141,6 +141,7 @@ exclude = [
   'https://www.reddit.com/',                                           # Gives 403 forbidden on CI.
   'https://www.tensorflow.org/',                                       # tensorflow.org apparently blocks CI.
   'https://claude.site/artifacts/',                                    # Giving a 500, but only from CI
+  'https://fifteen-thirtyeight.rerun.io/script.js',                    # Gives 403 forbidden on CI.
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',

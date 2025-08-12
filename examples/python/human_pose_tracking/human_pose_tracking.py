@@ -6,11 +6,10 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-from collections.abc import Iterator
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import cv2
 import mediapipe as mp
@@ -20,6 +19,9 @@ import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 DESCRIPTION = """
 # Human pose tracking

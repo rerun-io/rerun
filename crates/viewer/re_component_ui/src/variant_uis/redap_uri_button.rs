@@ -40,7 +40,7 @@ pub fn redap_uri_button(
             .as_ref()
             .is_some_and(|source| source.redap_uri().as_ref() == Some(&uri))
         {
-            Some(db.store_id())
+            Some(db.store_id().clone())
         } else {
             None
         }

@@ -1,6 +1,6 @@
 use re_chunk::{Chunk, RangeQuery, RowId, Timeline, TimelineName};
 use re_log_types::{
-    ResolvedTimeRange,
+    AbsoluteTimeRange,
     example_components::{MyColor, MyLabel, MyPoint, MyPoints},
 };
 
@@ -11,7 +11,7 @@ fn main() -> anyhow::Result<()> {
 
     eprintln!("Data:\n{chunk}");
 
-    let query = RangeQuery::new(TimelineName::new("frame"), ResolvedTimeRange::EVERYTHING);
+    let query = RangeQuery::new(TimelineName::new("frame"), AbsoluteTimeRange::EVERYTHING);
 
     // Find all relevant data for a query:
     let chunk = chunk.range(&query, &MyPoints::descriptor_points());

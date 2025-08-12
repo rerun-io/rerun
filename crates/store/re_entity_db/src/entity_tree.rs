@@ -241,13 +241,13 @@ impl EntityTree {
         ) -> Option<&'a EntityTree> {
             if predicate(&this.path) {
                 return Some(this);
-            };
+            }
 
             for child in this.children.values() {
                 if let Some(subtree) = visit(child, predicate) {
                     // Early return
                     return Some(subtree);
-                };
+                }
             }
 
             None
@@ -273,7 +273,10 @@ mod tests {
     fn deleting_descendants() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let mut db = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
 
         let timeline_frame = Timeline::new_sequence("frame");
 

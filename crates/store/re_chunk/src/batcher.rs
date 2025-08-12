@@ -11,7 +11,7 @@ use nohash_hasher::IntMap;
 
 use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline, TimelineName};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
 use re_types_core::ComponentDescriptor;
 
 use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
@@ -384,10 +384,10 @@ impl Drop for ChunkBatcherInner {
     fn drop(&mut self) {
         // Drop the receiving end of the chunk stream first and foremost, so that we don't block
         // even if the output channel is bounded and currently full.
-        if let Some(rx_chunks) = self.rx_chunks.take() {
-            if !rx_chunks.is_empty() {
-                re_log::warn!("Dropping data");
-            }
+        if let Some(rx_chunks) = self.rx_chunks.take()
+            && !rx_chunks.is_empty()
+        {
+            re_log::warn!("Dropping data");
         }
 
         // NOTE: The command channel is private, if we're here, nothing is currently capable of
@@ -713,7 +713,7 @@ fn batching_thread(
                     }
 
                     Command::Shutdown => break,
-                };
+                }
             },
 
             recv(rx_tick) -> _ => {
@@ -1031,7 +1031,7 @@ struct PendingTimeColumn {
     timeline: Timeline,
     times: Vec<i64>,
     is_sorted: bool,
-    time_range: ResolvedTimeRange,
+    time_range: AbsoluteTimeRange,
 }
 
 impl PendingTimeColumn {
@@ -1040,7 +1040,7 @@ impl PendingTimeColumn {
             timeline,
             times: Default::default(),
             is_sorted: true,
-            time_range: ResolvedTimeRange::EMPTY,
+            time_range: AbsoluteTimeRange::EMPTY,
         }
     }
 

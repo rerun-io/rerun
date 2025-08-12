@@ -1,5 +1,5 @@
 use re_chunk::{ChunkId, TimelineName};
-use re_log_types::ResolvedTimeRange;
+use re_log_types::AbsoluteTimeRange;
 
 use crate::{ChunkStore, ChunkStoreEvent};
 
@@ -14,7 +14,7 @@ impl ChunkStore {
     pub fn drop_time_range(
         &mut self,
         timeline: &TimelineName,
-        drop_range: ResolvedTimeRange,
+        drop_range: AbsoluteTimeRange,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 

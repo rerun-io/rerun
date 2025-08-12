@@ -213,7 +213,7 @@ fn load_video_data_from_chunks(
     // TODO(andreas): Can we be more clever about the chunk range here and build up only what we need?
     // Kinda tricky since we need to know how far back (and ahead for b-frames) we have to look.
     let entire_timeline_query =
-        re_chunk::RangeQuery::new(timeline, re_log_types::ResolvedTimeRange::EVERYTHING);
+        re_chunk::RangeQuery::new(timeline, re_log_types::AbsoluteTimeRange::EVERYTHING);
     let query_results = store.storage_engine().cache().range(
         &entire_timeline_query,
         entity_path,
@@ -488,13 +488,13 @@ fn read_samples_from_chunk(
         sample_index_range: sample_base_idx..samples.next_index(),
     });
 
-    if cfg!(debug_assertions) {
-        if let Err(err) = video_descr.sanity_check() {
-            panic!(
-                "VideoDataDescription sanity check failed for video stream at {:?}: {err}",
-                chunk.entity_path()
-            );
-        }
+    if cfg!(debug_assertions)
+        && let Err(err) = video_descr.sanity_check()
+    {
+        panic!(
+            "VideoDataDescription sanity check failed for video stream at {:?}: {err}",
+            chunk.entity_path()
+        );
     }
 
     Ok(())
@@ -645,13 +645,13 @@ impl Cache for VideoStreamCache {
                                     .sum::<usize>()
                             );
 
-                            if cfg!(debug_assertions) {
-                                if let Err(err) = video_data.sanity_check() {
-                                    panic!(
-                                        "VideoDataDescription sanity check stream at {:?} failed: {err}",
-                                        event.chunk.entity_path()
-                                    );
-                                }
+                            if cfg!(debug_assertions)
+                                && let Err(err) = video_data.sanity_check()
+                            {
+                                panic!(
+                                    "VideoDataDescription sanity check stream at {:?} failed: {err}",
+                                    event.chunk.entity_path()
+                                );
                             }
                         }
                     }
@@ -833,8 +833,10 @@ mod tests {
     #[test]
     fn video_stream_cache_from_single_chunk() {
         let mut cache = VideoStreamCache::default();
-        let mut store =
-            re_entity_db::EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let mut store = re_entity_db::EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
         let timeline = Timeline::new_sequence("frame");
 
         let mut chunk_builder = ChunkBuilder::new(ChunkId::new(), "vid".into());
@@ -869,7 +871,7 @@ mod tests {
     fn video_stream_cache_from_chunk_per_frame() {
         let mut cache = VideoStreamCache::default();
         let mut store = re_entity_db::EntityDb::with_store_config(
-            StoreId::random(re_log_types::StoreKind::Recording),
+            StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
         );
         let timeline = Timeline::new_sequence("frame");
@@ -910,7 +912,7 @@ mod tests {
 
             let mut cache = VideoStreamCache::default();
             let mut store = re_entity_db::EntityDb::with_store_config(
-                StoreId::random(re_log_types::StoreKind::Recording),
+                StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
                 if compaction_enabled {
                     re_chunk_store::ChunkStoreConfig::DEFAULT
                 } else {
@@ -977,7 +979,7 @@ mod tests {
     fn video_stream_cache_from_chunk_per_frame_with_gc() {
         let mut cache = VideoStreamCache::default();
         let mut store = re_entity_db::EntityDb::with_store_config(
-            StoreId::random(re_log_types::StoreKind::Recording),
+            StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
             re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
         );
         let timeline = Timeline::new_sequence("frame");
@@ -1007,7 +1009,7 @@ mod tests {
         let storage_engine = store.storage_engine();
         let chunk_store = storage_engine.store();
         cache.on_store_events(&[&ChunkStoreEvent {
-            store_id: store.store_id(),
+            store_id: store.store_id().clone(),
             store_generation: store.generation(),
             event_id: 0, // Wrong but don't care.
             diff: ChunkStoreDiff::deletion(chunk_store.iter_chunks().next().unwrap().clone()),
