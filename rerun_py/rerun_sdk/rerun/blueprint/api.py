@@ -2,18 +2,20 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable, Mapping
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import rerun_bindings as bindings
 
 from .._baseclasses import AsComponents, ComponentBatchLike, DescribedComponentBatch
 from .._spawn import _spawn_viewer
 from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
-from ..memory import MemoryRecording
 from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, PanelBlueprint, ViewBlueprint, ViewContents, ViewportBlueprint
 from .components import PanelState, PanelStateLike
-from .components.container_kind import ContainerKindLike
+
+if TYPE_CHECKING:
+    from ..memory import MemoryRecording
+    from .components.container_kind import ContainerKindLike
 
 ViewContentsLike = Union[Utf8ArrayLike, ViewContents]
 

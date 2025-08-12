@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
 )
@@ -68,6 +67,8 @@ class ClassDescription(ClassDescriptionExt):
 
 
 if TYPE_CHECKING:
+    from .. import datatypes
+
     ClassDescriptionLike = Union[ClassDescription, datatypes.AnnotationInfoLike]
 else:
     ClassDescriptionLike = Any

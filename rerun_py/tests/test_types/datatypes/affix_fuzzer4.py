@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
@@ -13,8 +12,6 @@ from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
 )
-
-from .. import datatypes
 
 __all__ = ["AffixFuzzer4", "AffixFuzzer4ArrayLike", "AffixFuzzer4Batch", "AffixFuzzer4Like"]
 
@@ -34,6 +31,10 @@ class AffixFuzzer4:
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from .. import datatypes
+
     AffixFuzzer4Like = Union[
         AffixFuzzer4,
         datatypes.AffixFuzzer3,

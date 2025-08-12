@@ -3,7 +3,7 @@
 """
 Run various rust checks for CI.
 
-You can run the script via pixi which will make sure that the web build is around and up-to-date:
+You can run the script via pixi:
     pixi run rs-check
 
 Alternatively you can also run it directly via python:
@@ -69,6 +69,17 @@ def run_cargo(
 
     additional_env_vars["RUSTFLAGS"] = f"{extra_cfgs} {'--deny warnings' if deny_warnings else ''}"
     additional_env_vars["RUSTDOCFLAGS"] = f"{extra_cfgs} {'--deny warnings' if deny_warnings else ''}"
+
+    # We shouldn't require the web viewer .wasm to exist before running clippy, unit tests, etc:
+    additional_env_vars["RERUN_DISABLE_WEB_VIEWER_SERVER"] = "1"
+
+    # Disable TRACY to avoid macOS failure on CI, that looks like this:
+    # > Tracy Profiler initialization failure: CPU doesn't support invariant TSC.
+    # > Define TRACY_NO_INVARIANT_CHECK=1 to ignore this error, *if you know what you are doing*.
+    # > Alternatively you may rebuild the application with the TRACY_TIMER_FALLBACK define to use lower resolution timer.
+    additional_env_vars["TRACY_ENABLED"] = "0"
+    additional_env_vars["TRACY_NO_INVARIANT_CHECK"] = "1"
+
     if clippy_conf is not None:
         additional_env_vars["CLIPPY_CONF_DIR"] = (
             # Clippy has issues finding this directory on CI when we're not using an absolute path here.

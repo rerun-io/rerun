@@ -5,9 +5,11 @@ from collections.abc import Hashable
 from concurrent.futures import ThreadPoolExecutor
 from math import floor
 from multiprocessing import Event, cpu_count
-from multiprocessing.synchronize import Event as EventClass
 from queue import Empty, Queue
-from typing import Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Callable, Generic, TypeVar
+
+if TYPE_CHECKING:
+    from multiprocessing.synchronize import Event as EventClass
 
 
 class RateLimiter:

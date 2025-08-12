@@ -50,6 +50,7 @@ impl ImageMessageParser {
 
 impl McapMessageParser for ImageMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
         // TODO(#10725): Do we want to log the unused fields?
         #[allow(unused)]
         let sensor_msgs::Image {
@@ -82,6 +83,7 @@ impl McapMessageParser for ImageMessageParser {
     }
 
     fn finalize(self: Box<Self>, ctx: ParserContext) -> anyhow::Result<Vec<re_chunk::Chunk>> {
+        re_tracing::profile_function!();
         let Self {
             blobs,
             image_formats,

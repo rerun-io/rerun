@@ -103,6 +103,7 @@ impl McapMessageParser for ProtobufMessageParser {
         _ctx: &mut crate::mcap::decode::ParserContext,
         msg: &mcap::Message<'_>,
     ) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
         let dynamic_message =
             DynamicMessage::decode(self.message_descriptor.clone(), msg.data.as_ref()).map_err(
                 |err| Error::InvalidMessage {
@@ -131,6 +132,7 @@ impl McapMessageParser for ProtobufMessageParser {
         self: Box<Self>,
         ctx: crate::mcap::decode::ParserContext,
     ) -> anyhow::Result<Vec<re_chunk::Chunk>> {
+        re_tracing::profile_function!();
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 

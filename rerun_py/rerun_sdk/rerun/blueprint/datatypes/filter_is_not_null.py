@@ -15,7 +15,6 @@ from ... import datatypes
 from ..._baseclasses import (
     BaseBatch,
 )
-from ...blueprint import datatypes as blueprint_datatypes
 from .filter_is_not_null_ext import FilterIsNotNullExt
 
 __all__ = ["FilterIsNotNull", "FilterIsNotNullArrayLike", "FilterIsNotNullBatch", "FilterIsNotNullLike"]
@@ -66,6 +65,8 @@ class FilterIsNotNull(FilterIsNotNullExt):
 
 
 if TYPE_CHECKING:
+    from ...blueprint import datatypes as blueprint_datatypes
+
     FilterIsNotNullLike = Union[FilterIsNotNull, blueprint_datatypes.ComponentColumnSelectorLike]
 else:
     FilterIsNotNullLike = Any

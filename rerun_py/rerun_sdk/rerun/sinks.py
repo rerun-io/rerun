@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import pathlib
 from typing import TYPE_CHECKING, Union
 
 import rerun_bindings as bindings
@@ -12,12 +11,14 @@ from rerun_bindings import (
 from typing_extensions import deprecated
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
-from rerun.dataframe import Recording
 from rerun.recording_stream import RecordingStream, get_application_id
 
 from ._spawn import _spawn_viewer
 
 if TYPE_CHECKING:
+    import pathlib
+
+    from rerun.dataframe import Recording
     from rerun.recording_stream import RecordingStream
 
 

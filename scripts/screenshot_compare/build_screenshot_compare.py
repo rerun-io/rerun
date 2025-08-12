@@ -24,16 +24,18 @@ import os
 import shutil
 import subprocess
 import threading
-from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import partial
 from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import requests
 from jinja2 import Template
 from PIL import Image
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 BASE_PATH = Path("compare_screenshot")
 

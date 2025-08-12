@@ -240,9 +240,7 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 # (this looks heavy but takes typically below 0.1s!)
 rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release"
 
-rs-check = { cmd = "rustup target add wasm32-unknown-unknown && python scripts/ci/rust_checks.py", depends-on = [
-  "rerun-build-web", # The checks require the web viewer wasm to be around.
-] }
+rs-check = "python scripts/ci/rust_checks.py"
 
 # Check that old .rrd files can still be read and understood.
 # See tests/assets/rrd/README.md for more.
@@ -727,7 +725,7 @@ av = ">=14.2.0"
 # Torch is needed to run the rerun unit tests.
 # This dependency is here to get torch into the pixi cache because it's large and installing it
 # during the wheel-test task itself is otherwise painful.
-torch = "==2.6.0" # This must match the torch version in any package we install during `wheel-test`
+torch = "==2.8.0" # This must match the torch version in any package we install during `wheel-test`
 
 [feature.wheel-test.dependencies]
 pip = ">=23"

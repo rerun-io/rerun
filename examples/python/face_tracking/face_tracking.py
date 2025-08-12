@@ -8,9 +8,8 @@ import itertools
 import logging
 import math
 import os
-from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import cv2
 import mediapipe as mp
@@ -20,6 +19,9 @@ import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 import tqdm
 from mediapipe.tasks.python import vision
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
 
 # If set, log everything as static.
 #
