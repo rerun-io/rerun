@@ -1,5 +1,5 @@
 use arrow::{
-    array::Array,
+    array::{Array, BinaryArray},
     datatypes::DataType,
     error::ArrowError,
     util::display::{ArrayFormatter, FormatOptions},
@@ -38,6 +38,13 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         {
             let string = entries.value(0);
             ui_layout.data_label(ui, string);
+            return;
+        }
+        if let Some(bnaries) = array.downcast_array_ref::<BinaryArray>()
+            && bnaries.len() == 1
+        {
+            let binary = bnaries.value(0);
+            ui_layout.data_label(ui, re_format::format_bytes(binary.len() as _));
             return;
         }
 
