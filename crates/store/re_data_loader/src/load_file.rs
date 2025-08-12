@@ -135,19 +135,21 @@ pub(crate) fn load(
             struct CompatibleLoaderFound;
             let (tx_feedback, rx_feedback) = std::sync::mpsc::channel::<CompatibleLoaderFound>();
 
-            // Prevent passing RRD paths to external (and other) loaders.
+            // When loading a file type with native support (.rrd, .mcap, .png, …)
+            // then we don't need the overhead and noise of external data loaders:
             // See <https://github.com/rerun-io/rerun/issues/6530>.
             let loaders = {
                 use crate::DataLoader as _;
                 use rayon::iter::Either;
 
                 let extension = crate::extension(path);
-                if crate::SUPPORTED_RERUN_EXTENSIONS.contains(&extension.as_str()) {
+                if crate::is_supported_file_extension(&extension) {
                     Either::Left(
                         crate::iter_loaders()
-                            .filter(|loader| loader.name() == crate::RrdLoader.name()),
+                            .filter(|loader| loader.name() != crate::ExternalLoader.name()),
                     )
                 } else {
+                    // We need to use an external dataloader
                     Either::Right(crate::iter_loaders())
                 }
             };
