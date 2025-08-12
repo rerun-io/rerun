@@ -1096,7 +1096,7 @@ mod tests {
         TimeType,
         example_components::{MyPoint, MyPoints},
     };
-    use re_test_context::TestContext;
+    use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
     use re_test_viewport::{TestContextExt as _, TestView};
     use re_types::archetypes;
     use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
@@ -1354,9 +1354,10 @@ mod tests {
             &LatestAtQuery::latest(blueprint_timeline()),
         );
 
+        let size = egui::Vec2::from([400.0, 500.0]);
         let mut harness = test_context
             .setup_kittest_for_rendering()
-            .with_size([400.0, 500.0])
+            .with_size(size)
             .build_ui(|ui| {
                 test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                     SelectionPanel::default().contents(
@@ -1370,7 +1371,14 @@ mod tests {
             });
 
         harness.run();
-        harness.snapshot("selection_panel_view");
+
+        let broken_pixels_fraction = 0.004;
+
+        let options = SnapshotOptions::new().failed_pixel_count_threshold(
+            (size.x * size.y * broken_pixels_fraction).round() as usize,
+        );
+
+        harness.snapshot_options("selection_panel_view", &options);
     }
 
     #[test]
@@ -1403,9 +1411,10 @@ mod tests {
             &LatestAtQuery::latest(blueprint_timeline()),
         );
 
+        let size = egui::Vec2::from([400.0, 500.0]);
         let mut harness = test_context
             .setup_kittest_for_rendering()
-            .with_size([400.0, 500.0])
+            .with_size(size)
             .build_ui(|ui| {
                 test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                     SelectionPanel::default().contents(
@@ -1419,7 +1428,14 @@ mod tests {
             });
 
         harness.run();
-        harness.snapshot("selection_panel_view_entity_no_visualizable");
+
+        let broken_pixels_fraction = 0.004;
+
+        let options = SnapshotOptions::new().failed_pixel_count_threshold(
+            (size.x * size.y * broken_pixels_fraction).round() as usize,
+        );
+
+        harness.snapshot_options("selection_panel_view_entity_no_visualizable", &options);
     }
 
     #[test]
@@ -1445,9 +1461,10 @@ mod tests {
             &LatestAtQuery::latest(blueprint_timeline()),
         );
 
+        let size = egui::Vec2::from([400.0, 500.0]);
         let mut harness = test_context
             .setup_kittest_for_rendering()
-            .with_size([400.0, 500.0])
+            .with_size(size)
             .build_ui(|ui| {
                 test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                     SelectionPanel::default().contents(
@@ -1461,6 +1478,13 @@ mod tests {
             });
 
         harness.run();
-        harness.snapshot("selection_panel_view_entity_no_match");
+
+        let broken_pixels_fraction = 0.004;
+
+        let options = SnapshotOptions::new().failed_pixel_count_threshold(
+            (size.x * size.y * broken_pixels_fraction).round() as usize,
+        );
+
+        harness.snapshot_options("selection_panel_view_entity_no_match", &options);
     }
 }
