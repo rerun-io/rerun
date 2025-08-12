@@ -1,3 +1,5 @@
+//! The UI for the recording panel.
+
 use itertools::Itertools as _;
 use re_data_ui::item_ui::table_id_button_ui;
 use re_redap_browser::{
