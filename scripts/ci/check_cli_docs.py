@@ -9,8 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-# TODO(grtlr): Is there a better way to call this?
-default_command = ["cargo", "run", "--features", "release", "--", "man"]
+default_command = ["cargo", "run", "--package", "rerun-cli", "--all-features", "--", "man"]
 
 
 def main() -> None:
@@ -70,7 +69,7 @@ def main() -> None:
     diff_output: str = "".join(diff)
     sys.stderr.write(diff_output)
 
-    print(f"\nUpdate with: {' '.join(default_command)} > {expected_file}", file=sys.stderr)
+    print(f"\nUpdate with: pixi run man", file=sys.stderr)
     sys.exit(1)
 
 
