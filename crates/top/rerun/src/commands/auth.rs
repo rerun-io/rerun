@@ -4,9 +4,19 @@ use re_viewer::AsyncRuntimeHandle;
 #[derive(Debug, Clone, Subcommand)]
 pub enum AuthCommands {
     /// Log into Rerun.
+    ///
+    /// This command opens a page in your default browser, allowing you
+    /// to log in to the Rerun data platform.
+    ///
+    /// Once you've logged in, your credentials are stored on your machine.
+    ///
+    /// To sign up, contact us through the form linked at <https://rerun.io/#open-source-vs-commercial>.
     Login(LoginCommand),
 
     /// Retrieve the stored access token.
+    ///
+    /// The access token is part of the credentials produced by `rerun auth login`,
+    /// and is used to authorize requests to the Rerun data platform.
     Token(TokenCommand),
 }
 
