@@ -653,6 +653,15 @@ pub struct ChunkKey {
     pub location_details: prost_types::Any,
 }
 
+impl ChunkKey {
+    pub fn as_bytes(&self) -> Vec<u8> {
+        use prost::Message;
+
+        let chunk_key: crate::common::v1alpha1::ChunkKey = self.clone().into();
+        chunk_key.encode_to_vec()
+    }
+}
+
 impl TryFrom<crate::common::v1alpha1::ChunkKey> for ChunkKey {
     type Error = TypeConversionError;
 
@@ -674,6 +683,15 @@ impl TryFrom<crate::common::v1alpha1::ChunkKey> for ChunkKey {
             location_url,
             location_details,
         })
+    }
+}
+
+impl From<ChunkKey> for crate::common::v1alpha1::ChunkKey {
+    fn from(value: ChunkKey) -> Self {
+        Self {
+            location_url: Some(value.location_url.to_string()),
+            location_details: Some(value.location_details),
+        }
     }
 }
 
