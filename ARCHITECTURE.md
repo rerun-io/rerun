@@ -141,7 +141,7 @@ Update instructions:
 | re_component_ui       | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_dataframe_ui       | Rich table widget over DataFusion.                                                                         |
 | re_global_context     | Rerun state that is shared with most top-level crates.                                                     |
-| re_recording_panel    | The UI for the recording panel in the left panel.                                                          |
+| re_recording_panel    | The UI for the recording panel.                                                                            |
 | re_selection_panel    | The UI for the selection panel.                                                                            |
 | re_view               | Types & utilities for defining View classes and communicating with the Viewport.                           |
 | re_view_bar_chart     | A View that shows a single bar chart.                                                                      |

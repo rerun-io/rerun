@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "The UI for the recording panel in the left panel."
+description = "The UI for the recording panel."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
