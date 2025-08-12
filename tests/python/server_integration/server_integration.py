@@ -21,7 +21,6 @@ import pyarrow as pa
 CATALOG_URL = "rerun+http://localhost:51234"
 DATASET = "dataset"
 
-
 def aggregation_test() -> None:
 
     client = rr.catalog.CatalogClient(CATALOG_URL)
@@ -29,7 +28,7 @@ def aggregation_test() -> None:
 
     results = (
         dataset
-        .dataframe_query_view(index="my_timestamp", contents="/**")
+        .dataframe_query_view(index="time_1", contents="/**")
         .df()
         .unnest_columns("/obj1:Points3D:positions")
         .aggregate(
@@ -42,8 +41,8 @@ def aggregation_test() -> None:
         .collect()
     )
 
-    assert results[0][0][0] == pa.scalar(-17.0, type=pa.float32())
-    assert results[0][1][0] == pa.scalar(19.0, type=pa.float32())
+    assert results[0][0][0] == pa.scalar(1.0, type=pa.float32())
+    assert results[0][1][0] == pa.scalar(50.0, type=pa.float32())
 
 
 def main() -> None:
