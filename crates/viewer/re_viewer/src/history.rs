@@ -38,7 +38,13 @@ impl HistoryEntry {
     const KEY: &'static str = "__rerun";
 
     pub fn new(url: String) -> Self {
-        if url == re_redap_browser::EXAMPLES_ORIGIN.as_url() {
+        if url == re_redap_browser::EXAMPLES_ORIGIN.as_url()
+            || url
+                == re_uri::RedapUri::Catalog(re_uri::CatalogUri::new(
+                    re_redap_browser::EXAMPLES_ORIGIN.clone(),
+                ))
+                .to_string()
+        {
             Self::default()
         } else {
             Self { url }
