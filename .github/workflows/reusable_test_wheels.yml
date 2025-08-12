@@ -188,7 +188,7 @@ jobs:
 
       - name: Check that man page matches docs
         if: ${{ inputs.FAST }}
-        run: pixi run -e wheel-test-min python scripts/ci/check-cli-docs.py rerun man
+        run: pixi run -e wheel-test-min python scripts/ci/check_cli_docs.py rerun man
 
       - name: Check for release checklist
         if: ${{ inputs.FAST }}
