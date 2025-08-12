@@ -9,7 +9,7 @@ use re_types::{AnyValues, components};
 
 use crate::mcap::decode::PluginError;
 
-use super::{LayerIdentifier, Layer};
+use super::{Layer, LayerIdentifier};
 
 /// Send static channel and schema information.
 #[derive(Debug, Default)]

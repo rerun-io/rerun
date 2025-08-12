@@ -9,7 +9,7 @@ use re_types::{AnyValues, components};
 
 use crate::mcap::decode::PluginError;
 
-use super::{LayerIdentifier, Layer};
+use super::{Layer, LayerIdentifier};
 
 /// Send the statistics as recording properties.
 #[derive(Debug, Default)]

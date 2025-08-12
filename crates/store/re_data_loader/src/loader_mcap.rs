@@ -118,7 +118,7 @@ impl DataLoader for McapLoader {
     ) -> std::result::Result<(), DataLoaderError> {
         let contents = contents.into_owned();
 
-        load_mcap(&contents, settings, &tx)
+        load_mcap(&contents, settings, &tx, None)
     }
 }
 
@@ -195,7 +195,7 @@ fn load_mcap(
         .register::<layers::McapSchemaLayer>()
         .register::<layers::McapStatisticLayer>();
 
-    // TODO: Add warning for channel that miss semantic information.
+    // TODO(#10862): Add warning for channel that miss semantic information.
 
     let mut empty = true;
     for mut layer in registry.layers(layer_filters) {

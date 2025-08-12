@@ -5,7 +5,7 @@ use crate::mcap::decode::PluginError;
 
 use super::Layer;
 
-/// Build the [`RecordingInfo`] chunk using the message statistics from a [`Summary`].
+/// Build the [`RecordingInfo`] chunk using the message statistics from a [`mcap::Summary`].
 #[derive(Debug, Default)]
 pub struct McapRecordingInfoLayer;
 

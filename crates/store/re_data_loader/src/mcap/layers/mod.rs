@@ -36,7 +36,7 @@ pub trait Layer {
     where
         Self: Sized;
 
-    // TODO(grtlr): Consider abstracting over Summary
+    // TODO(#10862): Consider abstracting over `Summary`.
     fn process(
         &mut self,
         mcap_bytes: &[u8],
@@ -54,9 +54,12 @@ pub trait MessageLayer {
         Ok(())
     }
 
-    /// Instantites a new parser that expects `num_rows` if it is interested in the current channel.
+    /// Instantites a new [`McapMessageParser`] that expects `num_rows` if it is interested in the current channel.
     ///
     /// Otherwise returns `None`.
+    ///
+    /// The `num_rows` argument allows parsers to pre-allocate storage with the
+    /// correct capacity, avoiding reallocations during message processing.
     fn message_parser(
         &self,
         channel: &mcap::Channel<'_>,
@@ -118,7 +121,7 @@ impl<T: MessageLayer> Layer for T {
                     Err(err) => {
                         re_log::error!("Failed to read message from MCAP file: {err}");
                     }
-                };
+                }
             }
 
             for chunk in decoder.finish() {
@@ -147,7 +150,7 @@ impl Registry {
             .is_some()
         {
             re_log::warn_once!("Inserted layer {} twice.", L::identifier());
-        };
+        }
         self
     }
 

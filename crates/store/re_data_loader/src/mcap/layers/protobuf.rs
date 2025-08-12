@@ -27,15 +27,6 @@ pub struct ProtobufMessageParser {
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("invalid schema {schema}: {source}")]
-    InvalidSchema {
-        schema: String,
-        source: prost_reflect::DescriptorError,
-    },
-
-    #[error("missing schema for message: {0}")]
-    MissingSchema(String),
-
     #[error("invalid message on channel {channel} for schema {schema}: {source}")]
     InvalidMessage {
         schema: String,
