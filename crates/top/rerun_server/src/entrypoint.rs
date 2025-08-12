@@ -1,7 +1,10 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
+#[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal};
+#[cfg(windows)]
+use tokio::signal::windows::{ctrl_break, ctrl_close};
 use tracing::{info, warn};
 
 use crate::ServerBuilder;
@@ -67,8 +70,15 @@ async fn run_async(args: Args) -> anyhow::Result<()> {
 
     server_handle.wait_for_ready().await?;
 
+    #[cfg(unix)]
     let mut term_signal = signal(SignalKind::terminate())?;
+    #[cfg(windows)]
+    let mut term_signal = ctrl_close()?;
+
+    #[cfg(unix)]
     let mut int_signal = signal(SignalKind::interrupt())?;
+    #[cfg(windows)]
+    let mut int_signal = ctrl_break()?;
 
     tokio::select! {
         _ = term_signal.recv() => {
