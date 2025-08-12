@@ -1,6 +1,7 @@
 use std::{collections::HashMap, time::Duration};
 
 use base64::prelude::*;
+use indicatif::ProgressBar;
 
 use crate::workos::{self, AuthContext, Credentials};
 
@@ -144,7 +145,7 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
         }
     }
 
-    let p = indicatif::ProgressBar::new_spinner();
+    let p = ProgressBar::new_spinner();
 
     // Login process:
 
@@ -176,99 +177,7 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
 
     // 3. Wait for callback
     p.set_message("Waiting for browser...");
-    let auth = loop {
-        p.inc(1);
-        let Some(req) = server
-            .recv_timeout(Duration::from_millis(100))
-            .map_err(Error::Http)?
-        else {
-            continue;
-        };
-
-        match req.method() {
-            tiny_http::Method::Get => {}
-            tiny_http::Method::Options => {
-                req.respond(
-                    tiny_http::Response::empty(204)
-                        .cors()
-                        .with_header(header(b"Allow", b"GET, HEAD, OPTIONS")),
-                )
-                .map_err(Error::Http)?;
-                continue;
-            }
-            tiny_http::Method::Head => {
-                req.respond(tiny_http::Response::empty(200).cors())
-                    .map_err(Error::Http)?;
-                continue;
-            }
-            _ => {
-                req.respond(
-                    tiny_http::Response::empty(405)
-                        .cors()
-                        .with_header(header(b"Allow", b"GET, HEAD, OPTIONS")),
-                )
-                .map_err(Error::Http)?;
-                continue;
-            }
-        }
-
-        let Ok(url) = url::Url::parse(&format!("http://{}{}", server.server_addr(), req.url()))
-        else {
-            req.respond(tiny_http::Response::empty(400).cors())
-                .map_err(Error::Http)?;
-            continue;
-        };
-
-        if url.path() != "/callback" {
-            req.respond(tiny_http::Response::empty(404).cors())
-                .map_err(Error::Http)?;
-            continue;
-        }
-
-        let Some(serialized_response) = url.query_pairs().find(|(k, _)| k == "t").map(|(_, v)| v)
-        else {
-            req.respond(
-                tiny_http::Response::from_string("missing `t` query param")
-                    .with_status_code(400)
-                    .cors(),
-            )
-            .map_err(Error::Http)?;
-            continue;
-        };
-
-        let raw_response = match BASE64_STANDARD.decode(serialized_response.as_ref()) {
-            Ok(v) => v,
-            Err(err) => {
-                let err = format!("failed to deserialize response: {err}");
-                p.println(&err);
-                req.respond(
-                    tiny_http::Response::from_string(err)
-                        .with_status_code(400)
-                        .cors(),
-                )
-                .map_err(Error::Http)?;
-                continue;
-            }
-        };
-        let response: AuthenticationResponse = match serde_json::from_slice(&raw_response) {
-            Ok(v) => v,
-            Err(err) => {
-                let err = format!("failed to deserialize response: {err}");
-                p.println(&err);
-                req.respond(
-                    tiny_http::Response::from_string(err)
-                        .with_status_code(400)
-                        .cors(),
-                )
-                .map_err(Error::Http)?;
-                continue;
-            }
-        };
-
-        req.respond(tiny_http::Response::empty(200).cors())
-            .map_err(Error::Http)?;
-        break response;
-    };
+    let auth = wait_for_browser_response(&server, &p)?;
 
     // 4. Verify credentials
     p.set_message("Verifying login...");
@@ -286,6 +195,123 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
     println!("Rerun will automatically use the credentials stored on your machine.");
 
     Ok(())
+}
+
+/// Simple web server waiting for a request from the browser to `/callback`,
+/// which provides us with the token payload.
+fn wait_for_browser_response(
+    server: &tiny_http::Server,
+    p: &ProgressBar,
+) -> Result<AuthenticationResponse, Error> {
+    loop {
+        p.inc(1);
+        let Some(req) = server
+            .recv_timeout(Duration::from_millis(100))
+            .map_err(Error::Http)?
+        else {
+            continue;
+        };
+
+        if let Some(res) = handle_non_get_requests(&req) {
+            req.respond(res).map_err(Error::Http)?;
+            continue;
+        }
+
+        let Some(res) = handle_auth_request(server, req, p)? else {
+            continue;
+        };
+
+        return Ok(res);
+    }
+}
+
+/// Handles CORS (Options) and HEAD requests
+fn handle_non_get_requests(
+    req: &tiny_http::Request,
+) -> Option<tiny_http::Response<std::io::Empty>> {
+    match req.method() {
+        tiny_http::Method::Get => None,
+        tiny_http::Method::Options => Some(
+            tiny_http::Response::empty(204)
+                .cors()
+                .with_header(header(b"Allow", b"GET, HEAD, OPTIONS")),
+        ),
+        tiny_http::Method::Head => Some(tiny_http::Response::empty(200).cors()),
+        _ => Some(
+            tiny_http::Response::empty(405)
+                .cors()
+                .with_header(header(b"Allow", b"GET, HEAD, OPTIONS")),
+        ),
+    }
+}
+
+// Handles `/callback?t=<base64-encoded token payload>`
+fn handle_auth_request(
+    server: &tiny_http::Server,
+    req: tiny_http::Request,
+    p: &ProgressBar,
+) -> Result<Option<AuthenticationResponse>, Error> {
+    // Parse and check the URL pathname
+    let Ok(url) = url::Url::parse(&format!("http://{}{}", server.server_addr(), req.url())) else {
+        req.respond(tiny_http::Response::empty(400).cors())
+            .map_err(Error::Http)?;
+        return Ok(None);
+    };
+
+    if url.path() != "/callback" {
+        req.respond(tiny_http::Response::empty(404).cors())
+            .map_err(Error::Http)?;
+        return Ok(None);
+    }
+
+    // Retrieve query param `t`
+    let Some(serialized_response) = url.query_pairs().find(|(k, _)| k == "t").map(|(_, v)| v)
+    else {
+        req.respond(
+            tiny_http::Response::from_string("missing `t` query param")
+                .with_status_code(400)
+                .cors(),
+        )
+        .map_err(Error::Http)?;
+        return Ok(None);
+    };
+
+    // `t` is base64-encoded, decode it
+    let raw_response = match BASE64_STANDARD.decode(serialized_response.as_ref()) {
+        Ok(v) => v,
+        Err(err) => {
+            let err = format!("failed to deserialize response: {err}");
+            p.println(&err);
+            req.respond(
+                tiny_http::Response::from_string(err)
+                    .with_status_code(400)
+                    .cors(),
+            )
+            .map_err(Error::Http)?;
+            return Ok(None);
+        }
+    };
+
+    // And finally, deserialize the token payload
+    let response: AuthenticationResponse = match serde_json::from_slice(&raw_response) {
+        Ok(v) => v,
+        Err(err) => {
+            let err = format!("failed to deserialize response: {err}");
+            p.println(&err);
+            req.respond(
+                tiny_http::Response::from_string(err)
+                    .with_status_code(400)
+                    .cors(),
+            )
+            .map_err(Error::Http)?;
+            return Ok(None);
+        }
+    };
+
+    req.respond(tiny_http::Response::empty(200).cors())
+        .map_err(Error::Http)?;
+
+    Ok(Some(response))
 }
 
 #[allow(dead_code)] // fields may become used at some point in the near future
