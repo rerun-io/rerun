@@ -15,6 +15,7 @@ pub use self::{
 
 use super::decode::{ChannelId, McapMessageParser, ParserContext, PluginError};
 
+/// Globally unique identifier for a layer.
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct LayerIdentifier(pub &'static str);
@@ -31,12 +32,25 @@ impl std::fmt::Display for LayerIdentifier {
     }
 }
 
+/// A layer describes information that can be extracted from an MCAP file.
+///
+/// It is the most general level at which we can interpret an MCAP file and can
+/// be used to either output general information about the MCAP file (e.g.
+/// [`McapStatisticLayer`]) or to call into layers that work on a per-message
+/// basis via the [`MessageLayer`] trait.
 pub trait Layer {
+    /// Globally unique identifier for this layer.
+    ///
+    /// [`LayerIdentifier`]s are also be used to select only a subset of active layers.
     fn identifier() -> LayerIdentifier
     where
         Self: Sized;
 
-    // TODO(#10862): Consider abstracting over `Summary`.
+    /// The processing that needs to happen for this layer.
+    ///
+    /// This function has access to the entire MCAP file via `mcap_bytes`.
+    // TODO(#10862): Consider abstracting over `Summary` to allow more convenient / performant indexing.
+    // For example, we probably don't want to store the entire file in memory.
     fn process(
         &mut self,
         mcap_bytes: &[u8],
@@ -45,6 +59,10 @@ pub trait Layer {
     ) -> Result<(), PluginError>;
 }
 
+/// Can be used to extract per-message information from an MCAP file.
+///
+/// This is a specialization of [`Layer`] that allows defining [`McapMessageParsers`]
+/// to interpret the contents of MCAP chunks.
 pub trait MessageLayer {
     fn identifier() -> LayerIdentifier
     where
@@ -89,14 +107,10 @@ impl<T: MessageLayer> Layer for T {
                 .read_message_indexes(mcap_bytes, chunk)?
                 .iter()
                 .filter_map(|(channel, msg_offsets)| {
+                    let parser = self.message_parser(channel, msg_offsets.len())?;
                     let entity_path = EntityPath::from(channel.topic.as_str());
-                    Some((
-                        ChannelId::from(channel.id),
-                        (
-                            ParserContext::new(entity_path),
-                            self.message_parser(channel, msg_offsets.len())?,
-                        ),
-                    ))
+                    let ctx = ParserContext::new(entity_path);
+                    Some((ChannelId::from(channel.id), (ctx, parser)))
                 })
                 .collect::<IntMap<_, _>>();
 
@@ -137,12 +151,17 @@ impl<T: MessageLayer> Layer for T {
     }
 }
 
+/// Holds a set of all known layers.
+///
+/// Custom layers can be added by implementing the [`Layer`] or [`MessageLayer`]
+/// traits and calling [`Self::register`].
 #[derive(Default)]
-pub struct Registry {
+pub struct LayerRegistry {
     factories: BTreeMap<LayerIdentifier, fn() -> Box<dyn Layer>>,
 }
 
-impl Registry {
+impl LayerRegistry {
+    /// Adds an additional layer to the registry.
     pub fn register<L: Layer + Default + 'static>(mut self) -> Self {
         if self
             .factories

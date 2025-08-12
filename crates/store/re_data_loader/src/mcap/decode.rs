@@ -84,7 +84,7 @@ impl From<u16> for ChannelId {
 
 impl IsEnabled for ChannelId {}
 
-pub type Parser = (ParserContext, Box<dyn McapMessageParser>);
+pub(crate) type Parser = (ParserContext, Box<dyn McapMessageParser>);
 
 /// Decodes batches of messages from an MCAP into Rerun chunks using previously registered parsers.
 pub struct McapChunkDecoder {
@@ -93,9 +93,7 @@ pub struct McapChunkDecoder {
 
 impl McapChunkDecoder {
     pub fn new(parsers: IntMap<ChannelId, Parser>) -> Self {
-        Self {
-            parsers: parsers.into_iter().collect(),
-        }
+        Self { parsers }
     }
 
     /// Decode the next message in the chunk
@@ -137,6 +135,11 @@ impl McapChunkDecoder {
                     )
                 })
                 .map_err(PluginError::Other)?;
+        } else {
+            // TODO(#10867): If we encounter a message that we can't parse at all we should emit a warning.
+            // Note that this quite easy to achieve when using layers and only selecting a subset.
+            // However, to not overwhelm the user this should be reported in a _single_ static chunk,
+            // so this is not the right place for this. Maybe we need to introduce something like a "report".
         }
         Ok(())
     }
