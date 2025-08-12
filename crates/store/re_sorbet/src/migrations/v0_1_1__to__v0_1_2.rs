@@ -34,23 +34,15 @@ fn migrate_blobs(batch: RecordBatch) -> RecordBatch {
             "rerun.components.VideoSample",
         ];
 
-        let Some(component_type) = field.metadata().get("rerun:component_type") else {
-            return false;
-        };
-
-        if !components_with_blobs.contains(&component_type.as_str()) {
-            return false;
+        if let Some(component_type) = field.metadata().get("rerun:component_type")
+            && !components_with_blobs.contains(&component_type.as_str())
+            && let DataType::List(list_field) = field.data_type()
+            && let DataType::List(innermost_field) = list_field.data_type()
+        {
+            innermost_field.data_type() == &DataType::UInt8
+        } else {
+            false
         }
-
-        let DataType::List(list_field) = field.data_type() else {
-            return false;
-        };
-
-        let DataType::List(innermost_field) = list_field.data_type() else {
-            return false;
-        };
-
-        innermost_field.data_type() == &DataType::UInt8
     }
 
     let needs_migration = batch
