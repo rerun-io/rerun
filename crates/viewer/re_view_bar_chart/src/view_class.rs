@@ -240,14 +240,14 @@ impl ViewClass for BarChartView {
                 ) in charts
                 {
                     let arg: ::arrow::buffer::ScalarBuffer<f64> = match &abscissa.buffer {
-                        TensorBuffer::U8(data) => data.iter().map(|v| *v as f64).collect(),
-                        TensorBuffer::U16(data) => data.iter().map(|v| *v as f64).collect(),
-                        TensorBuffer::U32(data) => data.iter().map(|v| *v as f64).collect(),
-                        TensorBuffer::U64(data) => data.iter().map(|v| *v as f64).collect(),
-                        TensorBuffer::I8(data) => data.iter().map(|v| *v as f64).collect(),
-                        TensorBuffer::I16(data) => data.iter().map(|v| *v as f64).collect(),
-                        TensorBuffer::I32(data) => data.iter().map(|v| *v as f64).collect(),
-                        TensorBuffer::I64(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::U8(data) => data.iter().map(|v| *v as f64 + 0.5).collect(),
+                        TensorBuffer::U16(data) => data.iter().map(|v| *v as f64 + 0.5).collect(),
+                        TensorBuffer::U32(data) => data.iter().map(|v| *v as f64 + 0.5).collect(),
+                        TensorBuffer::U64(data) => data.iter().map(|v| *v as f64 + 0.5).collect(),
+                        TensorBuffer::I8(data) => data.iter().map(|v| *v as f64 + 0.5).collect(),
+                        TensorBuffer::I16(data) => data.iter().map(|v| *v as f64 + 0.5).collect(),
+                        TensorBuffer::I32(data) => data.iter().map(|v| *v as f64 + 0.5).collect(),
+                        TensorBuffer::I64(data) => data.iter().map(|v| *v as f64 + 0.5).collect(),
                         TensorBuffer::F16(data) => data.iter().map(|v| f64::from(*v)).collect(),
                         TensorBuffer::F32(data) => data.iter().map(|v| *v as f64).collect(),
                         TensorBuffer::F64(data) => data.iter().copied().collect(),
