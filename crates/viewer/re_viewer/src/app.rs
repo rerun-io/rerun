@@ -407,6 +407,22 @@ impl App {
         self.state.app_options_mut()
     }
 
+    /// Open a content URL in the viewer.
+    pub fn open_url(&mut self, url: &str) {
+        let follow_if_http = false;
+        let select_redap_source_when_loaded = true;
+
+        if let Err(()) = crate::open_url::try_open_url_in_viewer(
+            &self.egui_ctx,
+            url,
+            follow_if_http,
+            select_redap_source_when_loaded,
+            &self.command_sender,
+        ) {
+            re_log::warn!("Failed to open URL: {url}");
+        }
+    }
+
     pub fn is_screenshotting(&self) -> bool {
         self.screenshotter.is_screenshotting()
     }
@@ -856,8 +872,8 @@ impl App {
                 }
             }
 
-            DataSource::RerunGrpcStream {
-                uri: re_uri::RedapUri::DatasetData(uri),
+            DataSource::RedapDataset {
+                uri,
                 select_when_loaded,
             } => {
                 let new_source = SmartChannelSource::RedapGrpcStream {
@@ -882,13 +898,6 @@ impl App {
                     return;
                 }
             }
-
-            DataSource::RerunGrpcStream {
-                uri: _,
-                select_when_loaded: _,
-            } => {
-                // Other URI types don't need the skipping code here as they won't add a data source anyways.
-            }
         }
         // On native, `add_receiver` spawns a thread that wakes up the ui thread
         // on any new message. On web we cannot spawn threads, so instead we need
@@ -901,7 +910,7 @@ impl App {
                 egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
             })
         };
-        let on_cmd = {
+        let on_ui_cmd = {
             let command_sender = self.command_sender.clone();
             Box::new(move |cmd| match cmd {
                 re_grpc_client::UiCommand::SetLoopSelection {
@@ -918,22 +927,9 @@ impl App {
 
         match data_source
             .clone()
-            .stream(&self.connection_registry, on_cmd, Some(waker))
+            .stream(&self.connection_registry, Some(on_ui_cmd), Some(waker))
         {
-            Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
-
-            Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
-                self.add_redap_server(uri.origin.clone());
-                self.command_sender
-                    .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                        uri.origin.clone(),
-                    )));
-            }
-
-            Ok(re_data_source::StreamSource::EntryUri(uri)) => {
-                self.select_redap_entry(&uri);
-            }
-
+            Ok(rx) => self.add_log_receiver(rx),
             Err(err) => {
                 re_log::error!("Failed to open data source: {}", re_error::format(err));
             }

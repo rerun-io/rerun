@@ -33,8 +33,10 @@ pub fn try_open_url_in_viewer(
 ) -> Result<(), ()> {
     re_log::debug!("Opening URL: {url:?}");
 
+    // TODO handle other types or redap uris here now that datasource no longer does it.
+
     if let Some(mut data_source) = DataSource::from_uri(re_log_types::FileSource::Uri, url) {
-        if let DataSource::RerunGrpcStream {
+        if let DataSource::RedapDataset {
             select_when_loaded, ..
         } = &mut data_source
         {

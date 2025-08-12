@@ -1,7 +1,6 @@
-use re_grpc_client::{ConnectionRegistryHandle, message_proxy};
+use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{LogMsg, RecordingId};
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
-use re_uri::RedapUri;
 
 use crate::FileContents;
 
@@ -35,20 +34,13 @@ pub enum DataSource {
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
 
-    /// A `rerun://` URI pointing to a recording or catalog.
-    RerunGrpcStream {
-        uri: RedapUri,
+    /// A `rerun://` URI pointing to a recording.
+    RedapDataset {
+        uri: re_uri::DatasetDataUri,
 
         /// Switch to this recording once it has been loaded?
         select_when_loaded: bool,
     },
-}
-
-// TODO(#9058): Temporary hack, see issue for how to fix this.
-pub enum StreamSource {
-    LogMessages(Receiver<LogMsg>),
-    CatalogUri(re_uri::CatalogUri),
-    EntryUri(re_uri::EntryUri),
 }
 
 impl DataSource {
@@ -119,8 +111,8 @@ impl DataSource {
             }
         }
 
-        if let Ok(uri) = url.parse::<RedapUri>() {
-            Some(Self::RerunGrpcStream {
+        if let Ok(uri) = url.parse::<re_uri::DatasetDataUri>() {
+            Some(Self::RedapDataset {
                 uri,
                 select_when_loaded: true,
             })
@@ -148,17 +140,17 @@ impl DataSource {
     pub fn stream(
         self,
         connection_registry: &ConnectionRegistryHandle,
-        on_cmd: Box<dyn Fn(re_grpc_client::UiCommand) + Send + Sync>,
+        on_ui_cmd: Option<Box<dyn Fn(re_grpc_client::UiCommand) + Send + Sync>>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-    ) -> anyhow::Result<StreamSource> {
+    ) -> anyhow::Result<Receiver<LogMsg>> {
         re_tracing::profile_function!();
 
         match self {
-            Self::RrdHttpUrl { url, follow } => Ok(StreamSource::LogMessages(
+            Self::RrdHttpUrl { url, follow } => Ok(
                 re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                     url, follow, on_msg,
                 ),
-            )),
+            ),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(file_source, path) => {
@@ -183,7 +175,7 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(StreamSource::LogMessages(rx))
+                Ok(rx)
             }
 
             // When loading a file on Web, or when using drag-n-drop.
@@ -215,7 +207,7 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(StreamSource::LogMessages(rx))
+                Ok(rx)
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -231,11 +223,11 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(StreamSource::LogMessages(rx))
+                Ok(rx)
             }
 
-            Self::RerunGrpcStream {
-                uri: RedapUri::DatasetData(uri),
+            Self::RedapDataset {
+                uri,
                 select_when_loaded,
             } => {
                 let (tx, rx) = re_smart_channel::smart_channel(
@@ -254,7 +246,7 @@ impl DataSource {
                 let stream_partition = async move {
                     let client = connection_registry.client(uri_clone.origin.clone()).await?;
                     re_grpc_client::stream_blueprint_and_partition_from_server(
-                        client, tx, uri_clone, on_cmd, on_msg,
+                        client, tx, uri_clone, on_ui_cmd, on_msg,
                     )
                     .await
                 };
@@ -267,25 +259,8 @@ impl DataSource {
                         );
                     }
                 });
-                Ok(StreamSource::LogMessages(rx))
+                Ok(rx)
             }
-
-            Self::RerunGrpcStream {
-                uri: RedapUri::Catalog(uri),
-                ..
-            } => Ok(StreamSource::CatalogUri(uri)),
-
-            Self::RerunGrpcStream {
-                uri: re_uri::RedapUri::Entry(uri),
-                ..
-            } => Ok(StreamSource::EntryUri(uri)),
-
-            Self::RerunGrpcStream {
-                uri: re_uri::RedapUri::Proxy(uri),
-                ..
-            } => Ok(StreamSource::LogMessages(message_proxy::stream(
-                uri, on_msg,
-            ))),
         }
     }
 }
@@ -394,7 +369,7 @@ mod tests {
 
         for uri in grpc {
             let data_source = DataSource::from_uri(file_source.clone(), uri);
-            if !matches!(data_source, Some(DataSource::RerunGrpcStream { .. })) {
+            if !matches!(data_source, Some(DataSource::RedapDataset { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as MessageProxy. Instead it got parsed as {data_source:?}"
                 );

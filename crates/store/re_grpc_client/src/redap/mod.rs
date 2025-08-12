@@ -37,7 +37,7 @@ pub enum UiCommand {
 pub fn stream_dataset_from_redap(
     connection_registry: &ConnectionRegistryHandle,
     uri: DatasetDataUri,
-    on_cmd: Box<dyn Fn(UiCommand) + Send + Sync>,
+    on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
     re_log::debug!("Loading {uri}…");
@@ -57,18 +57,18 @@ pub fn stream_dataset_from_redap(
         connection_registry: ConnectionRegistryHandle,
         tx: re_smart_channel::Sender<LogMsg>,
         uri: DatasetDataUri,
-        on_cmd: Box<dyn Fn(UiCommand) + Send + Sync>,
+        on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> Result<(), StreamError> {
         let client = connection_registry.client(uri.origin.clone()).await?;
 
-        stream_blueprint_and_partition_from_server(client, tx, uri.clone(), on_cmd, on_msg).await
+        stream_blueprint_and_partition_from_server(client, tx, uri.clone(), on_ui_cmd, on_msg).await
     }
 
     let connection_registry = connection_registry.clone();
     spawn_future(async move {
         if let Err(err) =
-            stream_partition(connection_registry, tx, uri.clone(), on_cmd, on_msg).await
+            stream_partition(connection_registry, tx, uri.clone(), on_ui_cmd, on_msg).await
         {
             re_log::error!(
                 "Error while streaming {uri}: {}",
@@ -329,7 +329,7 @@ pub async fn stream_blueprint_and_partition_from_server(
     mut client: ConnectionClient,
     tx: re_smart_channel::Sender<LogMsg>,
     uri: re_uri::DatasetDataUri,
-    on_cmd: Box<dyn Fn(UiCommand) + Send + Sync>,
+    on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     re_log::debug!("Loading {uri}…");
@@ -370,7 +370,7 @@ pub async fn stream_blueprint_and_partition_from_server(
             blueprint_dataset,
             blueprint_partition,
             None,
-            &on_cmd,
+            on_ui_cmd.as_deref(),
             on_msg.as_deref(),
         )
         .await?;
@@ -414,7 +414,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         dataset_id.into(),
         partition_id.into(),
         time_range,
-        &on_cmd,
+        on_ui_cmd.as_deref(),
         on_msg.as_deref(),
     )
     .await?;
@@ -431,7 +431,7 @@ async fn stream_partition_from_server(
     dataset_id: EntryId,
     partition_id: PartitionId,
     time_range: Option<TimeSelection>,
-    on_cmd: &(dyn Fn(UiCommand) + Send + Sync),
+    on_ui_cmd: Option<&(dyn Fn(UiCommand) + Send + Sync)>,
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
     let static_chunk_stream = {
@@ -491,8 +491,10 @@ async fn stream_partition_from_server(
 
     let store_id = store_info.store_id.clone();
 
-    if let Some(time_range) = time_range {
-        on_cmd(UiCommand::SetLoopSelection {
+    if let Some(time_range) = time_range
+        && let Some(on_ui_cmd) = on_ui_cmd
+    {
+        on_ui_cmd(UiCommand::SetLoopSelection {
             recording_id: store_id.clone(),
             timeline: time_range.timeline,
             time_range: time_range.into(),
