@@ -18,6 +18,9 @@ egui.workspace = true
 itertools.workspace = true
 re_tracing.workspace = true
 re_format.workspace = true
+chrono.workspace = true
+ryu = "1"
+lexical-core = "1"
 
 [lints]
 workspace = true

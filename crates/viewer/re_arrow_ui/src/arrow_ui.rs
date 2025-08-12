@@ -1,7 +1,7 @@
 use crate::arrow_node::ArrowNode;
 use crate::arrow_view::ArrayView;
-use crate::child_nodes;
 use crate::datatype_ui::datatype_ui;
+use crate::{child_nodes, fmt_ui};
 use arrow::array::AsArray;
 use arrow::{
     array::Array,
@@ -27,7 +27,8 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
 
         if ui_layout.is_selection_panel() {
             list_item_scope(ui, Id::new("arrow data"), |ui| {
-                array_items_ui(ui, array);
+                // array_items_ui(ui, array);
+                fmt_ui::arrow_ui(ui, array);
             });
 
             return;
