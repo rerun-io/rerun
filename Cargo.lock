@@ -8692,6 +8692,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_mp4",
  "re_query",
  "re_renderer",
  "re_test_context",

@@ -27,6 +27,8 @@ use crate::{
     demux::ChromaSubsamplingModes,
 };
 
+use cros_codecs::codec::h265::parser::NaluType as H265NaluType;
+
 use super::version::FFmpegVersionParseError;
 
 #[derive(thiserror::Error, Debug)]
@@ -1020,7 +1022,9 @@ fn write_avc_chunk_to_nalu_stream(
         let data_end = buffer_offset + nal_unit_size + length_prefix_size;
 
         if chunk.data.len() < data_end {
-            return Err(Error::BadVideoData("Not enough bytes to".to_owned()));
+            return Err(Error::BadVideoData(
+                "Video sample data ends with incomplete NAL unit.".to_owned(),
+            ));
         }
 
         // Can be useful for finding issues, but naturally very spammy.
@@ -1077,19 +1081,23 @@ fn write_hevc_chunk_to_nalu_stream(
     state: &mut NaluStreamState,
 ) -> Result<(), Error> {
     let nal_len_size = (hvcc.hvcc.contents.length_size_minus_one as usize & 0x03) + 1;
-    let mut hvcc_ps: Vec<Vec<u8>> = Vec::new();
-
-    for arr in &hvcc.hvcc.arrays {
-        let t = arr.nal_unit_type;
-        if t == 32 || t == 33 || t == 34 {
-            // VPS/SPS/PPS = 32/33/34
-            for nalu in &arr.nalus {
-                hvcc_ps.push(nalu.data.clone());
-            }
-        }
-    }
 
     if chunk.is_sync && !state.previous_frame_was_idr {
+        let mut hvcc_ps: Vec<Vec<u8>> = Vec::new();
+
+        for arr in &hvcc.hvcc.arrays {
+            if let Ok(nalu_type) = H265NaluType::try_from(arr.nal_unit_type as u32) {
+                if matches!(
+                    nalu_type,
+                    H265NaluType::VpsNut | H265NaluType::SpsNut | H265NaluType::PpsNut
+                ) {
+                    for nalu in &arr.nalus {
+                        hvcc_ps.push(nalu.data.clone());
+                    }
+                }
+            }
+        }
+
         for ps in &hvcc_ps {
             write_bytes(out, ANNEXB_NAL_START_CODE)?;
             write_bytes(out, ps)?;
@@ -1109,7 +1117,9 @@ fn write_hevc_chunk_to_nalu_stream(
         i += nal_len_size;
 
         if i + len > data.len() {
-            return Err(Error::BadVideoData("Not enough bytes to".to_owned()));
+            return Err(Error::BadVideoData(
+                "Video sample data ends with incomplete NAL unit.".to_owned(),
+            ));
         }
 
         let nalu = &data[i..i + len];
