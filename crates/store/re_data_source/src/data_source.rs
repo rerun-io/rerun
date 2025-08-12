@@ -148,7 +148,7 @@ impl DataSource {
     pub fn stream(
         self,
         connection_registry: &ConnectionRegistryHandle,
-        on_cmd: Box<dyn Fn(DataSourceCommand) + Send + Sync>,
+        on_cmd: Box<dyn Fn(re_grpc_client::UiCommand) + Send + Sync>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<StreamSource> {
         re_tracing::profile_function!();
@@ -249,18 +249,6 @@ impl DataSource {
                     },
                 );
 
-                let on_cmd = Box::new(move |cmd: re_grpc_client::Command| match cmd {
-                    re_grpc_client::Command::SetLoopSelection {
-                        recording_id,
-                        timeline,
-                        time_range,
-                    } => on_cmd(DataSourceCommand::SetLoopSelection {
-                        recording_id,
-                        timeline,
-                        time_range,
-                    }),
-                });
-
                 let connection_registry = connection_registry.clone();
                 let uri_clone = uri.clone();
                 let stream_partition = async move {
@@ -300,14 +288,6 @@ impl DataSource {
             ))),
         }
     }
-}
-
-pub enum DataSourceCommand {
-    SetLoopSelection {
-        recording_id: re_log_types::StoreId,
-        timeline: re_log_types::Timeline,
-        time_range: re_log_types::AbsoluteTimeRangeF,
-    },
 }
 
 // TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this

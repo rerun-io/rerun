@@ -858,7 +858,7 @@ fn run_impl(
         let on_cmd = Box::new(move |cmd| {
             use re_global_context::{SystemCommand, SystemCommandSender as _};
             match cmd {
-                re_data_source::DataSourceCommand::SetLoopSelection {
+                re_grpc_client::UiCommand::SetLoopSelection {
                     recording_id,
                     timeline,
                     time_range,

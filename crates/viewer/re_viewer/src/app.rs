@@ -904,7 +904,7 @@ impl App {
         let on_cmd = {
             let command_sender = self.command_sender.clone();
             Box::new(move |cmd| match cmd {
-                re_data_source::DataSourceCommand::SetLoopSelection {
+                re_grpc_client::UiCommand::SetLoopSelection {
                     recording_id,
                     timeline,
                     time_range,

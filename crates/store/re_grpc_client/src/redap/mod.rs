@@ -20,7 +20,10 @@ use crate::{
     spawn_future,
 };
 
-pub enum Command {
+/// UI commands issued when streaming in datasets.
+///
+/// If you're not in a ui context you can safely ignore these.
+pub enum UiCommand {
     SetLoopSelection {
         recording_id: re_log_types::StoreId,
         timeline: re_log_types::Timeline,
@@ -34,7 +37,7 @@ pub enum Command {
 pub fn stream_dataset_from_redap(
     connection_registry: &ConnectionRegistryHandle,
     uri: DatasetDataUri,
-    on_cmd: Box<dyn Fn(Command) + Send + Sync>,
+    on_cmd: Box<dyn Fn(UiCommand) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
     re_log::debug!("Loading {uri}…");
@@ -54,7 +57,7 @@ pub fn stream_dataset_from_redap(
         connection_registry: ConnectionRegistryHandle,
         tx: re_smart_channel::Sender<LogMsg>,
         uri: DatasetDataUri,
-        on_cmd: Box<dyn Fn(Command) + Send + Sync>,
+        on_cmd: Box<dyn Fn(UiCommand) + Send + Sync>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> Result<(), StreamError> {
         let client = connection_registry.client(uri.origin.clone()).await?;
@@ -326,7 +329,7 @@ pub async fn stream_blueprint_and_partition_from_server(
     mut client: ConnectionClient,
     tx: re_smart_channel::Sender<LogMsg>,
     uri: re_uri::DatasetDataUri,
-    on_cmd: Box<dyn Fn(Command) + Send + Sync>,
+    on_cmd: Box<dyn Fn(UiCommand) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     re_log::debug!("Loading {uri}…");
@@ -428,7 +431,7 @@ async fn stream_partition_from_server(
     dataset_id: EntryId,
     partition_id: PartitionId,
     time_range: Option<TimeSelection>,
-    on_cmd: &(dyn Fn(Command) + Send + Sync),
+    on_cmd: &(dyn Fn(UiCommand) + Send + Sync),
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
     let static_chunk_stream = {
@@ -489,7 +492,7 @@ async fn stream_partition_from_server(
     let store_id = store_info.store_id.clone();
 
     if let Some(time_range) = time_range {
-        on_cmd(Command::SetLoopSelection {
+        on_cmd(UiCommand::SetLoopSelection {
             recording_id: store_id.clone(),
             timeline: time_range.timeline,
             time_range: time_range.into(),
