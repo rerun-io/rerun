@@ -33,7 +33,6 @@ default = [
   "map_view",
   "sdk",
   "server",
-  "auth",
 ]
 
 ## Enable anonymized telemetry using our analytics SDK.
@@ -109,6 +108,7 @@ run = [
   "re_log_encoding/encoder",
   "sdk",
   "unindent",
+  "auth",
 ]
 
 ## Support for running a gRPC server that listens to incoming log messages from a Rerun SDK.
