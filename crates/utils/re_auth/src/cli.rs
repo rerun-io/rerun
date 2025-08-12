@@ -81,6 +81,8 @@ pub async fn token(context: &AuthContext) -> Result<(), Error> {
         return Err(Error::Generic(ExpiredCredentialsError.into()));
     }
 
+    credentials.store()?;
+
     let Some(token) = credentials.access_token() else {
         unreachable!("bug: no access token after refresh");
     };
