@@ -1,3 +1,5 @@
+use arrow::buffer::ScalarBuffer;
+
 use super::Blob;
 
 impl Blob {
@@ -10,7 +12,7 @@ impl Blob {
     /// Panics iff `offset + length` is larger than `len`.
     #[inline]
     pub fn sliced(self, range: std::ops::Range<usize>) -> Self {
-        self.0.slice(range.start, range.len()).into()
+        self.0.slice_with_length(range.start, range.len()).into()
     }
 
     /// Returns the bytes of a serialized blob batch without copying it.
@@ -34,8 +36,8 @@ impl Blob {
 
 impl Eq for Blob {}
 
-impl From<arrow::buffer::Buffer> for Blob {
-    fn from(buffer: arrow::buffer::Buffer) -> Self {
+impl From<ScalarBuffer<u8>> for Blob {
+    fn from(buffer: ScalarBuffer<u8>) -> Self {
         Self(buffer.into())
     }
 }
@@ -53,10 +55,10 @@ impl From<&[u8]> for Blob {
 }
 
 impl std::ops::Deref for Blob {
-    type Target = arrow::buffer::ScalarBuffer<u8>;
+    type Target = arrow::buffer::Buffer;
 
     #[inline]
-    fn deref(&self) -> &arrow::buffer::ScalarBuffer<u8> {
+    fn deref(&self) -> &arrow::buffer::Buffer {
         &self.0
     }
 }
