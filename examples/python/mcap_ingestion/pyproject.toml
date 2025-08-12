@@ -1,0 +1,12 @@
+[project]
+name = "mcap_ingestion"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["rerun-sdk", "jupyterlab"]
+
+[project.scripts]
+mcap_ingestion = "mcap_ingestion:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
