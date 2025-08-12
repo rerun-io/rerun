@@ -5,7 +5,6 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
     AccountingAllocator::new(mimalloc::MiMalloc);
 
 fn main() -> std::process::ExitCode {
-    // NOTE: no full-fledged telemetry, this is supposed to run as part of the OSS offering.
     re_log::setup_logging();
 
     let result = rerun_server::run(std::env::args());
