@@ -31,7 +31,7 @@ impl std::fmt::Display for LayerIdentifier {
     }
 }
 
-pub trait LayerNew {
+pub trait Layer {
     fn identifier() -> LayerIdentifier
     where
         Self: Sized;
@@ -64,7 +64,7 @@ pub trait MessageLayer {
     ) -> Option<Box<dyn McapMessageParser>>;
 }
 
-impl<T: MessageLayer> LayerNew for T {
+impl<T: MessageLayer> Layer for T {
     fn identifier() -> LayerIdentifier {
         T::identifier()
     }
@@ -135,12 +135,12 @@ impl<T: MessageLayer> LayerNew for T {
 }
 
 #[derive(Default)]
-pub struct RegistryNew {
-    factories: BTreeMap<LayerIdentifier, fn() -> Box<dyn LayerNew>>,
+pub struct Registry {
+    factories: BTreeMap<LayerIdentifier, fn() -> Box<dyn Layer>>,
 }
 
-impl RegistryNew {
-    pub fn register<L: LayerNew + Default + 'static>(mut self) -> Self {
+impl Registry {
+    pub fn register<L: Layer + Default + 'static>(mut self) -> Self {
         if self
             .factories
             .insert(L::identifier(), || Box::new(L::default()))
@@ -151,10 +151,7 @@ impl RegistryNew {
         self
     }
 
-    pub fn layers(
-        &self,
-        filter: Option<BTreeSet<String>>,
-    ) -> impl Iterator<Item = Box<dyn LayerNew>> {
+    pub fn layers(&self, filter: Option<BTreeSet<String>>) -> impl Iterator<Item = Box<dyn Layer>> {
         re_log::debug!(
             "Existing layers: {:?}",
             self.factories.keys().collect::<Vec<_>>()

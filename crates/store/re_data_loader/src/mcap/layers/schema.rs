@@ -9,13 +9,13 @@ use re_types::{AnyValues, components};
 
 use crate::mcap::decode::PluginError;
 
-use super::{LayerIdentifier, LayerNew};
+use super::{LayerIdentifier, Layer};
 
 /// Send static channel and schema information.
 #[derive(Debug, Default)]
 pub struct McapSchemaLayer;
 
-impl LayerNew for McapSchemaLayer {
+impl Layer for McapSchemaLayer {
     fn identifier() -> LayerIdentifier {
         "schema".into()
     }

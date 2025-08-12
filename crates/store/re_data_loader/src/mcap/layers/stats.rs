@@ -9,13 +9,13 @@ use re_types::{AnyValues, components};
 
 use crate::mcap::decode::PluginError;
 
-use super::{LayerIdentifier, LayerNew};
+use super::{LayerIdentifier, Layer};
 
 /// Send the statistics as recording properties.
 #[derive(Debug, Default)]
 pub struct McapStatisticLayer;
 
-impl LayerNew for McapStatisticLayer {
+impl Layer for McapStatisticLayer {
     fn identifier() -> LayerIdentifier {
         "stats".into()
     }

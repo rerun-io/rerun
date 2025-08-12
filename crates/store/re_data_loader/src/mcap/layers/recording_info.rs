@@ -3,13 +3,13 @@ use re_types::archetypes::RecordingInfo;
 
 use crate::mcap::decode::PluginError;
 
-use super::LayerNew;
+use super::Layer;
 
 /// Build the [`RecordingInfo`] chunk using the message statistics from a [`Summary`].
 #[derive(Debug, Default)]
 pub struct McapRecordingInfoLayer;
 
-impl LayerNew for McapRecordingInfoLayer {
+impl Layer for McapRecordingInfoLayer {
     fn identifier() -> super::LayerIdentifier {
         "recording_info".into()
     }

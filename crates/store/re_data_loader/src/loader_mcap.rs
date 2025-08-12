@@ -7,7 +7,7 @@ use anyhow::Context as _;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 
-use crate::mcap::layers::RegistryNew;
+use crate::mcap::layers::Registry;
 use crate::mcap::{self, layers};
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
@@ -187,7 +187,7 @@ fn load_mcap(
     let summary = mcap::util::read_summary(reader)?
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
-    let registry = RegistryNew::default()
+    let registry = Registry::default()
         .register::<layers::McapProtobufLayer>()
         .register::<layers::McapRawLayer>()
         .register::<layers::McapRecordingInfoLayer>()
