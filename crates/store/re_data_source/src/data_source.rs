@@ -69,6 +69,7 @@ impl DataSource {
             fn looks_like_a_file_path(uri: &str) -> bool {
                 // How do we distinguish a file path from a web url? "example.zip" could be either.
 
+                #[expect(clippy::if_same_then_else)]
                 if uri.starts_with('/') {
                     true // Unix absolute path
                 } else if looks_like_windows_abs_path(uri) {
