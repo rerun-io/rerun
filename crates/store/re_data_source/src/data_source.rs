@@ -70,23 +70,24 @@ impl DataSource {
                 // How do we distinguish a file path from a web url? "example.zip" could be either.
 
                 if uri.starts_with('/') {
-                    return true; // Unix absolute path
-                }
-                if looks_like_windows_abs_path(uri) {
-                    return true;
-                }
-
-                // We use a simple heuristic here: if there are multiple dots, it is likely an url,
-                // like "example.com/foo.zip".
-                // If there is only one dot, we treat it as an extension and look it up in a list of common
-                // file extensions:
-
-                let parts = uri.split('.').collect_vec();
-                if parts.len() == 2 {
-                    // Extension or `.com` etc?
-                    re_data_loader::is_supported_file_extension(parts[1])
+                    true // Unix absolute path
+                } else if looks_like_windows_abs_path(uri) {
+                    true
+                } else if uri.starts_with("http:") || uri.starts_with("https:") {
+                    false
                 } else {
-                    false // Too many dots; assume an url
+                    // We use a simple heuristic here: if there are multiple dots, it is likely an url,
+                    // like "example.com/foo.zip".
+                    // If there is only one dot, we treat it as an extension and look it up in a list of common
+                    // file extensions:
+
+                    let parts = uri.split('.').collect_vec();
+                    if parts.len() == 2 {
+                        // Extension or `.com` etc?
+                        re_data_loader::is_supported_file_extension(parts[1])
+                    } else {
+                        false // Too many dots; assume an url
+                    }
                 }
             }
 
@@ -337,70 +338,74 @@ where
     tokio::spawn(future);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-#[test]
-fn test_data_source_from_uri() {
+#[cfg(test)]
+mod tests {
+    use super::*;
     use re_log_types::FileSource;
 
-    let mut failed = false;
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_data_source_from_uri() {
+        let mut failed = false;
 
-    let file = [
-        "file://foo",
-        "foo.rrd",
-        "foo.png",
-        "/foo/bar/baz",
-        "D:/file",
-    ];
-    let http = [
-        "http://foo.rrd",
-        "example.zip/foo.rrd",
-        "www.foo.zip/foo.rrd",
-        "www.foo.zip/blueprint.rbl",
-    ];
-    let grpc = [
-        "rerun://foo.zip",
-        "rerun+http://foo.zip",
-        "rerun+https://foo.zip",
-        "rerun://127.0.0.1:9876",
-        "rerun+http://127.0.0.1:9876",
-        "rerun://redap.rerun.io",
-        "rerun+https://redap.rerun.io",
-    ];
+        let file = [
+            "file://foo",
+            "foo.rrd",
+            "foo.png",
+            "/foo/bar/baz",
+            "D:/file",
+        ];
+        let http = [
+            "http://foo.rrd",
+            "example.zip/foo.rrd",
+            "www.foo.zip/foo.rrd",
+            "www.foo.zip/blueprint.rbl",
+        ];
+        let grpc = [
+            "rerun://foo.zip",
+            "rerun+http://foo.zip",
+            "rerun+https://foo.zip",
+            "rerun://127.0.0.1:9876",
+            "rerun+http://127.0.0.1:9876",
+            "rerun://redap.rerun.io",
+            "rerun+https://redap.rerun.io",
+        ];
 
-    let file_source = FileSource::DragAndDrop {
-        recommended_store_id: None,
-        force_store_info: false,
-    };
+        let file_source = FileSource::DragAndDrop {
+            recommended_store_id: None,
+            force_store_info: false,
+        };
 
-    for uri in file {
-        if !matches!(
-            DataSource::from_uri(file_source.clone(), uri),
-            Some(DataSource::FilePath { .. })
-        ) {
-            eprintln!("Expected {uri:?} to be categorized as FilePath");
-            failed = true;
+        for uri in file {
+            let data_source = DataSource::from_uri(file_source.clone(), uri);
+            if !matches!(data_source, Some(DataSource::FilePath { .. })) {
+                eprintln!(
+                    "Expected {uri:?} to be categorized as FilePath. Instead it got parsed as {data_source:?}"
+                );
+                failed = true;
+            }
         }
-    }
 
-    for uri in http {
-        if !matches!(
-            DataSource::from_uri(file_source.clone(), uri),
-            Some(DataSource::RrdHttpUrl { .. })
-        ) {
-            eprintln!("Expected {uri:?} to be categorized as RrdHttpUrl");
-            failed = true;
+        for uri in http {
+            let data_source = DataSource::from_uri(file_source.clone(), uri);
+            if !matches!(data_source, Some(DataSource::RrdHttpUrl { .. })) {
+                eprintln!(
+                    "Expected {uri:?} to be categorized as RrdHttpUrl. Instead it got parsed as {data_source:?}"
+                );
+                failed = true;
+            }
         }
-    }
 
-    for uri in grpc {
-        if !matches!(
-            DataSource::from_uri(file_source.clone(), uri),
-            Some(DataSource::RerunGrpcStream { .. })
-        ) {
-            eprintln!("Expected {uri:?} to be categorized as MessageProxy");
-            failed = true;
+        for uri in grpc {
+            let data_source = DataSource::from_uri(file_source.clone(), uri);
+            if !matches!(data_source, Some(DataSource::RerunGrpcStream { .. })) {
+                eprintln!(
+                    "Expected {uri:?} to be categorized as MessageProxy. Instead it got parsed as {data_source:?}"
+                );
+                failed = true;
+            }
         }
-    }
 
-    assert!(!failed, "one or more test cases failed");
+        assert!(!failed, "one or more test cases failed");
+    }
 }
