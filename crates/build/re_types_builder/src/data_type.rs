@@ -153,8 +153,10 @@ impl DataType {
 pub enum LazyDatatype {
     Atomic(AtomicDataType),
 
+    /// A list of bytes of arbitrary length.
     Binary,
 
+    /// Utf8
     Utf8,
 
     /// Elements are non-nullable

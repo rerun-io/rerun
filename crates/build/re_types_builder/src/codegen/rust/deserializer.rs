@@ -537,18 +537,28 @@ fn quote_arrow_field_deserializer(
             }
         }
 
-        DataType::Utf8 => {
+        DataType::Binary | DataType::Utf8 => {
+            let is_binary = datatype.to_logical_type() == &DataType::Binary;
+
             let quoted_downcast = {
-                let cast_as = quote!(StringArray);
+                let cast_as = if is_binary {
+                    quote!(BinaryArray)
+                } else {
+                    quote!(StringArray)
+                };
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, quoted_datatype)
             };
 
-            let quoted_iter_transparency = quote_iterator_transparency(
-                objects,
-                datatype,
-                IteratorKind::ResultOptionValue,
-                quote!(::re_types_core::ArrowString::from).into(),
-            );
+            let quoted_iter_transparency = if is_binary {
+                quote!()
+            } else {
+                quote_iterator_transparency(
+                    objects,
+                    datatype,
+                    IteratorKind::ResultOptionValue,
+                    quote!(::re_types_core::ArrowString::from).into(),
+                )
+            };
 
             let data_src_buf = format_ident!("{data_src}_buf");
 
@@ -824,7 +834,7 @@ fn quote_arrow_field_deserializer(
             quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter())
         }
 
-        _ => unimplemented!("{datatype:#?}"),
+        DataType::Object { .. } => unimplemented!("{datatype:#?}"),
     }
 }
 

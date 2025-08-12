@@ -2003,6 +2003,7 @@ fn quote_fill_arrow_array_builder(
                                     ElementType::Float16 => Some("HalfFloatBuilder"),
                                     ElementType::Float32 => Some("FloatBuilder"),
                                     ElementType::Float64 => Some("DoubleBuilder"),
+                                    ElementType::Binary => Some("BinaryBuilder"),
                                     ElementType::String => Some("StringBuilder"),
                                     ElementType::Object{..} => None,
                                 };
@@ -2233,7 +2234,7 @@ fn quote_append_single_value_to_builder(
     value_access: &TokenStream,
     includes: &mut Includes,
 ) -> TokenStream {
-    match &typ {
+    match typ {
         Type::Unit => {
             quote!(ARROW_RETURN_NOT_OK(#value_builder->AppendNull());)
         }
@@ -2249,6 +2250,7 @@ fn quote_append_single_value_to_builder(
         | Type::Bool
         | Type::Float32
         | Type::Float64
+        | Type::Binary
         | Type::String => {
             quote!(ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access));)
         }
@@ -2290,7 +2292,7 @@ fn quote_append_single_value_to_builder(
                         );
                     }
                 }
-                ElementType::String => {
+                ElementType::Binary | ElementType::String => {
                     quote! {
                         for (size_t item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
                             ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access[item_idx]));
@@ -2447,6 +2449,10 @@ fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenSt
         }
         Type::Float32 => quote! { float  },
         Type::Float64 => quote! { double  },
+        Type::Binary => {
+            includes.insert_rerun("collection.hpp");
+            quote! { rerun::Collection<uint8_t>  }
+        }
         Type::String => {
             includes.insert_system("string");
             quote! { std::string  }
@@ -2507,6 +2513,10 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
         }
         ElementType::Float32 => quote! { float },
         ElementType::Float64 => quote! { double },
+        ElementType::Binary => {
+            includes.insert_rerun("collection.hpp");
+            quote! { rerun::Collection<uint8_t>  }
+        }
         ElementType::String => {
             includes.insert_system("string");
             quote! { std::string }
@@ -2648,6 +2658,7 @@ fn quote_arrow_datatype(
         Type::Float16 => quote!(arrow::float16()),
         Type::Float32 => quote!(arrow::float32()),
         Type::Float64 => quote!(arrow::float64()),
+        Type::Binary => quote!(arrow::binary()),
         Type::String => quote!(arrow::utf8()),
         Type::Bool => quote!(arrow::boolean()),
 
