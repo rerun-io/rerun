@@ -23,10 +23,8 @@ use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
-    app_blueprint::AppBlueprint,
-    event::ViewerEventDispatcher,
-    navigation::Navigation,
-    ui::{recordings_panel_ui, settings_screen_ui},
+    app_blueprint::AppBlueprint, event::ViewerEventDispatcher, navigation::Navigation,
+    ui::settings_screen_ui,
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -572,18 +570,18 @@ impl AppState {
                                         .default_height(210.0)
                                         .max_height(ui.available_height() - min_height_each)
                                         .show_inside(ui, |ui| {
-                                            recordings_panel_ui(
+                                            re_recording_panel::recordings_panel_ui(
                                                 &ctx,
                                                 ui,
-                                                welcome_screen_state,
+                                                welcome_screen_state.hide_examples,
                                                 redap_servers,
                                             );
                                         });
                                 } else {
-                                    recordings_panel_ui(
+                                    re_recording_panel::recordings_panel_ui(
                                         &ctx,
                                         ui,
-                                        welcome_screen_state,
+                                        welcome_screen_state.hide_examples,
                                         redap_servers,
                                     );
                                 }
