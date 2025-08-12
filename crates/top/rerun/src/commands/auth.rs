@@ -5,6 +5,9 @@ use re_viewer::AsyncRuntimeHandle;
 pub enum AuthCommands {
     /// Log into Rerun.
     Login(LoginCommand),
+
+    /// Retrieve the stored access token.
+    Token(TokenCommand),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -21,6 +24,9 @@ pub struct LoginCommand {
     #[clap(long, default_value = "false")]
     force: bool,
 }
+
+#[derive(Debug, Clone, Parser)]
+pub struct TokenCommand {}
 
 impl AuthCommands {
     pub fn run(&self, runtime: &AsyncRuntimeHandle) -> Result<(), re_auth::cli::Error> {
@@ -39,6 +45,8 @@ impl AuthCommands {
                     .inner()
                     .block_on(re_auth::cli::login(&context, options))
             }
+
+            Self::Token(_) => runtime.inner().block_on(re_auth::cli::token(&context)),
         }
     }
 }

@@ -383,6 +383,10 @@ impl AccessToken {
         Jwt(self.token.clone())
     }
 
+    pub fn as_str(&self) -> &str {
+        &self.token
+    }
+
     pub fn is_expired(&self) -> bool {
         // Time in seconds since unix epoch
         let now = jsonwebtoken::get_current_timestamp() as i64;

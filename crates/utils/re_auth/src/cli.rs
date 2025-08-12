@@ -54,6 +54,44 @@ pub struct LoginOptions<'a> {
     pub force_login: bool,
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("No credentials are stored on your machine, run `rerun auth login` first")]
+struct NoCredentialsError;
+
+#[derive(Debug, thiserror::Error)]
+#[error("Your credentials are expired, run `rerun auth login` first")]
+struct ExpiredCredentialsError;
+
+pub async fn token(context: &AuthContext) -> Result<(), Error> {
+    let mut credentials = match workos::Credentials::load() {
+        Ok(Some(credentials)) => credentials,
+
+        Ok(None) => {
+            return Err(Error::Generic(NoCredentialsError.into()));
+        }
+
+        Err(err) => {
+            re_log::debug!("invalid credentials: {err}");
+            return Err(Error::Generic(ExpiredCredentialsError.into()));
+        }
+    };
+
+    if let Err(err) = credentials.refresh_if_needed(context).await {
+        re_log::debug!("failed to refresh credentials: {err}");
+        return Err(Error::Generic(ExpiredCredentialsError.into()));
+    }
+
+    let Some(token) = credentials.access_token() else {
+        unreachable!("bug: no access token after refresh");
+    };
+
+    use std::io::Write as _;
+    let mut stdout = std::io::stdout();
+    write!(stdout, "{}", token.as_str()).ok();
+
+    Ok(())
+}
+
 /// Login to Rerun using Authorization Code flow.
 ///
 /// This first checks if valid credentials already exist locally,
