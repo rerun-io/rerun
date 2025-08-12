@@ -2250,9 +2250,13 @@ fn quote_append_single_value_to_builder(
         | Type::Bool
         | Type::Float32
         | Type::Float64
-        | Type::Binary
         | Type::String => {
             quote!(ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access));)
+        }
+        Type::Binary => {
+            quote!(
+                ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access.data(), static_cast<int32_t>(#value_access.size())));
+            )
         }
         Type::Float16 => {
             // Cast `rerun::half` to a `uint16_t``
@@ -2292,7 +2296,15 @@ fn quote_append_single_value_to_builder(
                         );
                     }
                 }
-                ElementType::Binary | ElementType::String => {
+                ElementType::Binary => {
+                    quote! {
+                        for (size_t item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
+                            auto&& data = &#value_access[elem_idx].data;
+                            ARROW_RETURN_NOT_OK(#value_builder->Append(data.data(), static_cast<int32_t>(data.size())));
+                        }
+                    }
+                }
+                ElementType::String => {
                     quote! {
                         for (size_t item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
                             ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access[item_idx]));
