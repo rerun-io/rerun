@@ -55,7 +55,6 @@ impl DataSource {
     ///
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, a grpc url, a http url, etc.
-    #[cfg_attr(target_arch = "wasm32", expect(clippy::needless_pass_by_value))]
     pub fn from_uri(_file_source: re_log_types::FileSource, url: &str) -> Option<Self> {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -117,9 +116,7 @@ impl DataSource {
                 uri,
                 select_when_loaded: true,
             })
-        } else if (url.starts_with("http") || url.starts_with("https"))
-            && (url.ends_with(".rrd") || url.ends_with(".rbl"))
-        {
+        } else if url.ends_with(".rrd") || url.ends_with(".rbl") {
             Some(Self::RrdHttpUrl {
                 url: url.to_owned(),
                 follow: false,
@@ -355,6 +352,7 @@ fn test_data_source_from_uri() {
         "D:/file",
     ];
     let http = [
+        "http://foo.rrd",
         "example.zip/foo.rrd",
         "www.foo.zip/foo.rrd",
         "www.foo.zip/blueprint.rbl",

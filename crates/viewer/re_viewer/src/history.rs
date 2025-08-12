@@ -165,7 +165,7 @@ fn handle_popstate(
         &entry.url,
         follow_if_http,
         select_redap_source_when_loaded,
-        &command_sender,
+        command_sender,
     )
     .is_err()
     {

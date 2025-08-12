@@ -482,7 +482,7 @@ impl TestContext {
     /// Notes:
     /// - Uses [`egui::__run_test_ctx`].
     /// - There is a possibility that the closure will be called more than once, see
-    ///   [`egui::Context::run`]. Use [`Self::run_once_in_egui_centra1l_panel`] if you want to ensure
+    ///   [`egui::Context::run`]. Use [`Self::run_once_in_egui_central_panel`] if you want to ensure
     ///   that the closure is called exactly once.
     //TODO(ab): should this be removed entirely in favor of `run_once_in_egui_central_panel`?
     pub fn run_in_egui_central_panel(

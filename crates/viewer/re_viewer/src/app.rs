@@ -3027,9 +3027,7 @@ fn update_web_address_bar(
     if !enable_history {
         return None;
     }
-    let Some(url) = crate::open_url::display_mode_to_content_url(store_hub, display_mode) else {
-        return None;
-    };
+    let url = crate::open_url::display_mode_to_content_url(store_hub, display_mode)?;
 
     re_log::debug!("Updating navigation bar");
 
