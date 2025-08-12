@@ -1092,10 +1092,15 @@ fn visible_interactive_toggle_ui(
 #[cfg(test)]
 mod tests {
     use re_chunk::{LatestAtQuery, RowId, TimePoint, Timeline};
-    use re_log_types::TimeType;
-    use re_test_context::TestContext;
+    use re_log_types::{
+        TimeType,
+        example_components::{MyPoint, MyPoints},
+    };
+    use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+    use re_test_viewport::{TestContextExt as _, TestView};
     use re_types::archetypes;
-    use re_viewer_context::blueprint_timeline;
+    use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
+    use re_viewport_blueprint::ViewBlueprint;
 
     use super::*;
 
@@ -1156,7 +1161,6 @@ mod tests {
             )
         });
 
-        // Select component:
         let component_path = re_log_types::ComponentPath {
             entity_path,
             component_descriptor: archetypes::Points2D::descriptor_positions(),
@@ -1217,7 +1221,6 @@ mod tests {
                 )
         });
 
-        // Select component:
         test_context
             .selection_state
             .lock()
@@ -1290,7 +1293,6 @@ mod tests {
             )
         });
 
-        // Select component:
         test_context
             .selection_state
             .lock()
@@ -1321,5 +1323,168 @@ mod tests {
 
         harness.run();
         harness.snapshot("selection_panel_component_hybrid_overwrite");
+    }
+
+    #[test]
+    fn selection_panel_view_snapshot() {
+        let mut test_context = get_test_context();
+        test_context.register_view_class::<TestView>();
+
+        let entity_path = EntityPath::from("static");
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &MyPoints::new([MyPoint::default()]),
+            )
+        });
+
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint
+                .add_view_at_root(ViewBlueprint::new_with_root_wildcard(TestView::identifier()))
+        });
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::View(view_id));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let size = egui::Vec2::from([400.0, 500.0]);
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size(size)
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+
+        let broken_pixels_fraction = 0.004;
+
+        let options = SnapshotOptions::new().failed_pixel_count_threshold(
+            (size.x * size.y * broken_pixels_fraction).round() as usize,
+        );
+
+        harness.snapshot_options("selection_panel_view", &options);
+    }
+
+    #[test]
+    fn selection_panel_view_entity_no_visualizable_snapshot() {
+        let mut test_context = get_test_context();
+        test_context.register_view_class::<TestView>();
+
+        let entity_path = EntityPath::from("points2d");
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &archetypes::Points2D::new([(0., 0.), (1., 1.), (2., 2.)]),
+            )
+        });
+
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint
+                .add_view_at_root(ViewBlueprint::new_with_root_wildcard(TestView::identifier()))
+        });
+
+        // Select component:
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::View(view_id));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let size = egui::Vec2::from([400.0, 500.0]);
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size(size)
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+
+        let broken_pixels_fraction = 0.004;
+
+        let options = SnapshotOptions::new().failed_pixel_count_threshold(
+            (size.x * size.y * broken_pixels_fraction).round() as usize,
+        );
+
+        harness.snapshot_options("selection_panel_view_entity_no_visualizable", &options);
+    }
+
+    #[test]
+    fn selection_panel_view_entity_no_match_snapshot() {
+        let mut test_context = get_test_context();
+        test_context.register_view_class::<TestView>();
+
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new(
+                TestView::identifier(),
+                RecommendedView::new_single_entity("does_not_exist".into()),
+            ))
+        });
+
+        // Select component:
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::View(view_id));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let size = egui::Vec2::from([400.0, 500.0]);
+        let mut harness = test_context
+            .setup_kittest_for_rendering()
+            .with_size(size)
+            .build_ui(|ui| {
+                test_context.run(&ui.ctx().clone(), |viewer_ctx| {
+                    SelectionPanel::default().contents(
+                        viewer_ctx,
+                        &viewport_blueprint,
+                        &mut ViewStates::default(),
+                        ui,
+                    );
+                });
+                test_context.handle_system_commands();
+            });
+
+        harness.run();
+
+        let broken_pixels_fraction = 0.004;
+
+        let options = SnapshotOptions::new().failed_pixel_count_threshold(
+            (size.x * size.y * broken_pixels_fraction).round() as usize,
+        );
+
+        harness.snapshot_options("selection_panel_view_entity_no_match", &options);
     }
 }
