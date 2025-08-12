@@ -1,0 +1,11 @@
+[project]
+name = "server_integration"
+version = "0.1.0"
+dependencies = ["rerun-sdk", "datafusion"]
+
+[project.scripts]
+test_api = "server_integration:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
