@@ -13,22 +13,21 @@ from __future__ import annotations
 
 import argparse
 import logging
-import rerun as rr
 
-from datafusion import col, functions as F
 import pyarrow as pa
+import rerun as rr
+from datafusion import col, functions as F
 
 CATALOG_URL = "rerun+http://localhost:51234"
 DATASET = "dataset"
 
-def aggregation_test() -> None:
 
+def aggregation_test() -> None:
     client = rr.catalog.CatalogClient(CATALOG_URL)
     dataset = client.get_dataset(name=DATASET)
 
     results = (
-        dataset
-        .dataframe_query_view(index="time_1", contents="/**")
+        dataset.dataframe_query_view(index="time_1", contents="/**")
         .df()
         .unnest_columns("/obj1:Points3D:positions")
         .aggregate(
@@ -36,7 +35,7 @@ def aggregation_test() -> None:
             [
                 F.min(col("/obj1:Points3D:positions")[0]).alias("min_x"),
                 F.max(col("/obj1:Points3D:positions")[0]).alias("max_x"),
-            ]
+            ],
         )
         .collect()
     )
@@ -46,15 +45,12 @@ def aggregation_test() -> None:
 
 
 def partition_ordering_test() -> None:
-
     client = rr.catalog.CatalogClient(CATALOG_URL)
     dataset = client.get_dataset(name=DATASET)
 
-
     for time_index in ["time_1", "time_2", "time_3"]:
         streams = (
-            dataset
-            .dataframe_query_view(index=time_index, contents="/**")
+            dataset.dataframe_query_view(index=time_index, contents="/**")
             .fill_latest_at()
             .df()
             .select("rerun_partition_id", time_index)
@@ -63,11 +59,9 @@ def partition_ordering_test() -> None:
 
         prior_partition_ids = set()
         for rb_reader in streams:
-
             prior_partition = ""
             prior_timestamp = 0
             for rb in iter(rb_reader):
-
                 rb = rb.to_pyarrow()
                 for idx in range(rb.num_rows):
                     partition = rb[0][idx].as_py()
@@ -100,15 +94,12 @@ def main() -> None:
         choices=["most", "all"] + list(tests.keys()),
     )
 
-
     args = parser.parse_args()
 
     if args.test in ["most", "all"]:
         print(f"Running {args.test} tests…")
 
-        threads = []
         for name, test in tests.items():
-
             logging.info(f"Starting {name}")
             test()
 

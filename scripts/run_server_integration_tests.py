@@ -85,10 +85,11 @@ def run_example(example: str, extra_args: list[str]) -> None:
     if "RUST_LOG" not in server_env:
         # Server can be noisy by default
         server_env["RUST_LOG"] = "warning"
+    server_env["RUST_LOG"] = "info"
 
     cmd = ["cargo", "run", "--bin", "rerun-server", "--", "--dataset", "tests/assets/rrd/dataset"]
     server_process = subprocess.Popen(cmd, env=server_env)
-    time.sleep(0.5)  # Wait for rerun server to start to remove a logged warning
+    time.sleep(10.5)  # Wait for rerun server to start to remove a logged warning
 
     cmd = ["python", "-m", example] + extra_args
     python_process = subprocess.Popen(cmd, env=env)
