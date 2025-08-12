@@ -39,6 +39,21 @@ pub enum FetchJwksError {
     Deserialize(#[from] serde_json::Error),
 }
 
+/// Permissions defined for Redap through the `WorkOS` dashboard.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Permission {
+    /// User can read data.
+    #[serde(rename = "read")]
+    Read,
+
+    /// User can both read and write data.
+    #[serde(rename = "read-write")]
+    ReadWrite,
+
+    #[serde(untagged)]
+    Unknown(String),
+}
+
 #[allow(dead_code)] // fields may become used at some point in the near future
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -57,7 +72,7 @@ pub struct Claims {
     /// Role
     pub role: Option<String>,
 
-    pub permissions: Option<Vec<String>>,
+    pub permissions: Option<Vec<Permission>>,
 
     pub entitlements: Option<Vec<String>>,
 
@@ -332,6 +347,7 @@ impl Credentials {
         Ok(())
     }
 
+    #[allow(dead_code)] // only used on CLI path, causes warnings downstream
     /// Verifies that contents of `res` are valid and produces [`Credentials`].
     ///
     /// Assumes that tokens are freshly generated and are not about to expire.
