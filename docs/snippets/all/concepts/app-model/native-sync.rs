@@ -5,6 +5,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Log data as usual, thereby pushing it into the stream.
     loop {
-        rec.log("/", &rerun::TextLog::new("Logging things..."))?;
+        rec.log("/", &rerun::TextLog::new("Logging things…"))?;
     }
 }

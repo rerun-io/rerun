@@ -261,7 +261,7 @@ impl WebViewerServerInner {
                 .expect("Invalid http header"),
         );
 
-        // The wasm files are pretty large, so they'll be sent chunked (ideally we'd gzip them...).
+        // The wasm files are pretty large, so they'll be sent chunked (ideally we'd gzip them…).
         // (tiny_http will do so automatically if the data is above a certain threshold.
         // It is configurable, but we don't know all the implications of that.)
         // Unfortunately `Transfer-Encoding: chunked` means that no size is transmitted.

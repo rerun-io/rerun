@@ -7,6 +7,6 @@ int main() {
 
     // Log data as usual, thereby writing it into the file.
     while (true) {
-        rec.log("log", rerun::TextLog("Logging things..."));
+        rec.log("log", rerun::TextLog("Logging things…"));
     }
 }

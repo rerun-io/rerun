@@ -434,7 +434,7 @@ pub enum DType {
 /// The name metadata can consist of
 /// - A flat list of names for each dimension of a feature (e.g., `["height", "width", "channel"]`).
 /// - A nested list of names for each dimension of a feature (e.g., `[[""kLeftShoulderPitch", "kLeftShoulderRoll"]]`)
-/// - A map with a string array value (e.g., `{ "motors": ["motor_0", "motor_1", ...] }` or `{ "axes": ["x", "y", "z"] }`).
+/// - A map with a string array value (e.g., `{ "motors": ["motor_0", "motor_1", …] }` or `{ "axes": ["x", "y", "z"] }`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Names(Vec<String>);
 
