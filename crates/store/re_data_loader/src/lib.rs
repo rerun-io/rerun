@@ -504,7 +504,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
 pub fn is_supported_file_extension(extension: &str) -> bool {
     debug_assert!(
         !extension.starts_with('.'),
-        "Expected extion without period, but got {extension:?}"
+        "Expected extension without period, but got {extension:?}"
     );
     let extension = extension.to_lowercase();
     supported_extensions().any(|ext| ext == extension)
