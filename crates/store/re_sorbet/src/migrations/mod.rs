@@ -1,6 +1,10 @@
 #![expect(non_snake_case)]
 
 //! These are the migrations that are introduced for each Sorbet version.
+//!
+//! When you introduce a breaking change, these are the steps:
+//! * Bump [`SorbetSchema::METADATA_VERSION`]
+//! * Add a new `mod vX_Y_Z__to__vX_Y_W`
 
 use std::cmp::Ordering;
 
@@ -18,6 +22,7 @@ mod make_list_arrays;
 mod v0_0_1__to__v0_0_2;
 mod v0_0_2__to__v0_1_0;
 mod v0_1_0__to__v0_1_1;
+mod v0_1_1__to__v0_1_2;
 
 /// This trait needs to be implemented by any new migrations. It ensures that
 /// all migrations adhere to the same contract.
@@ -109,7 +114,7 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
         Ok(batch_version) => match batch_version.cmp(&SorbetSchema::METADATA_VERSION) {
             Ordering::Equal => {
                 // Provide this code path as an early out to avoid unnecessary comparisons.
-                re_log::trace!("Batch version matches Sorbet version.");
+                re_log::trace!("Batch version matches Sorbet version ({batch_version})");
                 batch
             }
             Ordering::Less => {
@@ -120,10 +125,11 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
                     );
                     batch
                 } else {
-                    re_log::trace!("Performing migrations...");
+                    re_log::debug_once!("Performing migrations from {batch_version}…");
                     batch = maybe_apply::<v0_0_1__to__v0_0_2::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_0_2__to__v0_1_0::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_1_0__to__v0_1_1::Migration>(&batch_version, batch);
+                    batch = maybe_apply::<v0_1_1__to__v0_1_2::Migration>(&batch_version, batch);
                     batch
                 }
             }
