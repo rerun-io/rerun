@@ -7,22 +7,57 @@ use anyhow::Context as _;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 
-use crate::mcap::layers::LayerRegistry;
+use crate::mcap::layers::{LayerIdentifier, LayerRegistry};
 use crate::mcap::{self, layers};
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
 const MCAP_LOADER_NAME: &str = "McapLoader";
 
-#[derive(Default)]
+#[derive(Clone, Debug)]
+enum SelectedLayers {
+    All,
+    Subset(BTreeSet<LayerIdentifier>),
+}
+
+impl SelectedLayers {
+    /// Checks if a layer is part of the current selection.
+    pub fn contains(&self, value: &LayerIdentifier) -> bool {
+        match self {
+            SelectedLayers::All => true,
+            SelectedLayers::Subset(subset) => subset.contains(value),
+        }
+    }
+}
+
+/// A [`DataLoader`] for MCAP files.
+///
+/// There are many different ways to extract and interpret information from MCAP files.
+/// For example, it might be interesting to query for particular fields of messages,
+/// or show information directly in the Rerun viewer. Because use-cases can vary, the
+/// [`McapLoader`] is made up of [`Layer`]s, each representing different views of the
+/// underlying data.
+///
+/// These layers can be specified in the CLI wen converting an MCAP file
+/// to an .rrd. Here are a few examples:
+/// - [`layers::McapProtobufLayer`]
+/// - [`layers::McapRawLayer`]
 pub struct McapLoader {
-    layer_filters: Option<BTreeSet<String>>,
+    selected_layers: SelectedLayers,
+}
+
+impl Default for McapLoader {
+    fn default() -> Self {
+        Self {
+            selected_layers: SelectedLayers::All,
+        }
+    }
 }
 
 impl McapLoader {
     /// Creates a new [`McapLoader`] that only extracts the specified `layers`.
-    pub fn with_layers(layers: impl IntoIterator<Item = String>) -> Self {
+    pub fn with_selected_layers(layers: impl IntoIterator<Item = String>) -> Self {
         Self {
-            layer_filters: Some(layers.into_iter().collect()),
+            selected_layers: SelectedLayers::Subset(layers.into_iter().collect()),
         }
     }
 }
@@ -55,11 +90,11 @@ impl DataLoader for McapLoader {
         // their response via channels: we cannot be waiting for these responses on the
         // common rayon thread pool.
         let settings = settings.clone();
-        let layer_filters = self.layer_filters.clone();
+        let selected_layers = self.selected_layers.clone();
         std::thread::Builder::new()
             .name(format!("load_mcap({path:?}"))
             .spawn(
-                move || match load_mcap_mmap(&path, &settings, &tx, layer_filters) {
+                move || match load_mcap_mmap(&path, &settings, &tx, selected_layers) {
                     Ok(_) => {}
                     Err(err) => {
                         re_log::error!("Failed to load MCAP file: {err}");
@@ -86,7 +121,7 @@ impl DataLoader for McapLoader {
         re_tracing::profile_function!();
 
         let settings = settings.clone();
-        let layer_filters = self.layer_filters.clone();
+        let selected_layers = self.selected_layers.clone();
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -96,7 +131,7 @@ impl DataLoader for McapLoader {
         std::thread::Builder::new()
             .name(format!("load_mcap({filepath:?}"))
             .spawn(
-                move || match load_mcap_mmap(&filepath, &settings, &tx, layer_filters) {
+                move || match load_mcap_mmap(&filepath, &settings, &tx, selected_layers) {
                     Ok(_) => {}
                     Err(err) => {
                         re_log::error!("Failed to load MCAP file: {err}");
@@ -127,7 +162,7 @@ fn load_mcap_mmap(
     filepath: &std::path::PathBuf,
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
-    layer_filters: Option<BTreeSet<String>>,
+    selected_layers: SelectedLayers,
 ) -> std::result::Result<(), DataLoaderError> {
     use std::fs::File;
     let file = File::open(filepath)?;
@@ -136,14 +171,14 @@ fn load_mcap_mmap(
     #[allow(unsafe_code)]
     let mmap = unsafe { memmap2::Mmap::map(&file)? };
 
-    load_mcap(&mmap, settings, tx, layer_filters)
+    load_mcap(&mmap, settings, tx, selected_layers)
 }
 
 fn load_mcap(
     mcap: &[u8],
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
-    layer_filters: Option<BTreeSet<String>>,
+    selected_layers: SelectedLayers,
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!();
 
@@ -166,10 +201,7 @@ fn load_mcap(
     let mut send_chunk = |chunk| {
         if tx
             .send(LoadedData::Chunk(
-                McapLoader {
-                    layer_filters: None,
-                }
-                .name(),
+                MCAP_LOADER_NAME.to_owned(),
                 store_id.clone(),
                 chunk,
             ))
@@ -198,7 +230,7 @@ fn load_mcap(
     // TODO(#10862): Add warning for channel that miss semantic information.
 
     let mut empty = true;
-    for mut layer in registry.layers(layer_filters) {
+    for mut layer in registry.layers(selected_layers) {
         re_tracing::profile_scope!("process-layer");
         empty &= false;
         layer
@@ -218,12 +250,7 @@ pub fn store_info(store_id: StoreId) -> SetStoreInfo {
         info: StoreInfo {
             store_id,
             cloned_from: None,
-            store_source: re_log_types::StoreSource::Other(
-                McapLoader {
-                    layer_filters: None,
-                }
-                .name(),
-            ),
+            store_source: re_log_types::StoreSource::Other(MCAP_LOADER_NAME.to_owned()),
             store_version: Some(re_build_info::CrateVersion::LOCAL),
         },
     }

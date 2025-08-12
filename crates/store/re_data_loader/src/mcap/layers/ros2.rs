@@ -11,6 +11,9 @@ use crate::mcap::{
 
 use super::MessageLayer;
 
+/// Provides a set of predefined conversion of ROS2 messages.
+///
+/// Where applicable, this layer will output Rerun archetypes for visualization in the viewer.
 #[derive(Debug, Default)]
 pub struct McapRos2Layer;
 
@@ -25,7 +28,10 @@ impl MessageLayer for McapRos2Layer {
         num_rows: usize,
     ) -> Option<Box<dyn McapMessageParser>> {
         let Some(name) = channel.schema.as_ref().map(|schema| schema.name.as_str()) else {
-            re_log::warn_once!("Encountered message without schema.");
+            re_log::warn_once!(
+                "Encountered ROS2 message without schema in channel {:?}",
+                channel.topic
+            );
             return None;
         };
 
@@ -40,7 +46,7 @@ impl MessageLayer for McapRos2Layer {
             }
             "sensor_msgs/msg/PointCloud2" => Box::new(PointCloud2MessageParser::new(num_rows)),
             _ => {
-                re_log::warn_once!("Message schema {name} is currently not supported");
+                re_log::warn_once!("Message schema {name:?} is currently not supported");
                 return None;
             }
         })

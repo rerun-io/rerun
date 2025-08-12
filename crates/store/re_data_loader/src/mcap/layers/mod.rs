@@ -18,10 +18,16 @@ use super::decode::{ChannelId, McapMessageParser, ParserContext, PluginError};
 /// Globally unique identifier for a layer.
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct LayerIdentifier(pub &'static str);
+pub struct LayerIdentifier(String);
 
 impl From<&'static str> for LayerIdentifier {
     fn from(value: &'static str) -> Self {
+        Self(value.to_owned())
+    }
+}
+
+impl From<String> for LayerIdentifier {
+    fn from(value: String) -> Self {
         Self(value)
     }
 }

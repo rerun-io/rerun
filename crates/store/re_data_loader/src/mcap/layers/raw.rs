@@ -9,14 +9,14 @@ use crate::mcap::{
     schema::blob_list_builder,
 };
 
-pub struct RawMcapMessageParser {
+struct RawMcapMessageParser {
     data: FixedSizeListBuilder<ListBuilder<UInt8Builder>>,
 }
 
 impl RawMcapMessageParser {
-    pub const ARCHETYPE_NAME: &str = "rerun.mcap.Message";
+    const ARCHETYPE_NAME: &str = "rerun.mcap.Message";
 
-    pub fn new(num_rows: usize) -> Self {
+    fn new(num_rows: usize) -> Self {
         Self {
             data: blob_list_builder(num_rows),
         }
@@ -59,6 +59,7 @@ impl McapMessageParser for RawMcapMessageParser {
     }
 }
 
+/// Extracts the raw, unencoded bytes of arbitrary MCAP messages.
 #[derive(Debug, Default)]
 pub struct McapRawLayer;
 

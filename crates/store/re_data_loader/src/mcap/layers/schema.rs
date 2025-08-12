@@ -11,7 +11,9 @@ use crate::mcap::decode::PluginError;
 
 use super::{Layer, LayerIdentifier};
 
-/// Send static channel and schema information.
+/// Extracts a static summary of channel and schema information.
+///
+/// Can be used to get an overview over the contents of an MCAP file.
 #[derive(Debug, Default)]
 pub struct McapSchemaLayer;
 
@@ -50,7 +52,7 @@ fn from_channel(channel: &Arc<::mcap::Channel<'_>>) -> Result<AnyValues, ArrowEr
     let ::mcap::Channel {
         id,
         topic,
-        schema: _, // Separate archetype
+        schema: _, // handled by `fn from_schema` instead
         message_encoding,
         metadata,
     } = channel.as_ref();

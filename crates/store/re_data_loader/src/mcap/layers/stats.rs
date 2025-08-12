@@ -11,7 +11,9 @@ use crate::mcap::decode::PluginError;
 
 use super::{Layer, LayerIdentifier};
 
-/// Send the statistics as recording properties.
+/// Extracts [`mcap::records::Statistics`], such as message count, from an MCAP file.
+///
+/// The results will be stored as recording properties.
 #[derive(Debug, Default)]
 pub struct McapStatisticLayer;
 
@@ -22,7 +24,6 @@ impl Layer for McapStatisticLayer {
 
     fn process(
         &mut self,
-
         _mcap_bytes: &[u8],
         summary: &mcap::Summary,
         emit: &mut dyn FnMut(Chunk),

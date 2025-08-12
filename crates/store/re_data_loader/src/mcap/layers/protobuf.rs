@@ -20,7 +20,7 @@ use crate::mcap::{
     layers::MessageLayer,
 };
 
-pub struct ProtobufMessageParser {
+struct ProtobufMessageParser {
     message_descriptor: MessageDescriptor,
     fields: BTreeMap<String, FixedSizeListBuilder<Box<dyn ArrayBuilder>>>,
 }
@@ -48,7 +48,7 @@ pub enum Error {
 }
 
 impl ProtobufMessageParser {
-    pub fn new(num_rows: usize, message_descriptor: MessageDescriptor) -> Self {
+    fn new(num_rows: usize, message_descriptor: MessageDescriptor) -> Self {
         let mut fields = BTreeMap::new();
 
         // We recursively build up the Arrow builders for this particular message.
@@ -309,6 +309,11 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
     inner
 }
 
+/// Provides reflection-based conversion of protobuf-encoded MCAP messages.
+///
+/// Applying this layer will result in a direct Arrow representation of the fields.
+/// This is useful for querying certain fields from an MCAP file, but wont result
+/// in semantic types that can be picked up by the Rerun viewer.
 #[derive(Debug, Default)]
 pub struct McapProtobufLayer {
     descrs_per_topic: ahash::HashMap<String, MessageDescriptor>,
