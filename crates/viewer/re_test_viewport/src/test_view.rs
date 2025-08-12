@@ -112,9 +112,7 @@ impl ViewClass for TestView {
         _query: &re_viewer_context::ViewQuery<'_>,
         _system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), re_viewer_context::ViewSystemExecutionError> {
-        // TODO(grtlr): Show something meaningful here.
-        ui.label("Test");
-
+        ui.label("Test view");
         Ok(())
     }
 }

@@ -1161,7 +1161,6 @@ mod tests {
             )
         });
 
-        // Select component:
         let component_path = re_log_types::ComponentPath {
             entity_path,
             component_descriptor: archetypes::Points2D::descriptor_positions(),
@@ -1222,7 +1221,6 @@ mod tests {
                 )
         });
 
-        // Select component:
         test_context
             .selection_state
             .lock()
@@ -1295,7 +1293,6 @@ mod tests {
             )
         });
 
-        // Select component:
         test_context
             .selection_state
             .lock()
@@ -1330,13 +1327,6 @@ mod tests {
 
     #[test]
     fn selection_panel_view_snapshot() {
-        fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-            test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-                blueprint
-                    .add_view_at_root(ViewBlueprint::new_with_root_wildcard(TestView::identifier()))
-            })
-        }
-
         let mut test_context = get_test_context();
         test_context.register_view_class::<TestView>();
 
@@ -1349,9 +1339,11 @@ mod tests {
             )
         });
 
-        let view_id = setup_blueprint(&mut test_context);
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint
+                .add_view_at_root(ViewBlueprint::new_with_root_wildcard(TestView::identifier()))
+        });
 
-        // Select component:
         test_context
             .selection_state
             .lock()
@@ -1383,13 +1375,6 @@ mod tests {
 
     #[test]
     fn selection_panel_view_entity_no_visualizable_snapshot() {
-        fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-            test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-                blueprint
-                    .add_view_at_root(ViewBlueprint::new_with_root_wildcard(TestView::identifier()))
-            })
-        }
-
         let mut test_context = get_test_context();
         test_context.register_view_class::<TestView>();
 
@@ -1402,7 +1387,10 @@ mod tests {
             )
         });
 
-        let view_id = setup_blueprint(&mut test_context);
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint
+                .add_view_at_root(ViewBlueprint::new_with_root_wildcard(TestView::identifier()))
+        });
 
         // Select component:
         test_context
@@ -1436,19 +1424,15 @@ mod tests {
 
     #[test]
     fn selection_panel_view_entity_no_match_snapshot() {
-        fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-            test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-                blueprint.add_view_at_root(ViewBlueprint::new(
-                    TestView::identifier(),
-                    RecommendedView::new_single_entity("does_not_exist".into()),
-                ))
-            })
-        }
-
         let mut test_context = get_test_context();
         test_context.register_view_class::<TestView>();
 
-        let view_id = setup_blueprint(&mut test_context);
+        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new(
+                TestView::identifier(),
+                RecommendedView::new_single_entity("does_not_exist".into()),
+            ))
+        });
 
         // Select component:
         test_context
