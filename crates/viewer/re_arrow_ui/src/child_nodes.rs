@@ -15,6 +15,7 @@ pub enum ChildNodes<'a> {
     Struct {
         parent_index: usize,
         array: &'a StructArray,
+        columns: Vec<(String, ArrayView<'a>)>,
     },
     Map {
         keys: MaybeArc<'a>,
@@ -33,16 +34,27 @@ impl<'a> ChildNodes<'a> {
             ChildNodes::Struct {
                 parent_index: index,
                 array: struct_array,
+                columns: struct_array
+                    .fields()
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, field)| {
+                        (
+                            field.name().clone(),
+                            ArrayView::new(struct_array.column(idx).clone()),
+                        )
+                    })
+                    .collect(),
             }
         } else if let Some(list) = array.as_list_opt::<i32>() {
             let value = list.value(index);
-            ChildNodes::List(ArrayView::new_ref(value.into()))
+            ChildNodes::List(ArrayView::new(value))
         } else if let Some(list) = array.as_list_opt::<i64>() {
             let value = list.value(index);
-            ChildNodes::List(ArrayView::new_ref(value.into()))
+            ChildNodes::List(ArrayView::new(value))
         } else if let Some(list_array) = array.as_fixed_size_list_opt() {
             let value = list_array.value(index);
-            ChildNodes::List(ArrayView::new_ref(value.into()))
+            ChildNodes::List(ArrayView::new(value))
         } else if let Some(dict_array) = array.as_any_dictionary_opt() {
             // if !dict_array.keys().data_type().is_nested() {
             //     ChildNodes::InlineKeyMap {
@@ -97,7 +109,8 @@ impl<'a> ChildNodes<'a> {
             ChildNodes::Struct {
                 parent_index: _,
                 array,
-            } => array.num_columns(),
+                columns,
+            } => columns.len(),
             ChildNodes::Map { .. } => {
                 2 // key and value
             }
@@ -116,15 +129,18 @@ impl<'a> ChildNodes<'a> {
             ChildNodes::Struct {
                 parent_index: struct_index,
                 array,
+                columns,
             } => {
-                let column = array.column(index);
-                let name = array.column_names()[index];
-                ArrowNode::new(
-                    &**column,
-                    *struct_index,
-                    ChildNodes::new(column as &dyn Array, *struct_index),
-                )
-                .with_field_name(name)
+                // let column = array.column(index);
+                // let name = array.column_names()[index];
+                // ArrowNode::new(
+                //     &**column,
+                //     *struct_index,
+                //     ChildNodes::new(column as &dyn Array, *struct_index),
+                // )
+                // .with_field_name(name)
+                let (name, view) = &columns[index];
+                view.node(*struct_index).with_field_name(name)
             }
             ChildNodes::Map {
                 keys,

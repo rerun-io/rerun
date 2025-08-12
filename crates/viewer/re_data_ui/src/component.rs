@@ -127,7 +127,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             max_row.saturating_sub(1)
         };
 
-        if num_instances <= 1 {
+        if num_instances <= 1 || true {
             // Allow editing recording properties:
             if entity_path.starts_with(&EntityPath::properties()) {
                 if let Some(array) = self.unit.component_batch_raw(component_descriptor) {
