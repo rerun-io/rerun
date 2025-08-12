@@ -125,7 +125,7 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, url: &str, command_sender
 /// Returns `None` if the current state can't be shared with a url.
 // TODO(andreas): We'll need this for our "share link" editor again, but with lots more knobs. Probably need to split this.
 //                We can likely have a more structured one for redap urls and have this higher level function use that (share editor is only planned for redap urls)
-// TODO(andreas): Should have anchors for selection etc. when supported.
+// TODO(#10866): Should have anchors for selection etc. when supported.
 #[allow(unused)] // only used in web viewer as of writing
 pub fn display_mode_to_content_url(
     store_hub: &StoreHub,
@@ -177,7 +177,7 @@ pub fn display_mode_to_content_url(
         }
 
         DisplayMode::RedapEntry(_entry_id) => {
-            // TODO(andreas): Implement this.
+            // TODO(#10866): Implement this.
             None
         }
 
@@ -189,7 +189,6 @@ pub fn display_mode_to_content_url(
 
         DisplayMode::ChunkStoreBrowser => {
             // As of writing the store browser is more of a debugging feature.
-            // Could change the url fragments in the future.
             None
         }
     }
