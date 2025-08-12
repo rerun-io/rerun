@@ -75,9 +75,11 @@ impl<T: MessageLayer> LayerNew for T {
         summary: &mcap::Summary,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), PluginError> {
+        re_tracing::profile_scope!("process-message-layer");
         self.init(summary)?;
 
         for chunk in &summary.chunk_indexes {
+            re_tracing::profile_scope!("mcap-chunk");
             let channel_counts = super::util::get_chunk_message_count(chunk, summary, mcap_bytes)?;
 
             let parsers = summary
