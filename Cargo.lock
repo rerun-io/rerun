@@ -8020,6 +8020,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_recording_panel"
+version = "0.25.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "egui",
+ "itertools 0.14.0",
+ "re_data_ui",
+ "re_entity_db",
+ "re_redap_browser",
+ "re_smart_channel",
+ "re_ui",
+ "re_viewer_context",
+]
+
+[[package]]
 name = "re_redap_browser"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
@@ -8835,6 +8850,7 @@ dependencies = [
  "re_memory",
  "re_perf_telemetry",
  "re_query",
+ "re_recording_panel",
  "re_redap_browser",
  "re_renderer",
  "re_selection_panel",

@@ -11,14 +11,12 @@ use re_viewer_context::{
     DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 
-use crate::app_state::WelcomeScreenState;
-
 /// Show the currently open Recordings in a selectable list.
 /// Also shows the currently loading receivers.
 pub fn recordings_panel_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    welcome_screen_state: &WelcomeScreenState,
+    hide_examples: bool,
     servers: &RedapServers,
 ) {
     ui.panel_content(|ui| {
@@ -39,7 +37,7 @@ pub fn recordings_panel_ui(
         .show(ui, |ui| {
             ui.panel_content(|ui| {
                 re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
-                    recording_list_ui(ctx, ui, welcome_screen_state, servers);
+                    recording_list_ui(ctx, ui, hide_examples, servers);
 
                     // Show currently loading things after.
                     // They will likely end up here as recordings soon.
@@ -91,7 +89,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
 fn recording_list_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    welcome_screen_state: &WelcomeScreenState,
+    hide_examples: bool,
     servers: &RedapServers,
 ) {
     let re_entity_db::SortDatasetsResults {
@@ -106,7 +104,7 @@ fn recording_list_ui(
     if ctx.storage_context.tables.is_empty()
         && servers.is_empty()
         && local_recordings.is_empty()
-        && welcome_screen_state.hide_examples
+        && hide_examples
     {
         ui.list_item().interactive(false).show_flat(
             ui,
@@ -152,7 +150,7 @@ fn recording_list_ui(
     if (ctx
         .app_options()
         .include_rerun_examples_button_in_recordings_panel
-        && !welcome_screen_state.hide_examples)
+        && !hide_examples)
         || !example_recordings.is_empty()
     {
         let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
