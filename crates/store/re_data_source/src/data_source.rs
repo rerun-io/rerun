@@ -69,7 +69,7 @@ impl DataSource {
 
             fn looks_like_a_file_path(uri: &str) -> bool {
                 // Files must have a supported extension.
-                let Some(file_extension) = uri.split('.').last() else {
+                let Some(file_extension) = uri.split('.').next_back() else {
                     return false;
                 };
                 if !re_data_loader::is_supported_file_extension(file_extension) {
@@ -125,7 +125,7 @@ impl DataSource {
                 select_when_loaded: true,
             })
         } else {
-            let mut parsed_url = url::Url::parse(&url)
+            let mut parsed_url = url::Url::parse(url)
                 .or_else(|_| url::Url::parse(&format!("http://{url}")))
                 .ok()?;
 
@@ -420,7 +420,7 @@ mod tests {
         for (uri, expected_filename) in http.iter().zip(http_filenames.iter()) {
             let data_source = DataSource::from_uri(file_source.clone(), uri);
             let data_source_filename = data_source.and_then(|ds| ds.file_name());
-            if data_source_filename != Some((*expected_filename).to_string()) {
+            if data_source_filename != Some((*expected_filename).to_owned()) {
                 eprintln!(
                     "Expected data source for {uri:?} to have filename {expected_filename}. Instead it got parsed as {data_source_filename:?}",
                 );
