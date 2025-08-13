@@ -686,6 +686,19 @@ impl TryFrom<crate::common::v1alpha1::ChunkKey> for ChunkKey {
     }
 }
 
+impl TryFrom<&[u8]> for ChunkKey {
+    type Error = TypeConversionError;
+
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        use prost::Message;
+
+        let proto_chunk_key = crate::common::v1alpha1::ChunkKey::decode(bytes)
+            .map_err(|err| TypeConversionError::DecodeError(err))?;
+
+        proto_chunk_key.try_into()
+    }
+}
+
 impl From<ChunkKey> for crate::common::v1alpha1::ChunkKey {
     fn from(value: ChunkKey) -> Self {
         Self {
