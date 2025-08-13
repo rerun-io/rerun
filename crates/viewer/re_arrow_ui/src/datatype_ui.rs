@@ -83,7 +83,7 @@ pub fn datatype_ui<'a>(
             })),
         ),
         non_nested => {
-            let label = crate::arrow_ui::simple_datatype_string(non_nested)
+            let label = simple_datatype_string(non_nested)
                 .map(|s| s.to_owned())
                 .unwrap_or_else(|| non_nested.to_string());
             (label, None)
@@ -105,5 +105,27 @@ fn datatype_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
         item.show_hierarchical_with_children(ui, Id::new(field.name()), true, property, content);
     } else {
         item.show_hierarchical(ui, property);
+    }
+}
+
+// TODO(emilk): there is some overlap here with `re_format_arrow`.
+pub(crate) fn simple_datatype_string(datatype: &DataType) -> Option<&'static str> {
+    match datatype {
+        DataType::Null => Some("null"),
+        DataType::Boolean => Some("bool"),
+        DataType::Int8 => Some("int8"),
+        DataType::Int16 => Some("int16"),
+        DataType::Int32 => Some("int32"),
+        DataType::Int64 => Some("int64"),
+        DataType::UInt8 => Some("uint8"),
+        DataType::UInt16 => Some("uint16"),
+        DataType::UInt32 => Some("uint32"),
+        DataType::UInt64 => Some("uint64"),
+        DataType::Float16 => Some("float16"),
+        DataType::Float32 => Some("float32"),
+        DataType::Float64 => Some("float64"),
+        DataType::Utf8 | DataType::LargeUtf8 => Some("utf8"),
+        DataType::Binary | DataType::LargeBinary => Some("binary"),
+        _ => None,
     }
 }

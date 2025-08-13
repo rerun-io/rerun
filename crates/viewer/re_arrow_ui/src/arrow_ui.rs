@@ -1,4 +1,5 @@
 use crate::datatype_ui::datatype_ui;
+use crate::fmt::ArrayUi;
 use crate::fmt_ui;
 use arrow::array::AsArray;
 use arrow::{
@@ -23,20 +24,7 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-        if ui_layout.is_selection_panel() {
-            list_item_scope(ui, Id::new("arrow data"), |ui| {
-                // array_items_ui(ui, array);
-                fmt_ui::arrow_ui(ui, array);
-            });
-
-            return;
-        }
-
-        if array.is_empty() {
-            ui_layout.data_label(ui, "[]");
-            return;
-        }
-
+        // TODO: Should this also be handled in the arrow tree UI?
         // Special-treat text.
         // This is so that we can show urls as clickable links.
         // Note: we match on the raw data here, so this works for any component containing text.
@@ -55,116 +43,63 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             }
         }
 
+        // TODO: I think we can remove this since the custom code should never render more than a couple items in a list.
         // Special-treat batches that are themselves unit-lists (i.e. blobs).
         //
         // What we really want to display in these instances in the underlying array, otherwise we'll
         // bring down the entire viewer trying to render a list whose single entry might itself be
         // an array with millions of values.
-        if let Some(entries) = array.downcast_array_ref::<ListArray>() {
-            if entries.len() == 1 {
-                // Don't use `values` since this may contain values before and after the single blob we want to display.
-                return arrow_ui(ui, ui_layout, &entries.value(0));
-            }
-        }
-        if let Some(entries) = array.downcast_array_ref::<LargeListArray>() {
-            if entries.len() == 1 {
-                // Don't use `values` since this may contain values before and after the single blob we want to display.
-                return arrow_ui(ui, ui_layout, &entries.value(0));
-            }
-        }
+        // if let Some(entries) = array.downcast_array_ref::<ListArray>() {
+        //     if entries.len() == 1 {
+        //         // Don't use `values` since this may contain values before and after the single blob we want to display.
+        //         return arrow_ui(ui, ui_layout, &entries.value(0));
+        //     }
+        // }
+        // if let Some(entries) = array.downcast_array_ref::<LargeListArray>() {
+        //     if entries.len() == 1 {
+        //         // Don't use `values` since this may contain values before and after the single blob we want to display.
+        //         return arrow_ui(ui, ui_layout, &entries.value(0));
+        //     }
+        // }
 
-        let Ok(array_formatter) = make_formatter(array) else {
-            // This is unreachable because we use `.with_display_error(true)` above.
-            return;
-        };
-
-        let instance_count = array.len();
-
-        if instance_count == 1 {
-            ui_layout.data_label(ui, array_formatter(0));
-        } else if instance_count < 10
-            && (array.data_type().is_primitive()
-                || matches!(array.data_type(), DataType::Utf8 | DataType::LargeUtf8))
-        {
-            // A short list of floats, strings, etc. Show it to the user.
-            let list_string = format!("[{}]", (0..instance_count).map(array_formatter).join(", "));
-            ui_layout.data_label(ui, list_string);
-        } else {
-            let instance_count_str = re_format::format_uint(instance_count);
-
-            let string = if array.data_type() == &DataType::UInt8 {
-                re_format::format_bytes(instance_count as _)
-            } else if let Some(dtype) = simple_datatype_string(array.data_type()) {
-                format!("{instance_count_str} items of {dtype}")
-            } else if let DataType::Struct(fields) = array.data_type() {
-                format!(
-                    "{instance_count_str} structs with {} fields: {}",
-                    fields.len(),
-                    fields
-                        .iter()
-                        .map(|f| format!("{}:{}", f.name(), f.data_type()))
-                        .join(", ")
-                )
-            } else {
-                format!("{instance_count_str} items")
-            };
-            ui_layout.label(ui, string).on_hover_ui(|ui| {
-                const MAX_INSTANCE: usize = 40;
-
-                let list_string = format!(
-                    "[{}{}]{}",
-                    (0..instance_count.min(MAX_INSTANCE))
-                        .map(array_formatter)
-                        .join(", "),
-                    if instance_count > MAX_INSTANCE {
-                        ", …"
+        match make_ui(array) {
+            Ok(array_formatter) => match ui_layout {
+                UiLayout::SelectionPanel => {
+                    list_item_scope(ui, Id::new("arrow_ui"), |ui| {
+                        if array.len() == 1 {
+                            array_formatter.show_value(0, ui);
+                        } else {
+                            array_formatter.show(ui);
+                        }
+                    });
+                }
+                UiLayout::Tooltip | UiLayout::List => {
+                    let job = if array.len() == 1 {
+                        array_formatter.value_job(ui, 0)
                     } else {
-                        ""
-                    },
-                    if instance_count > MAX_INSTANCE {
-                        format!(" ({} items omitted)", instance_count - MAX_INSTANCE)
-                    } else {
-                        String::new()
+                        array_formatter.job(ui)
+                    };
+                    match job {
+                        Ok(job) => {
+                            ui_layout.label(ui, job);
+                        }
+                        Err(err) => {
+                            ui.error_with_details_on_hover(err.to_string());
+                        }
                     }
-                );
-
-                UiLayout::Tooltip.data_label(ui, list_string);
-            });
+                }
+            },
+            Err(err) => {
+                ui.error_with_details_on_hover(err.to_string());
+            }
         }
     });
 }
 
-pub(crate) fn make_formatter(
-    array: &dyn Array,
-) -> Result<Box<dyn Fn(usize) -> String + '_>, ArrowError> {
-    // It would be nice to add quotes around strings,
-    // but we already special-case single strings so that we can show them as links,
-    // so we if we change things here we need to change that too. Maybe we should.
+pub(crate) fn make_ui(array: &dyn Array) -> Result<ArrayUi, ArrowError> {
     let options = FormatOptions::default()
         .with_null("null")
         .with_display_error(true);
-    let formatter = ArrayFormatter::try_new(array, &options)?;
-    Ok(Box::new(move |index| formatter.value(index).to_string()))
-}
-
-// TODO(emilk): there is some overlap here with `re_format_arrow`.
-pub(crate) fn simple_datatype_string(datatype: &DataType) -> Option<&'static str> {
-    match datatype {
-        DataType::Null => Some("null"),
-        DataType::Boolean => Some("bool"),
-        DataType::Int8 => Some("int8"),
-        DataType::Int16 => Some("int16"),
-        DataType::Int32 => Some("int32"),
-        DataType::Int64 => Some("int64"),
-        DataType::UInt8 => Some("uint8"),
-        DataType::UInt16 => Some("uint16"),
-        DataType::UInt32 => Some("uint32"),
-        DataType::UInt64 => Some("uint64"),
-        DataType::Float16 => Some("float16"),
-        DataType::Float32 => Some("float32"),
-        DataType::Float64 => Some("float64"),
-        DataType::Utf8 | DataType::LargeUtf8 => Some("utf8"),
-        DataType::Binary | DataType::LargeBinary => Some("binary"),
-        _ => None,
-    }
+    let array_ui = ArrayUi::try_new(array, &options)?;
+    Ok(array_ui)
 }

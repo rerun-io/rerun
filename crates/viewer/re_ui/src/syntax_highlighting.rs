@@ -47,11 +47,14 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
         self
     }
 
-    /// Some string data.
+    /// Some string data. Will be quoted.
     pub fn code_string_value(&mut self, portion: &str) {
         let mut format = monospace_text_format(self.style);
         format.color = self.tokens.code_string;
-        self.job.append(portion, 0.0, format);
+        // TODO: To quote or not to quote?
+        self.job.append("\"", 0.0, format.clone());
+        self.job.append(portion, 0.0, format.clone());
+        self.job.append("\"", 0.0, format);
     }
 
     /// A string name (e.g. the key of a map).
