@@ -90,6 +90,9 @@ jobs:
         # See tests/assets/rrd/README.md for more
         run: pixi run check-backwards-compatibility
 
+      - name: Compare man page to CLI dcs
+        run: pixi run rerun-build-web && pixi run ./scripts/ci/check_cli_docs.py
+
   rs-tests:
     name: Rust tests
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
