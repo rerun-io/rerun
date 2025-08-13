@@ -8580,6 +8580,7 @@ dependencies = [
 name = "re_view_bar_chart"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "egui",
  "egui_plot",
  "re_chunk_store",
