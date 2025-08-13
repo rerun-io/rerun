@@ -20,6 +20,9 @@ def main() -> None:
         current: str = result.stdout
     except subprocess.CalledProcessError as e:
         print(f"Error running command: {e}", file=sys.stderr)
+        print(f"Exit code: {e.returncode}", file=sys.stderr)
+        print(f"Stdout: {e.stdout}", file=sys.stderr)
+        print(f"Stderr: {e.stderr}", file=sys.stderr)
         sys.exit(2)
     except FileNotFoundError:
         print(f"Command not found: {' '.join(command)}", file=sys.stderr)
@@ -52,7 +55,7 @@ def main() -> None:
     diff_output: str = "".join(diff)
     sys.stderr.write(diff_output)
 
-    print("\nUpdate docs with: pixi run man", file=sys.stderr)
+    print(f"\nUpdate with: pixi run man", file=sys.stderr)
     sys.exit(1)
 
 
