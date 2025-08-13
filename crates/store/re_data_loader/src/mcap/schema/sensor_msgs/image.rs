@@ -8,26 +8,12 @@ use re_types::{
 
 use crate::mcap::{
     cdr,
-    decode::{McapMessageParser, ParserContext, PluginError, SchemaName, SchemaPlugin},
+    decode::{McapMessageParser, ParserContext, PluginError},
 };
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
 #[derive(Default)]
 pub struct ImageSchemaPlugin;
-
-impl SchemaPlugin for ImageSchemaPlugin {
-    fn name(&self) -> SchemaName {
-        "sensor_msgs/msg/Image".into()
-    }
-
-    fn create_message_parser(
-        &self,
-        _channel: &mcap::Channel<'_>,
-        num_rows: usize,
-    ) -> Box<dyn McapMessageParser> {
-        Box::new(ImageMessageParser::new(num_rows)) as Box<dyn McapMessageParser>
-    }
-}
 
 pub struct ImageMessageParser {
     /// The raw image data blobs.

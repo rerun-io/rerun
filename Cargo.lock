@@ -3257,9 +3257,12 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59a81c221a1e4dad06cb9c9deb19aea1193a5eea084e8cd42d869068132bf876"
 dependencies = [
+ "async-channel",
  "document-features",
  "futures-util",
  "js-sys",
+ "serde",
+ "serde_json",
  "ureq",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -7187,12 +7190,20 @@ name = "re_auth"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
  "base64 0.22.1",
+ "const_format",
+ "directories",
+ "ehttp",
+ "indicatif",
  "jsonwebtoken",
  "rand 0.8.5",
  "re_log",
  "serde",
+ "serde_json",
  "thiserror 1.0.69",
+ "tiny_http",
  "tonic",
+ "url",
+ "webbrowser",
 ]
 
 [[package]]
@@ -8021,6 +8032,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_recording_panel"
+version = "0.25.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "egui",
+ "itertools 0.14.0",
+ "re_data_ui",
+ "re_entity_db",
+ "re_redap_browser",
+ "re_smart_channel",
+ "re_ui",
+ "re_viewer_context",
+]
+
+[[package]]
 name = "re_redap_browser"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
@@ -8181,6 +8207,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_test_context",
+ "re_test_viewport",
  "re_tracing",
  "re_types",
  "re_types_core",
@@ -8279,7 +8306,11 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
+ "re_log_types",
+ "re_renderer",
  "re_test_context",
+ "re_types",
+ "re_ui",
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
@@ -8550,6 +8581,7 @@ dependencies = [
 name = "re_view_bar_chart"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "egui",
  "egui_plot",
  "re_chunk_store",
@@ -8831,6 +8863,7 @@ dependencies = [
  "re_memory",
  "re_perf_telemetry",
  "re_query",
+ "re_recording_panel",
  "re_redap_browser",
  "re_renderer",
  "re_selection_panel",
@@ -9189,6 +9222,7 @@ dependencies = [
  "puffin",
  "rayon",
  "re_analytics",
+ "re_auth",
  "re_build_info",
  "re_build_tools",
  "re_byte_size",
@@ -9317,6 +9351,42 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "rerun_server"
+version = "0.25.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "clap",
+ "futures",
+ "http",
+ "itertools 0.14.0",
+ "jiff",
+ "mimalloc",
+ "nohash-hasher",
+ "re_build_info",
+ "re_build_tools",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_error",
+ "re_grpc_server",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_memory",
+ "re_protos",
+ "re_tuid",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-web",
+ "tower",
+ "tower-service",
+ "tracing",
+ "url",
 ]
 
 [[package]]

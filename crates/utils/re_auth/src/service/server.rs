@@ -28,13 +28,14 @@ impl TryFrom<&MetadataValue<Ascii>> for Jwt {
 /// A basic authenticator that checks for a valid auth token.
 #[derive(Clone)]
 pub struct Authenticator {
-    secret_key: RedapProvider,
+    provider: RedapProvider,
 }
 
 impl Authenticator {
-    /// Creates a new [`Authenticator`] with the given secret key and scope.
-    pub fn new(secret_key: RedapProvider) -> Self {
-        Self { secret_key }
+    /// Creates a new [`Authenticator`] with the given provider,
+    /// which holds the keys used for verification.
+    pub fn new(provider: RedapProvider) -> Self {
+        Self { provider }
     }
 }
 
@@ -48,14 +49,14 @@ impl Interceptor for Authenticator {
             })?;
 
             let claims = self
-                .secret_key
+                .provider
                 .verify(&token, VerificationOptions::default())
                 .map_err(|_err| {
                     Status::unauthenticated(crate::ERROR_MESSAGE_INVALID_CREDENTIALS)
                 })?;
 
             req.extensions_mut().insert(UserContext {
-                user_id: claims.sub,
+                user_id: claims.sub().to_owned(),
             });
         }
 

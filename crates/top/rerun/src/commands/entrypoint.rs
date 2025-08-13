@@ -10,7 +10,10 @@ use re_log_types::{LogMsg, TableMsg};
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 use re_uri::RedapUri;
 
-use crate::{CallSource, commands::RrdCommands};
+use crate::{
+    CallSource,
+    commands::{McapCommands, RrdCommands},
+};
 
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
@@ -20,6 +23,9 @@ use re_web_viewer_server::WebViewerServerPort;
 
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
+
+#[cfg(feature = "auth")]
+use super::auth::AuthCommands;
 
 // ---
 
@@ -532,6 +538,9 @@ enum Command {
     Analytics(AnalyticsCommands),
 
     #[command(subcommand)]
+    Mcap(McapCommands),
+
+    #[command(subcommand)]
     Rrd(RrdCommands),
 
     /// Reset the memory of the Rerun Viewer.
@@ -548,6 +557,11 @@ enum Command {
     /// Example: `rerun man > docs/content/reference/cli.md`
     #[command(name = "man")]
     Manual,
+
+    /// Authentication with the redap.
+    #[cfg(feature = "auth")]
+    #[command(subcommand)]
+    Auth(AuthCommands),
 }
 
 /// Run the Rerun application and return an exit code.
@@ -614,6 +628,8 @@ where
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
 
+            Command::Mcap(mcap) => mcap.run(),
+
             Command::Rrd(rrd) => rrd.run(),
 
             #[cfg(feature = "native_viewer")]
@@ -631,6 +647,13 @@ where
                 );
                 println!("{web_header}\n\n{man}");
                 Ok(())
+            }
+
+            #[cfg(feature = "auth")]
+            Command::Auth(cmd) => {
+                let runtime =
+                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
+                cmd.run(&runtime).map_err(Into::into)
             }
         }
     } else {
