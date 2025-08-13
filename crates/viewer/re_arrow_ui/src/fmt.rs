@@ -16,47 +16,6 @@ use re_ui::list_item::PropertyContent;
 use std::fmt::{Display, Formatter, Write};
 use std::ops::Range;
 
-type TimeFormat<'a> = Option<&'a str>;
-
-/// Implements [`Display`] for a specific array value
-pub struct ValueFormatter<'a> {
-    idx: usize,
-    formatter: &'a ArrayUi<'a>,
-}
-
-impl ValueFormatter<'_> {
-    /// Writes this value to the provided [`Write`]
-    ///
-    /// Note: this ignores [`FormatOptions::with_display_error`] and
-    /// will return an error on formatting issue
-    pub fn write(&self, s: &mut dyn Write) -> Result<(), ArrowError> {
-        match self.formatter.format.write(self.idx, s) {
-            Ok(_) => Ok(()),
-            Err(FormatError::Arrow(e)) => Err(e),
-            Err(FormatError::Format(_)) => Err(ArrowError::CastError("Format error".to_string())),
-        }
-    }
-
-    /// Fallibly converts this to a string
-    pub fn try_to_string(&self) -> Result<String, ArrowError> {
-        let mut s = String::new();
-        self.write(&mut s)?;
-        Ok(s)
-    }
-}
-
-impl Display for ValueFormatter<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self.formatter.format.write(self.idx, f) {
-            Ok(()) => Ok(()),
-            Err(FormatError::Arrow(e)) => {
-                write!(f, "ERROR: {e}")
-            }
-            Err(_) => Err(std::fmt::Error),
-        }
-    }
-}
-
 pub struct ArrayUi<'a> {
     format: Box<dyn ShowIndex + 'a>,
 }
@@ -69,15 +28,6 @@ impl<'a> ArrayUi<'a> {
         Ok(Self {
             format: make_ui(array, options)?,
         })
-    }
-
-    /// Returns a [`ValueFormatter`] that implements [`Display`] for
-    /// the value of the array at `idx`
-    pub fn value(&self, idx: usize) -> ValueFormatter<'_> {
-        ValueFormatter {
-            formatter: self,
-            idx,
-        }
     }
 
     pub fn show_value(&self, idx: usize, ui: &mut Ui) {
