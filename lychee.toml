@@ -162,5 +162,9 @@ exclude = [
   'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',
   'https://anaconda.org/conda-forge/arrow-cpp',
 
+  # These are APIs:
+  'https://rerun.io/login',
+  'https://rerun.io/api',
+
   # '^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
 ]
