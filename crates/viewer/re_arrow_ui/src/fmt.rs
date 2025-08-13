@@ -1,6 +1,7 @@
 //! [`ArrowUi`] can be used to show arbitrary Arrow data with a nice UI.
 //! The implementation is inspired from arrows built-in display formatter:
 //! https://github.com/apache/arrow-rs/blob/c628435f9f14abc645fb546442132974d3d380ca/arrow-cast/src/display.rs
+use crate::datatype_ui::datatype_ui;
 use arrow::array::cast::*;
 use arrow::array::types::*;
 use arrow::array::*;
@@ -8,11 +9,11 @@ use arrow::datatypes::{ArrowNativeType, DataType, UnionMode};
 use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use arrow::*;
-use egui::{Ui, WidgetText};
+use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
 use half::f16;
 use re_format::{format_f32, format_f64, format_int, format_uint};
 use re_ui::UiExt;
-use re_ui::list_item::PropertyContent;
+use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use std::fmt::{Display, Formatter, Write};
 use std::ops::Range;
@@ -107,6 +108,10 @@ impl<'a> ShowIndex for ShowBuiltIn<'a> {
 
         Ok(())
     }
+
+    fn array(&self) -> &dyn Array {
+        self.array
+    }
 }
 
 fn show_arrow_builtin<'a>(
@@ -160,6 +165,8 @@ trait ShowIndex {
     fn is_item_nested(&self) -> bool {
         false
     }
+
+    fn array(&self) -> &dyn Array;
 }
 
 /// [`ShowIndex`] with additional state
@@ -252,6 +259,10 @@ impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
     fn is_item_nested(&self) -> bool {
         ShowIndexState::is_item_nested(&self.array)
     }
+
+    fn array(&self) -> &dyn Array {
+        &self.array
+    }
 }
 
 macro_rules! primitive_display {
@@ -263,6 +274,10 @@ macro_rules! primitive_display {
                 let s = $fmt(value);
                 f.code_primitive(&s);
                 Ok(())
+            }
+
+            fn array(&self) -> &dyn Array {
+                self
             }
         })+
     };
@@ -347,6 +362,7 @@ impl<'a> ArrowNode<'a> {
         }
     }
 
+    /// The index to *display*
     pub fn index(idx: usize, values: &'a dyn ShowIndex) -> Self {
         Self {
             label: NodeLabel::Index(idx),
@@ -354,6 +370,8 @@ impl<'a> ArrowNode<'a> {
         }
     }
 
+    /// The index of the *value* to display.
+    /// Can be different from [`ArrowNode::index`] e.g. in a sliced array.
     pub fn show(self, ui: &mut Ui, index: usize) {
         let label = match self.label {
             NodeLabel::Index(idx) => {
@@ -371,12 +389,63 @@ impl<'a> ArrowNode<'a> {
 
         let mut value = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
         self.values.write(index, &mut value); // TODO: Handle error
+        let value = value.into_widget_text();
 
         let nested = self.values.is_item_nested();
+        let data_type = self.values.array().data_type();
+        let (data_type_name, maybe_datatype_ui) = datatype_ui(data_type);
 
         let mut item = ui.list_item();
         let id = ui.unique_id().with(index).with(label.text());
-        let content = PropertyContent::new(label).value_text(value.into_widget_text());
+        let content = PropertyContent::new(label)
+            .value_fn(|ui, visuals| {
+                ui.horizontal(|ui| {
+                    egui::Sides::new().shrink_left().show(
+                        ui,
+                        |ui| {
+                            if visuals.is_collapsible() && visuals.openness() != 0.0 {
+                                if visuals.openness() == 1.0 {
+                                    return;
+                                }
+                                ui.set_opacity(1.0 - visuals.openness());
+                            }
+                            ui.label(value);
+                        },
+                        |ui| {
+                            let tooltip_open =
+                                Tooltip::was_tooltip_open_last_frame(ui.ctx(), ui.next_auto_id());
+                            if visuals.hovered || tooltip_open {
+                                let response = ui.small(RichText::new(&data_type_name).strong());
+                                ui.painter().rect_stroke(
+                                    response.rect.expand(2.0),
+                                    4.0,
+                                    Stroke::new(1.0, visuals.text_color()),
+                                    StrokeKind::Middle,
+                                );
+
+                                if let Some(content) = maybe_datatype_ui {
+                                    response.on_hover_ui(|ui| {
+                                        list_item_scope(
+                                            ui,
+                                            Id::new("arrow data type hover"),
+                                            |ui| {
+                                                ui.list_item().show_hierarchical_with_children(
+                                                    ui,
+                                                    Id::new("arrow data type item hover"),
+                                                    true,
+                                                    LabelContent::new(data_type_name),
+                                                    content,
+                                                );
+                                            },
+                                        );
+                                    });
+                                }
+                            }
+                        },
+                    );
+                });
+            })
+            .show_only_when_collapsed(false);
 
         if nested {
             item.show_hierarchical_with_children(ui, id, false, content, |ui| {
