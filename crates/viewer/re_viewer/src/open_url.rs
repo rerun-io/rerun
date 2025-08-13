@@ -38,8 +38,12 @@ pub fn try_open_url_in_viewer(
             select_when_loaded, ..
         } = &mut data_source
         {
+            // `select_when_loaded` is not encoded in the url itself. As of writing, `DataSource::from_uri` will just always set `select_when_loaded` to `true`.
+            // We overwrite this with the passed in value.
             *select_when_loaded = select_redap_source_when_loaded;
         } else if let DataSource::RrdHttpUrl { follow, .. } = &mut data_source {
+            // `follow` is not encoded in the url itself. As of writing, `DataSource::from_uri` will just always set `follow` to `false`.
+            // We overwrite this with the passed in value.
             *follow = follow_if_http;
         }
 
