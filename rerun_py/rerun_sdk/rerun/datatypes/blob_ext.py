@@ -25,51 +25,33 @@ class BlobExt:
         if isinstance(data, BlobBatch):
             return data.as_arrow_array()
 
-        # pure-numpy fast path
+        # numpy fast path:
         elif isinstance(data, np.ndarray):
             if len(data) == 0:
-                inners = []
+                return pa.array([], type=pa.binary())
             elif data.ndim == 1:
-                inners = [pa.array(np.array(data, dtype=np.uint8).flatten())]
+                return pa.array([np.array(data, dtype=np.uint8).tobytes()], type=pa.binary())
             else:
-                o = 0
-                offsets = [o] + [o := next_offset(o, arr) for arr in data]
-                inner = pa.array(np.array(data, dtype=np.uint8).flatten())
-                return pa.ListArray.from_arrays(offsets, inner, type=data_type)
+                return pa.array([np.array(arr, dtype=np.uint8).tobytes() for arr in data], type=pa.binary())
 
-        # pure-object
         elif isinstance(data, Blob):
-            inners = [pa.array(np.array(data.data, dtype=np.uint8).flatten())]
+            return pa.array([np.array(data.data, dtype=np.uint8).tobytes()], type=pa.binary())
 
-        # pure-bytes
         elif isinstance(data, bytes):
-            inners = [pa.array(np.frombuffer(data, dtype=np.uint8))]
+            return pa.array([data], type=pa.binary())
 
         elif hasattr(data, "read"):
-            inners = [pa.array(np.frombuffer(data.read(), dtype=np.uint8))]
+            return pa.array([data.read()], type=pa.binary())
 
-        # sequences
         elif isinstance(data, Sequence):
             if len(data) == 0:
-                inners = []
+                return pa.array([], type=pa.binary())
             elif isinstance(data[0], Blob):
-                inners = [pa.array(np.array(datum.data, dtype=np.uint8).flatten()) for datum in data]  # type: ignore[union-attr]
+                return pa.array([np.array(datum.data, dtype=np.uint8).tobytes() for datum in data], type=pa.binary())  # type: ignore[union-attr]
             elif isinstance(data[0], bytes):
-                inners = [pa.array(np.frombuffer(datum, dtype=np.uint8)) for datum in data]  # type: ignore[arg-type]
+                return pa.array(list(data), type=pa.binary())  # type: ignore[arg-type]
             else:
-                inners = [pa.array(np.array(datum, dtype=np.uint8).flatten()) for datum in data]
+                return pa.array([np.array(datum, dtype=np.uint8).tobytes() for datum in data], type=pa.binary())
 
         else:
-            inners = [pa.array(np.array(data.data, dtype=np.uint8).flatten())]
-
-        if len(inners) == 0:
-            offsets = pa.array([0], type=pa.int32())
-            inner = np.array([], dtype=np.uint8).flatten()
-            return pa.ListArray.from_arrays(offsets, inner, type=data_type)
-
-        o = 0
-        offsets = [o] + [o := next_offset(o, inner) for inner in inners]
-
-        inner = pa.concat_arrays(inners)
-
-        return pa.ListArray.from_arrays(offsets, inner, type=data_type)
+            return pa.array([np.array(data.data, dtype=np.uint8).tobytes()], type=pa.binary())
