@@ -13,7 +13,8 @@ use super::MessageLayer;
 
 /// Provides a set of predefined conversion of ROS2 messages.
 ///
-/// Where applicable, this layer will output Rerun archetypes for visualization in the viewer.
+/// Additionally, this layer will output Rerun archetypes for visualization in the viewer
+/// for supported ROS2 message types.
 #[derive(Debug, Default)]
 pub struct McapRos2Layer;
 

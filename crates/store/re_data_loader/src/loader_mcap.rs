@@ -133,7 +133,7 @@ impl DataLoader for McapLoader {
     ) -> std::result::Result<(), DataLoaderError> {
         let contents = contents.into_owned();
 
-        load_mcap(&contents, settings, &tx, SelectedLayers::All)
+        load_mcap(&contents, settings, &tx, self.selected_layers.clone())
     }
 }
 

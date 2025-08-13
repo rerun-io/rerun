@@ -59,7 +59,10 @@ impl McapMessageParser for RawMcapMessageParser {
     }
 }
 
-/// Extracts the raw, unencoded bytes of arbitrary MCAP messages.
+/// Logs the raw, encoded bytes of arbitrary MCAP messages as Rerun blobs.
+///
+/// The result will be verbatim copies of the original messages without decoding
+/// or imposing any semantic meaning on the data.
 #[derive(Debug, Default)]
 pub struct McapRawLayer;
 
