@@ -1,7 +1,5 @@
-use crate::arrow_node::ArrowNode;
-use crate::arrow_view::ArrayView;
 use crate::datatype_ui::datatype_ui;
-use crate::{child_nodes, fmt_ui};
+use crate::fmt_ui;
 use arrow::array::AsArray;
 use arrow::{
     array::Array,
@@ -134,19 +132,6 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             });
         }
     });
-}
-
-fn array_items_ui(ui: &mut egui::Ui, array: &dyn Array) {
-    // dbg!(array.len(), array.data_type());
-    // for i in 0..array.len() {
-    //     let node = ArrowNode::new(array, i);
-    //     node.ui(ui);
-    // }
-
-    let view = ArrayView::new(array);
-    for i in 0..view.len() {
-        view.node(i).ui(ui);
-    }
 }
 
 pub(crate) fn make_formatter(
