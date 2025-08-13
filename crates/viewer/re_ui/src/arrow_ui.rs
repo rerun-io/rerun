@@ -41,6 +41,9 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             return;
         }
 
+        // Special-case binary data (e.g. blobs).
+        // We don't want to show their contents (too slow, since they are usually huge),
+        // so we only show their size:
         if let Some(binaries) = array.downcast_array_ref::<BinaryArray>()
             && binaries.len() == 1
         {
