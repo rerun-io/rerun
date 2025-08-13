@@ -1,5 +1,5 @@
 [package]
-name = "rerun_server"
+name = "re_server"
 authors.workspace = true
 description = "A Rerun server implementation backed by an in-memory store"
 edition.workspace = true
@@ -11,12 +11,6 @@ readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
-
-
-[[bin]]
-name = "rerun-server"
-path = "src/bin/main.rs"
-
 
 [lints]
 workspace = true
@@ -31,7 +25,6 @@ default = []
 
 
 [dependencies]
-# NOTE: redap dependencies are forbidden here -- this is meant to become part of the OSS offering.
 
 # Rerun
 re_chunk_store.workspace = true

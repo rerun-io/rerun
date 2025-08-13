@@ -8,9 +8,3 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
 In-memory opensource implementation of the Redap server.
-
-To run:
-
-```
-cargo run --bin rerun-server -- --help
-```
