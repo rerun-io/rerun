@@ -10,7 +10,6 @@ use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind};
 use crate::catalog::{
     ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyRerunHtmlTable, PyTableEntry, to_py_err,
 };
-use crate::utils::wait_for_future;
 
 /// Client for a remote Rerun catalog server.
 #[pyclass(name = "CatalogClientInternal")]
