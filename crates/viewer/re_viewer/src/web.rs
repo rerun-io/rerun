@@ -215,6 +215,9 @@ impl WebHandle {
         .is_err()
         {
             re_log::warn!("Failed to open URL: {url}");
+        } else {
+            // Make sure we process any commands from the url opening.
+            app.egui_ctx.request_repaint();
         }
     }
 
