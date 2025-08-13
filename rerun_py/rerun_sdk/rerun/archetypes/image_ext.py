@@ -282,9 +282,9 @@ class ImageExt:
 
         # Note: np array shape is always (height, width, channels)
         if image_format.color_model == ColorModel.L:
-            image = array.reshape(image_format.height, image_format.width)
+            image = array.reshape(image_format.height, image_format.width)  # type: ignore[assignment]
         else:
-            image = array.reshape(image_format.height, image_format.width, image_format.color_model.num_channels())
+            image = array.reshape(image_format.height, image_format.width, image_format.color_model.num_channels())  # type: ignore[assignment]
 
         # PIL assumes L or RGB[A]:
         if image_format.color_model == ColorModel.BGR:
