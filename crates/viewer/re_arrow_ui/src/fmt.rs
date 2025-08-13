@@ -41,28 +41,19 @@ fn make_ui<'a>(
     array: &'a dyn Array,
     options: &FormatOptions<'a>,
 ) -> Result<Box<dyn ShowIndex + 'a>, ArrowError> {
-    downcast_primitive_array! {
-        array => {
-            downcast_integer_array! {
-                // We have a custom implementation for integer
-                array => show_custom(array, options),
-                _ => show_arrow_builtin(array, options),
-            }
-        },
+    downcast_integer_array! {
+        array => show_custom(array, options),
         DataType::Float16 => show_custom(array.as_primitive::<Float16Type>(), options),
         DataType::Float32 => show_custom(array.as_primitive::<Float32Type>(), options),
         DataType::Float64 => show_custom(array.as_primitive::<Float64Type>(), options),
-        // Should we have custom display impl for these?
-        // DataType::Decimal128(_, _) => show_custom(array.as_primitive::<Decimal128Type>(), options),
-        // DataType::Decimal256(_, _) => show_custom(array.as_primitive::<Decimal256Type>(), options),
-        DataType::Null => show_arrow_builtin(as_null_array(array), options),
-        DataType::Boolean => show_arrow_builtin(as_boolean_array(array), options),
-        DataType::Utf8 => show_arrow_builtin(array.as_string::<i32>(), options),
-        DataType::LargeUtf8 => show_arrow_builtin(array.as_string::<i64>(), options),
-        DataType::Utf8View => show_arrow_builtin(array.as_string_view(), options),
-        DataType::Binary => show_arrow_builtin(array.as_binary::<i32>(), options),
-        DataType::BinaryView => show_arrow_builtin(array.as_binary_view(), options),
-        DataType::LargeBinary => show_arrow_builtin(array.as_binary::<i64>(), options),
+        DataType::Null | DataType::Boolean | DataType::Utf8 | DataType::LargeUtf8
+        | DataType::Utf8View | DataType::Binary | DataType::BinaryView | DataType::LargeBinary
+        | DataType::Date32 | DataType::Date64 | DataType::Time32(_) | DataType::Time64(_)
+        | DataType::Timestamp(_, _) | DataType::Duration(_) | DataType::Interval(_)
+        | DataType::Decimal128(_, _) | DataType::Decimal256(_, _)
+        => {
+            show_arrow_builtin(array, options)
+        }
         DataType::FixedSizeBinary(_) => {
             let a = array.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
             show_arrow_builtin(a, options)
@@ -84,7 +75,11 @@ fn make_ui<'a>(
             array => show_custom(array, options),
             _ => unreachable!()
         },
-        d => Err(ArrowError::NotYetImplemented(format!("formatting {d} is not yet supported"))),
+        DataType::ListView(_) | DataType::LargeListView(_) => {
+            Err(ArrowError::NotYetImplemented(
+                "ListView and LargeListView are not yet supported".to_string(),
+            ))
+        }
     }
 }
 
@@ -100,25 +95,6 @@ fn show_arrow_builtin<'a>(
     options: &FormatOptions<'a>,
 ) -> Result<Box<dyn ShowIndex + 'a>, ArrowError> {
     Ok(Box::new(ArrayFormatter::try_new(array, options)?))
-}
-
-struct ShowPrimitive<'a> {
-    formatter: arrow::util::display::ArrayFormatter<'a>,
-    array: &'a dyn Array,
-}
-
-impl<'a> ShowIndexState<'a> for ShowPrimitive<'a> {
-    type State = arrow::util::display::ArrayFormatter<'a>;
-
-    fn prepare(&self, options: &FormatOptions<'a>) -> Result<Self::State, ArrowError> {
-        let formatter = arrow::util::display::ArrayFormatter::try_new(self.array, options)?;
-        Ok(formatter)
-    }
-
-    fn write(&self, state: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
-        state.value(idx).write(f)?;
-        Ok(())
-    }
 }
 
 /// Either an [`ArrowError`] or [`std::fmt::Error`]
