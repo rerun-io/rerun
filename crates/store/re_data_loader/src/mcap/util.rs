@@ -1,6 +1,5 @@
 use std::io::{Read, Seek};
 
-use anyhow::Context as _;
 use mcap::{
     Summary,
     records::ChunkIndex,
@@ -37,10 +36,9 @@ pub fn get_chunk_message_count(
     chunk_index: &ChunkIndex,
     summary: &Summary,
     mcap: &[u8],
-) -> anyhow::Result<IntMap<ChannelId, usize>> {
+) -> Result<IntMap<ChannelId, usize>, ::mcap::McapError> {
     Ok(summary
-        .read_message_indexes(mcap, chunk_index)
-        .with_context(|| "Failed to read message indexes for chunk")?
+        .read_message_indexes(mcap, chunk_index)?
         .iter()
         .map(|(channel, msg_offsets)| (channel.id.into(), msg_offsets.len()))
         .collect())

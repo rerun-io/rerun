@@ -10,7 +10,10 @@ use re_log_types::{LogMsg, TableMsg};
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 use re_uri::RedapUri;
 
-use crate::{CallSource, commands::RrdCommands};
+use crate::{
+    CallSource,
+    commands::{McapCommands, RrdCommands},
+};
 
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
@@ -535,6 +538,9 @@ enum Command {
     Analytics(AnalyticsCommands),
 
     #[command(subcommand)]
+    Mcap(McapCommands),
+
+    #[command(subcommand)]
     Rrd(RrdCommands),
 
     /// Reset the memory of the Rerun Viewer.
@@ -621,6 +627,8 @@ where
         match command {
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
+
+            Command::Mcap(mcap) => mcap.run(),
 
             Command::Rrd(rrd) => rrd.run(),
 

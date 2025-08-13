@@ -2,18 +2,21 @@ use arrow::array::{ListBuilder, UInt8Builder};
 use re_chunk::{ChunkId, external::arrow::array::FixedSizeListBuilder};
 use re_types::{Component as _, ComponentDescriptor, components};
 
-use crate::mcap::decode::{McapMessageParser, ParserContext, PluginError};
+use crate::mcap::{
+    decode::{McapMessageParser, ParserContext, PluginError},
+    layers::LayerIdentifier,
+    layers::MessageLayer,
+    schema::blob_list_builder,
+};
 
-use super::blob_list_builder;
-
-pub struct RawMcapMessageParser {
+struct RawMcapMessageParser {
     data: FixedSizeListBuilder<ListBuilder<UInt8Builder>>,
 }
 
 impl RawMcapMessageParser {
-    pub const ARCHETYPE_NAME: &str = "rerun.mcap.Message";
+    const ARCHETYPE_NAME: &str = "rerun.mcap.Message";
 
-    pub fn new(num_rows: usize) -> Self {
+    fn new(num_rows: usize) -> Self {
         Self {
             data: blob_list_builder(num_rows),
         }
@@ -53,5 +56,26 @@ impl McapMessageParser for RawMcapMessageParser {
         .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
 
         Ok(vec![chunk])
+    }
+}
+
+/// Logs the raw, encoded bytes of arbitrary MCAP messages as Rerun blobs.
+///
+/// The result will be verbatim copies of the original messages without decoding
+/// or imposing any semantic meaning on the data.
+#[derive(Debug, Default)]
+pub struct McapRawLayer;
+
+impl MessageLayer for McapRawLayer {
+    fn identifier() -> LayerIdentifier {
+        "raw".into()
+    }
+
+    fn message_parser(
+        &self,
+        _channel: &mcap::Channel<'_>,
+        num_rows: usize,
+    ) -> Option<Box<dyn McapMessageParser>> {
+        Some(Box::new(RawMcapMessageParser::new(num_rows)))
     }
 }

@@ -2,7 +2,7 @@
 
 use super::{RefreshToken, User};
 
-const API_BASE_URL: &str = "https://landing-git-jan-login-page-rerun.vercel.app/api";
+const API_BASE_URL: &str = "https://rerun.io/api";
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
