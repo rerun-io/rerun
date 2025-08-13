@@ -617,7 +617,7 @@ where
     let tokio_runtime = Runtime::new()?;
     let _tokio_guard = tokio_runtime.enter();
 
-    let res = if let Some(command) = &args.command {
+    let res = if let Some(command) = args.command {
         match command {
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),

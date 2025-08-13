@@ -165,6 +165,10 @@ pub fn decode_transport_to_app(
             // `ChunkBatch` directly?
             let chunk_batch = re_sorbet::ChunkBatch::try_from(&batch)?;
 
+            // TODO(emilk): it would actually be nicer if we could postpone the migration,
+            // so that there is some way to get the original (unmigrated) data out of an .rrd,
+            // which would be very useful for debugging, e.g. using the `print` command.
+
             let arrow_msg = re_log_types::ArrowMsg {
                 chunk_id: chunk_batch.chunk_schema().chunk_id().as_tuid(),
 
