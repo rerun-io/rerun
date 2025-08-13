@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
-
-import numpy as np
-import numpy.typing as npt
+from typing import TYPE_CHECKING, Any
 
 from ._converters import to_np_float32, to_np_float64, to_np_uint32, to_np_uint64
+
+if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
 
 
 # This code is a straight port from Rust.

@@ -15,13 +15,15 @@ or in the following medium article: https://theclassytim.medium.com/robotic-path
 from __future__ import annotations
 
 import argparse
-from collections.abc import Generator
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import numpy as np
 import numpy.typing as npt
 import rerun as rr
 import rerun.blueprint as rrb
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 DESCRIPTION = """
 Visualizes the path finding algorithm RRT* in a simple environment.

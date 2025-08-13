@@ -1,7 +1,10 @@
+//! The UI for the recording panel.
+
 use itertools::Itertools as _;
 use re_data_ui::item_ui::table_id_button_ui;
 use re_redap_browser::{
-    DatasetKind, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers, dataset_and_its_recordings_ui,
+    DatasetKind, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers,
+    dataset_list_item_and_its_recordings_ui,
 };
 use re_smart_channel::SmartChannelSource;
 use re_ui::list_item::ItemMenuButton;
@@ -10,14 +13,12 @@ use re_viewer_context::{
     DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 
-use crate::app_state::WelcomeScreenState;
-
 /// Show the currently open Recordings in a selectable list.
 /// Also shows the currently loading receivers.
 pub fn recordings_panel_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    welcome_screen_state: &WelcomeScreenState,
+    hide_examples: bool,
     servers: &RedapServers,
 ) {
     ui.panel_content(|ui| {
@@ -38,7 +39,7 @@ pub fn recordings_panel_ui(
         .show(ui, |ui| {
             ui.panel_content(|ui| {
                 re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
-                    recording_list_ui(ctx, ui, welcome_screen_state, servers);
+                    recording_list_ui(ctx, ui, hide_examples, servers);
 
                     // Show currently loading things after.
                     // They will likely end up here as recordings soon.
@@ -90,7 +91,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
 fn recording_list_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    welcome_screen_state: &WelcomeScreenState,
+    hide_examples: bool,
     servers: &RedapServers,
 ) {
     let re_entity_db::SortDatasetsResults {
@@ -105,7 +106,7 @@ fn recording_list_ui(
     if ctx.storage_context.tables.is_empty()
         && servers.is_empty()
         && local_recordings.is_empty()
-        && welcome_screen_state.hide_examples
+        && hide_examples
     {
         ui.list_item().interactive(false).show_flat(
             ui,
@@ -126,7 +127,7 @@ fn recording_list_ui(
                 list_item::LabelContent::header("Local"),
                 |ui| {
                     for (app_id, entity_dbs) in local_recordings {
-                        dataset_and_its_recordings_ui(
+                        dataset_list_item_and_its_recordings_ui(
                             ui,
                             ctx,
                             &DatasetKind::Local(app_id.clone()),
@@ -151,7 +152,7 @@ fn recording_list_ui(
     if (ctx
         .app_options()
         .include_rerun_examples_button_in_recordings_panel
-        && !welcome_screen_state.hide_examples)
+        && !hide_examples)
         || !example_recordings.is_empty()
     {
         let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
@@ -173,7 +174,7 @@ fn recording_list_ui(
                     title,
                     |ui| {
                         for (app_id, entity_dbs) in example_recordings {
-                            dataset_and_its_recordings_ui(
+                            dataset_list_item_and_its_recordings_ui(
                                 ui,
                                 ctx,
                                 &DatasetKind::Local(app_id.clone()),
@@ -186,14 +187,7 @@ fn recording_list_ui(
         };
 
         if response.clicked() {
-            ctx.command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                    EXAMPLES_ORIGIN.clone(),
-                )));
-            ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(Item::RedapServer(
-                    EXAMPLES_ORIGIN.clone(),
-                )));
+            re_redap_browser::switch_to_welcome_screen(ctx.command_sender());
         }
     }
 }
@@ -206,13 +200,13 @@ fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
             .clicked()
         {
             ui.close();
-        };
+        }
         if re_ui::UICommand::AddRedapServer
             .menu_button_ui(ui, ctx.command_sender())
             .clicked()
         {
             ui.close();
-        };
+        }
     }))
     .ui(ui)
     .on_hover_text("Open a file or connect to a server");

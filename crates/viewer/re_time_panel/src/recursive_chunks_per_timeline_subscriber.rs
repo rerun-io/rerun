@@ -1,21 +1,20 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use egui::ahash::HashMap;
 use nohash_hasher::IntMap;
-use once_cell::sync::OnceCell;
 
 use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle,
     PerStoreChunkSubscriber,
 };
-use re_log_types::{EntityPath, EntityPathHash, ResolvedTimeRange, StoreId, TimelineName};
+use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathHash, StoreId, TimelineName};
 
 /// Cached information about a chunk in the context of a given timeline.
 #[derive(Debug, Clone)]
 pub struct ChunkTimelineInfo {
     pub chunk: Arc<Chunk>,
     pub num_events: u64,
-    pub resolved_time_range: ResolvedTimeRange,
+    pub resolved_time_range: AbsoluteTimeRange,
 }
 
 #[cfg(test)]
@@ -55,7 +54,7 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
     ///
     /// Lazily registers the subscriber if it hasn't been registered yet.
     pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
-        static SUBSCRIPTION: OnceCell<ChunkStoreSubscriberHandle> = OnceCell::new();
+        static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
         *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
     }
 
@@ -118,23 +117,22 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
             // Recursively remove chunks.
             let mut next_path = Some(chunk.entity_path().clone());
             while let Some(path) = next_path {
-                if let Some(chunks_per_entity) = chunks_per_entities.get_mut(&path.hash()) {
-                    if chunks_per_entity
+                if let Some(chunks_per_entity) = chunks_per_entities.get_mut(&path.hash())
+                    && chunks_per_entity
                         .recursive_chunks_info
                         .remove(&chunk.id())
                         .is_some()
+                {
+                    if let Some(new_total_num_events) = chunks_per_entity
+                        .total_num_events
+                        .checked_sub(chunk.num_events_cumulative())
                     {
-                        if let Some(new_total_num_events) = chunks_per_entity
-                            .total_num_events
-                            .checked_sub(chunk.num_events_cumulative())
-                        {
-                            chunks_per_entity.total_num_events = new_total_num_events;
-                        } else {
-                            re_log::error_once!(
-                                "Total number of recursive events for {:?} for went negative",
-                                path
-                            );
-                        }
+                        chunks_per_entity.total_num_events = new_total_num_events;
+                    } else {
+                        re_log::error_once!(
+                            "Total number of recursive events for {:?} for went negative",
+                            path
+                        );
                     }
                 }
                 next_path = path.parent();
@@ -183,7 +181,7 @@ mod tests {
 
     use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, GarbageCollectionOptions, RowId};
     use re_log_types::{
-        ResolvedTimeRange, StoreId, TimeInt, Timeline, TimelineName,
+        AbsoluteTimeRange, StoreId, TimeInt, Timeline, TimelineName,
         example_components::{MyPoint, MyPoints},
     };
 
@@ -249,8 +247,8 @@ mod tests {
         // Remove only the t0 chunk on "parent/child"
         store.gc(&GarbageCollectionOptions {
             protected_time_ranges: [
-                (*t0.name(), ResolvedTimeRange::new(1, TimeInt::MAX)),
-                (*t1.name(), ResolvedTimeRange::EVERYTHING),
+                (*t0.name(), AbsoluteTimeRange::new(1, TimeInt::MAX)),
+                (*t1.name(), AbsoluteTimeRange::EVERYTHING),
             ]
             .into_iter()
             .collect(),

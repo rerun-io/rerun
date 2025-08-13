@@ -830,9 +830,7 @@ impl RecordingStream {
         use std::ops::Deref as _;
         match &self.inner {
             Either::Left(strong) => strong.deref().as_ref().map(f),
-            Either::Right(weak) => weak
-                .upgrade()
-                .and_then(|strong| strong.deref().as_ref().map(f)),
+            Either::Right(weak) => weak.upgrade()?.deref().as_ref().map(f),
         }
     }
 
@@ -873,11 +871,11 @@ impl Drop for RecordingStream {
         // itself, because the dataloader threads -- by definition -- will have to send data into
         // this very recording, therefore we must make sure that at least one strong handle still lives
         // on until they are all finished.
-        if let Either::Left(strong) = &mut self.inner {
-            if Arc::strong_count(strong) == 1 {
-                // Keep the recording alive until all dataloaders are finished.
-                self.with(|inner| inner.wait_for_dataloaders());
-            }
+        if let Either::Left(strong) = &mut self.inner
+            && Arc::strong_count(strong) == 1
+        {
+            // Keep the recording alive until all dataloaders are finished.
+            self.with(|inner| inner.wait_for_dataloaders());
         }
     }
 }
@@ -1721,9 +1719,7 @@ impl RecordingStream {
                 let time =
                     TimeInt::new_temporal(re_log_types::Timestamp::now().nanos_since_epoch());
 
-                let repeated_time = std::iter::repeat(time.as_i64())
-                    .take(chunk.num_rows())
-                    .collect();
+                let repeated_time = std::iter::repeat_n(time.as_i64(), chunk.num_rows()).collect();
 
                 let time_column = TimeColumn::new(Some(true), time_timeline, repeated_time);
 
@@ -1744,7 +1740,7 @@ impl RecordingStream {
                     .tick
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                let repeated_tick = std::iter::repeat(tick).take(chunk.num_rows()).collect();
+                let repeated_tick = std::iter::repeat_n(tick, chunk.num_rows()).collect();
 
                 let tick_chunk = TimeColumn::new(Some(true), tick_timeline, repeated_tick);
 
@@ -3126,8 +3122,22 @@ mod tests {
 
     const CONFIG_CHANGE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
 
+    fn clear_environment() {
+        // SAFETY: only used in tests.
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::remove_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED");
+            std::env::remove_var("RERUN_FLUSH_NUM_BYTES");
+            std::env::remove_var("RERUN_FLUSH_NUM_ROWS");
+            std::env::remove_var("RERUN_FLUSH_TICK_SECS");
+            std::env::remove_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED");
+        }
+    }
+
     #[test]
     fn test_sink_dependent_batcher_config() {
+        clear_environment();
+
         let (tx, rx) = std::sync::mpsc::channel();
 
         let rec = RecordingStreamBuilder::new("rerun_example_test_batcher_config")
@@ -3143,14 +3153,18 @@ mod tests {
         let new_config = rx
             .recv_timeout(CONFIG_CHANGE_TIMEOUT)
             .expect("no config change message received within timeout");
-        assert_eq!(new_config, ChunkBatcherConfig::DEFAULT); // buffered sink uses the default config.
+        assert_eq!(
+            new_config,
+            ChunkBatcherConfig::from_env().unwrap(),
+            "Buffered sink should uses the config from the environment"
+        );
 
         // Change sink to our custom sink. Will it take over the setting?
         let injected_config = ChunkBatcherConfig {
             flush_tick: std::time::Duration::from_secs(123),
             flush_num_bytes: 123,
             flush_num_rows: 123,
-            ..ChunkBatcherConfig::DEFAULT
+            ..new_config
         };
         rec.set_sink(Box::new(BatcherConfigTestSink {
             config: injected_config.clone(),
@@ -3181,6 +3195,8 @@ mod tests {
 
     #[test]
     fn test_explicit_batcher_config() {
+        clear_environment();
+
         // This environment variable should *not* override the explicit config.
         let _scoped_env_guard = ScopedEnvVarSet::new("RERUN_FLUSH_TICK_SECS", "456");
         let explicit_config = ChunkBatcherConfig {

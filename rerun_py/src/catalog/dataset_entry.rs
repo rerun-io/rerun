@@ -223,15 +223,18 @@ impl PyDatasetEntry {
             .transpose()?;
         let end_i64 = end.as_ref().map(|e| py_object_to_i64(py, e)).transpose()?;
 
-        let time_range: Option<re_uri::TimeRange> = timeline.map(|name| re_uri::TimeRange {
-            timeline: re_chunk::Timeline::new_timestamp(name),
-            min: start_i64
-                .map(|start| start.try_into().expect("start time must be valid"))
-                .unwrap_or(re_log_types::NonMinI64::MIN),
-            max: end_i64
-                .map(|end| end.try_into().expect("end time must be valid"))
-                .unwrap_or(re_log_types::NonMinI64::MAX),
-        });
+        let time_range: Option<re_uri::TimeSelection> =
+            timeline.map(|name| re_uri::TimeSelection {
+                timeline: re_chunk::Timeline::new_timestamp(name),
+                range: re_log_types::AbsoluteTimeRange::new(
+                    start_i64
+                        .map(|start| start.try_into().expect("start time must be valid"))
+                        .unwrap_or(re_log_types::NonMinI64::MIN),
+                    end_i64
+                        .map(|end| end.try_into().expect("end time must be valid"))
+                        .unwrap_or(re_log_types::NonMinI64::MAX),
+                ),
+            });
         Ok(re_uri::DatasetDataUri {
             origin: connection.origin().clone(),
             dataset_id: super_.details.id.id,
@@ -252,7 +255,10 @@ impl PyDatasetEntry {
     /// Parameters
     /// ----------
     /// recording_uri: str
-    ///     The URI of the RRD to register
+    ///     The URI of the RRD to register.
+    ///
+    /// recording_layer: str
+    ///     The layer to which the recording will be registered to.
     ///
     /// timeout_secs: int
     ///     The timeout after which this method raises a `TimeoutError` if the task is not completed.
@@ -261,11 +267,14 @@ impl PyDatasetEntry {
     /// -------
     /// partition_id: str
     ///     The partition ID of the registered RRD.
-    ///
-    #[pyo3(signature = (recording_uri, timeout_secs = 60))]
+    #[pyo3(signature = (recording_uri, *, recording_layer = "base".to_owned(), timeout_secs = 60))]
+    #[pyo3(
+        text_signature = "(self, /, recording_uri, *, recording_layer = 'base', timeout_secs = 60)"
+    )]
     fn register(
         self_: PyRef<'_, Self>,
         recording_uri: String,
+        recording_layer: String,
         timeout_secs: u64,
     ) -> PyResult<String> {
         let register_timeout = std::time::Duration::from_secs(timeout_secs);
@@ -273,8 +282,12 @@ impl PyDatasetEntry {
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        let mut results =
-            connection.register_with_dataset(self_.py(), dataset_id, vec![recording_uri])?;
+        let mut results = connection.register_with_dataset(
+            self_.py(),
+            dataset_id,
+            vec![recording_uri],
+            vec![recording_layer],
+        )?;
 
         let Some(task_descriptor) = results.pop() else {
             return Err(PyRuntimeError::new_err(
@@ -295,15 +308,37 @@ impl PyDatasetEntry {
     /// Parameters
     /// ----------
     /// recording_uris: list[str]
-    ///     The URIs of the RRDs to register
+    ///     The URIs of the RRDs to register.
+    ///
+    /// recording_layers: list[str]
+    ///     The layers to which the recordings will be registered to:
+    ///     * When empty, this defaults to `["base"]`.
+    ///     * If longer than `recording_uris`, `recording_layers` will be truncated.
+    ///     * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
+    ///       I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
     #[allow(rustdoc::broken_intra_doc_links)]
+    #[pyo3(signature = (
+        recording_uris,
+        *,
+        recording_layers = vec![],
+    ))]
+    #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers = [])")]
     // TODO(ab): it might be useful to return partition ids directly since we have them
-    fn register_batch(self_: PyRef<'_, Self>, recording_uris: Vec<String>) -> PyResult<PyTasks> {
+    fn register_batch(
+        self_: PyRef<'_, Self>,
+        recording_uris: Vec<String>,
+        recording_layers: Vec<String>,
+    ) -> PyResult<PyTasks> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        let results = connection.register_with_dataset(self_.py(), dataset_id, recording_uris)?;
+        let results = connection.register_with_dataset(
+            self_.py(),
+            dataset_id,
+            recording_uris,
+            recording_layers,
+        )?;
 
         Ok(PyTasks::new(
             super_.client.clone_ref(self_.py()),
@@ -487,6 +522,7 @@ impl PyDatasetEntry {
             dataset_id: Some(dataset_id.into()),
 
             partition_ids: vec![],
+            partition_layers: vec![],
 
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
@@ -550,6 +586,7 @@ impl PyDatasetEntry {
             dataset_id: Some(dataset_id.into()),
 
             partition_ids: vec![],
+            partition_layers: vec![],
 
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
@@ -739,13 +776,11 @@ impl PyDatasetEntry {
     }
 
     pub fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchema> {
-        Self::fetch_arrow_schema(self_).and_then(|arrow_schema| {
-            let schema =
-                SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
-                    .map_err(to_py_err)?;
+        let arrow_schema = Self::fetch_arrow_schema(self_)?;
+        let schema = SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
+            .map_err(to_py_err)?;
 
-            Ok(PySchema { schema })
-        })
+        Ok(PySchema { schema })
     }
 }
 

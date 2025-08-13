@@ -141,6 +141,7 @@ exclude = [
   'https://www.reddit.com/',                                           # Gives 403 forbidden on CI.
   'https://www.tensorflow.org/',                                       # tensorflow.org apparently blocks CI.
   'https://claude.site/artifacts/',                                    # Giving a 500, but only from CI
+  'https://fifteen-thirtyeight.rerun.io/script.js',                    # Gives 403 forbidden on CI.
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
@@ -160,6 +161,11 @@ exclude = [
   # Works but is really slow at times:
   'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',
   'https://anaconda.org/conda-forge/arrow-cpp',
+
+  # These are APIs:
+  'https://rerun.io/login',
+  'https://rerun.io/api',
+  'https://api.workos.com/.*',
 
   # '^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
 ]

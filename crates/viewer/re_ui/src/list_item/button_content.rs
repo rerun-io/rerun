@@ -61,10 +61,10 @@ impl ListItemContent for ButtonContent<'_> {
         ui.add_space(-ui.spacing().button_padding.x);
 
         let response = ui.add_enabled(enabled, egui::Button::new(label));
-        if let Some(on_click) = on_click {
-            if response.clicked() {
-                on_click();
-            }
+        if let Some(on_click) = on_click
+            && response.clicked()
+        {
+            on_click();
         }
 
         if let Some(hover_text) = hover_text {

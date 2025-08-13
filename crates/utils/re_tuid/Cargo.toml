@@ -34,7 +34,6 @@ re_byte_size.workspace = true
 
 document-features.workspace = true
 getrandom.workspace = true
-once_cell.workspace = true
 web-time.workspace = true
 
 # Optional dependencies

@@ -164,11 +164,11 @@ fn format_with_decimals_in_range(
         // to round-trip the number.
         for decimals in min_decimals..max_decimals {
             let text = format_with_decimals(value, decimals);
-            if let Some(parsed) = re_format::parse_f64(&text) {
-                if egui::emath::almost_equal(parsed as f32, value as f32, epsilon) {
-                    // Enough precision to show the value accurately - good!
-                    return text;
-                }
+            if let Some(parsed) = re_format::parse_f64(&text)
+                && egui::emath::almost_equal(parsed as f32, value as f32, epsilon)
+            {
+                // Enough precision to show the value accurately - good!
+                return text;
             }
         }
         // The value has more precision than we expected.

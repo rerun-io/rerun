@@ -228,7 +228,8 @@ impl ComponentUiRegistry {
                 // if we end up being called with a mismatching component, its likely a bug.
                 debug_assert_eq!(_component_descriptor.component_type, Some(C::name()));
 
-                try_deserialize(value).and_then(|mut deserialized_value| match edit_or_view {
+                let mut deserialized_value = try_deserialize(value)?;
+                match edit_or_view {
                     EditOrView::View => {
                         callback(ctx, ui, &mut MaybeMutRef::Ref(&deserialized_value));
                         None
@@ -244,7 +245,7 @@ impl ComponentUiRegistry {
                             None
                         }
                     }
-                })
+                }
             },
         );
 
@@ -352,7 +353,7 @@ impl ComponentUiRegistry {
         };
 
         // Component UI can only show a single instance.
-        if array.len() == 0 || (instance.is_all() && array.len() > 1) {
+        if array.is_empty() || (instance.is_all() && array.len() > 1) {
             fallback_ui(ui, ui_layout, array.as_ref());
             return;
         }

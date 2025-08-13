@@ -20,33 +20,9 @@ use std::collections::HashMap;
 
 use crate::mcap::{
     cdr,
-    decode::{McapMessageParser, ParserContext, PluginError, SchemaPlugin},
+    decode::{McapMessageParser, ParserContext, PluginError},
+    schema::blob_list_builder,
 };
-
-/// Plugin that parses `sensor_msgs/msg/PointCloud2` messages.
-#[derive(Default)]
-pub struct PointCloud2SchemaPlugin;
-
-impl SchemaPlugin for PointCloud2SchemaPlugin {
-    fn name(&self) -> crate::mcap::decode::SchemaName {
-        "sensor_msgs/msg/PointCloud2".into()
-    }
-
-    fn parse_schema(
-        &self,
-        _channel: &mcap::Channel<'_>,
-    ) -> Result<re_sorbet::SorbetSchema, PluginError> {
-        Err(PluginError::Other(anyhow::anyhow!("todo")))
-    }
-
-    fn create_message_parser(
-        &self,
-        _channel: &mcap::Channel<'_>,
-        num_rows: usize,
-    ) -> Box<dyn crate::mcap::decode::McapMessageParser> {
-        Box::new(PointCloud2MessageParser::new(num_rows)) as Box<dyn McapMessageParser>
-    }
-}
 
 pub struct PointCloud2MessageParser {
     num_rows: usize,
@@ -58,6 +34,7 @@ pub struct PointCloud2MessageParser {
     point_step: FixedSizeListBuilder<UInt32Builder>,
     row_step: FixedSizeListBuilder<UInt32Builder>,
     data: FixedSizeListBuilder<ListBuilder<UInt8Builder>>,
+    is_dense: FixedSizeListBuilder<BooleanBuilder>,
 
     // We lazily create this, only if we can interpret the point cloud semantically.
     // For now, this is the case if there are fields with names `x`,`y`, and `z` present.
@@ -67,13 +44,13 @@ pub struct PointCloud2MessageParser {
 impl PointCloud2MessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.PointCloud2";
 
-    fn new(num_rows: usize) -> Self {
+    pub fn new(num_rows: usize) -> Self {
         let fields = FixedSizeListBuilder::with_capacity(
             ListBuilder::new(StructBuilder::new(
                 Fields::from(vec![
                     Field::new("name", DataType::Utf8, false),
                     Field::new("offset", DataType::UInt32, false),
-                    Field::new("dataype", DataType::UInt8, false),
+                    Field::new("datatype", DataType::UInt8, false),
                     Field::new("count", DataType::UInt32, false),
                 ]),
                 vec![
@@ -96,7 +73,8 @@ impl PointCloud2MessageParser {
             is_bigendian: fixed_size_list_builder(1, num_rows),
             point_step: fixed_size_list_builder(1, num_rows),
             row_step: fixed_size_list_builder(1, num_rows),
-            data: fixed_size_list_builder(1, num_rows),
+            data: blob_list_builder(num_rows),
+            is_dense: fixed_size_list_builder(1, num_rows),
 
             points_3ds: None,
         }
@@ -208,6 +186,7 @@ impl McapMessageParser for PointCloud2MessageParser {
             point_step,
             row_step,
             data,
+            is_dense,
 
             points_3ds,
         } = self;
@@ -277,12 +256,14 @@ impl McapMessageParser for PointCloud2MessageParser {
         row_step.values().append_slice(&[point_cloud.row_step]);
 
         data.values().values().append_slice(&point_cloud.data);
+        is_dense.values().append_slice(&[point_cloud.is_dense]);
 
         height.append(true);
         width.append(true);
         is_bigendian.append(true);
         point_step.append(true);
         row_step.append(true);
+        is_dense.append(true);
 
         data.values().append(true);
         data.append(true);
@@ -304,6 +285,7 @@ impl McapMessageParser for PointCloud2MessageParser {
             mut point_step,
             mut row_step,
             mut data,
+            mut is_dense,
 
             points_3ds,
         } = *self;
@@ -375,6 +357,11 @@ impl McapMessageParser for PointCloud2MessageParser {
                         component_type: Some(components::Blob::name()),
                     },
                     data.finish().into(),
+                ),
+                (
+                    ComponentDescriptor::partial("is_dense")
+                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                    is_dense.finish().into(),
                 ),
             ]
             .into_iter()

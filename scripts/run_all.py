@@ -12,8 +12,10 @@ import sys
 import time
 from glob import glob
 from pathlib import Path
-from types import TracebackType
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 EXTRA_ARGS = {
     "examples/python/clock": ["--steps=200"],  # Make it faster

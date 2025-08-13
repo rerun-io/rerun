@@ -16,7 +16,7 @@ use rerun::{
     ChunkStoreEvent, ChunkStoreSubscriber, ComponentDescriptor, EntityPath, StoreId,
     external::{
         anyhow, re_build_info, re_chunk_store, re_log,
-        re_log_types::{ResolvedTimeRange, TimelineName},
+        re_log_types::{AbsoluteTimeRange, TimelineName},
     },
     time::{TimeInt, TimeType},
 };
@@ -202,7 +202,7 @@ impl ChunkStoreSubscriber for TimeRangesPerEntity {
         for (entity_path, per_timeline) in &self.times {
             println!("  {entity_path}:");
             for (timeline, times) in per_timeline {
-                let time_range = ResolvedTimeRange::new(
+                let time_range = AbsoluteTimeRange::new(
                     times
                         .first_key_value()
                         .map_or(TimeInt::MIN, |(time, _)| *time),

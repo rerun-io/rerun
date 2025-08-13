@@ -1,8 +1,10 @@
 //! Track allocations and memory use.
 
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed};
+use std::sync::{
+    LazyLock,
+    atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed},
+};
 
-use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use crate::{
@@ -19,12 +21,12 @@ const MEDIUM_SIZE: usize = 4 * 1024; // TODO(emilk): make this settable by users
 // TODO(emilk): yet another tier would maybe make sense, with a different stochastic rate.
 
 /// Statistics about extant allocations larger than [`MEDIUM_SIZE`].
-static BIG_ALLOCATION_TRACKER: Lazy<Mutex<AllocationTracker>> =
-    Lazy::new(|| Mutex::new(AllocationTracker::with_stochastic_rate(1)));
+static BIG_ALLOCATION_TRACKER: LazyLock<Mutex<AllocationTracker>> =
+    LazyLock::new(|| Mutex::new(AllocationTracker::with_stochastic_rate(1)));
 
 /// Statistics about some extant allocations larger than  [`SMALL_SIZE`] but smaller than [`MEDIUM_SIZE`].
-static MEDIUM_ALLOCATION_TRACKER: Lazy<Mutex<AllocationTracker>> =
-    Lazy::new(|| Mutex::new(AllocationTracker::with_stochastic_rate(64)));
+static MEDIUM_ALLOCATION_TRACKER: LazyLock<Mutex<AllocationTracker>> =
+    LazyLock::new(|| Mutex::new(AllocationTracker::with_stochastic_rate(64)));
 
 thread_local! {
     /// Used to prevent re-entrancy when tracking allocations.

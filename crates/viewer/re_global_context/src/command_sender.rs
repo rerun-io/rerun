@@ -1,7 +1,7 @@
 use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
-use re_log_types::{ResolvedTimeRangeF, StoreId};
+use re_log_types::{AbsoluteTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
 use crate::RecordingOrTable;
@@ -18,11 +18,10 @@ pub enum SystemCommand {
     /// Close this app and all its recordings.
     CloseApp(re_log_types::ApplicationId),
 
-    /// Load some data.
+    /// Load data from a given data source.
+    ///
+    /// Will not load any new data if the source is already one of the active data sources.
     LoadDataSource(DataSource),
-
-    /// Clear everything that came from this source, and close the source.
-    ClearSourceAndItsStores(re_smart_channel::SmartChannelSource),
 
     /// Add a new receiver for log messages.
     AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
@@ -107,7 +106,7 @@ pub enum SystemCommand {
     SetLoopSelection {
         store_id: StoreId,
         timeline: Timeline,
-        time_range: ResolvedTimeRangeF,
+        time_range: AbsoluteTimeRangeF,
     },
 
     /// Sets the focus to the given item.

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeVar, overload
 
 import numpy as np
 import torch
@@ -50,7 +50,14 @@ U64_MAX_MINUS_1 = 2**64 - 2
 U64_MAX = 2**64 - 1
 
 
-def none_empty_or_value(obj: Any, value: Any) -> Any:
+T = TypeVar("T")
+
+
+@overload
+def none_empty_or_value(obj: None, value: T) -> None: ...
+@overload
+def none_empty_or_value(obj: Any, value: T) -> T: ...
+def none_empty_or_value(obj: Any, value: T) -> Any:
     """
     Helper function to make value align with None / Empty types.
 

@@ -46,6 +46,10 @@ class Plane3D(Plane3DExt):
         # You can define your own __array__ function as a member of Plane3DExt in plane3d_ext.py
         return np.asarray(self.xyzd, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of Plane3DExt in plane3d_ext.py
+        return len(self.xyzd)
+
 
 Plane3DLike = Plane3D
 Plane3DArrayLike = Union[Plane3D, Sequence[Plane3DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]]]

@@ -7,7 +7,7 @@ use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId};
 use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
-use re_log_types::{EntityPath, ResolvedTimeRange};
+use re_log_types::{AbsoluteTimeRange, EntityPath};
 use re_types_core::ComponentDescriptor;
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
@@ -156,7 +156,7 @@ impl RangeCache {
     ///
     /// This is extremely slow (`O(n)`), don't use this for anything but debugging.
     #[inline]
-    pub fn time_range(&self) -> ResolvedTimeRange {
+    pub fn time_range(&self) -> AbsoluteTimeRange {
         self.chunks
             .values()
             .filter_map(|cached| {
@@ -166,7 +166,7 @@ impl RangeCache {
                     .get(&self.cache_key.timeline_name)
                     .map(|time_column| time_column.time_range())
             })
-            .fold(ResolvedTimeRange::EMPTY, |mut acc, time_range| {
+            .fold(AbsoluteTimeRange::EMPTY, |mut acc, time_range| {
                 acc.set_min(TimeInt::min(acc.min(), time_range.min()));
                 acc.set_max(TimeInt::max(acc.max(), time_range.max()));
                 acc

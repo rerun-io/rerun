@@ -36,8 +36,8 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["analytics", "map_view"]
 
-## Enable telemetry using our analytics SDK.
-analytics = ["dep:re_analytics"]
+## Enable anonymized telemetry using our analytics SDK.
+analytics = ["dep:re_analytics", "re_ui/analytics"]
 
 ## Enable the map view
 map_view = ["dep:re_view_map"]
@@ -76,6 +76,7 @@ re_log_encoding = { workspace = true, features = [
 re_log_types.workspace = true
 re_memory.workspace = true
 re_query.workspace = true
+re_recording_panel.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_selection_panel.workspace = true
 re_smart_channel.workspace = true

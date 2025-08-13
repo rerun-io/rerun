@@ -14,10 +14,13 @@ mod docker_detection;
 pub mod env_vars;
 pub mod event;
 mod navigation;
+mod open_url;
 mod saving;
 mod screenshotter;
 mod startup_options;
 mod ui;
+
+#[cfg(feature = "analytics")]
 mod viewer_analytics;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -345,4 +348,15 @@ pub fn reset_viewer_persistence() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// Hook into [`re_log`] to receive copies of text log messages on a channel,
+/// which we will then show in the notification panel.
+pub fn register_text_log_receiver() -> std::sync::mpsc::Receiver<re_log::LogMsg> {
+    let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
+    if re_log::add_boxed_logger(Box::new(logger)).is_err() {
+        // This can happen when users wrap re_viewer in their own eframe app.
+        re_log::info!("re_log not initialized. You won't see log messages as GUI notifications.");
+    }
+    text_log_rx
 }

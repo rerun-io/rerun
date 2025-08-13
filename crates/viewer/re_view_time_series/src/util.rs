@@ -1,4 +1,4 @@
-use re_log_types::ResolvedTimeRange;
+use re_log_types::AbsoluteTimeRange;
 use re_types::{
     components::AggregationPolicy,
     datatypes::{TimeRange, TimeRangeBoundary},
@@ -32,7 +32,7 @@ pub fn determine_time_range(
     time_offset: i64,
     data_result: &re_viewer_context::DataResult,
     plot_mem: Option<&egui_plot::PlotMemory>,
-) -> ResolvedTimeRange {
+) -> AbsoluteTimeRange {
     let query_range = data_result.query_range();
 
     // Latest-at doesn't make sense for time series and should also never happen.
@@ -40,7 +40,7 @@ pub fn determine_time_range(
         re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
         re_viewer_context::QueryRange::LatestAt => {
             re_log::error_once!(
-                "Unexexpected LatestAt query for time series data result at path {:?}",
+                "Unexpected LatestAt query for time series data result at path {:?}",
                 data_result.entity_path
             );
             TimeRange {
@@ -51,7 +51,7 @@ pub fn determine_time_range(
     };
 
     let mut time_range =
-        ResolvedTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
+        AbsoluteTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
 
     let is_auto_bounds = plot_mem.is_some_and(|mem| mem.auto_bounds.x || mem.auto_bounds.y);
     let plot_bounds = plot_mem.map(|mem| {
@@ -67,11 +67,9 @@ pub fn determine_time_range(
 
     // If we're not in auto mode, which is the mode where the query drives the bounds of the plot,
     // then we want the bounds of the plots to drive the query!
-    if !is_auto_bounds {
-        if let Some((x_min, x_max)) = plot_bounds {
-            time_range.set_min(i64::max(time_range.min().as_i64(), x_min));
-            time_range.set_max(i64::min(time_range.max().as_i64(), x_max));
-        }
+    if !is_auto_bounds && let Some((x_min, x_max)) = plot_bounds {
+        time_range.set_min(i64::max(time_range.min().as_i64(), x_min));
+        time_range.set_max(i64::min(time_range.max().as_i64(), x_max));
     }
 
     time_range

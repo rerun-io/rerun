@@ -496,14 +496,12 @@ fn frame_info_ui(
             .samples_statistics
             .has_sample_highest_pts_so_far
             .as_ref()
-        {
-            if let Some(sample_idx) =
+            && let Some(sample_idx) =
                 video_descr.latest_sample_index_at_presentation_timestamp(presentation_timestamp)
-            {
-                ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Highest PTS so far").value_bool(has_sample_highest_pts_so_far[sample_idx])
-                ).on_hover_text("Whether the presentation timestamp (PTS) at the this frame is the highest encountered so far. If false there are lower PTS values prior in the list.");
-            }
+        {
+            ui.list_item_flat_noninteractive(
+                PropertyContent::new("Highest PTS so far").value_bool(has_sample_highest_pts_so_far[sample_idx])
+            ).on_hover_text("Whether the presentation timestamp (PTS) at the this frame is the highest encountered so far. If false there are lower PTS values prior in the list.");
         }
     }
 
@@ -573,5 +571,5 @@ fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat
                 .on_hover_text("Matrix coefficients used to convert the pixel data to RGB.");
             });
         }
-    };
+    }
 }

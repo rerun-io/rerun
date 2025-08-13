@@ -12,6 +12,9 @@ use re_uri::RedapUri;
 
 use crate::{CallSource, commands::RrdCommands};
 
+#[cfg(feature = "data_loaders")]
+use crate::commands::McapCommands;
+
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
 
@@ -20,6 +23,9 @@ use re_web_viewer_server::WebViewerServerPort;
 
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
+
+#[cfg(feature = "auth")]
+use super::auth::AuthCommands;
 
 // ---
 
@@ -531,6 +537,10 @@ enum Command {
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 
+    #[cfg(feature = "data_loaders")]
+    #[command(subcommand)]
+    Mcap(McapCommands),
+
     #[command(subcommand)]
     Rrd(RrdCommands),
 
@@ -548,6 +558,11 @@ enum Command {
     /// Example: `rerun man > docs/content/reference/cli.md`
     #[command(name = "man")]
     Manual,
+
+    /// Authentication with the redap.
+    #[cfg(feature = "auth")]
+    #[command(subcommand)]
+    Auth(AuthCommands),
 }
 
 /// Run the Rerun application and return an exit code.
@@ -609,10 +624,13 @@ where
     let tokio_runtime = Runtime::new()?;
     let _tokio_guard = tokio_runtime.enter();
 
-    let res = if let Some(command) = &args.command {
+    let res = if let Some(command) = args.command {
         match command {
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
+
+            #[cfg(feature = "data_loaders")]
+            Command::Mcap(mcap) => mcap.run(),
 
             Command::Rrd(rrd) => rrd.run(),
 
@@ -631,6 +649,13 @@ where
                 );
                 println!("{web_header}\n\n{man}");
                 Ok(())
+            }
+
+            #[cfg(feature = "auth")]
+            Command::Auth(cmd) => {
+                let runtime =
+                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
+                cmd.run(&runtime).map_err(Into::into)
             }
         }
     } else {
@@ -793,32 +818,40 @@ fn run_impl(
             .url_or_paths
             .iter()
             .cloned()
-            .map(|uri| DataSource::from_uri(re_log_types::FileSource::Cli, uri))
+            .filter_map(|uri| {
+                if let Some(data_source) = DataSource::from_uri(re_log_types::FileSource::Cli, &uri)
+                {
+                    Some(data_source)
+                } else {
+                    re_log::warn!("{uri:?} is not a valid data source link.");
+                    None
+                }
+            })
             .collect_vec();
 
         #[cfg(feature = "web_viewer")]
-        if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::RerunGrpcStream {
+        if data_sources.len() == 1
+            && args.web_viewer
+            && let DataSource::RerunGrpcStream {
                 uri: re_uri::RedapUri::Proxy(uri),
                 ..
             } = data_sources[0].clone()
-            {
-                // Special case! We are connecting a web-viewer to a gRPC address.
-                // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
+        {
+            // Special case! We are connecting a web-viewer to a gRPC address.
+            // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
 
-                WebViewerConfig {
-                    bind_ip: args.bind.to_string(),
-                    web_port: args.web_viewer_port,
-                    connect_to: Some(uri.to_string()),
-                    force_wgpu_backend: args.renderer,
-                    video_decoder: args.video_decoder,
-                    open_browser: true,
-                }
-                .host_web_viewer()?
-                .block();
-
-                return Ok(());
+            WebViewerConfig {
+                bind_ip: args.bind.to_string(),
+                web_port: args.web_viewer_port,
+                connect_to: Some(uri.to_string()),
+                force_wgpu_backend: args.renderer,
+                video_decoder: args.video_decoder,
+                open_browser: true,
             }
+            .host_web_viewer()?
+            .block();
+
+            return Ok(());
         }
 
         let command_sender = command_sender.clone();
@@ -1060,17 +1093,24 @@ fn run_impl(
         {
             let tokio_runtime_handle = tokio_runtime_handle.clone();
 
-            return re_viewer::run_native_app(
+            // Start catching `re_log::info/warn/error` messages
+            // so we can show them in the notification panel.
+            // In particular: create this before calling `run_native_app`
+            // so we catch any warnings produced during startup.
+            let text_log_rx = re_viewer::register_text_log_receiver();
+
+            re_viewer::run_native_app(
                 _main_thread_token,
                 Box::new(move |cc| {
                     let mut app = re_viewer::App::with_commands(
                         _main_thread_token,
                         _build_info,
-                        &call_source.app_env(),
+                        call_source.app_env(),
                         startup_options,
                         cc,
                         Some(connection_registry),
                         re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+                        text_log_rx,
                         (command_sender, command_receiver),
                     );
                     for rx in rxs_log {
@@ -1101,7 +1141,7 @@ fn run_impl(
                 }),
                 args.renderer.as_deref(),
             )
-            .map_err(|err| err.into());
+            .map_err(|err| err.into())
         }
         #[cfg(not(feature = "native_viewer"))]
         {

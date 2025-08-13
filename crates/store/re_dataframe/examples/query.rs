@@ -3,7 +3,7 @@
 use itertools::Itertools as _;
 
 use re_dataframe::{
-    ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression, ResolvedTimeRange,
+    AbsoluteTimeRange, ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression,
     SparseFillStrategy, TimeInt,
 };
 use re_format_arrow::format_record_batch;
@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
                     .map(|entity_path| (entity_path, None))
                     .collect(),
             ),
-            filtered_index_range: Some(ResolvedTimeRange::new(time_from, time_to)),
+            filtered_index_range: Some(AbsoluteTimeRange::new(time_from, time_to)),
             sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
             ..Default::default()
         };

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import rerun.blueprint as rrb
+if TYPE_CHECKING:
+    import rerun.blueprint as rrb
 
 
 def assert_blueprint_contents_are_equal(*contents: rrb.View | rrb.Container) -> None:

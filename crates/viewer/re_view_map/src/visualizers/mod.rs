@@ -38,8 +38,8 @@ impl GeoSpan {
 
     pub fn center(&self) -> walkers::Position {
         walkers::lat_lon(
-            (self.min_latitude + self.max_latitude) / 2.0,
-            (self.min_longitude + self.max_longitude) / 2.0,
+            f64::midpoint(self.min_latitude, self.max_latitude),
+            f64::midpoint(self.min_longitude, self.max_longitude),
         )
     }
 
@@ -56,7 +56,7 @@ impl GeoSpan {
         // Convert latitude to y coordinate in mercator projection (scaled to 0..1)
         fn lat_to_y(lat: f64) -> f64 {
             let lat_rad = lat.to_radians();
-            let y = (1.0 + lat_rad.tan().asinh() / std::f64::consts::PI) / 2.0;
+            let y = f64::midpoint(1.0, lat_rad.tan().asinh() / std::f64::consts::PI);
             y.clamp(0.0, 1.0)
         }
 

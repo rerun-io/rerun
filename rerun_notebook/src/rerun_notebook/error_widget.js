@@ -34,8 +34,6 @@
   }
 
   async function check_if_widgets_exist() {
-    console.log("check if widgets exists");
-
     const widget_url = new window.URL("{{widget_url}}");
 
     let urls = [

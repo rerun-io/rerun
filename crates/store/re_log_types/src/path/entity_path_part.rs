@@ -81,7 +81,7 @@ impl EntityPathPart {
                                     output.push('u');
                                     output.push_str(&s);
                                 }
-                            };
+                            }
                         }
                         c if c.is_ascii_punctuation() || c == ' ' => {
                             output.push(c);
@@ -100,11 +100,11 @@ impl EntityPathPart {
                     output.push('\\');
                 }
             } else {
-                if c.is_whitespace() {
-                    if let Some(warnings) = warnings.as_mut() {
-                        // This could be a sign of forgetting to split a string containing multiple entity paths.
-                        warnings.push("Unescaped whitespace".to_owned());
-                    }
+                if c.is_whitespace()
+                    && let Some(warnings) = warnings.as_mut()
+                {
+                    // This could be a sign of forgetting to split a string containing multiple entity paths.
+                    warnings.push("Unescaped whitespace".to_owned());
                 }
 
                 output.push(c);
@@ -141,7 +141,7 @@ impl EntityPathPart {
                             output.push(c);
                         }
                         c => return Err(PathParseError::UnknownEscapeSequence(c)),
-                    };
+                    }
                 } else {
                     return Err(PathParseError::TrailingBackslash);
                 }
@@ -199,7 +199,7 @@ impl EntityPathPart {
                         // Rust-style unicode escape, e.g. `\u{262E}`.
                         s.push_str(&format!("\\u{{{:04X}}}", c as u32));
                     }
-                };
+                }
             }
         }
         s

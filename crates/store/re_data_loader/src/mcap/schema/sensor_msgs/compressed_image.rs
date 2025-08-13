@@ -4,7 +4,6 @@ use re_chunk::{
 };
 use re_log_types::TimeCell;
 use re_mcap_ros2::sensor_msgs;
-use re_sorbet::SorbetSchema;
 use re_types::{
     ComponentDescriptor,
     archetypes::{EncodedImage, VideoStream},
@@ -13,31 +12,10 @@ use re_types::{
 
 use crate::mcap::{
     cdr,
-    decode::{McapMessageParser, ParserContext, PluginError, SchemaName, SchemaPlugin},
+    decode::{McapMessageParser, ParserContext, PluginError},
 };
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
-#[derive(Default)]
-pub struct CompressedImageSchemaPlugin;
-
-impl SchemaPlugin for CompressedImageSchemaPlugin {
-    fn name(&self) -> SchemaName {
-        "sensor_msgs/msg/CompressedImage".into()
-    }
-
-    fn parse_schema(&self, _channel: &mcap::Channel<'_>) -> Result<SorbetSchema, PluginError> {
-        Err(PluginError::Other(anyhow::anyhow!("todo")))
-    }
-
-    fn create_message_parser(
-        &self,
-        _channel: &mcap::Channel<'_>,
-        num_rows: usize,
-    ) -> Box<dyn McapMessageParser> {
-        Box::new(CompressedImageMessageParser::new(num_rows)) as Box<dyn McapMessageParser>
-    }
-}
-
 pub struct CompressedImageMessageParser {
     /// The raw image data blobs.
     ///
@@ -61,6 +39,7 @@ impl CompressedImageMessageParser {
 
 impl McapMessageParser for CompressedImageMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
         let sensor_msgs::CompressedImage {
             header,
             data,
@@ -87,6 +66,7 @@ impl McapMessageParser for CompressedImageMessageParser {
     }
 
     fn finalize(self: Box<Self>, ctx: ParserContext) -> anyhow::Result<Vec<re_chunk::Chunk>> {
+        re_tracing::profile_function!();
         let Self {
             blobs,
             mut formats,

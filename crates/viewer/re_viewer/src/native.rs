@@ -112,7 +112,7 @@ pub fn run_native_viewer_with_messages(
             let mut app = crate::App::new(
                 main_thread_token,
                 build_info,
-                &app_env,
+                app_env,
                 startup_options,
                 cc,
                 connection_registry,

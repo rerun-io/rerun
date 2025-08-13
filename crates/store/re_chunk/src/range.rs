@@ -1,4 +1,4 @@
-use re_log_types::{ResolvedTimeRange, TimeInt, TimelineName};
+use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
 use re_types_core::ComponentDescriptor;
 
 use crate::Chunk;
@@ -14,7 +14,7 @@ use crate::Chunk;
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct RangeQuery {
     pub timeline: TimelineName,
-    pub range: ResolvedTimeRange,
+    pub range: AbsoluteTimeRange,
     pub options: RangeQueryOptions,
 }
 
@@ -102,7 +102,7 @@ impl std::fmt::Debug for RangeQuery {
 impl RangeQuery {
     /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
-    pub const fn new(timeline: TimelineName, range: ResolvedTimeRange) -> Self {
+    pub const fn new(timeline: TimelineName, range: AbsoluteTimeRange) -> Self {
         Self {
             timeline,
             range,
@@ -114,7 +114,7 @@ impl RangeQuery {
     ///
     /// Keeps all extra timelines and components around.
     #[inline]
-    pub const fn with_extras(timeline: TimelineName, range: ResolvedTimeRange) -> Self {
+    pub const fn with_extras(timeline: TimelineName, range: AbsoluteTimeRange) -> Self {
         Self {
             timeline,
             range,
@@ -130,7 +130,7 @@ impl RangeQuery {
     pub const fn everything(timeline: TimelineName) -> Self {
         Self {
             timeline,
-            range: ResolvedTimeRange::EVERYTHING,
+            range: AbsoluteTimeRange::EVERYTHING,
             options: RangeQueryOptions::DEFAULT,
         }
     }
@@ -162,7 +162,7 @@ impl RangeQuery {
     }
 
     #[inline]
-    pub fn range(&self) -> ResolvedTimeRange {
+    pub fn range(&self) -> AbsoluteTimeRange {
         self.range
     }
 

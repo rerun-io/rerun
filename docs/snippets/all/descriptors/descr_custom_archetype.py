@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import numpy.typing as npt
 import rerun as rr  # pip install rerun-sdk
 
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
-class CustomPoints3D(rr.AsComponents):
+
+class CustomPoints3D(rr.AsComponents):  # type: ignore[misc]
     def __init__(self: Any, positions: npt.ArrayLike, colors: npt.ArrayLike) -> None:
         self.positions = rr.components.Position3DBatch(positions).described(
             rr.ComponentDescriptor(

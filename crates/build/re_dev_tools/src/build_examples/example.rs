@@ -20,6 +20,11 @@ pub struct Example {
     pub script_args: Vec<String>,
     pub readme_body: String,
     pub language: Language,
+
+    /// If `false` (default), warnings will be treated as errors.
+    ///
+    /// Set to true if the example produces a warning that is outside of our control, i.e. in a dependency.
+    pub allow_warnings: bool,
 }
 
 impl Example {
@@ -70,6 +75,7 @@ impl Example {
             thumbnail_url: readme.thumbnail,
             thumbnail_dimensions: readme.thumbnail_dimensions,
             script_args: readme.build_args,
+            allow_warnings: readme.allow_warnings,
             readme_body: body,
             language,
         }))
@@ -233,6 +239,7 @@ impl Channel {
                     script_args: readme.build_args,
                     readme_body: body,
                     language: Language::Python,
+                    allow_warnings: readme.allow_warnings,
                 });
             }
         }
@@ -281,6 +288,7 @@ impl Display for InvalidChannelName {
     }
 }
 
+/// The header of the `README.md` file of an example.
 #[derive(serde::Deserialize)]
 struct Frontmatter {
     #[serde(default)]
@@ -303,6 +311,12 @@ struct Frontmatter {
 
     #[serde(default)]
     build_args: Vec<String>,
+
+    /// If `false` (default), warnings will be treated as errors.
+    ///
+    /// Set to true if the example produces a warning that is outside of our control, i.e. in a dependency.
+    #[serde(default)]
+    allow_warnings: bool,
 }
 
 impl Frontmatter {

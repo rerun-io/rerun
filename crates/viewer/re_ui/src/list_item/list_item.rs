@@ -391,10 +391,10 @@ impl ListItem {
             .scope(|ui| self.ui(ui, Some(id), 0.0, Box::new(content)))
             .inner;
 
-        if let Some(collapse_response) = response.collapse_response {
-            if collapse_response.clicked() {
-                state.toggle(ui);
-            }
+        if let Some(collapse_response) = response.collapse_response
+            && collapse_response.clicked()
+        {
+            state.toggle(ui);
         }
         if response.response.double_clicked() {
             state.toggle(ui);

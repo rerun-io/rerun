@@ -11,7 +11,7 @@ import pyarrow as pa
 import rerun as rr
 
 
-class ConfidenceBatch(rr.ComponentBatchMixin):
+class ConfidenceBatch(rr.ComponentBatchMixin):  # type: ignore[misc]
     """A batch of confidence data."""
 
     def __init__(self: Any, confidence: npt.ArrayLike) -> None:
@@ -22,7 +22,7 @@ class ConfidenceBatch(rr.ComponentBatchMixin):
         return pa.array(self.confidence, type=pa.float32())
 
 
-class CustomPoints3D(rr.AsComponents):
+class CustomPoints3D(rr.AsComponents):  # type: ignore[misc]
     """A custom archetype that extends Rerun's builtin `Points3D` archetype with a custom component."""
 
     def __init__(self: Any, positions: npt.ArrayLike, confidences: npt.ArrayLike) -> None:

@@ -1,4 +1,3 @@
-use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use re_sdk::{RecordingStream, StoreKind};
 
@@ -39,7 +38,8 @@ impl RecStreams {
 }
 
 /// All recording streams created from C.
-pub static RECORDING_STREAMS: Lazy<Mutex<RecStreams>> = Lazy::new(Mutex::default);
+pub static RECORDING_STREAMS: std::sync::LazyLock<Mutex<RecStreams>> =
+    std::sync::LazyLock::new(Mutex::default);
 
 /// Access a C created recording stream.
 #[allow(clippy::result_large_err)]

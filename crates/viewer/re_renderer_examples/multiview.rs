@@ -92,6 +92,7 @@ fn build_lines(re_ctx: &RenderContext, secs_since_startup: f32) -> anyhow::Resul
         let mut batch = builder.batch("lines without transform");
 
         // Complex orange line.
+        #[expect(clippy::disallowed_methods)] // Hardcoded colors for this example.
         batch
             .add_strip(lorenz_points.into_iter())
             .color(Color32::from_rgb(255, 191, 0))

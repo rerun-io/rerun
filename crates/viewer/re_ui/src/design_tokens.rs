@@ -856,11 +856,9 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
 }
 
 fn try_get_scalar(json: &ron::Value, path: &str) -> anyhow::Result<f32> {
-    json.get(path).and_then(|value| {
-        value
-            .as_f32()
-            .ok_or_else(|| anyhow::anyhow!("'{path}' not a number"))
-    })
+    json.get(path)?
+        .as_f32()
+        .ok_or_else(|| anyhow::anyhow!("'{path}' not a number"))
 }
 
 fn get_aliased_color(color_table: &ColorTable, json: &ron::Value, alias_path: &str) -> Color32 {

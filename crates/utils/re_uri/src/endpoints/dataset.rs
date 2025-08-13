@@ -1,6 +1,6 @@
 use re_log_types::StoreId;
 
-use crate::{Error, Fragment, Origin, RedapUri, TimeRange};
+use crate::{Error, Fragment, Origin, RedapUri, TimeSelection};
 
 /// URI pointing at the data underlying a dataset.
 ///
@@ -17,7 +17,7 @@ pub struct DatasetDataUri {
     // Query parameters: these affect what data is returned.
     /// Currently mandatory.
     pub partition_id: String,
-    pub time_range: Option<TimeRange>,
+    pub time_range: Option<TimeSelection>,
 
     // Fragment parameters: these affect what the viewer focuses on:
     pub fragment: Fragment,
@@ -64,7 +64,7 @@ impl DatasetDataUri {
                     partition_id = Some(value.to_string());
                 }
                 "time_range" => {
-                    time_range = Some(value.parse::<TimeRange>()?);
+                    time_range = Some(value.parse::<TimeSelection>()?);
                 }
                 _ => {
                     re_log::warn_once!("Unknown query parameter: {key}={value}");
@@ -101,6 +101,21 @@ impl DatasetDataUri {
         } = &mut self;
 
         *time_range = None;
+        *fragment = Default::default();
+
+        self
+    }
+
+    /// Returns [`Self`] without any (optional) `#fragment`.
+    pub fn without_fragment(mut self) -> Self {
+        let Self {
+            origin: _,       // Mandatory
+            dataset_id: _,   // Mandatory
+            partition_id: _, // Mandatory
+            time_range: _,
+            fragment,
+        } = &mut self;
+
         *fragment = Default::default();
 
         self

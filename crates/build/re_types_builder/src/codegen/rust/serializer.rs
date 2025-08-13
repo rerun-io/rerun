@@ -265,11 +265,11 @@ pub fn quote_arrow_serializer(
                     let type_ids: Vec<i8> = #quoted_type_ids;
                     let num_variants = #num_variants;
 
-                    let children: Vec<_> = std::iter::repeat(
+                    let children: Vec<_> = std::iter::repeat_n(
                             as_array_ref(NullArray::new(
                                 #data_src.len(),
-                            ))
-                        ).take(1 + num_variants) // +1 for the virtual `nulls` arm
+                            )),
+                            1 + num_variants) // +1 for the virtual `nulls` arm
                         .collect();
 
                     debug_assert_eq!(field_type_ids.len(), fields.len());
@@ -490,20 +490,20 @@ fn quote_arrow_field_serializer(
     };
 
     // If the inner object is an enum, then dispatch to its serializer.
-    if let Some(obj) = inner_obj {
-        if obj.is_enum() {
-            let fqname_use = quote_fqname_as_type_path(&obj.fqname);
-            let option_wrapper = if elements_are_nullable {
-                quote! {}
-            } else {
-                quote! { .into_iter().map(Some) }
-            };
+    if let Some(obj) = inner_obj
+        && obj.is_enum()
+    {
+        let fqname_use = quote_fqname_as_type_path(&obj.fqname);
+        let option_wrapper = if elements_are_nullable {
+            quote! {}
+        } else {
+            quote! { .into_iter().map(Some) }
+        };
 
-            return quote! {{
-                _ = #validity_src;
-                #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
-            }};
-        }
+        return quote! {{
+            _ = #validity_src;
+            #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
+        }};
     }
 
     let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
@@ -772,7 +772,7 @@ fn quote_arrow_field_serializer(
                                     .flat_map(|v| match v {
                                         Some(v) => itertools::Either::Left(v.into_iter()),
                                         None => itertools::Either::Right(
-                                            std::iter::repeat(Default::default()).take(#count),
+                                            std::iter::repeat_n(Default::default(), #count),
                                         ),
                                     })
                                 }
@@ -851,15 +851,15 @@ fn quote_arrow_field_serializer(
             //
             // This workaround does not apply if we don't have any validity on the outer type.
             // (as it is always the case with unions where the nullability is encoded as a separate variant)
-            let quoted_inner_validity = if let (true, DataType::FixedSizeList(_, count)) =
-                (elements_are_nullable, datatype.to_logical_type())
+            let quoted_inner_validity = if elements_are_nullable
+                && let DataType::FixedSizeList(_, count) = datatype.to_logical_type()
             {
                 quote! {
                     let #inner_validity_ident: Option<arrow::buffer::NullBuffer> =
                         #validity_src.as_ref().map(|validity| {
                             validity
                                 .iter()
-                                .map(|b| std::iter::repeat(b).take(#count))
+                                .map(|b| std::iter::repeat_n(b, #count))
                                 .flatten()
                                 .collect::<Vec<_>>()
                                 .into()

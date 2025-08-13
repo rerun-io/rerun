@@ -9,7 +9,7 @@ use criterion::Criterion;
 use criterion::measurement::WallTime;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
-use re_log_types::ResolvedTimeRange;
+use re_log_types::AbsoluteTimeRange;
 use re_log_types::StoreId;
 use re_log_types::StoreKind;
 use re_log_types::Timeline;
@@ -48,7 +48,7 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
 
             let time_range = db
                 .time_range_for(timeline.name())
-                .unwrap_or(ResolvedTimeRange::EMPTY);
+                .unwrap_or(AbsoluteTimeRange::EMPTY);
             let time_ranges_ui =
                 TimeRangesUi::new(row_rect.x_range(), time_range.into(), &[time_range]);
 

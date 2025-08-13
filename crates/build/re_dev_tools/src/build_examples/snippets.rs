@@ -44,7 +44,7 @@ impl Snippets {
             .map(|example| example.build(&progress, &self.output_dir))
             .collect();
 
-        let mut failed = false;
+        let mut num_failed = 0;
         for result in results {
             match result {
                 Ok(rrd_path) => {
@@ -56,17 +56,17 @@ impl Snippets {
                         );
                     } else {
                         eprintln!("Missing rrd at {}", rrd_path.display());
-                        failed = true;
+                        num_failed += 1;
                     }
                 }
                 Err(err) => {
                     eprintln!("{err}");
-                    failed = true;
+                    num_failed += 1;
                 }
             }
         }
-        if failed {
-            anyhow::bail!("Failed to run some examples");
+        if 0 < num_failed {
+            anyhow::bail!("Failed to run {num_failed} example(s)");
         }
 
         Ok(())

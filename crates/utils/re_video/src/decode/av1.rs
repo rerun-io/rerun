@@ -96,7 +96,7 @@ impl SyncDav1dDecoder {
                 );
                 on_output(Err(DecodeError::Dav1d(err)));
             }
-        };
+        }
     }
 
     /// Returns the number of new frames.

@@ -84,7 +84,7 @@ impl ScreenshotProcessor {
     ) -> wgpu::RenderPass<'a> {
         re_tracing::profile_function!();
 
-        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: DebugLabel::from(format!("{view_name} - screenshot")).get(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.screenshot_texture.default_view,
@@ -97,9 +97,7 @@ impl ScreenshotProcessor {
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
-        });
-
-        pass
+        })
     }
 
     pub fn end_render_pass(

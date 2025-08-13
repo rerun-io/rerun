@@ -8,7 +8,7 @@ use std::sync::Arc;
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, Tooltip, epaint::Vertex, lerp, pos2, remap};
 
 use re_chunk_store::{Chunk, RangeQuery};
-use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, TimelineName};
+use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimelineName};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
@@ -132,15 +132,15 @@ impl DensityGraph {
         debug_assert!(0.0 <= fract && fract <= 1.0);
         let i = i.floor() as i64;
 
-        if let Ok(i) = usize::try_from(i) {
-            if let Some(bucket) = self.buckets.get_mut(i) {
-                *bucket += (1.0 - fract) * count;
-            }
+        if let Ok(i) = usize::try_from(i)
+            && let Some(bucket) = self.buckets.get_mut(i)
+        {
+            *bucket += (1.0 - fract) * count;
         }
-        if let Ok(i) = usize::try_from(i + 1) {
-            if let Some(bucket) = self.buckets.get_mut(i) {
-                *bucket += fract * count;
-            }
+        if let Ok(i) = usize::try_from(i + 1)
+            && let Some(bucket) = self.buckets.get_mut(i)
+        {
+            *bucket += fract * count;
         }
     }
 
@@ -180,10 +180,10 @@ impl DensityGraph {
         // (everything before & beyond can be seen as a "virtual" bucket that we can't fill)
 
         // first bucket, partially filled:
-        if let Ok(i) = usize::try_from(first_bucket as i64) {
-            if let Some(bucket) = self.buckets.get_mut(i) {
-                *bucket += first_bucket_factor * count_per_bucket;
-            }
+        if let Ok(i) = usize::try_from(first_bucket as i64)
+            && let Some(bucket) = self.buckets.get_mut(i)
+        {
+            *bucket += first_bucket_factor * count_per_bucket;
         }
 
         // full buckets:
@@ -198,10 +198,10 @@ impl DensityGraph {
         }
 
         // last bucket, partially filled:
-        if let Ok(i) = usize::try_from(last_bucket as i64) {
-            if let Some(bucket) = self.buckets.get_mut(i) {
-                *bucket += last_bucket_factor * count_per_bucket;
-            }
+        if let Ok(i) = usize::try_from(last_bucket as i64)
+            && let Some(bucket) = self.buckets.get_mut(i)
+        {
+            *bucket += last_bucket_factor * count_per_bucket;
         }
     }
 
@@ -219,7 +219,7 @@ impl DensityGraph {
             max: max_y,
         } = y_range;
 
-        let center_y = (min_y + max_y) / 2.0;
+        let center_y = fast_midpoint(min_y, max_y);
         let max_radius = (max_y - min_y) / 2.0;
 
         // We paint a symmetric plot, with extra feathering for anti-aliasing:
@@ -339,6 +339,12 @@ impl DensityGraph {
     }
 }
 
+/// This is faster than `f32::midpoint`, but less accurate.
+#[inline(always)]
+fn fast_midpoint(min_y: f32, max_y: f32) -> f32 {
+    0.5 * (min_y + max_y)
+}
+
 // ----------------------------------------------------------------------------
 
 /// Blur the input slightly.
@@ -415,24 +421,22 @@ pub fn data_density_graph_ui(
         graph_color(ctx, &item.to_item(), ui),
     );
 
-    if tooltips_enabled {
-        if let Some(hovered_time) = data.hovered_time {
-            ctx.selection_state().set_hovered(item.to_item());
+    if tooltips_enabled && let Some(hovered_time) = data.hovered_time {
+        ctx.selection_state().set_hovered(item.to_item());
 
-            if ui.ctx().dragged_id().is_none() {
-                // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
-                //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
-                Tooltip::always_open(
-                    ui.ctx().clone(),
-                    ui.layer_id(),
-                    egui::Id::new("data_tooltip"),
-                    egui::PopupAnchor::Pointer,
-                )
-                .gap(12.0)
-                .show(|ui| {
-                    show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
-                });
-            }
+        if ui.ctx().dragged_id().is_none() {
+            // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
+            //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
+            Tooltip::always_open(
+                ui.ctx().clone(),
+                ui.layer_id(),
+                egui::Id::new("data_tooltip"),
+                egui::PopupAnchor::Pointer,
+            )
+            .gap(12.0)
+            .show(|ui| {
+                show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
+            });
         }
     }
 }
@@ -456,7 +460,7 @@ pub fn build_density_graph<'a>(
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
     // NOTE: These chunks are guaranteed to have data on the current timeline
-    let (chunk_ranges, total_events): (Vec<(Arc<Chunk>, ResolvedTimeRange, u64)>, u64) = {
+    let (chunk_ranges, total_events): (Vec<(Arc<Chunk>, AbsoluteTimeRange, u64)>, u64) = {
         re_tracing::profile_scope!("collect chunks");
 
         let engine = db.storage_engine();
@@ -692,7 +696,7 @@ impl<'a> DensityGraphBuilder<'a> {
         }
     }
 
-    fn add_chunk_range(&mut self, time_range: ResolvedTimeRange, num_events: u64) {
+    fn add_chunk_range(&mut self, time_range: AbsoluteTimeRange, num_events: u64) {
         if num_events == 0 {
             return;
         }
@@ -710,7 +714,7 @@ impl<'a> DensityGraphBuilder<'a> {
         if let Some(pointer_pos) = self.pointer_pos {
             let is_hovered = if (max_x - min_x).abs() < 1.0 {
                 // Are we close enough to center?
-                let center_x = (max_x + min_x) / 2.0;
+                let center_x = fast_midpoint(max_x, min_x);
                 let distance_sq = pos2(center_x, self.row_rect.center().y).distance_sq(pointer_pos);
 
                 distance_sq < self.interact_radius.powi(2)
@@ -724,10 +728,9 @@ impl<'a> DensityGraphBuilder<'a> {
                 time_range_rect.contains(pointer_pos)
             };
 
-            if is_hovered {
-                if let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                    self.hovered_time = Some(at_time.round());
-                }
+            if is_hovered && let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer_pos.x)
+            {
+                self.hovered_time = Some(at_time.round());
             }
         }
     }

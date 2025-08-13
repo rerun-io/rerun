@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from ..datatypes import Float32ArrayLike, Utf8Like
 from .api import Container, View
 from .components.container_kind import ContainerKind
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from ..datatypes import Float32ArrayLike, Utf8Like
 
 
 class Horizontal(Container):

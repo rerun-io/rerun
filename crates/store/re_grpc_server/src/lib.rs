@@ -355,7 +355,6 @@ pub fn spawn_with_recv(
                 }
                 Err(err) => {
                     re_log::error!("dropping LogMsg due to failed decode: {err}");
-                    continue;
                 }
             }
         }
@@ -390,7 +389,6 @@ pub fn spawn_with_recv(
                 }
                 Err(err) => {
                     re_log::error!("dropping table due to failed decode: {err}");
-                    continue;
                 }
             }
         }
@@ -605,7 +603,7 @@ impl EventLoop {
         if max_bytes >= self.ordered_message_bytes {
             // We're not using too much memory.
             return;
-        };
+        }
 
         {
             re_tracing::profile_scope!("Drop messages");
@@ -699,7 +697,7 @@ impl MessageProxy {
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
             re_log::error!("Error accepting new client: {err}");
             return Box::pin(tokio_stream::empty());
-        };
+        }
         let (history, log_channel, _) = match receiver.await {
             Ok(v) => v,
             Err(err) => {
@@ -741,7 +739,7 @@ impl MessageProxy {
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
             re_log::error!("Error accepting new client: {err}");
             return Box::pin(tokio_stream::empty());
-        };
+        }
         let (history, _, table_channel) = match receiver.await {
             Ok(v) => v,
             Err(err) => {

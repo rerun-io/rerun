@@ -188,14 +188,18 @@ pub mod web_decode {
                 for msg in decoder {
                     match msg {
                         Ok(msg) => {
-                            on_msg(HttpMessage::LogMsg(msg));
+                            if on_msg(HttpMessage::LogMsg(msg)).is_break() {
+                                return;
+                            }
                         }
                         Err(err) => {
                             re_log::warn_once!("Failed to decode message: {err}");
                         }
                     }
 
-                    on_msg(HttpMessage::Success);
+                    if on_msg(HttpMessage::Success).is_break() {
+                        return;
+                    }
 
                     if last_yield.elapsed() > web_time::Duration::from_millis(10) {
                         // yield to the ui task
@@ -205,7 +209,8 @@ pub mod web_decode {
                 }
             }
             Err(err) => {
-                on_msg(HttpMessage::Failure(
+                // Regardless of what the message handler returns, we are done here.
+                let _ignored_control_flow = on_msg(HttpMessage::Failure(
                     format!("Failed to decode .rrd: {err}").into(),
                 ));
             }
@@ -214,7 +219,7 @@ pub mod web_decode {
 
     // Yield to other tasks
     async fn yield_() {
-        // TODO(emilk): create a better async yield function. See https://github.com/rustwasm/wasm-bindgen/issues/3359
+        // TODO(emilk): create a better async yield function. See https://github.com/wasm-bindgen/wasm-bindgen/issues/3359
         sleep_ms(1).await;
     }
 

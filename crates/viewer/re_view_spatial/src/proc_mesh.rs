@@ -239,7 +239,7 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
     // In the future, render_ctx will be used to allocate GPU memory for the mesh.
     _ = render_ctx;
 
-    let mesh = match *key {
+    match *key {
         ProcMeshKey::Cube => {
             let corners = [
                 vec3(-0.5, -0.5, -0.5),
@@ -397,9 +397,7 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
                 line_strips,
             }
         }
-    };
-
-    mesh
+    }
 }
 
 fn capsule_wireframe_lines(length: f32, subdiv: usize, axes_only: bool) -> Vec<Vec<Vec3>> {

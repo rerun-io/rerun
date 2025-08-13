@@ -1,6 +1,14 @@
-/// Detect if the application is running inside a Docker container
-#[cfg(target_os = "linux")]
+/// Detect if the application is running inside a Docker container.
+///
+/// Is memoized, so cheap to call each frame.
 pub fn is_docker() -> bool {
+    use std::sync::LazyLock;
+    static IS_DOCKER: LazyLock<bool> = LazyLock::new(is_docker_impl);
+    *IS_DOCKER
+}
+
+#[cfg(target_os = "linux")]
+fn is_docker_impl() -> bool {
     /// Check for the presence of /.dockerenv file (most reliable method)
     fn is_dockerenv_present() -> bool {
         std::path::Path::new("/.dockerenv").exists()
@@ -24,8 +32,7 @@ pub fn is_docker() -> bool {
     is_dockerenv_present() || is_docker_in_cgroup()
 }
 
-/// Detect if the application is running inside a Docker container
 #[cfg(not(target_os = "linux"))]
-pub fn is_docker() -> bool {
+fn is_docker_impl() -> bool {
     false
 }

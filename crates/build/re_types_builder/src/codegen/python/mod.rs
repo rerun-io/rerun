@@ -31,6 +31,9 @@ const INIT_METHOD: &str = "__init__";
 /// The standard numpy interface for converting to an array type
 const ARRAY_METHOD: &str = "__array__";
 
+/// The standard python len method
+const LEN_METHOD: &str = "__len__";
+
 /// The method used to convert a native type into a pyarrow array
 const NATIVE_TO_PA_ARRAY_METHOD: &str = "native_to_pa_array_override";
 
@@ -200,6 +203,12 @@ struct ExtensionClass {
 
     /// Whether the `ObjectExt` contains a `deferred_patch_class()` method
     has_deferred_patch_class: bool,
+
+    /// Whether the `ObjectExt` contains __len__()
+    ///
+    /// If the `ExtensionClass` contains its own `__len__` then we avoid generating
+    /// a default implementation.
+    has_len: bool,
 }
 
 impl ExtensionClass {
@@ -248,6 +257,7 @@ impl ExtensionClass {
 
             let has_init = methods.contains(&INIT_METHOD);
             let has_array = methods.contains(&ARRAY_METHOD);
+            let has_len = methods.contains(&LEN_METHOD);
             let has_native_to_pa_array = methods.contains(&NATIVE_TO_PA_ARRAY_METHOD);
             let has_deferred_patch_class = methods.contains(&DEFERRED_PATCH_CLASS_METHOD);
             let field_converter_overrides: Vec<String> = methods
@@ -286,6 +296,7 @@ impl ExtensionClass {
                 has_array,
                 has_native_to_pa_array,
                 has_deferred_patch_class,
+                has_len,
             }
         } else {
             Self {
@@ -298,6 +309,7 @@ impl ExtensionClass {
                 has_array: false,
                 has_native_to_pa_array: false,
                 has_deferred_patch_class: false,
+                has_len: false,
             }
         }
     }
@@ -460,10 +472,9 @@ impl PythonCodeGenerator {
                 .iter()
                 .filter_map(|field| quote_import_clauses_from_field(&obj.scope(), field))
                 .chain(obj.fields.iter().filter_map(|field| {
-                    field.typ.fqname().and_then(|fqname| {
-                        objects[fqname].delegate_datatype(objects).map(|delegate| {
-                            quote_import_clauses_from_fqname(&obj.scope(), &delegate.fqname)
-                        })
+                    let fqname = field.typ.fqname()?;
+                    objects[fqname].delegate_datatype(objects).map(|delegate| {
+                        quote_import_clauses_from_fqname(&obj.scope(), &delegate.fqname)
                     })
                 }))
                 .collect();
@@ -805,6 +816,7 @@ fn code_for_struct(
 
         code.push_indented(1, quote_array_method_from_obj(ext_class, objects, obj), 1);
         code.push_indented(1, quote_native_types_method_from_obj(objects, obj), 1);
+        code.push_indented(1, quote_len_method_from_obj(ext_class, obj), 1);
 
         if *kind != ObjectKind::Archetype {
             code.push_indented(0, quote_aliases_from_object(obj), 1);
@@ -1101,7 +1113,7 @@ fn code_for_union(
     let inner_type = if field_types.len() > 1 {
         format!("Union[{}]", field_types.iter().join(", "))
     } else {
-        field_types.iter().next().unwrap().to_string()
+        field_types.iter().next().unwrap().clone()
     };
 
     // components and datatypes have converters only if manually provided
@@ -1419,6 +1431,37 @@ fn quote_array_method_from_obj(
         def __array__(self, dtype: npt.DTypeLike=None, copy: bool|None=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
             return np.asarray(self.{field_name}, dtype=dtype, copy=copy)
+        ",
+        ext_class.name, ext_class.file_name
+    ))
+}
+
+fn quote_len_method_from_obj(ext_class: &ExtensionClass, obj: &Object) -> String {
+    // allow overriding the __len__ function
+    if ext_class.has_len {
+        return format!("# __len__ can be found in {}", ext_class.file_name);
+    }
+
+    // exclude archetypes, objects which don't have a single field, and anything that isn't plural
+    if obj.kind == ObjectKind::Archetype || obj.fields.len() != 1 || !obj.fields[0].typ.is_plural()
+    {
+        return String::new();
+    }
+
+    let field_name = &obj.fields[0].name;
+
+    let null_string = if obj.fields[0].is_nullable {
+        // If the field is optional, we return 0 if it is None.
+        format!(" if self.{field_name} is not None else 0")
+    } else {
+        String::new()
+    };
+
+    unindent(&format!(
+        "
+        def __len__(self) -> int:
+            # You can define your own __len__ function as a member of {} in {}
+            return len(self.{field_name}){null_string}
         ",
         ext_class.name, ext_class.file_name
     ))
@@ -2046,7 +2089,11 @@ fn quote_arrow_serialization(
             let mut code = String::new();
 
             code.push_indented(0, "from typing import cast", 1);
-            code.push_indented(0, quote_local_batch_type_imports(&obj.fields), 2);
+            code.push_indented(
+                0,
+                quote_local_batch_type_imports(&obj.fields, obj.is_testing()),
+                2,
+            );
             code.push_indented(0, format!("if isinstance(data, {name}):"), 1);
             code.push_indented(1, "data = [data]", 2);
 
@@ -2230,7 +2277,7 @@ return pa.array(pa_data, type=data_type)
                 })
                 .join(", ");
 
-            let batch_type_imports = quote_local_batch_type_imports(&obj.fields);
+            let batch_type_imports = quote_local_batch_type_imports(&obj.fields, obj.is_testing());
             Ok(format!(
                 r##"
 {batch_type_imports}
@@ -2278,7 +2325,7 @@ return pa.UnionArray.from_buffers(
     }
 }
 
-fn quote_local_batch_type_imports(fields: &[ObjectField]) -> String {
+fn quote_local_batch_type_imports(fields: &[ObjectField], current_obj_is_testing: bool) -> String {
     let mut code = String::new();
 
     for field in fields {
@@ -2292,7 +2339,26 @@ fn quote_local_batch_type_imports(fields: &[ObjectField]) -> String {
             let mod_path = &field_fqname[..last_dot];
             let field_type_name = &field_fqname[last_dot + 1..];
 
-            code.push_unindented(format!("from {mod_path} import {field_type_name}Batch"), 1);
+            // If both the current object and the field object are testing types,
+            // use relative imports instead of absolute ones
+            let is_field_testing = crate::objects::is_testing_fqname(field_fqname);
+            let import_path = if current_obj_is_testing && is_field_testing {
+                // Extract the relative path within the testing namespace
+                if let Some(testing_prefix) = mod_path.strip_prefix("rerun.testing.datatypes") {
+                    format!(".{testing_prefix}")
+                } else if mod_path == "rerun.testing" {
+                    ".".to_owned()
+                } else {
+                    mod_path.to_owned()
+                }
+            } else {
+                mod_path.to_owned()
+            };
+
+            code.push_unindented(
+                format!("from {import_path} import {field_type_name}Batch"),
+                1,
+            );
         }
     }
     code
@@ -2450,7 +2516,7 @@ fn quote_init_method(
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = quote_doc_lines(doc_string_lines);
 
     let custom_init_hint = format!(
@@ -2574,7 +2640,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
     unindent(&format!(
@@ -2658,7 +2724,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
     let kwargs = quote_component_field_mapping(obj);
