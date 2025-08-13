@@ -55,7 +55,7 @@ def main() -> None:
     diff_output: str = "".join(diff)
     sys.stderr.write(diff_output)
 
-    print(f"\nUpdate with: pixi run man", file=sys.stderr)
+    print("\nUpdate with: pixi run man", file=sys.stderr)
     sys.exit(1)
 
 
