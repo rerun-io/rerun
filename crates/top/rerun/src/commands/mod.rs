@@ -25,6 +25,7 @@ impl CallSource {
 mod auth;
 
 mod entrypoint;
+mod mcap;
 mod rrd;
 mod stdio;
 
@@ -32,6 +33,7 @@ mod stdio;
 mod analytics;
 
 pub use self::entrypoint::run;
+pub use self::mcap::McapCommands;
 pub use self::rrd::RrdCommands;
 pub use self::stdio::{
     read_raw_rrd_streams_from_file_or_stdin, read_rrd_streams_from_file_or_stdin,
