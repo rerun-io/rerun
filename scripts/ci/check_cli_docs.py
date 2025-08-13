@@ -3,31 +3,14 @@
 
 from __future__ import annotations
 
-import argparse
 import difflib
 import subprocess
 import sys
 from pathlib import Path
 
-default_command = ["cargo", "run", "--package", "rerun-cli", "--all-features", "--", "man"]
-
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Check if CLI documentation is up-to-date")
-    parser.add_argument(
-        "command",
-        nargs="*",
-        default=default_command,
-        help="Command to run (default: cargo run --features release -- man)",
-    )
-
-    args = parser.parse_args()
-
-    # Handle command as list
-    command: list[str] = args.command if isinstance(args.command, list) else [args.command]
-    if not command or command == []:
-        command = default_command
-
+    command = ["cargo", "run", "--package", "rerun-cli", "--all-features", "--", "man"]
     expected_file: Path = Path("docs/content/reference/cli.md")
 
     # Generate current output
@@ -69,7 +52,7 @@ def main() -> None:
     diff_output: str = "".join(diff)
     sys.stderr.write(diff_output)
 
-    print(f"\nUpdate with: pixi run man", file=sys.stderr)
+    print("\nUpdate docs with: pixi run man", file=sys.stderr)
     sys.exit(1)
 
 
