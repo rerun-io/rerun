@@ -4,27 +4,10 @@ use re_types::archetypes::TextDocument;
 
 use crate::mcap::{
     cdr,
-    decode::{McapMessageParser, ParserContext, PluginError, SchemaName, SchemaPlugin},
+    decode::{McapMessageParser, ParserContext, PluginError},
 };
 
 /// Plugin that parses `std_msgs/msg/String` messages.
-#[derive(Default)]
-pub struct StringSchemaPlugin;
-
-impl SchemaPlugin for StringSchemaPlugin {
-    fn name(&self) -> SchemaName {
-        "std_msgs/msg/String".into()
-    }
-
-    fn create_message_parser(
-        &self,
-        _channel: &mcap::Channel<'_>,
-        num_rows: usize,
-    ) -> Box<dyn McapMessageParser> {
-        Box::new(StringMessageParser::new(num_rows)) as Box<dyn McapMessageParser>
-    }
-}
-
 pub struct StringMessageParser {
     /// The text content from String messages.
     texts: Vec<String>,

@@ -1,6 +1,3 @@
-pub mod protobuf;
-mod raw;
-
 pub mod sensor_msgs;
 pub mod std_msgs;
 
@@ -10,7 +7,6 @@ use arrow::{
     array::{FixedSizeListBuilder, ListBuilder, UInt8Builder},
     datatypes::{DataType, Field},
 };
-pub use raw::RawMcapMessageParser;
 use re_types::{Loggable as _, components};
 
 pub(crate) fn fixed_size_list_builder<T: arrow::array::ArrayBuilder + Default>(

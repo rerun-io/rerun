@@ -354,6 +354,9 @@ pub enum DataLoaderError {
     #[error("No data-loader support for {0:?}")]
     Incompatible(std::path::PathBuf),
 
+    #[error(transparent)]
+    Mcap(#[from] ::mcap::McapError),
+
     #[error("{}", re_error::format(.0))]
     Other(#[from] anyhow::Error),
 }
@@ -419,7 +422,7 @@ static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
-        Arc::new(McapLoader),
+        Arc::new(McapLoader::default()),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]

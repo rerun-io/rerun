@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use arrow::{
     array::{
@@ -8,32 +8,25 @@ use arrow::{
     },
     datatypes::{DataType, Field, Fields},
 };
-use mcap::Schema;
 use prost_reflect::{
     DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, Value,
 };
 use re_chunk::{Chunk, ChunkId};
 use re_types::ComponentDescriptor;
 
-use crate::mcap::decode::{McapMessageParser, PluginError};
+use crate::mcap::layers::LayerIdentifier;
+use crate::mcap::{
+    decode::{McapMessageParser, PluginError},
+    layers::MessageLayer,
+};
 
-pub struct ProtobufMessageParser {
+struct ProtobufMessageParser {
     message_descriptor: MessageDescriptor,
     fields: BTreeMap<String, FixedSizeListBuilder<Box<dyn ArrayBuilder>>>,
-    schema_name: String,
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("invalid schema {schema}: {source}")]
-    InvalidSchema {
-        schema: String,
-        source: prost_reflect::DescriptorError,
-    },
-
-    #[error("missing schema for message: {0}")]
-    MissingSchema(String),
-
     #[error("invalid message on channel {channel} for schema {schema}: {source}")]
     InvalidMessage {
         schema: String,
@@ -55,18 +48,7 @@ pub enum Error {
 }
 
 impl ProtobufMessageParser {
-    pub fn try_new(num_rows: usize, schema: &Arc<Schema<'_>>) -> Result<Self, Error> {
-        // TODO(grtlr): Performance: store the descriptor pool somewhere to avoid doing the thing on every message!
-        let pool =
-            DescriptorPool::decode(schema.data.as_ref()).map_err(|err| Error::InvalidSchema {
-                schema: schema.name.clone(),
-                source: err,
-            })?;
-
-        let message_descriptor = pool
-            .get_message_by_name(schema.name.as_str())
-            .ok_or_else(|| Error::MissingSchema(schema.name.clone()))?;
-
+    fn new(num_rows: usize, message_descriptor: MessageDescriptor) -> Self {
         let mut fields = BTreeMap::new();
 
         // We recursively build up the Arrow builders for this particular message.
@@ -81,19 +63,21 @@ impl ProtobufMessageParser {
         }
 
         if message_descriptor.oneofs().len() > 0 {
-            re_log::warn_once!("`oneof` in schema {} is not supported yet.", schema.name);
+            re_log::warn_once!(
+                "`oneof` in schema {} is not supported yet.",
+                message_descriptor.full_name()
+            );
             debug_assert!(
                 message_descriptor.oneofs().len() == 0,
                 "`oneof` in schema {} is not supported yet",
-                schema.name
+                message_descriptor.full_name()
             );
         }
 
-        Ok(Self {
+        Self {
             message_descriptor,
             fields,
-            schema_name: schema.name.clone(),
-        })
+        }
     }
 }
 
@@ -107,7 +91,7 @@ impl McapMessageParser for ProtobufMessageParser {
         let dynamic_message =
             DynamicMessage::decode(self.message_descriptor.clone(), msg.data.as_ref()).map_err(
                 |err| Error::InvalidMessage {
-                    schema: self.schema_name.clone(),
+                    schema: self.message_descriptor.full_name().to_owned(),
                     channel: msg.channel.topic.clone(),
                     source: err,
                 },
@@ -137,9 +121,8 @@ impl McapMessageParser for ProtobufMessageParser {
         let timelines = ctx.build_timelines();
 
         let Self {
-            message_descriptor: _,
+            message_descriptor,
             fields,
-            schema_name: archetype,
         } = *self;
 
         let message_chunk = Chunk::from_auto_row_ids(
@@ -151,7 +134,7 @@ impl McapMessageParser for ProtobufMessageParser {
                 .map(|(field, mut builder)| {
                     (
                         ComponentDescriptor::partial(field)
-                            .with_archetype(archetype.as_str().into()),
+                            .with_archetype(message_descriptor.full_name().into()),
                         builder.finish().into(),
                     )
                 })
@@ -324,4 +307,63 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
     }
 
     inner
+}
+
+/// Provides reflection-based conversion of protobuf-encoded MCAP messages.
+///
+/// Applying this layer will result in a direct Arrow representation of the fields.
+/// This is useful for querying certain fields from an MCAP file, but wont result
+/// in semantic types that can be picked up by the Rerun viewer.
+#[derive(Debug, Default)]
+pub struct McapProtobufLayer {
+    descrs_per_topic: ahash::HashMap<String, MessageDescriptor>,
+}
+
+impl MessageLayer for McapProtobufLayer {
+    fn identifier() -> LayerIdentifier {
+        "protobuf".into()
+    }
+
+    fn init(&mut self, summary: &mcap::Summary) -> Result<(), PluginError> {
+        for channel in summary.channels.values() {
+            let schema = channel
+                .schema
+                .as_ref()
+                .ok_or(PluginError::NoSchema(channel.topic.clone()))?;
+
+            if schema.encoding.as_str() != "protobuf" {
+                continue;
+            }
+
+            let pool = DescriptorPool::decode(schema.data.as_ref()).map_err(|err| {
+                PluginError::InvalidSchema {
+                    schema: schema.name.clone(),
+                    source: err.into(),
+                }
+            })?;
+
+            let message_descriptor = pool
+                .get_message_by_name(schema.name.as_str())
+                .ok_or_else(|| PluginError::NoSchema(schema.name.clone()))?;
+
+            let found = self
+                .descrs_per_topic
+                .insert(channel.topic.clone(), message_descriptor);
+            debug_assert!(found.is_none());
+        }
+
+        Ok(())
+    }
+
+    fn message_parser(
+        &self,
+        channel: &mcap::Channel<'_>,
+        num_rows: usize,
+    ) -> Option<Box<dyn McapMessageParser>> {
+        let message_descriptor = self.descrs_per_topic.get(&channel.topic)?;
+        Some(Box::new(ProtobufMessageParser::new(
+            num_rows,
+            message_descriptor.clone(),
+        )))
+    }
 }
