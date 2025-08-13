@@ -211,7 +211,7 @@ pub struct DesignTokens {
 
     pub code_index: Color32,
     pub code_string: Color32,
-    pub code_number: Color32,
+    pub code_primitive: Color32,
 }
 
 impl DesignTokens {
@@ -348,7 +348,7 @@ impl DesignTokens {
 
             code_index: get_color("code_index"),
             code_string: get_color("code_string"),
-            code_number: get_color("code_number"),
+            code_primitive: get_color("code_primitive"),
         })
     }
 
