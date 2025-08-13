@@ -8,11 +8,12 @@ use arrow::datatypes::{ArrowNativeType, DataType, UnionMode};
 use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use arrow::*;
-use egui::Ui;
+use egui::{Ui, WidgetText};
 use half::f16;
 use re_format::{format_f32, format_f64, format_int, format_uint};
 use re_ui::UiExt;
 use re_ui::list_item::PropertyContent;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use std::fmt::{Display, Formatter, Write};
 use std::ops::Range;
 
@@ -83,9 +84,27 @@ fn make_ui<'a>(
     }
 }
 
-impl<'a> ShowIndex for ArrayFormatter<'a> {
-    fn write(&self, idx: usize, f: &mut dyn Write) -> FormatResult {
-        self.value(idx).write(f)?;
+struct ShowBuiltIn<'a> {
+    array: &'a dyn Array,
+    formatter: ArrayFormatter<'a>,
+}
+
+impl<'a> ShowIndex for ShowBuiltIn<'a> {
+    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult {
+        let mut text = String::new();
+        self.formatter.value(idx).write(&mut text)?;
+
+        let dt = self.array.data_type();
+        if matches!(
+            dt,
+            DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View
+        ) {
+            f.code_string_value(&text);
+        } else {
+            // TODO: Should dates be primitives?
+            f.code_primitive(&text);
+        }
+
         Ok(())
     }
 }
@@ -94,10 +113,14 @@ fn show_arrow_builtin<'a>(
     array: &'a dyn Array,
     options: &FormatOptions<'a>,
 ) -> Result<Box<dyn ShowIndex + 'a>, ArrowError> {
-    Ok(Box::new(ArrayFormatter::try_new(array, options)?))
+    Ok(Box::new(ShowBuiltIn {
+        formatter: ArrayFormatter::try_new(array, options)?,
+        array,
+    }))
 }
 
 /// Either an [`ArrowError`] or [`std::fmt::Error`]
+#[derive(Debug)]
 enum FormatError {
     Format(std::fmt::Error),
     Arrow(ArrowError),
@@ -119,12 +142,19 @@ impl From<ArrowError> for FormatError {
 
 /// [`Display`] but accepting an index
 trait ShowIndex {
-    fn write(&self, idx: usize, f: &mut dyn Write) -> FormatResult;
+    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult;
 
     fn show(&self, idx: usize, ui: &mut Ui) {
-        let mut text = String::new();
-        let result = self.write(idx, &mut text);
-        ui.label(text);
+        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+        let result = self.write(idx, &mut highlighted);
+        match result {
+            Ok(_) => {
+                ui.label(highlighted.into_widget_text());
+            }
+            Err(err) => {
+                ui.error_label(format!("Error formatting value: {err:?}"));
+            }
+        }
     }
 
     fn is_item_nested(&self) -> bool {
@@ -138,12 +168,24 @@ trait ShowIndexState<'a> {
 
     fn prepare(&self, options: &FormatOptions<'a>) -> Result<Self::State, ArrowError>;
 
-    fn write(&self, state: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult;
+    fn write(
+        &self,
+        state: &Self::State,
+        idx: usize,
+        f: &mut SyntaxHighlightedBuilder,
+    ) -> FormatResult;
 
     fn show(&self, state: &Self::State, idx: usize, ui: &mut Ui) {
-        let mut text = String::new();
-        let result = self.write(state, idx, &mut text);
-        ui.label(text);
+        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+        let result = self.write(state, idx, &mut highlighted);
+        match result {
+            Ok(_) => {
+                ui.label(highlighted.into_widget_text());
+            }
+            Err(err) => {
+                ui.error_label(format!("Error formatting value: {err:?}"));
+            }
+        }
     }
 
     fn is_item_nested(&self) -> bool {
@@ -158,7 +200,7 @@ impl<'a, T: ShowIndex> ShowIndexState<'a> for T {
         Ok(())
     }
 
-    fn write(&self, _: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
+    fn write(&self, _: &Self::State, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult {
         ShowIndex::write(self, idx, f)
     }
 
@@ -193,10 +235,10 @@ where
 }
 
 impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
-    fn write(&self, idx: usize, f: &mut dyn Write) -> FormatResult {
+    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult {
         if self.array.is_null(idx) {
             if !self.null.is_empty() {
-                f.write_str(self.null)?
+                f.code_primitive(self.null)
             }
             return Ok(());
         }
@@ -216,10 +258,10 @@ macro_rules! primitive_display {
     ($fmt:ident: $($t:ty),+) => {
         $(impl<'a> ShowIndex for &'a PrimitiveArray<$t>
         {
-            fn write(&self, idx: usize, f: &mut dyn Write) -> FormatResult {
+            fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult {
                 let value = self.value(idx);
                 let s = $fmt(value);
-                f.write_str(&s)?;
+                f.code_primitive(&s);
                 Ok(())
             }
         })+
@@ -244,7 +286,7 @@ impl<'a, K: ArrowDictionaryKeyType> ShowIndexState<'a> for &'a DictionaryArray<K
         make_ui(self.values().as_ref(), options)
     }
 
-    fn write(&self, s: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
+    fn write(&self, s: &Self::State, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult {
         let value_idx = self.keys().values()[idx].as_usize();
         s.as_ref().write(value_idx, f)
     }
@@ -257,28 +299,33 @@ impl<'a, K: RunEndIndexType> ShowIndexState<'a> for &'a RunArray<K> {
         make_ui(self.values().as_ref(), options)
     }
 
-    fn write(&self, s: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
+    fn write(&self, s: &Self::State, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult {
         let value_idx = self.get_physical_index(idx);
         s.as_ref().write(value_idx, f)
     }
 }
 
-fn write_list(f: &mut dyn Write, mut range: Range<usize>, values: &dyn ShowIndex) -> FormatResult {
-    f.write_char('[')?;
+fn write_list(
+    f: &mut SyntaxHighlightedBuilder,
+    mut range: Range<usize>,
+    values: &dyn ShowIndex,
+) -> FormatResult {
+    f.code_syntax("[");
     if let Some(idx) = range.next() {
         values.write(idx, f)?;
     }
     for idx in range {
-        write!(f, ", ")?;
+        f.code_syntax(", ");
         values.write(idx, f)?;
     }
-    f.write_char(']')?;
+    f.code_syntax("]");
     Ok(())
 }
 
 enum NodeLabel {
     Index(usize),
     Name(String),
+    Custom(WidgetText),
 }
 pub struct ArrowNode<'a> {
     label: NodeLabel,
@@ -286,9 +333,16 @@ pub struct ArrowNode<'a> {
 }
 
 impl<'a> ArrowNode<'a> {
-    pub fn name(name: &str, values: &'a dyn ShowIndex) -> Self {
+    pub fn custom(name: impl Into<WidgetText>, values: &'a dyn ShowIndex) -> Self {
         Self {
-            label: NodeLabel::Name(name.to_string()),
+            label: NodeLabel::Custom(name.into()),
+            values,
+        }
+    }
+
+    pub fn name(name: impl Into<String>, values: &'a dyn ShowIndex) -> Self {
+        Self {
+            label: NodeLabel::Name(name.into()),
             values,
         }
     }
@@ -300,20 +354,29 @@ impl<'a> ArrowNode<'a> {
         }
     }
 
-    pub fn show(&self, ui: &mut Ui, index: usize) {
-        let label = match &self.label {
-            NodeLabel::Index(idx) => format!("{idx}"),
-            NodeLabel::Name(name) => name.clone(),
+    pub fn show(self, ui: &mut Ui, index: usize) {
+        let label = match self.label {
+            NodeLabel::Index(idx) => {
+                let mut builder = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+                builder.code_index(&format_uint(idx));
+                builder.into_widget_text()
+            }
+            NodeLabel::Name(name) => {
+                let mut builder = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+                builder.code_name(&name);
+                builder.into_widget_text()
+            }
+            NodeLabel::Custom(name) => name,
         };
 
-        let mut value = String::new();
+        let mut value = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
         self.values.write(index, &mut value); // TODO: Handle error
 
         let nested = self.values.is_item_nested();
 
         let mut item = ui.list_item();
-        let id = ui.unique_id().with(index).with(&label);
-        let mut content = PropertyContent::new(label).value_text(value);
+        let id = ui.unique_id().with(index).with(label.text());
+        let content = PropertyContent::new(label).value_text(value.into_widget_text());
 
         if nested {
             item.show_hierarchical_with_children(ui, id, false, content, |ui| {
@@ -341,7 +404,7 @@ impl<'a, O: OffsetSizeTrait> ShowIndexState<'a> for &'a GenericListArray<O> {
         make_ui(self.values().as_ref(), options)
     }
 
-    fn write(&self, s: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
+    fn write(&self, s: &Self::State, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult {
         let offsets = self.value_offsets();
         let end = offsets[idx + 1].as_usize();
         let start = offsets[idx].as_usize();
@@ -370,7 +433,7 @@ impl<'a> ShowIndexState<'a> for &'a FixedSizeListArray {
         Ok((length as usize, values))
     }
 
-    fn write(&self, s: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
+    fn write(&self, s: &Self::State, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult {
         let start = idx * s.0;
         let end = start + s.0;
         write_list(f, start..end, s.1.as_ref())
@@ -409,24 +472,27 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
             .collect()
     }
 
-    fn write(&self, s: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
+    fn write(&self, s: &Self::State, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult {
         let mut iter = s.iter();
-        f.write_char('{')?;
+        f.code_syntax("{");
         if let Some((name, display)) = iter.next() {
-            write!(f, "{name}: ")?;
+            f.code_name(name);
+            f.code_syntax(": ");
             display.as_ref().write(idx, f)?;
         }
         for (name, display) in iter {
-            write!(f, ", {name}: ")?;
+            f.code_syntax(", ");
+            f.code_name(name);
+            f.code_syntax(": ");
             display.as_ref().write(idx, f)?;
         }
-        f.write_char('}')?;
+        f.code_syntax("}");
         Ok(())
     }
 
     fn show(&self, state: &Self::State, idx: usize, ui: &mut Ui) {
         for (name, display) in state {
-            let node = ArrowNode::name(name, display.as_ref());
+            let node = ArrowNode::name(*name, display.as_ref());
             node.show(ui, idx);
         }
     }
@@ -447,27 +513,27 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
         Ok((keys, values))
     }
 
-    fn write(&self, s: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
+    fn write(&self, s: &Self::State, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult {
         let offsets = self.value_offsets();
         let end = offsets[idx + 1].as_usize();
         let start = offsets[idx].as_usize();
         let mut iter = start..end;
 
-        f.write_char('{')?;
+        f.code_syntax("{");
         if let Some(idx) = iter.next() {
             s.0.write(idx, f)?;
-            write!(f, ": ")?;
+            f.code_syntax(": ");
             s.1.write(idx, f)?;
         }
 
         for idx in iter {
-            write!(f, ", ")?;
+            f.code_syntax(", ");
             s.0.write(idx, f)?;
-            write!(f, ": ")?;
+            f.code_syntax(": ");
             s.1.write(idx, f)?;
         }
 
-        f.write_char('}')?;
+        f.code_syntax("}");
         Ok(())
     }
 
@@ -478,10 +544,10 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
         let mut iter = start..end;
 
         for idx in iter {
-            let mut key_string = String::new();
-            state.0.write(idx, &mut key_string);
+            let mut key_string = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+            state.0.write(idx, &mut key_string); // TODO: Handle error
 
-            ArrowNode::name(&key_string, state.1.as_ref()).show(ui, idx);
+            ArrowNode::custom(key_string.into_widget_text(), state.1.as_ref()).show(ui, idx);
         }
     }
 
@@ -510,7 +576,7 @@ impl<'a> ShowIndexState<'a> for &'a UnionArray {
         Ok((out, *mode))
     }
 
-    fn write(&self, s: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
+    fn write(&self, s: &Self::State, idx: usize, f: &mut SyntaxHighlightedBuilder) -> FormatResult {
         let id = self.type_id(idx);
         let idx = match s.1 {
             UnionMode::Dense => self.value_offset(idx),
@@ -518,9 +584,12 @@ impl<'a> ShowIndexState<'a> for &'a UnionArray {
         };
         let (name, field) = s.0[id as usize].as_ref().unwrap();
 
-        write!(f, "{{{name}=")?;
+        f.code_syntax("{");
+        f.code_name(name);
+        f.code_syntax("=");
         field.write(idx, f)?;
-        f.write_char('}')?;
+        f.code_syntax("}");
+
         Ok(())
     }
 
@@ -532,13 +601,12 @@ impl<'a> ShowIndexState<'a> for &'a UnionArray {
         };
         let (name, field) = state.0[id as usize].as_ref().unwrap();
 
-        let node = ArrowNode::name(name, field.as_ref());
+        let node = ArrowNode::name(*name, field.as_ref());
         node.show(ui, idx);
     }
 
     fn is_item_nested(&self) -> bool {
         let data_type = self.data_type();
-        dbg!(data_type);
         data_type.is_nested()
     }
 }

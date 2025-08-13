@@ -8,6 +8,7 @@ use re_log_types::{
     },
 };
 
+use crate::DesignTokens;
 use egui::{Color32, Style, TextFormat, text::LayoutJob};
 
 // ----------------------------------------------------------------------------
@@ -24,16 +25,18 @@ pub trait SyntaxHighlighting {
 // ----------------------------------------------------------------------------
 
 /// Easily build syntax-highlighted text.
-pub struct SyntaxHighlightedBuilder {
-    pub style: Arc<Style>,
+pub struct SyntaxHighlightedBuilder<'a> {
+    pub style: &'a Style,
+    pub tokens: &'a DesignTokens,
     pub job: LayoutJob,
 }
 
-/// Easilut build
-impl SyntaxHighlightedBuilder {
-    pub fn new(style: Arc<Style>) -> Self {
+/// Easily build syntax-highlighted [`LayoutJob`]s.
+impl<'a> SyntaxHighlightedBuilder<'a> {
+    pub fn new(style: &'a Style, tokens: &'a DesignTokens) -> Self {
         Self {
             style,
+            tokens,
             job: LayoutJob::default(),
         }
     }
@@ -42,6 +45,42 @@ impl SyntaxHighlightedBuilder {
     pub fn append(mut self, portion: &dyn SyntaxHighlighting) -> Self {
         portion.syntax_highlight_into(&self.style, &mut self.job);
         self
+    }
+
+    /// Some string data.
+    pub fn code_string_value(&mut self, portion: &str) {
+        let mut format = monospace_text_format(self.style);
+        format.color = self.tokens.code_string;
+        self.job.append(portion, 0.0, format);
+    }
+
+    /// A string name (e.g. the key of a map).
+    pub fn code_name(&mut self, portion: &str) {
+        let mut format = monospace_text_format(self.style);
+        format.color = self.tokens.text_default;
+        self.job.append(portion, 0.0, format);
+    }
+
+    /// An index number, e.g. an array index.
+    pub fn code_index(&mut self, portion: &str) {
+        let mut format = monospace_text_format(self.style);
+        format.color = self.tokens.code_index;
+        self.job.append(portion, 0.0, format);
+    }
+
+    /// Some primitive value, e.g. a number or bool.
+    pub fn code_primitive(&mut self, portion: &str) {
+        let mut format = monospace_text_format(self.style);
+        // TODO: Rename token name
+        format.color = self.tokens.code_number;
+        self.job.append(portion, 0.0, format);
+    }
+
+    /// Some syntax, e.g. brackets, commas, colons, etc.
+    pub fn code_syntax(&mut self, portion: &str) {
+        let mut format = monospace_text_format(self.style);
+        format.color = self.tokens.text_strong;
+        self.job.append(portion, 0.0, format);
     }
 
     #[inline]
@@ -55,13 +94,13 @@ impl SyntaxHighlightedBuilder {
     }
 }
 
-impl From<SyntaxHighlightedBuilder> for LayoutJob {
+impl From<SyntaxHighlightedBuilder<'_>> for LayoutJob {
     fn from(builder: SyntaxHighlightedBuilder) -> Self {
         builder.into_job()
     }
 }
 
-impl From<SyntaxHighlightedBuilder> for egui::WidgetText {
+impl From<SyntaxHighlightedBuilder<'_>> for egui::WidgetText {
     fn from(builder: SyntaxHighlightedBuilder) -> Self {
         builder.into_widget_text()
     }
@@ -85,6 +124,14 @@ fn faint_text_format(style: &Style) -> TextFormat {
     TextFormat {
         color: style.visuals.strong_text_color(),
         ..text_format(style)
+    }
+}
+
+fn monospace_text_format(style: &Style) -> TextFormat {
+    TextFormat {
+        font_id: egui::TextStyle::Monospace.resolve(style),
+        color: style.visuals.text_color(),
+        ..Default::default()
     }
 }
 
