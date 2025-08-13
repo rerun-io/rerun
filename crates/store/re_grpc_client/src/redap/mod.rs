@@ -77,6 +77,8 @@ pub fn stream_dataset_from_redap(
     rx
 }
 
+// TODO(ab): do not publish this out of this crate (for now it is still being used by rerun_py
+// the viewer grpc connection). Ideally we'd only publish `ClientConnectionError`.
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectionError {
     /// Native connection error
@@ -86,9 +88,6 @@ pub enum ConnectionError {
 
     #[error("server is expecting an unencrypted connection (try `rerun+http://` if you are sure)")]
     UnencryptedServer,
-
-    #[error("invalid origin: {0}")]
-    InvalidOrigin(String),
 }
 
 #[cfg(target_arch = "wasm32")]

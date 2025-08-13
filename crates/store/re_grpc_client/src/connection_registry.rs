@@ -2,6 +2,7 @@ use std::collections::{HashMap, hash_map::Entry};
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
+use tonic::Code;
 
 use re_auth::Jwt;
 
@@ -44,6 +45,38 @@ impl ConnectionRegistry {
                 fallback_token: None,
                 clients: HashMap::new(),
             })),
+        }
+    }
+}
+
+/// Possible errors when creating a connection.
+#[derive(Debug, thiserror::Error)]
+pub enum ClientConnectionError {
+    /// Native connection error
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Connection error: {0}")]
+    Tonic(#[from] tonic::transport::Error),
+
+    #[error("server is expecting an unencrypted connection (try `rerun+http://` if you are sure)")]
+    UnencryptedServer,
+
+    #[error("the server requires an authentication token, but none was provided: {0}")]
+    UnauthenticatedMissingToken(tonic::Status),
+
+    #[error("the server rejected the provided authentication token: {0}")]
+    UnauthenticatedBadToken(tonic::Status),
+
+    #[error("failed to obtain server version: {0}")]
+    VersionError(tonic::Status),
+}
+
+impl From<ConnectionError> for ClientConnectionError {
+    fn from(value: ConnectionError) -> Self {
+        match value {
+            #[cfg(not(target_arch = "wasm32"))]
+            ConnectionError::Tonic(err) => Self::Tonic(err),
+
+            ConnectionError::UnencryptedServer => Self::UnencryptedServer,
         }
     }
 }
@@ -106,7 +139,7 @@ impl ConnectionRegistryHandle {
     pub async fn client(
         &self,
         origin: re_uri::Origin,
-    ) -> Result<ConnectionClient, ConnectionError> {
+    ) -> Result<ConnectionClient, ClientConnectionError> {
         // happy path
         {
             let inner = self.inner.read().await;
@@ -127,14 +160,44 @@ impl ConnectionRegistryHandle {
                 .or_else(get_token_from_env)
         };
 
-        let client = crate::redap::client(origin.clone(), token).await;
-        match client {
+        let client = crate::redap::client(origin.clone(), token.clone()).await;
+        let mut client = match client {
             Ok(client) => {
                 let mut inner = self.inner.write().await;
-                inner.clients.insert(origin, client.clone());
-                Ok(ConnectionClient::new(client))
+                inner.clients.insert(origin.clone(), client.clone());
+                ConnectionClient::new(client)
             }
-            Err(err) => Err(err),
+            Err(err) => {
+                return Err(err.into());
+            }
+        };
+
+        // Call the version endpoint to check that authentication is successful. It's ok to do this
+        // since we're caching the client, so we're not spamming such request unnecessarily.
+        let request_result = client
+            .inner()
+            .version(re_protos::frontend::v1alpha1::VersionRequest {})
+            .await;
+
+        match request_result {
+            // catch unauthenticated errors and forget the token if they happen
+            Err(err) if err.code() == Code::Unauthenticated => {
+                let mut inner = self.inner.write().await;
+                if inner.saved_tokens.contains_key(&origin) {
+                    re_log::debug!("Removing token for origin {origin} as it is no longer valid");
+                    inner.clients.remove(&origin);
+                }
+
+                if token.is_none() {
+                    Err(ClientConnectionError::UnauthenticatedMissingToken(err))
+                } else {
+                    Err(ClientConnectionError::UnauthenticatedBadToken(err))
+                }
+            }
+
+            Ok(_) => Ok(client),
+
+            Err(err) => Err(ClientConnectionError::VersionError(err)),
         }
     }
 
