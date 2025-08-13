@@ -90,6 +90,8 @@ While we try to keep the main branch usable at all times, it may be unstable occ
 pixi run -e py py-build && pixi run -e py py-test
 ```
 
+If you run into a problem, run `rm -rf .pixi` and try again.
+
 # Running specific Python unit tests
 ```sh
 pixi run -e py py-build && pixi run -e py pytest rerun_py/tests/unit/test_tensor.py
