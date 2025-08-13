@@ -7173,15 +7173,14 @@ name = "re_arrow_ui"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
  "arrow",
- "chrono",
  "egui",
+ "egui_kittest",
  "half",
- "itertools 0.14.0",
  "re_arrow_util",
  "re_format",
  "re_tracing",
+ "re_types",
  "re_ui",
- "ryu",
 ]
 
 [[package]]

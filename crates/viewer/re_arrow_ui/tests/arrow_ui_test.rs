@@ -1,5 +1,3 @@
-#![cfg(feature = "arrow")]
-
 use std::f32::consts::PI;
 
 use re_ui::{UiExt as _, UiLayout};
@@ -72,7 +70,7 @@ fn show_some_arrow_ui(ui: &mut egui::Ui) {
         for (name, arrow_result) in tests {
             ui.grid_left_hand_label(name);
             let arrow = arrow_result.expect("Failed to convert to arrow");
-            re_ui::arrow_ui(ui, UiLayout::List, &arrow);
+            re_arrow_ui::arrow_ui(ui, UiLayout::List, &arrow);
             ui.end_row();
         }
     });

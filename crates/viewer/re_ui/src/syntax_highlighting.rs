@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use re_entity_db::InstancePath;
 use re_log_types::{
     ComponentPath, EntityPath, EntityPathPart, Instance,
@@ -43,7 +41,7 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
 
     #[inline]
     pub fn append(mut self, portion: &dyn SyntaxHighlighting) -> Self {
-        portion.syntax_highlight_into(&self.style, &mut self.job);
+        portion.syntax_highlight_into(self.style, &mut self.job);
         self
     }
 
@@ -51,7 +49,6 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
     pub fn code_string_value(&mut self, portion: &str) {
         let mut format = monospace_text_format(self.style);
         format.color = self.tokens.code_string;
-        // TODO: To quote or not to quote?
         self.job.append("\"", 0.0, format.clone());
         self.job.append(portion, 0.0, format.clone());
         self.job.append("\"", 0.0, format);
@@ -98,13 +95,13 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
 }
 
 impl From<SyntaxHighlightedBuilder<'_>> for LayoutJob {
-    fn from(builder: SyntaxHighlightedBuilder) -> Self {
+    fn from(builder: SyntaxHighlightedBuilder<'_>) -> Self {
         builder.into_job()
     }
 }
 
 impl From<SyntaxHighlightedBuilder<'_>> for egui::WidgetText {
-    fn from(builder: SyntaxHighlightedBuilder) -> Self {
+    fn from(builder: SyntaxHighlightedBuilder<'_>) -> Self {
         builder.into_widget_text()
     }
 }

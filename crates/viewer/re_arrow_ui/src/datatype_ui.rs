@@ -1,92 +1,93 @@
 use arrow::datatypes::DataType;
 use egui::Id;
-use re_ui::UiExt;
+use re_ui::UiExt as _;
 use re_ui::list_item::PropertyContent;
 
-pub fn data_type_ui<'a>(
-    data_type: &'a DataType,
-) -> (String, Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>) {
+pub struct DataTypeUi<'a> {
+    pub type_name: String,
+    #[allow(clippy::type_complexity)]
+    pub content: Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>,
+}
+
+pub fn data_type_ui(data_type: &DataType) -> DataTypeUi<'_> {
     match data_type {
-        DataType::Struct(fields) => (
-            "struct".to_owned(),
-            Some(Box::new(move |ui| {
+        DataType::Struct(fields) => DataTypeUi {
+            type_name: "struct".to_owned(),
+            content: Some(Box::new(move |ui| {
                 for field in fields {
                     data_type_field_ui(ui, field);
                 }
             })),
-        ),
-        DataType::List(field) => (
-            "list".to_owned(),
-            Some(Box::new(move |ui| {
+        },
+        DataType::List(field) => DataTypeUi {
+            type_name: "list".to_owned(),
+            content: Some(Box::new(move |ui| {
                 data_type_field_ui(ui, field);
             })),
-        ),
-        DataType::ListView(field) => (
-            "list view".to_owned(),
-            Some(Box::new(move |ui| {
+        },
+        DataType::ListView(field) => DataTypeUi {
+            type_name: "list view".to_owned(),
+            content: Some(Box::new(move |ui| {
                 data_type_field_ui(ui, field);
             })),
-        ),
-        DataType::FixedSizeList(field, size) => (
-            format!("fixed-size list ({size})"),
-            Some(Box::new(move |ui| {
+        },
+        DataType::FixedSizeList(field, size) => DataTypeUi {
+            type_name: format!("fixed-size list ({size})"),
+            content: Some(Box::new(move |ui| {
                 data_type_field_ui(ui, field);
             })),
-        ),
-        DataType::LargeList(field) => (
-            "large list".to_owned(),
-            Some(Box::new(move |ui| {
+        },
+        DataType::LargeList(field) => DataTypeUi {
+            type_name: "large list".to_owned(),
+            content: Some(Box::new(move |ui| {
                 data_type_field_ui(ui, field);
             })),
-        ),
-        DataType::LargeListView(field) => (
-            "large list view".to_owned(),
-            Some(Box::new(move |ui| {
+        },
+        DataType::LargeListView(field) => DataTypeUi {
+            type_name: "large list view".to_owned(),
+            content: Some(Box::new(move |ui| {
                 data_type_field_ui(ui, field);
             })),
-        ),
+        },
         DataType::Union(fields, mode) => {
             let label = match mode {
                 arrow::datatypes::UnionMode::Sparse => "sparse union",
                 arrow::datatypes::UnionMode::Dense => "dense union",
             };
-            (
-                label.to_owned(),
-                Some(Box::new(move |ui| {
+            DataTypeUi {
+                type_name: label.to_owned(),
+                content: Some(Box::new(move |ui| {
                     for (_, field) in fields.iter() {
                         data_type_field_ui(ui, field);
                     }
                 })),
-            )
+            }
         }
-        DataType::Dictionary(_k, _v) => (
-            "dictionary".to_owned(),
-            // Some(Box::new(move |ui| {
-            //     ui.list_item()
-            //         .show_flat(ui, PropertyContent::new("key").value_text(k.to_string()));
-            //     ui.list_item()
-            //         .show_flat(ui, PropertyContent::new("value").value_text(v.to_string()));
-            // })),
-            None, // TODO
-        ),
-        DataType::Map(a, _) => (
-            "map".to_owned(),
-            Some(Box::new(move |ui| {
+        DataType::Dictionary(_k, _v) => DataTypeUi {
+            type_name: "dictionary".to_owned(),
+            content: None,
+        },
+        DataType::Map(a, _) => DataTypeUi {
+            type_name: "map".to_owned(),
+            content: Some(Box::new(move |ui| {
                 data_type_field_ui(ui, a);
             })),
-        ),
-        DataType::RunEndEncoded(a, b) => (
-            "run-end encoded".to_owned(),
-            Some(Box::new(move |ui| {
+        },
+        DataType::RunEndEncoded(a, b) => DataTypeUi {
+            type_name: "run-end encoded".to_owned(),
+            content: Some(Box::new(move |ui| {
                 data_type_field_ui(ui, a);
                 data_type_field_ui(ui, b);
             })),
-        ),
+        },
         non_nested => {
             let label = simple_data_type_string(non_nested)
                 .map(|s| s.to_owned())
                 .unwrap_or_else(|| non_nested.to_string());
-            (label, None)
+            DataTypeUi {
+                type_name: label,
+                content: None,
+            }
         }
     }
 }
@@ -95,13 +96,13 @@ fn data_type_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
     ui.spacing_mut().item_spacing.y = 0.0;
     let item = ui.list_item();
 
-    let (datatype_name, maybe_ui) = data_type_ui(field.data_type());
+    let data_type_ui = data_type_ui(field.data_type());
 
     let property = PropertyContent::new(field.name())
-        .value_text(datatype_name)
+        .value_text(data_type_ui.type_name)
         .show_only_when_collapsed(false);
 
-    if let Some(content) = maybe_ui {
+    if let Some(content) = data_type_ui.content {
         item.show_hierarchical_with_children(ui, Id::new(field.name()), true, property, content);
     } else {
         item.show_hierarchical(ui, property);

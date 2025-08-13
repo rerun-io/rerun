@@ -1,7 +1,7 @@
 use crate::datatype_ui::data_type_ui;
 use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
 use re_format::format_uint;
-use re_ui::UiExt;
+use re_ui::UiExt as _;
 use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
@@ -56,14 +56,14 @@ impl<'a> ArrowNode<'a> {
         };
 
         let mut value = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
-        self.values.write(index, &mut value); // TODO: Handle error
+        self.values.write(index, &mut value).ok(); // TODO: Handle error
         let value = value.into_widget_text();
 
         let nested = self.values.is_item_nested();
         let data_type = self.values.array().data_type();
-        let (data_type_name, maybe_datatype_ui) = data_type_ui(data_type);
+        let data_type_ui = data_type_ui(data_type);
 
-        let mut item = ui.list_item();
+        let item = ui.list_item();
         let id = ui.unique_id().with(index).with(label.text());
         let content = PropertyContent::new(label)
             .value_fn(|ui, visuals| {
@@ -83,7 +83,8 @@ impl<'a> ArrowNode<'a> {
                             let tooltip_open =
                                 Tooltip::was_tooltip_open_last_frame(ui.ctx(), ui.next_auto_id());
                             if visuals.hovered || tooltip_open {
-                                let response = ui.small(RichText::new(&data_type_name).strong());
+                                let response =
+                                    ui.small(RichText::new(&data_type_ui.type_name).strong());
                                 ui.painter().rect_stroke(
                                     response.rect.expand(2.0),
                                     4.0,
@@ -91,7 +92,7 @@ impl<'a> ArrowNode<'a> {
                                     StrokeKind::Middle,
                                 );
 
-                                if let Some(content) = maybe_datatype_ui {
+                                if let Some(content) = data_type_ui.content {
                                     response.on_hover_ui(|ui| {
                                         list_item_scope(
                                             ui,
@@ -101,7 +102,7 @@ impl<'a> ArrowNode<'a> {
                                                     ui,
                                                     Id::new("arrow data type item hover"),
                                                     true,
-                                                    LabelContent::new(data_type_name),
+                                                    LabelContent::new(data_type_ui.type_name),
                                                     content,
                                                 );
                                             },

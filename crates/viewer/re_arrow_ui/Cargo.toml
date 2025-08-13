@@ -17,10 +17,11 @@ re_ui.workspace = true
 
 arrow.workspace = true
 egui.workspace = true
-itertools.workspace = true
-chrono.workspace = true
-ryu = "1"
 half.workspace = true
+
+[dev-dependencies]
+egui_kittest.workspace = true
+re_types.workspace = true
 
 [lints]
 workspace = true
