@@ -91,7 +91,7 @@ jobs:
         run: pixi run check-backwards-compatibility
 
       - name: Compare man page to CLI dcs
-        run: pixi run ./scripts/ci/check_cli_docs.py
+        run: pixi run rerun-build-web && pixi run ./scripts/ci/check_cli_docs.py
 
   rs-tests:
     name: Rust tests
