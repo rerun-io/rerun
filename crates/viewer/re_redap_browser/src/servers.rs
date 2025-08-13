@@ -24,7 +24,7 @@ use crate::context::Context;
 use crate::entries::{Dataset, Entries, Entry, Table};
 use crate::server_modal::{ServerModal, ServerModalMode};
 
-struct Server {
+pub struct Server {
     origin: re_uri::Origin,
     entries: Entries,
 
@@ -72,6 +72,16 @@ impl Server {
             self.origin.clone(),
             self.tables_session_ctx.clone(),
         );
+    }
+
+    #[inline]
+    pub fn origin(&self) -> &re_uri::Origin {
+        &self.origin
+    }
+
+    #[inline]
+    pub fn entries(&self) -> &Entries {
+        &self.entries
     }
 
     fn on_frame_start(&mut self) {
@@ -262,6 +272,7 @@ impl Server {
             .show(viewer_ctx, &self.runtime, ui);
     }
 
+    //TODO: remove
     fn panel_ui(
         &self,
         viewer_ctx: &ViewerContext<'_>,
@@ -434,6 +445,10 @@ impl RedapServers {
             .ok();
     }
 
+    pub fn iter_servers(&self) -> impl Iterator<Item = &Server> {
+        self.servers.values()
+    }
+
     /// Per-frame housekeeping.
     ///
     /// - Process commands from the queue.
@@ -532,6 +547,7 @@ impl RedapServers {
         }
     }
 
+    //TODO: remove
     pub fn server_list_ui(
         &self,
         viewer_ctx: &ViewerContext<'_>,
@@ -586,6 +602,14 @@ impl RedapServers {
         };
 
         self.server_modal_ui.ui(global_ctx, &ctx, ui);
+    }
+
+    pub fn send_command(&self, command: Command) {
+        let result = self.command_sender.send(command);
+
+        if let Err(err) = result {
+            re_log::warn_once!("Failed to send command: {}", err);
+        }
     }
 
     #[inline]

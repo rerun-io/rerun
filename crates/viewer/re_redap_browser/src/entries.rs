@@ -210,7 +210,7 @@ pub struct Entries {
 }
 
 impl Entries {
-    pub fn new(
+    pub(crate) fn new(
         connection_registry: ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
@@ -225,7 +225,7 @@ impl Entries {
         }
     }
 
-    pub fn on_frame_start(&mut self) {
+    pub(crate) fn on_frame_start(&mut self) {
         self.entries.on_frame_start();
     }
 
@@ -242,6 +242,7 @@ impl Entries {
             })
     }
 
+    //TODO: remove this
     /// [`list_item::ListItem`]-based UI for the datasets.
     pub fn panel_ui(
         &self,
@@ -297,6 +298,7 @@ impl Entries {
     }
 }
 
+//TODO: remove this
 #[derive(Clone, Hash)]
 pub enum DatasetKind {
     Remote {
@@ -375,6 +377,7 @@ impl DatasetKind {
     }
 }
 
+//TODO: remove this
 pub fn dataset_list_item_and_its_recordings_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
@@ -446,6 +449,7 @@ pub fn dataset_list_item_and_its_recordings_ui(
     }
 }
 
+//TODO: remove this
 pub fn entry_list_item_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, entry: &Entry) {
     let item = Item::RedapEntry(entry.id());
     let selected = ctx.selection().contains_item(&item);

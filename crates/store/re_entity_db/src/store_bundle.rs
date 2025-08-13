@@ -18,6 +18,7 @@ pub enum StoreLoadError {
 
 // ---
 
+//TODO: remove all these!
 pub type DatasetRecordings<'a> = BTreeMap<EntryId, Vec<&'a EntityDb>>;
 
 pub type RemoteRecordings<'a> = BTreeMap<re_uri::Origin, DatasetRecordings<'a>>;
@@ -75,6 +76,7 @@ impl StoreBundle {
         self.recording_store.remove(id)
     }
 
+    //TODO: remove this!
     pub fn sort_recordings_by_class(&self) -> SortDatasetsResults<'_> {
         let mut remote_recordings: RemoteRecordings<'_> = BTreeMap::new();
         let mut local_recordings: LocalRecordings<'_> = BTreeMap::new();

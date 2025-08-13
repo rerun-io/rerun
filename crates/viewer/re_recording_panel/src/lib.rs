@@ -1,5 +1,10 @@
 //! The UI for the recording panel.
 
+mod data;
+mod recording_panel_ui;
+
+pub use self::recording_panel_ui::recordings_panel_ui;
+
 use itertools::Itertools as _;
 use re_data_ui::item_ui::table_id_button_ui;
 use re_redap_browser::{
@@ -15,7 +20,7 @@ use re_viewer_context::{
 
 /// Show the currently open Recordings in a selectable list.
 /// Also shows the currently loading receivers.
-pub fn recordings_panel_ui(
+pub fn recordings_panel_ui_old(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     hide_examples: bool,

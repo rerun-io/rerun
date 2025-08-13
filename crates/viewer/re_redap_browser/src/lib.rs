@@ -8,8 +8,10 @@ mod entries;
 mod server_modal;
 mod servers;
 
-pub use entries::{DatasetKind, dataset_list_item_and_its_recordings_ui};
-pub use servers::RedapServers;
+pub use self::{
+    entries::{DatasetKind, Entries, Entry, EntryInner, dataset_list_item_and_its_recordings_ui},
+    servers::{Command, RedapServers, Server},
+};
 
 use re_uri::Scheme;
 use std::sync::LazyLock;
