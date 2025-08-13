@@ -6,10 +6,9 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
-from typing import Any, Final, Optional
+from typing import TYPE_CHECKING, Any, Final, Optional
 
 import cv2 as cv2
 import numpy as np
@@ -23,6 +22,9 @@ import tqdm
 from paddleocr import PPStructure
 from paddleocr.ppstructure.recovery.recovery_to_doc import sorted_layout_boxes
 from typing_extensions import TypeAlias
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"

@@ -484,7 +484,7 @@ impl ViewBuilder {
                 OrthographicCameraMode::NearPlaneCenter => {}
             },
             Projection::Perspective { .. } => {}
-        };
+        }
 
         let camera_position = config.view_from_world.inverse().translation();
         let camera_forward = -view_from_world.row(2).truncate();
@@ -771,7 +771,7 @@ impl ViewBuilder {
     ) -> Result<(), ViewBuilderError> {
         if self.screenshot_processor.is_some() {
             return Err(ViewBuilderError::ScreenshotAlreadyScheduled);
-        };
+        }
 
         self.screenshot_processor = Some(ScreenshotProcessor::new(
             ctx,
@@ -826,7 +826,7 @@ impl ViewBuilder {
     ) -> Result<(), ViewBuilderError> {
         if self.picking_processor.is_some() {
             return Err(ViewBuilderError::PickingRectAlreadyScheduled);
-        };
+        }
 
         let picking_processor = PickingLayerProcessor::new(
             ctx,

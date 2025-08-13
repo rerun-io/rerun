@@ -1,8 +1,8 @@
 //! Related to indices, i.e. timelines.
 
+mod absolute_time_range;
 mod duration;
 mod non_min_i64;
-mod resolved_time_range;
 mod time_cell;
 mod time_int;
 mod time_point;
@@ -13,9 +13,9 @@ mod timestamp;
 mod timestamp_format;
 
 pub use self::{
+    absolute_time_range::{AbsoluteTimeRange, AbsoluteTimeRangeF},
     duration::Duration,
     non_min_i64::{NonMinI64, TryFromIntError},
-    resolved_time_range::{ResolvedTimeRange, ResolvedTimeRangeF},
     time_cell::TimeCell,
     time_int::TimeInt,
     time_point::TimePoint,

@@ -13,7 +13,6 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
@@ -57,6 +56,8 @@ class LineStrip3D(LineStrip3DExt, ComponentMixin):
 
 
 if TYPE_CHECKING:
+    from .. import datatypes
+
     LineStrip3DLike = Union[LineStrip3D, datatypes.Vec3DArrayLike, npt.NDArray[np.float32]]
 else:
     LineStrip3DLike = Any

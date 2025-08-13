@@ -438,33 +438,33 @@ fn show_projections_from_3d_space(
     } = item_context
     {
         for (space_2d, pos_2d) in target_spaces {
-            if space_2d == space {
-                if let Some(pos_2d) = pos_2d {
-                    // User is hovering a 2D point inside a 3D view.
-                    let pos_in_ui = ui_from_scene.transform_pos(pos2(pos_2d.x, pos_2d.y));
-                    let radius = 4.0;
-                    shapes.push(Shape::circle_filled(
-                        pos_in_ui,
-                        radius + 2.0,
-                        ui.visuals().extreme_bg_color,
-                    ));
-                    shapes.push(Shape::circle_filled(pos_in_ui, radius, circle_fill_color));
+            if space_2d == space
+                && let Some(pos_2d) = pos_2d
+            {
+                // User is hovering a 2D point inside a 3D view.
+                let pos_in_ui = ui_from_scene.transform_pos(pos2(pos_2d.x, pos_2d.y));
+                let radius = 4.0;
+                shapes.push(Shape::circle_filled(
+                    pos_in_ui,
+                    radius + 2.0,
+                    ui.visuals().extreme_bg_color,
+                ));
+                shapes.push(Shape::circle_filled(pos_in_ui, radius, circle_fill_color));
 
-                    let text_color = ui.visuals().strong_text_color();
-                    let text = format!("Depth: {:.3} m", pos_2d.z);
-                    let font_id = egui::TextStyle::Body.resolve(ui.style());
-                    let galley = ui.fonts(|fonts| fonts.layout_no_wrap(text, font_id, text_color));
-                    let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
-                        pos_in_ui + vec2(0.0, 5.0),
-                        galley.size(),
-                    ));
-                    shapes.push(Shape::rect_filled(
-                        rect,
-                        2.0,
-                        ui.visuals().extreme_bg_color.gamma_multiply_u8(196),
-                    ));
-                    shapes.push(Shape::galley(rect.min, galley, text_color));
-                }
+                let text_color = ui.visuals().strong_text_color();
+                let text = format!("Depth: {:.3} m", pos_2d.z);
+                let font_id = egui::TextStyle::Body.resolve(ui.style());
+                let galley = ui.fonts(|fonts| fonts.layout_no_wrap(text, font_id, text_color));
+                let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
+                    pos_in_ui + vec2(0.0, 5.0),
+                    galley.size(),
+                ));
+                shapes.push(Shape::rect_filled(
+                    rect,
+                    2.0,
+                    ui.visuals().extreme_bg_color.gamma_multiply_u8(196),
+                ));
+                shapes.push(Shape::galley(rect.min, galley, text_color));
             }
         }
     }

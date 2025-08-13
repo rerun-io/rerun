@@ -745,7 +745,7 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         putln!(o, "## Examples");
     } else {
         putln!(o, "## Example");
-    };
+    }
     putln!(o);
 
     for ExampleInfo {

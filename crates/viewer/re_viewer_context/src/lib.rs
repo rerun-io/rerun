@@ -12,6 +12,7 @@ mod collapsed_id;
 mod component_fallbacks;
 mod component_ui_registry;
 mod drag_and_drop;
+mod heuristics;
 mod image_info;
 mod maybe_mut_ref;
 mod query_context;
@@ -52,6 +53,7 @@ pub use self::{
     },
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName},
     drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload},
+    heuristics::suggest_view_for_each_entity,
     image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey},
     maybe_mut_ref::MaybeMutRef,
     query_context::{

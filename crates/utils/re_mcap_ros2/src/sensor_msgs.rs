@@ -168,4 +168,125 @@ pub struct PointCloud2 {
 
     /// Actual point data, size is (`row_step`*`height`)
     pub data: Vec<u8>,
+
+    /// True if there are no invalid points
+    pub is_dense: bool,
+}
+
+/// This message is used to specify a region of interest in an image.
+///
+/// When used to specify the ROI setting of the camera when the image was taken, the `height` and `width`
+/// should be the same as the height and width of the image.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RegionOfInterest {
+    /// The x-coordinate of the top-left corner of the region.
+    pub x_offset: u32,
+
+    /// The y-coordinate of the top-left corner of the region.
+    pub y_offset: u32,
+
+    /// The height of the region.
+    pub height: u32,
+
+    /// The width of the region.
+    pub width: u32,
+
+    /// Whether the region is active (true) or inactive (false).
+    pub do_rectify: bool,
+}
+
+/// This message contains information about a camera, such as its intrinsic parameters.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CameraInfo {
+    /// Metadata including timestamp and coordinate frame.
+    pub header: Header,
+
+    /// The height of the image in pixels.
+    pub height: u32,
+
+    /// The width of the image in pixels.
+    pub width: u32,
+
+    /// The distortion model used. Supported models are listed in
+    /// `sensor_msgs/distortion_models.h`.
+    ///
+    /// For most cameras, `plumb_bob` - a simple model of radial and tangential distortion - is sufficient.
+    pub distortion_model: String,
+
+    /// The distortion parameters, size depending on the distortion model.
+    ///
+    /// E.g. For `plumb_bob`, the 5 parameters are: (k1, k2, t1, t2, k3),
+    /// and for `kannala_brandt` the parameters are (k1, k2, k3, k4)
+    pub d: Vec<f64>,
+
+    /// The intrinsic camera matrix for the raw (distorted) images.
+    ///
+    /// Projects 3D points in the camera coordinate frame to 2D pixel
+    /// coordinates using the focal lengths (fx, fy) and principal point (cx, cy).
+    pub k: [f64; 9],
+
+    /// Rectification matrix (stereo cameras only)
+    ///
+    /// A rotation matrix aligning the camera coordinate system to the ideal stereo image plane
+    /// so that the epipolar lines in both stereo images are parallel.
+    pub r: [f64; 9],
+
+    /// Projection/camera matrix
+    ///
+    /// By convention, this matrix specifies the intrinsic (camera) matrix of the processed (rectified) image.
+    /// That is, the left 3x3 portion is the normal camera intrinsic matrix for the rectified image.
+    ///
+    /// It projects 3D points in the camera coordinate frame to 2D pixel
+    /// coordinates using the focal lengths (fx', fy') and principal point
+    /// (cx', cy') - these may differ from the values in K.
+    pub p: [f64; 12],
+
+    /// Binning refers here to any camera setting which combines rectangular
+    /// neighborhoods of pixels into larger "super-pixels." It reduces the
+    /// resolution of the output image to
+    /// (`width` / `binning_x`) x (`height` / `binning_y`).
+    pub binning_x: u32,
+    pub binning_y: u32,
+
+    /// Region of interest (subwindow of full camera resolution), given in
+    /// full resolution (unbinned) image coordinates. A particular ROI
+    /// always denotes the same window of pixels on the camera sensor,
+    /// regardless of binning settings.
+    pub roi: RegionOfInterest,
+}
+
+/// This is a message that holds data to describe the state of a set of torque controlled joints.
+///
+/// The state of each joint (revolute or prismatic) is defined by:
+/// * the position of the joint (rad or m),
+/// * the velocity of the joint (rad/s or m/s) and
+/// * the effort that is applied in the joint (Nm or N).
+///
+/// Each joint is uniquely identified by its name
+/// The header specifies the time at which the joint states were recorded. All the joint states
+/// in one message have to be recorded at the same time.
+///
+/// This message consists of a multiple arrays, one for each part of the joint state.
+/// The goal is to make each of the fields optional. When e.g. your joints have no
+/// effort associated with them, you can leave the effort array empty.
+///
+/// All arrays in this message should have the same size, or be empty.
+/// This is the only way to uniquely associate the joint name with the correct
+/// states.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JointState {
+    /// Metadata including timestamp and coordinate frame.
+    pub header: Header,
+
+    /// The names of the joints.
+    pub name: Vec<String>,
+
+    /// The positions of the joints.
+    pub position: Vec<f64>,
+
+    /// The velocities of the joints.
+    pub velocity: Vec<f64>,
+
+    /// The efforts applied in the joints.
+    pub effort: Vec<f64>,
 }

@@ -215,33 +215,33 @@ pub fn blob_preview_and_save_ui(
         });
 
         // Show a mini video player for video blobs:
-        if let Some(video_result) = &video_result_for_frame_preview {
-            if let Ok(video) = video_result.as_ref() {
-                ui.separator();
+        if let Some(video_result) = &video_result_for_frame_preview
+            && let Ok(video) = video_result.as_ref()
+        {
+            ui.separator();
 
-                let video_timestamp = video_timestamp.unwrap_or_else(|| {
-                    // TODO(emilk): Some time controls would be nice,
-                    // but the point here is not to have a nice viewer,
-                    // but to show the user what they have selected
-                    ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
-                    let time = ui.input(|i| i.time);
+            let video_timestamp = video_timestamp.unwrap_or_else(|| {
+                // TODO(emilk): Some time controls would be nice,
+                // but the point here is not to have a nice viewer,
+                // but to show the user what they have selected
+                ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+                let time = ui.input(|i| i.time);
 
-                    if let Some(duration) = video.data_descr().duration() {
-                        VideoTimestamp::from_secs(time % duration.as_secs_f64())
-                    } else {
-                        // TODO(#10646): show something more useful here
-                        VideoTimestamp::from_nanos(i64::MAX)
-                    }
-                });
-                let video_time = re_viewer_context::video_timestamp_component_to_video_time(
-                    ctx,
-                    video_timestamp,
-                    video.data_descr().timescale,
-                );
-                let video_buffers = std::iter::once(blob.as_ref()).collect();
+                if let Some(duration) = video.data_descr().duration() {
+                    VideoTimestamp::from_secs(time % duration.as_secs_f64())
+                } else {
+                    // TODO(#10646): show something more useful here
+                    VideoTimestamp::from_nanos(i64::MAX)
+                }
+            });
+            let video_time = re_viewer_context::video_timestamp_component_to_video_time(
+                ctx,
+                video_timestamp,
+                video.data_descr().timescale,
+            );
+            let video_buffers = std::iter::once(blob.as_ref()).collect();
 
-                show_decoded_frame_info(ctx, ui, ui_layout, video, video_time, &video_buffers);
-            }
+            show_decoded_frame_info(ctx, ui, ui_layout, video, video_time, &video_buffers);
         }
     }
 }

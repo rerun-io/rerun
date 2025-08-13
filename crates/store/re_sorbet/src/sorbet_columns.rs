@@ -128,10 +128,8 @@ impl SorbetColumnDescriptors {
         &self,
         component_column_selector: &ComponentColumnSelector,
     ) -> Option<&ComponentColumnDescriptor> {
-        let found = self
-            .component_columns()
-            .find(|column| column.matches(component_column_selector));
-        found
+        self.component_columns()
+            .find(|column| column.matches(component_column_selector))
     }
 
     pub fn arrow_fields(&self, batch_type: crate::BatchType) -> Vec<ArrowField> {

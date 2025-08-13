@@ -26,10 +26,8 @@ fn query_latest_component<C: re_types_core::Component>(
         .latest_at_relevant_chunks(query, entity_path, component_descr)
         .into_iter()
         .filter_map(|chunk| {
-            chunk
-                .latest_at(query, component_descr)
-                .into_unit()
-                .and_then(|unit| unit.index(&query.timeline()).map(|index| (index, unit)))
+            let unit = chunk.latest_at(query, component_descr).into_unit()?;
+            unit.index(&query.timeline()).map(|index| (index, unit))
         })
         .max_by_key(|(index, _unit)| *index)?;
 

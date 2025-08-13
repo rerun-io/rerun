@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import math
-from typing import Any, cast
-
-import numpy.typing as npt
+from typing import TYPE_CHECKING, Any, cast
 
 from ..datatypes import Mat3x3Like, Vec2D, Vec2DLike, ViewCoordinatesLike
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 
 class PinholeExt:

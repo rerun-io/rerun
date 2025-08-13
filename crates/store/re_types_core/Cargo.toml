@@ -51,7 +51,6 @@ document-features.workspace = true
 half.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-once_cell.workspace = true
 thiserror.workspace = true
 
 

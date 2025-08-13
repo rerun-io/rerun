@@ -37,9 +37,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
     let mut yuv_bytes = Vec::with_capacity(256 * 256 + 128 * 256 * 2);
-    yuv_bytes.extend(std::iter::repeat(128).take(256 * 256)); // Fixed value for Y.
+    yuv_bytes.extend(std::iter::repeat_n(128, 256 * 256)); // Fixed value for Y.
     yuv_bytes.extend((0..256).flat_map(|_y| (0..128).map(|x| x * 2))); // Gradient for U.
-    yuv_bytes.extend((0..256).flat_map(|y| std::iter::repeat(y as u8).take(128))); // Gradient for V.
+    yuv_bytes.extend((0..256).flat_map(|y| std::iter::repeat_n(y as u8, 128))); // Gradient for V.
     rec.log(
         "image_yuv422",
         &rerun::Image::from_pixel_format(

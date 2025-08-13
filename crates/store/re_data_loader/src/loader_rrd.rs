@@ -269,15 +269,18 @@ impl std::io::Read for RetryableFileReader {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         loop {
             match self.reader.read(buf) {
-                Ok(0) => self.block_until_file_changes()?,
+                Ok(0) => {
+                    self.block_until_file_changes()?;
+                }
                 Ok(n) => {
                     return Ok(n);
                 }
-                Err(err) => match err.kind() {
-                    std::io::ErrorKind::Interrupted => continue,
-                    _ => return Err(err),
-                },
-            };
+                Err(err) => {
+                    if err.kind() == std::io::ErrorKind::Interrupted {
+                        return Err(err);
+                    }
+                }
+            }
         }
     }
 }
@@ -304,8 +307,8 @@ impl RetryableFileReader {
                             )),
                             _ => Ok(0),
                         },
-                        Ok(Err(err)) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
-                        Err(err) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
+                        Ok(Err(err)) => Err(std::io::Error::other(err)),
+                        Err(err) => Err(std::io::Error::other(err)),
                     }
                 }
             }

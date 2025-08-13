@@ -18,8 +18,8 @@ use std::{
 
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
-// See `Cargo.toml` docs for the `__ci` feature for more information about the `disable_web_viewer_server` cfg:
-#[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]
+// See `Cargo.toml` for docs about the `disable_web_viewer_server` cfg:
+#[cfg(not(disable_web_viewer_server))]
 mod data {
     #![allow(clippy::large_include_file)]
 
@@ -148,10 +148,10 @@ impl WebViewerServer {
     /// Includes `http://` prefix
     pub fn server_url(&self) -> String {
         let local_addr = self.inner.server.server_addr();
-        if let Some(local_addr) = local_addr.clone().to_ip() {
-            if local_addr.ip().is_unspecified() {
-                return format!("http://localhost:{}", local_addr.port());
-            }
+        if let Some(local_addr) = local_addr.clone().to_ip()
+            && local_addr.ip().is_unspecified()
+        {
+            return format!("http://localhost:{}", local_addr.port());
         }
         format!("http://{local_addr}")
     }
@@ -220,18 +220,18 @@ impl WebViewerServerInner {
         }
     }
 
-    #[cfg(any(disable_web_viewer_server, feature = "__ci"))]
+    #[cfg(disable_web_viewer_server)]
     #[allow(clippy::needless_pass_by_value)]
     fn send_response(&self, _request: tiny_http::Request) -> Result<(), std::io::Error> {
         if false {
             self.on_serve_wasm(); // to silence warning about the function being unused
         }
         panic!(
-            "web_server compiled with '__ci' feature, `--all-features`, or '--cfg disable_web_viewer_server'. DON'T DO THAT! It's only for the CI!"
+            "re_web_viewer_server compiled without .wasm, because of '__disable_server' feature, `--all-features`, or 'RERUN_DISABLE_WEB_VIEWER_SERVER=1'. DON'T DO THAT! It's only meant for tests and docs!"
         );
     }
 
-    #[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]
+    #[cfg(not(disable_web_viewer_server))]
     fn send_response(&self, request: tiny_http::Request) -> Result<(), std::io::Error> {
         // Strip arguments from url so we get the actual path.
         let url = request.url();

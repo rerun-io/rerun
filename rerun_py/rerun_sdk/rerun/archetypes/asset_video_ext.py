@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
 import rerun_bindings as bindings
 from typing_extensions import deprecated
 
-from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from .. import datatypes
 
 
 class AssetVideoExt:

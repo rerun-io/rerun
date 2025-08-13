@@ -7,10 +7,9 @@ import argparse
 import json
 import logging
 import os
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import cv2
 import numpy as np
@@ -48,6 +47,9 @@ from transformers import (  # noqa: E402 module level import not at top of file
     DetrForSegmentation,
     DetrImageProcessor,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 @dataclass

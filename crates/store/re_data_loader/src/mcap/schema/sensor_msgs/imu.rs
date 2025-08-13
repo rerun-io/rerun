@@ -4,7 +4,6 @@ use re_chunk::{
 };
 use re_log_types::TimeCell;
 use re_mcap_ros2::sensor_msgs;
-use re_sorbet::SorbetSchema;
 use re_types::{
     ComponentDescriptor,
     archetypes::{Scalars, SeriesLines},
@@ -12,30 +11,12 @@ use re_types::{
 
 use crate::mcap::{
     cdr,
-    decode::{McapMessageParser, ParserContext, PluginError, SchemaName, SchemaPlugin},
+    decode::{McapMessageParser, ParserContext, PluginError},
 };
 
 /// Plugin that parses `sensor_msgs/msg/Imu` messages.
 #[derive(Default)]
 pub struct ImuSchemaPlugin;
-
-impl SchemaPlugin for ImuSchemaPlugin {
-    fn name(&self) -> SchemaName {
-        "sensor_msgs/msg/Imu".into()
-    }
-
-    fn parse_schema(&self, _channel: &mcap::Channel<'_>) -> Result<SorbetSchema, PluginError> {
-        Err(PluginError::Other(anyhow::anyhow!("todo")))
-    }
-
-    fn create_message_parser(
-        &self,
-        _channel: &mcap::Channel<'_>,
-        num_rows: usize,
-    ) -> Box<dyn McapMessageParser> {
-        Box::new(ImuMessageParser::new(num_rows)) as Box<dyn McapMessageParser>
-    }
-}
 
 fn fixed_size_list_builder(
     value_length: i32,

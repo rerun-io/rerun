@@ -492,17 +492,15 @@ impl DataResultData {
                                 "DataResultNode {data_result_node:?} has an invalid child"
                             );
 
-                            child_node.and_then(|child_node| {
-                                Self::from_data_result_and_filter(
-                                    view_blueprint,
-                                    query_result,
-                                    &DataResultNodeOrPath::DataResultNode(child_node),
-                                    projection,
-                                    hierarchy,
-                                    hierarchy_highlights,
-                                    filter_matcher,
-                                )
-                            })
+                            Self::from_data_result_and_filter(
+                                view_blueprint,
+                                query_result,
+                                &DataResultNodeOrPath::DataResultNode(child_node?),
+                                projection,
+                                hierarchy,
+                                hierarchy_highlights,
+                                filter_matcher,
+                            )
                         })
                         .collect_vec();
 

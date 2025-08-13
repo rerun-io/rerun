@@ -213,7 +213,7 @@ fn load_video_data_from_chunks(
     // TODO(andreas): Can we be more clever about the chunk range here and build up only what we need?
     // Kinda tricky since we need to know how far back (and ahead for b-frames) we have to look.
     let entire_timeline_query =
-        re_chunk::RangeQuery::new(timeline, re_log_types::ResolvedTimeRange::EVERYTHING);
+        re_chunk::RangeQuery::new(timeline, re_log_types::AbsoluteTimeRange::EVERYTHING);
     let query_results = store.storage_engine().cache().range(
         &entire_timeline_query,
         entity_path,
@@ -488,13 +488,13 @@ fn read_samples_from_chunk(
         sample_index_range: sample_base_idx..samples.next_index(),
     });
 
-    if cfg!(debug_assertions) {
-        if let Err(err) = video_descr.sanity_check() {
-            panic!(
-                "VideoDataDescription sanity check failed for video stream at {:?}: {err}",
-                chunk.entity_path()
-            );
-        }
+    if cfg!(debug_assertions)
+        && let Err(err) = video_descr.sanity_check()
+    {
+        panic!(
+            "VideoDataDescription sanity check failed for video stream at {:?}: {err}",
+            chunk.entity_path()
+        );
     }
 
     Ok(())
@@ -645,13 +645,13 @@ impl Cache for VideoStreamCache {
                                     .sum::<usize>()
                             );
 
-                            if cfg!(debug_assertions) {
-                                if let Err(err) = video_data.sanity_check() {
-                                    panic!(
-                                        "VideoDataDescription sanity check stream at {:?} failed: {err}",
-                                        event.chunk.entity_path()
-                                    );
-                                }
+                            if cfg!(debug_assertions)
+                                && let Err(err) = video_data.sanity_check()
+                            {
+                                panic!(
+                                    "VideoDataDescription sanity check stream at {:?} failed: {err}",
+                                    event.chunk.entity_path()
+                                );
                             }
                         }
                     }

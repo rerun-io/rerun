@@ -33,7 +33,6 @@ re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_mcap_ros2.workspace = true
 re_smart_channel.workspace = true
-re_sorbet.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
 
@@ -48,9 +47,9 @@ image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 notify.workspace = true
-once_cell.workspace = true
 mcap.workspace = true
 parking_lot.workspace = true
+prost-reflect.workspace = true
 rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true

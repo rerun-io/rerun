@@ -3,13 +3,15 @@ from __future__ import annotations
 import base64
 import logging
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rerun import bindings
 
-from .blueprint.api import BlueprintLike
 from .memory import memory_recording
 from .recording_stream import RecordingStream, get_application_id
+
+if TYPE_CHECKING:
+    from .blueprint.api import BlueprintLike
 
 DEFAULT_WIDTH = 950
 DEFAULT_HEIGHT = 712

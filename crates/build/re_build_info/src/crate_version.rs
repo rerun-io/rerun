@@ -422,7 +422,7 @@ impl CrateVersion {
                 Some(..) => return Err("unexpected `-rc` with `+dev`"),
                 None => return Err("unexpected `+dev` without `-alpha`"),
             }
-        };
+        }
 
         if !s.is_empty() {
             return Err("expected end of string");

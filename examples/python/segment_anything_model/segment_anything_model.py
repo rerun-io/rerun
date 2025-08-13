@@ -12,7 +12,7 @@ import argparse
 import logging
 import os
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 from urllib.parse import urlparse
 
 import cv2
@@ -23,8 +23,10 @@ import rerun.blueprint as rrb
 import torch
 import torchvision
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
-from segment_anything.modeling import Sam
 from tqdm import tqdm
+
+if TYPE_CHECKING:
+    from segment_anything.modeling import Sam
 
 DESCRIPTION = """
 Example of using Rerun to log and visualize the output of [Segment Anything](https://segment-anything.com/).

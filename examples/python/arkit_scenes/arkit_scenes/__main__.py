@@ -4,8 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import cv2
 import numpy as np
@@ -16,6 +15,9 @@ from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
 
 from .download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 DESCRIPTION = """
 # ARKitScenes

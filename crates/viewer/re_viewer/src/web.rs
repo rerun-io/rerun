@@ -374,7 +374,7 @@ impl WebHandle {
                 Err(err) => {
                     re_log::info_once!("Failed to dispatch log message to viewer: {err}");
                 }
-            };
+            }
         }
     }
 
@@ -563,7 +563,7 @@ impl WebHandle {
         let store_id = store_id_from_recording_id(hub, recording_id)?;
         if !hub.store_bundle().contains(&store_id) {
             return None;
-        };
+        }
         let rec_cfg = state.recording_config(&store_id)?;
 
         let time_ctrl = rec_cfg.time_ctrl.read();
@@ -734,7 +734,7 @@ fn create_app(
             Err(err) => {
                 re_log::warn!("Failed to parse JWT token: {err}");
             }
-        };
+        }
     }
 
     let enable_history = enable_history.unwrap_or(false);
@@ -781,7 +781,7 @@ fn create_app(
     let mut app = crate::App::new(
         main_thread_token,
         build_info,
-        &app_env,
+        app_env,
         startup_options,
         cc,
         Some(connection_registry),

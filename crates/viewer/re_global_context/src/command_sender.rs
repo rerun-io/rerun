@@ -1,7 +1,7 @@
 use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
-use re_log_types::{ResolvedTimeRangeF, StoreId};
+use re_log_types::{AbsoluteTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
 use crate::RecordingOrTable;
@@ -107,7 +107,7 @@ pub enum SystemCommand {
     SetLoopSelection {
         store_id: StoreId,
         timeline: Timeline,
-        time_range: ResolvedTimeRangeF,
+        time_range: AbsoluteTimeRangeF,
     },
 
     /// Sets the focus to the given item.

@@ -1,7 +1,6 @@
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::TimeCell;
 use re_mcap_ros2::sensor_msgs;
-use re_sorbet::SorbetSchema;
 use re_types::{
     archetypes::{DepthImage, Image},
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
@@ -9,30 +8,12 @@ use re_types::{
 
 use crate::mcap::{
     cdr,
-    decode::{McapMessageParser, ParserContext, PluginError, SchemaName, SchemaPlugin},
+    decode::{McapMessageParser, ParserContext, PluginError},
 };
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
 #[derive(Default)]
 pub struct ImageSchemaPlugin;
-
-impl SchemaPlugin for ImageSchemaPlugin {
-    fn name(&self) -> SchemaName {
-        "sensor_msgs/msg/Image".into()
-    }
-
-    fn parse_schema(&self, _channel: &mcap::Channel<'_>) -> Result<SorbetSchema, PluginError> {
-        Err(PluginError::Other(anyhow::anyhow!("todo")))
-    }
-
-    fn create_message_parser(
-        &self,
-        _channel: &mcap::Channel<'_>,
-        num_rows: usize,
-    ) -> Box<dyn McapMessageParser> {
-        Box::new(ImageMessageParser::new(num_rows)) as Box<dyn McapMessageParser>
-    }
-}
 
 pub struct ImageMessageParser {
     /// The raw image data blobs.
@@ -55,6 +36,7 @@ impl ImageMessageParser {
 
 impl McapMessageParser for ImageMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
         // TODO(#10725): Do we want to log the unused fields?
         #[allow(unused)]
         let sensor_msgs::Image {
@@ -87,6 +69,7 @@ impl McapMessageParser for ImageMessageParser {
     }
 
     fn finalize(self: Box<Self>, ctx: ParserContext) -> anyhow::Result<Vec<re_chunk::Chunk>> {
+        re_tracing::profile_function!();
         let Self {
             blobs,
             image_formats,

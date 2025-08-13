@@ -67,6 +67,7 @@ impl framework::Example for Outlines {
                     aspect_ratio: resolution[0] as f32 / resolution[1] as f32,
                 },
                 pixels_per_point,
+                #[expect(clippy::disallowed_methods)] // Hardcoded colors for this example.
                 outline_config: Some(OutlineConfig {
                     outline_radius_pixel: (secs_since_startup * 2.0).sin().abs() * 10.0 + 2.0,
                     color_layer_a: re_renderer::Rgba::from_rgb(1.0, 0.6, 0.0),

@@ -136,14 +136,13 @@ fn view_space_origin_widget_editing_ui(
 
     let enter_key_hit = ui.input(|i| i.key_pressed(egui::Key::Enter));
 
-    if let Some(selected_suggestion) = state.selected_suggestion {
-        if enter_key_hit {
-            if let Some(suggestion) = filtered_view_suggestions.get(selected_suggestion) {
-                let origin = &suggestion.space_origin;
-                state.origin_string = origin.to_string();
-                control_flow = ControlFlow::Break(Some(origin.clone()));
-            }
-        }
+    if let Some(selected_suggestion) = state.selected_suggestion
+        && enter_key_hit
+        && let Some(suggestion) = filtered_view_suggestions.get(selected_suggestion)
+    {
+        let origin = &suggestion.space_origin;
+        state.origin_string = origin.to_string();
+        control_flow = ControlFlow::Break(Some(origin.clone()));
     }
 
     //
@@ -212,7 +211,7 @@ fn view_space_origin_widget_editing_ui(
 
     if control_flow.is_continue() && !egui::Popup::is_id_open(ui.ctx(), popup_id) {
         control_flow = ControlFlow::Break(None);
-    };
+    }
 
     control_flow
 }

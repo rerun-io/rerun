@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import numpy.typing as npt
 import rerun as rr  # pip install rerun-sdk
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 
 class CustomPoints3D(rr.AsComponents):  # type: ignore[misc]

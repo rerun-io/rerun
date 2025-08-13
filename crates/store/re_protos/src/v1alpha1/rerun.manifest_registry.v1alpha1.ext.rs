@@ -286,7 +286,7 @@ impl From<QueryLatestAt> for crate::manifest_registry::v1alpha1::QueryLatestAt {
 #[derive(Debug, Clone)]
 pub struct QueryRange {
     pub index: String,
-    pub index_range: re_log_types::ResolvedTimeRange,
+    pub index_range: re_log_types::AbsoluteTimeRange,
 }
 
 // --- GetDatasetSchemaResponse ---

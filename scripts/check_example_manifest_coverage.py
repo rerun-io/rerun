@@ -4,10 +4,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import tomli
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 def gather_example_in_repo() -> Iterable[Path]:

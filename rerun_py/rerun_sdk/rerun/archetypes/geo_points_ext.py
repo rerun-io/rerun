@@ -4,11 +4,10 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    pass
+    from .. import datatypes
 
 NUMPY_VERSION = tuple(map(int, np.version.version.split(".")[:2]))
 

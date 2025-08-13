@@ -6,15 +6,17 @@ import logging
 import os
 import pathlib
 import time
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Callable, Literal
 from uuid import uuid4
 
 import anywidget
 import jupyter_ui_poll
 import traitlets
 from ipywidgets import HTML
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 try:
     __version__ = importlib.metadata.version("rerun_notebook")

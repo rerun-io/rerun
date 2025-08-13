@@ -69,6 +69,10 @@ pub struct App {
     #[allow(dead_code)] // Unused on wasm32
     main_thread_token: MainThreadToken,
     build_info: re_build_info::BuildInfo,
+
+    #[allow(dead_code)] // Only used for analytics
+    app_env: crate::AppEnvironment,
+
     startup_options: StartupOptions,
     start_time: web_time::Instant,
     ram_limit_warner: re_memory::RamLimitWarner,
@@ -119,8 +123,6 @@ pub struct App {
     command_receiver: CommandReceiver,
     cmd_palette: re_ui::CommandPalette,
 
-    analytics: crate::viewer_analytics::ViewerAnalytics,
-
     /// All known view types.
     view_class_registry: ViewClassRegistry,
 
@@ -147,7 +149,7 @@ impl App {
     pub fn new(
         main_thread_token: MainThreadToken,
         build_info: re_build_info::BuildInfo,
-        app_env: &crate::AppEnvironment,
+        app_env: crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
         connection_registry: Option<ConnectionRegistryHandle>,
@@ -161,6 +163,7 @@ impl App {
             creation_context,
             connection_registry,
             tokio_runtime,
+            crate::register_text_log_receiver(),
             command_channel(),
         )
     }
@@ -170,33 +173,23 @@ impl App {
     pub fn with_commands(
         main_thread_token: MainThreadToken,
         build_info: re_build_info::BuildInfo,
-        app_env: &crate::AppEnvironment,
+        app_env: crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
         connection_registry: Option<ConnectionRegistryHandle>,
         tokio_runtime: AsyncRuntimeHandle,
+        text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();
 
-        let analytics =
-            crate::viewer_analytics::ViewerAnalytics::new(&startup_options, app_env.clone());
-
-        let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
-        if re_log::add_boxed_logger(Box::new(logger)).is_err() {
-            // This can happen when `rerun` crate users call `spawn`. TODO(emilk): make `spawn` spawn a new process.
-            re_log::debug!(
-                "re_log not initialized - we won't see any log messages as GUI notifications"
-            );
-        }
-
         let connection_registry =
             connection_registry.unwrap_or_else(re_grpc_client::ConnectionRegistry::new);
 
-        if let Some(storage) = creation_context.storage {
-            if let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY) {
-                connection_registry.load_tokens(tokens);
-            }
+        if let Some(storage) = creation_context.storage
+            && let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY)
+        {
+            connection_registry.load_tokens(tokens);
         }
 
         let mut state: AppState = if startup_options.persist_state {
@@ -204,16 +197,15 @@ impl App {
                 .and_then(|storage| {
                     // This re-implements: `eframe::get_value` so we can customize the warning message.
                     // TODO(#2849): More thorough error-handling.
-                    storage.get_string(eframe::APP_KEY).and_then(|value| {
-                        match ron::from_str(&value) {
-                            Ok(value) => Some(value),
-                            Err(err) => {
-                                re_log::warn!("Failed to restore application state. This is expected if you have just upgraded Rerun versions.");
-                                re_log::debug!("Failed to decode RON for app state: {err}");
-                                None
-                            }
+                    let value = storage.get_string(eframe::APP_KEY)?;
+                    match ron::from_str(&value) {
+                        Ok(value) => Some(value),
+                        Err(err) => {
+                            re_log::warn!("Failed to restore application state. This is expected if you have just upgraded Rerun versions.");
+                            re_log::debug!("Failed to decode RON for app state: {err}");
+                            None
                         }
-                    })
+                    }
                 })
                 .unwrap_or_default()
         } else {
@@ -276,7 +268,7 @@ impl App {
             .checked_sub(web_time::Duration::from_secs(1_000_000_000))
             .unwrap_or(web_time::Instant::now());
 
-        let (adapter_backend, device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
+        let (_adapter_backend, _device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
             (
                 wgpu::Backend::Noop,
                 re_renderer::device_caps::DeviceCapabilityTier::Limited,
@@ -296,7 +288,23 @@ impl App {
                 )
             },
         );
-        analytics.on_viewer_started(build_info.clone(), adapter_backend, device_tier);
+
+        #[cfg(feature = "analytics")]
+        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+            use crate::viewer_analytics::event;
+
+            analytics.record(event::identify(
+                analytics.config(),
+                build_info.clone(),
+                &app_env,
+            ));
+            analytics.record(event::viewer_started(
+                &app_env,
+                &creation_context.egui_ctx,
+                _adapter_backend,
+                _device_tier,
+            ));
+        }
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 
@@ -319,6 +327,7 @@ impl App {
         Self {
             main_thread_token,
             build_info,
+            app_env,
             startup_options,
             start_time: web_time::Instant::now(),
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
@@ -359,8 +368,6 @@ impl App {
             cmd_palette: Default::default(),
 
             view_class_registry,
-
-            analytics,
 
             panel_state_overrides_active: true,
             panel_state_overrides,
@@ -1087,6 +1094,11 @@ impl App {
 
             UICommand::Settings => {
                 self.state.navigation.push(DisplayMode::Settings);
+
+                #[cfg(feature = "analytics")]
+                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                    analytics.record(re_analytics::event::SettingsOpened {});
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1371,10 +1383,9 @@ impl App {
             return;
         };
 
-        uri.time_range = Some(re_uri::TimeRange {
+        uri.time_range = Some(re_uri::TimeSelection {
             timeline: *time_ctrl.timeline(),
-            min: range.min.floor().into(),
-            max: range.max.ceil().into(),
+            range: re_log_types::AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
         });
 
         // On web we can produce a link to the web viewer,
@@ -1599,7 +1610,7 @@ impl App {
                         re_log::debug!("Overwritten table store with id: `{}`", table.id);
                     } else {
                         re_log::debug!("Inserted table store with id: `{}`", table.id);
-                    };
+                    }
                     self.command_sender.send_system(SystemCommand::SetSelection(
                         re_viewer_context::Item::TableId(table.id.clone()),
                     ));
@@ -1773,7 +1784,13 @@ impl App {
             // because `entity_db.store_info` needs to be set.
             let entity_db = store_hub.entity_db_mut(store_id);
             if msg_will_add_new_store && entity_db.store_kind() == StoreKind::Recording {
-                self.analytics.on_open_recording(entity_db);
+                #[cfg(feature = "analytics")]
+                if let Some(analytics) = re_analytics::Analytics::global_or_init()
+                    && let Some(event) =
+                        crate::viewer_analytics::event::open_recording(&self.app_env, entity_db)
+                {
+                    analytics.record(event);
+                }
 
                 if let Some(event_dispatcher) = self.event_dispatcher.as_ref() {
                     event_dispatcher.on_recording_open(entity_db);
@@ -1893,9 +1910,7 @@ impl App {
     }
 
     pub fn recording_db(&self) -> Option<&EntityDb> {
-        self.store_hub
-            .as_ref()
-            .and_then(|store_hub| store_hub.active_recording())
+        self.store_hub.as_ref()?.active_recording()
     }
 
     pub fn recording_config_mut(
@@ -1918,6 +1933,8 @@ impl App {
         storage_ctx: &StorageContext<'_>,
         command_sender: &CommandSender,
     ) {
+        #![allow(clippy::needless_continue)] // false positive, depending on target_arche
+
         preview_files_being_dropped(egui_ctx);
 
         let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
@@ -1973,6 +1990,7 @@ impl App {
                         },
                     ),
                 ));
+
                 continue;
             }
 
@@ -2063,7 +2081,7 @@ impl App {
                 // Tell JS to toggle fullscreen.
                 if let Err(err) = options.on_toggle.call0() {
                     re_log::error!("{}", crate::web_tools::string_from_js_value(err));
-                };
+                }
             }
         }
     }
@@ -2662,7 +2680,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 fn save_active_recording(
     app: &mut App,
     store_context: Option<&StoreContext<'_>>,
-    loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
+    loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
     let Some(entity_db) = store_context.as_ref().map(|view| view.recording) else {
         // NOTE: Can only happen if saving through the command palette.
@@ -2675,7 +2693,7 @@ fn save_active_recording(
 fn save_recording(
     app: &mut App,
     entity_db: &EntityDb,
-    loop_selection: Option<(TimelineName, re_log_types::ResolvedTimeRangeF)>,
+    loop_selection: Option<(TimelineName, re_log_types::AbsoluteTimeRangeF)>,
 ) -> anyhow::Result<()> {
     let rrd_version = entity_db
         .store_info()
@@ -2732,7 +2750,7 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     let messages = store_context.blueprint.to_messages(None).map(|mut msg| {
         if let Ok(msg) = &mut msg {
             msg.set_store_id(new_store_id.clone());
-        };
+        }
         msg
     });
 

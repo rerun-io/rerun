@@ -164,18 +164,17 @@ const RERUN_ENV_VAR: &str = "RERUN";
 
 /// Helper to get the value of the `RERUN` environment variable.
 fn get_rerun_env() -> Option<bool> {
-    std::env::var(RERUN_ENV_VAR)
-        .ok()
-        .and_then(|s| match s.to_lowercase().as_str() {
-            "0" | "false" | "off" => Some(false),
-            "1" | "true" | "on" => Some(true),
-            _ => {
-                re_log::warn!(
-                    "Invalid value for environment variable {RERUN_ENV_VAR}={s:?}. Expected 'on' or 'off'. It will be ignored"
-                );
-                None
-            }
-        })
+    let s = std::env::var(RERUN_ENV_VAR).ok()?;
+    match s.to_lowercase().as_str() {
+        "0" | "false" | "off" => Some(false),
+        "1" | "true" | "on" => Some(true),
+        _ => {
+            re_log::warn!(
+                "Invalid value for environment variable {RERUN_ENV_VAR}={s:?}. Expected 'on' or 'off'. It will be ignored"
+            );
+            None
+        }
+    }
 }
 
 /// Checks the `RERUN` environment variable. If not found, returns the argument.

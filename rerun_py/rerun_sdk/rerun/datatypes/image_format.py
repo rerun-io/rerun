@@ -6,17 +6,19 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
 )
 from .image_format_ext import ImageFormatExt
+
+if TYPE_CHECKING:
+    from .. import datatypes
 
 __all__ = ["ImageFormat", "ImageFormatArrayLike", "ImageFormatBatch", "ImageFormatLike"]
 

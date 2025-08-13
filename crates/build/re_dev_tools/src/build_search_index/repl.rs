@@ -53,10 +53,11 @@ impl Repl {
             stdout().flush()?;
 
             match lines.next().transpose()? {
-                Some(line) => match self.handle_line(&client, &line)? {
-                    ControlFlow::Continue(_) => continue,
-                    ControlFlow::Break(_) => break Ok(()),
-                },
+                Some(line) => {
+                    if self.handle_line(&client, &line)?.is_break() {
+                        break Ok(());
+                    }
+                }
                 None => break Ok(()),
             }
         }

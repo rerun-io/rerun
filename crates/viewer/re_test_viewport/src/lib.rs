@@ -1,5 +1,7 @@
 //! Extends the `re_test_context` with viewport-related features.
 
+mod test_view;
+
 use ahash::HashMap;
 
 use re_test_context::TestContext;
@@ -8,6 +10,8 @@ use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
 use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
 
 use re_viewport::execute_systems_for_view;
+
+pub use test_view::TestView;
 
 /// Extension trait to [`TestContext`] for blueprint-related features.
 pub trait TestContextExt {
@@ -72,7 +76,7 @@ impl TestContextExt for TestContext {
                 let mut query_results = HashMap::default();
 
                 self.run(egui_ctx, |ctx| {
-                    viewport_blueprint.visit_contents::<()>(&mut |contents, _| {
+                    let _ignored = viewport_blueprint.visit_contents::<()>(&mut |contents, _| {
                         if let Contents::View(view_id) = contents {
                             let view_blueprint = viewport_blueprint
                                 .view(view_id)

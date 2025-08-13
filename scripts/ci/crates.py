@@ -25,13 +25,12 @@ import shutil
 import subprocess
 import sys
 import time
-from collections.abc import Generator
 from datetime import datetime, timezone
 from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import git
 import requests
@@ -39,6 +38,9 @@ import tomlkit
 from colorama import Fore, init as colorama_init
 from dag import DAG, RateLimiter
 from semver import VersionInfo
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 CARGO_PATH = shutil.which("cargo") or "cargo"
 DEFAULT_PRE_ID = "alpha"
@@ -444,7 +446,21 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
                 dry_run=False,
                 capture=True,
             )
+
+            if not is_already_published(version, crate):
+                # Theoretically this shouldn't be needed… but sometimes it is.
+                print(f"{R}Waiting for {name} to become available…")
+                time.sleep(2)  # give crates.io some time to index the new crate
+                num_retries = 0
+                while not is_already_published(version, crate):
+                    time.sleep(3)
+                    num_retries += 1
+                    if num_retries > 10:
+                        print(f"{R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway.")
+                        return
+
             print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
+
             break
         except subprocess.CalledProcessError as e:
             error_message = e.stdout.decode("utf-8").strip()

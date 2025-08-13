@@ -88,9 +88,8 @@ impl FilterState {
     /// entities without filtering, so the collapse state is the same as when the filter is
     /// inactive.
     pub fn session_id(&self) -> Option<egui::Id> {
-        self.inner_state
-            .as_ref()
-            .and_then(|state| (!state.filter_query.is_empty()).then_some(state.session_id))
+        let state = self.inner_state.as_ref()?;
+        (!state.filter_query.is_empty()).then_some(state.session_id)
     }
 
     /// Return a filter matcher for the current query.

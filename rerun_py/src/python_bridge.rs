@@ -4,13 +4,15 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use core::time;
-use std::borrow::Borrow as _;
-use std::io::IsTerminal as _;
-use std::path::PathBuf;
+use std::{
+    borrow::Borrow as _,
+    io::IsTerminal as _,
+    path::PathBuf,
+    sync::{LazyLock, OnceLock},
+};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use once_cell::sync::{Lazy, OnceCell};
 use pyo3::{
     exceptions::PyRuntimeError,
     prelude::*,
@@ -51,7 +53,7 @@ use crate::dataframe::PyRecording;
 //
 // TODO(#2116): drop unused recordings
 fn all_recordings() -> parking_lot::MutexGuard<'static, Vec<RecordingStream>> {
-    static ALL_RECORDINGS: OnceCell<parking_lot::Mutex<Vec<RecordingStream>>> = OnceCell::new();
+    static ALL_RECORDINGS: OnceLock<parking_lot::Mutex<Vec<RecordingStream>>> = OnceLock::new();
     ALL_RECORDINGS.get_or_init(Default::default).lock()
 }
 
@@ -80,8 +82,8 @@ type GarbageReceiver = crossbeam::channel::Receiver<ArrowRecordBatch>;
 /// accumulated data for real.
 //
 // NOTE: `crossbeam` rather than `std` because we need a `Send` & `Sync` receiver.
-static GARBAGE_QUEUE: Lazy<(GarbageSender, GarbageReceiver)> =
-    Lazy::new(crossbeam::channel::unbounded);
+static GARBAGE_QUEUE: LazyLock<(GarbageSender, GarbageReceiver)> =
+    LazyLock::new(crossbeam::channel::unbounded);
 
 /// Flushes the [`GARBAGE_QUEUE`], therefore running all the associated FFI `release` callbacks.
 ///
@@ -99,8 +101,8 @@ fn flush_garbage_queue() {
 #[cfg(feature = "web_viewer")]
 fn global_web_viewer_server()
 -> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServer>> {
-    static WEB_HANDLE: OnceCell<parking_lot::Mutex<Option<re_web_viewer_server::WebViewerServer>>> =
-        OnceCell::new();
+    static WEB_HANDLE: OnceLock<parking_lot::Mutex<Option<re_web_viewer_server::WebViewerServer>>> =
+        OnceLock::new();
     WEB_HANDLE.get_or_init(Default::default).lock()
 }
 
@@ -110,7 +112,7 @@ fn global_web_viewer_server()
 /// It will be dropped and flushed down in [`shutdown`].
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
 fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::Telemetry> {
-    static TELEMETRY: OnceCell<parking_lot::Mutex<re_perf_telemetry::Telemetry>> = OnceCell::new();
+    static TELEMETRY: OnceLock<parking_lot::Mutex<re_perf_telemetry::Telemetry>> = OnceLock::new();
     TELEMETRY
         .get_or_init(|| {
             // Safety: anything touching the env is unsafe, tis what it is.

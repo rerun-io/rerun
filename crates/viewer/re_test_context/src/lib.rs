@@ -7,7 +7,6 @@ use std::sync::atomic::AtomicBool;
 
 use ahash::HashMap;
 use egui::os::OperatingSystem;
-use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use re_chunk::{Chunk, ChunkBuilder};
@@ -288,8 +287,8 @@ struct SharedWgpuResources {
     queue: wgpu::Queue,
 }
 
-static SHARED_WGPU_RENDERER_SETUP: Lazy<SharedWgpuResources> =
-    Lazy::new(init_shared_renderer_setup);
+static SHARED_WGPU_RENDERER_SETUP: std::sync::LazyLock<SharedWgpuResources> =
+    std::sync::LazyLock::new(init_shared_renderer_setup);
 
 fn init_shared_renderer_setup() -> SharedWgpuResources {
     let instance = wgpu::Instance::new(&re_renderer::device_caps::testing_instance_descriptor());

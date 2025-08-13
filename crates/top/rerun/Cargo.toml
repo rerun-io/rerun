@@ -35,7 +35,7 @@ default = [
   "server",
 ]
 
-## Enable telemetry using our analytics SDK.
+## Enable anonymized telemetry using our analytics SDK.
 analytics = [
   "dep:re_analytics",
   "re_crash_handler?/analytics",
@@ -108,6 +108,7 @@ run = [
   "re_log_encoding/encoder",
   "sdk",
   "unindent",
+  "auth",
 ]
 
 ## Support for running a gRPC server that listens to incoming log messages from a Rerun SDK.
@@ -127,6 +128,8 @@ sdk = ["dep:re_sdk", "dep:re_types"]
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
 web_viewer = ["server", "dep:re_web_viewer_server", "re_sdk?/web_viewer"]
 
+auth = ["dep:re_viewer", "re_auth/cli"]
+
 [dependencies]
 re_build_info.workspace = true
 re_byte_size.workspace = true
@@ -144,7 +147,7 @@ re_memory.workspace = true
 re_protos.workspace = true
 re_smart_channel.workspace = true
 re_sorbet.workspace = true
-re_tracing = { workspace = true, features = ["server"] }
+re_tracing.workspace = true
 re_uri.workspace = true
 re_video.workspace = true
 
@@ -162,6 +165,7 @@ tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
+re_auth = { workspace = true, optional = true }
 re_chunk_store = { workspace = true, optional = true }
 re_crash_handler = { workspace = true, optional = true }
 re_data_source = { workspace = true, optional = true }

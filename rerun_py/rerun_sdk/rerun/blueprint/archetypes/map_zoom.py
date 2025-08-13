@@ -5,16 +5,18 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from attrs import define, field
 
-from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from ... import datatypes
 
 __all__ = ["MapZoom"]
 

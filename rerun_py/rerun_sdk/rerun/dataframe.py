@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pyarrow as pa
 from rerun_bindings import (
@@ -24,7 +24,9 @@ from rerun_bindings.types import (
 
 from ._baseclasses import ComponentColumn, ComponentDescriptor
 from ._send_columns import TimeColumnLike, send_columns
-from .recording_stream import RecordingStream
+
+if TYPE_CHECKING:
+    from .recording_stream import RecordingStream
 
 SORBET_INDEX_NAME = b"rerun:index_name"
 SORBET_ENTITY_PATH = b"rerun:entity_path"

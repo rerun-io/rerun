@@ -214,14 +214,14 @@ impl ControlViewer {
                         break;
                     }
                     _ => {
-                        if let Ok(data) = message.encode() {
-                            if let Err(err) = write.write_all(&data).await {
-                                re_log::error!(
-                                    "Failed to send message error: {}",
-                                    re_error::format_ref(&err)
-                                );
-                                break;
-                            }
+                        if let Ok(data) = message.encode()
+                            && let Err(err) = write.write_all(&data).await
+                        {
+                            re_log::error!(
+                                "Failed to send message error: {}",
+                                re_error::format_ref(&err)
+                            );
+                            break;
                         }
                     }
                 },
