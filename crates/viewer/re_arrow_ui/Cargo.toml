@@ -1,13 +1,19 @@
 [package]
-name = "re_arrow_ui"
 authors.workspace = true
+description = "Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting."
 edition.workspace = true
 homepage.workspace = true
-include.workspace = true
 license.workspace = true
+name = "re_arrow_ui"
+publish = true
+readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+include.workspace = true
+
+[lints]
+workspace = true
 
 [dependencies]
 re_arrow_util.workspace = true
@@ -22,6 +28,3 @@ half.workspace = true
 [dev-dependencies]
 egui_kittest.workspace = true
 re_types.workspace = true
-
-[lints]
-workspace = true
