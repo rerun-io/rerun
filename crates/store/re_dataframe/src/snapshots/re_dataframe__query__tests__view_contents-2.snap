@@ -5,7 +5,7 @@ expression: DisplayRB(dataframe)
 ┌──────────────────────┬──────────────────────┬────────────────────────────────────┬────────────────────────────────────┐
 │ frame_nr             ┆ log_time             ┆ /this/that:example.MyPoints:colors ┆ /this/that:example.MyPoints:labels │
 │ ---                  ┆ ---                  ┆ ---                                ┆ ---                                │
-│ type: i64            ┆ type: Timestamp(ns)  ┆ type: List[u32]                    ┆ type: List[Utf8]                   │
+│ type: i64            ┆ type: Timestamp(ns)  ┆ type: List[nullable u32]           ┆ type: List[nullable Utf8]          │
 │ index_name: frame_nr ┆ index_name: log_time ┆ archetype: example.MyPoints        ┆ archetype: example.MyPoints        │
 │ kind: index          ┆ kind: index          ┆ component: example.MyPoints:colors ┆ component: example.MyPoints:labels │
 │                      ┆                      ┆ component_type: example.MyColor    ┆ component_type: example.MyLabel    │

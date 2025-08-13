@@ -8,7 +8,8 @@ expression: DisplayRB(dataframe)
 │ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ labels         │
 │ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ ---            │
 │ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ type:          │
-│ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ List[Utf8]     │
+│ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ List[nullable  │
+│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ Utf8]          │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ archetype: exa │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ mple.MyPoints  │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ component: exa │
