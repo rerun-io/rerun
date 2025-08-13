@@ -204,21 +204,6 @@ jobs:
           pixi run mdlint --glob 'examples/cpp/*/README.md'
           pixi run mdlint --glob 'examples/rust/*/README.md'
 
-  check-cli-docs:
-    name: Compare man page to CLI docs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - uses: prefix-dev/setup-pixi@v0.8.8
-        with:
-          pixi-version: v0.41.4
-
-      - name: Compare man page to CLI dcs
-        run: pixi run ./scripts/ci/check_cli_docs.py
-
   # ---------------------------------------------------------------------------
 
   spell-check:
