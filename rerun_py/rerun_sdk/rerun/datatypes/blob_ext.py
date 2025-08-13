@@ -35,7 +35,7 @@ class BlobExt:
                 return pa.array([np.array(arr, dtype=np.uint8).tobytes() for arr in data], type=pa.binary())
 
         elif isinstance(data, Blob):
-            return pa.array([np.array(data.data, dtype=np.uint8).tobytes()], type=pa.binary())
+            return pa.array([data.data], type=pa.binary())
 
         elif isinstance(data, bytes):
             return pa.array([data], type=pa.binary())
