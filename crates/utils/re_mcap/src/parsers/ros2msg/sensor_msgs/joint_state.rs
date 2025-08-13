@@ -1,15 +1,12 @@
+use super::super::definitions::sensor_msgs;
 use re_chunk::{
     Chunk, ChunkId,
     external::arrow::array::{Float64Builder, ListBuilder, StringBuilder},
 };
 use re_log_types::TimeCell;
-use re_mcap_ros2::sensor_msgs;
 use re_types::archetypes::{Scalars, SeriesLines};
 
-use crate::mcap::{
-    cdr,
-    decode::{McapMessageParser, ParserContext, PluginError},
-};
+use crate::parsers::{McapMessageParser, ParserContext, PluginError, cdr};
 
 /// Plugin that parses `sensor_msgs/msg/JointState` messages.
 #[derive(Default)]
@@ -36,7 +33,7 @@ impl JointStateMessageParser {
 
 impl McapMessageParser for JointStateMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
-        let re_mcap_ros2::sensor_msgs::JointState {
+        let sensor_msgs::JointState {
             header,
             name,
             position,

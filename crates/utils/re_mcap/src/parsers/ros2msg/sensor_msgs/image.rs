@@ -1,12 +1,13 @@
+// TODO: remove all `super::super` by moving defintions arounds
+use super::super::definitions::sensor_msgs;
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::TimeCell;
-use re_mcap_ros2::sensor_msgs;
 use re_types::{
     archetypes::{DepthImage, Image},
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
 };
 
-use crate::mcap::{
+use crate::parsers::{
     cdr,
     decode::{McapMessageParser, ParserContext, PluginError},
 };

@@ -1,0 +1,36 @@
+[package]
+name = "re_mcap"
+description = "Deserialization and helpers for MCAP messages."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+
+# TODO: sort
+[dependencies]
+re_log.workspace = true
+re_chunk.workspace = true
+re_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
+re_log_types.workspace = true
+re_tracing.workspace = true
+
+# TODO: we should not depend on `anyhow` in library crates
+byteorder.workspace = true
+ahash.workspace = true
+anyhow.workspace = true
+arrow.workspace = true
+mcap.workspace = true
+prost-reflect.workspace = true
+serde.workspace = true
+serde_bytes.workspace = true
+thiserror.workspace = true
+cdr-encoding.workspace = true

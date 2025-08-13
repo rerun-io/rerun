@@ -1,10 +1,9 @@
+use super::super::definitions::std_msgs;
 use re_chunk::{Chunk, ChunkId};
-use re_mcap_ros2::std_msgs;
 use re_types::archetypes::TextDocument;
 
-use crate::mcap::{
-    cdr,
-    decode::{McapMessageParser, ParserContext, PluginError},
+use crate::parsers::{
+    cdr, {McapMessageParser, ParserContext, PluginError},
 };
 
 /// Plugin that parses `std_msgs/msg/String` messages.

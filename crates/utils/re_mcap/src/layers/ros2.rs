@@ -1,6 +1,6 @@
-use crate::mcap::{
-    decode::McapMessageParser,
-    schema::{
+use crate::{
+    parsers::McapMessageParser,
+    parsers::ros2msg::{
         sensor_msgs::{
             CameraInfoMessageParser, CompressedImageMessageParser, ImageMessageParser,
             ImuMessageParser, JointStateMessageParser, PointCloud2MessageParser,

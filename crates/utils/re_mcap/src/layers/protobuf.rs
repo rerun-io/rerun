@@ -14,11 +14,8 @@ use prost_reflect::{
 use re_chunk::{Chunk, ChunkId};
 use re_types::ComponentDescriptor;
 
-use crate::mcap::layers::LayerIdentifier;
-use crate::mcap::{
-    decode::{McapMessageParser, PluginError},
-    layers::MessageLayer,
-};
+use crate::parsers::{McapMessageParser, ParserContext, PluginError};
+use crate::{LayerIdentifier, MessageLayer};
 
 struct ProtobufMessageParser {
     message_descriptor: MessageDescriptor,
@@ -82,11 +79,7 @@ impl ProtobufMessageParser {
 }
 
 impl McapMessageParser for ProtobufMessageParser {
-    fn append(
-        &mut self,
-        _ctx: &mut crate::mcap::decode::ParserContext,
-        msg: &mcap::Message<'_>,
-    ) -> anyhow::Result<()> {
+    fn append(&mut self, _ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         let dynamic_message =
             DynamicMessage::decode(self.message_descriptor.clone(), msg.data.as_ref()).map_err(
@@ -112,10 +105,7 @@ impl McapMessageParser for ProtobufMessageParser {
         Ok(())
     }
 
-    fn finalize(
-        self: Box<Self>,
-        ctx: crate::mcap::decode::ParserContext,
-    ) -> anyhow::Result<Vec<re_chunk::Chunk>> {
+    fn finalize(self: Box<Self>, ctx: ParserContext) -> anyhow::Result<Vec<re_chunk::Chunk>> {
         re_tracing::profile_function!();
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();

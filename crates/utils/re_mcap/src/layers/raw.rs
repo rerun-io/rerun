@@ -2,11 +2,9 @@ use arrow::array::{ListBuilder, UInt8Builder};
 use re_chunk::{ChunkId, external::arrow::array::FixedSizeListBuilder};
 use re_types::{Component as _, ComponentDescriptor, components};
 
-use crate::mcap::{
-    decode::{McapMessageParser, ParserContext, PluginError},
-    layers::LayerIdentifier,
-    layers::MessageLayer,
-    schema::blob_list_builder,
+use crate::{
+    LayerIdentifier, MessageLayer,
+    parsers::{McapMessageParser, ParserContext, PluginError, util::blob_list_builder},
 };
 
 struct RawMcapMessageParser {
@@ -24,7 +22,11 @@ impl RawMcapMessageParser {
 }
 
 impl McapMessageParser for RawMcapMessageParser {
-    fn append(&mut self, _ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
+    fn append(
+        &mut self,
+        _ctx: &mut ParserContext,
+        msg: &::mcap::Message<'_>,
+    ) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         self.data.values().values().append_slice(&msg.data);
         self.data.values().append(true);

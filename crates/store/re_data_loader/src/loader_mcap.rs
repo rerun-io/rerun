@@ -5,8 +5,8 @@ use std::{io::Cursor, sync::mpsc::Sender};
 use anyhow::Context as _;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
+use re_mcap::{LayerRegistry, SelectedLayers};
 
-use crate::mcap::layers::{LayerRegistry, SelectedLayers};
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
 const MCAP_LOADER_NAME: &str = "McapLoader";
@@ -196,7 +196,7 @@ fn load_mcap(
 
     let reader = Cursor::new(&mcap);
 
-    let summary = crate::mcap::util::read_summary(reader)?
+    let summary = re_mcap::read_summary(reader)?
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
     let registry = LayerRegistry::all();

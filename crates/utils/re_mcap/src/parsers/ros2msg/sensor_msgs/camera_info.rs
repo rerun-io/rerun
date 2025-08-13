@@ -1,3 +1,4 @@
+use super::super::definitions::sensor_msgs;
 use arrow::{
     array::{BooleanBuilder, StructBuilder},
     datatypes::Field,
@@ -7,13 +8,12 @@ use re_chunk::{
     external::arrow::array::{FixedSizeListBuilder, Float64Builder, StringBuilder, UInt32Builder},
 };
 use re_log_types::TimeCell;
-use re_mcap_ros2::sensor_msgs;
 use re_types::{ComponentDescriptor, archetypes::Pinhole};
 
-use crate::mcap::{
+use crate::parsers::{
     cdr,
     decode::{McapMessageParser, ParserContext, PluginError},
-    schema::fixed_size_list_builder,
+    util::fixed_size_list_builder,
 };
 
 /// Plugin that parses `sensor_msgs/msg/CameraInfo` messages.

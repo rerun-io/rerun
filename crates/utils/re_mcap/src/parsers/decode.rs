@@ -12,6 +12,7 @@ use thiserror::Error;
 pub type SchemaName = String;
 
 #[derive(Error, Debug)]
+// TODO: consider renaming this to `ParseError` or even `Error` (at top level)
 pub enum PluginError {
     #[error("Channel {0} does not define a schema")]
     NoSchema(String),
@@ -52,6 +53,7 @@ pub enum PluginError {
 ///    where parsers can extract and accumulate data from each message.
 /// 2. All accumulated data is converted into [`Chunk`]s via
 ///    [`finalize()`](`Self::finalize`), which consumes the parser and returns the final Rerun chunks.
+// TODO: consider renaming this to just `MessageParser`.
 pub trait McapMessageParser {
     /// Process a single MCAP message and accumulate its data.
     ///
@@ -83,77 +85,6 @@ impl From<u16> for ChannelId {
 }
 
 impl IsEnabled for ChannelId {}
-
-pub(crate) type Parser = (ParserContext, Box<dyn McapMessageParser>);
-
-/// Decodes batches of messages from an MCAP into Rerun chunks using previously registered parsers.
-pub struct McapChunkDecoder {
-    parsers: IntMap<ChannelId, Parser>,
-}
-
-impl McapChunkDecoder {
-    pub fn new(parsers: IntMap<ChannelId, Parser>) -> Self {
-        Self { parsers }
-    }
-
-    /// Decode the next message in the chunk
-    pub fn decode_next(&mut self, msg: &::mcap::Message<'_>) -> Result<(), PluginError> {
-        re_tracing::profile_function!();
-
-        let channel = msg.channel.as_ref();
-        let channel_id = ChannelId(channel.id);
-        let entity_path = EntityPath::from(channel.topic.as_str());
-        let timepoint = TimePoint::from([
-            (
-                "log_time",
-                TimeCell::from_timestamp_nanos_since_epoch(msg.log_time as i64),
-            ),
-            (
-                "publish_time",
-                TimeCell::from_timestamp_nanos_since_epoch(msg.publish_time as i64),
-            ),
-        ]);
-
-        let schema = channel.schema.as_ref();
-
-        let Some(schema) = schema else {
-            // TODO(harold): in the future, we might want to try sensible decodings with heuristics like the name.
-            // Schemaless messages are not supported yet.
-            re_log::warn_once!("Found schemaless message for {entity_path}");
-            return Err(PluginError::NoSchema(channel.topic.clone()));
-        };
-
-        if let Some((ctx, parser)) = self.parsers.get_mut(&channel_id) {
-            ctx.add_timepoint(timepoint.clone());
-
-            parser
-                .append(ctx, msg)
-                .with_context(|| {
-                    format!(
-                        "Failed to append message for topic: {} of type: {}",
-                        channel.topic, schema.name
-                    )
-                })
-                .map_err(PluginError::Other)?;
-        } else {
-            // TODO(#10867): If we encounter a message that we can't parse at all we should emit a warning.
-            // Note that this quite easy to achieve when using layers and only selecting a subset.
-            // However, to not overwhelm the user this should be reported in a _single_ static chunk,
-            // so this is not the right place for this. Maybe we need to introduce something like a "report".
-        }
-        Ok(())
-    }
-
-    /// Finish the decoding process and return the chunks.
-    pub fn finish(self) -> impl Iterator<Item = Result<Chunk, PluginError>> {
-        self.parsers
-            .into_values()
-            .flat_map(|(ctx, parser)| match parser.finalize(ctx) {
-                Ok(chunks) => chunks.into_iter().map(Ok).collect::<Vec<_>>(),
-                Err(err) => vec![Err(PluginError::Other(err))],
-            })
-    }
-}
 
 /// Common context used by parsers to build timelines and store entity paths.
 pub struct ParserContext {

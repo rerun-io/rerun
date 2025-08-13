@@ -1,7 +1,7 @@
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_types::archetypes::RecordingInfo;
 
-use crate::mcap::decode::PluginError;
+use crate::parsers::PluginError;
 
 use super::Layer;
 

@@ -6,7 +6,7 @@ use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{geometry_msgs, std_msgs::Header};
+use super::{geometry_msgs, std_msgs::Header};
 
 /// This message contains an uncompressed image.
 ///

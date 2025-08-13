@@ -13,7 +13,7 @@ pub use self::{
     ros2::McapRos2Layer, schema::McapSchemaLayer, stats::McapStatisticLayer,
 };
 
-use super::decode::{ChannelId, McapMessageParser, ParserContext, PluginError};
+use crate::parsers::{ChannelId, McapMessageParser, ParserContext, PluginError};
 
 /// Globally unique identifier for a layer.
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -91,6 +91,58 @@ pub trait MessageLayer {
     ) -> Option<Box<dyn McapMessageParser>>;
 }
 
+type Parser = (ParserContext, Box<dyn McapMessageParser>);
+
+/// Decodes batches of messages from an MCAP into Rerun chunks using previously registered parsers.
+struct McapChunkDecoder {
+    parsers: IntMap<ChannelId, Parser>,
+}
+
+impl McapChunkDecoder {
+    pub fn new(parsers: IntMap<ChannelId, Parser>) -> Self {
+        Self { parsers }
+    }
+
+    /// Decode the next message in the chunk
+    pub fn decode_next(&mut self, msg: &::mcap::Message<'_>) -> Result<(), PluginError> {
+        re_tracing::profile_function!();
+
+        let channel = msg.channel.as_ref();
+        let channel_id = ChannelId(channel.id);
+        let timepoint = re_chunk::TimePoint::from([
+            (
+                "log_time",
+                re_log_types::TimeCell::from_timestamp_nanos_since_epoch(msg.log_time as i64),
+            ),
+            (
+                "publish_time",
+                re_log_types::TimeCell::from_timestamp_nanos_since_epoch(msg.publish_time as i64),
+            ),
+        ]);
+
+        if let Some((ctx, parser)) = self.parsers.get_mut(&channel_id) {
+            ctx.add_timepoint(timepoint.clone());
+            parser.append(ctx, msg)?;
+        } else {
+            // TODO(#10867): If we encounter a message that we can't parse at all we should emit a warning.
+            // Note that this quite easy to achieve when using layers and only selecting a subset.
+            // However, to not overwhelm the user this should be reported in a _single_ static chunk,
+            // so this is not the right place for this. Maybe we need to introduce something like a "report".
+        }
+        Ok(())
+    }
+
+    /// Finish the decoding process and return the chunks.
+    pub fn finish(self) -> impl Iterator<Item = Result<Chunk, PluginError>> {
+        self.parsers
+            .into_values()
+            .flat_map(|(ctx, parser)| match parser.finalize(ctx) {
+                Ok(chunks) => chunks.into_iter().map(Ok).collect::<Vec<_>>(),
+                Err(err) => vec![Err(PluginError::Other(err))],
+            })
+    }
+}
+
 impl<T: MessageLayer> Layer for T {
     fn identifier() -> LayerIdentifier {
         T::identifier()
@@ -126,7 +178,7 @@ impl<T: MessageLayer> Layer for T {
                 channel_counts
             );
 
-            let mut decoder = super::decode::McapChunkDecoder::new(parsers);
+            let mut decoder = McapChunkDecoder::new(parsers);
 
             for msg in summary.stream_chunk(mcap_bytes, chunk)? {
                 match msg {

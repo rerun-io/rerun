@@ -1,18 +1,15 @@
+use super::super::definitions::sensor_msgs;
 use re_chunk::{
     Chunk, ChunkId, ChunkResult, EntityPath, RowId, TimePoint,
     external::arrow::array::{FixedSizeListBuilder, Float64Builder},
 };
 use re_log_types::TimeCell;
-use re_mcap_ros2::sensor_msgs;
 use re_types::{
     ComponentDescriptor,
     archetypes::{Scalars, SeriesLines},
 };
 
-use crate::mcap::{
-    cdr,
-    decode::{McapMessageParser, ParserContext, PluginError},
-};
+use crate::parsers::{McapMessageParser, ParserContext, PluginError, cdr};
 
 /// Plugin that parses `sensor_msgs/msg/Imu` messages.
 #[derive(Default)]

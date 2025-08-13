@@ -1,6 +1,6 @@
 use std::io::Cursor;
 
-use super::super::fixed_size_list_builder;
+use super::super::definitions::sensor_msgs::{self, PointField, PointFieldDatatype};
 use arrow::{
     array::{
         BooleanBuilder, FixedSizeListBuilder, ListBuilder, StringBuilder, StructBuilder,
@@ -11,17 +11,16 @@ use arrow::{
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt as _};
 use re_chunk::{Chunk, ChunkComponents, ChunkId, TimePoint};
 use re_log_types::TimeCell;
-use re_mcap_ros2::sensor_msgs::{self, PointField, PointFieldDatatype};
 use re_types::{
     AsComponents as _, Component as _, ComponentDescriptor, SerializedComponentColumn, archetypes,
     components,
 };
 use std::collections::HashMap;
 
-use crate::mcap::{
+use crate::parsers::{
     cdr,
     decode::{McapMessageParser, ParserContext, PluginError},
-    schema::blob_list_builder,
+    util::{blob_list_builder, fixed_size_list_builder},
 };
 
 pub struct PointCloud2MessageParser {

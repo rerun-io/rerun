@@ -7,7 +7,7 @@ use arrow::{
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_types::{AnyValues, components};
 
-use crate::mcap::decode::PluginError;
+use crate::parsers::PluginError;
 
 use super::{Layer, LayerIdentifier};
 

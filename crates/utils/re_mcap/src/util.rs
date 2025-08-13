@@ -7,7 +7,7 @@ use mcap::{
 };
 use re_chunk::external::nohash_hasher::IntMap;
 
-use crate::mcap::decode::ChannelId;
+use crate::parsers::ChannelId;
 
 /// Read out the summary of an MCAP file.
 pub fn read_summary<R: Read + Seek>(mut reader: R) -> anyhow::Result<Option<Summary>> {

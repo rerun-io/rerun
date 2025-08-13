@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::builtin_interfaces::Time;
+use super::builtin_interfaces::Time;
 
 /// Color representation in RGBA format
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
