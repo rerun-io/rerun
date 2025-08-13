@@ -14,7 +14,9 @@ use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::entity_db_button_ui;
 use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
-use re_grpc_client::{ConnectionClient, ConnectionError, ConnectionRegistryHandle, StreamError};
+use re_grpc_client::{
+    ClientConnectionError, ConnectionClient, ConnectionRegistryHandle, StreamError,
+};
 use re_log_encoding::codec::CodecError;
 use re_log_types::{ApplicationId, EntryId, natural_ordering};
 use re_protos::TypeConversionError;
@@ -45,7 +47,7 @@ pub enum EntryError {
     TonicError(#[from] tonic::Status),
 
     #[error(transparent)]
-    ConnectionError(#[from] ConnectionError),
+    ClientConnectionError(#[from] ClientConnectionError),
 
     #[error(transparent)]
     StreamError(#[from] StreamError),
@@ -64,28 +66,30 @@ pub enum EntryError {
 }
 
 impl EntryError {
-    fn tonic_status(&self) -> Option<&tonic::Status> {
+    fn client_connection_error(&self) -> Option<&ClientConnectionError> {
         // Be explicit here so we don't miss any future variants that might have a `tonic::Status`.
         match self {
-            Self::TonicError(status) => Some(status),
-            Self::StreamError(StreamError::TonicStatus(status)) => Some(&status.0),
+            Self::ClientConnectionError(err)
+            | Self::StreamError(StreamError::ClientConnectionError(err)) => Some(err),
+
             #[cfg(not(target_arch = "wasm32"))]
             Self::StreamError(StreamError::Transport(_)) => None,
+
             Self::StreamError(
-                StreamError::ConnectionError(_)
-                | StreamError::Tokio(_)
+                StreamError::Tokio(_)
                 | StreamError::CodecError(_)
                 | StreamError::ChunkError(_)
                 | StreamError::DecodeError(_)
                 | StreamError::InvalidUri(_)
                 | StreamError::InvalidSorbetSchema(_)
+                | StreamError::TonicStatus(_)
                 | StreamError::TypeConversionError(_)
                 | StreamError::MissingChunkData
                 | StreamError::MissingDataframeColumn(_)
                 | StreamError::MissingData(_)
                 | StreamError::ArrowError(_),
             )
-            | Self::ConnectionError(_)
+            | Self::TonicError(_)
             | Self::TypeConversionError(_)
             | Self::CodecError(_)
             | Self::SorbetError(_)
@@ -94,21 +98,17 @@ impl EntryError {
     }
 
     pub fn is_missing_token(&self) -> bool {
-        if let Some(status) = self.tonic_status() {
-            status.code() == tonic::Code::Unauthenticated
-                && status.message() == re_auth::ERROR_MESSAGE_MISSING_CREDENTIALS
-        } else {
-            false
-        }
+        matches!(
+            self.client_connection_error(),
+            Some(ClientConnectionError::UnauthenticatedMissingToken(_))
+        )
     }
 
     pub fn is_wrong_token(&self) -> bool {
-        if let Some(status) = self.tonic_status() {
-            status.code() == tonic::Code::Unauthenticated
-                && status.message() == re_auth::ERROR_MESSAGE_INVALID_CREDENTIALS
-        } else {
-            false
-        }
+        matches!(
+            self.client_connection_error(),
+            Some(ClientConnectionError::UnauthenticatedBadToken(_))
+        )
     }
 }
 
