@@ -182,27 +182,23 @@ impl ConnectionRegistryHandle {
         match request_result {
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {
-                // We might be recursing here, so we need to make sure we drop the lock on inner.
                 let should_attempt_again = {
-                    let mut should_attempt_again = false;
-
+                    // We might be recursing here, so we need to make sure we drop the lock on inner.
                     let mut inner = self.inner.write().await;
-                    if inner.saved_tokens.contains_key(&origin) {
+
+                    if token.is_some() && token.as_ref() == inner.saved_tokens.get(&origin) {
                         re_log::debug!(
                             "Removing token for origin {origin} as it is no longer valid"
                         );
-                        let forgotten_token = inner.saved_tokens.remove(&origin);
+                        inner.saved_tokens.remove(&origin);
 
-                        // After forgetting the token, we should attempt again iff we actually
-                        // forgot a token and its the one we tried. If so, we attempt again
-                        // regardless of whether we have an alternative fallback token, because
-                        // maybe that server no longer needs a token?
-                        if forgotten_token.is_some() && forgotten_token == token {
-                            should_attempt_again = true;
-                        }
+                        // Since we forgot the token that we tried, we can do a second attempt.
+                        // We do so regardless of whether we have an alternative fallback token,
+                        // because maybe that server no longer needs a token?
+                        true
+                    } else {
+                        false
                     }
-
-                    should_attempt_again
                 };
 
                 if token.is_none() {
