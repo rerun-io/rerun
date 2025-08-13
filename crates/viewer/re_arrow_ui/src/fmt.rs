@@ -173,7 +173,7 @@ pub(crate) trait ShowIndex {
                     .show_hierarchical(ui, LabelContent::new(highlighted.into_widget_text()));
             }
             Err(err) => {
-                ui.error_label(format!("Error formatting value: {err:?}"));
+                ui.error_label(err.to_string());
             }
         }
     }
@@ -207,7 +207,7 @@ trait ShowIndexState<'a> {
                     .show_hierarchical(ui, LabelContent::new(highlighted.into_widget_text()));
             }
             Err(err) => {
-                ui.error_label(format!("Error formatting value: {err:?}"));
+                ui.error_label(err.to_string());
             }
         }
     }
@@ -309,6 +309,7 @@ primitive_display!(format_int: Int8Type, Int16Type, Int32Type, Int64Type);
 primitive_display!(format_uint: UInt8Type, UInt16Type, UInt32Type, UInt64Type);
 primitive_display!(format_f32: Float32Type);
 primitive_display!(format_f64: Float64Type);
+
 fn format_f16(value: f16) -> String {
     format_f32(value.to_f32())
 }

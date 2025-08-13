@@ -10,6 +10,7 @@ enum NodeLabel {
     Name(String),
     Custom(WidgetText),
 }
+
 pub struct ArrowNode<'a> {
     label: NodeLabel,
     values: &'a dyn crate::fmt::ShowIndex,
@@ -56,8 +57,13 @@ impl<'a> ArrowNode<'a> {
         };
 
         let mut value = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
-        self.values.write(index, &mut value).ok(); // TODO: Handle error
-        let value = value.into_widget_text();
+        let result = self.values.write(index, &mut value);
+        let value = match result {
+            Ok(()) => value.into_widget_text(),
+            Err(e) => RichText::new(format!("Error: {e}"))
+                .color(ui.tokens().error_fg_color)
+                .into(),
+        };
 
         let nested = self.values.is_item_nested();
         let data_type = self.values.array().data_type();

@@ -71,7 +71,6 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
     /// Some primitive value, e.g. a number or bool.
     pub fn code_primitive(&mut self, portion: &str) {
         let mut format = monospace_text_format(self.style);
-        // TODO: Rename token name
         format.color = self.tokens.code_number;
         self.job.append(portion, 0.0, format);
     }
