@@ -623,7 +623,7 @@ fn rr_recording_stream_is_enabled_impl(id: CRecordingStream) -> Result<bool, CEr
 #[allow(unsafe_code)]
 #[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
-    if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
+    if let Some(stream) = RECORDING_STREAMS.lock().get(id) {
         stream.flush_blocking();
     }
 }
