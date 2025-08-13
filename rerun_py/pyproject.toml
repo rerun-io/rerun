@@ -35,7 +35,7 @@ name = "Rerun.io"
 text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
-tests = ["pytest==7.1.2"]
+tests = ["pytest==8.4.1"]
 notebook = ["rerun-notebook==0.25.0-alpha.1+dev"]
 datafusion = ["datafusion==47.0.0"]
 all = ["notebook", "datafusion"]

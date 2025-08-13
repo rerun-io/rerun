@@ -597,7 +597,7 @@ ninja = "1.11.1.*"
 numpy = ">=2"                     # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 prettier = ">=3.6"
 pyarrow = "18.0.0.*"              # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
-pytest = ">=7"
+pytest = ">=8.4.1"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.9.6.*"
