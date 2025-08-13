@@ -10,10 +10,10 @@ use re_log_types::{LogMsg, TableMsg};
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 use re_uri::RedapUri;
 
-use crate::{
-    CallSource,
-    commands::{McapCommands, RrdCommands},
-};
+use crate::{CallSource, commands::RrdCommands};
+
+#[cfg(feature = "data_loaders")]
+use crate::commands::McapCommands;
 
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
@@ -537,6 +537,7 @@ enum Command {
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 
+    #[cfg(feature = "data_loaders")]
     #[command(subcommand)]
     Mcap(McapCommands),
 
@@ -628,6 +629,7 @@ where
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
 
+            #[cfg(feature = "data_loaders")]
             Command::Mcap(mcap) => mcap.run(),
 
             Command::Rrd(rrd) => rrd.run(),

@@ -25,6 +25,7 @@ impl CallSource {
 mod auth;
 
 mod entrypoint;
+#[cfg(feature = "data_loaders")]
 mod mcap;
 mod rrd;
 mod stdio;
@@ -33,6 +34,7 @@ mod stdio;
 mod analytics;
 
 pub use self::entrypoint::run;
+#[cfg(feature = "data_loaders")]
 pub use self::mcap::McapCommands;
 pub use self::rrd::RrdCommands;
 pub use self::stdio::{
