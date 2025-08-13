@@ -603,7 +603,7 @@ impl App {
             }
 
             SystemCommand::LoadDataSource(data_source) => {
-                self.load_datasource(store_hub, egui_ctx, &data_source);
+                self.load_data_source(store_hub, egui_ctx, &data_source);
             }
 
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
@@ -781,7 +781,7 @@ impl App {
     /// Note that we *do not* change the display mode here _unconditionally_.
     /// For instance if the datasource is a blueprint for a dataset that may be loaded later,
     /// we don't want to switch out to it while the user browses a server.
-    fn load_datasource(
+    fn load_data_source(
         &mut self,
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
@@ -816,6 +816,7 @@ impl App {
                         }
 
                         let store_id = entity_db.store_id().clone();
+                        debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
                         drop(all_sources);
                         self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
                     }
@@ -829,10 +830,9 @@ impl App {
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
                         let store_id = entity_db.store_id().clone();
-                        if store_id.is_recording() {
-                            drop(all_sources);
-                            self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
-                        }
+                        debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
+                        drop(all_sources);
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
                     }
                     return;
                 }
@@ -848,6 +848,7 @@ impl App {
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
                         let store_id = entity_db.store_id().clone();
+                        debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
                         drop(all_sources);
                         self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
                     }
@@ -1956,6 +1957,13 @@ impl App {
         egui_ctx: &egui::Context,
         store_id: &StoreId,
     ) {
+        if store_id.is_blueprint() {
+            re_log::warn!(
+                "Can't make a blueprint active: {store_id:?}. This is likely a bug in Rerun."
+            );
+            return;
+        }
+
         store_hub.set_active_recording_id(store_id.clone());
 
         // Also select the new recording:
