@@ -349,20 +349,14 @@ fn read_samples_from_chunk(
     //
     // We want to figure out the byte offsets of each blob within the arrow buffer that holds all the blobs,
     // i.e. get out a Vec<ByteRange>.
-    let inner_list_array = raw_array
-        .downcast_array_ref::<arrow::array::ListArray>()
+    let binary_array = raw_array
+        .downcast_array_ref::<arrow::array::BinaryArray>()
         .ok_or(VideoStreamProcessingError::InvalidVideoSampleType(
             raw_array.data_type().clone(),
         ))?;
-    let values = inner_list_array
-        .values()
-        .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()
-        .ok_or(VideoStreamProcessingError::InvalidVideoSampleType(
-            raw_array.data_type().clone(),
-        ))?;
-    let values = values.values().inner();
+    let buffer = binary_array.values();
 
-    let offsets = inner_list_array.offsets();
+    let offsets = binary_array.offsets();
     let lengths = offsets.lengths().collect::<Vec<_>>();
 
     let buffer_index = chunk_buffers.next_index();
@@ -386,8 +380,8 @@ fn read_samples_from_chunk(
                 }
 
                 let sample_idx = sample_base_idx + start;
-                let byte_span = Span { start:offsets[start] as usize, len: lengths[start] };
-                let sample_bytes = &values[byte_span.range()];
+                let byte_span = Span { start: offsets[start] as usize, len: lengths[start] };
+                let sample_bytes = &buffer[byte_span.range()];
 
                 // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
                 // For sequence time we use a scale of 1, for nanoseconds time we use a scale of 1_000_000_000.
@@ -492,7 +486,7 @@ fn read_samples_from_chunk(
     }
 
     chunk_buffers.push_back(SampleBuffer {
-        buffer: values.clone(),
+        buffer: buffer.clone(),
         source_chunk_id: chunk.id(),
         sample_index_range: sample_base_idx..samples.next_index(),
     });
