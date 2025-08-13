@@ -27,6 +27,17 @@ impl super::Migration for Migration {
 fn migrate_blobs(batch: RecordBatch) -> RecordBatch {
     re_tracing::profile_function!();
 
+    /// Is this a `List<List<u8>>` ?
+    fn is_list_list_u8(datatype: &DataType) -> bool {
+        if let DataType::List(list_field) = datatype
+            && let DataType::List(innermost_field) = list_field.data_type()
+        {
+            innermost_field.data_type() == &DataType::UInt8
+        } else {
+            false
+        }
+    }
+
     fn is_blob_field(field: &Field) -> bool {
         let components_with_blobs = [
             "rerun.components.Blob",
@@ -35,11 +46,9 @@ fn migrate_blobs(batch: RecordBatch) -> RecordBatch {
         ];
 
         if let Some(component_type) = field.metadata().get("rerun:component_type")
-            && !components_with_blobs.contains(&component_type.as_str())
-            && let DataType::List(list_field) = field.data_type()
-            && let DataType::List(innermost_field) = list_field.data_type()
+            && components_with_blobs.contains(&component_type.as_str())
         {
-            innermost_field.data_type() == &DataType::UInt8
+            is_list_list_u8(field.data_type())
         } else {
             false
         }
@@ -72,7 +81,10 @@ fn migrate_blobs(batch: RecordBatch) -> RecordBatch {
                 fields.push(new_field.into());
                 columns.push(Arc::new(new_array));
 
-                re_log::debug_once!("Migrated {} from List[u8] to Binary", field.name());
+                re_log::debug_once!(
+                    "Changed datatype of '{}' from List[u8] to Binary",
+                    field.name()
+                );
                 continue;
             } else {
                 re_log::warn_once!("Failed to convert {} to Binary", field.name());
