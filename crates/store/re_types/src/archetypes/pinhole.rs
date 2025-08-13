@@ -210,13 +210,13 @@ impl Pinhole {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::line_width`].
     ///
-    /// The corresponding component is [`crate::components::Scalar`].
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_line_width() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.Pinhole".into()),
             component: "Pinhole:line_width".into(),
-            component_type: Some("rerun.components.Scalar".into()),
+            component_type: Some("rerun.components.Radius".into()),
         }
     }
 }
@@ -403,7 +403,7 @@ impl Pinhole {
                 Self::descriptor_color(),
             )),
             line_width: Some(SerializedComponentBatch::new(
-                crate::components::Scalar::arrow_empty(),
+                crate::components::Radius::arrow_empty(),
                 Self::descriptor_line_width(),
             )),
         }
@@ -629,19 +629,19 @@ impl Pinhole {
 
     /// Width of the camera wireframe lines.
     #[inline]
-    pub fn with_line_width(mut self, line_width: impl Into<crate::components::Scalar>) -> Self {
+    pub fn with_line_width(mut self, line_width: impl Into<crate::components::Radius>) -> Self {
         self.line_width = try_serialize_field(Self::descriptor_line_width(), [line_width]);
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::components::Scalar`] in a single component batch.
+    /// This method makes it possible to pack multiple [`crate::components::Radius`] in a single component batch.
     ///
     /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_line_width`] should
     /// be used when logging a single row's worth of data.
     #[inline]
     pub fn with_many_line_width(
         mut self,
-        line_width: impl IntoIterator<Item = impl Into<crate::components::Scalar>>,
+        line_width: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
     ) -> Self {
         self.line_width = try_serialize_field(Self::descriptor_line_width(), line_width);
         self

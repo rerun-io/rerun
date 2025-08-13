@@ -24,5 +24,4 @@ float64
 
 ## Used by
 
-* [`Pinhole`](../archetypes/pinhole.md)
 * [`Scalars`](../archetypes/scalars.md)

@@ -26,7 +26,7 @@ namespace rerun::archetypes {
         archetype.color =
             ComponentBatch::empty<rerun::components::Color>(Descriptor_color).value_or_throw();
         archetype.line_width =
-            ComponentBatch::empty<rerun::components::Scalar>(Descriptor_line_width)
+            ComponentBatch::empty<rerun::components::Radius>(Descriptor_line_width)
                 .value_or_throw();
         return archetype;
     }

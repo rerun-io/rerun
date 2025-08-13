@@ -106,7 +106,7 @@ class Pinhole(PinholeExt, Archetype):
         camera_xyz: datatypes.ViewCoordinatesLike | None = None,
         image_plane_distance: datatypes.Float32Like | None = None,
         color: datatypes.Rgba32Like | None = None,
-        line_width: datatypes.Float64Like | None = None,
+        line_width: datatypes.Float32Like | None = None,
     ) -> Pinhole:
         """
         Update only some specific fields of a `Pinhole`.
@@ -199,7 +199,7 @@ class Pinhole(PinholeExt, Archetype):
         camera_xyz: datatypes.ViewCoordinatesArrayLike | None = None,
         image_plane_distance: datatypes.Float32ArrayLike | None = None,
         color: datatypes.Rgba32ArrayLike | None = None,
-        line_width: datatypes.Float64ArrayLike | None = None,
+        line_width: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -393,10 +393,10 @@ class Pinhole(PinholeExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    line_width: components.ScalarBatch | None = field(
+    line_width: components.RadiusBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.ScalarBatch._converter,  # type: ignore[misc]
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
     )
     # Width of the camera wireframe lines.
     #

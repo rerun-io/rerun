@@ -70,5 +70,5 @@ table Pinhole (
   color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 5000);
 
   /// Width of the camera wireframe lines.
-  line_width: rerun.components.Scalar ("attr.rerun.component_optional", nullable, order: 6000);
+  line_width: rerun.components.Radius ("attr.rerun.component_optional", nullable, order: 6000);
 }

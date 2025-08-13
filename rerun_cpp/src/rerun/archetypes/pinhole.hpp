@@ -9,8 +9,8 @@
 #include "../components/color.hpp"
 #include "../components/image_plane_distance.hpp"
 #include "../components/pinhole_projection.hpp"
+#include "../components/radius.hpp"
 #include "../components/resolution.hpp"
-#include "../components/scalar.hpp"
 #include "../components/view_coordinates.hpp"
 #include "../result.hpp"
 
@@ -164,7 +164,7 @@ namespace rerun::archetypes {
         );
         /// `ComponentDescriptor` for the `line_width` field.
         static constexpr auto Descriptor_line_width = ComponentDescriptor(
-            ArchetypeName, "Pinhole:line_width", Loggable<rerun::components::Scalar>::ComponentType
+            ArchetypeName, "Pinhole:line_width", Loggable<rerun::components::Radius>::ComponentType
         );
 
       public: // START of extensions from pinhole_ext.cpp:
@@ -379,7 +379,7 @@ namespace rerun::archetypes {
         }
 
         /// Width of the camera wireframe lines.
-        Pinhole with_line_width(const rerun::components::Scalar& _line_width) && {
+        Pinhole with_line_width(const rerun::components::Radius& _line_width) && {
             line_width =
                 ComponentBatch::from_loggable(_line_width, Descriptor_line_width).value_or_throw();
             return std::move(*this);
@@ -389,7 +389,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_line_width` should
         /// be used when logging a single row's worth of data.
-        Pinhole with_many_line_width(const Collection<rerun::components::Scalar>& _line_width) && {
+        Pinhole with_many_line_width(const Collection<rerun::components::Radius>& _line_width) && {
             line_width =
                 ComponentBatch::from_loggable(_line_width, Descriptor_line_width).value_or_throw();
             return std::move(*this);

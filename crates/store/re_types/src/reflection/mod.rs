@@ -1989,7 +1989,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     .into(), docstring_md : "Color of the camera wireframe.", is_required
                     : false, }, ArchetypeFieldReflection { name : "line_width",
                     display_name : "Line width", component_type :
-                    "rerun.components.Scalar".into(), docstring_md :
+                    "rerun.components.Radius".into(), docstring_md :
                     "Width of the camera wireframe lines.", is_required : false, },
                 ],
             },

@@ -10,7 +10,7 @@ pub struct Pinhole {
     pub image_from_camera: glam::Mat3,
     pub resolution: glam::Vec2,
     pub color: Option<components::Color>,
-    pub line_width: Option<f32>,
+    pub line_width: Option<re_renderer::Size>,
 }
 
 impl Pinhole {
