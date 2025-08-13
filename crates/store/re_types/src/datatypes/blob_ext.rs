@@ -1,4 +1,4 @@
-use arrow::buffer::ScalarBuffer;
+use arrow::{array::Array as _, buffer::ScalarBuffer};
 
 use super::Blob;
 
@@ -25,7 +25,12 @@ impl Blob {
             .array
             .as_any()
             .downcast_ref::<arrow::array::BinaryArray>()?;
-        Some(blob_data.values().as_slice())
+
+        if blob_data.len() == 1 {
+            Some(blob_data.value(0))
+        } else {
+            None
+        }
     }
 }
 
