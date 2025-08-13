@@ -64,7 +64,9 @@ impl<'a> ArrowNode<'a> {
         let data_type_ui = data_type_ui(data_type);
 
         let item = ui.list_item();
-        let id = ui.unique_id().with(index).with(label.text());
+        // We *don't* use index for the ID, since it might change across timesteps,
+        // while referring the same logical data.
+        let id = ui.id().with(label.text());
         let content = PropertyContent::new(label)
             .value_fn(|ui, visuals| {
                 ui.horizontal(|ui| {
@@ -118,7 +120,7 @@ impl<'a> ArrowNode<'a> {
 
         if nested {
             item.show_hierarchical_with_children(ui, id, false, content, |ui| {
-                list_item_scope(ui, ui.unique_id().with("child_scope"), |ui| {
+                list_item_scope(ui, id.with("child_scope"), |ui| {
                     self.values.show(index, ui);
                 });
             });
