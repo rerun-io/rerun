@@ -156,6 +156,7 @@ macro_rules! decl_stream {
 }
 
 decl_stream!(GetChunksResponseStream<manifest:GetChunksResponse>);
+decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(ScanPartitionTableResponseStream<manifest:ScanPartitionTableResponse>);
 decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
@@ -827,6 +828,15 @@ impl FrontendService for FrontendHandler {
         Ok(tonic::Response::new(
             Box::pin(stream) as Self::GetChunksStream
         ))
+    }
+
+    type FetchChunksStream = FetchChunksResponseStream;
+
+    async fn fetch_chunks(
+        &self,
+        _request: tonic::Request<re_protos::frontend::v1alpha1::FetchChunksRequest>,
+    ) -> std::result::Result<tonic::Response<Self::FetchChunksStream>, tonic::Status> {
+        unimplemented!("fetch_chunks not implemented");
     }
 
     // --- Table APIs ---

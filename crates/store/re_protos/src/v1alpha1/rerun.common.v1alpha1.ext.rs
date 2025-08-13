@@ -655,7 +655,7 @@ pub struct ChunkKey {
 
 impl ChunkKey {
     pub fn as_bytes(&self) -> Vec<u8> {
-        use prost::Message;
+        use prost::Message as _;
 
         let chunk_key: crate::common::v1alpha1::ChunkKey = self.clone().into();
         chunk_key.encode_to_vec()
@@ -690,7 +690,7 @@ impl TryFrom<&[u8]> for ChunkKey {
     type Error = TypeConversionError;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        use prost::Message;
+        use prost::Message as _;
 
         let proto_chunk_key = crate::common::v1alpha1::ChunkKey::decode(bytes)
             .map_err(|err| TypeConversionError::DecodeError(err))?;
