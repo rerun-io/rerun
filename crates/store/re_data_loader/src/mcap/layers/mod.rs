@@ -67,7 +67,7 @@ pub trait Layer {
 
 /// Can be used to extract per-message information from an MCAP file.
 ///
-/// This is a specialization of [`Layer`] that allows defining [`McapMessageParsers`]
+/// This is a specialization of [`Layer`] that allows defining [`McapMessageParser`]s.
 /// to interpret the contents of MCAP chunks.
 pub trait MessageLayer {
     fn identifier() -> LayerIdentifier

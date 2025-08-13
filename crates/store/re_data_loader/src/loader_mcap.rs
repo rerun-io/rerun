@@ -16,13 +16,13 @@ const MCAP_LOADER_NAME: &str = "McapLoader";
 /// There are many different ways to extract and interpret information from MCAP files.
 /// For example, it might be interesting to query for particular fields of messages,
 /// or show information directly in the Rerun viewer. Because use-cases can vary, the
-/// [`McapLoader`] is made up of [`Layer`]s, each representing different views of the
+/// [`McapLoader`] is made up of [`crate::mcap::Layer`]s, each representing different views of the
 /// underlying data.
 ///
 /// These layers can be specified in the CLI wen converting an MCAP file
 /// to an .rrd. Here are a few examples:
-/// - [`layers::McapProtobufLayer`]
-/// - [`layers::McapRawLayer`]
+/// - [`crate::mcap::layers::McapProtobufLayer`]
+/// - [`crate::mcap::layers::McapRawLayer`]
 pub struct McapLoader {
     selected_layers: SelectedLayers,
 }
