@@ -157,7 +157,9 @@ impl PartitionStreamExec {
             None => Arc::clone(table_schema),
         };
 
-        if projection.is_some() {
+        if let Some(projected_cols) = projection
+            && !projected_cols.is_empty()
+        {
             let selection = projected_schema
                 .fields()
                 .iter()
