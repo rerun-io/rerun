@@ -6,7 +6,7 @@ use anyhow::Context as _;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 
-use crate::mcap::layers::{self, LayerRegistry, SelectedLayers};
+use crate::mcap::layers::{LayerRegistry, SelectedLayers};
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
 const MCAP_LOADER_NAME: &str = "McapLoader";
@@ -199,13 +199,7 @@ fn load_mcap(
     let summary = crate::mcap::util::read_summary(reader)?
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
-    let registry = LayerRegistry::default()
-        .register::<layers::McapProtobufLayer>()
-        .register::<layers::McapRawLayer>()
-        .register::<layers::McapRecordingInfoLayer>()
-        .register::<layers::McapRos2Layer>()
-        .register::<layers::McapSchemaLayer>()
-        .register::<layers::McapStatisticLayer>();
+    let registry = LayerRegistry::all();
 
     // TODO(#10862): Add warning for channel that miss semantic information.
 

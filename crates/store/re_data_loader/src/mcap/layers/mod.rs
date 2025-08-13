@@ -178,12 +178,29 @@ impl SelectedLayers {
 ///
 /// Custom layers can be added by implementing the [`Layer`] or [`MessageLayer`]
 /// traits and calling [`Self::register`].
-#[derive(Default)]
 pub struct LayerRegistry {
     factories: BTreeMap<LayerIdentifier, fn() -> Box<dyn Layer>>,
 }
 
 impl LayerRegistry {
+    /// Creates an empty registry.
+    pub fn empty() -> Self {
+        Self {
+            factories: Default::default(),
+        }
+    }
+
+    /// Creates a registry with all builtin layers.
+    pub fn all() -> Self {
+        Self::empty()
+            .register::<McapProtobufLayer>()
+            .register::<McapRawLayer>()
+            .register::<McapRecordingInfoLayer>()
+            .register::<McapRos2Layer>()
+            .register::<McapSchemaLayer>()
+            .register::<McapStatisticLayer>()
+    }
+
     /// Adds an additional layer to the registry.
     pub fn register<L: Layer + Default + 'static>(mut self) -> Self {
         if self
