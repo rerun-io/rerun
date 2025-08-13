@@ -1,7 +1,7 @@
 //! [`ArrowUi`] can be used to show arbitrary Arrow data with a nice UI.
 //! The implementation is inspired from arrows built-in display formatter:
 //! https://github.com/apache/arrow-rs/blob/c628435f9f14abc645fb546442132974d3d380ca/arrow-cast/src/display.rs
-use crate::datatype_ui::datatype_ui;
+use crate::datatype_ui::data_type_ui;
 use crate::list_item_ranges::list_item_ranges;
 use arrow::array::cast::*;
 use arrow::array::types::*;
@@ -123,7 +123,10 @@ impl<'a> ShowIndex for ShowBuiltIn<'a> {
         self.formatter.value(idx).write(&mut text)?;
 
         let dt = self.array.data_type();
-        if matches!(
+
+        if self.array.is_null(idx) {
+            f.code_primitive("null");
+        } else if matches!(
             dt,
             DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View
         ) {
@@ -352,13 +355,22 @@ fn write_list(
     mut range: Range<usize>,
     values: &dyn ShowIndex,
 ) -> EmptyArrowResult {
+    const MAX_LIST_ITEMS: usize = 10;
     f.code_syntax("[");
     if let Some(idx) = range.next() {
         values.write(idx, f)?;
     }
+
+    let mut items = 1;
+
     for idx in range {
+        if items >= MAX_LIST_ITEMS {
+            f.code_syntax(", ...");
+            break;
+        }
         f.code_syntax(", ");
         values.write(idx, f)?;
+        items += 1;
     }
     f.code_syntax("]");
     Ok(())
@@ -420,7 +432,7 @@ impl<'a> ArrowNode<'a> {
 
         let nested = self.values.is_item_nested();
         let data_type = self.values.array().data_type();
-        let (data_type_name, maybe_datatype_ui) = datatype_ui(data_type);
+        let (data_type_name, maybe_datatype_ui) = data_type_ui(data_type);
 
         let mut item = ui.list_item();
         let id = ui.unique_id().with(index).with(label.text());
@@ -476,7 +488,9 @@ impl<'a> ArrowNode<'a> {
 
         if nested {
             item.show_hierarchical_with_children(ui, id, false, content, |ui| {
-                self.values.show(index, ui);
+                list_item_scope(ui, ui.unique_id().with("child_scope"), |ui| {
+                    self.values.show(index, ui);
+                });
             });
         } else {
             item.show_hierarchical(ui, content);

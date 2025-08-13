@@ -1,4 +1,4 @@
-use crate::datatype_ui::datatype_ui;
+use crate::datatype_ui::data_type_ui;
 use crate::fmt::ArrayUi;
 use crate::fmt_ui;
 use arrow::array::AsArray;
@@ -66,6 +66,21 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             Ok(array_formatter) => match ui_layout {
                 UiLayout::SelectionPanel => {
                     list_item_scope(ui, Id::new("arrow_ui"), |ui| {
+                        let (name, maybe_data_type_ui) = data_type_ui(array.data_type());
+                        let content = PropertyContent::new("Data type")
+                            .value_text(name)
+                            .show_only_when_collapsed(false);
+                        if let Some(datatype_ui) = maybe_data_type_ui {
+                            ui.list_item().show_hierarchical_with_children(
+                                ui,
+                                Id::new("data_type_ui_root"),
+                                false,
+                                content,
+                                datatype_ui,
+                            );
+                        } else {
+                            ui.list_item().show_hierarchical(ui, content);
+                        }
                         if array.len() == 1 {
                             array_formatter.show_value(0, ui);
                         } else {

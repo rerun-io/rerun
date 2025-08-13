@@ -3,7 +3,7 @@ use egui::Id;
 use re_ui::UiExt;
 use re_ui::list_item::PropertyContent;
 
-pub fn datatype_ui<'a>(
+pub fn data_type_ui<'a>(
     data_type: &'a DataType,
 ) -> (String, Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>) {
     match data_type {
@@ -11,38 +11,38 @@ pub fn datatype_ui<'a>(
             "struct".to_owned(),
             Some(Box::new(move |ui| {
                 for field in fields {
-                    datatype_field_ui(ui, field);
+                    data_type_field_ui(ui, field);
                 }
             })),
         ),
         DataType::List(field) => (
             "list".to_owned(),
             Some(Box::new(move |ui| {
-                datatype_field_ui(ui, field);
+                data_type_field_ui(ui, field);
             })),
         ),
         DataType::ListView(field) => (
             "list view".to_owned(),
             Some(Box::new(move |ui| {
-                datatype_field_ui(ui, field);
+                data_type_field_ui(ui, field);
             })),
         ),
         DataType::FixedSizeList(field, size) => (
             format!("fixed-size list ({size})"),
             Some(Box::new(move |ui| {
-                datatype_field_ui(ui, field);
+                data_type_field_ui(ui, field);
             })),
         ),
         DataType::LargeList(field) => (
             "large list".to_owned(),
             Some(Box::new(move |ui| {
-                datatype_field_ui(ui, field);
+                data_type_field_ui(ui, field);
             })),
         ),
         DataType::LargeListView(field) => (
             "large list view".to_owned(),
             Some(Box::new(move |ui| {
-                datatype_field_ui(ui, field);
+                data_type_field_ui(ui, field);
             })),
         ),
         DataType::Union(fields, mode) => {
@@ -54,7 +54,7 @@ pub fn datatype_ui<'a>(
                 label.to_owned(),
                 Some(Box::new(move |ui| {
                     for (_, field) in fields.iter() {
-                        datatype_field_ui(ui, field);
+                        data_type_field_ui(ui, field);
                     }
                 })),
             )
@@ -72,18 +72,18 @@ pub fn datatype_ui<'a>(
         DataType::Map(a, _) => (
             "map".to_owned(),
             Some(Box::new(move |ui| {
-                datatype_field_ui(ui, a);
+                data_type_field_ui(ui, a);
             })),
         ),
         DataType::RunEndEncoded(a, b) => (
             "run-end encoded".to_owned(),
             Some(Box::new(move |ui| {
-                datatype_field_ui(ui, a);
-                datatype_field_ui(ui, b);
+                data_type_field_ui(ui, a);
+                data_type_field_ui(ui, b);
             })),
         ),
         non_nested => {
-            let label = simple_datatype_string(non_nested)
+            let label = simple_data_type_string(non_nested)
                 .map(|s| s.to_owned())
                 .unwrap_or_else(|| non_nested.to_string());
             (label, None)
@@ -91,11 +91,11 @@ pub fn datatype_ui<'a>(
     }
 }
 
-fn datatype_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
+fn data_type_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
     ui.spacing_mut().item_spacing.y = 0.0;
     let item = ui.list_item();
 
-    let (datatype_name, maybe_ui) = datatype_ui(field.data_type());
+    let (datatype_name, maybe_ui) = data_type_ui(field.data_type());
 
     let property = PropertyContent::new(field.name())
         .value_text(datatype_name)
@@ -109,7 +109,7 @@ fn datatype_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
 }
 
 // TODO(emilk): there is some overlap here with `re_format_arrow`.
-pub(crate) fn simple_datatype_string(datatype: &DataType) -> Option<&'static str> {
+pub(crate) fn simple_data_type_string(datatype: &DataType) -> Option<&'static str> {
     match datatype {
         DataType::Null => Some("null"),
         DataType::Boolean => Some("bool"),
