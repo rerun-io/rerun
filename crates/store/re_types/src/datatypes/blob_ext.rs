@@ -21,16 +21,11 @@ impl Blob {
     pub fn serialized_blob_as_slice(
         serialized_blob: &re_types_core::SerializedComponentBatch,
     ) -> Option<&[u8]> {
-        let blob_list_array = serialized_blob
+        let blob_data = serialized_blob
             .array
             .as_any()
-            .downcast_ref::<arrow::array::ListArray>()?;
-        let blob_data = blob_list_array
-            .values()
-            .as_any()
-            .downcast_ref::<arrow::array::PrimitiveArray<arrow::datatypes::UInt8Type>>()?;
-
-        Some(blob_data.values().inner().as_slice())
+            .downcast_ref::<arrow::array::BinaryArray>()?;
+        Some(blob_data.values().as_slice())
     }
 }
 
