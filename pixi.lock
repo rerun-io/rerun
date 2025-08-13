@@ -4117,7 +4117,7 @@ environments:
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
-      - pypi: ./rerun_py
+      - pypi: rerun_py
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aom-3.9.1-h7bae524_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aws-c-auth-0.8.0-h9b725a8_10.conda
@@ -4505,7 +4505,7 @@ environments:
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
-      - pypi: ./rerun_py
+      - pypi: rerun_py
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/aom-3.9.1-he0c23c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-auth-0.8.0-h6c5491b_10.conda
@@ -4891,7 +4891,7 @@ environments:
       - pypi: ./examples/python/shared_recording
       - pypi: ./examples/python/stdio
       - pypi: ./examples/python/structure_from_motion
-      - pypi: ./rerun_py
+      - pypi: rerun_py
   examples-pypi:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -6510,7 +6510,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b4/b0/9fc566b0fe08b282c850063591a756057c3247b2362b9286429ec5bf1721/wrapt-1.17.2-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/76/3f/dbafccf19cfeca25bbabf6f2dd81796b7218f768ec400f043edc767015a6/zstandard-0.23.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: ./rerun_py
+      - pypi: rerun_py
       linux-aarch64:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/_openmp_mutex-4.5-2_gnu.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/aiohttp-3.9.5-py311hcd402e7_0.conda
@@ -6894,7 +6894,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/ca/74/336c918d2915a4943501c77566db41d1bd6e9f4dbc317f356b9a244dfe83/wrapt-1.17.2-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/63/b6/677e65c095d8e12b66b8f862b069bcf1f1d781b9c9c6f12eb55000d57583/zstandard-0.23.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
-      - pypi: ./rerun_py
+      - pypi: rerun_py
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aiohttp-3.9.5-py311h05b510d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.4.0-pyhd8ed1ab_0.conda
@@ -7256,7 +7256,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/65/46/5a917ce85b5c3b490d35c02bf71aedaa9f2f63f2d15d9949cc4ba56e8ba9/wrapt-1.17.2-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/46/66d5b55f4d737dd6ab75851b224abf0afe5774976fe511a54d2eb9063a41/zstandard-0.23.0-cp311-cp311-macosx_11_0_arm64.whl
-      - pypi: ./rerun_py
+      - pypi: rerun_py
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/aiohttp-3.9.5-py311ha68e1ae_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.4.0-pyhd8ed1ab_0.conda
@@ -7617,7 +7617,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/47/f8/fb1773491a253cbc123c5d5dc15c86041f746ed30416535f2a8df1f4a392/wrapt-1.17.2-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/be/a2/4272175d47c623ff78196f3c10e9dc7045c1b9caf3735bf041e65271eca4/zstandard-0.23.0-cp311-cp311-win_amd64.whl
-      - pypi: ./rerun_py
+      - pypi: rerun_py
   py-docs:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -14451,6 +14451,19 @@ packages:
   - backports-datetime-fromisoformat ; python_full_version < '3.7'
   - grpclib
   - stringcase
+  - black ; extra == 'compiler'
+  - jinja2 ; extra == 'compiler'
+  - protobuf ; extra == 'compiler'
+  requires_python: '>=3.6'
+- pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
+  name: betterproto
+  version: 1.2.5
+  sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
+  requires_dist:
+  - grpclib
+  - stringcase
+  - dataclasses ; python_full_version < '3.7'
+  - backports-datetime-fromisoformat ; python_full_version < '3.7'
   - black ; extra == 'compiler'
   - jinja2 ; extra == 'compiler'
   - protobuf ; extra == 'compiler'
@@ -33218,10 +33231,10 @@ packages:
   - pytest==7.1.2 ; extra == 'tests'
   - rerun-notebook==0.24.0 ; extra == 'notebook'
   requires_python: '>=3.9'
-- pypi: ./rerun_py
+- pypi: rerun_py
   name: rerun-sdk
-  version: 0.25.0a1+dev
-  sha256: ce1efec39d978a35ecadf41d63dc970353d79607cac59a69665ddfbc88e845ef
+  version: 0.25.0a1
+  sha256: fda5009cce1edd94ce81308c324229f8c3a62eed16a7fecdd80845e20c426969
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -33229,7 +33242,7 @@ packages:
   - pyarrow>=18.0.0
   - typing-extensions>=4.5
   - pytest==7.1.2 ; extra == 'tests'
-  - rerun-notebook==0.25.0a1+dev ; extra == 'notebook'
+  - rerun-notebook==0.25.0a1 ; extra == 'notebook'
   - datafusion==47.0.0 ; extra == 'datafusion'
   - notebook ; extra == 'all'
   - datafusion ; extra == 'all'
