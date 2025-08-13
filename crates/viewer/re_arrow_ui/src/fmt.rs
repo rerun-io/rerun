@@ -2,6 +2,7 @@
 //! The implementation is inspired from arrows built-in display formatter:
 //! https://github.com/apache/arrow-rs/blob/c628435f9f14abc645fb546442132974d3d380ca/arrow-cast/src/display.rs
 use crate::datatype_ui::datatype_ui;
+use crate::list_item_ranges::list_item_ranges;
 use arrow::array::cast::*;
 use arrow::array::types::*;
 use arrow::array::*;
@@ -483,13 +484,19 @@ impl<'a> ArrowNode<'a> {
     }
 }
 
+/// Show a list.
+///
+/// If there are enough items, it will show items in a tree of ranges.
+/// Since arrow arrays might not start at 0, you can pass a `Range<usize>`.
+/// The indexes shown in the UI will be _normalized_ so it's always `0..end-start`
 fn list_ui(ui: &mut Ui, mut range: Range<usize>, values: &dyn ShowIndex) {
-    let mut label_index = 0;
-    for idx in range {
-        let node = ArrowNode::index(label_index, values);
-        node.show(ui, idx);
-        label_index += 1;
-    }
+    let ui_range = 0..(range.end - range.start);
+
+    list_item_ranges(ui, ui_range, &mut |ui, ui_idx| {
+        let node = ArrowNode::index(ui_idx, values);
+        let array_index = ui_idx + range.start;
+        node.show(ui, array_index);
+    });
 }
 
 impl<'a, O: OffsetSizeTrait> ShowIndexState<'a> for &'a GenericListArray<O> {
@@ -608,7 +615,6 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
 
     fn is_item_nested(&self) -> bool {
         let data_type = self.data_type();
-        dbg!(data_type);
         data_type.is_nested()
     }
 }
