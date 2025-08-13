@@ -130,11 +130,7 @@ fn convert_list_list_u8_to_list_binary(list_array: &dyn Array) -> Option<ListArr
 
     // Create the outer list array with binary inner type
     let outer_list = ListArray::try_new(
-        Arc::new(Field::new(
-            "item",
-            DataType::Binary,
-            list_array.is_nullable(),
-        )),
+        Arc::new(Field::new("item", DataType::Binary, true)),
         list_array.offsets().clone(),
         Arc::new(binary_array),
         list_array.nulls().cloned(),
