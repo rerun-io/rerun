@@ -4,7 +4,6 @@ use itertools::Itertools as _;
 use poll_promise::Promise;
 
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::{CommandSender, DisplayMode, SystemCommand, SystemCommandSender as _};
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -242,13 +241,7 @@ impl ExampleSection {
     /// │                               │    │
     /// │                               │    │
     /// ```
-    pub(super) fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        command_sender: &CommandSender,
-        header_ui: &impl Fn(&mut Ui),
-        is_history_enabled: bool,
-    ) {
+    pub(super) fn ui(&mut self, ui: &mut egui::Ui, header_ui: &impl Fn(&mut Ui)) {
         let examples = self
             .examples
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
@@ -353,12 +346,10 @@ impl ExampleSection {
                                     // panel to quit auto-zoom mode.
                                     ui.input_mut(|i| i.pointer = Default::default());
 
-                                    open_example_url(
-                                        ui.ctx(),
-                                        command_sender,
-                                        &example.desc.rrd_url,
-                                        is_history_enabled,
-                                    );
+                                    ui.ctx().open_url(egui::output::OpenUrl {
+                                        url: example.desc.rrd_url.clone(),
+                                        new_tab: false,
+                                    });
                                 }
 
                                 row_example_responses.push(response);
@@ -427,44 +418,6 @@ impl ExampleSection {
                     });
             });
         });
-    }
-}
-
-fn open_example_url(
-    _egui_ctx: &egui::Context,
-    command_sender: &CommandSender,
-    rrd_url: &str,
-    _is_history_enabled: bool,
-) {
-    let data_source = re_data_source::DataSource::RrdHttpUrl {
-        uri: rrd_url.to_owned(),
-        follow: false,
-    };
-
-    // If the user re-download an already open recording, clear it out first
-    command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
-        re_smart_channel::SmartChannelSource::RrdHttpStream {
-            url: rrd_url.to_owned(),
-            follow: false,
-        },
-    ));
-
-    command_sender.send_system(SystemCommand::LoadDataSource(data_source));
-
-    // The welcome screen might be rendered from the redap browser ui
-    command_sender.send_system(SystemCommand::ChangeDisplayMode(
-        DisplayMode::LocalRecordings,
-    ));
-
-    #[cfg(target_arch = "wasm32")]
-    if _is_history_enabled {
-        use crate::history::{HistoryEntry, HistoryExt as _, history};
-        use crate::web_tools::JsResultExt as _;
-
-        if let Some(history) = history().ok_or_log_js_error() {
-            let entry = HistoryEntry::default().rrd_url(rrd_url.to_owned());
-            history.push_entry(entry).ok_or_log_js_error();
-        }
     }
 }
 

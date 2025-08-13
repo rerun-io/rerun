@@ -816,7 +816,15 @@ fn run_impl(
             .url_or_paths
             .iter()
             .cloned()
-            .map(|uri| DataSource::from_uri(re_log_types::FileSource::Cli, uri))
+            .filter_map(|uri| {
+                if let Some(data_source) = DataSource::from_uri(re_log_types::FileSource::Cli, &uri)
+                {
+                    Some(data_source)
+                } else {
+                    re_log::warn!("{uri:?} is not a valid data source link.");
+                    None
+                }
+            })
             .collect_vec();
 
         #[cfg(feature = "web_viewer")]

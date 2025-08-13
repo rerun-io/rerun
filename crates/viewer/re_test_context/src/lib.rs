@@ -595,7 +595,6 @@ impl TestContext {
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::CloseRecordingOrTable(_)
                 | SystemCommand::LoadDataSource(_)
-                | SystemCommand::ClearSourceAndItsStores(_)
                 | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
                 | SystemCommand::ChangeDisplayMode(_)

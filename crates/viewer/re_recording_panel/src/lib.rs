@@ -187,14 +187,7 @@ fn recording_list_ui(
         };
 
         if response.clicked() {
-            ctx.command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                    EXAMPLES_ORIGIN.clone(),
-                )));
-            ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(Item::RedapServer(
-                    EXAMPLES_ORIGIN.clone(),
-                )));
+            re_redap_browser::switch_to_welcome_screen(ctx.command_sender());
         }
     }
 }

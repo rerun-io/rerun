@@ -499,27 +499,49 @@ impl App {
             SystemCommand::ActivateApp(app_id) => {
                 self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
+                update_web_address_bar(
+                    self.startup_options.web_history_enabled(),
+                    store_hub,
+                    self.state.navigation.peek(),
+                );
             }
 
             SystemCommand::CloseApp(app_id) => {
                 store_hub.close_app(&app_id);
+                update_web_address_bar(
+                    self.startup_options.web_history_enabled(),
+                    store_hub,
+                    self.state.navigation.peek(),
+                );
             }
 
-            SystemCommand::ActivateRecordingOrTable(entry) => match &entry {
-                RecordingOrTable::Recording { store_id } => {
-                    self.state.navigation.replace(DisplayMode::LocalRecordings);
-                    store_hub.set_active_recording_id(store_id.clone());
+            SystemCommand::ActivateRecordingOrTable(entry) => {
+                match &entry {
+                    RecordingOrTable::Recording { store_id } => {
+                        self.state.navigation.replace(DisplayMode::LocalRecordings);
+                        store_hub.set_active_recording_id(store_id.clone());
+                    }
+                    RecordingOrTable::Table { table_id } => {
+                        self.state
+                            .navigation
+                            .replace(DisplayMode::LocalTable(table_id.clone()));
+                    }
                 }
-                RecordingOrTable::Table { table_id } => {
-                    self.state
-                        .navigation
-                        .replace(DisplayMode::LocalTable(table_id.clone()));
-                }
-            },
+                update_web_address_bar(
+                    self.startup_options.web_history_enabled(),
+                    store_hub,
+                    self.state.navigation.peek(),
+                );
+            }
 
             SystemCommand::CloseRecordingOrTable(entry) => {
                 // TODO(#9464): Find a better successor here.
                 store_hub.remove(&entry);
+                update_web_address_bar(
+                    self.startup_options.web_history_enabled(),
+                    store_hub,
+                    self.state.navigation.peek(),
+                );
             }
 
             SystemCommand::CloseAllEntries => {
@@ -542,19 +564,29 @@ impl App {
                 });
             }
 
-            SystemCommand::ClearSourceAndItsStores(source) => {
-                self.rx_log.retain(|r| r.source() != &source);
-                store_hub.retain_recordings(|db| db.data_source.as_ref() != Some(&source));
-            }
-
             SystemCommand::AddReceiver(rx) => {
                 re_log::debug!("Received AddReceiver");
                 self.add_log_receiver(rx);
             }
 
             SystemCommand::ChangeDisplayMode(display_mode) => {
+                // Update web-navigation bar if this isn't about local recordings.
+                //
+                // Recordings are on selection since recording change always comes with a selection change.
+                // It's important to not do that here because otherwise we might miss on anchors etc. or even
+                // _which_ recording is about to be selected.
+                // I.e. if we update navigation bar here, this would become order dependent.
+                if display_mode != DisplayMode::LocalRecordings {
+                    update_web_address_bar(
+                        self.startup_options.web_history_enabled(),
+                        store_hub,
+                        &display_mode,
+                    );
+                }
+
                 self.state.navigation.replace(display_mode);
             }
+
             SystemCommand::AddRedapServer(origin) => {
                 self.state.redap_servers.add_server(origin.clone());
 
@@ -571,51 +603,7 @@ impl App {
             }
 
             SystemCommand::LoadDataSource(data_source) => {
-                // Note that we *do not* change the display mode here.
-                // For instance if the datasource is a blueprint for a dataset that may be loaded later,
-                // we don't want to switch out to it while the user browses a server.
-
-                let egui_ctx = egui_ctx.clone();
-                // On native, `add_receiver` spawns a thread that wakes up the ui thread
-                // on any new message. On web we cannot spawn threads, so instead we need
-                // to supply a waker that is called when new messages arrive in background tasks
-                let waker = Box::new(move || {
-                    // Spend a few more milliseconds decoding incoming messages,
-                    // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
-                    egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
-                });
-
-                let command_sender = self.command_sender.clone();
-                let on_cmd = Box::new(move |cmd| match cmd {
-                    re_data_source::DataSourceCommand::SetLoopSelection {
-                        recording_id,
-                        timeline,
-                        time_range,
-                    } => command_sender.send_system(SystemCommand::SetLoopSelection {
-                        store_id: recording_id,
-                        timeline,
-                        time_range,
-                    }),
-                });
-
-                match data_source
-                    .clone()
-                    .stream(&self.connection_registry, on_cmd, Some(waker))
-                {
-                    Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
-
-                    Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
-                        self.add_redap_server(uri.origin.clone());
-                    }
-
-                    Ok(re_data_source::StreamSource::EntryUri(uri)) => {
-                        self.select_redap_entry(&uri);
-                    }
-
-                    Err(err) => {
-                        re_log::error!("Failed to open data source: {}", re_error::format(err));
-                    }
-                }
+                self.load_data_source(store_hub, egui_ctx, &data_source);
             }
 
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
@@ -725,6 +713,11 @@ impl App {
                 }
 
                 self.state.selection_state.set_selection(item);
+                update_web_address_bar(
+                    self.startup_options.web_history_enabled(),
+                    store_hub,
+                    self.state.navigation.peek(),
+                );
             }
 
             SystemCommand::SetActiveTime {
@@ -779,6 +772,177 @@ impl App {
         }
     }
 
+    /// Loads a data source into the viewer.
+    ///
+    /// Tries to detect whether the datasource is already present (either still streaming in or already loaded),
+    /// and if so, will not load the data again.
+    /// Instead, it will only perform any kind of selection/mode-switching operations associated with loading the given data source.
+    ///
+    /// Note that we *do not* change the display mode here _unconditionally_.
+    /// For instance if the datasource is a blueprint for a dataset that may be loaded later,
+    /// we don't want to switch out to it while the user browses a server.
+    fn load_data_source(
+        &mut self,
+        store_hub: &mut StoreHub,
+        egui_ctx: &egui::Context,
+        data_source: &DataSource,
+    ) {
+        // Check if we've already loaded this data source and should just switch to it.
+        //
+        // Go through all sources that are still loading and those that are already in the store_hub.
+        // (if we look only at the one from the store_hub, we might miss those that haven't hit it yet)
+        let active_sources = self.rx_log.sources();
+        let store_sources = store_hub
+            .store_bundle()
+            .entity_dbs()
+            .filter_map(|db| db.data_source.as_ref());
+        let mut all_sources = store_sources.chain(active_sources.iter().map(|s| s.as_ref()));
+
+        match data_source {
+            DataSource::RrdHttpUrl { url, follow } => {
+                let new_source = SmartChannelSource::RrdHttpStream {
+                    url: url.clone(),
+                    follow: *follow,
+                };
+                if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
+                    if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
+                        if *follow {
+                            let rec_cfg = self.state.recording_config_mut(entity_db);
+                            let time_ctrl = rec_cfg.time_ctrl.get_mut();
+                            time_ctrl.set_play_state(
+                                entity_db.times_per_timeline(),
+                                PlayState::Following,
+                            );
+                        }
+
+                        let store_id = entity_db.store_id().clone();
+                        debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
+                        drop(all_sources);
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
+                    }
+                    return;
+                }
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::FilePath(_file_source, path) => {
+                let new_source = SmartChannelSource::File(path.clone());
+                if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
+                    if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
+                        let store_id = entity_db.store_id().clone();
+                        debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
+                        drop(all_sources);
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
+                    }
+                    return;
+                }
+            }
+
+            DataSource::FileContents(_file_source, _file_contents) => {
+                // For raw file contents we currently can't determine whether we're already receiving them.
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::Stdin => {
+                let new_source = SmartChannelSource::Stdin;
+                if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
+                    if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
+                        let store_id = entity_db.store_id().clone();
+                        debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
+                        drop(all_sources);
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
+                    }
+                    return;
+                }
+            }
+
+            DataSource::RerunGrpcStream {
+                uri: re_uri::RedapUri::DatasetData(uri),
+                select_when_loaded,
+            } => {
+                let new_source = SmartChannelSource::RedapGrpcStream {
+                    uri: uri.clone(),
+                    select_when_loaded: *select_when_loaded,
+                };
+                if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
+                    // We're already receiving from the exact same data source!
+                    // But we still should select if requested according to the fragments if any.
+                    if *select_when_loaded {
+                        // First make the recording itself active.
+                        // `go_to_dataset_data` may override the selection again, but this is important regardless,
+                        // since `go_to_dataset_data` does not change the active recording.
+                        drop(all_sources);
+                        self.make_store_active_and_highlight(store_hub, egui_ctx, &uri.store_id());
+                    }
+
+                    // Note that applying the fragment changes the per-recording settings like the active time cursor.
+                    // Therefore, we apply it even when `select_when_loaded` is false.
+                    self.go_to_dataset_data(uri);
+
+                    return;
+                }
+            }
+
+            DataSource::RerunGrpcStream {
+                uri: _,
+                select_when_loaded: _,
+            } => {
+                // Other URI types don't need the skipping code here as they won't add a data source anyways.
+            }
+        }
+        // On native, `add_receiver` spawns a thread that wakes up the ui thread
+        // on any new message. On web we cannot spawn threads, so instead we need
+        // to supply a waker that is called when new messages arrive in background tasks
+        let waker = {
+            let egui_ctx = egui_ctx.clone();
+            Box::new(move || {
+                // Spend a few more milliseconds decoding incoming messages,
+                // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+            })
+        };
+        let on_cmd = {
+            let command_sender = self.command_sender.clone();
+            Box::new(move |cmd| match cmd {
+                re_data_source::DataSourceCommand::SetLoopSelection {
+                    recording_id,
+                    timeline,
+                    time_range,
+                } => command_sender.send_system(SystemCommand::SetLoopSelection {
+                    store_id: recording_id,
+                    timeline,
+                    time_range,
+                }),
+            })
+        };
+
+        match data_source
+            .clone()
+            .stream(&self.connection_registry, on_cmd, Some(waker))
+        {
+            Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
+
+            Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
+                self.add_redap_server(uri.origin.clone());
+                self.command_sender
+                    .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+                        uri.origin.clone(),
+                    )));
+            }
+
+            Ok(re_data_source::StreamSource::EntryUri(uri)) => {
+                self.select_redap_entry(&uri);
+            }
+
+            Err(err) => {
+                re_log::error!("Failed to open data source: {}", re_error::format(err));
+            }
+        }
+    }
+
+    /// Applies the fragment of a dataset data URI to the viewer.
+    ///
+    /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, uri: &re_uri::DatasetDataUri) {
         let re_uri::Fragment { focus, when } = uri.fragment.clone();
 
@@ -1378,7 +1542,7 @@ impl App {
         let Some(range) = time_ctrl.loop_selection() else {
             // no loop selection
             re_log::warn!(
-                "Could not copy time range link: No loop selection set. Use shift+left click on the timeline to create a loop"
+                "Could not copy time range link: No loop selection set. Use shift to drag a selection on the timeline"
             );
             return;
         };
@@ -1532,11 +1696,6 @@ impl App {
                     .get_mut::<re_renderer::RenderContext>()
                 {
                     if let Some(store_context) = store_context {
-                        #[cfg(target_arch = "wasm32")]
-                        let is_history_enabled = self.startup_options.enable_history;
-                        #[cfg(not(target_arch = "wasm32"))]
-                        let is_history_enabled = false;
-
                         render_ctx.begin_frame(); // This may actually be called multiple times per egui frame, if we have a multi-pass layout frame.
 
                         // In some (rare) circumstances we run two egui passes in a single frame.
@@ -1566,7 +1725,6 @@ impl App {
                                 hide_examples: self.startup_options.hide_welcome_screen,
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
-                            is_history_enabled,
                             self.event_dispatcher.as_ref(),
                             &self.connection_registry,
                             &self.async_runtime,
@@ -1707,19 +1865,7 @@ impl App {
                         match store_id.kind() {
                             StoreKind::Recording => {
                                 re_log::trace!("Opening a new recording: '{store_id:?}'");
-                                store_hub.set_active_recording_id(store_id.clone());
-
-                                // Also select the new recording:
-                                self.command_sender.send_system(SystemCommand::SetSelection(
-                                    re_viewer_context::Item::StoreId(store_id.clone()),
-                                ));
-
-                                // If the viewer is in the background, tell the user that it has received something new.
-                                egui_ctx.send_viewport_cmd(
-                                    egui::ViewportCommand::RequestUserAttention(
-                                        egui::UserAttentionType::Informational,
-                                    ),
-                                );
+                                self.make_store_active_and_highlight(store_hub, egui_ctx, store_id);
                             }
                             StoreKind::Blueprint => {
                                 // We wait with activating blueprints until they are fully loaded,
@@ -1802,6 +1948,33 @@ impl App {
                 break; // don't block the main thread for too long
             }
         }
+    }
+
+    /// Makes the given store active and request user attention if Rerun in the background.
+    fn make_store_active_and_highlight(
+        &self,
+        store_hub: &mut StoreHub,
+        egui_ctx: &egui::Context,
+        store_id: &StoreId,
+    ) {
+        if store_id.is_blueprint() {
+            re_log::warn!(
+                "Can't make a blueprint active: {store_id:?}. This is likely a bug in Rerun."
+            );
+            return;
+        }
+
+        store_hub.set_active_recording_id(store_id.clone());
+
+        // Also select the new recording:
+        self.command_sender.send_system(SystemCommand::SetSelection(
+            re_viewer_context::Item::StoreId(store_id.clone()),
+        ));
+
+        // If the viewer is in the background, tell the user that it has received something new.
+        egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
+            egui::UserAttentionType::Informational,
+        ));
     }
 
     /// After loading some data; check if the loaded data makes sense.
@@ -2842,4 +3015,39 @@ async fn async_save_dialog(
         messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn update_web_address_bar(
+    _enable_history: bool,
+    _store_hub: &StoreHub,
+    _display_mode: &DisplayMode,
+) {
+    // No-op on native.
+}
+
+#[cfg(target_arch = "wasm32")]
+fn update_web_address_bar(
+    enable_history: bool,
+    store_hub: &StoreHub,
+    display_mode: &DisplayMode,
+) -> Option<()> {
+    if !enable_history {
+        return None;
+    }
+    let url = crate::open_url::display_mode_to_content_url(store_hub, display_mode)?;
+
+    re_log::debug!("Updating navigation bar");
+
+    use crate::history::{HistoryEntry, HistoryExt as _, history};
+    use crate::web_tools::JsResultExt as _;
+
+    if let Some(history) = history().ok_or_log_js_error() {
+        // TODO(#10866): don't push if only the fragments change.
+        history
+            .push_entry(HistoryEntry::new(url))
+            .ok_or_log_js_error();
+    }
+
+    Some(())
 }

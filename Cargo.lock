@@ -7475,6 +7475,7 @@ dependencies = [
  "re_tracing",
  "re_uri",
  "tokio",
+ "url",
  "wasm-bindgen-futures",
 ]
 

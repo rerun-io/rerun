@@ -14,6 +14,7 @@ mod docker_detection;
 pub mod env_vars;
 pub mod event;
 mod navigation;
+mod open_url;
 mod saving;
 mod screenshotter;
 mod startup_options;

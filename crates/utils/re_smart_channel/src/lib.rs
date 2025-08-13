@@ -29,6 +29,7 @@ pub enum SmartChannelSource {
     /// The channel was created in the context of loading an `.rrd` file over http.
     ///
     /// The `follow` flag indicates whether the viewer should open the stream in `Following` mode rather than `Playing` mode.
+    // TODO(andreas): having follow in here is a bit weird. This should be part of the link fragments instead.
     RrdHttpStream { url: String, follow: bool },
 
     /// The channel was created in the context of loading an `.rrd` file from a `postMessage`
@@ -165,6 +166,20 @@ impl SmartChannelSource {
                 "Waiting for logging data…".to_owned()
             }
             Self::Sdk => "Waiting for logging data from SDK".to_owned(),
+        }
+    }
+
+    /// Compares two channel sources but ignores any URI fragments and other selection/state only guides
+    /// that don't affect what data is loaded.
+    pub fn is_same_ignoring_uri_fragments(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::RedapGrpcStream { uri: uri1, .. }, Self::RedapGrpcStream { uri: uri2, .. }) => {
+                uri1.clone().without_fragment() == uri2.clone().without_fragment()
+            }
+            (Self::RrdHttpStream { url: url1, .. }, Self::RrdHttpStream { url: url2, .. }) => {
+                url1 == url2
+            }
+            _ => self == other,
         }
     }
 }
