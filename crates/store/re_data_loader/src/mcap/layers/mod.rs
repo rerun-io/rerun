@@ -16,7 +16,7 @@ pub use self::{
 use super::decode::{ChannelId, McapMessageParser, ParserContext, PluginError};
 
 /// Globally unique identifier for a layer.
-#[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct LayerIdentifier(String);
 
@@ -157,6 +157,23 @@ impl<T: MessageLayer> Layer for T {
     }
 }
 
+/// Used to select certain layers.
+#[derive(Clone, Debug)]
+pub enum SelectedLayers {
+    All,
+    Subset(BTreeSet<LayerIdentifier>),
+}
+
+impl SelectedLayers {
+    /// Checks if a layer is part of the current selection.
+    pub fn contains(&self, value: &LayerIdentifier) -> bool {
+        match self {
+            Self::All => true,
+            Self::Subset(subset) => subset.contains(value),
+        }
+    }
+}
+
 /// Holds a set of all known layers.
 ///
 /// Custom layers can be added by implementing the [`Layer`] or [`MessageLayer`]
@@ -179,7 +196,8 @@ impl LayerRegistry {
         self
     }
 
-    pub fn layers(&self, filter: Option<BTreeSet<String>>) -> impl Iterator<Item = Box<dyn Layer>> {
+    /// Returns a list of all layers.
+    pub fn layers(&self, selected: SelectedLayers) -> impl Iterator<Item = Box<dyn Layer>> {
         re_log::debug!(
             "Existing layers: {:?}",
             self.factories.keys().collect::<Vec<_>>()
@@ -187,11 +205,11 @@ impl LayerRegistry {
         self.factories
             .iter()
             .filter_map(move |(identifier, factory)| {
-                let Some(filter) = filter.as_ref() else {
+                let SelectedLayers::Subset(selected) = &selected else {
                     return Some(factory());
                 };
 
-                if filter.contains(identifier.0) {
+                if selected.contains(identifier) {
                     Some(factory())
                 } else {
                     None

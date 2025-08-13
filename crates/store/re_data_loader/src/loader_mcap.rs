@@ -1,33 +1,15 @@
 //! Rerun dataloader for MCAP files.
 
-use std::collections::BTreeSet;
 use std::{io::Cursor, sync::mpsc::Sender};
 
 use anyhow::Context as _;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 
-use crate::mcap::layers::{LayerIdentifier, LayerRegistry};
-use crate::mcap::{self, layers};
+use crate::mcap::layers::{self, LayerRegistry, SelectedLayers};
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
 const MCAP_LOADER_NAME: &str = "McapLoader";
-
-#[derive(Clone, Debug)]
-enum SelectedLayers {
-    All,
-    Subset(BTreeSet<LayerIdentifier>),
-}
-
-impl SelectedLayers {
-    /// Checks if a layer is part of the current selection.
-    pub fn contains(&self, value: &LayerIdentifier) -> bool {
-        match self {
-            SelectedLayers::All => true,
-            SelectedLayers::Subset(subset) => subset.contains(value),
-        }
-    }
-}
 
 /// A [`DataLoader`] for MCAP files.
 ///
@@ -55,10 +37,8 @@ impl Default for McapLoader {
 
 impl McapLoader {
     /// Creates a new [`McapLoader`] that only extracts the specified `layers`.
-    pub fn with_selected_layers(layers: impl IntoIterator<Item = String>) -> Self {
-        Self {
-            selected_layers: SelectedLayers::Subset(layers.into_iter().collect()),
-        }
+    pub fn new(selected_layers: SelectedLayers) -> Self {
+        Self { selected_layers }
     }
 }
 
@@ -216,7 +196,7 @@ fn load_mcap(
 
     let reader = Cursor::new(&mcap);
 
-    let summary = mcap::util::read_summary(reader)?
+    let summary = crate::mcap::util::read_summary(reader)?
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
     let registry = LayerRegistry::default()
@@ -232,7 +212,7 @@ fn load_mcap(
     let mut empty = true;
     for mut layer in registry.layers(selected_layers) {
         re_tracing::profile_scope!("process-layer");
-        empty &= false;
+        empty = false;
         layer
             .process(mcap, &summary, &mut send_chunk)
             .with_context(|| "processing layers")?;

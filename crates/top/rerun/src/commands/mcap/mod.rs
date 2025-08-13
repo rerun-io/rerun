@@ -4,7 +4,11 @@ use clap::Subcommand;
 use re_log_encoding::encoder::DroppableEncoder;
 use re_log_types::{LogMsg, RecordingId};
 use re_sdk::{
-    ApplicationId, DataLoader, DataLoaderSettings, LoadedData, external::re_data_loader::McapLoader,
+    ApplicationId, DataLoader, DataLoaderSettings, LoadedData,
+    external::re_data_loader::{
+        McapLoader,
+        mcap::layers::{LayerIdentifier, SelectedLayers},
+    },
 };
 
 #[derive(Debug, Clone, clap::Parser)]
@@ -20,9 +24,9 @@ pub struct ConvertCommand {
     #[clap(long = "application-id")]
     application_id: Option<String>,
 
-    /// If set, specifies the application id of the output.
+    /// Specifies which layers to apply during conversion.
     #[clap(short = 'l', long = "layer")]
-    layer_filter: Vec<String>,
+    selected_layers: Vec<String>,
 
     /// If set, specifies the recording id of the output.
     ///
@@ -40,7 +44,7 @@ impl ConvertCommand {
             path_to_output_rrd,
             application_id,
             recording_id,
-            layer_filter,
+            selected_layers,
         } = self;
 
         let start_time = std::time::Instant::now();
@@ -55,11 +59,19 @@ impl ConvertCommand {
             .map(RecordingId::from)
             .unwrap_or(RecordingId::random());
 
-        let loader: &dyn DataLoader = if !layer_filter.is_empty() {
-            &McapLoader::with_layers(layer_filter.iter().cloned())
+        let selected_layers = if selected_layers.is_empty() {
+            SelectedLayers::All
         } else {
-            &McapLoader::default()
+            SelectedLayers::Subset(
+                selected_layers
+                    .iter()
+                    .cloned()
+                    .map(LayerIdentifier::from)
+                    .collect(),
+            )
         };
+
+        let loader: &dyn DataLoader = &McapLoader::new(selected_layers);
 
         // TODO(#10862): This currently loads the entire file into memory.
         let (tx, rx) = std::sync::mpsc::channel::<LoadedData>();
