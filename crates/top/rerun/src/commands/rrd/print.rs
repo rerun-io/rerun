@@ -178,7 +178,7 @@ fn print_msg(options: &Options, msg: LogMsg) -> anyhow::Result<()> {
                     0 => {
                         let column_names = migrared_chunk
                             .component_columns()
-                            .map(|(descr, _)| descr.column_name(re_sorbet::BatchType::Chunk)) // short coulmn name without entity-path prefix
+                            .map(|(descr, _)| descr.column_name(re_sorbet::BatchType::Chunk)) // short column name without entity-path prefix
                             .join(" ");
                         println!("data columns: [{column_names}]");
                     }
