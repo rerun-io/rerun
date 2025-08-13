@@ -8,26 +8,12 @@ use re_types::archetypes::{Scalars, SeriesLines};
 
 use crate::mcap::{
     cdr,
-    decode::{McapMessageParser, ParserContext, PluginError, SchemaName, SchemaPlugin},
+    decode::{McapMessageParser, ParserContext, PluginError},
 };
 
 /// Plugin that parses `sensor_msgs/msg/JointState` messages.
 #[derive(Default)]
 pub struct JointStateSchemaPlugin;
-
-impl SchemaPlugin for JointStateSchemaPlugin {
-    fn name(&self) -> SchemaName {
-        "sensor_msgs/msg/JointState".into()
-    }
-
-    fn create_message_parser(
-        &self,
-        _channel: &mcap::Channel<'_>,
-        num_rows: usize,
-    ) -> Box<dyn McapMessageParser> {
-        Box::new(JointStateMessageParser::new(num_rows)) as Box<dyn McapMessageParser>
-    }
-}
 
 pub struct JointStateMessageParser {
     joint_names: ListBuilder<StringBuilder>,

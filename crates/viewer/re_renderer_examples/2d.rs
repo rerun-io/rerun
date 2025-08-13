@@ -3,7 +3,8 @@
 //! On the left is a 2D view, on the right a 3D view of the same scene.
 
 // TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used)]
+#![expect(clippy::disallowed_methods)] // allow hardcoded colors
 
 use itertools::Itertools as _;
 use re_renderer::Hsva;

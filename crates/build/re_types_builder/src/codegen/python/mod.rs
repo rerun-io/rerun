@@ -472,10 +472,9 @@ impl PythonCodeGenerator {
                 .iter()
                 .filter_map(|field| quote_import_clauses_from_field(&obj.scope(), field))
                 .chain(obj.fields.iter().filter_map(|field| {
-                    field.typ.fqname().and_then(|fqname| {
-                        objects[fqname].delegate_datatype(objects).map(|delegate| {
-                            quote_import_clauses_from_fqname(&obj.scope(), &delegate.fqname)
-                        })
+                    let fqname = field.typ.fqname()?;
+                    objects[fqname].delegate_datatype(objects).map(|delegate| {
+                        quote_import_clauses_from_fqname(&obj.scope(), &delegate.fqname)
                     })
                 }))
                 .collect();
@@ -1114,7 +1113,7 @@ fn code_for_union(
     let inner_type = if field_types.len() > 1 {
         format!("Union[{}]", field_types.iter().join(", "))
     } else {
-        field_types.iter().next().unwrap().to_string()
+        field_types.iter().next().unwrap().clone()
     };
 
     // components and datatypes have converters only if manually provided
@@ -2517,7 +2516,7 @@ fn quote_init_method(
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = quote_doc_lines(doc_string_lines);
 
     let custom_init_hint = format!(
@@ -2641,7 +2640,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
     unindent(&format!(
@@ -2725,7 +2724,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
     let kwargs = quote_component_field_mapping(obj);

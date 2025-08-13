@@ -146,10 +146,10 @@ impl VideoDataDescription {
             mp4_tracks,
         };
 
-        if cfg!(debug_assertions) {
-            if let Err(err) = video_data_description.sanity_check() {
-                panic!("VideoDataDescription sanity check for {debug_name} failed: {err}");
-            }
+        if cfg!(debug_assertions)
+            && let Err(err) = video_data_description.sanity_check()
+        {
+            panic!("VideoDataDescription sanity check for {debug_name} failed: {err}");
         }
 
         Ok(video_data_description)

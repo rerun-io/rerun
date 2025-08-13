@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from .. import components, datatypes
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from .. import components, datatypes
 
 
 class Boxes3DExt:

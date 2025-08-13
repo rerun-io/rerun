@@ -43,7 +43,7 @@ impl crate::DataUi for EntityDb {
 
             if let Some(SmartChannelSource::RedapGrpcStream { uri: re_uri::DatasetDataUri { partition_id, .. }, .. }) = &self.data_source {
                 ui.grid_left_hand_label("Partition ID");
-                ui.label(partition_id.to_string());
+                ui.label(partition_id);
                 ui.end_row();
             }
 
@@ -85,40 +85,36 @@ impl crate::DataUi for EntityDb {
             }
 
             let show_last_modified_time = !ctx.global_context.is_test; // Hide in tests because it is non-deterministic (it's based on `RowId`).
-            if show_last_modified_time {
-                if let Some(latest_row_id) = self.latest_row_id() {
-                    if let Ok(nanos_since_epoch) =
-                        i64::try_from(latest_row_id.nanos_since_epoch())
-                    {
-                        let time = re_log_types::Timestamp::from_nanos_since_epoch(nanos_since_epoch);
-                        ui.grid_left_hand_label("Modified");
-                        ui.label(time.format(ctx.app_options().timestamp_format));
-                        ui.end_row();
-                    }
-                }
+            if show_last_modified_time
+                && let Some(latest_row_id) = self.latest_row_id()
+                && let Ok(nanos_since_epoch) =
+                    i64::try_from(latest_row_id.nanos_since_epoch())
+            {
+                let time = re_log_types::Timestamp::from_nanos_since_epoch(nanos_since_epoch);
+                ui.grid_left_hand_label("Modified");
+                ui.label(time.format(ctx.app_options().timestamp_format));
+                ui.end_row();
             }
 
             if let Some(tl_name) = self.timelines().keys()
                 .find(|k| **k == re_log_types::TimelineName::log_time())
+                && let Some(range) = self.time_range_for(tl_name)
+                && let delta_ns = (range.max() - range.min()).as_i64()
+                && delta_ns > 0
             {
-                if let Some(range) = self.time_range_for(tl_name) {
-                    let delta_ns = (range.max() - range.min()).as_i64();
-                    if delta_ns > 0 {
-                        let duration = SignedDuration::from_nanos(delta_ns);
+                let duration = SignedDuration::from_nanos(delta_ns);
 
-                        let printer = SpanPrinter::new()
-                            .fractional(Some(FractionalUnit::Second))
-                            .precision(Some(2));
+                let printer = SpanPrinter::new()
+                    .fractional(Some(FractionalUnit::Second))
+                    .precision(Some(2));
 
-                        let pretty = printer.duration_to_string(&duration);
+                let pretty = printer.duration_to_string(&duration);
 
 
-                        ui.grid_left_hand_label("Duration");
-                        ui.label(pretty)
-                            .on_hover_text("Duration between earliest and latest log_time.");
-                        ui.end_row();
-                    }
-                }
+                ui.grid_left_hand_label("Duration");
+                ui.label(pretty)
+                    .on_hover_text("Duration between earliest and latest log_time.");
+                ui.end_row();
             }
 
 
@@ -222,16 +218,13 @@ impl crate::DataUi for EntityDb {
 
                             if let Some(active_blueprint) =
                                 hub.active_blueprint_for_app(active_app_id)
+                                && active_blueprint.cloned_from() == Some(self.store_id())
                             {
-                                if active_blueprint.cloned_from() == Some(self.store_id()) {
-                                    // The active blueprint is a clone of the selected blueprint.
-                                    if self.latest_row_id() == active_blueprint.latest_row_id() {
-                                        ui.label(
-                                            "The active blueprint is a clone of this blueprint.",
-                                        );
-                                    } else {
-                                        ui.label("The active blueprint is a modified clone of this blueprint.");
-                                    }
+                                // The active blueprint is a clone of the selected blueprint.
+                                if self.latest_row_id() == active_blueprint.latest_row_id() {
+                                    ui.label("The active blueprint is a clone of this blueprint.");
+                                } else {
+                                    ui.label("The active blueprint is a modified clone of this blueprint.");
                                 }
                             }
                         }

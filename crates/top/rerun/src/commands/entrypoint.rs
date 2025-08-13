@@ -10,7 +10,10 @@ use re_log_types::{LogMsg, TableMsg};
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 use re_uri::RedapUri;
 
-use crate::{CallSource, commands::RrdCommands};
+use crate::{
+    CallSource,
+    commands::{McapCommands, RrdCommands},
+};
 
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
@@ -20,6 +23,9 @@ use re_web_viewer_server::WebViewerServerPort;
 
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
+
+#[cfg(feature = "auth")]
+use super::auth::AuthCommands;
 
 // ---
 
@@ -532,6 +538,9 @@ enum Command {
     Analytics(AnalyticsCommands),
 
     #[command(subcommand)]
+    Mcap(McapCommands),
+
+    #[command(subcommand)]
     Rrd(RrdCommands),
 
     /// Reset the memory of the Rerun Viewer.
@@ -548,6 +557,11 @@ enum Command {
     /// Example: `rerun man > docs/content/reference/cli.md`
     #[command(name = "man")]
     Manual,
+
+    /// Authentication with the redap.
+    #[cfg(feature = "auth")]
+    #[command(subcommand)]
+    Auth(AuthCommands),
 }
 
 /// Run the Rerun application and return an exit code.
@@ -614,6 +628,8 @@ where
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
 
+            Command::Mcap(mcap) => mcap.run(),
+
             Command::Rrd(rrd) => rrd.run(),
 
             #[cfg(feature = "native_viewer")]
@@ -631,6 +647,13 @@ where
                 );
                 println!("{web_header}\n\n{man}");
                 Ok(())
+            }
+
+            #[cfg(feature = "auth")]
+            Command::Auth(cmd) => {
+                let runtime =
+                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
+                cmd.run(&runtime).map_err(Into::into)
             }
         }
     } else {
@@ -797,28 +820,28 @@ fn run_impl(
             .collect_vec();
 
         #[cfg(feature = "web_viewer")]
-        if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::RerunGrpcStream {
+        if data_sources.len() == 1
+            && args.web_viewer
+            && let DataSource::RerunGrpcStream {
                 uri: re_uri::RedapUri::Proxy(uri),
                 ..
             } = data_sources[0].clone()
-            {
-                // Special case! We are connecting a web-viewer to a gRPC address.
-                // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
+        {
+            // Special case! We are connecting a web-viewer to a gRPC address.
+            // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
 
-                WebViewerConfig {
-                    bind_ip: args.bind.to_string(),
-                    web_port: args.web_viewer_port,
-                    connect_to: Some(uri.to_string()),
-                    force_wgpu_backend: args.renderer,
-                    video_decoder: args.video_decoder,
-                    open_browser: true,
-                }
-                .host_web_viewer()?
-                .block();
-
-                return Ok(());
+            WebViewerConfig {
+                bind_ip: args.bind.to_string(),
+                web_port: args.web_viewer_port,
+                connect_to: Some(uri.to_string()),
+                force_wgpu_backend: args.renderer,
+                video_decoder: args.video_decoder,
+                open_browser: true,
             }
+            .host_web_viewer()?
+            .block();
+
+            return Ok(());
         }
 
         let command_sender = command_sender.clone();

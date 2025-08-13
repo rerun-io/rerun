@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
@@ -10,6 +9,8 @@ from ... import datatypes
 from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from .selected_columns import SelectedColumnsArrayLike
 
 

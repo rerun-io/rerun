@@ -78,7 +78,7 @@ impl StatsCommand {
                         }
 
                         huh => anyhow::bail!("unknown Compression: {huh}"),
-                    };
+                    }
 
                     tx_uncompressed.send(Ok(
                         re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(msg),

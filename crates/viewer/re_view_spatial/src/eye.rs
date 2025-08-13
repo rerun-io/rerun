@@ -385,7 +385,7 @@ impl ViewEye {
             Err(err) => {
                 re_log::error_once!("error while getting eye 3D kind: {}", err);
             }
-        };
+        }
 
         // Dragging even below the [`drag_threshold`] should be considered interaction.
         // Otherwise we flicker in and out of "has interacted" too quickly.

@@ -13,7 +13,6 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
@@ -57,6 +56,8 @@ class LineStrip2D(LineStrip2DExt, ComponentMixin):
 
 
 if TYPE_CHECKING:
+    from .. import datatypes
+
     LineStrip2DLike = Union[LineStrip2D, datatypes.Vec2DArrayLike, npt.NDArray[np.float32]]
 else:
     LineStrip2DLike = Any

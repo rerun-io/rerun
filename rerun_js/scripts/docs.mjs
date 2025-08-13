@@ -21,7 +21,7 @@ const index_html = `<!DOCTYPE html>
   <meta charset="utf-8">
   <title>Redirecting</title>
   <noscript>
-    <meta http-equiv="refresh" content="1; url=stable/" />
+    <meta http-equiv="refresh" content="1; url=${main_package}/" />
   </noscript>
   <script>
     window.location.replace("${main_package}/" + window.location.hash);

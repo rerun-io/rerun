@@ -12,10 +12,13 @@ This is expected to be run by the `auto_approve.yml` GitHub workflow.
 from __future__ import annotations
 
 import argparse
+from typing import TYPE_CHECKING
 
 import requests
 from github import Github
-from github.WorkflowRun import WorkflowRun
+
+if TYPE_CHECKING:
+    from github.WorkflowRun import WorkflowRun
 
 APPROVAL = "@rerun-bot approve"
 

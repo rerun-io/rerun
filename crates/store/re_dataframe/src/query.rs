@@ -487,10 +487,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         .fetch_chunks(store, cache, query, &column.entity_path, [&column.into()])
                         .unwrap_or_default();
 
-                    if let Some(pov) = self.query.filtered_is_not_null.as_ref() {
-                        if column.matches(pov) {
-                            view_pov_chunks_idx = Some(idx);
-                        }
+                    if let Some(pov) = self.query.filtered_is_not_null.as_ref()
+                        && column.matches(pov)
+                    {
+                        view_pov_chunks_idx = Some(idx);
                     }
 
                     chunks
@@ -1001,7 +1001,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         cursor: cur_cursor_value,
                         row_id: cur_row_id,
                     });
-                };
+                }
             }
         }
 
@@ -1171,46 +1171,45 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .map(|(view_idx, streaming_state)| {
                 // NOTE: Reminder: the only reason the streaming state could be `None` here is
                 // because this column does not have data for the current index value (i.e. `null`).
-                streaming_state.as_ref().and_then(|streaming_state| {
-                    let list_array = match streaming_state {
-                        StreamingJoinState::StreamingJoinState(s) => {
-                            debug_assert!(
-                                s.chunk.components().iter().count() <= 1,
-                                "cannot possibly get more than one component with this query"
-                            );
+                let streaming_state = streaming_state.as_ref()?;
+                let list_array = match streaming_state {
+                    StreamingJoinState::StreamingJoinState(s) => {
+                        debug_assert!(
+                            s.chunk.components().iter().count() <= 1,
+                            "cannot possibly get more than one component with this query"
+                        );
 
-                            s.chunk
-                                .components()
-                                .iter()
-                                .next()
-                                .map(|(_, list_array)| list_array.slice(s.cursor as usize, 1))
+                        s.chunk
+                            .components()
+                            .iter()
+                            .next()
+                            .map(|(_, list_array)| list_array.slice(s.cursor as usize, 1))
 
-                        }
+                    }
 
-                        StreamingJoinState::Retrofilled(unit) => {
-                            let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| if let ColumnDescriptor::Component(descr) = col {
-                                if let Some(component_type) = descr.component_type  { component_type.sanity_check(); }
-                                Some(re_types_core::ComponentDescriptor {
-                                    component_type: descr.component_type,
-                                    archetype: descr.archetype,
-                                    component: descr.component,
-                                })
-                            } else {
-                                None
-                            })?;
-                            unit.components().get(&component_desc).cloned()
-                        }
-                    };
+                    StreamingJoinState::Retrofilled(unit) => {
+                        let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| if let ColumnDescriptor::Component(descr) = col {
+                            if let Some(component_type) = descr.component_type  { component_type.sanity_check(); }
+                            Some(re_types_core::ComponentDescriptor {
+                                component_type: descr.component_type,
+                                archetype: descr.archetype,
+                                component: descr.component,
+                            })
+                        } else {
+                            None
+                        })?;
+                        unit.components().get(&component_desc).cloned()
+                    }
+                };
 
 
-                    debug_assert!(
-                        list_array.is_some(),
-                        "This must exist or the chunk wouldn't have been sliced/retrofilled to start with."
-                    );
+                debug_assert!(
+                    list_array.is_some(),
+                    "This must exist or the chunk wouldn't have been sliced/retrofilled to start with."
+                );
 
-                    // NOTE: This cannot possibly return None, see assert above.
-                    list_array
-                })
+                // NOTE: This cannot possibly return None, see assert above.
+                list_array
             })
             .collect();
 

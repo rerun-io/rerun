@@ -291,10 +291,10 @@ impl TimeControl {
                     }
                 }
 
-                if let Some(loop_range) = loop_range {
-                    if loop_range.max < state.current.time {
-                        state.current.time = loop_range.min; // loop!
-                    }
+                if let Some(loop_range) = loop_range
+                    && loop_range.max < state.current.time
+                {
+                    state.current.time = loop_range.min; // loop!
                 }
 
                 NeedsRepaint::Yes
@@ -470,11 +470,11 @@ impl TimeControl {
     }
 
     pub fn restart(&mut self, times_per_timeline: &TimesPerTimeline) {
-        if let Some(stats) = times_per_timeline.get(self.timeline.name()) {
-            if let Some(state) = self.states.get_mut(self.timeline.name()) {
-                state.current.time = min(&stats.per_time).into();
-                self.following = false;
-            }
+        if let Some(stats) = times_per_timeline.get(self.timeline.name())
+            && let Some(state) = self.states.get_mut(self.timeline.name())
+        {
+            state.current.time = min(&stats.per_time).into();
+            self.following = false;
         }
     }
 
@@ -506,15 +506,14 @@ impl TimeControl {
             // the beginning in play mode.
 
             // Start from beginning if we are at the end:
-            if let Some(stats) = times_per_timeline.get(self.timeline.name()) {
-                if let Some(state) = self.states.get_mut(self.timeline.name()) {
-                    if max(&stats.per_time) <= state.current.time {
-                        state.current.time = min(&stats.per_time).into();
-                        self.playing = true;
-                        self.following = false;
-                        return;
-                    }
-                }
+            if let Some(stats) = times_per_timeline.get(self.timeline.name())
+                && let Some(state) = self.states.get_mut(self.timeline.name())
+                && max(&stats.per_time) <= state.current.time
+            {
+                state.current.time = min(&stats.per_time).into();
+                self.playing = true;
+                self.following = false;
+                return;
             }
 
             if self.following {

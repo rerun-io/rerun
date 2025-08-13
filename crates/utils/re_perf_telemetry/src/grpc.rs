@@ -32,7 +32,7 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
         let email = request
             .headers()
             .get("authorization")
-            .and_then(|auth| auth.to_str().ok().and_then(|s| s.strip_prefix("Bearer ")))
+            .and_then(|auth| auth.to_str().ok()?.strip_prefix("Bearer "))
             .and_then(|token| token.split('.').skip(1).take(1).next())
             .and_then(|data| {
                 use base64::{Engine as _, engine::general_purpose};
@@ -592,10 +592,10 @@ impl tonic::service::Interceptor for TracingInjectorInterceptor {
 
         impl opentelemetry::propagation::Injector for MetadataMap<'_> {
             fn set(&mut self, key: &str, value: String) {
-                if let Ok(key) = tonic::metadata::MetadataKey::from_bytes(key.as_bytes()) {
-                    if let Ok(val) = tonic::metadata::MetadataValue::try_from(&value) {
-                        self.0.insert(key, val);
-                    }
+                if let Ok(key) = tonic::metadata::MetadataKey::from_bytes(key.as_bytes())
+                    && let Ok(val) = tonic::metadata::MetadataValue::try_from(&value)
+                {
+                    self.0.insert(key, val);
                 }
             }
         }
@@ -637,7 +637,7 @@ impl tonic::service::Interceptor for TracingExtractorInterceptor {
 
         impl opentelemetry::propagation::Extractor for MetadataMap<'_> {
             fn get(&self, key: &str) -> Option<&str> {
-                self.0.get(key).and_then(|metadata| metadata.to_str().ok())
+                self.0.get(key)?.to_str().ok()
             }
 
             fn keys(&self) -> Vec<&str> {

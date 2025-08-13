@@ -255,26 +255,26 @@ impl ViewerContext<'_> {
 
             egui::DragAndDrop::set_payload(&response.ctx, payload);
         } else if response.clicked() {
-            if response.double_clicked() {
-                if let Some(item) = interacted_items.first_item() {
-                    // Double click always selects the whole instance and nothing else.
-                    let item = if let Item::DataResult(view_id, instance) = item {
-                        interacted_items = Item::DataResult(
-                            *view_id,
-                            InstancePath::entity_all(instance.entity_path.clone()),
-                        )
-                        .into();
-                        interacted_items
-                            .first_item()
-                            .expect("That item was just added")
-                    } else {
-                        item
-                    };
+            if response.double_clicked()
+                && let Some(item) = interacted_items.first_item()
+            {
+                // Double click always selects the whole instance and nothing else.
+                let item = if let Item::DataResult(view_id, instance) = item {
+                    interacted_items = Item::DataResult(
+                        *view_id,
+                        InstancePath::entity_all(instance.entity_path.clone()),
+                    )
+                    .into();
+                    interacted_items
+                        .first_item()
+                        .expect("That item was just added")
+                } else {
+                    item
+                };
 
-                    self.global_context
-                        .command_sender
-                        .send_system(crate::SystemCommand::SetFocus(item.clone()));
-                }
+                self.global_context
+                    .command_sender
+                    .send_system(crate::SystemCommand::SetFocus(item.clone()));
             }
 
             let modifiers = response.ctx.input(|i| i.modifiers);

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import itertools
+from typing import TYPE_CHECKING
 
 import numpy as np
 import rerun as rr
 from rerun.components import PinholeProjectionBatch, ResolutionBatch, ViewCoordinatesBatch
-from rerun.datatypes import Mat3x3Like, Vec2DLike, ViewCoordinatesLike
+
+if TYPE_CHECKING:
+    from rerun.datatypes import Mat3x3Like, Vec2DLike, ViewCoordinatesLike
 
 
 def test_pinhole() -> None:

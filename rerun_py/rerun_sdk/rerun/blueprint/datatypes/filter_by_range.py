@@ -6,16 +6,18 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
 from attrs import define, field
 
-from ... import datatypes
 from ..._baseclasses import (
     BaseBatch,
 )
 from .filter_by_range_ext import FilterByRangeExt
+
+if TYPE_CHECKING:
+    from ... import datatypes
 
 __all__ = ["FilterByRange", "FilterByRangeArrayLike", "FilterByRangeBatch", "FilterByRangeLike"]
 

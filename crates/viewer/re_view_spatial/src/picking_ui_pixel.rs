@@ -330,36 +330,33 @@ fn pixel_value_ui(
 
         if let PixelValueSource::Image(image) = &pixel_value_source {
             // Check for annotations on any single-channel image
-            if image.kind == ImageKind::Segmentation {
-                if let Some(raw_value) = image.get_xyc(x, y, 0) {
-                    if let (ImageKind::Segmentation, Some(u16_val)) =
-                        (image.kind, raw_value.try_as_u16())
-                    {
-                        ui.label("Label:");
-                        ui.label(
-                            annotations
-                                .resolved_class_description(Some(
-                                    re_types::components::ClassId::from(u16_val),
-                                ))
-                                .annotation_info()
-                                .label(None)
-                                .unwrap_or_else(|| u16_val.to_string()),
-                        );
-                        ui.end_row();
-                    };
-                }
+            if image.kind == ImageKind::Segmentation
+                && let Some(raw_value) = image.get_xyc(x, y, 0)
+                && let Some(u16_val) = raw_value.try_as_u16()
+            {
+                ui.label("Label:");
+                ui.label(
+                    annotations
+                        .resolved_class_description(Some(re_types::components::ClassId::from(
+                            u16_val,
+                        )))
+                        .annotation_info()
+                        .label(None)
+                        .unwrap_or_else(|| u16_val.to_string()),
+                );
+                ui.end_row();
             }
-            if let Some(meter) = meter {
-                // This is a depth map
-                if let Some(raw_value) = image.get_xyc(x, y, 0) {
-                    let raw_value = raw_value.as_f64();
-                    let meters = raw_value / (meter as f64);
-                    ui.label("Depth:");
-                    if meters < 1.0 {
-                        ui.monospace(format!("{:.1} mm", meters * 1e3));
-                    } else {
-                        ui.monospace(format!("{meters:.3} m"));
-                    }
+
+            if let Some(meter) = meter
+                && let Some(raw_value) = image.get_xyc(x, y, 0)
+            {
+                let raw_value = raw_value.as_f64();
+                let meters = raw_value / (meter as f64);
+                ui.label("Depth:");
+                if meters < 1.0 {
+                    ui.monospace(format!("{:.1} mm", meters * 1e3));
+                } else {
+                    ui.monospace(format!("{meters:.3} m"));
                 }
             }
         }
@@ -641,17 +638,15 @@ fn pixel_value_string_from_gpu_texture(
         } else {
             const MAX_FRAMES_WITHOUT_GPU_READBACK: u64 = 3;
 
-            ui_ctx.memory(|m| m.data.get_temp(memory_id)).and_then(
-                |cached: PreviousReadbackResult| {
-                    if cached.interaction_id == interaction_id
-                        && cached.frame_nr + MAX_FRAMES_WITHOUT_GPU_READBACK >= frame_nr
-                    {
-                        Some(cached.readback_result_rgb)
-                    } else {
-                        None
-                    }
-                },
-            )
+            let cached: PreviousReadbackResult = ui_ctx.memory(|m| m.data.get_temp(memory_id))?;
+
+            if cached.interaction_id == interaction_id
+                && cached.frame_nr + MAX_FRAMES_WITHOUT_GPU_READBACK >= frame_nr
+            {
+                Some(cached.readback_result_rgb)
+            } else {
+                None
+            }
         }
     };
 
@@ -718,12 +713,11 @@ fn pixel_value_string_from_gpu_texture(
         }
     }
 
-    readback_result_rgb.and_then(|rgb| {
-        let rgb = [
-            TensorElement::U8(rgb[0]),
-            TensorElement::U8(rgb[1]),
-            TensorElement::U8(rgb[2]),
-        ];
-        format_pixel_value(ImageKind::Color, ColorModel::RGB, &rgb)
-    })
+    let rgb = readback_result_rgb?;
+    let rgb = [
+        TensorElement::U8(rgb[0]),
+        TensorElement::U8(rgb[1]),
+        TensorElement::U8(rgb[2]),
+    ];
+    format_pixel_value(ImageKind::Color, ColorModel::RGB, &rgb)
 }

@@ -1,9 +1,11 @@
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::{
+    collections::hash_map::Entry,
+    sync::{Arc, LazyLock},
+};
 
 use ahash::HashMap;
 use crossbeam::channel::Sender;
 use js_sys::{Function, Uint8Array};
-use once_cell::sync::Lazy;
 use re_mp4::StsdBoxContent;
 use smallvec::SmallVec;
 use wasm_bindgen::{JsCast as _, closure::Closure};
@@ -113,11 +115,11 @@ unsafe impl Send for WebVideoFrame {}
 #[allow(clippy::undocumented_unsafe_blocks)]
 unsafe impl Sync for WebVideoFrame {}
 
-static IS_SAFARI: Lazy<bool> = Lazy::new(|| {
+static IS_SAFARI: LazyLock<bool> = LazyLock::new(|| {
     web_sys::window().is_some_and(|w| w.has_own_property(&wasm_bindgen::JsValue::from("safari")))
 });
 
-static IS_FIREFOX: Lazy<bool> = Lazy::new(|| {
+static IS_FIREFOX: LazyLock<bool> = LazyLock::new(|| {
     web_sys::window()
         .and_then(|w| w.navigator().user_agent().ok())
         .is_some_and(|ua| ua.to_lowercase().contains("firefox"))

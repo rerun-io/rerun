@@ -47,7 +47,7 @@ impl<'a> ExampleInfo<'a> {
                 if !args[key_end..].starts_with("=\"") {
                     prev_end = key_end;
                     continue;
-                };
+                }
                 let value_start = key_end + "=\"".len();
                 let Some(mut value_end) = args[value_start..].find('"') else {
                     prev_end = value_start;
@@ -326,24 +326,22 @@ pub fn collect_snippets_for_api_docs<'a>(
             .collect_vec();
 
         // Remove multi-line Python docstrings, otherwise we can't embed this.
-        if content.first().is_some_and(|line| line.trim() == "\"\"\"") {
-            if let Some((i, _)) = content
+        if content.first().is_some_and(|line| line.trim() == "\"\"\"")
+            && let Some((i, _)) = content
                 .iter()
                 .skip(1)
                 .find_position(|line| line.trim() == "\"\"\"")
-            {
-                content = content.into_iter().skip(i + 2).collect();
-            }
+        {
+            content = content.into_iter().skip(i + 2).collect();
         }
 
         // Remove one-line Python docstrings, otherwise we can't embed this.
-        if let Some(first_line) = content.first() {
-            if first_line.starts_with("\"\"\"")
-                && first_line.ends_with("\"\"\"")
-                && first_line.len() > 6
-            {
-                content.remove(0);
-            }
+        if let Some(first_line) = content.first()
+            && first_line.starts_with("\"\"\"")
+            && first_line.ends_with("\"\"\"")
+            && first_line.len() > 6
+        {
+            content.remove(0);
         }
 
         // trim trailing blank lines
@@ -465,11 +463,11 @@ pub fn remove_orphaned_files(reporter: &Reporter, files: &GeneratedFiles) {
 
 /// Write file if any changes were made and ensure folder hierarchy exists.
 pub fn write_file(filepath: &Utf8PathBuf, source: &str) {
-    if let Ok(existing) = std::fs::read_to_string(filepath) {
-        if existing == source {
-            // Don't touch the timestamp unnecessarily
-            return;
-        }
+    if let Ok(existing) = std::fs::read_to_string(filepath)
+        && existing == source
+    {
+        // Don't touch the timestamp unnecessarily
+        return;
     }
 
     let parent_dir = filepath.parent().unwrap();

@@ -23,10 +23,8 @@ use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
-    app_blueprint::AppBlueprint,
-    event::ViewerEventDispatcher,
-    navigation::Navigation,
-    ui::{recordings_panel_ui, settings_screen_ui},
+    app_blueprint::AppBlueprint, event::ViewerEventDispatcher, navigation::Navigation,
+    ui::settings_screen_ui,
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -249,10 +247,10 @@ impl AppState {
 
                 let selection_change = selection_state.on_frame_start(
                     |item| {
-                        if let Item::StoreId(store_id) = item {
-                            if store_id.is_empty_recording() {
-                                return false;
-                            }
+                        if let Item::StoreId(store_id) = item
+                            && store_id.is_empty_recording()
+                        {
+                            return false;
                         }
 
                         viewport_ui.blueprint.is_item_valid(storage_context, item)
@@ -260,14 +258,14 @@ impl AppState {
                     Some(Item::StoreId(store_context.recording.store_id().clone())),
                 );
 
-                if let SelectionChange::SelectionChanged(selection) = selection_change {
-                    if let Some(event_dispatcher) = event_dispatcher {
-                        event_dispatcher.on_selection_change(
-                            store_context.recording,
-                            selection,
-                            &viewport_ui.blueprint,
-                        );
-                    }
+                if let SelectionChange::SelectionChanged(selection) = selection_change
+                    && let Some(event_dispatcher) = event_dispatcher
+                {
+                    event_dispatcher.on_selection_change(
+                        store_context.recording,
+                        selection,
+                        &viewport_ui.blueprint,
+                    );
                 }
 
                 // The root container cannot be dragged.
@@ -572,18 +570,18 @@ impl AppState {
                                         .default_height(210.0)
                                         .max_height(ui.available_height() - min_height_each)
                                         .show_inside(ui, |ui| {
-                                            recordings_panel_ui(
+                                            re_recording_panel::recordings_panel_ui(
                                                 &ctx,
                                                 ui,
-                                                welcome_screen_state,
+                                                welcome_screen_state.hide_examples,
                                                 redap_servers,
                                             );
                                         });
                                 } else {
-                                    recordings_panel_ui(
+                                    re_recording_panel::recordings_panel_ui(
                                         &ctx,
                                         ui,
-                                        welcome_screen_state,
+                                        welcome_screen_state.hide_examples,
                                         redap_servers,
                                     );
                                 }
@@ -596,7 +594,7 @@ impl AppState {
                             }
 
                             DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // handled above
-                        };
+                        }
                     },
                 );
 

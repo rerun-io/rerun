@@ -437,18 +437,18 @@ impl Drop for FFmpegProcessAndListener {
         if false {
             {
                 re_tracing::profile_scope!("shutdown write thread");
-                if let Some(write_thread) = self.write_thread.take() {
-                    if write_thread.join().is_err() {
-                        re_log::error!("Failed to join ffmpeg listener thread.");
-                    }
+                if let Some(write_thread) = self.write_thread.take()
+                    && write_thread.join().is_err()
+                {
+                    re_log::error!("Failed to join ffmpeg listener thread.");
                 }
             }
             {
                 re_tracing::profile_scope!("shutdown listen thread");
-                if let Some(listen_thread) = self.listen_thread.take() {
-                    if listen_thread.join().is_err() {
-                        re_log::error!("Failed to join ffmpeg listener thread.");
-                    }
+                if let Some(listen_thread) = self.listen_thread.take()
+                    && listen_thread.join().is_err()
+                {
+                    re_log::error!("Failed to join ffmpeg listener thread.");
                 }
             }
         }
@@ -577,7 +577,7 @@ impl FrameBuffer {
                     self.next_frame_nr = Some(frame_info.frame_nr + 1);
                     break oldest_pending.remove_entry().1;
                 }
-            };
+            }
 
             // We haven't received the frame info for this frame yet.
             let Ok(frame_info) = frame_info_rx.recv() else {

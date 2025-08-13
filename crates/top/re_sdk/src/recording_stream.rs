@@ -830,9 +830,7 @@ impl RecordingStream {
         use std::ops::Deref as _;
         match &self.inner {
             Either::Left(strong) => strong.deref().as_ref().map(f),
-            Either::Right(weak) => weak
-                .upgrade()
-                .and_then(|strong| strong.deref().as_ref().map(f)),
+            Either::Right(weak) => weak.upgrade()?.deref().as_ref().map(f),
         }
     }
 
@@ -873,11 +871,11 @@ impl Drop for RecordingStream {
         // itself, because the dataloader threads -- by definition -- will have to send data into
         // this very recording, therefore we must make sure that at least one strong handle still lives
         // on until they are all finished.
-        if let Either::Left(strong) = &mut self.inner {
-            if Arc::strong_count(strong) == 1 {
-                // Keep the recording alive until all dataloaders are finished.
-                self.with(|inner| inner.wait_for_dataloaders());
-            }
+        if let Either::Left(strong) = &mut self.inner
+            && Arc::strong_count(strong) == 1
+        {
+            // Keep the recording alive until all dataloaders are finished.
+            self.with(|inner| inner.wait_for_dataloaders());
         }
     }
 }

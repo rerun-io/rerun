@@ -123,10 +123,10 @@ pub fn colormap_edit_or_view_ui(
             .show_ui(ui, |ui| {
                 list_item::list_item_scope(ui, "inner_scope", content_ui)
             });
-        if let Some(inner) = inner_response.inner {
-            if inner.changed() {
-                inner_response.response.mark_changed();
-            }
+        if let Some(inner) = inner_response.inner
+            && inner.changed()
+        {
+            inner_response.response.mark_changed();
         }
         inner_response.response
     } else {

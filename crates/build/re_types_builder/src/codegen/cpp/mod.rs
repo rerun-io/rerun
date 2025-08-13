@@ -899,34 +899,32 @@ impl QuotedObject {
                 &mut hpp_includes,
                 objects,
             ));
-        };
+        }
 
         // If we're a component with a single datatype field, add an implicit casting operator for convenience.
         if obj.kind == ObjectKind::Component
             && obj.fields.len() == 1
             && matches!(obj.fields[0].typ, Type::Object { .. })
-        {
-            if let Type::Object {
+            && let Type::Object {
                 fqname: datatype_fqname,
             } = &obj.fields[0].typ
-            {
-                let data_type = quote_field_type(&mut hpp_includes, &obj.fields[0]);
-                let type_name = datatype_fqname.split('.').next_back().unwrap();
-                let field_name = format_ident!("{}", obj.fields[0].name);
+        {
+            let data_type = quote_field_type(&mut hpp_includes, &obj.fields[0]);
+            let type_name = datatype_fqname.split('.').next_back().unwrap();
+            let field_name = format_ident!("{}", obj.fields[0].name);
 
-                methods.push(Method {
-                    docs: format!("Cast to the underlying {type_name} datatype").into(),
-                    declaration: MethodDeclaration {
-                        name_and_parameters: quote! { operator #data_type() const },
-                        is_static: false,
-                        return_type: quote! {},
-                    },
-                    definition_body: quote! {
-                        return #field_name;
-                    },
-                    inline: true,
-                });
-            }
+            methods.push(Method {
+                docs: format!("Cast to the underlying {type_name} datatype").into(),
+                declaration: MethodDeclaration {
+                    name_and_parameters: quote! { operator #data_type() const },
+                    is_static: false,
+                    return_type: quote! {},
+                },
+                definition_body: quote! {
+                    return #field_name;
+                },
+                inline: true,
+            });
         }
 
         let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(reporter, objects));
@@ -1627,10 +1625,12 @@ fn add_copy_assignment_and_constructor(
 
 /// If the type forwards to another rerun defined type, returns the fully qualified name of that type.
 fn transparent_forwarded_fqname(obj: &Object) -> Option<&str> {
-    if obj.is_arrow_transparent() && obj.fields.len() == 1 && !obj.fields[0].is_nullable {
-        if let Type::Object { fqname } = &obj.fields[0].typ {
-            return Some(fqname);
-        }
+    if obj.is_arrow_transparent()
+        && obj.fields.len() == 1
+        && !obj.fields[0].is_nullable
+        && let Type::Object { fqname } = &obj.fields[0].typ
+    {
+        return Some(fqname);
     }
     None
 }

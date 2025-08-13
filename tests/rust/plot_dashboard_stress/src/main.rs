@@ -105,7 +105,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
             use rand::seq::SliceRandom as _;
             sim_times.shuffle(&mut rng);
         }
-    };
+    }
 
     let values_per_series: Vec<Vec<f64>> = std::iter::from_fn(|| {
         let mut value = 0.0;

@@ -129,10 +129,10 @@ pub fn write_file_if_necessary(
     path: impl AsRef<std::path::Path>,
     content: &[u8],
 ) -> std::io::Result<()> {
-    if let Ok(cur_bytes) = std::fs::read(&path) {
-        if cur_bytes == content {
-            return Ok(());
-        }
+    if let Ok(cur_bytes) = std::fs::read(&path)
+        && cur_bytes == content
+    {
+        return Ok(());
     }
 
     std::fs::write(path, content)

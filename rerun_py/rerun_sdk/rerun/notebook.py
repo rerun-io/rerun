@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Callable, Literal
 
-import numpy as np
 import pyarrow
 import pyarrow.ipc as ipc
 from pyarrow import RecordBatch
@@ -15,6 +13,10 @@ from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
 
 if TYPE_CHECKING:
+    from datetime import datetime, timedelta
+
+    import numpy as np
+
     from .blueprint import BlueprintLike
 
 

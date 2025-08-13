@@ -9,10 +9,11 @@ from rerun.components.image_format import ImageFormat
 from rerun.datatypes.channel_datatype import ChannelDatatype
 from rerun.datatypes.color_model import ColorModel
 
-from .. import datatypes
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
+    from .. import datatypes
+
     ImageLike = Union[
         npt.NDArray[np.float16],
         npt.NDArray[np.float32],

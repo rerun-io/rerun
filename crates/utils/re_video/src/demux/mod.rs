@@ -291,14 +291,14 @@ impl VideoDataDescription {
         }
 
         // The last GOP includes the last sample.
-        if let Some(front_gop) = self.gops.back() {
-            if front_gop.sample_range.end != self.samples.next_index() {
-                return Err(format!(
-                    "Last GOP sample range {:?} does not include the last sample {}.",
-                    front_gop.sample_range,
-                    self.samples.next_index() - 1
-                ));
-            }
+        if let Some(front_gop) = self.gops.back()
+            && front_gop.sample_range.end != self.samples.next_index()
+        {
+            return Err(format!(
+                "Last GOP sample range {:?} does not include the last sample {}.",
+                front_gop.sample_range,
+                self.samples.next_index() - 1
+            ));
         }
         // Note that this isn't true vice versa!
         // The first GOP may not include the first few samples.
@@ -372,10 +372,11 @@ pub struct VideoEncodingDetails {
 impl VideoEncodingDetails {
     /// Get the AVCC box from the stsd box if any.
     pub fn avcc(&self) -> Option<&re_mp4::Avc1Box> {
-        self.stsd.as_ref().and_then(|stsd| match &stsd.contents {
+        let stsd = self.stsd.as_ref()?;
+        match &stsd.contents {
             re_mp4::StsdBoxContent::Avc1(avc1) => Some(avc1),
             _ => None,
-        })
+        }
     }
 }
 
@@ -632,12 +633,12 @@ impl VideoDataDescription {
     /// and that sample presented immediately prior to the given sample may have a higher decode timestamp.
     /// Therefore, this may be a jump on sample index.
     pub fn previous_presented_sample(&self, sample: &SampleMetadata) -> Option<&SampleMetadata> {
-        Self::latest_sample_index_at_presentation_timestamp_internal(
+        let idx = Self::latest_sample_index_at_presentation_timestamp_internal(
             &self.samples,
             &self.samples_statistics,
             sample.presentation_timestamp - Time::new(1),
-        )
-        .and_then(|idx| self.samples.get(idx))
+        )?;
+        self.samples.get(idx)
     }
 
     /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.

@@ -394,7 +394,8 @@ impl EntityDb {
     /// This means all active blueprints are clones.
     #[inline]
     pub fn cloned_from(&self) -> Option<&StoreId> {
-        self.store_info().and_then(|info| info.cloned_from.as_ref())
+        let info = self.store_info()?;
+        info.cloned_from.as_ref()
     }
 
     pub fn timelines(&self) -> std::collections::BTreeMap<TimelineName, Timeline> {

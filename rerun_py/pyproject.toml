@@ -149,6 +149,7 @@ lint.select = [
   "FA",      # Force from __future__ import annotations
   "I",       # Isort
   "ISC",     # Ensure implicit string concat syntax
+  "TC",      # Ensure that all type comments are valid
   "TID",     # flake8-tidy-imports
   "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   "UP",      # pyupgrade (ensures idomatic code for supported python version)
@@ -225,7 +226,6 @@ namespace_packages = true
 show_error_codes = true
 strict = true
 enable_error_code = ["redundant-expr", "truthy-bool", "ignore-without-code"]
-plugins = ["numpy.typing.mypy_plugin"]
 ignore_missing_imports = false
 no_implicit_reexport = false
 disallow_untyped_calls = false

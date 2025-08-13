@@ -1,8 +1,6 @@
 //! Handles loading of Rerun data from file using data loader plugins.
 
-use std::sync::Arc;
-
-use once_cell::sync::Lazy;
+use std::sync::{Arc, LazyLock};
 
 use re_chunk::{Chunk, ChunkResult};
 use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint};
@@ -356,6 +354,9 @@ pub enum DataLoaderError {
     #[error("No data-loader support for {0:?}")]
     Incompatible(std::path::PathBuf),
 
+    #[error(transparent)]
+    Mcap(#[from] ::mcap::McapError),
+
     #[error("{}", re_error::format(.0))]
     Other(#[from] anyhow::Error),
 }
@@ -416,12 +417,12 @@ impl LoadedData {
 /// Keeps track of all builtin [`DataLoader`]s.
 ///
 /// Lazy initialized the first time a file is opened.
-static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
+static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
     vec![
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
-        Arc::new(McapLoader),
+        Arc::new(McapLoader::default()),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]
@@ -442,8 +443,8 @@ pub fn iter_loaders() -> impl Iterator<Item = Arc<dyn DataLoader>> {
 /// Keeps track of all custom [`DataLoader`]s.
 ///
 /// Use [`register_custom_data_loader`] to add new loaders.
-static CUSTOM_LOADERS: Lazy<parking_lot::RwLock<Vec<Arc<dyn DataLoader>>>> =
-    Lazy::new(parking_lot::RwLock::default);
+static CUSTOM_LOADERS: LazyLock<parking_lot::RwLock<Vec<Arc<dyn DataLoader>>>> =
+    LazyLock::new(parking_lot::RwLock::default);
 
 /// Register a custom [`DataLoader`].
 ///
@@ -483,10 +484,8 @@ pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
-#[cfg(not(target_arch = "wasm32"))]
+/// 3rd party formats with built-in support.
 pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap"];
-#[cfg(target_arch = "wasm32")]
-pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &[];
 
 // TODO(#4555): Add catch-all builtin `DataLoader` for text files
 pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
@@ -506,10 +505,17 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
 
 /// Is this a supported file extension by any of our builtin [`DataLoader`]s?
 pub fn is_supported_file_extension(extension: &str) -> bool {
-    SUPPORTED_IMAGE_EXTENSIONS.contains(&extension)
-        || SUPPORTED_VIDEO_EXTENSIONS.contains(&extension)
-        || SUPPORTED_MESH_EXTENSIONS.contains(&extension)
-        || SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension)
-        || SUPPORTED_RERUN_EXTENSIONS.contains(&extension)
-        || SUPPORTED_TEXT_EXTENSIONS.contains(&extension)
+    debug_assert!(
+        !extension.starts_with('.'),
+        "Expected extension without period, but got {extension:?}"
+    );
+    let extension = extension.to_lowercase();
+    supported_extensions().any(|ext| ext == extension)
+}
+
+#[test]
+fn test_supported_extensions() {
+    assert!(is_supported_file_extension("rrd"));
+    assert!(is_supported_file_extension("mcap"));
+    assert!(is_supported_file_extension("png"));
 }

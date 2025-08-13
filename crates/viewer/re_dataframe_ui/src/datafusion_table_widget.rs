@@ -88,12 +88,13 @@ impl Columns<'_> {
     }
 
     fn index_from_id(&self, id: Option<egui::Id>) -> Option<usize> {
-        id.and_then(|id| self.column_from_index.get(&id).copied())
+        let id = id?;
+        self.column_from_index.get(&id).copied()
     }
 
     fn index_and_column_from_id(&self, id: Option<egui::Id>) -> Option<(usize, &Column<'_>)> {
-        id.and_then(|id| self.column_from_index.get(&id).copied())
-            .and_then(|index| self.columns.get(index).map(|column| (index, column)))
+        let index = id.and_then(|id| self.column_from_index.get(&id).copied())?;
+        self.columns.get(index).map(|column| (index, column))
     }
 }
 
@@ -351,15 +352,11 @@ impl<'a> DataFusionTableWidget<'a> {
         // TODO(lucas): This is a band-aid fix and should be replaced with proper table blueprint
         let first_column = columns
             .index_from_id(table_config.visible_column_ids().next())
-            .and_then(|index| {
-                display_record_batches
-                    .first()
-                    .and_then(|batch| batch.columns().get(index))
-            });
-        if let Some(DisplayColumn::Component(component)) = first_column {
-            if component.is_image() {
-                row_height *= 3.0;
-            }
+            .and_then(|index| display_record_batches.first()?.columns().get(index));
+        if let Some(DisplayColumn::Component(component)) = first_column
+            && component.is_image()
+        {
+            row_height *= 3.0;
         }
 
         let mut table_delegate = DataFusionTableDelegate {
@@ -489,7 +486,7 @@ impl<'a> DataFusionTableWidget<'a> {
                             ui.set_height(height);
                             if icons::RESET.as_button().ui(ui).clicked() {
                                 action = Some(BottomBarAction::Refresh);
-                            };
+                            }
 
                             re_ui::time::short_duration_ui(
                                 ui,
@@ -527,14 +524,13 @@ fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str, url:
                 ui,
                 |ui| {
                     ui.heading(RichText::new(title).strong());
-                    if let Some(url) = url {
-                        if ui
+                    if let Some(url) = url
+                        && ui
                             .small_icon_button(&re_ui::icons::COPY, "Copy URL")
                             .on_hover_text(url)
                             .clicked()
-                        {
-                            ui.ctx().copy_text(url.clone());
-                        }
+                    {
+                        ui.ctx().copy_text(url.clone());
                     }
                 },
                 |ui| {

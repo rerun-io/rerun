@@ -104,7 +104,7 @@ impl StoreBundle {
                         .push(entity_db);
                 }
 
-                EntityDbClass::Blueprint => continue,
+                EntityDbClass::Blueprint => {}
             }
         }
 

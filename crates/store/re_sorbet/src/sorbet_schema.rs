@@ -160,13 +160,13 @@ impl SorbetSchema {
         let partition_id = metadata.get("rerun:partition_id").map(|s| s.to_owned());
 
         // Verify version
-        if let Some(batch_version) = metadata.get(Self::METADATA_KEY_VERSION) {
-            if batch_version != &Self::METADATA_VERSION.to_string() {
-                re_log::warn_once!(
-                    "Sorbet batch version mismatch. Expected {:?}, got {batch_version:?}",
-                    Self::METADATA_VERSION
-                );
-            }
+        if let Some(batch_version) = metadata.get(Self::METADATA_KEY_VERSION)
+            && batch_version != &Self::METADATA_VERSION.to_string()
+        {
+            re_log::warn_once!(
+                "Sorbet batch version mismatch. Expected {:?}, got {batch_version:?}",
+                Self::METADATA_VERSION
+            );
         }
 
         Ok(Self {

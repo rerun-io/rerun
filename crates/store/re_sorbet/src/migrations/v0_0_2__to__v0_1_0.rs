@@ -86,7 +86,7 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
                     metadata.insert("rerun:component".to_owned(), component);
                 } else if field_name.starts_with("rerun.") {
                     // Long name
-                    metadata.insert("rerun:component".to_owned(), field_name.to_string());
+                    metadata.insert("rerun:component".to_owned(), field_name.clone());
                 } else {
                     // Short name: expand it to be long
                     metadata.insert("rerun:component".to_owned(), format!("rerun.components.{field_name}"));
@@ -192,10 +192,10 @@ fn port_recording_info(batch: &mut RecordBatch) {
 
     // We renamed `RecordingProperties` to `RecordingInfo`,
     // and moved it from `/__properties/recording` to `/__properties`.
-    if let Some(entity_path) = batch.schema_metadata_mut().get_mut("rerun:entity_path") {
-        if entity_path == "/__properties/recording" {
-            *entity_path = "/__properties".to_owned();
-        }
+    if let Some(entity_path) = batch.schema_metadata_mut().get_mut("rerun:entity_path")
+        && entity_path == "/__properties/recording"
+    {
+        *entity_path = "/__properties".to_owned();
     }
 
     fn migrate_column_name(name: &str) -> String {
@@ -220,10 +220,10 @@ fn port_recording_info(batch: &mut RecordBatch) {
             .with_metadata(field.metadata().clone());
 
             // Migrate per-column entity paths (if any):
-            if let Some(entity_path) = field.metadata_mut().get_mut("rerun:entity_path") {
-                if entity_path == "/__properties/recording" {
-                    *entity_path = "/__properties".to_owned();
-                }
+            if let Some(entity_path) = field.metadata_mut().get_mut("rerun:entity_path")
+                && entity_path == "/__properties/recording"
+            {
+                *entity_path = "/__properties".to_owned();
             }
 
             // Rename `RecordingProperties` to `RecordingInfo` in metadata keys:

@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
@@ -65,6 +64,8 @@ class AnnotationContext(AnnotationContextExt, ComponentMixin):
 
 
 if TYPE_CHECKING:
+    from .. import datatypes
+
     AnnotationContextLike = Union[
         AnnotationContext, datatypes.ClassDescriptionArrayLike, Sequence[datatypes.ClassDescriptionMapElemLike]
     ]

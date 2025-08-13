@@ -159,7 +159,7 @@ impl ChunkUi {
                         None => {
                             ui.weak("-");
                         }
-                    };
+                    }
                 });
             }
         };

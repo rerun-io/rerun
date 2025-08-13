@@ -228,7 +228,7 @@ impl NotificationUi {
             ui.horizontal_top(|ui| {
                 if ui.button("Dismiss all").clicked() {
                     dismiss_all = true;
-                };
+                }
             });
         }
 

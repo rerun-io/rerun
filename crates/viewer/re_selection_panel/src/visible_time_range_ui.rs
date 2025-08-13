@@ -251,14 +251,13 @@ Notes:
             .body_response
             .is_some_and(|r| r.hovered());
 
-    if should_display_visible_time_range {
-        if let Some(current_time) = time_ctrl.time_int() {
-            if let QueryRange::TimeRange(time_range) = &query_range {
-                let absolute_time_range =
-                    AbsoluteTimeRange::from_relative_time_range(time_range, current_time);
-                ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(absolute_time_range);
-            }
-        }
+    if should_display_visible_time_range
+        && let Some(current_time) = time_ctrl.time_int()
+        && let QueryRange::TimeRange(time_range) = &query_range
+    {
+        let absolute_time_range =
+            AbsoluteTimeRange::from_relative_time_range(time_range, current_time);
+        ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(absolute_time_range);
     }
 }
 

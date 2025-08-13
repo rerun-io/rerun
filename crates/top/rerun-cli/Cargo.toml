@@ -87,7 +87,6 @@ perf_telemetry = ["rerun/perf_telemetry"]
 # TODO(#4295): web_viewer shouldn't require rerun/sdk
 web_viewer = ["rerun/web_viewer", "rerun/sdk"]
 
-
 [dependencies]
 re_build_info.workspace = true
 re_error.workspace = true
