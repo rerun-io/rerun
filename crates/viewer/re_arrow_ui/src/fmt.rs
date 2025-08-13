@@ -1,57 +1,16 @@
-// TODO: Remove unsafe
-#![allow(unsafe_code)]
-// Licensed to the Apache Software Foundation (ASF) under one
-// or more contributor license agreements.  See the NOTICE file
-// distributed with this work for additional information
-// regarding copyright ownership.  The ASF licenses this file
-// to you under the Apache License, Version 2.0 (the
-// "License"); you may not use this file except in compliance
-// with the License.  You may obtain a copy of the License at
-//
-//   http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing,
-// software distributed under the License is distributed on an
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-// KIND, either express or implied.  See the License for the
-// specific language governing permissions and limitations
-// under the License.
-
-//! Functions for printing array values as human-readable strings.
-//!
-//! This is often used for debugging or logging purposes.
-//!
-//! See the [`pretty`] crate for additional functions for
-//! record batch pretty printing.
-//!
-//! [`pretty`]: crate::pretty
-// use arrow::array::{
-//     Array, AsArray, BooleanArray, DictionaryArray, FixedSizeBinaryArray, FixedSizeListArray,
-//     GenericListArray, MapArray, NullArray, OffsetSizeTrait, PrimitiveArray, RunArray, StructArray,
-//     UnionArray, as_boolean_array, as_generic_list_array, as_map_array, as_null_array,
-//     as_struct_array, as_union_array, downcast_run_array,
-// };
-// use arrow::datatypes::{
-//     ArrowDictionaryKeyType, ArrowNativeType, DataType, Decimal128Type, Decimal256Type, Float16Type,
-//     Float32Type, Float64Type, Int8Type, Int16Type, Int32Type, Int64Type, RunEndIndexType,
-//     UInt8Type, UInt16Type, UInt32Type, UInt64Type, UnionMode,
-// };
-// use arrow::error::ArrowError;
-// use arrow::{downcast_dictionary_array, downcast_primitive_array};
+//! [`ArrowUi`] can be used to show arbitrary Arrow data with a nice UI.
+//! The implementation is inspired from arrows built-in display formatter:
+//! https://github.com/apache/arrow-rs/blob/c628435f9f14abc645fb546442132974d3d380ca/arrow-cast/src/display.rs
 use arrow::array::cast::*;
-use arrow::array::temporal_conversions::*;
-use arrow::array::timezone::Tz;
 use arrow::array::types::*;
 use arrow::array::*;
-// use arrow::buffer::ArrowNativeType;
-use arrow::*;
-// use chrono::{NaiveDate, NaiveDateTime, SecondsFormat, TimeZone, Utc};
 use arrow::datatypes::{ArrowNativeType, DataType, UnionMode};
 use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
-use chrono::{NaiveDate, NaiveDateTime, SecondsFormat, TimeZone, Utc};
+use arrow::*;
 use egui::Ui;
-use lexical_core::FormattedSize;
+use half::f16;
+use re_format::{format_f32, format_f64, format_int, format_uint};
 use re_ui::UiExt;
 use re_ui::list_item::PropertyContent;
 use std::fmt::{Display, Formatter, Write};
@@ -98,58 +57,6 @@ impl Display for ValueFormatter<'_> {
     }
 }
 
-/// A string formatter for an [`Array`]
-///
-/// This can be used with [`std::write`] to write type-erased `dyn Array`
-///
-/// ```
-/// # use std::fmt::{Display, Formatter, Write};
-/// # use arrow_array::{Array, ArrayRef, Int32Array};
-/// # use arrow_cast::display::{ArrayFormatter, FormatOptions};
-/// # use arrow_schema::ArrowError;
-/// struct MyContainer {
-///     values: ArrayRef,
-/// }
-///
-/// impl Display for MyContainer {
-///     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-///         let options = FormatOptions::default();
-///         let formatter = ArrayFormatter::try_new(self.values.as_ref(), &options)
-///             .map_err(|_| std::fmt::Error)?;
-///
-///         let mut iter = 0..self.values.len();
-///         if let Some(idx) = iter.next() {
-///             write!(f, "{}", formatter.value(idx))?;
-///         }
-///         for idx in iter {
-///             write!(f, ", {}", formatter.value(idx))?;
-///         }
-///         Ok(())
-///     }
-/// }
-/// ```
-///
-/// [`ValueFormatter::write`] can also be used to get a semantic error, instead of the
-/// opaque [`std::fmt::Error`]
-///
-/// ```
-/// # use std::fmt::Write;
-/// # use arrow_array::Array;
-/// # use arrow_cast::display::{ArrayFormatter, FormatOptions};
-/// # use arrow_schema::ArrowError;
-/// fn format_array(
-///     f: &mut dyn Write,
-///     array: &dyn Array,
-///     options: &FormatOptions,
-/// ) -> Result<(), ArrowError> {
-///     let formatter = ArrayFormatter::try_new(array, options)?;
-///     for i in 0..array.len() {
-///         formatter.value(i).write(f)?
-///     }
-///     Ok(())
-/// }
-/// ```
-///
 pub struct ArrayUi<'a> {
     format: Box<dyn ShowIndex + 'a>,
 }
@@ -160,7 +67,7 @@ impl<'a> ArrayUi<'a> {
     /// This returns an error if an array of the given data type cannot be formatted
     pub fn try_new(array: &'a dyn Array, options: &FormatOptions<'a>) -> Result<Self, ArrowError> {
         Ok(Self {
-            format: make_formatter(array, options)?,
+            format: make_ui(array, options)?,
         })
     }
 
@@ -180,39 +87,51 @@ impl<'a> ArrayUi<'a> {
     }
 }
 
-fn make_formatter<'a>(
+fn make_ui<'a>(
     array: &'a dyn Array,
     options: &FormatOptions<'a>,
 ) -> Result<Box<dyn ShowIndex + 'a>, ArrowError> {
     downcast_primitive_array! {
-        array => show_primitive(array, options),
-        DataType::Null => show_primitive(as_null_array(array), options),
-        DataType::Boolean => show_primitive(as_boolean_array(array), options),
-        DataType::Utf8 => show_primitive(array.as_string::<i32>(), options),
-        DataType::LargeUtf8 => show_primitive(array.as_string::<i64>(), options),
-        DataType::Utf8View => show_primitive(array.as_string_view(), options),
-        DataType::Binary => show_primitive(array.as_binary::<i32>(), options),
-        DataType::BinaryView => show_primitive(array.as_binary_view(), options),
-        DataType::LargeBinary => show_primitive(array.as_binary::<i64>(), options),
+        array => {
+            downcast_integer_array! {
+                // We have a custom implementation for integer
+                array => show_custom(array, options),
+                _ => show_arrow_builtin(array, options),
+            }
+        },
+        DataType::Float16 => show_custom(array.as_primitive::<Float16Type>(), options),
+        DataType::Float32 => show_custom(array.as_primitive::<Float32Type>(), options),
+        DataType::Float64 => show_custom(array.as_primitive::<Float64Type>(), options),
+        // Should we have custom display impl for these?
+        // DataType::Decimal128(_, _) => show_custom(array.as_primitive::<Decimal128Type>(), options),
+        // DataType::Decimal256(_, _) => show_custom(array.as_primitive::<Decimal256Type>(), options),
+        DataType::Null => show_arrow_builtin(as_null_array(array), options),
+        DataType::Boolean => show_arrow_builtin(as_boolean_array(array), options),
+        DataType::Utf8 => show_arrow_builtin(array.as_string::<i32>(), options),
+        DataType::LargeUtf8 => show_arrow_builtin(array.as_string::<i64>(), options),
+        DataType::Utf8View => show_arrow_builtin(array.as_string_view(), options),
+        DataType::Binary => show_arrow_builtin(array.as_binary::<i32>(), options),
+        DataType::BinaryView => show_arrow_builtin(array.as_binary_view(), options),
+        DataType::LargeBinary => show_arrow_builtin(array.as_binary::<i64>(), options),
         DataType::FixedSizeBinary(_) => {
             let a = array.as_any().downcast_ref::<FixedSizeBinaryArray>().unwrap();
-            show_primitive(a, options)
+            show_arrow_builtin(a, options)
         }
         DataType::Dictionary(_, _) => downcast_dictionary_array! {
-            array => array_format(array, options),
+            array => show_custom(array, options),
             _ => unreachable!()
         }
-        DataType::List(_) => array_format(as_generic_list_array::<i32>(array), options),
-        DataType::LargeList(_) => array_format(as_generic_list_array::<i64>(array), options),
+        DataType::List(_) => show_custom(as_generic_list_array::<i32>(array), options),
+        DataType::LargeList(_) => show_custom(as_generic_list_array::<i64>(array), options),
         DataType::FixedSizeList(_, _) => {
             let a = array.as_any().downcast_ref::<FixedSizeListArray>().unwrap();
-            array_format(a, options)
+            show_custom(a, options)
         }
-        DataType::Struct(_) => array_format(as_struct_array(array), options),
-        DataType::Map(_, _) => array_format(as_map_array(array), options),
-        DataType::Union(_, _) => array_format(as_union_array(array), options),
+        DataType::Struct(_) => show_custom(as_struct_array(array), options),
+        DataType::Map(_, _) => show_custom(as_map_array(array), options),
+        DataType::Union(_, _) => show_custom(as_union_array(array), options),
         DataType::RunEndEncoded(_, _) => downcast_run_array! {
-            array => array_format(array, options),
+            array => show_custom(array, options),
             _ => unreachable!()
         },
         d => Err(ArrowError::NotYetImplemented(format!("formatting {d} is not yet supported"))),
@@ -226,7 +145,7 @@ impl<'a> ShowIndex for ArrayFormatter<'a> {
     }
 }
 
-fn show_primitive<'a>(
+fn show_arrow_builtin<'a>(
     array: &'a dyn Array,
     options: &FormatOptions<'a>,
 ) -> Result<Box<dyn ShowIndex + 'a>, ArrowError> {
@@ -326,13 +245,13 @@ impl<'a, T: ShowIndex> ShowIndexState<'a> for T {
     }
 }
 
-struct ArrayFormat<'a, F: ShowIndexState<'a>> {
+struct ShowCustom<'a, F: ShowIndexState<'a>> {
     state: F::State,
     array: F,
     null: &'a str,
 }
 
-fn array_format<'a, F>(
+fn show_custom<'a, F>(
     array: F,
     options: &FormatOptions<'a>,
 ) -> Result<Box<dyn ShowIndex + 'a>, ArrowError>
@@ -340,14 +259,14 @@ where
     F: ShowIndexState<'a> + Array + 'a,
 {
     let state = array.prepare(options)?;
-    Ok(Box::new(ArrayFormat {
+    Ok(Box::new(ShowCustom {
         state,
         array,
         null: "null",
     }))
 }
 
-impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ArrayFormat<'a, F> {
+impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
     fn write(&self, idx: usize, f: &mut dyn Write) -> FormatResult {
         if self.array.is_null(idx) {
             if !self.null.is_empty() {
@@ -367,92 +286,36 @@ impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ArrayFormat<'a, F> {
     }
 }
 
-impl ShowIndex for &BooleanArray {
-    fn write(&self, idx: usize, f: &mut dyn Write) -> FormatResult {
-        write!(f, "{}", self.value(idx))?;
-        Ok(())
-    }
-}
-
-impl<'a> ShowIndexState<'a> for &'a NullArray {
-    type State = &'a str;
-
-    fn prepare(&self, options: &FormatOptions<'a>) -> Result<Self::State, ArrowError> {
-        Ok("null")
-    }
-
-    fn write(&self, state: &Self::State, _idx: usize, f: &mut dyn Write) -> FormatResult {
-        f.write_str(state)?;
-        Ok(())
-    }
-}
-
 macro_rules! primitive_display {
-    ($($t:ty),+) => {
+    ($fmt:ident: $($t:ty),+) => {
         $(impl<'a> ShowIndex for &'a PrimitiveArray<$t>
         {
             fn write(&self, idx: usize, f: &mut dyn Write) -> FormatResult {
                 let value = self.value(idx);
-                let mut buffer = [0u8; <$t as ArrowPrimitiveType>::Native::FORMATTED_SIZE];
-                let b = lexical_core::write(value, &mut buffer);
-                // Lexical core produces valid UTF-8
-                let s = unsafe { std::str::from_utf8_unchecked(b) };
-                f.write_str(s)?;
+                let s = $fmt(value);
+                f.write_str(&s)?;
                 Ok(())
             }
         })+
     };
 }
 
-macro_rules! primitive_display_float {
-    ($($t:ty),+) => {
-        $(impl<'a> ShowIndex for &'a PrimitiveArray<$t>
-        {
-            fn write(&self, idx: usize, f: &mut dyn Write) -> FormatResult {
-                let value = self.value(idx);
-                let mut buffer = ryu::Buffer::new();
-                f.write_str(buffer.format(value))?;
-                Ok(())
-            }
-        })+
-    };
+primitive_display!(format_int: Int8Type, Int16Type, Int32Type, Int64Type);
+primitive_display!(format_uint: UInt8Type, UInt16Type, UInt32Type, UInt64Type);
+primitive_display!(format_f32: Float32Type);
+primitive_display!(format_f64: Float64Type);
+
+// TODO: Is this right? Should we have a format_f16?
+fn format_f16(value: f16) -> String {
+    format_f32(value.to_f32())
 }
-
-primitive_display!(Int8Type, Int16Type, Int32Type, Int64Type);
-primitive_display!(UInt8Type, UInt16Type, UInt32Type, UInt64Type);
-primitive_display_float!(Float32Type, Float64Type);
-
-impl ShowIndex for &PrimitiveArray<Float16Type> {
-    fn write(&self, idx: usize, f: &mut dyn Write) -> FormatResult {
-        write!(f, "{}", self.value(idx))?;
-        Ok(())
-    }
-}
-
-macro_rules! decimal_display {
-    ($($t:ty),+) => {
-        $(impl<'a> ShowIndexState<'a> for &'a PrimitiveArray<$t> {
-            type State = (u8, i8);
-
-            fn prepare(&self, _options: &FormatOptions<'a>) -> Result<Self::State, ArrowError> {
-                Ok((self.precision(), self.scale()))
-            }
-
-            fn write(&self, s: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
-                write!(f, "{}", <$t>::format_decimal(self.values()[idx], s.0, s.1))?;
-                Ok(())
-            }
-        })+
-    };
-}
-
-decimal_display!(Decimal128Type, Decimal256Type);
+primitive_display!(format_f16: Float16Type);
 
 impl<'a, K: ArrowDictionaryKeyType> ShowIndexState<'a> for &'a DictionaryArray<K> {
     type State = Box<dyn ShowIndex + 'a>;
 
     fn prepare(&self, options: &FormatOptions<'a>) -> Result<Self::State, ArrowError> {
-        make_formatter(self.values().as_ref(), options)
+        make_ui(self.values().as_ref(), options)
     }
 
     fn write(&self, s: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
@@ -465,7 +328,7 @@ impl<'a, K: RunEndIndexType> ShowIndexState<'a> for &'a RunArray<K> {
     type State = Box<dyn ShowIndex + 'a>;
 
     fn prepare(&self, options: &FormatOptions<'a>) -> Result<Self::State, ArrowError> {
-        make_formatter(self.values().as_ref(), options)
+        make_ui(self.values().as_ref(), options)
     }
 
     fn write(&self, s: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
@@ -549,7 +412,7 @@ impl<'a, O: OffsetSizeTrait> ShowIndexState<'a> for &'a GenericListArray<O> {
     type State = Box<dyn ShowIndex + 'a>;
 
     fn prepare(&self, options: &FormatOptions<'a>) -> Result<Self::State, ArrowError> {
-        make_formatter(self.values().as_ref(), options)
+        make_ui(self.values().as_ref(), options)
     }
 
     fn write(&self, s: &Self::State, idx: usize, f: &mut dyn Write) -> FormatResult {
@@ -576,7 +439,7 @@ impl<'a> ShowIndexState<'a> for &'a FixedSizeListArray {
     type State = (usize, Box<dyn ShowIndex + 'a>);
 
     fn prepare(&self, options: &FormatOptions<'a>) -> Result<Self::State, ArrowError> {
-        let values = make_formatter(self.values().as_ref(), options)?;
+        let values = make_ui(self.values().as_ref(), options)?;
         let length = self.value_length();
         Ok((length as usize, values))
     }
@@ -614,7 +477,7 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
             .iter()
             .zip(fields)
             .map(|(a, f)| {
-                let format = make_formatter(a.as_ref(), options)?;
+                let format = make_ui(a.as_ref(), options)?;
                 Ok((f.name().as_str(), format))
             })
             .collect()
@@ -653,8 +516,8 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
     type State = (Box<dyn ShowIndex + 'a>, Box<dyn ShowIndex + 'a>);
 
     fn prepare(&self, options: &FormatOptions<'a>) -> Result<Self::State, ArrowError> {
-        let keys = make_formatter(self.keys().as_ref(), options)?;
-        let values = make_formatter(self.values().as_ref(), options)?;
+        let keys = make_ui(self.keys().as_ref(), options)?;
+        let values = make_ui(self.values().as_ref(), options)?;
         Ok((keys, values))
     }
 
@@ -715,7 +578,7 @@ impl<'a> ShowIndexState<'a> for &'a UnionArray {
         let max_id = fields.iter().map(|(id, _)| id).max().unwrap_or_default() as usize;
         let mut out: Vec<Option<FieldDisplay>> = (0..max_id + 1).map(|_| None).collect();
         for (i, field) in fields.iter() {
-            let formatter = make_formatter(self.child(i).as_ref(), options)?;
+            let formatter = make_ui(self.child(i).as_ref(), options)?;
             out[i as usize] = Some((field.name().as_str(), formatter))
         }
         Ok((out, *mode))
@@ -751,200 +614,5 @@ impl<'a> ShowIndexState<'a> for &'a UnionArray {
         let data_type = self.data_type();
         dbg!(data_type);
         data_type.is_nested()
-    }
-}
-
-/// Get the value at the given row in an array as a String.
-///
-/// Note this function is quite inefficient and is unlikely to be
-/// suitable for converting large arrays or record batches.
-///
-/// Please see [`ArrayUi`] for a more performant interface
-pub fn array_value_to_string(column: &dyn Array, row: usize) -> Result<String, ArrowError> {
-    let options = FormatOptions::default().with_display_error(true);
-    let formatter = ArrayUi::try_new(column, &options)?;
-    Ok(formatter.value(row).to_string())
-}
-
-/// Converts numeric type to a `String`
-pub fn lexical_to_string<N: lexical_core::ToLexical>(n: N) -> String {
-    let mut buf = Vec::<u8>::with_capacity(N::FORMATTED_SIZE_DECIMAL);
-    unsafe {
-        // JUSTIFICATION
-        //  Benefit
-        //      Allows using the faster serializer lexical core and convert to string
-        //  Soundness
-        //      Length of buf is set as written length afterwards. lexical_core
-        //      creates a valid string, so doesn't need to be checked.
-        let slice = std::slice::from_raw_parts_mut(buf.as_mut_ptr(), buf.capacity());
-        let len = lexical_core::write(n, slice).len();
-        buf.set_len(len);
-        String::from_utf8_unchecked(buf)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use arrow_array::builder::StringRunBuilder;
-
-    /// Test to verify options can be constant. See #4580
-    const TEST_CONST_OPTIONS: FormatOptions<'static> = FormatOptions::new()
-        .with_date_format(Some("foo"))
-        .with_timestamp_format(Some("404"));
-
-    #[test]
-    fn test_const_options() {
-        assert_eq!(TEST_CONST_OPTIONS.date_format, Some("foo"));
-    }
-
-    #[test]
-    fn test_map_array_to_string() {
-        let keys = vec!["a", "b", "c", "d", "e", "f", "g", "h"];
-        let values_data = UInt32Array::from(vec![0u32, 10, 20, 30, 40, 50, 60, 70]);
-
-        // Construct a buffer for value offsets, for the nested array:
-        //  [[a, b, c], [d, e, f], [g, h]]
-        let entry_offsets = [0, 3, 6, 8];
-
-        let map_array =
-            MapArray::new_from_strings(keys.clone().into_iter(), &values_data, &entry_offsets)
-                .unwrap();
-        assert_eq!(
-            "{d: 30, e: 40, f: 50}",
-            array_value_to_string(&map_array, 1).unwrap()
-        );
-    }
-
-    fn format_array(array: &dyn Array, fmt: &FormatOptions) -> Vec<String> {
-        let fmt = ArrayUi::try_new(array, fmt).unwrap();
-        (0..array.len()).map(|x| fmt.value(x).to_string()).collect()
-    }
-
-    #[test]
-    fn test_array_value_to_string_duration() {
-        let iso_fmt = FormatOptions::new();
-        let pretty_fmt = FormatOptions::new().with_duration_format(DurationFormat::Pretty);
-
-        let array = DurationNanosecondArray::from(vec![
-            1,
-            -1,
-            1000,
-            -1000,
-            (45 * 60 * 60 * 24 + 14 * 60 * 60 + 2 * 60 + 34) * 1_000_000_000 + 123456789,
-            -(45 * 60 * 60 * 24 + 14 * 60 * 60 + 2 * 60 + 34) * 1_000_000_000 - 123456789,
-        ]);
-        let iso = format_array(&array, &iso_fmt);
-        let pretty = format_array(&array, &pretty_fmt);
-
-        assert_eq!(iso[0], "PT0.000000001S");
-        assert_eq!(pretty[0], "0 days 0 hours 0 mins 0.000000001 secs");
-        assert_eq!(iso[1], "-PT0.000000001S");
-        assert_eq!(pretty[1], "0 days 0 hours 0 mins -0.000000001 secs");
-        assert_eq!(iso[2], "PT0.000001S");
-        assert_eq!(pretty[2], "0 days 0 hours 0 mins 0.000001000 secs");
-        assert_eq!(iso[3], "-PT0.000001S");
-        assert_eq!(pretty[3], "0 days 0 hours 0 mins -0.000001000 secs");
-        assert_eq!(iso[4], "PT3938554.123456789S");
-        assert_eq!(pretty[4], "45 days 14 hours 2 mins 34.123456789 secs");
-        assert_eq!(iso[5], "-PT3938554.123456789S");
-        assert_eq!(pretty[5], "-45 days -14 hours -2 mins -34.123456789 secs");
-
-        let array = DurationMicrosecondArray::from(vec![
-            1,
-            -1,
-            1000,
-            -1000,
-            (45 * 60 * 60 * 24 + 14 * 60 * 60 + 2 * 60 + 34) * 1_000_000 + 123456,
-            -(45 * 60 * 60 * 24 + 14 * 60 * 60 + 2 * 60 + 34) * 1_000_000 - 123456,
-        ]);
-        let iso = format_array(&array, &iso_fmt);
-        let pretty = format_array(&array, &pretty_fmt);
-
-        assert_eq!(iso[0], "PT0.000001S");
-        assert_eq!(pretty[0], "0 days 0 hours 0 mins 0.000001 secs");
-        assert_eq!(iso[1], "-PT0.000001S");
-        assert_eq!(pretty[1], "0 days 0 hours 0 mins -0.000001 secs");
-        assert_eq!(iso[2], "PT0.001S");
-        assert_eq!(pretty[2], "0 days 0 hours 0 mins 0.001000 secs");
-        assert_eq!(iso[3], "-PT0.001S");
-        assert_eq!(pretty[3], "0 days 0 hours 0 mins -0.001000 secs");
-        assert_eq!(iso[4], "PT3938554.123456S");
-        assert_eq!(pretty[4], "45 days 14 hours 2 mins 34.123456 secs");
-        assert_eq!(iso[5], "-PT3938554.123456S");
-        assert_eq!(pretty[5], "-45 days -14 hours -2 mins -34.123456 secs");
-
-        let array = DurationMillisecondArray::from(vec![
-            1,
-            -1,
-            1000,
-            -1000,
-            (45 * 60 * 60 * 24 + 14 * 60 * 60 + 2 * 60 + 34) * 1_000 + 123,
-            -(45 * 60 * 60 * 24 + 14 * 60 * 60 + 2 * 60 + 34) * 1_000 - 123,
-        ]);
-        let iso = format_array(&array, &iso_fmt);
-        let pretty = format_array(&array, &pretty_fmt);
-
-        assert_eq!(iso[0], "PT0.001S");
-        assert_eq!(pretty[0], "0 days 0 hours 0 mins 0.001 secs");
-        assert_eq!(iso[1], "-PT0.001S");
-        assert_eq!(pretty[1], "0 days 0 hours 0 mins -0.001 secs");
-        assert_eq!(iso[2], "PT1S");
-        assert_eq!(pretty[2], "0 days 0 hours 0 mins 1.000 secs");
-        assert_eq!(iso[3], "-PT1S");
-        assert_eq!(pretty[3], "0 days 0 hours 0 mins -1.000 secs");
-        assert_eq!(iso[4], "PT3938554.123S");
-        assert_eq!(pretty[4], "45 days 14 hours 2 mins 34.123 secs");
-        assert_eq!(iso[5], "-PT3938554.123S");
-        assert_eq!(pretty[5], "-45 days -14 hours -2 mins -34.123 secs");
-
-        let array = DurationSecondArray::from(vec![
-            1,
-            -1,
-            1000,
-            -1000,
-            45 * 60 * 60 * 24 + 14 * 60 * 60 + 2 * 60 + 34,
-            -45 * 60 * 60 * 24 - 14 * 60 * 60 - 2 * 60 - 34,
-        ]);
-        let iso = format_array(&array, &iso_fmt);
-        let pretty = format_array(&array, &pretty_fmt);
-
-        assert_eq!(iso[0], "PT1S");
-        assert_eq!(pretty[0], "0 days 0 hours 0 mins 1 secs");
-        assert_eq!(iso[1], "-PT1S");
-        assert_eq!(pretty[1], "0 days 0 hours 0 mins -1 secs");
-        assert_eq!(iso[2], "PT1000S");
-        assert_eq!(pretty[2], "0 days 0 hours 16 mins 40 secs");
-        assert_eq!(iso[3], "-PT1000S");
-        assert_eq!(pretty[3], "0 days 0 hours -16 mins -40 secs");
-        assert_eq!(iso[4], "PT3938554S");
-        assert_eq!(pretty[4], "45 days 14 hours 2 mins 34 secs");
-        assert_eq!(iso[5], "-PT3938554S");
-        assert_eq!(pretty[5], "-45 days -14 hours -2 mins -34 secs");
-    }
-
-    #[test]
-    fn test_null() {
-        let array = NullArray::new(2);
-        let options = FormatOptions::new().with_null("NULL");
-        let formatted = format_array(&array, &options);
-        assert_eq!(formatted, &["NULL".to_string(), "NULL".to_string()])
-    }
-
-    #[test]
-    fn test_string_run_arry_to_string() {
-        let mut builder = StringRunBuilder::<Int32Type>::new();
-
-        builder.append_value("input_value");
-        builder.append_value("input_value");
-        builder.append_value("input_value");
-        builder.append_value("input_value1");
-
-        let map_array = builder.finish();
-        assert_eq!("input_value", array_value_to_string(&map_array, 1).unwrap());
-        assert_eq!(
-            "input_value1",
-            array_value_to_string(&map_array, 3).unwrap()
-        );
     }
 }
