@@ -28,7 +28,7 @@ impl MessageLayer for McapRos2Layer {
         channel: &mcap::Channel<'_>,
         num_rows: usize,
     ) -> Option<Box<dyn MessageParser>> {
-        let Some(name) = channel.schema.as_ref().map(|schema| schema.name.as_str()) else {
+        let Some(schema) = channel.schema.as_ref() else {
             re_log::warn_once!(
                 "Encountered ROS2 message without schema in channel {:?}",
                 channel.topic
@@ -36,7 +36,11 @@ impl MessageLayer for McapRos2Layer {
             return None;
         };
 
-        Some(match name {
+        if schema.encoding.as_str() != "ros2msg" {
+            return None;
+        }
+
+        Some(match schema.name.as_ref() {
             "std_msgs/msg/String" => Box::new(StringMessageParser::new(num_rows)),
             "sensor_msgs/msg/JointState" => Box::new(JointStateMessageParser::new(num_rows)),
             "sensor_msgs/msg/Imu" => Box::new(ImuMessageParser::new(num_rows)),
@@ -47,7 +51,10 @@ impl MessageLayer for McapRos2Layer {
             }
             "sensor_msgs/msg/PointCloud2" => Box::new(PointCloud2MessageParser::new(num_rows)),
             _ => {
-                re_log::warn_once!("Message schema {name:?} is currently not supported");
+                re_log::warn_once!(
+                    "Message schema {:?} is currently not supported",
+                    schema.name
+                );
                 return None;
             }
         })
