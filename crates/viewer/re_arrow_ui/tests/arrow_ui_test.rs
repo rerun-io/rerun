@@ -1,4 +1,4 @@
-use egui_kittest::{SnapshotResult, SnapshotResults};
+use egui_kittest::SnapshotResults;
 use re_ui::{UiExt as _, UiLayout};
 use std::f32::consts::PI;
 

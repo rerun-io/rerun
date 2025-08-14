@@ -45,9 +45,9 @@ pub fn create_coordinates_struct(step: i32) -> Arc<dyn Array> {
 
 /// Creates a metadata struct with string fields
 pub fn create_metadata_struct(step: i32) -> Arc<dyn Array> {
-    let timestamp = StringArray::from_iter([Some(format!("{}", step))]);
+    let timestamp = StringArray::from_iter([Some(format!("{step}"))]);
     let device_id = StringArray::from_iter([Some(format!("device_{}", step % 5))]);
-    let sensor_type = StringArray::from_iter([Some("accelerometer".to_string())]);
+    let sensor_type = StringArray::from_iter([Some("accelerometer".to_owned())]);
 
     Arc::new(StructArray::from(vec![
         (
@@ -73,7 +73,7 @@ pub fn create_mixed_lists(step: i32) -> Arc<dyn Array> {
         )]);
 
     let strings_data = StringArray::from_iter([
-        Some(format!("step_{}", step)),
+        Some(format!("step_{step}")),
         Some(format!("value_{}", (step as f64).sin())),
         Some(format!("id_{}", step % 10)),
     ]);
@@ -132,7 +132,7 @@ pub fn create_union_array(step: i32) -> Arc<dyn Array> {
     let value_offsets = None; // Dense union doesn't use offsets
 
     let int_values = Int32Array::from_iter([Some(step * 42)]);
-    let string_values = StringArray::from_iter([Some(format!("union_text_step_{}", step))]);
+    let string_values = StringArray::from_iter([Some(format!("union_text_step_{step}"))]);
     let float_values = Float64Array::from_iter([Some(step_f64 * std::f64::consts::PI)]);
     let bool_values = BooleanArray::from_iter([Some(step % 3 == 0)]);
 
@@ -170,7 +170,10 @@ pub fn create_union_array(step: i32) -> Arc<dyn Array> {
         Arc::new(list_values) as Arc<dyn Array>,
     ];
 
-    Arc::new(UnionArray::try_new(union_fields, type_ids, value_offsets, children).unwrap())
+    Arc::new(
+        UnionArray::try_new(union_fields, type_ids, value_offsets, children)
+            .expect("Failed to create union array"),
+    )
 }
 
 /// Creates a map array with string keys and integer values
@@ -183,7 +186,9 @@ pub fn create_simple_map(step: i32) -> Arc<dyn Array> {
     builder.values().append_value(step * 4);
     builder.keys().append_value("bar");
     builder.values().append_value(step * 6);
-    builder.append(true).unwrap();
+    builder
+        .append(true)
+        .expect("Failed to append to map builder");
 
     Arc::new(builder.finish())
 }
@@ -226,7 +231,7 @@ pub fn create_complex_map(step: i32) -> Arc<dyn Array> {
                     .map(|x| x.as_ref())
                     .collect::<Vec<_>>(),
             )
-            .unwrap(),
+            .expect("Failed to concat arrays"),
         ),
         None,
     );
@@ -267,19 +272,22 @@ pub fn create_complex_map(step: i32) -> Arc<dyn Array> {
 /// Creates a dictionary array with string dictionary and int indices
 pub fn create_dictionary_array(step: i32) -> Arc<dyn Array> {
     let dictionary = StringArray::from_iter([
-        Some("device_type_accelerometer".to_string()),
-        Some("device_type_gyroscope".to_string()),
-        Some("device_type_magnetometer".to_string()),
-        Some("device_type_barometer".to_string()),
-        Some("device_type_temperature".to_string()),
-        Some("device_type_humidity".to_string()),
-        Some("device_type_light_sensor".to_string()),
-        Some("device_type_proximity".to_string()),
+        Some("device_type_accelerometer".to_owned()),
+        Some("device_type_gyroscope".to_owned()),
+        Some("device_type_magnetometer".to_owned()),
+        Some("device_type_barometer".to_owned()),
+        Some("device_type_temperature".to_owned()),
+        Some("device_type_humidity".to_owned()),
+        Some("device_type_light_sensor".to_owned()),
+        Some("device_type_proximity".to_owned()),
     ]);
 
     let indices = Int32Array::from_iter([Some(step % 8), Some(step % 3), Some(step % 6)]);
 
-    Arc::new(DictionaryArray::try_new(indices, Arc::new(dictionary)).unwrap())
+    Arc::new(
+        DictionaryArray::try_new(indices, Arc::new(dictionary))
+            .expect("Failed to create dictionary array"),
+    )
 }
 
 /// Creates a binary array with various byte patterns
@@ -287,7 +295,7 @@ pub fn create_binary_array(step: i32) -> Arc<dyn Array> {
     Arc::new(BinaryArray::from_iter([
         Some(b"Hello, binary world!".as_slice()),
         Some(&[0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD, 0xFC]),
-        Some(format!("step_{}_binary_data", step).as_bytes()),
+        Some(format!("step_{step}_binary_data").as_bytes()),
     ]))
 }
 
@@ -296,7 +304,7 @@ pub fn create_large_binary_array(step: i32) -> Arc<dyn Array> {
     Arc::new(LargeBinaryArray::from_iter([
         Some(b"This is large binary data with i64 offsets".as_slice()),
         Some(&vec![step as u8; 1000]), // 1000 bytes with the step value
-        Some(format!("large_binary_step_{}", step).repeat(10).as_bytes()),
+        Some(format!("large_binary_step_{step}").repeat(10).as_bytes()),
     ]))
 }
 
@@ -396,12 +404,12 @@ pub fn create_optional_struct(step: i32) -> Arc<dyn Array> {
     Arc::new(StructArray::from(vec![
         (
             Arc::new(Field::new("required_field", DataType::Utf8, false)),
-            Arc::new(StringArray::from_iter([Some(format!("step_{}", step))])) as Arc<dyn Array>,
+            Arc::new(StringArray::from_iter([Some(format!("step_{step}"))])) as Arc<dyn Array>,
         ),
         (
             Arc::new(Field::new("optional_field", DataType::Utf8, true)),
             Arc::new(StringArray::from_iter([if step % 3 == 0 {
-                Some(format!("optional_{}", step))
+                Some(format!("optional_{step}"))
             } else {
                 None
             }])) as Arc<dyn Array>,
