@@ -7,9 +7,9 @@ use crate::FileContents;
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
 
-/// Somewhere we can get Rerun data from.
+/// Somewhere we can get Rerun logging data from.
 #[derive(Clone, Debug)]
-pub enum DataSource {
+pub enum LogDataSource {
     /// A remote RRD file, served over http.
     ///
     /// Could be either an `.rrd` recording or a `.rbl` blueprint.
@@ -46,11 +46,14 @@ pub enum DataSource {
     RedapProxy(re_uri::ProxyUri),
 }
 
-impl DataSource {
+impl LogDataSource {
     /// Tried to classify a URI into a [`DataSource`].
     ///
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, a grpc url, a http url, etc.
+    ///
+    /// Note that not all URLs are log data sources!
+    /// For instance a pure server or entry url is not a source of log data.
     pub fn from_uri(_file_source: re_log_types::FileSource, url: &str) -> Option<Self> {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -340,8 +343,8 @@ mod tests {
         };
 
         for uri in file {
-            let data_source = DataSource::from_uri(file_source.clone(), uri);
-            if !matches!(data_source, Some(DataSource::FilePath { .. })) {
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            if !matches!(data_source, Some(LogDataSource::FilePath { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as FilePath. Instead it got parsed as {data_source:?}"
                 );
@@ -350,8 +353,8 @@ mod tests {
         }
 
         for uri in http {
-            let data_source = DataSource::from_uri(file_source.clone(), uri);
-            if !matches!(data_source, Some(DataSource::RrdHttpUrl { .. })) {
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            if !matches!(data_source, Some(LogDataSource::RrdHttpUrl { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as RrdHttpUrl. Instead it got parsed as {data_source:?}"
                 );
@@ -360,8 +363,8 @@ mod tests {
         }
 
         for uri in grpc {
-            let data_source = DataSource::from_uri(file_source.clone(), uri);
-            if !matches!(data_source, Some(DataSource::RedapDataset { .. })) {
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            if !matches!(data_source, Some(LogDataSource::RedapDataset { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as MessageProxy. Instead it got parsed as {data_source:?}"
                 );
@@ -370,8 +373,8 @@ mod tests {
         }
 
         for uri in proxy {
-            let data_source = DataSource::from_uri(file_source.clone(), uri);
-            if !matches!(data_source, Some(DataSource::RedapProxy { .. })) {
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            if !matches!(data_source, Some(LogDataSource::RedapProxy { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as MessageProxy. Instead it got parsed as {data_source:?}"
                 );

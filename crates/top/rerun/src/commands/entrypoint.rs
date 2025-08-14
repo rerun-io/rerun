@@ -4,7 +4,7 @@ use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
 use tokio::runtime::Runtime;
 
-use re_data_source::DataSource;
+use re_data_source::LogDataSource;
 use re_log_types::{LogMsg, TableMsg};
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
@@ -1305,9 +1305,9 @@ impl ReceiversFromUrlParams {
         let mut urls_to_pass_on_to_viewer = Vec::new();
 
         for url in input_urls {
-            if let Some(data_source) = DataSource::from_uri(re_log_types::FileSource::Cli, &url) {
+            if let Some(data_source) = LogDataSource::from_uri(re_log_types::FileSource::Cli, &url) {
                 match &data_source {
-                    DataSource::RrdHttpUrl { .. } => {
+                    LogDataSource::RrdHttpUrl { .. } => {
                         if config.data_sources_from_http_urls {
                             data_sources.push(data_source);
                         } else {
@@ -1315,7 +1315,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    DataSource::RedapProxy(..) | DataSource::RedapDataset { .. } => {
+                    LogDataSource::RedapProxy(..) | LogDataSource::RedapDataset { .. } => {
                         if config.data_sources_from_redap_datasets {
                             data_sources.push(data_source);
                         } else {
@@ -1323,7 +1323,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    DataSource::FilePath(..) => {
+                    LogDataSource::FilePath(..) => {
                         if config.data_source_from_filepaths {
                             data_sources.push(data_source);
                         } else {
@@ -1331,7 +1331,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    DataSource::FileContents(..) | DataSource::Stdin => {
+                    LogDataSource::FileContents(..) | LogDataSource::Stdin => {
                         data_sources.push(data_source);
                     }
                 }

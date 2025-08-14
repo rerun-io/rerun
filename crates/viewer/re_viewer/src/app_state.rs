@@ -129,12 +129,6 @@ impl AppState {
         &mut self.app_options
     }
 
-    pub fn add_redap_server(&self, command_sender: &CommandSender, origin: Origin) {
-        if !self.redap_servers.has_server(&origin) {
-            command_sender.send_system(SystemCommand::AddRedapServer(origin));
-        }
-    }
-
     /// Currently selected section of time, if any.
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub fn loop_selection(

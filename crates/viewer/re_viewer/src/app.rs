@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
-use re_data_source::{DataSource, FileContents};
+use re_data_source::{FileContents, LogDataSource};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
 use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
@@ -441,9 +441,8 @@ impl App {
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
         if let SmartChannelSource::RedapGrpcStream { uri, .. } = rx.source() {
-            self.state
-                .add_redap_server(&self.command_sender, uri.origin.clone());
-
+            self.command_sender
+                .send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
             self.go_to_dataset_data(uri);
         }
 
@@ -606,6 +605,10 @@ impl App {
             }
 
             SystemCommand::AddRedapServer(origin) => {
+                if self.state.redap_servers.has_server(&origin) {
+                    return;
+                }
+
                 self.state.redap_servers.add_server(origin.clone());
 
                 if self
@@ -803,7 +806,7 @@ impl App {
         &mut self,
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
-        data_source: &DataSource,
+        data_source: &LogDataSource,
     ) {
         // Check if we've already loaded this data source and should just switch to it.
         //
@@ -817,7 +820,7 @@ impl App {
         let mut all_sources = store_sources.chain(active_sources.iter().map(|s| s.as_ref()));
 
         match data_source {
-            DataSource::RrdHttpUrl { url, follow } => {
+            LogDataSource::RrdHttpUrl { url, follow } => {
                 let new_source = SmartChannelSource::RrdHttpStream {
                     url: url.clone(),
                     follow: *follow,
@@ -843,7 +846,7 @@ impl App {
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            DataSource::FilePath(_file_source, path) => {
+            LogDataSource::FilePath(_file_source, path) => {
                 let new_source = SmartChannelSource::File(path.clone());
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     drop(all_sources);
@@ -852,12 +855,12 @@ impl App {
                 }
             }
 
-            DataSource::FileContents(_file_source, _file_contents) => {
+            LogDataSource::FileContents(_file_source, _file_contents) => {
                 // For raw file contents we currently can't determine whether we're already receiving them.
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            DataSource::Stdin => {
+            LogDataSource::Stdin => {
                 let new_source = SmartChannelSource::Stdin;
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     drop(all_sources);
@@ -866,7 +869,7 @@ impl App {
                 }
             }
 
-            DataSource::RedapDataset {
+            LogDataSource::RedapDataset {
                 uri,
                 select_when_loaded,
             } => {
@@ -893,7 +896,7 @@ impl App {
                 }
             }
 
-            DataSource::RedapProxy(uri) => {
+            LogDataSource::RedapProxy(uri) => {
                 let new_source = SmartChannelSource::MessageProxy(uri.clone());
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     drop(all_sources);
@@ -1082,7 +1085,7 @@ impl App {
             UICommand::Open => {
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
                             FileSource::FileDialog {
                                 recommended_store_id: None,
                                 force_store_info,
@@ -1112,7 +1115,7 @@ impl App {
             UICommand::Import => {
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
                             FileSource::FileDialog {
                                 recommended_store_id: Some(active_store_id.clone()),
                                 force_store_info,
@@ -2165,7 +2168,7 @@ impl App {
             if let Some(bytes) = file.bytes {
                 // This is what we get on Web.
                 command_sender.send_system(SystemCommand::LoadDataSource(
-                    DataSource::FileContents(
+                    LogDataSource::FileContents(
                         FileSource::DragAndDrop {
                             recommended_store_id: Some(active_store_id.clone()),
                             force_store_info,
@@ -2182,7 +2185,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = file.path {
-                command_sender.send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
                     FileSource::DragAndDrop {
                         recommended_store_id: Some(active_store_id.clone()),
                         force_store_info,
@@ -2518,7 +2521,7 @@ impl eframe::App for App {
             if let Some(files) = promise.ready() {
                 for file in files {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FileContents(
                             FileSource::FileDialog {
                                 recommended_store_id: recommended_store_id.clone(),
                                 force_store_info: *force_store_info,

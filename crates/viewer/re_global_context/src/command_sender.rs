@@ -1,6 +1,6 @@
 use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
-use re_data_source::DataSource;
+use re_data_source::LogDataSource;
 use re_log_types::{AbsoluteTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
@@ -21,7 +21,7 @@ pub enum SystemCommand {
     /// Load data from a given data source.
     ///
     /// Will not load any new data if the source is already one of the active data sources.
-    LoadDataSource(DataSource),
+    LoadDataSource(LogDataSource),
 
     /// Add a new receiver for log messages.
     AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
