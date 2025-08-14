@@ -1,4 +1,5 @@
 use crate::datatype_ui::data_type_ui;
+use crate::show_index::ShowIndex;
 use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
 use re_format::format_uint;
 use re_ui::UiExt as _;
@@ -13,18 +14,18 @@ enum NodeLabel {
 
 pub struct ArrowNode<'a> {
     label: NodeLabel,
-    values: &'a dyn crate::fmt::ShowIndex,
+    values: &'a dyn ShowIndex,
 }
 
 impl<'a> ArrowNode<'a> {
-    pub fn custom(name: impl Into<WidgetText>, values: &'a dyn crate::fmt::ShowIndex) -> Self {
+    pub fn custom(name: impl Into<WidgetText>, values: &'a dyn ShowIndex) -> Self {
         Self {
             label: NodeLabel::Custom(name.into()),
             values,
         }
     }
 
-    pub fn name(name: impl Into<String>, values: &'a dyn crate::fmt::ShowIndex) -> Self {
+    pub fn name(name: impl Into<String>, values: &'a dyn ShowIndex) -> Self {
         Self {
             label: NodeLabel::Name(name.into()),
             values,
@@ -32,7 +33,7 @@ impl<'a> ArrowNode<'a> {
     }
 
     /// The index to *display*
-    pub fn index(idx: usize, values: &'a dyn crate::fmt::ShowIndex) -> Self {
+    pub fn index(idx: usize, values: &'a dyn ShowIndex) -> Self {
         Self {
             label: NodeLabel::Index(idx),
             values,

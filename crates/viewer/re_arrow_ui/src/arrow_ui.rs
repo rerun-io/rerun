@@ -1,5 +1,5 @@
 use crate::datatype_ui::data_type_ui;
-use crate::fmt::ArrayUi;
+use crate::show_index::ArrayUi;
 use arrow::{array::Array, error::ArrowError, util::display::FormatOptions};
 use egui::Id;
 use re_arrow_util::ArrowArrayDowncastRef as _;

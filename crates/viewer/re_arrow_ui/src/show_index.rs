@@ -1,7 +1,7 @@
 //! [`ArrowUi`] can be used to show arbitrary Arrow data with a nice UI.
 //! The implementation is inspired from arrows built-in display formatter:
 //! <https://github.com/apache/arrow-rs/blob/c628435f9f14abc645fb546442132974d3d380ca/arrow-cast/src/display.rs>
-use crate::fmt_node::ArrowNode;
+use crate::arrow_node::ArrowNode;
 use crate::list_item_ranges::list_item_ranges;
 use arrow::array::cast::{
     AsArray as _, as_generic_list_array, as_map_array, as_struct_array, as_union_array,
