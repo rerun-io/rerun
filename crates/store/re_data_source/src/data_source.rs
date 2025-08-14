@@ -323,18 +323,15 @@ mod tests {
             "www.foo.zip/blueprint.rbl",
         ];
         let grpc = [
-            "rerun://foo.zip",
-            "rerun+http://foo.zip",
-            "rerun+https://foo.zip",
-            "rerun://127.0.0.1:9876",
-            "rerun+http://127.0.0.1:9876",
-            "rerun://redap.rerun.io",
-            "rerun+https://redap.rerun.io",
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1230ms..1m12s",
+            "rerun+http://example.com/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
         ];
 
         let proxy = [
             "rerun+http://127.0.0.1:9876/proxy",
             "rerun+https://127.0.0.1:9876/proxy",
+            "rerun+http://example.com/proxy",
         ];
 
         let file_source = FileSource::DragAndDrop {
@@ -366,7 +363,7 @@ mod tests {
             let data_source = LogDataSource::from_uri(file_source.clone(), uri);
             if !matches!(data_source, Some(LogDataSource::RedapDataset { .. })) {
                 eprintln!(
-                    "Expected {uri:?} to be categorized as MessageProxy. Instead it got parsed as {data_source:?}"
+                    "Expected {uri:?} to be categorized as readp dataset. Instead it got parsed as {data_source:?}"
                 );
                 failed = true;
             }
