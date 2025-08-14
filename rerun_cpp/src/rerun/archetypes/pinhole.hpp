@@ -68,6 +68,8 @@ namespace rerun::archetypes {
     ///         rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)
     ///             .with_camera_xyz(rerun::components::ViewCoordinates::RUB)
     ///             .with_image_plane_distance(0.1f)
+    ///             .with_color({1.0f, 0.5f, 0.0f})
+    ///             .with_line_width(0.003f)
     ///     );
     ///
     ///     rec.log(

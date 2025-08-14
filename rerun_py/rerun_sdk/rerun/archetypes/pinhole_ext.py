@@ -26,6 +26,8 @@ class PinholeExt:
         fov_y: float | None = None,
         aspect_ratio: float | None = None,
         image_plane_distance: float | None = None,
+        color: npt.Rgba32Like | None = None,
+        line_width: npt.Float32Like | None = None,
     ) -> None:
         """
         Create a new instance of the Pinhole archetype.
@@ -88,6 +90,10 @@ class PinholeExt:
         image_plane_distance:
             The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
             This is only used for visualization purposes, and does not affect the projection itself.
+        color:
+            Color of the camera frustum lines in the 3D viewer.
+        line_width:
+            Width of the camera frustum lines in the 3D viewer.
 
         """
 
