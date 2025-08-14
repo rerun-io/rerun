@@ -818,7 +818,7 @@ fn run_impl(
     if args.test_receive {
         let receivers = ReceiversFromUrlParams::new(
             url_or_paths,
-            &UrlParamProcessingConfig::redirect_to_file(),
+            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
         )?;
         receivers.error_on_unhandled_urls("--test-receive")?;
@@ -826,7 +826,7 @@ fn run_impl(
     } else if let Some(rrd_path) = args.save {
         let receivers = ReceiversFromUrlParams::new(
             url_or_paths,
-            &UrlParamProcessingConfig::redirect_to_file(),
+            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
         )?;
         receivers.error_on_unhandled_urls("--save")?;
@@ -855,7 +855,7 @@ fn run_impl(
 
         let receivers = ReceiversFromUrlParams::new(
             url_or_paths,
-            &UrlParamProcessingConfig::grpc_server(),
+            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
         )?;
         receivers.error_on_unhandled_urls("--serve-grpc")?;
@@ -967,10 +967,9 @@ fn run_impl(
         let sink = re_sdk::sink::GrpcSink::new(uri, crate::default_flush_timeout());
 
         // Forward everything we have to the proxy.
-        // For the URLs we're acting like a server, taking in everything that would otherwise be passed on to the viewer.
         let receivers = ReceiversFromUrlParams::new(
             url_or_paths,
-            &UrlParamProcessingConfig::grpc_server(),
+            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
         )?;
         if !receivers.urls_to_pass_on_to_viewer.is_empty() {
@@ -1257,21 +1256,15 @@ struct UrlParamProcessingConfig {
 }
 
 impl UrlParamProcessingConfig {
-    fn grpc_server() -> Self {
-        // Pure GRPC server makes everything it can a data source.
-        Self {
-            data_sources_from_http_urls: true,
-            data_sources_from_redap_datasets: true,
-            data_source_from_filepaths: true,
-        }
-    }
-
-    fn redirect_to_file() -> Self {
+    /// Instruct to create data sources for everything we can.
+    ///
+    /// This is used for pure servers and file redirects.
+    fn convert_everything_to_data_sources() -> Self {
         // Write to file makes everything it can a data source.
         Self {
             data_sources_from_http_urls: true,
             data_sources_from_redap_datasets: true,
-            data_source_from_filepaths: false,
+            data_source_from_filepaths: true,
         }
     }
 
@@ -1288,9 +1281,9 @@ impl UrlParamProcessingConfig {
     fn native_viewer() -> Self {
         // Native viewer passes everything on to the viewer unchanged.
         Self {
-            data_sources_from_http_urls: true,
-            data_sources_from_redap_datasets: true,
-            data_source_from_filepaths: true,
+            data_sources_from_http_urls: false,
+            data_sources_from_redap_datasets: false,
+            data_source_from_filepaths: false,
         }
     }
 }
