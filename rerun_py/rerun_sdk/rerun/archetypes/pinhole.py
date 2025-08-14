@@ -64,7 +64,7 @@ class Pinhole(PinholeExt, Archetype):
             aspect_ratio=1.7777778,
             camera_xyz=rr.ViewCoordinates.RUB,
             image_plane_distance=0.1,
-            color=[1.0, 0.5, 0.0],
+            color=[255, 128, 0],
             line_width=0.003,
         ),
     )
