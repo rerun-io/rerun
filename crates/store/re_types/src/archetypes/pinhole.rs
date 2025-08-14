@@ -70,7 +70,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         "world/cam",
 ///         &rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)
 ///             .with_camera_xyz(rerun::components::ViewCoordinates::RUB)
-///             .with_image_plane_distance(0.1),
+///             .with_image_plane_distance(0.1)
+///             .with_line_width(0.003),
 ///     )?;
 ///
 ///     rec.log(
