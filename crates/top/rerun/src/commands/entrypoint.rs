@@ -815,21 +815,17 @@ fn run_impl(
     }
 
     // Now what do we do with the data?
-    if args.test_receive {
+    if args.test_receive || args.save.is_some() {
         let receivers = ReceiversFromUrlParams::new(
             url_or_paths,
             &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
         )?;
-        receivers.error_on_unhandled_urls("--test-receive")?;
-        assert_receive_into_entity_db(&ReceiveSet::new(receivers.log_receivers)).map(|_db| ())
-    } else if let Some(rrd_path) = args.save {
-        let receivers = ReceiversFromUrlParams::new(
-            url_or_paths,
-            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
-            &connection_registry,
-        )?;
-        receivers.error_on_unhandled_urls("--save")?;
+        receivers.error_on_unhandled_urls(if args.test_receive {
+            "--test-receive"
+        } else {
+            "--save"
+        })?;
 
         let (log_server, table_server): (Receiver<LogMsg>, crossbeam::channel::Receiver<TableMsg>) =
             re_grpc_server::spawn_with_recv(
@@ -843,10 +839,13 @@ fn run_impl(
         let mut log_receivers = receivers.log_receivers;
         log_receivers.push(log_server);
 
-        Ok(stream_to_rrd_on_disk(
-            &ReceiveSet::new(log_receivers),
-            &rrd_path.into(),
-        )?)
+        let receive_set = ReceiveSet::new(log_receivers);
+
+        if let Some(rrd_path) = args.save {
+            Ok(stream_to_rrd_on_disk(&receive_set, &rrd_path.into())?)
+        } else {
+            assert_receive_into_entity_db(&receive_set).map(|_db| ())
+        }
     } else if args.serve_grpc {
         if !cfg!(feature = "server") {
             _ = call_source;
