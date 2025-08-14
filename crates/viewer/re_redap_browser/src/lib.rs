@@ -9,7 +9,7 @@ mod server_modal;
 mod servers;
 
 pub use self::{
-    entries::{DatasetKind, Entries, Entry, EntryInner, dataset_list_item_and_its_recordings_ui},
+    entries::{Entries, Entry, EntryInner},
     servers::{Command, RedapServers, Server},
 };
 

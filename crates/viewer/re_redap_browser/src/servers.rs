@@ -4,7 +4,8 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::task::Poll;
 
 use datafusion::prelude::{SessionContext, col, lit};
-use egui::{Frame, Margin, RichText, Widget as _};
+use egui::{Frame, Margin, RichText};
+
 use re_auth::Jwt;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistryHandle;
@@ -13,10 +14,9 @@ use re_protos::catalog::v1alpha1::EntryKind;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::alert::Alert;
-use re_ui::list_item::{ItemButton as _, ItemMenuButton};
-use re_ui::{UiExt as _, icons, list_item};
+use re_ui::{UiExt as _, icons};
 use re_viewer_context::{
-    AsyncRuntimeHandle, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
+    AsyncRuntimeHandle, DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _,
     ViewerContext,
 };
 
@@ -271,85 +271,6 @@ impl Server {
             .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
             .show(viewer_ctx, &self.runtime, ui);
     }
-
-    //TODO: remove
-    fn panel_ui(
-        &self,
-        viewer_ctx: &ViewerContext<'_>,
-        ctx: &Context<'_>,
-        ui: &mut egui::Ui,
-        recordings: Option<re_entity_db::DatasetRecordings<'_>>,
-    ) {
-        let item = Item::RedapServer(self.origin.clone());
-        let is_selected = viewer_ctx.selection().contains_item(&item);
-        let is_active = matches!(
-            viewer_ctx.display_mode(),
-            DisplayMode::RedapServer(origin)
-            if origin == &self.origin
-        );
-
-        let content = list_item::LabelContent::header(self.origin.host.to_string())
-            .always_show_buttons(true)
-            .with_buttons(|ui| {
-                Box::new(ItemMenuButton::new(&icons::MORE, "Actions", |ui| {
-                    if icons::RESET
-                        .as_button_with_label(ui.tokens(), "Refresh")
-                        .ui(ui)
-                        .clicked()
-                    {
-                        ctx.command_sender
-                            .send(Command::RefreshCollection(self.origin.clone()))
-                            .ok();
-                    }
-                    if icons::SETTINGS
-                        .as_button_with_label(ui.tokens(), "Edit")
-                        .ui(ui)
-                        .clicked()
-                    {
-                        ctx.command_sender
-                            .send(Command::OpenEditServerModal(self.origin.clone()))
-                            .ok();
-                    }
-                    if icons::TRASH
-                        .as_button_with_label(ui.tokens(), "Remove")
-                        .ui(ui)
-                        .clicked()
-                    {
-                        ctx.command_sender
-                            .send(Command::RemoveServer(self.origin.clone()))
-                            .ok();
-                    }
-                }))
-                .ui(ui)
-            });
-
-        let item_response = ui
-            .list_item()
-            .header()
-            .selected(is_selected)
-            .active(is_active)
-            .show_hierarchical_with_children(
-                ui,
-                egui::Id::new(&self.origin).with("server_item"),
-                true,
-                content,
-                |ui| {
-                    self.entries.panel_ui(viewer_ctx, ctx, ui, recordings);
-                },
-            )
-            .item_response
-            .on_hover_text(self.origin.to_string());
-
-        viewer_ctx.handle_select_hover_drag_interactions(&item_response, item, false);
-
-        if item_response.clicked() {
-            viewer_ctx
-                .command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                    self.origin.clone(),
-                )));
-        }
-    }
 }
 
 /// All servers known to the viewer, and their catalog data.
@@ -545,21 +466,6 @@ impl RedapServers {
                     DisplayMode::LocalRecordings,
                 ));
         }
-    }
-
-    //TODO: remove
-    pub fn server_list_ui(
-        &self,
-        viewer_ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        mut remote_recordings: re_entity_db::RemoteRecordings<'_>,
-    ) {
-        self.with_ctx(|ctx| {
-            for server in self.servers.values() {
-                let recordings = remote_recordings.remove(&server.origin);
-                server.panel_ui(viewer_ctx, ctx, ui, recordings);
-            }
-        });
     }
 
     pub fn open_add_server_modal(&self) {
