@@ -227,7 +227,7 @@ Update instructions:
 | re_format          | Miscellaneous tools to format and parse numbers, durations, etc.                     |
 | re_int_histogram   | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
 | re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
-| re_mcap            | Deserialization and helpers for MCAP files.                                          |
+| re_mcap            | Convert MCAP into Rerun-compatible data.                                             |
 | re_memory          | Run-time memory tracking and profiling.                                              |
 | re_perf_telemetry  | In and out of process performance profiling utilities for Rerun & Redap              |
 | re_smart_channel   | A channel that keeps track of latency and queue length.                              |

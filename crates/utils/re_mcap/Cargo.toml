@@ -1,6 +1,6 @@
 [package]
 name = "re_mcap"
-description = "Deserialization and helpers for MCAP messages."
+description = "Convert MCAP into Rerun-compatible data"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
