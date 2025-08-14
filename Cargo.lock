@@ -8952,6 +8952,7 @@ dependencies = [
  "serde",
  "slotmap",
  "smallvec",
+ "static_assertions",
  "thiserror 1.0.69",
  "tokio",
  "wasm-bindgen-futures",
