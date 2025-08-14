@@ -1,4 +1,3 @@
-// TODO: remove all `super::super` by moving defintions arounds
 use super::super::definitions::sensor_msgs;
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::TimeCell;

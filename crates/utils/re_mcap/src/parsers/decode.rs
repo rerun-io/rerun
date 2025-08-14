@@ -20,7 +20,6 @@ use re_log_types::TimeCell;
 ///    where parsers can extract and accumulate data from each message.
 /// 2. All accumulated data is converted into [`Chunk`]s via
 ///    [`finalize()`](`Self::finalize`), which consumes the parser and returns the final Rerun chunks.
-// TODO: consider renaming this to just `MessageParser`.
 pub trait MessageParser {
     /// Process a single MCAP message and accumulate its data.
     ///

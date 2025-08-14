@@ -39,7 +39,6 @@ re_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-byteorder.workspace = true
 memmap2.workspace = true
 crossbeam.workspace = true
 image.workspace = true

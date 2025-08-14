@@ -44,9 +44,8 @@ impl std::fmt::Display for LayerIdentifier {
 /// A layer describes information that can be extracted from an MCAP file.
 ///
 /// It is the most general level at which we can interpret an MCAP file and can
-/// be used to either output general information about the MCAP file (e.g.
-/// [`McapStatisticLayer`]) or to call into layers that work on a per-message
-/// basis via the [`MessageLayer`] trait.
+/// be used to either output general information about the MCAP file or to call
+/// into layers that work on a per-message basis via the [`MessageLayer`] trait.
 pub trait Layer {
     /// Globally unique identifier for this layer.
     ///
@@ -70,7 +69,7 @@ pub trait Layer {
 
 /// Can be used to extract per-message information from an MCAP file.
 ///
-/// This is a specialization of [`Layer`] that allows defining [`McapMessageParser`]s.
+/// This is a specialization of [`Layer`] that allows defining [`MessageParser`]s.
 /// to interpret the contents of MCAP chunks.
 pub trait MessageLayer {
     fn identifier() -> LayerIdentifier
@@ -81,7 +80,7 @@ pub trait MessageLayer {
         Ok(())
     }
 
-    /// Instantites a new [`McapMessageParser`] that expects `num_rows` if it is interested in the current channel.
+    /// Instantites a new [`MessageParser`] that expects `num_rows` if it is interested in the current channel.
     ///
     /// Otherwise returns `None`.
     ///

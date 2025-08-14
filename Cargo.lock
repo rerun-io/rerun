@@ -7425,7 +7425,6 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
- "byteorder",
  "crossbeam",
  "image",
  "indexmap 2.10.0",
