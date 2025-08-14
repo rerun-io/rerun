@@ -16,8 +16,6 @@ mod loader_urdf;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod lerobot;
 
-pub mod mcap;
-
 // This loader currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod loader_lerobot;
