@@ -18,7 +18,7 @@
 //!
 //! # fn example() -> Result<()> {
 //! # let cdr_buffer = [0u8; 8]; // dummy buffer
-//! let decoded: MyMessage = re_data_loader::mcap::cdr::try_decode_message(&cdr_buffer)?;
+//! let decoded: MyMessage = re_mcap::cdr::try_decode_message(&cdr_buffer)?;
 //! # Ok(())
 //! # }
 //! ```
