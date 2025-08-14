@@ -4,7 +4,7 @@ use re_types::{Component as _, ComponentDescriptor, components};
 
 use crate::{
     LayerIdentifier, MessageLayer,
-    parsers::{McapMessageParser, ParserContext, PluginError, util::blob_list_builder},
+    parsers::{MessageParser, ParserContext, PluginError, util::blob_list_builder},
 };
 
 struct RawMcapMessageParser {
@@ -21,7 +21,7 @@ impl RawMcapMessageParser {
     }
 }
 
-impl McapMessageParser for RawMcapMessageParser {
+impl MessageParser for RawMcapMessageParser {
     fn append(
         &mut self,
         _ctx: &mut ParserContext,
@@ -77,7 +77,7 @@ impl MessageLayer for McapRawLayer {
         &self,
         _channel: &mcap::Channel<'_>,
         num_rows: usize,
-    ) -> Option<Box<dyn McapMessageParser>> {
+    ) -> Option<Box<dyn MessageParser>> {
         Some(Box::new(RawMcapMessageParser::new(num_rows)))
     }
 }

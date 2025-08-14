@@ -13,7 +13,7 @@ pub use self::{
     ros2::McapRos2Layer, schema::McapSchemaLayer, stats::McapStatisticLayer,
 };
 
-use crate::parsers::{ChannelId, McapMessageParser, ParserContext, PluginError};
+use crate::parsers::{ChannelId, MessageParser, ParserContext, PluginError};
 
 /// Globally unique identifier for a layer.
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -88,10 +88,10 @@ pub trait MessageLayer {
         &self,
         channel: &mcap::Channel<'_>,
         num_rows: usize,
-    ) -> Option<Box<dyn McapMessageParser>>;
+    ) -> Option<Box<dyn MessageParser>>;
 }
 
-type Parser = (ParserContext, Box<dyn McapMessageParser>);
+type Parser = (ParserContext, Box<dyn MessageParser>);
 
 /// Decodes batches of messages from an MCAP into Rerun chunks using previously registered parsers.
 struct McapChunkDecoder {

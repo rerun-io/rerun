@@ -1,5 +1,5 @@
 use crate::{
-    parsers::McapMessageParser,
+    parsers::MessageParser,
     parsers::ros2msg::{
         sensor_msgs::{
             CameraInfoMessageParser, CompressedImageMessageParser, ImageMessageParser,
@@ -27,7 +27,7 @@ impl MessageLayer for McapRos2Layer {
         &self,
         channel: &mcap::Channel<'_>,
         num_rows: usize,
-    ) -> Option<Box<dyn McapMessageParser>> {
+    ) -> Option<Box<dyn MessageParser>> {
         let Some(name) = channel.schema.as_ref().map(|schema| schema.name.as_str()) else {
             re_log::warn_once!(
                 "Encountered ROS2 message without schema in channel {:?}",

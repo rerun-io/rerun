@@ -3,7 +3,7 @@ use re_chunk::{Chunk, ChunkId};
 use re_types::archetypes::TextDocument;
 
 use crate::parsers::{
-    cdr, {McapMessageParser, ParserContext, PluginError},
+    cdr, {MessageParser, ParserContext, PluginError},
 };
 
 /// Plugin that parses `std_msgs/msg/String` messages.
@@ -20,7 +20,7 @@ impl StringMessageParser {
     }
 }
 
-impl McapMessageParser for StringMessageParser {
+impl MessageParser for StringMessageParser {
     fn append(&mut self, _ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         let std_msgs::StringMessage { data } =
             cdr::try_decode_message::<std_msgs::StringMessage>(&msg.data)?;

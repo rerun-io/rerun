@@ -6,7 +6,7 @@ use re_chunk::{
 use re_log_types::TimeCell;
 use re_types::archetypes::{Scalars, SeriesLines};
 
-use crate::parsers::{McapMessageParser, ParserContext, PluginError, cdr};
+use crate::parsers::{MessageParser, ParserContext, PluginError, cdr};
 
 /// Plugin that parses `sensor_msgs/msg/JointState` messages.
 #[derive(Default)]
@@ -31,7 +31,7 @@ impl JointStateMessageParser {
     }
 }
 
-impl McapMessageParser for JointStateMessageParser {
+impl MessageParser for JointStateMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         let sensor_msgs::JointState {
             header,

@@ -19,7 +19,7 @@ use std::collections::HashMap;
 
 use crate::parsers::{
     cdr,
-    decode::{McapMessageParser, ParserContext, PluginError},
+    decode::{MessageParser, ParserContext, PluginError},
     util::{blob_list_builder, fixed_size_list_builder},
 };
 
@@ -167,7 +167,7 @@ impl Iterator for Position3DIter<'_> {
     }
 }
 
-impl McapMessageParser for PointCloud2MessageParser {
+impl MessageParser for PointCloud2MessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         let point_cloud = cdr::try_decode_message::<sensor_msgs::PointCloud2>(msg.data.as_ref())
             .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;

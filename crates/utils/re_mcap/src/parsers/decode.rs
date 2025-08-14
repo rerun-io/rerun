@@ -1,7 +1,5 @@
 //! Utilities for decoding MCAP messages into Rerun chunks.
 
-use anyhow::Context as _;
-
 use re_chunk::{
     Chunk, EntityPath, TimeColumn, TimeColumnBuilder, TimePoint, Timeline, TimelineName,
     external::nohash_hasher::{IntMap, IsEnabled},

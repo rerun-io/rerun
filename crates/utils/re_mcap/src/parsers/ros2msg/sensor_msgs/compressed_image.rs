@@ -12,7 +12,7 @@ use re_types::{
 
 use crate::parsers::{
     cdr,
-    decode::{McapMessageParser, ParserContext, PluginError},
+    decode::{MessageParser, ParserContext, PluginError},
 };
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
@@ -37,7 +37,7 @@ impl CompressedImageMessageParser {
     }
 }
 
-impl McapMessageParser for CompressedImageMessageParser {
+impl MessageParser for CompressedImageMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         let sensor_msgs::CompressedImage {

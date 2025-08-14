@@ -12,7 +12,7 @@ use re_types::{ComponentDescriptor, archetypes::Pinhole};
 
 use crate::parsers::{
     cdr,
-    decode::{McapMessageParser, ParserContext, PluginError},
+    decode::{MessageParser, ParserContext, PluginError},
     util::fixed_size_list_builder,
 };
 
@@ -77,7 +77,7 @@ impl CameraInfoMessageParser {
     }
 }
 
-impl McapMessageParser for CameraInfoMessageParser {
+impl MessageParser for CameraInfoMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         let sensor_msgs::CameraInfo {
             header,

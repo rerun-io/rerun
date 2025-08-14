@@ -14,7 +14,7 @@ use prost_reflect::{
 use re_chunk::{Chunk, ChunkId};
 use re_types::ComponentDescriptor;
 
-use crate::parsers::{McapMessageParser, ParserContext, PluginError};
+use crate::parsers::{MessageParser, ParserContext, PluginError};
 use crate::{LayerIdentifier, MessageLayer};
 
 struct ProtobufMessageParser {
@@ -78,7 +78,7 @@ impl ProtobufMessageParser {
     }
 }
 
-impl McapMessageParser for ProtobufMessageParser {
+impl MessageParser for ProtobufMessageParser {
     fn append(&mut self, _ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         let dynamic_message =
@@ -349,7 +349,7 @@ impl MessageLayer for McapProtobufLayer {
         &self,
         channel: &mcap::Channel<'_>,
         num_rows: usize,
-    ) -> Option<Box<dyn McapMessageParser>> {
+    ) -> Option<Box<dyn MessageParser>> {
         let message_descriptor = self.descrs_per_topic.get(&channel.topic)?;
         Some(Box::new(ProtobufMessageParser::new(
             num_rows,

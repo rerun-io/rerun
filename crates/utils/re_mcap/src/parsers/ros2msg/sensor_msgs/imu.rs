@@ -9,7 +9,7 @@ use re_types::{
     archetypes::{Scalars, SeriesLines},
 };
 
-use crate::parsers::{McapMessageParser, ParserContext, PluginError, cdr};
+use crate::parsers::{MessageParser, ParserContext, PluginError, cdr};
 
 /// Plugin that parses `sensor_msgs/msg/Imu` messages.
 #[derive(Default)]
@@ -63,7 +63,7 @@ impl ImuMessageParser {
     }
 }
 
-impl McapMessageParser for ImuMessageParser {
+impl MessageParser for ImuMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         let imu = cdr::try_decode_message::<sensor_msgs::Imu>(msg.data.as_ref())
             .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
