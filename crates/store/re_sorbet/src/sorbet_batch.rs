@@ -40,9 +40,10 @@ impl SorbetBatch {
     ) -> Result<Self, ArrowError> {
         let arrow_columns = itertools::chain!(row_ids, index_arrays, data_arrays).collect();
 
-        let batch = ArrowRecordBatch::try_new(
+        let batch = ArrowRecordBatch::try_new_with_options(
             std::sync::Arc::new(schema.to_arrow(batch_type)),
             arrow_columns,
+            &RecordBatchOptions::default(),
         )?;
 
         Ok(Self { schema, batch })
