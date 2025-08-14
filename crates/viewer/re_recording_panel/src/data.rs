@@ -6,6 +6,7 @@ use std::task::Poll;
 
 use ahash::HashMap;
 use itertools::Itertools as _;
+
 use re_entity_db::EntityDb;
 use re_entity_db::entity_db::EntityDbClass;
 use re_log_types::{ApplicationId, EntryId, TableId, natural_ordering};
@@ -15,7 +16,6 @@ use re_types::archetypes::RecordingInfo;
 use re_types::components::{Name, Timestamp};
 use re_ui::Icon;
 use re_viewer_context::{DisplayMode, Item, ViewerContext};
-use serde::Serialize;
 
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
@@ -486,6 +486,7 @@ fn serialize_entity_db<S>(value: &EntityDb, serializer: S) -> Result<S::Ok, S::E
 where
     S: serde::Serializer,
 {
+    use serde::Serialize as _;
     value.store_id().serialize(serializer)
 }
 
@@ -494,5 +495,6 @@ fn serialize_icon<S>(value: &Icon, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
+    use serde::Serialize as _;
     value.uri().serialize(serializer)
 }

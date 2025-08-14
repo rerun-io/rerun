@@ -70,11 +70,10 @@ fn add_button_ui(
             ui.close();
         }
 
-        // only in dbg build
+        // Show some nice debugging tools in debug builds.
         #[cfg(debug_assertions)]
         {
             ui.separator();
-
             ui.add_enabled(
                 false,
                 egui::Button::new(egui::RichText::new("Debug-only tools").italics()),
