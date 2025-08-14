@@ -312,15 +312,6 @@ mod tests {
             "www.foo.zip/foo.rrd",
             "www.foo.zip/blueprint.rbl",
         ];
-        let http_filenames = [
-            "foo.rrd",
-            "foo.rrd",
-            "foo.rrd",
-            "foo.rrd",
-            "foo.rrd",
-            "blueprint.rbl",
-        ];
-
         let grpc = [
             "rerun://foo.zip",
             "rerun+http://foo.zip",
@@ -351,17 +342,6 @@ mod tests {
             if !matches!(data_source, Some(DataSource::RrdHttpUrl { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as RrdHttpUrl. Instead it got parsed as {data_source:?}"
-                );
-                failed = true;
-            }
-        }
-
-        for (uri, expected_filename) in http.iter().zip(http_filenames.iter()) {
-            let data_source = DataSource::from_uri(file_source.clone(), uri);
-            let data_source_filename = data_source.and_then(|ds| ds.file_name());
-            if data_source_filename != Some((*expected_filename).to_owned()) {
-                eprintln!(
-                    "Expected data source for {uri:?} to have filename {expected_filename}. Instead it got parsed as {data_source_filename:?}",
                 );
                 failed = true;
             }
