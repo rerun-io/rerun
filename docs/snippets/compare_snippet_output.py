@@ -188,26 +188,35 @@ def main() -> None:
         example_opt_out_entirely = example.opt_out_entirely()
         example_opt_out_compare = example.opt_out_compare()
 
-        if "rust" in example_opt_out_entirely:
-            print("SKIPPED: Missing Rust baseline to compare against")
-            continue
-
         backwards_path = example.backwards_compatibility_path()
         cpp_output_path = example.output_path("cpp")
         python_output_path = example.output_path("python")
         rust_output_path = example.output_path("rust")
 
+        if "rust" in example_opt_out_entirely and "py" in example_opt_out_entirely:
+            print("SKIPPED: Missing Rust or Python baseline to compare against")
+            continue
+
+        # We prefer the Rust example as the "ground truth".
+        # If we have no Rust version of the example, then use the Python version:
+        if "rust" in example_opt_out_entirely:
+            baseline_path = python_output_path
+        else:
+            baseline_path = rust_output_path
+
         if args.write_missing_backward_assets:
             if not backwards_path.exists():
                 print(f"Writing new backwards-compatibility file to {backwards_path}…")
                 backwards_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(rust_output_path, backwards_path)
+                shutil.copyfile(baseline_path, backwards_path)
                 subprocess.call(["git", "add", "-f", backwards_path])
         else:
             try:
                 # Compare old snippet files checked in to git lfs, to the newly generated ones.
                 # They should be the same!
-                run_comparison(backwards_path, rust_output_path, args.full_dump)
+                if not backwards_path.exists():
+                    raise RuntimeError(f"Missing {backwards_path}. Run compare_snippet_output.py --write-missing-backward-assets to create it")
+                run_comparison(backwards_path, baseline_path, args.full_dump)
             except Exception as e:
                 errors.append((example, "old-rrd-files", e))
 
@@ -218,7 +227,7 @@ def main() -> None:
                 print("Skipping cpp compare")
             else:
                 try:
-                    run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+                    run_comparison(cpp_output_path, baseline_path, args.full_dump)
                 except Exception as e:
                     errors.append((example, "C++", e))
 
@@ -229,7 +238,7 @@ def main() -> None:
                 print("Skipping py compare")
             else:
                 try:
-                    run_comparison(python_output_path, rust_output_path, args.full_dump)
+                    run_comparison(python_output_path, baseline_path, args.full_dump)
                 except Exception as e:
                     errors.append((example, "Python", e))
 
@@ -239,11 +248,11 @@ def main() -> None:
         print(f"{len(errors)} errors found:")
 
         for example, comparison, _error in errors:
-            print(f"❌ {example} - {comparison} differs from Rust baseline")
+            print(f"❌ {example} - {comparison} differs")
 
         for example, comparison, error in errors:
             print()
-            print(f"❌ {example} - {comparison} differs from Rust baseline:")
+            print(f"❌ {example} - {comparison} differs:")
             print(error)
             print("--------------------------------------")
 
@@ -252,7 +261,7 @@ def main() -> None:
         print()
 
         for example, comparison, _error in errors:
-            print(f"❌ {example} - {comparison} differs from Rust baseline")
+            print(f"❌ {example} - {comparison} differs")
 
         sys.exit(1)
 
