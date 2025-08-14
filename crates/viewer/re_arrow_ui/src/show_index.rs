@@ -12,8 +12,9 @@ use arrow::array::types::{
 };
 use arrow::array::{
     Array, ArrayAccessor as _, DictionaryArray, FixedSizeBinaryArray, FixedSizeListArray,
-    GenericListArray, MapArray, OffsetSizeTrait, PrimitiveArray, RunArray, StructArray, UnionArray,
-    downcast_dictionary_array, downcast_integer_array, downcast_run_array,
+    GenericBinaryArray, GenericListArray, MapArray, OffsetSizeTrait, PrimitiveArray, RunArray,
+    StructArray, UnionArray, as_generic_binary_array, downcast_dictionary_array,
+    downcast_integer_array, downcast_run_array,
 };
 use arrow::datatypes::{ArrowNativeType as _, DataType, UnionMode};
 use arrow::error::ArrowError;
@@ -84,7 +85,7 @@ fn make_ui<'a>(
         DataType::Float32 => show_custom(array.as_primitive::<Float32Type>(), options),
         DataType::Float64 => show_custom(array.as_primitive::<Float64Type>(), options),
         DataType::Null | DataType::Boolean | DataType::Utf8 | DataType::LargeUtf8
-        | DataType::Utf8View | DataType::Binary | DataType::BinaryView | DataType::LargeBinary
+        | DataType::Utf8View | DataType::BinaryView
         | DataType::Date32 | DataType::Date64 | DataType::Time32(_) | DataType::Time64(_)
         | DataType::Timestamp(_, _) | DataType::Duration(_) | DataType::Interval(_)
         | DataType::Decimal128(_, _) | DataType::Decimal256(_, _)
@@ -94,6 +95,12 @@ fn make_ui<'a>(
         DataType::FixedSizeBinary(_) => {
             let a = array.as_any().downcast_ref::<FixedSizeBinaryArray>().expect("FixedSizeBinaryArray downcast failed");
             show_arrow_builtin(a, options)
+        }
+        DataType::Binary => {
+            show_custom(as_generic_binary_array::<i32>(array), options)
+        }
+        DataType::LargeBinary => {
+            show_custom(as_generic_binary_array::<i64>(array), options)
         }
         DataType::Dictionary(_, _) => downcast_dictionary_array! {
             array => show_custom(array, options),
@@ -320,6 +327,18 @@ fn format_f16(value: f16) -> String {
     re_format::format_f32(value.to_f32())
 }
 primitive_display!(format_f16: Float16Type);
+
+impl<OffsetSize: OffsetSizeTrait> ShowIndex for &GenericBinaryArray<OffsetSize> {
+    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult {
+        let value = self.value(idx);
+        f.code_primitive(&re_format::format_bytes(value.len() as f64));
+        Ok(())
+    }
+
+    fn array(&self) -> &dyn Array {
+        self
+    }
+}
 
 impl<'a, K: ArrowDictionaryKeyType> ShowIndexState<'a> for &'a DictionaryArray<K> {
     type State = Box<dyn ShowIndex + 'a>;
