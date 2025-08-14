@@ -61,7 +61,7 @@ impl<'a> ArrowNode<'a> {
         let result = self.values.write(index, &mut value);
         let value = match result {
             Ok(()) => value.into_widget_text(),
-            Err(e) => RichText::new(format!("Error: {e}"))
+            Err(err) => RichText::new(format!("Error: {err}"))
                 .color(ui.tokens().error_fg_color)
                 .into(),
         };
