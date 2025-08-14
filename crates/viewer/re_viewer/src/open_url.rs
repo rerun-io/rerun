@@ -10,12 +10,12 @@ pub const INTRA_RECORDING_URL_SCHEME: &str = "recording://";
 /// An eventListener for rrd posted from containing html
 pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 
-/// Tries to open a content URL inside the viewer.
+/// Tries to open a content URL or file inside the viewer.
 ///
 /// This is for handling opening arbitrary URLs inside the viewer
 /// (as opposed to opening them in a new tab) for both native and web.
 /// Supported are:
-/// * any URL that can be interpreted as a [`DataSource`]
+/// * any URL or file path that can be interpreted as a [`DataSource`]
 /// * intra-recording links (typically links to an entity)
 /// * web event listeners
 ///
@@ -24,7 +24,7 @@ pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
 ///
 /// Returns `Ok(())` if the URL schema was recognized, `Err(())` if the URL was not a valid content URL.
-pub fn try_open_url_in_viewer(
+pub fn try_open_url_or_file_in_viewer(
     _egui_ctx: &egui::Context,
     url: &str,
     follow_if_http: bool,

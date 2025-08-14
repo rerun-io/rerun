@@ -408,17 +408,18 @@ impl App {
     }
 
     /// Open a content URL in the viewer.
-    pub fn open_url(&mut self, url: &str) {
+    pub fn open_url_or_file(&self, url: &str) {
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
 
-        if let Err(()) = crate::open_url::try_open_url_in_viewer(
+        if crate::open_url::try_open_url_or_file_in_viewer(
             &self.egui_ctx,
             url,
             follow_if_http,
             select_redap_source_when_loaded,
             &self.command_sender,
-        ) {
+        ) == Err(())
+        {
             re_log::warn!("Failed to open URL: {url}");
         }
     }
@@ -897,6 +898,10 @@ impl App {
 
                     return;
                 }
+            }
+
+            DataSource::RedapProxy(_) => {
+                // TODO(andreas): Implement this.
             }
         }
         // On native, `add_receiver` spawns a thread that wakes up the ui thread

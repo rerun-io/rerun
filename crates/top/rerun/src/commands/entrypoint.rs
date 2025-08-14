@@ -1,7 +1,6 @@
 use std::net::IpAddr;
 
 use clap::{CommandFactory as _, Subcommand};
-use crossbeam::channel::Receiver as CrossbeamReceiver;
 use itertools::Itertools as _;
 use tokio::runtime::Runtime;
 
@@ -736,9 +735,6 @@ fn run_impl(
     //TODO(#10068): populate token passed with `--token`
     let connection_registry = re_grpc_client::ConnectionRegistry::new();
 
-    #[cfg(feature = "server")]
-    let mut is_another_server_running = false;
-
     #[cfg(feature = "native_viewer")]
     let startup_options = {
         re_tracing::profile_scope!("StartupOptions");
@@ -806,122 +802,51 @@ fn run_impl(
             .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
     };
 
-    #[allow(unused_variables)]
-    let (command_sender, command_receiver) = re_global_context::command_channel();
+    // All URLs that we want to process.
+    let mut url_or_paths = args.url_or_paths;
 
-    // Where do we get the data from?
-    let mut urls_to_pass_on_to_viewer: Vec<String> = Vec::new(); // Http & gRPC URIs that should be passed on to the viewer.
-
-    // Parse all URIs and split them into redap URIs that we want to pass on and data sources that we want to consume directly.
-    let mut data_sources = Vec::new();
-    for url in args.url_or_paths {
-        if let Some(data_source) = DataSource::from_uri(re_log_types::FileSource::Cli, &url) {
-            match &data_source {
-                DataSource::RrdHttpUrl { .. } => {
-                    urls_to_pass_on_to_viewer.push(url);
-                }
-
-                DataSource::RedapDataset { uri, .. } => {
-                    urls_to_pass_on_to_viewer.push(uri.to_string());
-                }
-
-                DataSource::FilePath(..) | DataSource::FileContents(..) | DataSource::Stdin => {
-                    // TODO(andreas): File contents could be in theory also passed on as URLs to native viewers,
-                    // but this simplififes things a bit.
-                    data_sources.push(data_source);
-                }
-            }
-        } else if let Some(uri) = url.parse::<re_uri::RedapUri>().ok() {
-            urls_to_pass_on_to_viewer.push(uri.to_string());
-        } else {
-            re_log::warn!("{url:?} is not a valid data source or redap uri.");
+    // Passing `--connect` accounts to adding a proxy URL to the list of URLs that we want to process.
+    if let Some(url) = args.connect.clone() {
+        let url = url.unwrap_or_else(|| format!("rerun+http://{server_addr}/proxy"));
+        if let Err(err) = url.as_str().parse::<re_uri::RedapUri>() {
+            anyhow::bail!("expected `/proxy` endpoint: {err}");
         }
+        url_or_paths.push(url);
     }
 
-    let (rxs_log, rxs_table): (Vec<Receiver<LogMsg>>, Vec<CrossbeamReceiver<TableMsg>>) = {
-        #[allow(unused_mut)]
-        let mut rxs_table = Vec::new();
-        #[allow(unused_mut)]
-        let mut rxs_logs = data_sources
-            .into_iter()
-            .map(|data_source| {
-                data_source.stream(
-                    &connection_registry,
-                    None, // Don't need a ui command handler here since all redap URIs are forwarded to the viewer directly.
-                    None,
-                )
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        #[cfg(feature = "server")]
-        if let Some(url) = args.connect {
-            let url = url.unwrap_or_else(|| format!("rerun+http://{server_addr}/proxy"));
-            let re_uri::RedapUri::Proxy(uri) = url.as_str().parse()? else {
-                anyhow::bail!("expected `/proxy` endpoint");
-            };
-            let rx = re_sdk::external::re_grpc_client::message_proxy::stream(uri, None);
-            rxs_logs.push(rx);
-        } else {
-            // Check if there is already a viewer running and if so, send the data to it.
-            use std::net::TcpStream;
-            if TcpStream::connect_timeout(&server_addr, std::time::Duration::from_secs(1)).is_ok() {
-                re_log::info!(
-                    %server_addr,
-                    "A process is already listening at this address. Assuming it's a Rerun Viewer."
-                );
-                is_another_server_running = true;
-
-            // NOTE: In case of serve-web, we don't want to turn the server into a receiver,
-            //       we want all receivers to push their data to the server.
-            //       For that we spawn the server a bit further down, after we've collected
-            //       all receivers into `rxs`.
-            } else if !args.serve_web && !args.serve_grpc {
-                let (log_server, table_server): (
-                    Receiver<LogMsg>,
-                    crossbeam::channel::Receiver<TableMsg>,
-                ) = re_grpc_server::spawn_with_recv(
-                    server_addr,
-                    server_memory_limit,
-                    re_grpc_server::shutdown::never(),
-                );
-                rxs_logs.push(log_server);
-                rxs_table.push(table_server);
-            }
-        }
-
-        (rxs_logs, rxs_table)
-    };
-
     // Now what do we do with the data?
-
     if args.test_receive {
-        if !urls_to_pass_on_to_viewer.is_empty() {
-            anyhow::bail!("`--test-receive` does not support redap & http uris");
-        }
-
-        let rx = ReceiveSet::new(rxs_log);
-        assert_receive_into_entity_db(&rx).map(|_db| ())
+        let receivers = ReceiversFromUrlParams::new(
+            url_or_paths,
+            &UrlParamProcessingConfig::redirect_to_file(),
+            &connection_registry,
+        )?;
+        receivers.error_on_unhandled_urls("--test-receive")?;
+        assert_receive_into_entity_db(&receivers.receive_set()).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
-        if !urls_to_pass_on_to_viewer.is_empty() {
-            anyhow::bail!("`--save` does not support redap uris");
-        }
+        let receivers = ReceiversFromUrlParams::new(
+            url_or_paths,
+            &UrlParamProcessingConfig::redirect_to_file(),
+            &connection_registry,
+        )?;
+        receivers.error_on_unhandled_urls("--save")?;
 
-        let rx = ReceiveSet::new(rxs_log);
-        Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
+        Ok(stream_to_rrd_on_disk(
+            &receivers.receive_set(),
+            &rrd_path.into(),
+        )?)
     } else if args.serve_grpc {
-        if !urls_to_pass_on_to_viewer.is_empty() {
-            anyhow::bail!("`--serve` does not support redap & http uris");
-        }
-
         if !cfg!(feature = "server") {
-            _ = (call_source, rxs_log, rxs_table);
+            _ = call_source;
             anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
         }
 
-        debug_assert!(
-            rxs_table.is_empty(),
-            "Tables are not supported yet with --serve-grpc."
-        );
+        let receivers = ReceiversFromUrlParams::new(
+            url_or_paths,
+            &UrlParamProcessingConfig::grpc_server(),
+            &connection_registry,
+        )?;
+        receivers.error_on_unhandled_urls("--serve-grpc")?;
 
         #[cfg(feature = "server")]
         {
@@ -932,7 +857,7 @@ fn run_impl(
                 server_addr,
                 server_memory_limit,
                 shutdown,
-                ReceiveSet::new(rxs_log),
+                receivers.receive_set(),
             );
 
             // Gracefully shut down the server on SIGINT
@@ -944,7 +869,7 @@ fn run_impl(
         Ok(())
     } else if args.serve_web {
         if !cfg!(feature = "server") {
-            _ = (call_source, rxs_log);
+            _ = call_source;
             anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
         }
 
@@ -954,15 +879,19 @@ fn run_impl(
             );
         }
 
-        debug_assert!(
-            rxs_table.is_empty(),
-            "Tables are not supported yet with --serve-web."
-        );
+        let ReceiversFromUrlParams {
+            log_receivers,
+            mut urls_to_pass_on_to_viewer,
+        } = ReceiversFromUrlParams::new(
+            url_or_paths,
+            &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
+            &connection_registry,
+        )?;
 
         #[cfg(all(feature = "server", feature = "web_viewer"))]
         {
             // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
-            let spawn_server = !rxs_log.is_empty() || urls_to_pass_on_to_viewer.is_empty();
+            let spawn_server = !log_receivers.is_empty() || urls_to_pass_on_to_viewer.is_empty();
             if spawn_server {
                 if args.port == args.web_viewer_port.0 {
                     anyhow::bail!(
@@ -978,7 +907,7 @@ fn run_impl(
                     server_addr,
                     server_memory_limit,
                     re_grpc_server::shutdown::never(),
-                    ReceiveSet::new(rxs_log),
+                    ReceiveSet::new(log_receivers),
                 );
 
                 // Add the proxy URL to the url parameters.
@@ -1015,35 +944,71 @@ fn run_impl(
         }
 
         Ok(())
-    } else {
-        #[cfg(feature = "server")]
-        if is_another_server_running {
-            use re_sdk::sink::LogSink as _;
+    } else if is_another_server_already_running(server_addr) {
+        use re_sdk::sink::LogSink as _;
 
-            // Another viewer is already running on the specified address
-            let uri: re_uri::ProxyUri = format!("rerun+http://{server_addr}/proxy").parse()?;
-            re_log::info!(%uri, "Another viewer is already running, streaming data to it.");
+        // Another viewer is already running on the specified address
+        let uri: re_uri::ProxyUri = format!("rerun+http://{server_addr}/proxy").parse()?;
+        re_log::info!(%uri, "Another viewer is already running, streaming data to it.");
 
-            // This spawns its own single-threaded runtime on a separate thread,
-            // no need to `rt.enter()`:
-            let sink = re_sdk::sink::GrpcSink::new(uri, crate::default_flush_timeout());
+        // This spawns its own single-threaded runtime on a separate thread,
+        // no need to `rt.enter()`:
+        let sink = re_sdk::sink::GrpcSink::new(uri, crate::default_flush_timeout());
 
-            for rx in rxs_log {
-                while rx.is_connected() {
-                    while let Ok(msg) = rx.recv() {
-                        if let Some(log_msg) = msg.into_data() {
-                            sink.send(log_msg);
-                        }
+        // Forward everything we have to the proxy.
+        // For the URLs we're acting like a server, taking in everything that would otherwise be passed on to the viewer.
+        let receivers = ReceiversFromUrlParams::new(
+            url_or_paths,
+            &UrlParamProcessingConfig::grpc_server(),
+            &connection_registry,
+        )?;
+        if !receivers.urls_to_pass_on_to_viewer.is_empty() {
+            re_log::warn!(
+                "The following URLs can't be passed to already open viewers yet: {:?}",
+                receivers.urls_to_pass_on_to_viewer
+            );
+        }
+
+        for rx in receivers.log_receivers {
+            while rx.is_connected() {
+                while let Ok(msg) = rx.recv() {
+                    if let Some(log_msg) = msg.into_data() {
+                        sink.send(log_msg);
                     }
                 }
             }
+        }
 
-            if !urls_to_pass_on_to_viewer.is_empty() {
-                re_log::warn!("URLs can't be passed to already open viewers yet.");
-            }
-            sink.flush_blocking();
+        sink.flush_blocking();
 
-            return Ok(());
+        return Ok(());
+    } else {
+        let ReceiversFromUrlParams {
+            mut log_receivers,
+            urls_to_pass_on_to_viewer,
+        } = ReceiversFromUrlParams::new(
+            url_or_paths,
+            &UrlParamProcessingConfig::native_viewer(),
+            &connection_registry,
+        )?;
+        let mut table_receivers = Vec::new();
+
+        // Unless we're connecting to an existing server, we spawn a new one.
+        //
+        // NOTE: In case of serve-web/serve-grpc, we don't want to turn the server into a receiver,
+        //       we want all receivers to push their data to the server.
+        if args.connect.is_none() {
+            let (log_server, table_server): (
+                Receiver<LogMsg>,
+                crossbeam::channel::Receiver<TableMsg>,
+            ) = re_grpc_server::spawn_with_recv(
+                server_addr,
+                server_memory_limit,
+                re_grpc_server::shutdown::never(),
+            );
+
+            log_receivers.push(log_server);
+            table_receivers.push(table_server);
         }
 
         #[cfg(feature = "native_viewer")]
@@ -1068,21 +1033,20 @@ fn run_impl(
                         Some(connection_registry),
                         re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
                         text_log_rx,
-                        (command_sender, command_receiver),
+                        re_viewer::command_channel(),
                     );
-                    for rx in rxs_log {
+                    app.set_profiler(profiler);
+                    for rx in log_receivers {
                         app.add_log_receiver(rx);
                     }
-                    for rx in rxs_table {
+                    for rx in table_receivers {
                         app.add_table_receiver(rx);
                     }
-                    app.set_profiler(profiler);
+                    for url in urls_to_pass_on_to_viewer {
+                        app.open_url_or_file(&url);
+                    }
                     if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
                         app.set_examples_manifest_url(url);
-                    }
-
-                    for url in &urls_to_pass_on_to_viewer {
-                        app.open_url(url);
                     }
 
                     Box::new(app)
@@ -1098,6 +1062,20 @@ fn run_impl(
                 "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
             );
         }
+    }
+}
+
+fn is_another_server_already_running(server_addr: std::net::SocketAddr) -> bool {
+    // Check if there is already a viewer running and if so, send the data to it.
+    use std::net::TcpStream;
+    if TcpStream::connect_timeout(&server_addr, std::time::Duration::from_secs(1)).is_ok() {
+        re_log::info!(
+            %server_addr,
+            "A process is already listening at this address. Assuming it's a Rerun Viewer."
+        );
+        true
+    } else {
+        false
     }
 }
 
@@ -1256,4 +1234,136 @@ fn stream_to_rrd_on_disk(
     re_log::info!("File saved to {path:?}");
 
     Ok(())
+}
+
+/// Describes how to handle URLs passed on the CLI.
+struct UrlParamProcessingConfig {
+    data_sources_from_http_urls: bool,
+    data_sources_from_redap_datasets: bool,
+    data_source_from_filepaths: bool,
+}
+
+impl UrlParamProcessingConfig {
+    fn grpc_server() -> Self {
+        // Pure GRPC server makes everything it can a data source.
+        Self {
+            data_sources_from_http_urls: true,
+            data_sources_from_redap_datasets: true,
+            data_source_from_filepaths: true,
+        }
+    }
+
+    fn redirect_to_file() -> Self {
+        // Write to file makes everything it can a data source.
+        Self {
+            data_sources_from_http_urls: true,
+            data_sources_from_redap_datasets: true,
+            data_source_from_filepaths: false,
+        }
+    }
+
+    fn grpc_server_and_web_viewer() -> Self {
+        // GRPC with web viewer can handle everything except files directly.
+        Self {
+            data_sources_from_http_urls: true,
+            data_sources_from_redap_datasets: true,
+            data_source_from_filepaths: false,
+        }
+    }
+
+    fn native_viewer() -> Self {
+        // Native viewer passes everything on to the viewer unchanged.
+        Self {
+            data_sources_from_http_urls: true,
+            data_sources_from_redap_datasets: true,
+            data_source_from_filepaths: true,
+        }
+    }
+}
+
+/// Log receivers created from URLs or path parameters that were passed in on the CLI.
+struct ReceiversFromUrlParams {
+    /// Log receivers that we want to hook up to a connection or viewer.
+    log_receivers: Vec<Receiver<LogMsg>>,
+
+    /// URLs that should be passed on to the viewer if possible.
+    ///
+    /// If we can't do that, we should error or warn, see [`Self::error_on_unhandled_urls`].
+    urls_to_pass_on_to_viewer: Vec<String>,
+}
+
+impl ReceiversFromUrlParams {
+    /// Processes all incoming URLs according to the given config.
+    fn new(
+        input_urls: Vec<String>,
+        config: &UrlParamProcessingConfig,
+        connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    ) -> anyhow::Result<Self> {
+        let mut data_sources = Vec::new();
+        let mut urls_to_pass_on_to_viewer = Vec::new();
+
+        for url in input_urls {
+            if let Some(data_source) = DataSource::from_uri(re_log_types::FileSource::Cli, &url) {
+                match &data_source {
+                    DataSource::RrdHttpUrl { .. } => {
+                        if config.data_sources_from_http_urls {
+                            data_sources.push(data_source);
+                        } else {
+                            urls_to_pass_on_to_viewer.push(url);
+                        }
+                    }
+
+                    DataSource::RedapProxy(..) | DataSource::RedapDataset { .. } => {
+                        if config.data_sources_from_redap_datasets {
+                            data_sources.push(data_source);
+                        } else {
+                            urls_to_pass_on_to_viewer.push(url);
+                        }
+                    }
+
+                    DataSource::FilePath(..) => {
+                        if config.data_source_from_filepaths {
+                            data_sources.push(data_source);
+                        } else {
+                            urls_to_pass_on_to_viewer.push(url);
+                        }
+                    }
+
+                    DataSource::FileContents(..) | DataSource::Stdin => {
+                        data_sources.push(data_source);
+                    }
+                }
+            } else if url.parse::<re_uri::RedapUri>().is_ok() {
+                // Readp URLs always have to be passed on.
+                urls_to_pass_on_to_viewer.push(url);
+            } else {
+                re_log::warn!("{url:?} is not a valid data source or redap uri.");
+            }
+        }
+
+        let log_receivers = data_sources
+            .into_iter()
+            .map(|data_source| data_source.stream(connection_registry, None, None))
+            .collect::<anyhow::Result<Vec<_>>>()?;
+
+        Ok(Self {
+            log_receivers,
+            urls_to_pass_on_to_viewer,
+        })
+    }
+
+    /// Returns an error if there are any URLs that weren't convered into log receivers.
+    fn error_on_unhandled_urls(&self, command: &str) -> anyhow::Result<()> {
+        if !self.urls_to_pass_on_to_viewer.is_empty() {
+            anyhow::bail!(
+                "`{command}` does not support these URLs: {:?}",
+                self.urls_to_pass_on_to_viewer
+            );
+        }
+        Ok(())
+    }
+
+    fn receive_set(self) -> ReceiveSet<LogMsg> {
+        ReceiveSet::new(self.log_receivers)
+    }
 }

@@ -41,6 +41,9 @@ pub enum DataSource {
         /// Switch to this recording once it has been loaded?
         select_when_loaded: bool,
     },
+
+    /// A `rerun+http://` URI pointing to a proxy.
+    RedapProxy(re_uri::ProxyUri),
 }
 
 impl DataSource {
@@ -116,6 +119,8 @@ impl DataSource {
                 uri,
                 select_when_loaded: true,
             })
+        } else if let Ok(uri) = url.parse::<re_uri::ProxyUri>() {
+            Some(Self::RedapProxy(uri))
         } else {
             let mut parsed_url = url::Url::parse(url)
                 .or_else(|_| url::Url::parse(&format!("http://{url}")))
@@ -261,6 +266,8 @@ impl DataSource {
                 });
                 Ok(rx)
             }
+
+            Self::RedapProxy(uri) => Ok(re_grpc_client::message_proxy::stream(uri, on_msg)),
         }
     }
 }
@@ -322,6 +329,11 @@ mod tests {
             "rerun+https://redap.rerun.io",
         ];
 
+        let proxy = [
+            "rerun+http://127.0.0.1:9876/proxy",
+            "rerun+https://127.0.0.1:9876/proxy",
+        ];
+
         let file_source = FileSource::DragAndDrop {
             recommended_store_id: None,
             force_store_info: false,
@@ -350,6 +362,16 @@ mod tests {
         for uri in grpc {
             let data_source = DataSource::from_uri(file_source.clone(), uri);
             if !matches!(data_source, Some(DataSource::RedapDataset { .. })) {
+                eprintln!(
+                    "Expected {uri:?} to be categorized as MessageProxy. Instead it got parsed as {data_source:?}"
+                );
+                failed = true;
+            }
+        }
+
+        for uri in proxy {
+            let data_source = DataSource::from_uri(file_source.clone(), uri);
+            if !matches!(data_source, Some(DataSource::RedapProxy { .. })) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as MessageProxy. Instead it got parsed as {data_source:?}"
                 );

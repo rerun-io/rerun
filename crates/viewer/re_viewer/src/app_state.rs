@@ -878,7 +878,7 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 let select_redap_source_when_loaded = open_url.new_tab;
 
-                if open_url::try_open_url_in_viewer(
+                if open_url::try_open_url_or_file_in_viewer(
                     egui_ctx,
                     &open_url.url,
                     follow_if_http,
