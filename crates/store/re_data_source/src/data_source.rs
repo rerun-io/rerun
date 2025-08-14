@@ -47,7 +47,7 @@ pub enum LogDataSource {
 }
 
 impl LogDataSource {
-    /// Tried to classify a URI into a [`DataSource`].
+    /// Tried to classify a URI into a [`LogDataSource`].
     ///
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, a grpc url, a http url, etc.

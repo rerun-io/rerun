@@ -15,7 +15,7 @@ pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 /// This is for handling opening arbitrary URLs inside the viewer
 /// (as opposed to opening them in a new tab) for both native and web.
 /// Supported are:
-/// * any URL or file path that can be interpreted as a [`DataSource`]
+/// * any URL or file path that can be interpreted as a [`LogDataSource`]
 /// * intra-recording links (typically links to an entity)
 /// * web event listeners
 ///
