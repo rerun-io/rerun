@@ -17,7 +17,7 @@ jobs:
       - name: Install Cargo Shear
         uses: taiki-e/install-action@v2.48.7
         with:
-          tool: cargo-shear@1.1.11
+          tool: cargo-shear@1.5.0
 
       - name: Run Cargo Shear
         run: |
