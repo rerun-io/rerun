@@ -1,4 +1,4 @@
-//! [`ArrowUi`] can be used to show arbitrary Arrow data with a nice UI.
+//! [`ArrayUi`] can be used to show arbitrary Arrow data with a nice UI.
 //! The implementation is inspired from arrows built-in display formatter:
 //! <https://github.com/apache/arrow-rs/blob/c628435f9f14abc645fb546442132974d3d380ca/arrow-cast/src/display.rs>
 use crate::arrow_node::ArrowNode;
@@ -21,7 +21,6 @@ use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::text::LayoutJob;
 use egui::{RichText, Ui};
 use half::f16;
-use re_format::{format_f32, format_f64, format_int, format_uint};
 use re_ui::UiExt as _;
 use re_ui::list_item::LabelContent;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -56,7 +55,9 @@ impl<'a> ArrayUi<'a> {
         list_ui(ui, 0..self.array.len(), &*self.format);
     }
 
-    /// Returns a [`LayoutJob`] that displays (maybe a subset of) the data.
+    /// Returns a [`LayoutJob`] that displays the data.
+    ///
+    /// Arrays will be limited to a sane number of items.
     pub fn job(&self, ui: &Ui) -> Result<LayoutJob, ArrowError> {
         let mut highlighted = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
         write_list(&mut highlighted, 0..self.array.len(), &*self.format)?;
@@ -64,6 +65,8 @@ impl<'a> ArrayUi<'a> {
     }
 
     /// Returns a [`LayoutJob`] that displays a single value at `idx`.
+    ///
+    /// Nested arrays will be limited to a sane number of items.
     pub fn value_job(&self, ui: &Ui, idx: usize) -> Result<LayoutJob, ArrowError> {
         let mut highlighted = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
         self.format.write(idx, &mut highlighted)?;
@@ -148,6 +151,7 @@ impl ShowIndex for ShowBuiltIn<'_> {
     }
 }
 
+/// Show an array using arrows built-in display formatter.
 fn show_arrow_builtin<'a>(
     array: &'a dyn Array,
     options: &FormatOptions<'a>,
@@ -160,7 +164,7 @@ fn show_arrow_builtin<'a>(
 
 type EmptyArrowResult = Result<(), ArrowError>;
 
-/// [`Display`] but accepting an index
+/// UI-equivalent of arrows `DisplayIndex` trait.
 pub(crate) trait ShowIndex {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult;
 
@@ -185,7 +189,9 @@ pub(crate) trait ShowIndex {
     fn array(&self) -> &dyn Array;
 }
 
-/// [`ShowIndex`] with additional state
+/// [`ShowIndex`] with additional state.
+///
+/// UI-equivalent of arrows `DisplayIndexState` trait.
 trait ShowIndexState<'a> {
     type State;
 
@@ -288,7 +294,7 @@ impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
 }
 
 macro_rules! primitive_display {
-    ($fmt:ident: $($t:ty),+) => {
+    ($fmt:path: $($t:ty),+) => {
         $(impl<'a> ShowIndex for &'a PrimitiveArray<$t>
         {
             fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult {
@@ -305,13 +311,13 @@ macro_rules! primitive_display {
     };
 }
 
-primitive_display!(format_int: Int8Type, Int16Type, Int32Type, Int64Type);
-primitive_display!(format_uint: UInt8Type, UInt16Type, UInt32Type, UInt64Type);
-primitive_display!(format_f32: Float32Type);
-primitive_display!(format_f64: Float64Type);
+primitive_display!(re_format::format_int: Int8Type, Int16Type, Int32Type, Int64Type);
+primitive_display!(re_format::format_uint: UInt8Type, UInt16Type, UInt32Type, UInt64Type);
+primitive_display!(re_format::format_f32: Float32Type);
+primitive_display!(re_format::format_f64: Float64Type);
 
 fn format_f16(value: f16) -> String {
-    format_f32(value.to_f32())
+    re_format::format_f32(value.to_f32())
 }
 primitive_display!(format_f16: Float16Type);
 
