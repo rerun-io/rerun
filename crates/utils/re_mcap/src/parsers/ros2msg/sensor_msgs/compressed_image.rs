@@ -12,7 +12,7 @@ use re_types::{
 
 use crate::parsers::{
     cdr,
-    decode::{MessageParser, ParserContext, PluginError},
+    decode::{MessageParser, ParserContext},
 };
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
@@ -79,14 +79,12 @@ impl MessageParser for CompressedImageMessageParser {
         let components = if is_h264 {
             VideoStream::update_fields()
                 .with_many_sample(blobs)
-                .columns_of_unit_batches()
-                .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?
+                .columns_of_unit_batches()?
                 .collect()
         } else {
             EncodedImage::update_fields()
                 .with_many_blob(blobs)
-                .columns_of_unit_batches()
-                .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?
+                .columns_of_unit_batches()?
                 .collect()
         };
 
@@ -95,8 +93,7 @@ impl MessageParser for CompressedImageMessageParser {
             entity_path.clone(),
             timelines.clone(),
             components,
-        )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        )?;
 
         let meta_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
@@ -107,8 +104,7 @@ impl MessageParser for CompressedImageMessageParser {
                 formats.finish().into(),
             ))
             .collect(),
-        )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        )?;
 
         if is_h264 {
             // codec should be logged once per entity, as static data.
@@ -118,8 +114,7 @@ impl MessageParser for CompressedImageMessageParser {
                     TimePoint::default(),
                     &VideoStream::update_fields().with_codec(VideoCodec::H264),
                 )
-                .build()
-                .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+                .build()?;
             Ok(vec![chunk, meta_chunk, codec_chunk])
         } else {
             Ok(vec![chunk, meta_chunk])

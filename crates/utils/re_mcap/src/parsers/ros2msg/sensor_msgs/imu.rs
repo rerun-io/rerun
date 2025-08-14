@@ -9,7 +9,10 @@ use re_types::{
     archetypes::{Scalars, SeriesLines},
 };
 
-use crate::parsers::{MessageParser, ParserContext, PluginError, cdr};
+use crate::{
+    Error,
+    parsers::{MessageParser, ParserContext, cdr},
+};
 
 /// Plugin that parses `sensor_msgs/msg/Imu` messages.
 #[derive(Default)]
@@ -66,7 +69,7 @@ impl ImuMessageParser {
 impl MessageParser for ImuMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         let imu = cdr::try_decode_message::<sensor_msgs::Imu>(msg.data.as_ref())
-            .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+            .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
@@ -112,8 +115,7 @@ impl MessageParser for ImuMessageParser {
     fn finalize(self: Box<Self>, ctx: ParserContext) -> anyhow::Result<Vec<Chunk>> {
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
-        let meta_chunk = Self::metadata_chunk(entity_path.clone())
-            .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        let meta_chunk = Self::metadata_chunk(entity_path.clone())?;
 
         let Self {
             mut orientation,
@@ -157,8 +159,7 @@ impl MessageParser for ImuMessageParser {
             ]
             .into_iter()
             .collect(),
-        )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        )?;
 
         Ok(vec![data_chunk, meta_chunk])
     }

@@ -14,8 +14,8 @@ use prost_reflect::{
 use re_chunk::{Chunk, ChunkId};
 use re_types::ComponentDescriptor;
 
-use crate::parsers::{MessageParser, ParserContext, PluginError};
-use crate::{LayerIdentifier, MessageLayer};
+use crate::parsers::{MessageParser, ParserContext};
+use crate::{Error, LayerIdentifier, MessageLayer};
 
 struct ProtobufMessageParser {
     message_descriptor: MessageDescriptor,
@@ -23,7 +23,7 @@ struct ProtobufMessageParser {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
+pub enum ProtobufError {
     #[error("invalid message on channel {channel} for schema {schema}: {source}")]
     InvalidMessage {
         schema: String,
@@ -83,7 +83,7 @@ impl MessageParser for ProtobufMessageParser {
         re_tracing::profile_function!();
         let dynamic_message =
             DynamicMessage::decode(self.message_descriptor.clone(), msg.data.as_ref()).map_err(
-                |err| Error::InvalidMessage {
+                |err| ProtobufError::InvalidMessage {
                     schema: self.message_descriptor.full_name().to_owned(),
                     channel: msg.channel.topic.clone(),
                     source: err,
@@ -130,7 +130,7 @@ impl MessageParser for ProtobufMessageParser {
                 })
                 .collect(),
         )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
         Ok(vec![message_chunk])
     }
@@ -139,17 +139,17 @@ impl MessageParser for ProtobufMessageParser {
 fn downcast_err<'a, T: std::any::Any>(
     builder: &'a mut dyn ArrayBuilder,
     val: &Value,
-) -> Result<&'a mut T, Error> {
+) -> Result<&'a mut T, ProtobufError> {
     builder.as_any_mut().downcast_mut::<T>().ok_or_else(|| {
         let type_name = std::any::type_name::<T>();
-        Error::UnexpectedValue {
+        ProtobufError::UnexpectedValue {
             expected_type: type_name.strip_suffix("Builder").unwrap_or(type_name),
             value: val.clone(),
         }
     })
 }
 
-fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Error> {
+fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), ProtobufError> {
     match val {
         Value::Bool(x) => downcast_err::<BooleanBuilder>(builder, val)?.append_value(*x),
         Value::I32(x) => downcast_err::<Int32Builder>(builder, val)?.append_value(*x),
@@ -183,7 +183,7 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Error
                 let protobuf_number = ith_arrow_field as u32 + 1;
                 let val = dynamic_message
                     .get_field_by_number(protobuf_number)
-                    .ok_or_else(|| Error::MissingField {
+                    .ok_or_else(|| ProtobufError::MissingField {
                         field: protobuf_number,
                     })?;
                 re_log::trace!("Written field ({protobuf_number}) with val: {val}");
@@ -203,7 +203,7 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Error
         }
         Value::Map(_hash_map) => {
             // We should not encounter hash maps in protobufs.
-            return Err(Error::UnsupportedType("HashMap"));
+            return Err(ProtobufError::UnsupportedType("HashMap"));
         }
         Value::EnumNumber(x) => {
             // Change this to a `UnionBuilder`:
@@ -314,19 +314,19 @@ impl MessageLayer for McapProtobufLayer {
         "protobuf".into()
     }
 
-    fn init(&mut self, summary: &mcap::Summary) -> Result<(), PluginError> {
+    fn init(&mut self, summary: &mcap::Summary) -> Result<(), Error> {
         for channel in summary.channels.values() {
             let schema = channel
                 .schema
                 .as_ref()
-                .ok_or(PluginError::NoSchema(channel.topic.clone()))?;
+                .ok_or(Error::NoSchema(channel.topic.clone()))?;
 
             if schema.encoding.as_str() != "protobuf" {
                 continue;
             }
 
             let pool = DescriptorPool::decode(schema.data.as_ref()).map_err(|err| {
-                PluginError::InvalidSchema {
+                Error::InvalidSchema {
                     schema: schema.name.clone(),
                     source: err.into(),
                 }
@@ -334,7 +334,7 @@ impl MessageLayer for McapProtobufLayer {
 
             let message_descriptor = pool
                 .get_message_by_name(schema.name.as_str())
-                .ok_or_else(|| PluginError::NoSchema(schema.name.clone()))?;
+                .ok_or_else(|| Error::NoSchema(schema.name.clone()))?;
 
             let found = self
                 .descrs_per_topic

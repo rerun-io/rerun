@@ -5,37 +5,6 @@ use re_chunk::{
     external::nohash_hasher::{IntMap, IsEnabled},
 };
 use re_log_types::TimeCell;
-use thiserror::Error;
-
-pub type SchemaName = String;
-
-#[derive(Error, Debug)]
-// TODO: consider renaming this to `ParseError` or even `Error` (at top level)
-pub enum PluginError {
-    #[error("Channel {0} does not define a schema")]
-    NoSchema(String),
-
-    #[error("Invalid schema {schema}: {source}")]
-    InvalidSchema {
-        schema: String,
-        source: anyhow::Error,
-    },
-
-    #[error("No schema loader support for schema: {0}")]
-    UnsupportedSchema(SchemaName),
-
-    #[error(transparent)]
-    Mcap(#[from] ::mcap::McapError),
-
-    #[error(transparent)]
-    Arrow(#[from] arrow::error::ArrowError),
-
-    #[error(transparent)]
-    Chunk(#[from] re_chunk::ChunkError),
-
-    #[error("{0}")]
-    Other(#[from] anyhow::Error),
-}
 
 /// Trait for parsing MCAP messages of a specific schema into Rerun chunks.
 ///
@@ -52,7 +21,7 @@ pub enum PluginError {
 /// 2. All accumulated data is converted into [`Chunk`]s via
 ///    [`finalize()`](`Self::finalize`), which consumes the parser and returns the final Rerun chunks.
 // TODO: consider renaming this to just `MessageParser`.
-pub trait McapMessageParser {
+pub trait MessageParser {
     /// Process a single MCAP message and accumulate its data.
     ///
     /// This method is called for each message in the MCAP file that belongs to the

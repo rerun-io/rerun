@@ -7,7 +7,7 @@ use arrow::{
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_types::{AnyValues, components};
 
-use crate::parsers::PluginError;
+use crate::Error;
 
 use super::{Layer, LayerIdentifier};
 
@@ -27,7 +27,7 @@ impl Layer for McapStatisticLayer {
         _mcap_bytes: &[u8],
         summary: &mcap::Summary,
         emit: &mut dyn FnMut(Chunk),
-    ) -> Result<(), PluginError> {
+    ) -> Result<(), Error> {
         if let Some(statistics) = summary.stats.as_ref() {
             let chunk = Chunk::builder(EntityPath::properties())
                 .with_archetype(

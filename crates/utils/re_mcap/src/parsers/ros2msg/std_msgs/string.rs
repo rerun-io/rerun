@@ -3,7 +3,7 @@ use re_chunk::{Chunk, ChunkId};
 use re_types::archetypes::TextDocument;
 
 use crate::parsers::{
-    cdr, {MessageParser, ParserContext, PluginError},
+    cdr, {MessageParser, ParserContext},
 };
 
 /// Plugin that parses `std_msgs/msg/String` messages.
@@ -36,13 +36,11 @@ impl MessageParser for StringMessageParser {
 
         let text_documents = TextDocument::update_fields()
             .with_many_text(texts)
-            .columns_of_unit_batches()
-            .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?
+            .columns_of_unit_batches()?
             .collect();
 
         let chunk =
-            Chunk::from_auto_row_ids(ChunkId::new(), entity_path, timelines, text_documents)
-                .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+            Chunk::from_auto_row_ids(ChunkId::new(), entity_path, timelines, text_documents)?;
 
         Ok(vec![chunk])
     }

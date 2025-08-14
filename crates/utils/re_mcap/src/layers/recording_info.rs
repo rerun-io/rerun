@@ -1,7 +1,7 @@
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_types::archetypes::RecordingInfo;
 
-use crate::parsers::PluginError;
+use crate::Error;
 
 use super::Layer;
 
@@ -19,7 +19,7 @@ impl Layer for McapRecordingInfoLayer {
         _mcap_bytes: &[u8],
         summary: &mcap::Summary,
         emit: &mut dyn FnMut(Chunk),
-    ) -> std::result::Result<(), PluginError> {
+    ) -> std::result::Result<(), Error> {
         let properties = summary
             .stats
             .as_ref()

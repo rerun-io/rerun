@@ -7,7 +7,7 @@ use arrow::{
 use re_chunk::{Chunk, RowId, TimePoint};
 use re_types::{AnyValues, components};
 
-use crate::parsers::PluginError;
+use crate::Error;
 
 use super::{Layer, LayerIdentifier};
 
@@ -27,7 +27,7 @@ impl Layer for McapSchemaLayer {
         _mcap_bytes: &[u8],
         summary: &mcap::Summary,
         emit: &mut dyn FnMut(Chunk),
-    ) -> Result<(), PluginError> {
+    ) -> Result<(), Error> {
         for channel in summary.channels.values() {
             let chunk = Chunk::builder(channel.topic.as_str())
                 .with_archetype(

@@ -13,7 +13,10 @@ pub use self::{
     ros2::McapRos2Layer, schema::McapSchemaLayer, stats::McapStatisticLayer,
 };
 
-use crate::parsers::{ChannelId, MessageParser, ParserContext, PluginError};
+use crate::{
+    Error,
+    parsers::{ChannelId, MessageParser, ParserContext},
+};
 
 /// Globally unique identifier for a layer.
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -62,7 +65,7 @@ pub trait Layer {
         mcap_bytes: &[u8],
         summary: &::mcap::Summary,
         emit: &mut dyn FnMut(Chunk),
-    ) -> Result<(), PluginError>;
+    ) -> Result<(), Error>;
 }
 
 /// Can be used to extract per-message information from an MCAP file.
@@ -74,7 +77,7 @@ pub trait MessageLayer {
     where
         Self: Sized;
 
-    fn init(&mut self, _summary: &::mcap::Summary) -> Result<(), PluginError> {
+    fn init(&mut self, _summary: &::mcap::Summary) -> Result<(), Error> {
         Ok(())
     }
 
@@ -104,7 +107,7 @@ impl McapChunkDecoder {
     }
 
     /// Decode the next message in the chunk
-    pub fn decode_next(&mut self, msg: &::mcap::Message<'_>) -> Result<(), PluginError> {
+    pub fn decode_next(&mut self, msg: &::mcap::Message<'_>) -> Result<(), Error> {
         re_tracing::profile_function!();
 
         let channel = msg.channel.as_ref();
@@ -133,12 +136,12 @@ impl McapChunkDecoder {
     }
 
     /// Finish the decoding process and return the chunks.
-    pub fn finish(self) -> impl Iterator<Item = Result<Chunk, PluginError>> {
+    pub fn finish(self) -> impl Iterator<Item = Result<Chunk, Error>> {
         self.parsers
             .into_values()
             .flat_map(|(ctx, parser)| match parser.finalize(ctx) {
                 Ok(chunks) => chunks.into_iter().map(Ok).collect::<Vec<_>>(),
-                Err(err) => vec![Err(PluginError::Other(err))],
+                Err(err) => vec![Err(Error::Other(err))],
             })
     }
 }
@@ -153,7 +156,7 @@ impl<T: MessageLayer> Layer for T {
         mcap_bytes: &[u8],
         summary: &mcap::Summary,
         emit: &mut dyn FnMut(Chunk),
-    ) -> Result<(), PluginError> {
+    ) -> Result<(), Error> {
         re_tracing::profile_scope!("process-message-layer");
         self.init(summary)?;
 

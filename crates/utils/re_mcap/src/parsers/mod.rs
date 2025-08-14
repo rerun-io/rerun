@@ -3,7 +3,7 @@ pub(crate) mod dds;
 mod decode;
 pub(crate) mod ros2msg;
 
-pub use decode::{ChannelId, MessageParser, ParserContext, PluginError};
+pub use decode::{ChannelId, MessageParser, ParserContext};
 
 /// Defines utility functions shared across parsers.
 pub(crate) mod util {

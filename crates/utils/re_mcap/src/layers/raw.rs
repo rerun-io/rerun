@@ -3,8 +3,8 @@ use re_chunk::{ChunkId, external::arrow::array::FixedSizeListBuilder};
 use re_types::{Component as _, ComponentDescriptor, components};
 
 use crate::{
-    LayerIdentifier, MessageLayer,
-    parsers::{MessageParser, ParserContext, PluginError, util::blob_list_builder},
+    Error, LayerIdentifier, MessageLayer,
+    parsers::{MessageParser, ParserContext, util::blob_list_builder},
 };
 
 struct RawMcapMessageParser {
@@ -55,7 +55,7 @@ impl MessageParser for RawMcapMessageParser {
             ))
             .collect(),
         )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
         Ok(vec![chunk])
     }

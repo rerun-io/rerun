@@ -6,7 +6,10 @@ use re_chunk::{
 use re_log_types::TimeCell;
 use re_types::archetypes::{Scalars, SeriesLines};
 
-use crate::parsers::{MessageParser, ParserContext, PluginError, cdr};
+use crate::{
+    Error,
+    parsers::{MessageParser, ParserContext, cdr},
+};
 
 /// Plugin that parses `sensor_msgs/msg/JointState` messages.
 #[derive(Default)]
@@ -40,7 +43,7 @@ impl MessageParser for JointStateMessageParser {
             velocity,
             effort,
         } = cdr::try_decode_message::<sensor_msgs::JointState>(msg.data.as_ref())
-            .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+            .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
@@ -88,8 +91,7 @@ impl MessageParser for JointStateMessageParser {
             ]
             .into_iter()
             .collect(),
-        )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        )?;
 
         let velocities_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
@@ -101,8 +103,7 @@ impl MessageParser for JointStateMessageParser {
             ]
             .into_iter()
             .collect(),
-        )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        )?;
 
         let efforts_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
@@ -114,8 +115,7 @@ impl MessageParser for JointStateMessageParser {
             ]
             .into_iter()
             .collect(),
-        )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        )?;
 
         Ok(vec![positions_chunk, velocities_chunk, efforts_chunk])
     }

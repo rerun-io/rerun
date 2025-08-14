@@ -10,10 +10,13 @@ use re_chunk::{
 use re_log_types::TimeCell;
 use re_types::{ComponentDescriptor, archetypes::Pinhole};
 
-use crate::parsers::{
-    cdr,
-    decode::{MessageParser, ParserContext, PluginError},
-    util::fixed_size_list_builder,
+use crate::{
+    Error,
+    parsers::{
+        cdr,
+        decode::{MessageParser, ParserContext},
+        util::fixed_size_list_builder,
+    },
 };
 
 /// Plugin that parses `sensor_msgs/msg/CameraInfo` messages.
@@ -254,8 +257,7 @@ impl MessageParser for CameraInfoMessageParser {
             ]
             .into_iter()
             .collect(),
-        )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        )?;
 
         let pinhole_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
@@ -265,10 +267,9 @@ impl MessageParser for CameraInfoMessageParser {
                 .with_many_image_from_camera(image_from_cameras)
                 .with_many_resolution(resolutions)
                 .columns_of_unit_batches()
-                .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?
+                .map_err(|err| Error::Other(anyhow::anyhow!(err)))?
                 .collect(),
-        )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        )?;
 
         Ok(vec![chunk, pinhole_chunk])
     }

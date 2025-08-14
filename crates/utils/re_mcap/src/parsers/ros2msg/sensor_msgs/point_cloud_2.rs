@@ -17,10 +17,13 @@ use re_types::{
 };
 use std::collections::HashMap;
 
-use crate::parsers::{
-    cdr,
-    decode::{MessageParser, ParserContext, PluginError},
-    util::{blob_list_builder, fixed_size_list_builder},
+use crate::{
+    Error,
+    parsers::{
+        cdr,
+        decode::{MessageParser, ParserContext},
+        util::{blob_list_builder, fixed_size_list_builder},
+    },
 };
 
 pub struct PointCloud2MessageParser {
@@ -170,7 +173,7 @@ impl Iterator for Position3DIter<'_> {
 impl MessageParser for PointCloud2MessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         let point_cloud = cdr::try_decode_message::<sensor_msgs::PointCloud2>(msg.data.as_ref())
-            .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+            .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
         let cell = TimeCell::from_timestamp_nanos_since_epoch(point_cloud.header.stamp.as_nanos());
         ctx.add_time_cell("timestamp", cell);
@@ -308,8 +311,7 @@ impl MessageParser for PointCloud2MessageParser {
                 entity_path.clone(),
                 timelines,
                 components,
-            )
-            .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+            )?;
 
             chunks.push(c);
         }
@@ -365,8 +367,7 @@ impl MessageParser for PointCloud2MessageParser {
             ]
             .into_iter()
             .collect(),
-        )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        )?;
 
         chunks.push(data_chunk);
 

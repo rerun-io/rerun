@@ -9,7 +9,7 @@ use re_types::{
 
 use crate::parsers::{
     cdr,
-    decode::{MessageParser, ParserContext, PluginError},
+    decode::{MessageParser, ParserContext},
 };
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
@@ -84,20 +84,17 @@ impl MessageParser for ImageMessageParser {
             DepthImage::update_fields()
                 .with_many_buffer(blobs)
                 .with_many_format(image_formats)
-                .columns_of_unit_batches()
-                .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?
+                .columns_of_unit_batches()?
                 .collect()
         } else {
             Image::update_fields()
                 .with_many_buffer(blobs)
                 .with_many_format(image_formats)
-                .columns_of_unit_batches()
-                .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?
+                .columns_of_unit_batches()?
                 .collect()
         };
 
-        let chunk = Chunk::from_auto_row_ids(ChunkId::new(), entity_path, timelines, images)
-            .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        let chunk = Chunk::from_auto_row_ids(ChunkId::new(), entity_path, timelines, images)?;
 
         Ok(vec![chunk])
     }
