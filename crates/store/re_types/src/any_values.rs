@@ -15,7 +15,12 @@ pub struct AnyValues {
 }
 
 impl AnyValues {
+    //TODO(#10879): Prune this method in 0.26.0
     /// Assigns an (archetype) name to this set of any values.
+    #[deprecated(
+        since = "0.24.0",
+        note = "Use of archetype leads to subtle errors. Use default instead."
+    )]
     #[inline]
     pub fn new(archetype_name: impl Into<ArchetypeName>) -> Self {
         Self {
