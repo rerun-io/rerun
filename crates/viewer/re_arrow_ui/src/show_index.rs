@@ -510,8 +510,7 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
     }
 
     fn is_item_nested(&self) -> bool {
-        let data_type = self.data_type();
-        data_type.is_nested()
+        self.data_type().is_nested()
     }
 }
 
@@ -575,8 +574,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
     }
 
     fn is_item_nested(&self) -> bool {
-        let data_type = self.data_type();
-        data_type.is_nested()
+        self.data_type().is_nested()
     }
 }
 
@@ -636,7 +634,6 @@ impl<'a> ShowIndexState<'a> for &'a UnionArray {
     }
 
     fn is_item_nested(&self) -> bool {
-        let data_type = self.data_type();
-        data_type.is_nested()
+        self.data_type().is_nested()
     }
 }

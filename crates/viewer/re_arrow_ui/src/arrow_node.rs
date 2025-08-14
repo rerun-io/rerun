@@ -7,17 +7,20 @@ use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
 enum NodeLabel {
+    /// The index to *display*. May be different from the actual index of the value.
     Index(usize),
     Name(String),
     Custom(WidgetText),
 }
 
+/// Display an item of an Arrow array in a list item with some label.
 pub struct ArrowNode<'a> {
     label: NodeLabel,
     values: &'a dyn ShowIndex,
 }
 
 impl<'a> ArrowNode<'a> {
+    /// Create a new [`ArrowNode`] with a custom label
     pub fn custom(name: impl Into<WidgetText>, values: &'a dyn ShowIndex) -> Self {
         Self {
             label: NodeLabel::Custom(name.into()),
@@ -25,6 +28,7 @@ impl<'a> ArrowNode<'a> {
         }
     }
 
+    /// Create a new [`ArrowNode`] with a name label.
     pub fn name(name: impl Into<String>, values: &'a dyn ShowIndex) -> Self {
         Self {
             label: NodeLabel::Name(name.into()),
@@ -91,6 +95,8 @@ impl<'a> ArrowNode<'a> {
                         |ui| {
                             let tooltip_open =
                                 Tooltip::was_tooltip_open_last_frame(ui.ctx(), ui.next_auto_id());
+                            // Keep showing the data type when the tooltip is open, so the
+                            // user can interact with it.
                             if visuals.hovered || tooltip_open {
                                 let response =
                                     ui.small(RichText::new(&data_type_ui.type_name).strong());

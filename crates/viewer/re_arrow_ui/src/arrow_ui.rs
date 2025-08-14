@@ -6,7 +6,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_ui::list_item::{PropertyContent, list_item_scope};
 use re_ui::{UiExt as _, UiLayout};
 
-pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array::Array) {
+pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
     re_tracing::profile_function!();
 
     use arrow::array::{LargeStringArray, StringArray};

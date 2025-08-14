@@ -1,4 +1,4 @@
-//!Show arrow data as a tree of rerun `list_items` or as a nicely formatted label with syntax highlighting.
+//! Show arrow data as a tree of rerun `list_items` or as a nicely formatted label with syntax highlighting.
 mod arrow_node;
 mod arrow_ui;
 mod datatype_ui;
