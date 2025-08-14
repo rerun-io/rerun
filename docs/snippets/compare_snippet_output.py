@@ -26,6 +26,7 @@ config = tomlkit.loads(config_path.read_text())
 
 OPT_OUT: dict[str, Any] = cast(Container, config["opt_out"])
 OPT_OUT_ENTIRELY: dict[str, Any] = OPT_OUT["run"].value
+OPT_OUT_BACKWARDS_CHECK: list[str] = OPT_OUT["backwards_check"].value
 OPT_OUT_COMPARE = OPT_OUT["compare"].value
 EXTRA_ARGS = config["extra_args"].value
 
@@ -202,22 +203,23 @@ def main() -> None:
         else:
             baseline_path = rust_output_path
 
-        try:
+        if str(example) not in OPT_OUT_BACKWARDS_CHECK:
             # Compare old snippet files checked in to git lfs, to the newly generated ones.
             # They should be the same!
-            if backwards_path.exists():
-                run_comparison(backwards_path, baseline_path, args.full_dump)
-            elif args.write_missing_backward_assets:
-                print(f"Writing new backwards-compatibility file to {backwards_path}…")
-                backwards_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(baseline_path, backwards_path)
-                subprocess.call(["git", "add", "-f", backwards_path])
-            else:
-                raise RuntimeError(
-                    f"Missing {backwards_path}. Run compare_snippet_output.py --write-missing-backward-assets to create it"
-                )
-        except Exception as e:
-            errors.append((example, "old-rrd-files", e))
+            try:
+                if backwards_path.exists():
+                    run_comparison(backwards_path, baseline_path, args.full_dump)
+                elif args.write_missing_backward_assets:
+                    print(f"Writing new backwards-compatibility file to {backwards_path}…")
+                    backwards_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(baseline_path, backwards_path)
+                    subprocess.call(["git", "add", "-f", backwards_path])
+                else:
+                    raise RuntimeError(
+                        f"Missing {backwards_path}. Run compare_snippet_output.py --write-missing-backward-assets to create it"
+                    )
+            except Exception as e:
+                errors.append((example, "old-rrd-files", e))
 
         if "cpp" in active_languages:
             if "cpp" in example_opt_out_entirely:
