@@ -831,8 +831,20 @@ fn run_impl(
         )?;
         receivers.error_on_unhandled_urls("--save")?;
 
+        let (log_server, table_server): (Receiver<LogMsg>, crossbeam::channel::Receiver<TableMsg>) =
+            re_grpc_server::spawn_with_recv(
+                server_addr,
+                server_memory_limit,
+                re_grpc_server::shutdown::never(),
+            );
+
+        // We can't store tables yet locally.
+        drop(table_server);
+        let mut log_receivers = receivers.log_receivers;
+        log_receivers.push(log_server);
+
         Ok(stream_to_rrd_on_disk(
-            &ReceiveSet::new(receivers.log_receivers),
+            &ReceiveSet::new(log_receivers),
             &rrd_path.into(),
         )?)
     } else if args.serve_grpc {
@@ -944,7 +956,7 @@ fn run_impl(
         }
 
         Ok(())
-    } else if is_another_server_already_running(server_addr) {
+    } else if args.connect.is_none() && is_another_server_already_running(server_addr) {
         use re_sdk::sink::LogSink as _;
 
         // Another viewer is already running on the specified address
