@@ -66,7 +66,7 @@ pub(crate) struct PartitionStreamExec {
 
 type ChunksWithPartition = Vec<(Chunk, Option<String>)>;
 
-pub struct DataframePartitionStream {
+pub struct DataframePartitionStreamInner {
     projected_schema: SchemaRef,
     client: ConnectionClient,
     chunk_request: GetChunksRequest,
@@ -83,12 +83,22 @@ pub struct DataframePartitionStream {
     cpu_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
 }
 
+/// This is a temporary fix to minimize the impact of leaking memory
+/// per issue https://github.com/rerun-io/dataplatform/issues/1494
+/// When that issue is resolved upstream, remove the inner here
+pub struct DataframePartitionStream {
+    inner: Option<DataframePartitionStreamInner>,
+}
+
 impl Stream for DataframePartitionStream {
     type Item = Result<RecordBatch, DataFusionError>;
 
     #[tracing::instrument(level = "info", skip_all)]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.get_mut();
+        let this_outer = self.get_mut();
+        let Some(this) = this_outer.inner.as_mut() else {
+            return Poll::Ready(None);
+        };
 
         // If we have any errors on the worker thread, we want to ensure we pass them up
         // through the stream.
@@ -127,15 +137,25 @@ impl Stream for DataframePartitionStream {
             )));
         }
 
-        this.store_output_channel
+        let result = this
+            .store_output_channel
             .poll_recv(cx)
-            .map(|result| Ok(result).transpose())
+            .map(|result| Ok(result).transpose());
+
+        if let Poll::Ready(None) = &result {
+            this_outer.inner = None;
+        }
+
+        result
     }
 }
 
 impl RecordBatchStream for DataframePartitionStream {
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.projected_schema)
+        self.inner
+            .as_ref()
+            .map(|inner| inner.projected_schema.clone())
+            .unwrap_or(Schema::empty().into())
     }
 }
 
@@ -498,7 +518,7 @@ impl ExecutionPlan for PartitionStreamExec {
             ),
         ));
 
-        let stream = DataframePartitionStream {
+        let stream = DataframePartitionStreamInner {
             projected_schema: self.projected_schema.clone(),
             store_output_channel: batches_rx,
             client,
@@ -508,6 +528,9 @@ impl ExecutionPlan for PartitionStreamExec {
             io_join_handle: None,
             cpu_join_handle,
             cpu_runtime: Arc::clone(&self.worker_runtime),
+        };
+        let stream = DataframePartitionStream {
+            inner: Some(stream),
         };
 
         Ok(Box::pin(stream))
