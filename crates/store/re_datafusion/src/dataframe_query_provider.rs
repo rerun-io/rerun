@@ -84,7 +84,7 @@ pub struct DataframePartitionStreamInner {
 }
 
 /// This is a temporary fix to minimize the impact of leaking memory
-/// per issue https://github.com/rerun-io/dataplatform/issues/1494
+/// per issue <https://github.com/rerun-io/dataplatform/issues/1494>
 /// When that issue is resolved upstream, remove the inner here
 pub struct DataframePartitionStream {
     inner: Option<DataframePartitionStreamInner>,
@@ -142,7 +142,7 @@ impl Stream for DataframePartitionStream {
             .poll_recv(cx)
             .map(|result| Ok(result).transpose());
 
-        if let Poll::Ready(None) = &result {
+        if matches!(&result, Poll::Ready(None)) {
             this_outer.inner = None;
         }
 
