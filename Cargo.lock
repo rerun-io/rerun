@@ -9236,7 +9236,6 @@ dependencies = [
  "re_error",
  "re_format",
  "re_format_arrow",
- "re_global_context",
  "re_grpc_client",
  "re_grpc_server",
  "re_log",
