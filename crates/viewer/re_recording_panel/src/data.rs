@@ -6,7 +6,6 @@ use std::task::Poll;
 
 use ahash::HashMap;
 use itertools::Itertools as _;
-
 use re_entity_db::EntityDb;
 use re_entity_db::entity_db::EntityDbClass;
 use re_log_types::{ApplicationId, EntryId, TableId, natural_ordering};
@@ -14,9 +13,12 @@ use re_redap_browser::{Entries, EntryInner, RedapServers};
 use re_smart_channel::SmartChannelSource;
 use re_types::archetypes::RecordingInfo;
 use re_types::components::{Name, Timestamp};
+use re_ui::Icon;
 use re_viewer_context::{DisplayMode, Item, ViewerContext};
+use serde::Serialize;
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct RecordingPanelData<'a> {
     pub local_apps: Vec<AppIdData<'a>>,
     pub local_tables: Vec<TableId>,
@@ -32,11 +34,7 @@ pub struct RecordingPanelData<'a> {
 }
 
 impl<'a> RecordingPanelData<'a> {
-    pub fn from_servers(
-        ctx: &'a ViewerContext<'a>,
-        servers: &'a RedapServers,
-        hide_examples: bool,
-    ) -> Self {
+    pub fn new(ctx: &'a ViewerContext<'a>, servers: &'a RedapServers, hide_examples: bool) -> Self {
         re_tracing::profile_function!();
 
         //
@@ -90,9 +88,7 @@ impl<'a> RecordingPanelData<'a> {
 
         let servers = servers
             .iter_servers()
-            .map(|server| {
-                ServerData::from_server(ctx, server, loading_partitions.get(server.origin()))
-            })
+            .map(|server| ServerData::new(ctx, server, loading_partitions.get(server.origin())))
             .collect();
 
         let mut local_apps: BTreeMap<ApplicationId, Vec<&EntityDb>> = Default::default();
@@ -165,6 +161,7 @@ impl<'a> RecordingPanelData<'a> {
 // ---
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct AppIdData<'a> {
     pub app_id: ApplicationId,
     pub is_active: bool,
@@ -221,13 +218,16 @@ impl<'a> AppIdData<'a> {
 // ---
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct RecordingData<'a> {
+    #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_entity_db"))]
     pub entity_db: &'a EntityDb,
 }
 
 // ---
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct ServerData<'a> {
     pub origin: re_uri::Origin,
     pub is_active: bool,
@@ -237,7 +237,7 @@ pub struct ServerData<'a> {
 }
 
 impl<'a> ServerData<'a> {
-    fn from_server(
+    fn new(
         ctx: &'a ViewerContext<'_>,
         server: &re_redap_browser::Server,
         loading_partitions: Option<&HashMap<EntryId, Vec<Arc<SmartChannelSource>>>>,
@@ -252,12 +252,8 @@ impl<'a> ServerData<'a> {
             if current_origin == origin
         );
 
-        let entries_data = ServerEntriesData::from_context_and_entries(
-            ctx,
-            server.entries(),
-            origin,
-            loading_partitions,
-        );
+        let entries_data =
+            ServerEntriesData::new(ctx, server.entries(), origin, loading_partitions);
 
         Self {
             origin: origin.clone(),
@@ -275,6 +271,7 @@ impl<'a> ServerData<'a> {
 // ---
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub enum ServerEntriesData<'a> {
     Loading,
 
@@ -288,7 +285,7 @@ pub enum ServerEntriesData<'a> {
 }
 
 impl<'a> ServerEntriesData<'a> {
-    fn from_context_and_entries(
+    fn new(
         ctx: &'a ViewerContext<'a>,
         entries: &Entries,
         origin: &re_uri::Origin,
@@ -385,11 +382,14 @@ impl<'a> ServerEntriesData<'a> {
 // ---
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct DatasetData<'a> {
     pub origin: re_uri::Origin,
     pub entry_id: re_log_types::EntryId,
 
     pub name: String,
+
+    #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_icon"))]
     pub icon: re_ui::icons::Icon,
 
     pub is_selected: bool,
@@ -413,10 +413,13 @@ impl DatasetData<'_> {
 // ---
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct RemoteTableData {
     pub entry_id: re_log_types::EntryId,
 
     pub name: String,
+
+    #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_icon"))]
     pub icon: re_ui::icons::Icon,
 
     pub is_selected: bool,
@@ -432,10 +435,13 @@ impl RemoteTableData {
 // ---
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct FailedEntryData {
     pub entry_id: re_log_types::EntryId,
 
     pub name: String,
+
+    #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_icon"))]
     pub icon: re_ui::icons::Icon,
 
     pub is_selected: bool,
@@ -453,9 +459,15 @@ impl FailedEntryData {
 // ---
 
 #[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub enum PartitionData<'a> {
-    Loading { receiver: Arc<SmartChannelSource> },
-    Loaded { entity_db: &'a EntityDb },
+    Loading {
+        receiver: Arc<SmartChannelSource>,
+    },
+    Loaded {
+        #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_entity_db"))]
+        entity_db: &'a EntityDb,
+    },
 }
 
 impl PartitionData<'_> {
@@ -465,4 +477,22 @@ impl PartitionData<'_> {
             PartitionData::Loading { .. } => None,
         }
     }
+}
+
+// ---
+
+#[cfg(feature = "testing")]
+fn serialize_entity_db<S>(value: &EntityDb, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    value.store_id().serialize(serializer)
+}
+
+#[cfg(feature = "testing")]
+fn serialize_icon<S>(value: &Icon, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    value.uri().serialize(serializer)
 }

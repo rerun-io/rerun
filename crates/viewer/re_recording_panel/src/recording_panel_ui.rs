@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use egui::{RichText, Widget as _};
-use itertools::Itertools as _;
 
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
@@ -25,7 +24,7 @@ pub fn recordings_panel_ui(
     servers: &RedapServers,
     hide_examples: bool,
 ) {
-    let recording_panel_data = RecordingPanelData::from_servers(ctx, servers, hide_examples);
+    let recording_panel_data = RecordingPanelData::new(ctx, servers, hide_examples);
 
     ui.panel_content(|ui| {
         ui.panel_title_bar_with_buttons(
@@ -87,7 +86,7 @@ fn add_button_ui(
                     .bundle
                     .entity_dbs()
                     .filter(|entity_db| entity_db.store_id().is_recording())
-                    .collect_vec();
+                    .collect::<Vec<_>>();
                 println!("Recording entity DBs:\n{recording_entity_dbs:#?}\n");
             }
 

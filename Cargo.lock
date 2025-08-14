@@ -8047,17 +8047,20 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
+ "insta",
  "itertools 0.14.0",
  "re_data_ui",
  "re_entity_db",
  "re_log_types",
  "re_redap_browser",
  "re_smart_channel",
+ "re_test_context",
  "re_tracing",
  "re_types",
  "re_ui",
  "re_uri",
  "re_viewer_context",
+ "serde",
 ]
 
 [[package]]
