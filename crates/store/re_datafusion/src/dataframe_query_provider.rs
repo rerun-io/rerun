@@ -85,7 +85,12 @@ pub struct DataframePartitionStreamInner {
 
 /// This is a temporary fix to minimize the impact of leaking memory
 /// per issue <https://github.com/rerun-io/dataplatform/issues/1494>
-/// When that issue is resolved upstream, remove the inner here
+/// The work around is to check for when the stream has exhausted and
+/// to set the `inner` to None, thereby clearing the memory since
+/// we are not properly getting a `drop` call from the upstream
+/// FFI interface. When the upstream issue resolves, change
+/// `DataframePartitionStreamInner` back into `DataframePartitionStream`
+/// and delete this wrapper struct.
 pub struct DataframePartitionStream {
     inner: Option<DataframePartitionStreamInner>,
 }
