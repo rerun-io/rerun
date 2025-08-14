@@ -8,6 +8,7 @@ use re_types::{
     ComponentDescriptor,
     archetypes::{EncodedImage, VideoStream},
     components::VideoCodec,
+    reflection::ComponentDescriptorExt as _,
 };
 
 use crate::parsers::{
@@ -100,7 +101,7 @@ impl MessageParser for CompressedImageMessageParser {
             entity_path.clone(),
             timelines,
             std::iter::once((
-                ComponentDescriptor::partial("format").with_archetype(Self::ARCHETYPE_NAME.into()),
+                ComponentDescriptor::partial("format").with_builtin_archetype(Self::ARCHETYPE_NAME),
                 formats.finish().into(),
             ))
             .collect(),

@@ -12,7 +12,7 @@ use prost_reflect::{
     DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, Value,
 };
 use re_chunk::{Chunk, ChunkId};
-use re_types::ComponentDescriptor;
+use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
 
 use crate::parsers::{MessageParser, ParserContext};
 use crate::{Error, LayerIdentifier, MessageLayer};
@@ -124,7 +124,7 @@ impl MessageParser for ProtobufMessageParser {
                 .map(|(field, mut builder)| {
                     (
                         ComponentDescriptor::partial(field)
-                            .with_archetype(message_descriptor.full_name().into()),
+                            .with_builtin_archetype(message_descriptor.full_name()),
                         builder.finish().into(),
                     )
                 })

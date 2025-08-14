@@ -1,6 +1,8 @@
 use arrow::array::{ListBuilder, UInt8Builder};
 use re_chunk::{ChunkId, external::arrow::array::FixedSizeListBuilder};
-use re_types::{Component as _, ComponentDescriptor, components};
+use re_types::{
+    Component as _, ComponentDescriptor, components, reflection::ComponentDescriptorExt as _,
+};
 
 use crate::{
     Error, LayerIdentifier, MessageLayer,
@@ -46,11 +48,9 @@ impl MessageParser for RawMcapMessageParser {
             entity_path.clone(),
             timelines,
             std::iter::once((
-                ComponentDescriptor {
-                    archetype: Some(Self::ARCHETYPE_NAME.into()),
-                    component: "data".into(),
-                    component_type: Some(components::Blob::name()),
-                },
+                ComponentDescriptor::partial("data")
+                    .with_builtin_archetype(Self::ARCHETYPE_NAME)
+                    .with_component_type(components::Blob::name()),
                 data.finish().into(),
             ))
             .collect(),

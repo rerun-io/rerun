@@ -7,6 +7,7 @@ use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor,
     archetypes::{Scalars, SeriesLines},
+    reflection::ComponentDescriptorExt as _,
 };
 
 use crate::{
@@ -137,23 +138,23 @@ impl MessageParser for ImuMessageParser {
                 (
                     // TODO(#10727): Figure out why logging this as `Transform3D.quaternion` doesn't work.
                     ComponentDescriptor::partial("orientation")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     orientation.finish().into(),
                 ),
                 // TODO(#10728): Figure out what to do with the covariance matrices.
                 (
                     ComponentDescriptor::partial("orientation_covariance")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     orientation_covariance.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("angular_velocity_covariance")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     angular_velocity_covariance.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("linear_acceleration_covariance")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     linear_acceleration_covariance.finish().into(),
                 ),
             ]
