@@ -1,13 +1,15 @@
+use egui_kittest::{SnapshotResult, SnapshotResults};
+use re_ui::{UiExt as _, UiLayout};
 use std::f32::consts::PI;
 
-use re_ui::{UiExt as _, UiLayout};
+mod arrow_test_data;
 
 #[test]
 pub fn test_arrow_ui() {
     let mut harness = egui_kittest::Harness::builder().build_ui(|ui| {
         re_ui::apply_style_and_install_loaders(ui.ctx());
 
-        show_some_arrow_ui(ui);
+        arrow_list_ui(ui);
     });
 
     harness.run();
@@ -18,7 +20,7 @@ pub fn test_arrow_ui() {
     harness.snapshot("arrow_ui");
 }
 
-fn show_some_arrow_ui(ui: &mut egui::Ui) {
+fn arrow_list_ui(ui: &mut egui::Ui) {
     // We use a handful of realistic data in this test.
 
     use re_types::{
@@ -74,4 +76,28 @@ fn show_some_arrow_ui(ui: &mut egui::Ui) {
             ui.end_row();
         }
     });
+}
+
+#[test]
+fn arrow_tree_ui() {
+    let arrays = arrow_test_data::all_arrays();
+
+    let mut results = SnapshotResults::new();
+
+    for (array_name, arrow) in arrays {
+        let mut harness = egui_kittest::Harness::builder()
+            .with_size((300.0, 500.0))
+            .build_ui(|ui| {
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+
+                re_arrow_ui::arrow_ui(ui, UiLayout::SelectionPanel, &arrow);
+            });
+
+        harness.run();
+
+        harness.fit_contents();
+
+        harness.run();
+        results.add(harness.try_snapshot(array_name));
+    }
 }
