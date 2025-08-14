@@ -822,7 +822,7 @@ fn run_impl(
             &connection_registry,
         )?;
         receivers.error_on_unhandled_urls("--test-receive")?;
-        assert_receive_into_entity_db(&receivers.receive_set()).map(|_db| ())
+        assert_receive_into_entity_db(&ReceiveSet::new(receivers.log_receivers)).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
         let receivers = ReceiversFromUrlParams::new(
             url_or_paths,
@@ -832,7 +832,7 @@ fn run_impl(
         receivers.error_on_unhandled_urls("--save")?;
 
         Ok(stream_to_rrd_on_disk(
-            &receivers.receive_set(),
+            &ReceiveSet::new(receivers.log_receivers),
             &rrd_path.into(),
         )?)
     } else if args.serve_grpc {
@@ -857,7 +857,7 @@ fn run_impl(
                 server_addr,
                 server_memory_limit,
                 shutdown,
-                receivers.receive_set(),
+                ReceiveSet::new(receivers.log_receivers),
             );
 
             // Gracefully shut down the server on SIGINT
@@ -879,17 +879,17 @@ fn run_impl(
             );
         }
 
-        let ReceiversFromUrlParams {
-            log_receivers,
-            mut urls_to_pass_on_to_viewer,
-        } = ReceiversFromUrlParams::new(
-            url_or_paths,
-            &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
-            &connection_registry,
-        )?;
-
         #[cfg(all(feature = "server", feature = "web_viewer"))]
         {
+            let ReceiversFromUrlParams {
+                log_receivers,
+                mut urls_to_pass_on_to_viewer,
+            } = ReceiversFromUrlParams::new(
+                url_or_paths,
+                &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
+                &connection_registry,
+            )?;
+
             // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
             let spawn_server = !log_receivers.is_empty() || urls_to_pass_on_to_viewer.is_empty();
             if spawn_server {
@@ -985,6 +985,7 @@ fn run_impl(
     } else {
         let ReceiversFromUrlParams {
             mut log_receivers,
+            #[allow(dead_code)] // Might be unused depending on feature flags.
             urls_to_pass_on_to_viewer,
         } = ReceiversFromUrlParams::new(
             url_or_paths,
@@ -1057,7 +1058,7 @@ fn run_impl(
         }
         #[cfg(not(feature = "native_viewer"))]
         {
-            _ = (call_source, rxs_log);
+            _ = call_source;
             anyhow::bail!(
                 "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
             );
@@ -1262,6 +1263,7 @@ impl UrlParamProcessingConfig {
         }
     }
 
+    #[allow(dead_code)] // May be unused depending on feature flags.
     fn grpc_server_and_web_viewer() -> Self {
         // GRPC with web viewer can handle everything except files directly.
         Self {
@@ -1343,7 +1345,13 @@ impl ReceiversFromUrlParams {
 
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| data_source.stream(connection_registry, None, None))
+            .map(|data_source| {
+                // No need to handle redap UI commands since if there's a viewer, we always
+                // pass on the URL to the viewer directly anyways.
+                let on_msg = None;
+                let on_ui_cmd = None;
+                data_source.stream(connection_registry, on_ui_cmd, on_msg)
+            })
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {
@@ -1361,9 +1369,5 @@ impl ReceiversFromUrlParams {
             );
         }
         Ok(())
-    }
-
-    fn receive_set(self) -> ReceiveSet<LogMsg> {
-        ReceiveSet::new(self.log_receivers)
     }
 }
