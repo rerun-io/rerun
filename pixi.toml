@@ -719,7 +719,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
 [feature.py-test-deps.dependencies]
 # Used for some video examples.
 # Note that it comes with its own ffmpeg, see https://pyav.basswood-io.com/docs/stable/overview/installation.html.
-av = ">=14.2.0"
+av = "==14.2.0"
 
 [feature.py-test-deps.pypi-dependencies]
 # Torch is needed to run the rerun unit tests.
@@ -764,7 +764,7 @@ umap-learn = "==0.5.7"
 
 [feature.examples-common.pypi-dependencies]
 # External deps
-av = ">=14.2.0"
+av = "==14.2.0"
 datafusion = "==47.0.0"
 jupyter = ">=1.0"
 polars = ">=0.12.0"
