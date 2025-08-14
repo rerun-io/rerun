@@ -23,7 +23,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
-    app_blueprint::AppBlueprint, event::ViewerEventDispatcher, navigation::Navigation,
+    app_blueprint::AppBlueprint, event::ViewerEventDispatcher, navigation::Navigation, open_url,
     ui::settings_screen_ui,
 };
 
@@ -172,7 +172,6 @@ impl AppState {
         rx_log: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
-        is_history_enabled: bool,
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
         connection_registry: &ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
@@ -643,13 +642,7 @@ impl AppState {
 
                             DisplayMode::RedapServer(origin) => {
                                 if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
-                                    welcome_screen.ui(
-                                        ui,
-                                        command_sender,
-                                        welcome_screen_state,
-                                        is_history_enabled,
-                                        &rx_log.sources(),
-                                    );
+                                    welcome_screen.ui(ui, welcome_screen_state, &rx_log.sources());
                                 } else {
                                     redap_servers.server_central_panel_ui(&ctx, ui, origin);
                                 }
@@ -678,7 +671,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(ui.ctx(), command_sender, &self.selection_state);
+        check_for_clicked_hyperlinks(ui.ctx(), command_sender);
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
@@ -871,40 +864,31 @@ pub(crate) fn recording_config_entry<'cfgs>(
         .or_insert_with(|| new_recording_config(entity_db))
 }
 
-/// We allow linking to entities and components via hyperlinks,
-/// e.g. in embedded markdown. We also have a custom `rerun://` scheme to be handled by the viewer.
-///
-/// Detect and handle that here.
+/// Handles all kind of links that can be opened within the viewer.
 ///
 /// Must run after any ui code, or other code that tells egui to open an url.
 ///
 /// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
-fn check_for_clicked_hyperlinks(
-    egui_ctx: &egui::Context,
-    command_sender: &CommandSender,
-    selection_state: &ApplicationSelectionState,
-) {
-    let recording_scheme = "recording://";
-
-    let mut recording_path = None;
+fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &CommandSender) {
+    let mut opened_any_url = false;
+    let follow_if_http = false;
 
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                if let Ok(uri) = open_url.url.parse::<re_uri::RedapUri>() {
-                    command_sender.send_system(SystemCommand::LoadDataSource(
-                        re_data_source::DataSource::RerunGrpcStream {
-                            uri,
-                            select_when_loaded: !open_url.new_tab,
-                        },
-                    ));
+                let select_redap_source_when_loaded = open_url.new_tab;
 
-                    // NOTE: we do NOT change the display mode here.
-                    // Instead we rely on `select_when_loaded` to trigger the selection… once the data is loaded.
-
-                    return false;
-                } else if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
-                    recording_path = Some(path_str.to_owned());
+                if open_url::try_open_url_in_viewer(
+                    egui_ctx,
+                    &open_url.url,
+                    follow_if_http,
+                    select_redap_source_when_loaded,
+                    command_sender,
+                )
+                .is_ok()
+                {
+                    opened_any_url = true;
+                    // We handled the URL, therefore egui shouldn't do anything anymore with it.
                     return false;
                 } else {
                     // Open all links in a new tab (https://github.com/rerun-io/rerun/issues/4105)
@@ -915,15 +899,9 @@ fn check_for_clicked_hyperlinks(
         });
     });
 
-    if let Some(path) = recording_path {
-        match path.parse::<Item>() {
-            Ok(item) => {
-                selection_state.set_selection(item);
-            }
-            Err(err) => {
-                re_log::warn!("Failed to parse entity path {path:?}: {err}");
-            }
-        }
+    if opened_any_url {
+        // Make sure we process commands that were sent by the `try_open_content_url_in_viewer` call.
+        egui_ctx.request_repaint();
     }
 }
 

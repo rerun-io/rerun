@@ -105,7 +105,7 @@ pub enum RrdCommands {
 }
 
 impl RrdCommands {
-    pub fn run(&self) -> anyhow::Result<()> {
+    pub fn run(self) -> anyhow::Result<()> {
         match self {
             Self::Compare(cmd) => {
                 cmd.run()

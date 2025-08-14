@@ -496,8 +496,18 @@ Example: `rerun rrd print /my/recordings/*.rrd`
 
 * `--continue-on-error <CONTINUE_ON_ERROR>`
 > If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
->
-> [Default: `true`]
+
+* `--migrate <MIGRATE>`
+> Migrate chunks to latest version before printing?
+
+* `--full-metadata <FULL_METADATA>`
+> If true, includes `rerun.` prefixes on keys.
+
+* `--transposed <TRANSPOSED>`
+> Transpose record batches before printing them?
+
+* `--entity <ENTITY>`
+> Show only chunks belonging to this entity.
 
 ## rerun rrd route
 
