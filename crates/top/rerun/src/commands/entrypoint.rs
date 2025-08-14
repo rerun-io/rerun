@@ -985,7 +985,7 @@ fn run_impl(
     } else {
         let ReceiversFromUrlParams {
             mut log_receivers,
-            #[allow(dead_code)] // Might be unused depending on feature flags.
+            #[allow(unused_variables)] // Might be unused depending on feature flags.
             urls_to_pass_on_to_viewer,
         } = ReceiversFromUrlParams::new(
             url_or_paths,

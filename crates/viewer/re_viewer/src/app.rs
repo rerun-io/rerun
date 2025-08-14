@@ -845,12 +845,8 @@ impl App {
             DataSource::FilePath(_file_source, path) => {
                 let new_source = SmartChannelSource::File(path.clone());
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
-                    if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
-                        let store_id = entity_db.store_id().clone();
-                        debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
-                        drop(all_sources);
-                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
-                    }
+                    drop(all_sources);
+                    self.try_make_recording_from_source_active(egui_ctx, store_hub, new_source);
                     return;
                 }
             }
@@ -863,12 +859,8 @@ impl App {
             DataSource::Stdin => {
                 let new_source = SmartChannelSource::Stdin;
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
-                    if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
-                        let store_id = entity_db.store_id().clone();
-                        debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
-                        drop(all_sources);
-                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
-                    }
+                    drop(all_sources);
+                    self.try_make_recording_from_source_active(egui_ctx, store_hub, new_source);
                     return;
                 }
             }
@@ -900,8 +892,13 @@ impl App {
                 }
             }
 
-            DataSource::RedapProxy(_) => {
-                // TODO(andreas): Implement this.
+            DataSource::RedapProxy(uri) => {
+                let new_source = SmartChannelSource::MessageProxy(uri.clone());
+                if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
+                    drop(all_sources);
+                    self.try_make_recording_from_source_active(egui_ctx, store_hub, new_source);
+                    return;
+                }
             }
         }
         // On native, `add_receiver` spawns a thread that wakes up the ui thread
@@ -1948,6 +1945,20 @@ impl App {
                 egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                 break; // don't block the main thread for too long
             }
+        }
+    }
+
+    /// Makes the first recording store active that is found for a given data source if any.
+    fn try_make_recording_from_source_active(
+        &self,
+        egui_ctx: &egui::Context,
+        store_hub: &mut StoreHub,
+        new_source: SmartChannelSource,
+    ) {
+        if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
+            let store_id = entity_db.store_id().clone();
+            debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
+            self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
         }
     }
 
