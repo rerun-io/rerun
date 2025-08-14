@@ -12,7 +12,6 @@ use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, Stor
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
-use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
@@ -850,7 +849,7 @@ impl App {
                 let new_source = SmartChannelSource::File(path.clone());
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     drop(all_sources);
-                    self.try_make_recording_from_source_active(egui_ctx, store_hub, new_source);
+                    self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);
                     return;
                 }
             }
@@ -864,7 +863,7 @@ impl App {
                 let new_source = SmartChannelSource::Stdin;
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     drop(all_sources);
-                    self.try_make_recording_from_source_active(egui_ctx, store_hub, new_source);
+                    self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);
                     return;
                 }
             }
@@ -900,7 +899,7 @@ impl App {
                 let new_source = SmartChannelSource::MessageProxy(uri.clone());
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     drop(all_sources);
-                    self.try_make_recording_from_source_active(egui_ctx, store_hub, new_source);
+                    self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);
                     return;
                 }
             }
@@ -1957,9 +1956,9 @@ impl App {
         &self,
         egui_ctx: &egui::Context,
         store_hub: &mut StoreHub,
-        new_source: SmartChannelSource,
+        new_source: &SmartChannelSource,
     ) {
-        if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
+        if let Some(entity_db) = store_hub.find_recording_store_by_source(new_source) {
             let store_id = entity_db.store_id().clone();
             debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
             self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);

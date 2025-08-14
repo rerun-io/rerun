@@ -1305,7 +1305,8 @@ impl ReceiversFromUrlParams {
         let mut urls_to_pass_on_to_viewer = Vec::new();
 
         for url in input_urls {
-            if let Some(data_source) = LogDataSource::from_uri(re_log_types::FileSource::Cli, &url) {
+            if let Some(data_source) = LogDataSource::from_uri(re_log_types::FileSource::Cli, &url)
+            {
                 match &data_source {
                     LogDataSource::RrdHttpUrl { .. } => {
                         if config.data_sources_from_http_urls {
@@ -1360,7 +1361,7 @@ impl ReceiversFromUrlParams {
         })
     }
 
-    /// Returns an error if there are any URLs that weren't convered into log receivers.
+    /// Returns an error if there are any URLs that weren't converted into log receivers.
     fn error_on_unhandled_urls(&self, command: &str) -> anyhow::Result<()> {
         if !self.urls_to_pass_on_to_viewer.is_empty() {
             anyhow::bail!(

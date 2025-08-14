@@ -10,7 +10,6 @@ use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, UiExt as _};
-use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandSender,
     ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
