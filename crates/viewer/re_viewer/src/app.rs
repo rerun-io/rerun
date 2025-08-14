@@ -441,7 +441,8 @@ impl App {
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
         if let SmartChannelSource::RedapGrpcStream { uri, .. } = rx.source() {
-            self.add_redap_server(uri.origin.clone());
+            self.state
+                .add_redap_server(&self.command_sender, uri.origin.clone());
 
             self.go_to_dataset_data(uri);
         }
@@ -2347,14 +2348,6 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
             self.screenshotter.save(&self.egui_ctx, image);
         }
-    }
-
-    pub fn add_redap_server(&self, origin: Origin) {
-        self.state.add_redap_server(&self.command_sender, origin);
-    }
-
-    pub fn select_redap_entry(&self, uri: &re_uri::EntryUri) {
-        self.state.select_redap_entry(&self.command_sender, uri);
     }
 }
 

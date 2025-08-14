@@ -33,8 +33,6 @@ pub fn try_open_url_or_file_in_viewer(
 ) -> Result<(), ()> {
     re_log::debug!("Opening URL: {url:?}");
 
-    // TODO handle other types or redap uris here now that datasource no longer does it.
-
     if let Some(mut data_source) = DataSource::from_uri(re_log_types::FileSource::Uri, url) {
         if let DataSource::RedapDataset {
             select_when_loaded, ..
@@ -50,6 +48,14 @@ pub fn try_open_url_or_file_in_viewer(
         }
 
         command_sender.send_system(SystemCommand::LoadDataSource(data_source));
+    } else if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
+        command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+        command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+            uri.origin,
+        )));
+    } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
+        command_sender.send_system(SystemCommand::AddRedapServer(uri.origin));
+        command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
     } else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
         match selection.parse::<Item>() {
             Ok(item) => {

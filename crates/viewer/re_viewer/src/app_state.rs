@@ -135,13 +135,6 @@ impl AppState {
         }
     }
 
-    pub fn select_redap_entry(&self, command_sender: &CommandSender, uri: &re_uri::EntryUri) {
-        // make sure the server exists
-        self.add_redap_server(command_sender, uri.origin.clone());
-
-        command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
-    }
-
     /// Currently selected section of time, if any.
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub fn loop_selection(
