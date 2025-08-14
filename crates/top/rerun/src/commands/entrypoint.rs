@@ -864,7 +864,6 @@ fn run_impl(
         {
             let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
             // Spawn a server which the Web Viewer can connect to.
-            // All `rxs` are consumed by the server.
             re_grpc_server::spawn_from_rx_set(
                 server_addr,
                 server_memory_limit,
@@ -1010,6 +1009,7 @@ fn run_impl(
         //
         // NOTE: In case of serve-web/serve-grpc, we don't want to turn the server into a receiver,
         //       we want all receivers to push their data to the server.
+        #[cfg(feature = "server")]
         if args.connect.is_none() {
             let (log_server, table_server): (
                 Receiver<LogMsg>,
