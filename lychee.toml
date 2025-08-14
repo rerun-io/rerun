@@ -147,6 +147,7 @@ exclude = [
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
   'https://github.com/rerun-io/documentation',
+  'https://github.com/rerun-io/dataplatform',
 
   # Needs authentication
   'https://edge.meilisearch.com',
