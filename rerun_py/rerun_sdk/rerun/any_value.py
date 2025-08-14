@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 from pyarrow import ArrowInvalid
+from typing_extensions import deprecated
 
 from rerun._baseclasses import ComponentDescriptor
 
@@ -299,10 +300,19 @@ class AnyValues(AsComponents):
                 if batch.is_valid():
                     self.component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
 
+    # TODO(#10908): Prune this method in 0.26.0
+    @deprecated(
+        "`rr.AnyValues.with_field` is deprecated, use constructor directly.",
+    )
     def with_field(
         self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
     ) -> AnyValues:
-        """Adds an `AnyValueBatch` to this `AnyValues` bundle."""
+        """
+        DEPRECATED: Adds an `AnyValueBatch` to this `AnyValues` bundle.
+
+        This method has been deprecated because it is difficult to use correctly.
+        The archetype argument via the descriptor isn't used in constructing a uuid for data entries.
+        """
         batch = AnyBatchValue(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         if batch.is_valid():
             self.component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
