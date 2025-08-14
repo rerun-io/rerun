@@ -1279,9 +1279,9 @@ impl UrlParamProcessingConfig {
     fn grpc_server_and_web_viewer() -> Self {
         // GRPC with web viewer can handle everything except files directly.
         Self {
-            data_sources_from_http_urls: true,
-            data_sources_from_redap_datasets: true,
-            data_source_from_filepaths: false,
+            data_sources_from_http_urls: false,
+            data_sources_from_redap_datasets: false,
+            data_source_from_filepaths: true,
         }
     }
 
