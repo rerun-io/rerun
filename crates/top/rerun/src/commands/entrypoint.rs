@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use tokio::runtime::Runtime;
 
 use re_data_source::LogDataSource;
-use re_log_types::{LogMsg, TableMsg};
+use re_log_types::LogMsg;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 use crate::{CallSource, commands::RrdCommands};
@@ -142,8 +142,8 @@ When persisted, the state will be stored at the following locations:
     persist_state: bool,
 
     /// What port do we listen to for SDKs to connect to over gRPC.
-    #[cfg(feature = "server")]
-    #[clap(long, default_value_t = re_grpc_server::DEFAULT_SERVER_PORT)]
+    // Default is `re_grpc_server::DEFAULT_SERVER_PORT`, can't use symbollically if `server` feature is disabled
+    #[clap(long, default_value_t = 9876)]
     port: u16,
 
     /// Start with the puffin profiler running.
@@ -781,8 +781,8 @@ fn run_impl(
         }
     };
 
-    #[cfg(feature = "server")]
     let server_addr = std::net::SocketAddr::new(args.bind, args.port);
+
     #[cfg(feature = "server")]
     let server_memory_limit = {
         re_log::debug!("Parsing memory limit for gRPC server");
@@ -803,9 +803,11 @@ fn run_impl(
     };
 
     // All URLs that we want to process.
+    #[allow(unused_mut)]
     let mut url_or_paths = args.url_or_paths;
 
     // Passing `--connect` accounts to adding a proxy URL to the list of URLs that we want to process.
+    #[cfg(feature = "server")]
     if let Some(url) = args.connect.clone() {
         let url = url.unwrap_or_else(|| format!("rerun+http://{server_addr}/proxy"));
         if let Err(err) = url.as_str().parse::<re_uri::RedapUri>() {
@@ -827,17 +829,24 @@ fn run_impl(
             "--save"
         })?;
 
-        let (log_server, table_server): (Receiver<LogMsg>, crossbeam::channel::Receiver<TableMsg>) =
-            re_grpc_server::spawn_with_recv(
+        #[allow(unused_mut)]
+        let mut log_receivers = receivers.log_receivers;
+
+        #[cfg(feature = "server")]
+        {
+            let (log_server, table_server): (
+                Receiver<LogMsg>,
+                crossbeam::channel::Receiver<re_log_types::TableMsg>,
+            ) = re_grpc_server::spawn_with_recv(
                 server_addr,
                 server_memory_limit,
                 re_grpc_server::shutdown::never(),
             );
 
-        // We can't store tables yet locally.
-        drop(table_server);
-        let mut log_receivers = receivers.log_receivers;
-        log_receivers.push(log_server);
+            // We can't store tables yet locally.
+            drop(table_server);
+            log_receivers.push(log_server);
+        }
 
         let receive_set = ReceiveSet::new(log_receivers);
 
@@ -992,15 +1001,17 @@ fn run_impl(
 
         return Ok(());
     } else {
+        #[allow(unused_mut)]
+        #[allow(unused_variables)]
         let ReceiversFromUrlParams {
             mut log_receivers,
-            #[allow(unused_variables)] // Might be unused depending on feature flags.
             urls_to_pass_on_to_viewer,
         } = ReceiversFromUrlParams::new(
             url_or_paths,
             &UrlParamProcessingConfig::native_viewer(),
             &connection_registry,
         )?;
+        #[allow(unused_mut)]
         let mut table_receivers = Vec::new();
 
         // Unless we're connecting to an existing server, we spawn a new one.
@@ -1011,7 +1022,7 @@ fn run_impl(
         if args.connect.is_none() {
             let (log_server, table_server): (
                 Receiver<LogMsg>,
-                crossbeam::channel::Receiver<TableMsg>,
+                crossbeam::channel::Receiver<re_log_types::TableMsg>,
             ) = re_grpc_server::spawn_with_recv(
                 server_addr,
                 server_memory_limit,
