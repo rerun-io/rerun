@@ -33,6 +33,52 @@ pub fn try_open_url_or_file_in_viewer(
 ) -> Result<(), ()> {
     re_log::debug!("Opening URL: {url:?}");
 
+    // This might be a web-viewer URL with `url` parameters.
+    // Extract the `url` parameter and call this function again.
+    if let Ok(url) = re_uri::external::url::Url::parse(url) {
+        // It's rare, but there might be several `url` parameters.
+        let url_params = url
+            .query_pairs()
+            .filter_map(|(key, value)| (key == "url").then_some(value))
+            .collect::<Vec<_>>();
+
+        if !url_params.is_empty() {
+            #[cfg(target_arch = "wasm32")]
+            {
+                // We _are_ a web viewer.
+                // If the base URL doesn't match our own then that's reason for concern (==warn),
+                // because this URL was probably meant to be opened in a different Rerun version.
+                if let Some(window) = web_sys::window()
+                    && let Ok(location) = window.location().href()
+                {
+                    let base_url = match re_uri::external::url::Url::parse(&location) {
+                        Ok(u) => u,
+                        Err(_) => return Err(()),
+                    };
+                    if base_url.origin() != url.origin() {
+                        re_log::warn!(
+                            "The base URL of the web viewer ({:?}) does not match the URL being opened ({:?}). This URL may be intended for a different Rerun version.",
+                            base_url.origin().unicode_serialization(),
+                            url.origin().unicode_serialization()
+                        );
+                    }
+                }
+            }
+
+            for url in url_params {
+                try_open_url_or_file_in_viewer(
+                    _egui_ctx,
+                    &url,
+                    follow_if_http,
+                    select_redap_source_when_loaded,
+                    command_sender,
+                )?;
+            }
+
+            return Ok(());
+        }
+    }
+
     if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
         command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
         command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
