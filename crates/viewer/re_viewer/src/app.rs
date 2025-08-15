@@ -2667,7 +2667,30 @@ impl eframe::App for App {
             }
 
             if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-                self.command_sender.send_ui(cmd);
+                match cmd {
+                    re_ui::CommandPaletteAction::UiCommand(cmd) => {
+                        self.command_sender.send_ui(cmd);
+                    }
+                    re_ui::CommandPaletteAction::OpenUrl(url) => {
+                        let follow_if_http = false;
+                        let select_redap_source_when_loaded = true;
+
+                        if crate::open_url::try_open_url_or_file_in_viewer(
+                            egui_ctx,
+                            &url,
+                            follow_if_http,
+                            select_redap_source_when_loaded,
+                            &self.command_sender,
+                        ) == Err(())
+                        {
+                            re_log::warn!("Failed to open URL: {url}");
+                        }
+
+                        // Note that we can't use `ui.ctx().open_url(egui::OpenUrl::same_tab(uri))` here because..
+                        // * the url redirect in `check_for_clicked_hyperlinks` wouldn't be hit
+                        // * we don't actually want to open any URLs in the browser here ever, only ever into the current viewer
+                    }
+                }
             }
 
             Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
