@@ -57,7 +57,7 @@ fn run_view_ui_and_save_snapshot(
         });
 
     let raw_input = harness.input_mut();
-    // TODO(aedm): use blueprint view setup once https://github.com/rerun-io/rerun/issues/6825 is fixed.
+    // TODO(#6825): use blueprint view setup once we can control camera from blueprints.
     raw_input
         .events
         .push(egui::Event::PointerMoved((100.0, 100.0).into()));
