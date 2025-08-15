@@ -1090,7 +1090,7 @@ fn serve_grpc(
     connection_registry: &re_grpc_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
     server_memory_limit: re_sdk::MemoryLimit,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     if !cfg!(feature = "server") {
         anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
     }
@@ -1128,7 +1128,7 @@ fn save_or_test_receive(
     connection_registry: &re_grpc_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
     server_memory_limit: re_sdk::MemoryLimit,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     let receivers = ReceiversFromUrlParams::new(
         url_or_paths,
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
