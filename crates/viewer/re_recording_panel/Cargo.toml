@@ -41,6 +41,7 @@ serde = { workspace = true, optional = true }
 
 
 [dev-dependencies]
+re_smart_channel.workspace = true
 re_test_context.workspace = true
 
 insta = { workspace = true, features = ["redactions", "yaml"] }
