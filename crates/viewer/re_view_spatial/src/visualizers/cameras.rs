@@ -63,10 +63,10 @@ impl CamerasVisualizer {
         let w = pinhole_properties.pinhole.resolution.x;
         let h = pinhole_properties.pinhole.resolution.y;
         let z = pinhole_properties.image_plane_distance;
-        let color = match pinhole_properties.pinhole.color {
-            None => tokens.frustum_color,
-            Some(color) => color.into(),
-        };
+        let color = pinhole_properties
+            .pinhole
+            .color
+            .unwrap_or(tokens.frustum_color);
         if !w.is_finite() || !h.is_finite() || w <= 0.0 || h <= 0.0 {
             return;
         }
@@ -274,7 +274,9 @@ impl VisualizerSystem for CamerasVisualizer {
                     &Pinhole::descriptor_image_plane_distance(),
                 )
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
-            let color = query_results.get_mono::<components::Color>(&Pinhole::descriptor_color());
+            let color = query_results
+                .get_mono::<components::Color>(&Pinhole::descriptor_color())
+                .map(|color| color.into());
             let line_width = query_results
                 .get_mono::<components::Radius>(&Pinhole::descriptor_line_width())
                 .map(|radius| process_radius(&data_result.entity_path, radius));
