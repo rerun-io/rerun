@@ -4,11 +4,11 @@ mod right_panel;
 
 use egui::{Modifiers, os};
 use re_ui::{
-    CommandPalette, ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
-    filter_widget::FilterState, list_item,
+    CommandPalette, CommandPaletteAction, CommandPalleteUrl, ContextExt as _, DesignTokens, Help,
+    IconText, UICommand, UICommandSender, UiExt as _,
+    filter_widget::{FilterState, format_matching_text},
+    icons, list_item, notifications,
 };
-use re_ui::{CommandPaletteAction, icons, notifications};
-use re_ui::{IconText, filter_widget::format_matching_text};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -366,11 +366,11 @@ impl eframe::App for ExampleApp {
                 tabs_ui(ui, &mut self.tree);
             });
 
-        if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
+        if let Some(cmd) = self.cmd_palette.show(egui_ctx, &parse_url) {
             match cmd {
                 CommandPaletteAction::UiCommand(cmd) => self.command_sender.send_ui(cmd),
                 CommandPaletteAction::OpenUrl(url) => {
-                    egui_ctx.open_url(egui::OpenUrl::same_tab(url));
+                    egui_ctx.open_url(egui::OpenUrl::new_tab(url.url));
                 }
             }
         }
@@ -401,6 +401,13 @@ impl eframe::App for ExampleApp {
             }
         }
     }
+}
+
+fn parse_url(url: &str) -> Option<CommandPalleteUrl> {
+    url.starts_with("http").then(|| CommandPalleteUrl {
+        url: url.to_owned(),
+        command_text: "Open http(s) URL".to_owned(),
+    })
 }
 
 impl ExampleApp {

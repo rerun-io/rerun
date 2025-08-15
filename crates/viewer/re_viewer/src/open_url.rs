@@ -1,5 +1,6 @@
 use re_data_source::LogDataSource;
 use re_smart_channel::SmartChannelSource;
+use re_ui::CommandPalleteUrl;
 use re_uri::external::url;
 use re_viewer_context::{
     CommandSender, DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _,
@@ -193,6 +194,68 @@ impl ViewerImportUrl {
 
         // All of these send commands, make sure they'll be processed.
         egui_ctx.request_repaint();
+    }
+
+    pub fn command_palette_parse_url(url: &str) -> Option<CommandPalleteUrl> {
+        let Ok(import_url) = url.parse::<Self>() else {
+            return None;
+        };
+
+        Some(CommandPalleteUrl {
+            url: url.to_owned(),
+            command_text: import_url.open_description(),
+        })
+    }
+
+    /// Describes what happens when calling [`Self::open`] with this URL.
+    fn open_description(&self) -> String {
+        match self {
+            Self::IntraRecordingSelection(_) => "Go to selection".to_owned(),
+
+            Self::LogDataSource(LogDataSource::RrdHttpUrl { .. }) => {
+                "Open rrd from link".to_owned()
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::LogDataSource(LogDataSource::FilePath(_, path)) => {
+                format!("Open file {}", path.display())
+            }
+
+            Self::LogDataSource(LogDataSource::FileContents(_, _)) => {
+                // Getting here should be impossible, you can't get file contents from a url.
+                "Open file contents".to_owned()
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::LogDataSource(LogDataSource::Stdin) => {
+                // Getting here should be impossible, you can't get stdin from a url.
+                "Connect to stdin".to_owned()
+            }
+
+            Self::LogDataSource(LogDataSource::RedapDatasetPartition { uri, .. }) => {
+                format!("Open partition {}", uri.partition_id)
+            }
+
+            Self::LogDataSource(LogDataSource::RedapProxy(_)) => "Connect to GRPC proxy".to_owned(),
+
+            Self::RedapCatalog(uri) => {
+                format!("Open redap catalog at {}", uri.origin)
+            }
+
+            Self::RedapEntry(uri) => {
+                format!("Open redap entry {}", uri.entry_id)
+            }
+
+            Self::WebEventListener(_) => "Connect to web event listener".to_owned(),
+
+            Self::WebViewerUrl { url_parameters, .. } => {
+                if url_parameters.len() == 1 {
+                    url_parameters.first().open_description()
+                } else {
+                    format!("Open {} URLs", url_parameters.len())
+                }
+            }
+        }
     }
 }
 

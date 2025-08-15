@@ -26,6 +26,7 @@ use crate::{
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     event::ViewerEventDispatcher,
+    open_url::ViewerImportUrl,
     startup_options::StartupOptions,
 };
 
@@ -2666,16 +2667,19 @@ impl eframe::App for App {
                 paint_native_window_frame(egui_ctx);
             }
 
-            if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
+            if let Some(cmd) = self
+                .cmd_palette
+                .show(egui_ctx, &ViewerImportUrl::command_palette_parse_url)
+            {
                 match cmd {
                     re_ui::CommandPaletteAction::UiCommand(cmd) => {
                         self.command_sender.send_ui(cmd);
                     }
-                    re_ui::CommandPaletteAction::OpenUrl(url) => {
+                    re_ui::CommandPaletteAction::OpenUrl(url_desc) => {
                         let follow_if_http = false;
                         let select_redap_source_when_loaded = true;
 
-                        match crate::open_url::ViewerImportUrl::from_str(&url) {
+                        match url_desc.url.parse::<ViewerImportUrl>() {
                             Ok(url) => {
                                 url.open(
                                     egui_ctx,

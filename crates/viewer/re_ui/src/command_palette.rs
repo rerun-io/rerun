@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::BTreeSet};
+use std::collections::BTreeSet;
 
 use egui::{Align2, Key, NumExt as _};
 
@@ -18,14 +18,23 @@ pub struct CommandPalette {
 #[derive(Clone)]
 pub enum CommandPaletteAction {
     UiCommand(UICommand),
-    OpenUrl(String),
+    OpenUrl(CommandPalleteUrl),
+}
+
+#[derive(Clone)]
+pub struct CommandPalleteUrl {
+    /// The URL that should be opened.
+    pub url: String,
+
+    /// Text that describes the command of opening this URL.
+    pub command_text: String,
 }
 
 impl CommandPaletteAction {
-    fn text(&self) -> Cow<'static, str> {
+    fn text(&self) -> &str {
         match self {
-            Self::UiCommand(command) => Cow::Borrowed(command.text()),
-            Self::OpenUrl(url) => Cow::Owned(format!("Import from URL: {url}")),
+            Self::UiCommand(command) => command.text(),
+            Self::OpenUrl(url) => &url.command_text,
         }
     }
 
@@ -53,7 +62,11 @@ impl CommandPalette {
 
     /// Show the command palette, if it is visible.
     #[must_use = "Returns the command that was selected"]
-    pub fn show(&mut self, egui_ctx: &egui::Context) -> Option<CommandPaletteAction> {
+    pub fn show(
+        &mut self,
+        egui_ctx: &egui::Context,
+        parse_url: &dyn Fn(&str) -> Option<CommandPalleteUrl>,
+    ) -> Option<CommandPaletteAction> {
         self.visible &= !egui_ctx.input_mut(|i| i.key_pressed(Key::Escape));
         if !self.visible {
             self.query.clear();
@@ -77,14 +90,18 @@ impl CommandPalette {
                     inner_margin: 2.0.into(),
                     ..Default::default()
                 }
-                .show(ui, |ui| self.window_content_ui(ui))
+                .show(ui, |ui| self.window_content_ui(ui, parse_url))
                 .inner
             })?
             .inner?
     }
 
     #[must_use = "Returns the command that was selected"]
-    fn window_content_ui(&mut self, ui: &mut egui::Ui) -> Option<CommandPaletteAction> {
+    fn window_content_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        parse_url: &dyn Fn(&str) -> Option<CommandPalleteUrl>,
+    ) -> Option<CommandPaletteAction> {
         // Check _before_ we add the `TextEdit`, so it doesn't steal it.
         let enter_pressed = ui.input_mut(|i| i.consume_key(Default::default(), Key::Enter));
 
@@ -103,7 +120,7 @@ impl CommandPalette {
         let selected_command = egui::ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {
-                self.alternatives_ui(ui, enter_pressed, scroll_to_selected_alternative)
+                self.alternatives_ui(ui, enter_pressed, scroll_to_selected_alternative, parse_url)
             })
             .inner;
 
@@ -120,6 +137,7 @@ impl CommandPalette {
         ui: &mut egui::Ui,
         enter_pressed: bool,
         mut scroll_to_selected_alternative: bool,
+        parse_url: &dyn Fn(&str) -> Option<CommandPalleteUrl>,
     ) -> Option<CommandPaletteAction> {
         scroll_to_selected_alternative |= ui.input(|i| i.key_pressed(Key::ArrowUp));
         scroll_to_selected_alternative |= ui.input(|i| i.key_pressed(Key::ArrowDown));
@@ -130,7 +148,10 @@ impl CommandPalette {
         let mut num_alternatives: usize = 0;
         let mut selected_command = None;
 
-        for (i, fuzzy_match) in commands_that_match(&self.query).into_iter().enumerate() {
+        for (i, fuzzy_match) in commands_that_match(&self.query, parse_url)
+            .into_iter()
+            .enumerate()
+        {
             let command = fuzzy_match.command.clone();
             let kb_shortcut_text = command.formatted_kb_shortcut(ui.ctx()).unwrap_or_default();
 
@@ -219,7 +240,10 @@ struct FuzzyMatch {
     fuzzy_match: Option<sublime_fuzzy::Match>,
 }
 
-fn commands_that_match(query: &str) -> Vec<FuzzyMatch> {
+fn commands_that_match(
+    query: &str,
+    parse_url: &dyn Fn(&str) -> Option<CommandPalleteUrl>,
+) -> Vec<FuzzyMatch> {
     use strum::IntoEnumIterator as _;
 
     if query.is_empty() {
@@ -246,12 +270,13 @@ fn commands_that_match(query: &str) -> Vec<FuzzyMatch> {
             .collect();
 
         // Add the special open URL command.
-        // TODO: only if it looks like a URL?
-        matches.push(FuzzyMatch {
-            command: CommandPaletteAction::OpenUrl(query.to_owned()),
-            score: -1,
-            fuzzy_match: None,
-        });
+        if let Some(url) = parse_url(query) {
+            matches.push(FuzzyMatch {
+                command: CommandPaletteAction::OpenUrl(url),
+                score: -1,
+                fuzzy_match: None,
+            });
+        }
 
         matches.sort_by_key(|m| -m.score); // highest score first
         matches
