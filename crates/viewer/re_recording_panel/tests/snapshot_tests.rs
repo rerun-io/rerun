@@ -10,7 +10,7 @@ fn empty_context_test() {
         let data = RecordingPanelData::new(ctx, &servers, false);
 
         insta::assert_yaml_snapshot!(data);
-    })
+    });
 }
 
 //TODO(ab): we need more tests here.
