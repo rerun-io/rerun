@@ -38,7 +38,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 
         let view_id = view_blueprint.id;
 
-        blueprint.add_views([view_blueprint].into_iter(), None, None);
+        blueprint.add_views(std::iter::once(view_blueprint), None, None);
 
         view_id
     })
@@ -57,6 +57,7 @@ fn run_view_ui_and_save_snapshot(
         });
 
     let raw_input = harness.input_mut();
+    // TODO(aedm): use blueprint view setup once https://github.com/rerun-io/rerun/issues/6825 is fixed.
     raw_input
         .events
         .push(egui::Event::PointerMoved((100.0, 100.0).into()));
