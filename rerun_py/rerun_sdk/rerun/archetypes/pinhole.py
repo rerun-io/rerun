@@ -59,7 +59,14 @@ class Pinhole(PinholeExt, Archetype):
 
     rr.log(
         "world/cam",
-        rr.Pinhole(fov_y=0.7853982, aspect_ratio=1.7777778, camera_xyz=rr.ViewCoordinates.RUB, image_plane_distance=0.1),
+        rr.Pinhole(
+            fov_y=0.7853982,
+            aspect_ratio=1.7777778,
+            camera_xyz=rr.ViewCoordinates.RUB,
+            image_plane_distance=0.1,
+            color=[255, 128, 0],
+            line_width=0.003,
+        ),
     )
 
     rr.log("world/points", rr.Points3D([(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)], radii=0.025))
@@ -85,6 +92,8 @@ class Pinhole(PinholeExt, Archetype):
             resolution=None,
             camera_xyz=None,
             image_plane_distance=None,
+            color=None,
+            line_width=None,
         )
 
     @classmethod
@@ -103,6 +112,8 @@ class Pinhole(PinholeExt, Archetype):
         resolution: datatypes.Vec2DLike | None = None,
         camera_xyz: datatypes.ViewCoordinatesLike | None = None,
         image_plane_distance: datatypes.Float32Like | None = None,
+        color: datatypes.Rgba32Like | None = None,
+        line_width: datatypes.Float32Like | None = None,
     ) -> Pinhole:
         """
         Update only some specific fields of a `Pinhole`.
@@ -154,6 +165,10 @@ class Pinhole(PinholeExt, Archetype):
             The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 
             This is only used for visualization purposes, and does not affect the projection itself.
+        color:
+            Color of the camera wireframe.
+        line_width:
+            Width of the camera wireframe lines.
 
         """
 
@@ -164,6 +179,8 @@ class Pinhole(PinholeExt, Archetype):
                 "resolution": resolution,
                 "camera_xyz": camera_xyz,
                 "image_plane_distance": image_plane_distance,
+                "color": color,
+                "line_width": line_width,
             }
 
             if clear_unset:
@@ -188,6 +205,8 @@ class Pinhole(PinholeExt, Archetype):
         resolution: datatypes.Vec2DArrayLike | None = None,
         camera_xyz: datatypes.ViewCoordinatesArrayLike | None = None,
         image_plane_distance: datatypes.Float32ArrayLike | None = None,
+        color: datatypes.Rgba32ArrayLike | None = None,
+        line_width: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -242,6 +261,10 @@ class Pinhole(PinholeExt, Archetype):
             The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 
             This is only used for visualization purposes, and does not affect the projection itself.
+        color:
+            Color of the camera wireframe.
+        line_width:
+            Width of the camera wireframe lines.
 
         """
 
@@ -252,6 +275,8 @@ class Pinhole(PinholeExt, Archetype):
                 resolution=resolution,
                 camera_xyz=camera_xyz,
                 image_plane_distance=image_plane_distance,
+                color=color,
+                line_width=line_width,
             )
 
         batches = inst.as_component_batches()
@@ -263,6 +288,8 @@ class Pinhole(PinholeExt, Archetype):
             "Pinhole:resolution": resolution,
             "Pinhole:camera_xyz": camera_xyz,
             "Pinhole:image_plane_distance": image_plane_distance,
+            "Pinhole:color": color,
+            "Pinhole:line_width": line_width,
         }
         columns = []
 
@@ -361,6 +388,24 @@ class Pinhole(PinholeExt, Archetype):
     # The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
     #
     # This is only used for visualization purposes, and does not affect the projection itself.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    color: components.ColorBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ColorBatch._converter,  # type: ignore[misc]
+    )
+    # Color of the camera wireframe.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    line_width: components.RadiusBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.RadiusBatch._converter,  # type: ignore[misc]
+    )
+    # Width of the camera wireframe lines.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
