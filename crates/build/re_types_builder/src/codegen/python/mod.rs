@@ -1673,6 +1673,7 @@ fn quote_field_type_from_field(
         | Type::Int64 => "int".to_owned(),
         Type::Bool => "bool".to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::Binary => "bytes".to_owned(),
         Type::String => "str".to_owned(),
         Type::Array {
             elem_type,
@@ -1691,6 +1692,7 @@ fn quote_field_type_from_field(
             ElementType::Float16 => "npt.NDArray[np.float16]".to_owned(),
             ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
             ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
+            ElementType::Binary => "list[bytes]".to_owned(),
             ElementType::String => "list[str]".to_owned(),
             ElementType::Object { .. } => {
                 let typ = quote_type_from_element_type(elem_type);
@@ -1750,6 +1752,13 @@ fn quote_field_converter_from_field(
                 "float_or_none".to_owned()
             } else {
                 "float".to_owned()
+            }
+        }
+        Type::Binary => {
+            if field.is_nullable {
+                "bytes_or_none".to_owned()
+            } else {
+                "bytes".to_owned()
             }
         }
         Type::String => {
@@ -1868,6 +1877,7 @@ fn quote_type_from_type(typ: &Type) -> String {
         | Type::Int64 => "int".to_owned(),
         Type::Bool => "bool".to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::Binary => "bytes".to_owned(),
         Type::String => "str".to_owned(),
         Type::Object { fqname } => fqname_to_type(fqname),
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
@@ -2026,6 +2036,7 @@ fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
         Type::Float32 => Some("np.float32"),
         Type::Float64 => Some("np.float64"),
         Type::Unit
+        | Type::Binary
         | Type::String
         | Type::Array { .. }
         | Type::Vector { .. }
@@ -2122,7 +2133,11 @@ fn quote_arrow_serialization(
                         code.push_indented(2, &field_fwd, 1);
                     }
 
-                    Type::Unit | Type::String | Type::Array { .. } | Type::Vector { .. } => {
+                    Type::Unit
+                    | Type::Binary
+                    | Type::String
+                    | Type::Array { .. }
+                    | Type::Vector { .. } => {
                         return Err(
                             "We lack codegen for arrow-serialization of general structs".to_owned()
                         );
@@ -2249,6 +2264,7 @@ return pa.array(pa_data, type=data_type)
                     | Type::Float16
                     | Type::Float32
                     | Type::Float64
+                    | Type::Binary
                     | Type::String => {
                         let datatype = quote_arrow_datatype(&type_registry.get(&field.fqname));
                         format!("pa.array({variant_kind_list}, type={datatype})")

@@ -13,5 +13,5 @@ table Blob (
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  data: [ubyte] (order: 100);
+  data: [ubyte] (order: 100, "attr.rerun.override_type": "binary");
 }

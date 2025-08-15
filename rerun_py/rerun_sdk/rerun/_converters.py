@@ -72,6 +72,20 @@ def bool_or_none(data: bool | None) -> bool | None:
 
 
 @overload
+def bytes_or_none(data: None) -> None: ...
+
+
+@overload
+def bytes_or_none(data: bytes) -> bytes: ...
+
+
+def bytes_or_none(data: bytes | None) -> bytes | None:
+    if data is None:
+        return None
+    return bytes(data)
+
+
+@overload
 def str_or_none(data: None) -> None: ...
 
 

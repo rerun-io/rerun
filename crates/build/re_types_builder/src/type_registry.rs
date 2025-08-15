@@ -163,6 +163,7 @@ impl TypeRegistry {
             Type::Float16 => LazyDatatype::Atomic(AtomicDataType::Float16),
             Type::Float32 => LazyDatatype::Atomic(AtomicDataType::Float32),
             Type::Float64 => LazyDatatype::Atomic(AtomicDataType::Float64),
+            Type::Binary => LazyDatatype::Binary,
             Type::String => LazyDatatype::Utf8,
             Type::Array { elem_type, length } => LazyDatatype::FixedSizeList(
                 LazyField {
@@ -215,6 +216,7 @@ impl TypeRegistry {
             ElementType::Float16 => LazyDatatype::Atomic(AtomicDataType::Float16),
             ElementType::Float32 => LazyDatatype::Atomic(AtomicDataType::Float32),
             ElementType::Float64 => LazyDatatype::Atomic(AtomicDataType::Float64),
+            ElementType::Binary => LazyDatatype::Binary,
             ElementType::String => LazyDatatype::Utf8,
             ElementType::Object { fqname } => LazyDatatype::Unresolved { fqname },
         }

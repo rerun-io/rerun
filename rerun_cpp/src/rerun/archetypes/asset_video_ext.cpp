@@ -93,16 +93,19 @@ namespace rerun::archetypes {
         if (!blob.has_value()) {
             return std::vector<std::chrono::nanoseconds>();
         }
-        auto blob_list_array = std::dynamic_pointer_cast<arrow::ListArray>(blob.value().array);
-        if (!blob_list_array) {
-            return Error(ErrorCode::InvalidComponent, "Blob array is not a primitive array");
+        auto binary_array = std::dynamic_pointer_cast<arrow::BinaryArray>(blob.value().array);
+        if (!binary_array) {
+            return Error(ErrorCode::InvalidComponent, "Video blob array is not a binary array");
         }
-        auto blob_array =
-            std::dynamic_pointer_cast<arrow::PrimitiveArray>(blob_list_array->values());
-        if (!blob_array) {
-            return Error(ErrorCode::InvalidComponent, "Blob array is not a primitive array");
+        if (binary_array->length() != 1) {
+            return Error(
+                ErrorCode::InvalidComponent,
+                "Video blob array should be a single video file"
+            );
         }
-        auto blob_array_data = blob_array->values();
+
+        int32_t num_bytes;
+        const uint8_t* bytes = binary_array->GetValue(0, &num_bytes);
 
         rr_string media_type_c = detail::to_rr_string(std::nullopt);
         if (media_type.has_value()) {
@@ -117,8 +120,8 @@ namespace rerun::archetypes {
 
         rr_error status = {};
         rr_video_asset_read_frame_timestamps_nanos(
-            blob_array_data->data(),
-            static_cast<uint64_t>(blob_array_data->size()),
+            bytes,
+            static_cast<uint64_t>(num_bytes),
             media_type_c,
             &frame_timestamps,
             &alloc_timestamps,

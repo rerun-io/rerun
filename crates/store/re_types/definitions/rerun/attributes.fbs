@@ -28,7 +28,9 @@ attribute "attr.rerun.log_missing_as_empty";
 
 /// Override the type of a field.
 ///
-/// The only permitted value is "float16", which can only be used to override the type of a ushort.
+/// The only permitted values are:
+/// - `binary`, to override `[ubyte]`
+/// - `float16`, to override `ushort`
 ///
 /// For lists this will apply to the inner element.
 attribute "attr.rerun.override_type";

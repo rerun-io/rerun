@@ -12,8 +12,8 @@
 
 namespace arrow {
     class Array;
+    class BinaryBuilder;
     class DataType;
-    class ListBuilder;
 } // namespace arrow
 
 namespace rerun::datatypes {
@@ -60,7 +60,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::ListBuilder* builder, const datatypes::Blob* elements, size_t num_elements
+            arrow::BinaryBuilder* builder, const datatypes::Blob* elements, size_t num_elements
         );
     };
 } // namespace rerun

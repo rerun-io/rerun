@@ -414,6 +414,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
             Type::Float16 => atomic("float16"),
             Type::Float32 => atomic("float32"),
             Type::Float64 => atomic("float64"),
+            Type::Binary => atomic("binary"),
             Type::String => atomic("utf8"),
 
             Type::Array { elem_type, length } => {

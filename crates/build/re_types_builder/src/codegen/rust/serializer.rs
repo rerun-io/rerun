@@ -583,7 +583,14 @@ fn quote_arrow_field_serializer(
             }
         }
 
-        DataType::Utf8 => {
+        DataType::Binary | DataType::Utf8 => {
+            let is_binary = datatype.to_logical_type() == &DataType::Binary;
+            let as_bytes = if is_binary {
+                quote!()
+            } else {
+                quote!(.as_bytes())
+            };
+
             // NOTE: We need values for all slots, regardless of what the validity says,
             // hence `unwrap_or_default`.
             let (quoted_member_accessor, quoted_transparent_length) = if inner_is_arrow_transparent
@@ -636,7 +643,7 @@ fn quote_arrow_field_serializer(
                     // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
                     // about it while building the backing buffer since it's all offsets driven.
                     for data in #data_src.iter().flatten() {
-                        buffer_builder.append_slice(data #quoted_member_accessor.as_bytes());
+                        buffer_builder.append_slice(data #quoted_member_accessor #as_bytes);
                     }
                     let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
                 }
@@ -653,22 +660,29 @@ fn quote_arrow_field_serializer(
 
                     let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
                     for data in &#data_src {
-                        buffer_builder.append_slice(data #quoted_member_accessor.as_bytes());
+                        buffer_builder.append_slice(data #quoted_member_accessor #as_bytes);
                     }
                     let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
                 }
             };
 
-            quote! {{
-                #inner_data_and_offsets
+            if is_binary {
+                quote! {{
+                    #inner_data_and_offsets
+                    as_array_ref(BinaryArray::new(offsets, inner_data, #validity_src))
+                }}
+            } else {
+                quote! {{
+                    #inner_data_and_offsets
 
-                // Safety: we're building this from actual native strings, so no need to do the
-                // whole utf8 validation _again_.
-                // It would be nice to use quote_comment here and put this safety notice in the generated code,
-                // but that seems to push us over some complexity limit causing rustfmt to fail.
-                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                as_array_ref(unsafe { StringArray::new_unchecked(offsets, inner_data, #validity_src) })
-            }}
+                    // Safety: we're building this from actual native strings, so no need to do the
+                    // whole utf8 validation _again_.
+                    // It would be nice to use quote_comment here and put this safety notice in the generated code,
+                    // but that seems to push us over some complexity limit causing rustfmt to fail.
+                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    as_array_ref(unsafe { StringArray::new_unchecked(offsets, inner_data, #validity_src) })
+                }}
+            }
         }
 
         DataType::List(inner_field) | DataType::FixedSizeList(inner_field, _) => {
@@ -919,6 +933,6 @@ fn quote_arrow_field_serializer(
             }}
         }
 
-        _ => unimplemented!("{datatype:#?}"),
+        DataType::Object { .. } => unimplemented!("{datatype:#?}"),
     }
 }
