@@ -8,7 +8,7 @@ use re_chunk::{
     external::arrow::array::{FixedSizeListBuilder, Float64Builder, StringBuilder, UInt32Builder},
 };
 use re_log_types::TimeCell;
-use re_types::{ComponentDescriptor, archetypes::Pinhole};
+use re_types::{ComponentDescriptor, archetypes::Pinhole, reflection::ComponentDescriptorExt as _};
 
 use crate::{
     Error,
@@ -206,52 +206,53 @@ impl MessageParser for CameraInfoMessageParser {
             [
                 (
                     ComponentDescriptor::partial("distortion_model")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     distortion_models.finish().into(),
                 ),
                 (
-                    ComponentDescriptor::partial("k").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    ComponentDescriptor::partial("k").with_builtin_archetype(Self::ARCHETYPE_NAME),
                     k_matrices.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("width")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     widths.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("height")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     heights.finish().into(),
                 ),
                 (
-                    ComponentDescriptor::partial("d").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    ComponentDescriptor::partial("d").with_builtin_archetype(Self::ARCHETYPE_NAME),
                     d_array,
                 ),
                 (
-                    ComponentDescriptor::partial("r").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    ComponentDescriptor::partial("r").with_builtin_archetype(Self::ARCHETYPE_NAME),
                     r_matrices.finish().into(),
                 ),
                 (
-                    ComponentDescriptor::partial("p").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    ComponentDescriptor::partial("p").with_builtin_archetype(Self::ARCHETYPE_NAME),
                     p_matrices.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("binning_x")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     binning_x.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("binning_y")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     binning_y.finish().into(),
                 ),
                 (
-                    ComponentDescriptor::partial("roi").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    ComponentDescriptor::partial("roi")
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     rois.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("frame_id")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     frame_ids.finish().into(),
                 ),
             ]

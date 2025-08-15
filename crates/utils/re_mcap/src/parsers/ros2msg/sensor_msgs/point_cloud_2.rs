@@ -13,7 +13,7 @@ use re_chunk::{Chunk, ChunkComponents, ChunkId, TimePoint};
 use re_log_types::TimeCell;
 use re_types::{
     AsComponents as _, Component as _, ComponentDescriptor, SerializedComponentColumn, archetypes,
-    components,
+    components, reflection::ComponentDescriptorExt as _,
 };
 use std::collections::HashMap;
 
@@ -323,45 +323,43 @@ impl MessageParser for PointCloud2MessageParser {
             [
                 (
                     ComponentDescriptor::partial("height")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     height.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("width")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     width.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("fields")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     fields.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("is_bigendian")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     is_bigendian.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("point_step")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     point_step.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("row_step")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     row_step.finish().into(),
                 ),
                 (
-                    ComponentDescriptor {
-                        archetype: Some(Self::ARCHETYPE_NAME.into()),
-                        component: "data".into(),
-                        component_type: Some(components::Blob::name()),
-                    },
+                    ComponentDescriptor::partial("data")
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME)
+                        .with_component_type(components::Blob::name()),
                     data.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("is_dense")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     is_dense.finish().into(),
                 ),
             ]
