@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::{borrow::Cow, collections::BTreeSet, isize};
 
 use egui::{Align2, Key, NumExt as _};
 
@@ -11,6 +11,41 @@ pub struct CommandPalette {
     selected_alternative: usize,
 }
 
+/// Either a command, or a URL that we want to open.
+///
+/// URL opening is the fallback for the command palette and needs some special treatment since
+/// ui commands usually don't have arbitrary state.
+#[derive(Clone)]
+pub enum CommandPaletteAction {
+    UiCommand(UICommand),
+    OpenUrl(String),
+}
+
+impl CommandPaletteAction {
+    fn text(&self) -> Cow<'static, str> {
+        match self {
+            CommandPaletteAction::UiCommand(command) => Cow::Borrowed(command.text()),
+            CommandPaletteAction::OpenUrl(url) => Cow::Owned(format!("Import from URL: {url}")),
+        }
+    }
+
+    fn tooltip(&self) -> &'static str {
+        match self {
+            CommandPaletteAction::UiCommand(command) => command.tooltip(),
+            CommandPaletteAction::OpenUrl(_) => {
+                "Try to open this URL in the viewer. If the contents are already loaded, this will select them."
+            }
+        }
+    }
+
+    fn formatted_kb_shortcut(&self, egui_ctx: &egui::Context) -> Option<String> {
+        match self {
+            CommandPaletteAction::UiCommand(command) => command.formatted_kb_shortcut(egui_ctx),
+            CommandPaletteAction::OpenUrl(_) => None,
+        }
+    }
+}
+
 impl CommandPalette {
     pub fn toggle(&mut self) {
         self.visible ^= true;
@@ -18,7 +53,7 @@ impl CommandPalette {
 
     /// Show the command palette, if it is visible.
     #[must_use = "Returns the command that was selected"]
-    pub fn show(&mut self, egui_ctx: &egui::Context) -> Option<UICommand> {
+    pub fn show(&mut self, egui_ctx: &egui::Context) -> Option<CommandPaletteAction> {
         self.visible &= !egui_ctx.input_mut(|i| i.key_pressed(Key::Escape));
         if !self.visible {
             self.query.clear();
@@ -49,7 +84,7 @@ impl CommandPalette {
     }
 
     #[must_use = "Returns the command that was selected"]
-    fn window_content_ui(&mut self, ui: &mut egui::Ui) -> Option<UICommand> {
+    fn window_content_ui(&mut self, ui: &mut egui::Ui) -> Option<CommandPaletteAction> {
         // Check _before_ we add the `TextEdit`, so it doesn't steal it.
         let enter_pressed = ui.input_mut(|i| i.consume_key(Default::default(), Key::Enter));
 
@@ -85,11 +120,9 @@ impl CommandPalette {
         ui: &mut egui::Ui,
         enter_pressed: bool,
         mut scroll_to_selected_alternative: bool,
-    ) -> Option<UICommand> {
+    ) -> Option<CommandPaletteAction> {
         scroll_to_selected_alternative |= ui.input(|i| i.key_pressed(Key::ArrowUp));
         scroll_to_selected_alternative |= ui.input(|i| i.key_pressed(Key::ArrowDown));
-
-        let query = self.query.to_lowercase();
 
         let item_height = 16.0;
         let font_id = egui::TextStyle::Button.resolve(ui.style());
@@ -97,8 +130,8 @@ impl CommandPalette {
         let mut num_alternatives: usize = 0;
         let mut selected_command = None;
 
-        for (i, fuzzy_match) in commands_that_match(&query).iter().enumerate() {
-            let command = fuzzy_match.command;
+        for (i, fuzzy_match) in commands_that_match(&self.query).into_iter().enumerate() {
+            let command = fuzzy_match.command.clone();
             let kb_shortcut_text = command.formatted_kb_shortcut(ui.ctx()).unwrap_or_default();
 
             let (rect, response) = ui.allocate_at_least(
@@ -109,7 +142,7 @@ impl CommandPalette {
             let response = response.on_hover_text(command.tooltip());
 
             if response.clicked() {
-                selected_command = Some(command);
+                selected_command = Some(command.clone());
             }
 
             let selected = i == self.selected_alternative;
@@ -131,7 +164,7 @@ impl CommandPalette {
                 }
             }
 
-            let text = format_match(fuzzy_match, &font_id, style.text_color());
+            let text = format_match(&fuzzy_match, &font_id, style.text_color());
 
             // TODO(emilk): shorten long text using '…'
             let galley = text.into_galley(
@@ -181,7 +214,7 @@ impl CommandPalette {
 }
 
 struct FuzzyMatch {
-    command: UICommand,
+    command: CommandPaletteAction,
     score: isize,
     fuzzy_match: Option<sublime_fuzzy::Match>,
 }
@@ -192,22 +225,34 @@ fn commands_that_match(query: &str) -> Vec<FuzzyMatch> {
     if query.is_empty() {
         UICommand::iter()
             .map(|command| FuzzyMatch {
-                command,
+                command: CommandPaletteAction::UiCommand(command),
                 score: 0,
                 fuzzy_match: None,
             })
             .collect()
     } else {
+        let query_lowercase = query.to_lowercase();
         let mut matches: Vec<_> = UICommand::iter()
             .filter_map(|command| {
                 let target_text = command.text();
-                sublime_fuzzy::best_match(query, target_text).map(|fuzzy_match| FuzzyMatch {
-                    command,
-                    score: fuzzy_match.score(),
-                    fuzzy_match: Some(fuzzy_match),
+                sublime_fuzzy::best_match(&query_lowercase, target_text).map(|fuzzy_match| {
+                    FuzzyMatch {
+                        command: CommandPaletteAction::UiCommand(command),
+                        score: fuzzy_match.score(),
+                        fuzzy_match: Some(fuzzy_match),
+                    }
                 })
             })
             .collect();
+
+        // Add the special open URL command.
+        // TODO: only if it looks like a URL?
+        matches.push(FuzzyMatch {
+            command: CommandPaletteAction::OpenUrl(query.to_string()),
+            score: -1,
+            fuzzy_match: None,
+        });
+
         matches.sort_by_key(|m| -m.score); // highest score first
         matches
     }
