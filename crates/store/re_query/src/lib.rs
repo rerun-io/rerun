@@ -71,13 +71,9 @@ pub enum QueryError {
     Other(#[from] anyhow::Error),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<QueryError>() <= 80,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<QueryError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<QueryError>() <= 80,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 pub type Result<T> = std::result::Result<T, QueryError>;

@@ -63,14 +63,10 @@ pub enum EntryError {
     DataFusionError(Box<DataFusionError>),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<EntryError>() <= 80,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<EntryError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<EntryError>() <= 80,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 impl From<tonic::Status> for EntryError {
     fn from(status: tonic::Status) -> Self {

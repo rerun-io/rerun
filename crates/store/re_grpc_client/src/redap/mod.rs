@@ -91,14 +91,10 @@ pub enum ConnectionError {
     InvalidOrigin(String),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<ConnectionError>() <= 64,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<ConnectionError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<ConnectionError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 #[cfg(target_arch = "wasm32")]
 pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, ConnectionError> {
