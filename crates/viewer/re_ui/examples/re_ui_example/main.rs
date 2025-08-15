@@ -7,8 +7,8 @@ use re_ui::{
     CommandPalette, ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
     filter_widget::FilterState, list_item,
 };
+use re_ui::{CommandPaletteAction, icons, notifications};
 use re_ui::{IconText, filter_widget::format_matching_text};
-use re_ui::{icons, notifications};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -367,7 +367,12 @@ impl eframe::App for ExampleApp {
             });
 
         if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.command_sender.send_ui(cmd);
+            match cmd {
+                CommandPaletteAction::UiCommand(cmd) => self.command_sender.send_ui(cmd),
+                CommandPaletteAction::OpenUrl(url) => {
+                    egui_ctx.open_url(egui::OpenUrl::same_tab(url));
+                }
+            }
         }
         if let Some(cmd) = re_ui::UICommand::listen_for_kb_shortcut(egui_ctx) {
             self.command_sender.send_ui(cmd);

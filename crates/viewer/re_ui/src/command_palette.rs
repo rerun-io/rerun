@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::BTreeSet, isize};
+use std::{borrow::Cow, collections::BTreeSet};
 
 use egui::{Align2, Key, NumExt as _};
 
@@ -24,15 +24,15 @@ pub enum CommandPaletteAction {
 impl CommandPaletteAction {
     fn text(&self) -> Cow<'static, str> {
         match self {
-            CommandPaletteAction::UiCommand(command) => Cow::Borrowed(command.text()),
-            CommandPaletteAction::OpenUrl(url) => Cow::Owned(format!("Import from URL: {url}")),
+            Self::UiCommand(command) => Cow::Borrowed(command.text()),
+            Self::OpenUrl(url) => Cow::Owned(format!("Import from URL: {url}")),
         }
     }
 
     fn tooltip(&self) -> &'static str {
         match self {
-            CommandPaletteAction::UiCommand(command) => command.tooltip(),
-            CommandPaletteAction::OpenUrl(_) => {
+            Self::UiCommand(command) => command.tooltip(),
+            Self::OpenUrl(_) => {
                 "Try to open this URL in the viewer. If the contents are already loaded, this will select them."
             }
         }
@@ -40,8 +40,8 @@ impl CommandPaletteAction {
 
     fn formatted_kb_shortcut(&self, egui_ctx: &egui::Context) -> Option<String> {
         match self {
-            CommandPaletteAction::UiCommand(command) => command.formatted_kb_shortcut(egui_ctx),
-            CommandPaletteAction::OpenUrl(_) => None,
+            Self::UiCommand(command) => command.formatted_kb_shortcut(egui_ctx),
+            Self::OpenUrl(_) => None,
         }
     }
 }
@@ -248,7 +248,7 @@ fn commands_that_match(query: &str) -> Vec<FuzzyMatch> {
         // Add the special open URL command.
         // TODO: only if it looks like a URL?
         matches.push(FuzzyMatch {
-            command: CommandPaletteAction::OpenUrl(query.to_string()),
+            command: CommandPaletteAction::OpenUrl(query.to_owned()),
             score: -1,
             fuzzy_match: None,
         });
