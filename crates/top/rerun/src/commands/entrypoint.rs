@@ -779,8 +779,6 @@ fn run_impl(
     };
 
     let server_addr = std::net::SocketAddr::new(args.bind, args.port);
-
-    #[cfg(feature = "server")]
     let server_memory_limit = {
         re_log::debug!("Parsing memory limit for gRPC server");
         let value = match &args.server_memory_limit {
@@ -877,6 +875,7 @@ fn run_impl(
 
 #[cfg(feature = "native_viewer")]
 #[expect(clippy::too_many_arguments)]
+#[allow(unused_variables)]
 fn start_native_viewer(
     url_or_paths: Vec<String>,
     connect: bool,
@@ -892,7 +891,6 @@ fn start_native_viewer(
     server_memory_limit: re_sdk::MemoryLimit,
 ) -> anyhow::Result<()> {
     #[allow(unused_mut)]
-    #[allow(unused_variables)]
     let ReceiversFromUrlParams {
         mut log_receivers,
         urls_to_pass_on_to_viewer,
@@ -1126,8 +1124,8 @@ fn save_or_test_receive(
     save: Option<String>,
     url_or_paths: Vec<String>,
     connection_registry: &re_grpc_client::ConnectionRegistryHandle,
-    server_addr: std::net::SocketAddr,
-    server_memory_limit: re_sdk::MemoryLimit,
+    _server_addr: std::net::SocketAddr,
+    _server_memory_limit: re_sdk::MemoryLimit,
 ) -> anyhow::Result<()> {
     let receivers = ReceiversFromUrlParams::new(
         url_or_paths,
@@ -1149,8 +1147,8 @@ fn save_or_test_receive(
             Receiver<LogMsg>,
             crossbeam::channel::Receiver<re_log_types::TableMsg>,
         ) = re_grpc_server::spawn_with_recv(
-            server_addr,
-            server_memory_limit,
+            _server_addr,
+            _server_memory_limit,
             re_grpc_server::shutdown::never(),
         );
 
