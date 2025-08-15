@@ -16,9 +16,6 @@ use crate::commands::McapCommands;
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
 
-#[cfg(feature = "web_viewer")]
-use re_web_viewer_server::WebViewerServerPort;
-
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
 
@@ -241,9 +238,9 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
 
     /// What port do we listen to for hosting the web viewer over HTTP.
     /// A port of 0 will pick a random port.
-    #[cfg(feature = "web_viewer")]
-    #[clap(long, default_value_t = Default::default())]
-    web_viewer_port: WebViewerServerPort,
+    // Default is `re_web_viewer_server::DEFAULT_WEB_VIEWER_SERVER_PORT`, can't use symbollically if `web_viewer` feature is disabled
+    #[clap(long, default_value_t = 9090)]
+    web_viewer_port: u16,
 
     /// Hide the normal Rerun welcome screen.
     #[clap(long)]
@@ -818,272 +815,356 @@ fn run_impl(
 
     // Now what do we do with the data?
     if args.test_receive || args.save.is_some() {
-        let receivers = ReceiversFromUrlParams::new(
+        save_or_test_receive(
+            args.save,
             url_or_paths,
-            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
-        )?;
-        receivers.error_on_unhandled_urls(if args.test_receive {
-            "--test-receive"
-        } else {
-            "--save"
-        })?;
-
-        #[allow(unused_mut)]
-        let mut log_receivers = receivers.log_receivers;
-
-        #[cfg(feature = "server")]
-        {
-            let (log_server, table_server): (
-                Receiver<LogMsg>,
-                crossbeam::channel::Receiver<re_log_types::TableMsg>,
-            ) = re_grpc_server::spawn_with_recv(
-                server_addr,
-                server_memory_limit,
-                re_grpc_server::shutdown::never(),
-            );
-
-            // We can't store tables yet locally.
-            drop(table_server);
-            log_receivers.push(log_server);
-        }
-
-        let receive_set = ReceiveSet::new(log_receivers);
-
-        if let Some(rrd_path) = args.save {
-            Ok(stream_to_rrd_on_disk(&receive_set, &rrd_path.into())?)
-        } else {
-            assert_receive_into_entity_db(&receive_set).map(|_db| ())
-        }
+            server_addr,
+            server_memory_limit,
+        )
     } else if args.serve_grpc {
-        if !cfg!(feature = "server") {
-            _ = call_source;
-            anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
-        }
-
-        let receivers = ReceiversFromUrlParams::new(
+        serve_grpc(
             url_or_paths,
-            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
+            &call_source,
+            tokio_runtime_handle,
             &connection_registry,
-        )?;
-        receivers.error_on_unhandled_urls("--serve-grpc")?;
+            server_addr,
+            server_memory_limit,
+        )
+    } else if args.serve_web {
+        // We always host the web-viewer in case the users wants it,
+        // but we only open a browser automatically with the `--web-viewer` flag.
+        let open_browser = args.web_viewer;
 
-        #[cfg(feature = "server")]
-        {
-            let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
+        serve_web(
+            url_or_paths,
+            &call_source,
+            &connection_registry,
+            args.web_viewer_port,
+            args.renderer,
+            args.video_decoder,
+            server_addr,
+            server_memory_limit,
+            open_browser,
+        )
+    } else if args.connect.is_none() && is_another_server_already_running(server_addr) {
+        connect_to_existing_server(url_or_paths, &connection_registry, server_addr)
+    } else {
+        start_native_viewer(
+            url_or_paths,
+            args.connect.is_some(),
+            args.renderer.as_deref(),
+            _main_thread_token,
+            _build_info,
+            call_source,
+            tokio_runtime_handle,
+            profiler,
+            connection_registry,
+            startup_options,
+            server_addr,
+            server_memory_limit,
+        )
+    }
+}
+
+#[expect(clippy::too_many_arguments)]
+fn start_native_viewer(
+    url_or_paths: Vec<String>,
+    connect: bool,
+    renderer: Option<&str>,
+    _main_thread_token: re_viewer::MainThreadToken,
+    _build_info: re_build_info::BuildInfo,
+    call_source: CallSource,
+    tokio_runtime_handle: &tokio::runtime::Handle,
+    profiler: re_tracing::Profiler,
+    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    startup_options: re_viewer::StartupOptions,
+    server_addr: std::net::SocketAddr,
+    server_memory_limit: re_sdk::MemoryLimit,
+) -> anyhow::Result<()> {
+    #[allow(unused_mut)]
+    #[allow(unused_variables)]
+    let ReceiversFromUrlParams {
+        mut log_receivers,
+        urls_to_pass_on_to_viewer,
+    } = ReceiversFromUrlParams::new(
+        url_or_paths,
+        &UrlParamProcessingConfig::native_viewer(),
+        &connection_registry,
+    )?;
+    #[allow(unused_mut)]
+    let mut table_receivers = Vec::new();
+
+    #[cfg(feature = "server")]
+    if connect {
+        let (log_server, table_server): (
+            Receiver<LogMsg>,
+            crossbeam::channel::Receiver<re_log_types::TableMsg>,
+        ) = re_grpc_server::spawn_with_recv(
+            server_addr,
+            server_memory_limit,
+            re_grpc_server::shutdown::never(),
+        );
+
+        log_receivers.push(log_server);
+        table_receivers.push(table_server);
+    }
+
+    #[cfg(feature = "native_viewer")]
+    {
+        let tokio_runtime_handle = tokio_runtime_handle.clone();
+
+        // Start catching `re_log::info/warn/error` messages
+        // so we can show them in the notification panel.
+        // In particular: create this before calling `run_native_app`
+        // so we catch any warnings produced during startup.
+        let text_log_rx = re_viewer::register_text_log_receiver();
+
+        re_viewer::run_native_app(
+            _main_thread_token,
+            Box::new(move |cc| {
+                let mut app = re_viewer::App::with_commands(
+                    _main_thread_token,
+                    _build_info,
+                    call_source.app_env(),
+                    startup_options,
+                    cc,
+                    Some(connection_registry),
+                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+                    text_log_rx,
+                    re_viewer::command_channel(),
+                );
+                app.set_profiler(profiler);
+                for rx in log_receivers {
+                    app.add_log_receiver(rx);
+                }
+                for rx in table_receivers {
+                    app.add_table_receiver(rx);
+                }
+                for url in urls_to_pass_on_to_viewer {
+                    app.open_url_or_file(&url);
+                }
+                if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
+                    app.set_examples_manifest_url(url);
+                }
+
+                Box::new(app)
+            }),
+            renderer,
+        )
+        .map_err(|err| err.into())
+    }
+
+    #[cfg(not(feature = "native_viewer"))]
+    {
+        _ = call_source;
+        anyhow::bail!("Can't start viewer - rerun was compiled without the 'native_viewer' feature")
+    }
+}
+
+fn connect_to_existing_server(
+    url_or_paths: Vec<String>,
+    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    server_addr: std::net::SocketAddr,
+) -> anyhow::Result<()> {
+    use re_sdk::sink::LogSink as _;
+
+    let uri: re_uri::ProxyUri = format!("rerun+http://{server_addr}/proxy").parse()?;
+    re_log::info!(%uri, "Another viewer is already running, streaming data to it.");
+    let sink = re_sdk::sink::GrpcSink::new(uri, crate::default_flush_timeout());
+    let receivers = ReceiversFromUrlParams::new(
+        url_or_paths,
+        &UrlParamProcessingConfig::convert_everything_to_data_sources(),
+        connection_registry,
+    )?;
+    if !receivers.urls_to_pass_on_to_viewer.is_empty() {
+        re_log::warn!(
+            "The following URLs can't be passed to already open viewers yet: {:?}",
+            receivers.urls_to_pass_on_to_viewer
+        );
+    }
+    for rx in receivers.log_receivers {
+        while rx.is_connected() {
+            while let Ok(msg) = rx.recv() {
+                if let Some(log_msg) = msg.into_data() {
+                    sink.send(log_msg);
+                }
+            }
+        }
+    }
+    sink.flush_blocking();
+
+    Ok(())
+}
+
+#[expect(clippy::too_many_arguments)]
+#[allow(unused_variables)] // Depending on build config, most of the parameters remain unused.
+fn serve_web(
+    url_or_paths: Vec<String>,
+    call_source: &CallSource,
+    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    web_viewer_port: u16,
+    force_wgpu_backend: Option<String>,
+    video_decoder: Option<String>,
+    server_addr: std::net::SocketAddr,
+    server_memory_limit: re_sdk::MemoryLimit,
+    open_browser: bool,
+) -> anyhow::Result<()> {
+    if !cfg!(feature = "server") {
+        anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
+    }
+
+    if !cfg!(feature = "web_viewer") {
+        anyhow::bail!(
+            "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
+        );
+    }
+
+    #[cfg(all(feature = "server", feature = "web_viewer"))]
+    {
+        let ReceiversFromUrlParams {
+            log_receivers,
+            mut urls_to_pass_on_to_viewer,
+        } = ReceiversFromUrlParams::new(
+            url_or_paths,
+            &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
+            connection_registry,
+        )?;
+
+        // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
+        let spawn_server = !log_receivers.is_empty() || urls_to_pass_on_to_viewer.is_empty();
+        if spawn_server {
+            if server_addr.port() == web_viewer_port {
+                anyhow::bail!(
+                    "Trying to spawn a Web Viewer server on {}, but this port is \
+                    already used by the server we're connecting to. Please specify a different port.",
+                    server_addr.port()
+                );
+            }
+
             // Spawn a server which the Web Viewer can connect to.
+            // All `rxs` are consumed by the server.
             re_grpc_server::spawn_from_rx_set(
                 server_addr,
                 server_memory_limit,
-                shutdown,
-                ReceiveSet::new(receivers.log_receivers),
-            );
-
-            // Gracefully shut down the server on SIGINT
-            tokio_runtime_handle.block_on(tokio::signal::ctrl_c()).ok();
-
-            signal.stop();
-        }
-
-        Ok(())
-    } else if args.serve_web {
-        if !cfg!(feature = "server") {
-            _ = call_source;
-            anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
-        }
-
-        if !cfg!(feature = "web_viewer") {
-            anyhow::bail!(
-                "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
-            );
-        }
-
-        #[cfg(all(feature = "server", feature = "web_viewer"))]
-        {
-            let ReceiversFromUrlParams {
-                log_receivers,
-                mut urls_to_pass_on_to_viewer,
-            } = ReceiversFromUrlParams::new(
-                url_or_paths,
-                &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
-                &connection_registry,
-            )?;
-
-            // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
-            let spawn_server = !log_receivers.is_empty() || urls_to_pass_on_to_viewer.is_empty();
-            if spawn_server {
-                if args.port == args.web_viewer_port.0 {
-                    anyhow::bail!(
-                        "Trying to spawn a Web Viewer server on {}, but this port is \
-                    already used by the server we're connecting to. Please specify a different port.",
-                        args.port
-                    );
-                }
-
-                // Spawn a server which the Web Viewer can connect to.
-                // All `rxs` are consumed by the server.
-                re_grpc_server::spawn_from_rx_set(
-                    server_addr,
-                    server_memory_limit,
-                    re_grpc_server::shutdown::never(),
-                    ReceiveSet::new(log_receivers),
-                );
-
-                // Add the proxy URL to the url parameters.
-                let proxy_url =
-                    if server_addr.ip().is_unspecified() || server_addr.ip().is_loopback() {
-                        format!("rerun+http://localhost:{}/proxy", server_addr.port())
-                    } else {
-                        format!("rerun+http://{server_addr}/proxy")
-                    };
-
-                debug_assert!(
-                    proxy_url.parse::<re_uri::RedapUri>().is_ok(),
-                    "Expected a proper proxy URI, but got {proxy_url:?}"
-                );
-
-                urls_to_pass_on_to_viewer.push(proxy_url);
-            }
-
-            // We always host the web-viewer in case the users wants it,
-            // but we only open a browser automatically with the `--web-viewer` flag.
-            let open_browser = args.web_viewer;
-
-            // This is the server that serves the Wasm+HTML:
-            WebViewerConfig {
-                bind_ip: args.bind.to_string(),
-                web_port: args.web_viewer_port,
-                connect_to: urls_to_pass_on_to_viewer,
-                force_wgpu_backend: args.renderer,
-                video_decoder: args.video_decoder,
-                open_browser,
-            }
-            .host_web_viewer()?
-            .block();
-        }
-
-        Ok(())
-    } else if args.connect.is_none() && is_another_server_already_running(server_addr) {
-        use re_sdk::sink::LogSink as _;
-
-        // Another viewer is already running on the specified address
-        let uri: re_uri::ProxyUri = format!("rerun+http://{server_addr}/proxy").parse()?;
-        re_log::info!(%uri, "Another viewer is already running, streaming data to it.");
-
-        // This spawns its own single-threaded runtime on a separate thread,
-        // no need to `rt.enter()`:
-        let sink = re_sdk::sink::GrpcSink::new(uri, crate::default_flush_timeout());
-
-        // Forward everything we have to the proxy.
-        let receivers = ReceiversFromUrlParams::new(
-            url_or_paths,
-            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
-            &connection_registry,
-        )?;
-        if !receivers.urls_to_pass_on_to_viewer.is_empty() {
-            re_log::warn!(
-                "The following URLs can't be passed to already open viewers yet: {:?}",
-                receivers.urls_to_pass_on_to_viewer
-            );
-        }
-
-        for rx in receivers.log_receivers {
-            while rx.is_connected() {
-                while let Ok(msg) = rx.recv() {
-                    if let Some(log_msg) = msg.into_data() {
-                        sink.send(log_msg);
-                    }
-                }
-            }
-        }
-
-        sink.flush_blocking();
-
-        return Ok(());
-    } else {
-        #[allow(unused_mut)]
-        #[allow(unused_variables)]
-        let ReceiversFromUrlParams {
-            mut log_receivers,
-            urls_to_pass_on_to_viewer,
-        } = ReceiversFromUrlParams::new(
-            url_or_paths,
-            &UrlParamProcessingConfig::native_viewer(),
-            &connection_registry,
-        )?;
-        #[allow(unused_mut)]
-        let mut table_receivers = Vec::new();
-
-        // Unless we're connecting to an existing server, we spawn a new one.
-        //
-        // NOTE: In case of serve-web/serve-grpc, we don't want to turn the server into a receiver,
-        //       we want all receivers to push their data to the server.
-        #[cfg(feature = "server")]
-        if args.connect.is_none() {
-            let (log_server, table_server): (
-                Receiver<LogMsg>,
-                crossbeam::channel::Receiver<re_log_types::TableMsg>,
-            ) = re_grpc_server::spawn_with_recv(
-                server_addr,
-                server_memory_limit,
                 re_grpc_server::shutdown::never(),
+                ReceiveSet::new(log_receivers),
             );
 
-            log_receivers.push(log_server);
-            table_receivers.push(table_server);
-        }
+            // Add the proxy URL to the url parameters.
+            let proxy_url = if server_addr.ip().is_unspecified() || server_addr.ip().is_loopback() {
+                format!("rerun+http://localhost:{}/proxy", server_addr.port())
+            } else {
+                format!("rerun+http://{server_addr}/proxy")
+            };
 
-        #[cfg(feature = "native_viewer")]
-        {
-            let tokio_runtime_handle = tokio_runtime_handle.clone();
-
-            // Start catching `re_log::info/warn/error` messages
-            // so we can show them in the notification panel.
-            // In particular: create this before calling `run_native_app`
-            // so we catch any warnings produced during startup.
-            let text_log_rx = re_viewer::register_text_log_receiver();
-
-            re_viewer::run_native_app(
-                _main_thread_token,
-                Box::new(move |cc| {
-                    let mut app = re_viewer::App::with_commands(
-                        _main_thread_token,
-                        _build_info,
-                        call_source.app_env(),
-                        startup_options,
-                        cc,
-                        Some(connection_registry),
-                        re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
-                        text_log_rx,
-                        re_viewer::command_channel(),
-                    );
-                    app.set_profiler(profiler);
-                    for rx in log_receivers {
-                        app.add_log_receiver(rx);
-                    }
-                    for rx in table_receivers {
-                        app.add_table_receiver(rx);
-                    }
-                    for url in urls_to_pass_on_to_viewer {
-                        app.open_url_or_file(&url);
-                    }
-                    if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
-                        app.set_examples_manifest_url(url);
-                    }
-
-                    Box::new(app)
-                }),
-                args.renderer.as_deref(),
-            )
-            .map_err(|err| err.into())
-        }
-        #[cfg(not(feature = "native_viewer"))]
-        {
-            _ = call_source;
-            anyhow::bail!(
-                "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
+            debug_assert!(
+                proxy_url.parse::<re_uri::RedapUri>().is_ok(),
+                "Expected a proper proxy URI, but got {proxy_url:?}"
             );
+
+            urls_to_pass_on_to_viewer.push(proxy_url);
         }
+
+        // This is the server that serves the Wasm+HTML:
+        WebViewerConfig {
+            bind_ip: server_addr.ip().to_string(),
+            web_port: re_web_viewer_server::WebViewerServerPort(web_viewer_port),
+            connect_to: urls_to_pass_on_to_viewer,
+            force_wgpu_backend,
+            video_decoder,
+            open_browser,
+        }
+        .host_web_viewer()?
+        .block();
+    }
+
+    Ok(())
+}
+
+#[allow(unused_variables)] // Depending on build config, most of the parameters remain unused.
+fn serve_grpc(
+    url_or_paths: Vec<String>,
+    call_source: &CallSource,
+    tokio_runtime_handle: &tokio::runtime::Handle,
+    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    server_addr: std::net::SocketAddr,
+    server_memory_limit: re_sdk::MemoryLimit,
+) -> Result<(), anyhow::Error> {
+    if !cfg!(feature = "server") {
+        anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
+    }
+
+    let receivers = ReceiversFromUrlParams::new(
+        url_or_paths,
+        &UrlParamProcessingConfig::convert_everything_to_data_sources(),
+        connection_registry,
+    )?;
+    receivers.error_on_unhandled_urls("--serve-grpc")?;
+
+    #[cfg(feature = "server")]
+    {
+        let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
+        // Spawn a server which the Web Viewer can connect to.
+        re_grpc_server::spawn_from_rx_set(
+            server_addr,
+            server_memory_limit,
+            shutdown,
+            ReceiveSet::new(receivers.log_receivers),
+        );
+
+        // Gracefully shut down the server on SIGINT
+        tokio_runtime_handle.block_on(tokio::signal::ctrl_c()).ok();
+
+        signal.stop();
+    }
+
+    Ok(())
+}
+
+fn save_or_test_receive(
+    save: Option<String>,
+    url_or_paths: Vec<String>,
+    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    server_addr: std::net::SocketAddr,
+    server_memory_limit: re_sdk::MemoryLimit,
+) -> Result<(), anyhow::Error> {
+    let receivers = ReceiversFromUrlParams::new(
+        url_or_paths,
+        &UrlParamProcessingConfig::convert_everything_to_data_sources(),
+        connection_registry,
+    )?;
+    receivers.error_on_unhandled_urls(if save.is_none() {
+        "--test-receive"
+    } else {
+        "--save"
+    })?;
+
+    #[allow(unused_mut)]
+    let mut log_receivers = receivers.log_receivers;
+
+    #[cfg(feature = "server")]
+    {
+        let (log_server, table_server): (
+            Receiver<LogMsg>,
+            crossbeam::channel::Receiver<re_log_types::TableMsg>,
+        ) = re_grpc_server::spawn_with_recv(
+            server_addr,
+            server_memory_limit,
+            re_grpc_server::shutdown::never(),
+        );
+
+        // We can't store tables yet locally.
+        drop(table_server);
+        log_receivers.push(log_server);
+    }
+
+    let receive_set = ReceiveSet::new(log_receivers);
+
+    if let Some(rrd_path) = save {
+        Ok(stream_to_rrd_on_disk(&receive_set, &rrd_path.into())?)
+    } else {
+        assert_receive_into_entity_db(&receive_set).map(|_db| ())
     }
 }
 
