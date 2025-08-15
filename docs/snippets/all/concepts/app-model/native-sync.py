@@ -9,4 +9,4 @@ rr.connect_grpc()
 
 # Log data as usual, thereby pushing it into the gRPC connection.
 while True:
-    rr.log("/", rr.TextLog("Logging things..."))
+    rr.log("/", rr.TextLog("Logging things…"))

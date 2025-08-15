@@ -11,7 +11,7 @@ README = """\
 # Context Menu - Multi-selection
 
 Related:
-- [TODO(#10455)](https://github.com/rerun-io/rerun/issues/10455): improve "Save screenshot..." on multiple views
+- [TODO(#10455)](https://github.com/rerun-io/rerun/issues/10455): improve "Save screenshot…" on multiple views
 
 For each of the multi-selection below, check the context menu content as per the following table.
 
@@ -25,7 +25,7 @@ ITEMS                               CONTEXT MENU CONTENT
 2x Views                            Hide all
                                     Remove
 
-                                    Save screenshot...
+                                    Save screenshot…
 
                                     Expand all
                                     Collapse all
