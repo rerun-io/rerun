@@ -157,6 +157,13 @@ def lint_line(
             return err
 
     if file_extension != "":
+        # We lint against writing ellipsis using three dots for the sake of our UI:
+        # * We want it consistent
+        # * We want it beautiful (`…` looks different from `...`)
+        # * We don't want linebreaks in the middle of an ellipsis
+        #
+        # This lint is therefore most important in user-facing code, such as the UI,
+        # but we also care about beautiful docs, so at the moment this lint is quite "inclusive".
         if ellipsis.search(line):
             has_quote = '"' in line or "'" in line
             if has_quote and "Callable" not in line:
