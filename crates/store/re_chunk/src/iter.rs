@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, ArrowPrimitiveType,
+        Array as ArrowArray, ArrayRef as ArrowArrayRef, ArrowPrimitiveType, BinaryArray,
         BooleanArray as ArrowBooleanArray, FixedSizeListArray as ArrowFixedSizeListArray,
         ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
         StringArray as ArrowStringArray, StructArray as ArrowStructArray,
     },
-    buffer::{BooleanBuffer as ArrowBooleanBuffer, ScalarBuffer as ArrowScalarBuffer},
+    buffer::{BooleanBuffer as ArrowBooleanBuffer, Buffer, ScalarBuffer as ArrowScalarBuffer},
     datatypes::ArrowNativeType,
 };
 use itertools::{Either, Itertools as _, izip};
@@ -487,11 +487,17 @@ where
 {
     let Some(inner_list_array) = array.downcast_array_ref::<ArrowListArray>() else {
         if cfg!(debug_assertions) {
-            panic!("downcast failed for {component_descriptor}, data discarded");
+            panic!(
+                "DEBUG BUILD: {component_descriptor} had unexpected datatype: {:?}",
+                array.data_type()
+            );
         } else {
-            re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
+            re_log::error_once!(
+                "{component_descriptor} had unexpected datatype: {:?}. Data discarded",
+                array.data_type()
+            );
+            return Either::Left(std::iter::empty());
         }
-        return Either::Left(std::iter::empty());
     };
 
     let Some(values) = inner_list_array
@@ -499,11 +505,17 @@ where
         .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
         if cfg!(debug_assertions) {
-            panic!("downcast failed for {component_descriptor}, data discarded");
+            panic!(
+                "DEBUG BUILD: {component_descriptor} had unexpected datatype: {:?}",
+                array.data_type()
+            );
         } else {
-            re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
+            re_log::error_once!(
+                "{component_descriptor} had unexpected datatype: {:?}. Data discarded",
+                array.data_type()
+            );
+            return Either::Left(std::iter::empty());
         }
-        return Either::Left(std::iter::empty());
     };
 
     let values = values.values();
@@ -519,6 +531,43 @@ where
             .map(|(&idx, &len)| values.clone().slice(idx as _, len))
             .collect_vec()
     }))
+}
+
+// We special case `&[u8]` so that it works both for `List[u8]` and `Binary` arrays.
+fn slice_as_u8<'a>(
+    component_descriptor: ComponentDescriptor,
+    array: &'a dyn ArrowArray,
+    component_spans: impl Iterator<Item = Span<usize>> + 'a,
+) -> impl Iterator<Item = Vec<Buffer>> + 'a {
+    if let Some(binary_array) = array.downcast_array_ref::<BinaryArray>() {
+        let values = binary_array.values();
+        let offsets = binary_array.offsets();
+        let lengths = offsets_lengths(binary_array.offsets()).collect_vec();
+
+        // NOTE: No need for validity checks here, `component_spans` already takes care of that.
+        Either::Left(component_spans.map(move |span| {
+            let offsets = &offsets[span.range()];
+            let lengths = &lengths[span.range()];
+            izip!(offsets, lengths)
+                // NOTE: Not an actual clone, just a refbump of the underlying buffer.
+                .map(|(&idx, &len)| values.clone().slice_with_length(idx as _, len))
+                .collect_vec()
+        }))
+    } else {
+        Either::Right(
+            slice_as_buffer_native::<arrow::array::types::UInt8Type, u8>(
+                component_descriptor,
+                array,
+                component_spans,
+            )
+            .map(|scalar_buffers| {
+                scalar_buffers
+                    .into_iter()
+                    .map(|scalar_buffer| scalar_buffer.into_inner())
+                    .collect_vec()
+            }),
+        )
+    }
 }
 
 // We use a macro instead of a blanket impl because this violates orphan rules.
@@ -542,7 +591,19 @@ macro_rules! impl_buffer_native_type {
     };
 }
 
-impl_buffer_native_type!(arrow::array::types::UInt8Type, u8);
+// We special case `&[u8]` so that it works both for `List[u8]` and `Binary` arrays.
+impl ChunkComponentSlicer for &[u8] {
+    type Item<'a> = Vec<Buffer>;
+
+    fn slice<'a>(
+        component_descriptor: ComponentDescriptor,
+        array: &'a dyn ArrowArray,
+        component_spans: impl Iterator<Item = Span<usize>> + 'a,
+    ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
+        slice_as_u8(component_descriptor, array, component_spans)
+    }
+}
+
 impl_buffer_native_type!(arrow::array::types::UInt16Type, u16);
 impl_buffer_native_type!(arrow::array::types::UInt32Type, u32);
 impl_buffer_native_type!(arrow::array::types::UInt64Type, u64);

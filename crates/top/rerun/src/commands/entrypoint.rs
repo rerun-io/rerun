@@ -12,6 +12,9 @@ use re_uri::RedapUri;
 
 use crate::{CallSource, commands::RrdCommands};
 
+#[cfg(feature = "data_loaders")]
+use crate::commands::McapCommands;
+
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
 
@@ -20,6 +23,9 @@ use re_web_viewer_server::WebViewerServerPort;
 
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
+
+#[cfg(feature = "auth")]
+use super::auth::AuthCommands;
 
 // ---
 
@@ -531,6 +537,10 @@ enum Command {
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 
+    #[cfg(feature = "data_loaders")]
+    #[command(subcommand)]
+    Mcap(McapCommands),
+
     #[command(subcommand)]
     Rrd(RrdCommands),
 
@@ -548,6 +558,11 @@ enum Command {
     /// Example: `rerun man > docs/content/reference/cli.md`
     #[command(name = "man")]
     Manual,
+
+    /// Authentication with the redap.
+    #[cfg(feature = "auth")]
+    #[command(subcommand)]
+    Auth(AuthCommands),
 }
 
 /// Run the Rerun application and return an exit code.
@@ -609,10 +624,13 @@ where
     let tokio_runtime = Runtime::new()?;
     let _tokio_guard = tokio_runtime.enter();
 
-    let res = if let Some(command) = &args.command {
+    let res = if let Some(command) = args.command {
         match command {
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
+
+            #[cfg(feature = "data_loaders")]
+            Command::Mcap(mcap) => mcap.run(),
 
             Command::Rrd(rrd) => rrd.run(),
 
@@ -631,6 +649,13 @@ where
                 );
                 println!("{web_header}\n\n{man}");
                 Ok(())
+            }
+
+            #[cfg(feature = "auth")]
+            Command::Auth(cmd) => {
+                let runtime =
+                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
+                cmd.run(&runtime).map_err(Into::into)
             }
         }
     } else {
@@ -793,7 +818,15 @@ fn run_impl(
             .url_or_paths
             .iter()
             .cloned()
-            .map(|uri| DataSource::from_uri(re_log_types::FileSource::Cli, uri))
+            .filter_map(|uri| {
+                if let Some(data_source) = DataSource::from_uri(re_log_types::FileSource::Cli, &uri)
+                {
+                    Some(data_source)
+                } else {
+                    re_log::warn!("{uri:?} is not a valid data source link.");
+                    None
+                }
+            })
             .collect_vec();
 
         #[cfg(feature = "web_viewer")]

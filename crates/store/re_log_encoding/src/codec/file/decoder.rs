@@ -1,12 +1,13 @@
 use re_log_types::{BlueprintActivationCommand, LogMsg, SetStoreInfo};
 use re_protos::missing_field;
 
-use super::{MessageHeader, MessageKind};
+use crate::{
+    ApplicationIdInjector,
+    codec::{CodecError, arrow::decode_arrow},
+    decoder::DecodeError,
+};
 
-use crate::ApplicationIdInjector;
-use crate::codec::CodecError;
-use crate::codec::arrow::decode_arrow;
-use crate::decoder::DecodeError;
+use super::{MessageHeader, MessageKind};
 
 // ---
 
@@ -164,6 +165,10 @@ pub fn decode_transport_to_app(
             // TODO(#10343): Would it make sense to change `re_types_core::ArrowMsg` to contain the
             // `ChunkBatch` directly?
             let chunk_batch = re_sorbet::ChunkBatch::try_from(&batch)?;
+
+            // TODO(emilk): it would actually be nicer if we could postpone the migration,
+            // so that there is some way to get the original (unmigrated) data out of an .rrd,
+            // which would be very useful for debugging, e.g. using the `print` command.
 
             let arrow_msg = re_log_types::ArrowMsg {
                 chunk_id: chunk_batch.chunk_schema().chunk_id().as_tuid(),

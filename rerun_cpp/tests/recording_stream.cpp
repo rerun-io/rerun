@@ -200,7 +200,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     THEN("collection of component batch results can be logged") {
                         rerun::Collection<rerun::Result<rerun::ComponentBatch>> batches = {
                             batch0,
-                            batch1};
+                            batch1,
+                        };
                         stream.log("log_archetype-splat", batches);
                         stream.log_static("log_archetype-splat", batches);
                     }
@@ -328,10 +329,7 @@ void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStre
                 check_logged_error([&] {
                     stream.log(
                         "archetype",
-                        rerun::Points2D({
-                            rerun::Vec2D{1.0, 2.0},
-                            rerun::Vec2D{4.0, 5.0},
-                        })
+                        rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}})
                     );
                 });
 
@@ -339,6 +337,13 @@ void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStre
 
                 THEN("does not crash") {
                     // No easy way to see if it got sent.
+                }
+
+                THEN("the stream is still valid and we can log more things") {
+                    // Regression test for https://github.com/rerun-io/rerun/issues/10884
+                    check_logged_error([&] {
+                        stream.log("archetype", rerun::Points2D(rerun::Vec2D{1.0, 2.0}));
+                    });
                 }
             }
         }

@@ -16,8 +16,6 @@ mod loader_urdf;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod lerobot;
 
-pub mod mcap;
-
 // This loader currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod loader_lerobot;
@@ -354,6 +352,9 @@ pub enum DataLoaderError {
     #[error("No data-loader support for {0:?}")]
     Incompatible(std::path::PathBuf),
 
+    #[error(transparent)]
+    Mcap(#[from] ::mcap::McapError),
+
     #[error("{}", re_error::format(.0))]
     Other(#[from] anyhow::Error),
 }
@@ -419,7 +420,7 @@ static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
-        Arc::new(McapLoader),
+        Arc::new(McapLoader::default()),
         #[cfg(not(target_arch = "wasm32"))]
         Arc::new(LeRobotDatasetLoader),
         #[cfg(not(target_arch = "wasm32"))]

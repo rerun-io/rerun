@@ -76,6 +76,7 @@ re_log_encoding = { workspace = true, features = [
 re_log_types.workspace = true
 re_memory.workspace = true
 re_query.workspace = true
+re_recording_panel.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_selection_panel.workspace = true
 re_smart_channel.workspace = true

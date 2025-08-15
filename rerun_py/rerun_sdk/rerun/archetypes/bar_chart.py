@@ -27,7 +27,7 @@ class BarChart(BarChartExt, Archetype):
     """
     **Archetype**: A bar chart.
 
-    The x values will be the indices of the array, and the bar heights will be the provided values.
+    The bar heights will be the provided values, and the x coordinates of the bars will be the provided abscissa or default to the index of the provided values.
 
     Example
     -------
@@ -37,20 +37,27 @@ class BarChart(BarChartExt, Archetype):
 
     rr.init("rerun_example_bar_chart", spawn=True)
     rr.log("bar_chart", rr.BarChart([8, 4, 0, 9, 1, 4, 1, 6, 9, 0]))
+    rr.log("bar_chart_custom_abscissa", rr.BarChart([8, 4, 0, 9, 1, 4], abscissa=[0, 1, 3, 4, 7, 11]))
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/1200w.png">
-      <img src="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/1200w.png">
+      <img src="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/full.png" width="640">
     </picture>
     </center>
 
     """
 
-    def __init__(self: Any, values: datatypes.TensorDataLike, *, color: datatypes.Rgba32Like | None = None) -> None:
+    def __init__(
+        self: Any,
+        values: datatypes.TensorDataLike,
+        *,
+        color: datatypes.Rgba32Like | None = None,
+        abscissa: datatypes.TensorDataLike | None = None,
+    ) -> None:
         """
         Create a new instance of the BarChart archetype.
 
@@ -60,12 +67,14 @@ class BarChart(BarChartExt, Archetype):
             The values. Should always be a 1-dimensional tensor (i.e. a vector).
         color:
             The color of the bar chart
+        abscissa:
+            The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
 
         """
 
         # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(values=values, color=color)
+            self.__attrs_init__(values=values, color=color, abscissa=abscissa)
             return
         self.__attrs_clear__()
 
@@ -74,6 +83,7 @@ class BarChart(BarChartExt, Archetype):
         self.__attrs_init__(
             values=None,
             color=None,
+            abscissa=None,
         )
 
     @classmethod
@@ -90,6 +100,7 @@ class BarChart(BarChartExt, Archetype):
         clear_unset: bool = False,
         values: datatypes.TensorDataLike | None = None,
         color: datatypes.Rgba32Like | None = None,
+        abscissa: datatypes.TensorDataLike | None = None,
     ) -> BarChart:
         """
         Update only some specific fields of a `BarChart`.
@@ -102,6 +113,8 @@ class BarChart(BarChartExt, Archetype):
             The values. Should always be a 1-dimensional tensor (i.e. a vector).
         color:
             The color of the bar chart
+        abscissa:
+            The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
 
         """
 
@@ -110,6 +123,7 @@ class BarChart(BarChartExt, Archetype):
             kwargs = {
                 "values": values,
                 "color": color,
+                "abscissa": abscissa,
             }
 
             if clear_unset:
@@ -132,6 +146,7 @@ class BarChart(BarChartExt, Archetype):
         *,
         values: datatypes.TensorDataArrayLike | None = None,
         color: datatypes.Rgba32ArrayLike | None = None,
+        abscissa: datatypes.TensorDataArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -147,6 +162,8 @@ class BarChart(BarChartExt, Archetype):
             The values. Should always be a 1-dimensional tensor (i.e. a vector).
         color:
             The color of the bar chart
+        abscissa:
+            The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
 
         """
 
@@ -155,13 +172,14 @@ class BarChart(BarChartExt, Archetype):
             inst.__attrs_init__(
                 values=values,
                 color=color,
+                abscissa=abscissa,
             )
 
         batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"BarChart:values": values, "BarChart:color": color}
+        kwargs = {"BarChart:values": values, "BarChart:color": color, "BarChart:abscissa": abscissa}
         columns = []
 
         for batch in batches:
@@ -206,6 +224,15 @@ class BarChart(BarChartExt, Archetype):
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # The color of the bar chart
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    abscissa: components.TensorDataBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.TensorDataBatch._converter,  # type: ignore[misc]
+    )
+    # The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

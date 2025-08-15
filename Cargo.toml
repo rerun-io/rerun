@@ -99,7 +99,7 @@ re_error = { path = "crates/utils/re_error", version = "=0.25.0-alpha.1", defaul
 re_format = { path = "crates/utils/re_format", version = "=0.25.0-alpha.1", default-features = false }
 re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.25.0-alpha.1", default-features = false }
 re_log = { path = "crates/utils/re_log", version = "=0.25.0-alpha.1", default-features = false }
-re_mcap_ros2 = { path = "crates/utils/re_mcap_ros2", version = "=0.25.0-alpha.1", default-features = false }
+re_mcap = { path = "crates/utils/re_mcap", version = "=0.25.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.25.0-alpha.1", default-features = false }
 re_perf_telemetry = { path = "crates/utils/re_perf_telemetry", version = "=0.25.0-alpha.1", default-features = false }
 re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.25.0-alpha.1", default-features = false }
@@ -119,6 +119,7 @@ re_chunk_store_ui = { path = "crates/viewer/re_chunk_store_ui", version = "=0.25
 re_dataframe_ui = { path = "crates/viewer/re_dataframe_ui", version = "=0.25.0-alpha.1", default-features = false }
 re_data_ui = { path = "crates/viewer/re_data_ui", version = "=0.25.0-alpha.1", default-features = false }
 re_global_context = { path = "crates/viewer/re_global_context", version = "=0.25.0-alpha.1", default-features = false }
+re_recording_panel = { path = "crates/viewer/re_recording_panel", version = "=0.25.0-alpha.1", default-features = false }
 re_renderer = { path = "crates/viewer/re_renderer", version = "=0.25.0-alpha.1", default-features = false }
 re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = "=0.25.0-alpha.1", default-features = false }
 re_selection_panel = { path = "crates/viewer/re_selection_panel", version = "=0.25.0-alpha.1", default-features = false }
@@ -338,6 +339,7 @@ tonic-web = "0.13.1"
 tonic-web-wasm-client = "0.7.1"
 tower = "0.5"
 tower-http = "0.6"
+tower-service = "0.3"
 tracing = "0.1.40"
 tracing-opentelemetry = "0.31.0"
 tracing-subscriber = { version = "0.3.18", features = [

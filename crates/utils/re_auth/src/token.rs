@@ -11,6 +11,12 @@ pub enum TokenError {
 #[repr(transparent)]
 pub struct Jwt(pub(crate) String);
 
+impl Jwt {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 impl TryFrom<String> for Jwt {
     type Error = TokenError;
 

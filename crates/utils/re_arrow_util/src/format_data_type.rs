@@ -2,7 +2,7 @@
 
 use std::fmt::Formatter;
 
-use arrow::datatypes::{DataType, IntervalUnit, TimeUnit};
+use arrow::datatypes::{DataType, Field, IntervalUnit, TimeUnit};
 
 /// Compact format of an arrow data type.
 pub fn format_data_type(data_type: &DataType) -> String {
@@ -91,20 +91,20 @@ impl std::fmt::Display for DisplayDatatype<'_> {
             DataType::Utf8 => "Utf8",
             DataType::LargeUtf8 => "LargeUtf8",
             DataType::List(field) => {
-                let s = format!("List[{}]", Self(field.data_type()));
+                let s = format!("List[{}]", format_inner_field(field));
                 return f.write_str(&s);
             }
             DataType::FixedSizeList(field, len) => {
-                let s = format!("FixedSizeList[{}; {len}]", Self(field.data_type()));
+                let s = format!("FixedSizeList[{}; {len}]", format_inner_field(field));
                 return f.write_str(&s);
             }
             DataType::LargeList(field) => {
-                let s = format!("LargeList[{}]", Self(field.data_type()));
+                let s = format!("LargeList[{}]", format_inner_field(field));
                 return f.write_str(&s);
             }
             DataType::Struct(fields) => return write!(f, "Struct[{}]", fields.len()),
             DataType::Union(fields, _) => return write!(f, "Union[{}]", fields.len()),
-            DataType::Map(field, _) => return write!(f, "Map[{}]", Self(field.data_type())),
+            DataType::Map(field, _) => return write!(f, "Map[{}]", format_inner_field(field)),
             DataType::Dictionary(key, value) => {
                 return write!(f, "Dictionary{{{}: {}}}", Self(key), Self(value));
             }
@@ -112,14 +112,25 @@ impl std::fmt::Display for DisplayDatatype<'_> {
             DataType::Decimal256(_, _) => "Decimal256",
             DataType::BinaryView => "BinaryView",
             DataType::Utf8View => "Utf8View",
-            DataType::ListView(field) => return write!(f, "ListView[{}]", Self(field.data_type())),
+            DataType::ListView(field) => {
+                return write!(f, "ListView[{}]", format_inner_field(field));
+            }
             DataType::LargeListView(field) => {
-                return write!(f, "LargeListView[{}]", Self(field.data_type()));
+                return write!(f, "LargeListView[{}]", format_inner_field(field));
             }
             DataType::RunEndEncoded(_run_ends, values) => {
-                return write!(f, "RunEndEncoded[{}]", Self(values.data_type()));
+                return write!(f, "RunEndEncoded[{}]", format_inner_field(values));
             }
         };
         f.write_str(s)
+    }
+}
+
+fn format_inner_field(field: &Field) -> String {
+    let datatype_display = DisplayDatatype(field.data_type());
+    if field.is_nullable() {
+        format!("nullable {datatype_display}")
+    } else {
+        datatype_display.to_string()
     }
 }

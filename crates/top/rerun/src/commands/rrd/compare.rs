@@ -122,8 +122,8 @@ impl CompareCommand {
                         similar_asserts::SimpleDiff::from_str(
                             &format_chunk(&chunk1),
                             &format_chunk(&chunk2),
-                            "got",
-                            "expected",
+                            &path_to_rrd1.display().to_string(),
+                            &path_to_rrd2.display().to_string(),
                         ),
                     )
                 })?;

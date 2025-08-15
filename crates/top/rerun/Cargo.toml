@@ -50,7 +50,7 @@ clap = ["dep:clap"]
 ##
 ## See our `log_file` example and <https://www.rerun.io/docs/reference/data-loaders/overview>
 ## for more information.
-data_loaders = ["re_sdk?/data_loaders"]
+data_loaders = ["dep:re_mcap", "re_sdk?/data_loaders"]
 
 ## Demo helpers for examples.
 demo = []
@@ -108,6 +108,7 @@ run = [
   "re_log_encoding/encoder",
   "sdk",
   "unindent",
+  "auth",
 ]
 
 ## Support for running a gRPC server that listens to incoming log messages from a Rerun SDK.
@@ -126,6 +127,8 @@ sdk = ["dep:re_sdk", "dep:re_types"]
 ## However, when building from source in the repository, this feature adds quite a bit
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
 web_viewer = ["server", "dep:re_web_viewer_server", "re_sdk?/web_viewer"]
+
+auth = ["dep:re_viewer", "re_auth/cli"]
 
 [dependencies]
 re_build_info.workspace = true
@@ -162,15 +165,17 @@ tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
+re_auth = { workspace = true, optional = true }
 re_chunk_store = { workspace = true, optional = true }
 re_crash_handler = { workspace = true, optional = true }
 re_data_source = { workspace = true, optional = true }
 re_dataframe = { workspace = true, optional = true }
+re_global_context = { workspace = true, optional = true }
 re_grpc_server = { workspace = true, optional = true }
+re_mcap = { workspace = true, optional = true }
 re_sdk = { workspace = true, optional = true }
 re_types = { workspace = true, optional = true }
 re_viewer = { workspace = true, optional = true }
-re_global_context = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 
 env_filter = { workspace = true, optional = true }

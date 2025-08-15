@@ -360,6 +360,25 @@ impl StoreHub {
         }
     }
 
+    /// Tries to find a recording store by its data source.
+    ///
+    /// Ignores any blueprint stores.
+    ///
+    /// If the data source is a grpc uri, it will ignore any fragments.
+    /// If the data source is a http url, it will ignore the follow flag.
+    pub fn find_recording_store_by_source(
+        &self,
+        data_source: &re_smart_channel::SmartChannelSource,
+    ) -> Option<&EntityDb> {
+        self.store_bundle.entity_dbs().find(|db| {
+            db.store_id().is_recording()
+                && db
+                    .data_source
+                    .as_ref()
+                    .is_some_and(|ds| ds.is_same_ignoring_uri_fragments(data_source))
+        })
+    }
+
     /// Remove all open recordings and applications, and go to the welcome page.
     pub fn clear_entries(&mut self) {
         // Keep only the welcome screen:

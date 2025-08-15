@@ -21,7 +21,12 @@ impl CallSource {
 
 // ---
 
+#[cfg(feature = "auth")]
+mod auth;
+
 mod entrypoint;
+#[cfg(feature = "data_loaders")]
+mod mcap;
 mod rrd;
 mod stdio;
 
@@ -29,6 +34,8 @@ mod stdio;
 mod analytics;
 
 pub use self::entrypoint::run;
+#[cfg(feature = "data_loaders")]
+pub use self::mcap::McapCommands;
 pub use self::rrd::RrdCommands;
 pub use self::stdio::{
     read_raw_rrd_streams_from_file_or_stdin, read_rrd_streams_from_file_or_stdin,

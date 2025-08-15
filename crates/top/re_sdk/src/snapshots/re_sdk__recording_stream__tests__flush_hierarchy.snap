@@ -1,7 +1,6 @@
 ---
 source: crates/top/re_sdk/src/recording_stream.rs
 expression: DisplayDescrs(chunk)
-snapshot_kind: text
 ---
 [
     "RecordingInfo:start_time",
