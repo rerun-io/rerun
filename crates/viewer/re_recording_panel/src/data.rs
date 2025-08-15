@@ -16,15 +16,23 @@ use re_types::archetypes::RecordingInfo;
 use re_types::components::{Name, Timestamp};
 use re_viewer_context::{DisplayMode, Item, ViewerContext};
 
+/// Short-lived structure containing all the data that will be displayed in the recording panel.
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct RecordingPanelData<'a> {
+    /// All the locally loaded application IDs and the corresponding recordings.
     pub local_apps: Vec<AppIdData<'a>>,
+
+    /// All the locally loaded tables.
     pub local_tables: Vec<TableId>,
 
+    /// All the loaded examples
     pub example_apps: Vec<AppIdData<'a>>,
+
+    /// Should the example section be displayed at all?
     pub show_example_section: bool,
 
+    /// All the configured servers.
     pub servers: Vec<ServerData<'a>>,
 
     /// Recordings that are currently being loaded that we cannot attribute yet to a specific
