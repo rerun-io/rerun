@@ -22,7 +22,7 @@ We still support _splatting_, where you log one single color for the whole point
 
 If you were relying on `InstanceKey` solely to identify your instances when inspecting them in the viewer, then you can replace it with a custom value using [custom data](../../howto/extend/custom-data.md):
 
-```py
+```python
 rr.log(
     "my/points",
     rr.AnyValues(point_id=[17, 42, 103]),
