@@ -136,7 +136,7 @@ impl SmartChannelSource {
             | Self::MessageProxy { .. }
             | Self::Sdk
             | Self::Stdin => {
-                // For all of these esources we're not actively loading data, but rather waiting for data to be sent.
+                // For all of these sources we're not actively loading data, but rather waiting for data to be sent.
                 // These show up in the top panel - see `top_panel.rs`.
                 None
             }

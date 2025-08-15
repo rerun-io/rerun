@@ -573,16 +573,16 @@ impl AppState {
                                             re_recording_panel::recordings_panel_ui(
                                                 &ctx,
                                                 ui,
-                                                welcome_screen_state.hide_examples,
                                                 redap_servers,
+                                                welcome_screen_state.hide_examples,
                                             );
                                         });
                                 } else {
                                     re_recording_panel::recordings_panel_ui(
                                         &ctx,
                                         ui,
-                                        welcome_screen_state.hide_examples,
                                         redap_servers,
+                                        welcome_screen_state.hide_examples,
                                     );
                                 }
 
