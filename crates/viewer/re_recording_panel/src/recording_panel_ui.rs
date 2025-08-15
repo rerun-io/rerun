@@ -14,8 +14,8 @@ use re_viewer_context::{
 };
 
 use crate::data::{
-    AppIdData, DatasetData, FailedEntryData, PartitionData, RecordingPanelData, RemoteTableData,
-    ServerData, ServerEntriesData,
+    AppIdData, DatasetData, EntryData, FailedEntryData, PartitionData, RecordingPanelData,
+    RemoteTableData, ServerData, ServerEntriesData,
 };
 
 pub fn recordings_panel_ui(
@@ -319,21 +319,24 @@ fn dataset_entry_ui(
     dataset_entry_data: &DatasetData<'_>,
 ) {
     let DatasetData {
-        origin: _,
-        entry_id,
-        name,
-        icon,
-        is_selected,
-        is_active,
+        entry_data:
+            EntryData {
+                origin: _,
+                entry_id,
+                name,
+                icon,
+                is_selected,
+                is_active,
+            },
         displayed_partitions,
     } = dataset_entry_data;
 
-    let item = dataset_entry_data.item();
+    let item = dataset_entry_data.entry_data.item();
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);
 
     let mut list_item_content = re_ui::list_item::LabelContent::new(name).with_icon(icon);
 
-    let id = ui.make_persistent_id(dataset_entry_data.id());
+    let id = ui.make_persistent_id(dataset_entry_data.entry_data.id());
 
     if !displayed_partitions.is_empty() {
         list_item_content = list_item_content.with_buttons(|ui| {
@@ -401,14 +404,18 @@ fn remote_table_entry_ui(
     remote_table_data: &RemoteTableData,
 ) {
     let RemoteTableData {
-        entry_id,
-        name,
-        icon,
-        is_selected,
-        is_active,
+        entry_data:
+            EntryData {
+                origin: _,
+                entry_id,
+                name,
+                icon,
+                is_selected,
+                is_active,
+            },
     } = remote_table_data;
 
-    let item = remote_table_data.item();
+    let item = remote_table_data.entry_data.item();
     let text = RichText::new(name);
 
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);
@@ -431,15 +438,19 @@ fn failed_entry_ui(
     failed_entry_data: &FailedEntryData,
 ) {
     let FailedEntryData {
-        entry_id,
-        name,
-        icon,
-        is_selected,
-        is_active,
+        entry_data:
+            EntryData {
+                origin: _,
+                entry_id,
+                name,
+                icon,
+                is_selected,
+                is_active,
+            },
         error,
     } = failed_entry_data;
 
-    let item = failed_entry_data.item();
+    let item = failed_entry_data.entry_data.item();
     let text = RichText::new(name).color(ui.visuals().error_fg_color);
 
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);

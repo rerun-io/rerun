@@ -297,9 +297,14 @@ impl<'a> ServerEntriesData<'a> {
                 let mut failed_entries = vec![];
 
                 for entry in entries.values().sorted_by_key(|entry| entry.name()) {
-                    let is_selected = ctx.selection().contains_item(&Item::RedapEntry(entry.id()));
-                    let is_active = ctx.active_redap_entry() == Some(&entry.id());
-                    let icon = entry.icon();
+                    let entry_data = EntryData {
+                        origin: origin.clone(),
+                        entry_id: entry.id(),
+                        name: entry.name().to_owned(),
+                        icon: entry.icon(),
+                        is_selected: ctx.selection().contains_item(&Item::RedapEntry(entry.id())),
+                        is_active: ctx.active_redap_entry() == Some(&entry.id()),
+                    };
 
                     match entry.inner() {
                         Ok(EntryInner::Dataset(_dataset)) => {
@@ -335,30 +340,17 @@ impl<'a> ServerEntriesData<'a> {
                             }
 
                             dataset_entries.push(DatasetData {
-                                origin: origin.clone(),
-                                entry_id: entry.id(),
-                                name: entry.name().to_owned(),
-                                icon,
-                                is_selected,
-                                is_active,
+                                entry_data,
                                 displayed_partitions,
                             });
                         }
 
-                        Ok(EntryInner::Table(_table)) => table_entries.push(RemoteTableData {
-                            entry_id: entry.id(),
-                            name: entry.name().to_owned(),
-                            is_selected,
-                            is_active,
-                            icon,
-                        }),
+                        Ok(EntryInner::Table(_table)) => {
+                            table_entries.push(RemoteTableData { entry_data });
+                        }
 
                         Err(err) => failed_entries.push(FailedEntryData {
-                            entry_id: entry.id(),
-                            name: entry.name().to_owned(),
-                            icon,
-                            is_selected,
-                            is_active,
+                            entry_data,
                             error: err.to_string(),
                         }),
                     }
@@ -383,6 +375,32 @@ impl<'a> ServerEntriesData<'a> {
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct DatasetData<'a> {
+    pub entry_data: EntryData,
+    pub displayed_partitions: Vec<PartitionData<'a>>,
+}
+
+// ---
+
+#[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
+pub struct RemoteTableData {
+    pub entry_data: EntryData,
+}
+
+// ---
+
+#[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
+pub struct FailedEntryData {
+    pub entry_data: EntryData,
+    pub error: String,
+}
+
+// ---
+
+#[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
+pub struct EntryData {
     pub origin: re_uri::Origin,
     pub entry_id: re_log_types::EntryId,
 
@@ -393,11 +411,9 @@ pub struct DatasetData<'a> {
 
     pub is_selected: bool,
     pub is_active: bool,
-
-    pub displayed_partitions: Vec<PartitionData<'a>>,
 }
 
-impl DatasetData<'_> {
+impl EntryData {
     pub fn item(&self) -> Item {
         Item::RedapEntry(self.entry_id)
     }
@@ -406,52 +422,6 @@ impl DatasetData<'_> {
         egui::Id::new(&self.origin)
             .with(self.entry_id)
             .with(&self.name)
-    }
-}
-
-// ---
-
-#[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize))]
-pub struct RemoteTableData {
-    pub entry_id: re_log_types::EntryId,
-
-    pub name: String,
-
-    #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_icon"))]
-    pub icon: re_ui::icons::Icon,
-
-    pub is_selected: bool,
-    pub is_active: bool,
-}
-
-impl RemoteTableData {
-    pub fn item(&self) -> Item {
-        Item::RedapEntry(self.entry_id)
-    }
-}
-
-// ---
-
-#[derive(Debug)]
-#[cfg_attr(feature = "testing", derive(serde::Serialize))]
-pub struct FailedEntryData {
-    pub entry_id: re_log_types::EntryId,
-
-    pub name: String,
-
-    #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_icon"))]
-    pub icon: re_ui::icons::Icon,
-
-    pub is_selected: bool,
-    pub is_active: bool,
-
-    pub error: String,
-}
-
-impl FailedEntryData {
-    pub fn item(&self) -> Item {
-        Item::RedapEntry(self.entry_id)
     }
 }
 
