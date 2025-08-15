@@ -170,14 +170,14 @@ impl ViewerImportUrl {
                     // because this URL was probably meant to be opened in a different Rerun version.
                     if let Some(window) = web_sys::window()
                         && let Ok(location) = window.location().href()
+                        && let Ok(location) = url::Url::parse(&location)
+                        && _base_url != location.origin()
                     {
-                        if _base_url != location.origin() {
-                            re_log::warn!(
-                                "The base URL of the web viewer ({:?}) does not match the URL being opened ({:?}). This URL may be intended for a different Rerun version.",
-                                base_url.origin().unicode_serialization(),
-                                url.origin().unicode_serialization()
-                            );
-                        }
+                        re_log::warn!(
+                            "The base URL of the web viewer ({:?}) does not match the URL being opened ({:?}). This URL may be intended for a different Rerun version.",
+                            location.origin().unicode_serialization(),
+                            _base_url.unicode_serialization(),
+                        );
                     }
                 }
 
