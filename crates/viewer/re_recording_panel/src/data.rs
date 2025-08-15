@@ -14,7 +14,6 @@ use re_redap_browser::{Entries, EntryInner, RedapServers};
 use re_smart_channel::SmartChannelSource;
 use re_types::archetypes::RecordingInfo;
 use re_types::components::{Name, Timestamp};
-use re_ui::Icon;
 use re_viewer_context::{DisplayMode, Item, ViewerContext};
 
 #[derive(Debug)]
@@ -491,7 +490,7 @@ where
 }
 
 #[cfg(feature = "testing")]
-fn serialize_icon<S>(value: &Icon, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_icon<S>(value: &re_ui::Icon, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
