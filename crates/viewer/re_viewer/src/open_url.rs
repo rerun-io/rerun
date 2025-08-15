@@ -1,7 +1,6 @@
 use re_data_source::LogDataSource;
 use re_smart_channel::SmartChannelSource;
 use re_ui::CommandPaletteUrl;
-use re_uri::external::url;
 use re_viewer_context::{
     CommandSender, DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _,
 };
@@ -35,15 +34,6 @@ pub enum ViewerImportUrl {
     ///
     /// This is used only for legacy notebooks.
     WebEventListener(String),
-
-    /// A web viewer URL with one or more url parameters which all individually can be imported.
-    WebViewerUrl {
-        /// The base URL of the web viewer (this no longer includes any queries and fragments).
-        base_url: url::Origin,
-
-        /// The url parameter(s) that can be imported individually.
-        url_parameters: vec1::Vec1<ViewerImportUrl>,
-    },
 }
 
 impl std::str::FromStr for ViewerImportUrl {
@@ -58,23 +48,6 @@ impl std::str::FromStr for ViewerImportUrl {
     /// * intra-recording links (typically links to an entity)
     /// * web event listeners
     fn from_str(url: &str) -> Result<Self, Self::Err> {
-        // This might be a web-viewer URL with `url` parameters.
-        // Extract the `url` parameter and call this function again.
-        if let Ok(url) = url::Url::parse(url) {
-            // It's rare, but there might be *several* `url` parameters.
-            let url_params = url
-                .query_pairs()
-                .filter_map(|(key, value)| (key == "url").then(|| Self::from_str(&value)))
-                .collect::<anyhow::Result<Vec<_>>>()?;
-
-            if let Ok(url_parameters) = vec1::Vec1::try_from_vec(url_params) {
-                return Ok(Self::WebViewerUrl {
-                    base_url: url.origin(),
-                    url_parameters,
-                });
-            }
-        }
-
         if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
             Ok(Self::RedapCatalog(uri))
         } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
@@ -158,38 +131,6 @@ impl ViewerImportUrl {
             Self::WebEventListener(url) => {
                 handle_web_event_listener(egui_ctx, &url, command_sender);
             }
-
-            Self::WebViewerUrl {
-                base_url: _base_url,
-                url_parameters,
-            } => {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    // We _are_ a web viewer.
-                    // If the base URL doesn't match our own then that's reason for concern (==warn),
-                    // because this URL was probably meant to be opened in a different Rerun version.
-                    if let Some(window) = web_sys::window()
-                        && let Ok(location) = window.location().href()
-                        && let Ok(location) = url::Url::parse(&location)
-                        && _base_url != location.origin()
-                    {
-                        re_log::warn!(
-                            "The base URL of the web viewer ({:?}) does not match the URL being opened ({:?}). This URL may be intended for a different Rerun version.",
-                            location.origin().unicode_serialization(),
-                            _base_url.unicode_serialization(),
-                        );
-                    }
-                }
-
-                for url in url_parameters {
-                    url.open(
-                        egui_ctx,
-                        follow_if_http,
-                        select_redap_source_when_loaded,
-                        command_sender,
-                    );
-                }
-            }
         }
 
         // All of these send commands, make sure they'll be processed.
@@ -247,14 +188,6 @@ impl ViewerImportUrl {
             }
 
             Self::WebEventListener(_) => "Connect to web event listener".to_owned(),
-
-            Self::WebViewerUrl { url_parameters, .. } => {
-                if url_parameters.len() == 1 {
-                    url_parameters.first().open_description()
-                } else {
-                    format!("Open {} URLs", url_parameters.len())
-                }
-            }
         }
     }
 }
