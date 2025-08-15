@@ -44,7 +44,7 @@ pub fn try_open_url_or_file_in_viewer(
     } else if let Some(mut data_source) =
         LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
     {
-        if let LogDataSource::RedapDataset {
+        if let LogDataSource::RedapDatasetPartition {
             select_when_loaded, ..
         } = &mut data_source
         {

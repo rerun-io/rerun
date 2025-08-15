@@ -868,7 +868,7 @@ impl App {
                 }
             }
 
-            LogDataSource::RedapDataset {
+            LogDataSource::RedapDatasetPartition {
                 uri,
                 select_when_loaded,
             } => {
@@ -944,7 +944,7 @@ impl App {
     /// Applies the fragment of a dataset data URI to the viewer.
     ///
     /// Does *not* switch the active recording.
-    fn go_to_dataset_data(&self, uri: &re_uri::DatasetDataUri) {
+    fn go_to_dataset_data(&self, uri: &re_uri::DatasetPartitionUri) {
         let re_uri::Fragment { focus, when } = uri.fragment.clone();
 
         if let Some(focus) = focus {

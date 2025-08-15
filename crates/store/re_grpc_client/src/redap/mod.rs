@@ -11,7 +11,7 @@ use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRan
 use re_protos::{
     catalog::v1alpha1::ext::ReadDatasetEntryResponse, frontend::v1alpha1::GetChunksRequest,
 };
-use re_uri::{DatasetDataUri, Origin, TimeSelection};
+use re_uri::{DatasetPartitionUri, Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
 
@@ -36,7 +36,7 @@ pub enum UiCommand {
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_dataset_from_redap(
     connection_registry: &ConnectionRegistryHandle,
-    uri: DatasetDataUri,
+    uri: DatasetPartitionUri,
     on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
@@ -56,7 +56,7 @@ pub fn stream_dataset_from_redap(
     async fn stream_partition(
         connection_registry: ConnectionRegistryHandle,
         tx: re_smart_channel::Sender<LogMsg>,
-        uri: DatasetDataUri,
+        uri: DatasetPartitionUri,
         on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> Result<(), StreamError> {
@@ -328,7 +328,7 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
 pub async fn stream_blueprint_and_partition_from_server(
     mut client: ConnectionClient,
     tx: re_smart_channel::Sender<LogMsg>,
-    uri: re_uri::DatasetDataUri,
+    uri: re_uri::DatasetPartitionUri,
     on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
@@ -399,7 +399,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         store_version: None,
     };
 
-    let re_uri::DatasetDataUri {
+    let re_uri::DatasetPartitionUri {
         origin: _,
         dataset_id,
         partition_id,

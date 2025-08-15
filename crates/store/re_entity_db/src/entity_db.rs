@@ -42,7 +42,7 @@ pub enum EntityDbClass<'a> {
     ExampleRecording,
 
     /// This is a recording loaded from a remote dataset partition.
-    DatasetPartition(&'a re_uri::DatasetDataUri),
+    DatasetPartition(&'a re_uri::DatasetPartitionUri),
 
     /// This is a blueprint.
     Blueprint,

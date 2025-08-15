@@ -35,8 +35,8 @@ pub enum LogDataSource {
     Stdin,
 
     /// A `rerun://` URI pointing to a recording.
-    RedapDataset {
-        uri: re_uri::DatasetDataUri,
+    RedapDatasetPartition {
+        uri: re_uri::DatasetPartitionUri,
 
         /// Switch to this recording once it has been loaded?
         select_when_loaded: bool,
@@ -117,8 +117,8 @@ impl LogDataSource {
             }
         }
 
-        if let Ok(uri) = url.parse::<re_uri::DatasetDataUri>() {
-            Some(Self::RedapDataset {
+        if let Ok(uri) = url.parse::<re_uri::DatasetPartitionUri>() {
+            Some(Self::RedapDatasetPartition {
                 uri,
                 select_when_loaded: true,
             })
@@ -234,7 +234,7 @@ impl LogDataSource {
                 Ok(rx)
             }
 
-            Self::RedapDataset {
+            Self::RedapDatasetPartition {
                 uri,
                 select_when_loaded,
             } => {
@@ -361,7 +361,10 @@ mod tests {
 
         for uri in grpc {
             let data_source = LogDataSource::from_uri(file_source.clone(), uri);
-            if !matches!(data_source, Some(LogDataSource::RedapDataset { .. })) {
+            if !matches!(
+                data_source,
+                Some(LogDataSource::RedapDatasetPartition { .. })
+            ) {
                 eprintln!(
                     "Expected {uri:?} to be categorized as readp dataset. Instead it got parsed as {data_source:?}"
                 );

@@ -37,7 +37,7 @@ impl ViewerEvent {
     fn from_db_and_kind(db: &EntityDb, kind: ViewerEventKind) -> Self {
         let partition_id = db.data_source.as_ref().and_then(|ds| {
             if let SmartChannelSource::RedapGrpcStream {
-                uri: re_uri::DatasetDataUri { partition_id, .. },
+                uri: re_uri::DatasetPartitionUri { partition_id, .. },
                 ..
             } = ds
             {
