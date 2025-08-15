@@ -5,8 +5,8 @@ use std::{io::Cursor, sync::mpsc::Sender};
 use anyhow::Context as _;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
+use re_mcap::{LayerRegistry, SelectedLayers};
 
-use crate::mcap::layers::{LayerRegistry, SelectedLayers};
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
 const MCAP_LOADER_NAME: &str = "McapLoader";
@@ -16,13 +16,13 @@ const MCAP_LOADER_NAME: &str = "McapLoader";
 /// There are many different ways to extract and interpret information from MCAP files.
 /// For example, it might be interesting to query for particular fields of messages,
 /// or show information directly in the Rerun viewer. Because use-cases can vary, the
-/// [`McapLoader`] is made up of [`crate::mcap::Layer`]s, each representing different views of the
+/// [`McapLoader`] is made up of [`re_mcap::Layer`]s, each representing different views of the
 /// underlying data.
 ///
 /// These layers can be specified in the CLI wen converting an MCAP file
 /// to an .rrd. Here are a few examples:
-/// - [`crate::mcap::layers::McapProtobufLayer`]
-/// - [`crate::mcap::layers::McapRawLayer`]
+/// - [`re_mcap::layers::McapProtobufLayer`]
+/// - [`re_mcap::layers::McapRawLayer`]
 pub struct McapLoader {
     selected_layers: SelectedLayers,
 }
@@ -196,7 +196,7 @@ fn load_mcap(
 
     let reader = Cursor::new(&mcap);
 
-    let summary = crate::mcap::util::read_summary(reader)?
+    let summary = re_mcap::read_summary(reader)?
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
     let registry = LayerRegistry::all();

@@ -164,7 +164,7 @@ impl SorbetSchema {
             && batch_version != &Self::METADATA_VERSION.to_string()
         {
             re_log::warn_once!(
-                "Sorbet batch version mismatch. Expected {:?}, got {batch_version:?}",
+                "Sorbet batch version mismatch. Expected {}, got {batch_version:?}",
                 Self::METADATA_VERSION
             );
         }

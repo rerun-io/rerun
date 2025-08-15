@@ -98,7 +98,7 @@ pub struct ServeGuard {
 impl Drop for ServeGuard {
     fn drop(&mut self) {
         if self.block_on_drop {
-            eprintln!("Sleeping indefinitely while serving web viewer... Press ^C when done.");
+            eprintln!("Sleeping indefinitely while serving web viewer… Press ^C when done.");
             // TODO(andreas): It would be a lot better if we had a handle to the web server and could call `block_until_shutdown` on it.
             std::thread::sleep(std::time::Duration::from_secs(u64::MAX));
         }

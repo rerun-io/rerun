@@ -7425,8 +7425,6 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
- "byteorder",
- "cdr-encoding",
  "crossbeam",
  "image",
  "indexmap 2.10.0",
@@ -7436,7 +7434,6 @@ dependencies = [
  "notify",
  "parking_lot",
  "parquet",
- "prost-reflect",
  "rayon",
  "re_arrow_util",
  "re_build_info",
@@ -7446,7 +7443,7 @@ dependencies = [
  "re_log",
  "re_log_encoding",
  "re_log_types",
- "re_mcap_ros2",
+ "re_mcap",
  "re_smart_channel",
  "re_tracing",
  "re_types",
@@ -7879,11 +7876,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_mcap_ros2"
+name = "re_mcap"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
+ "ahash",
+ "anyhow",
+ "arrow",
+ "byteorder",
+ "cdr-encoding",
+ "mcap",
+ "prost-reflect",
+ "re_chunk",
+ "re_log",
+ "re_log_types",
+ "re_tracing",
+ "re_types",
  "serde",
  "serde_bytes",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -8952,6 +8962,7 @@ dependencies = [
  "serde",
  "slotmap",
  "smallvec",
+ "static_assertions",
  "thiserror 1.0.69",
  "tokio",
  "wasm-bindgen-futures",
@@ -9241,6 +9252,7 @@ dependencies = [
  "re_log",
  "re_log_encoding",
  "re_log_types",
+ "re_mcap",
  "re_memory",
  "re_perf_telemetry",
  "re_protos",

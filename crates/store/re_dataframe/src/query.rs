@@ -6,6 +6,7 @@ use std::{
     },
 };
 
+use arrow::array::RecordBatchOptions;
 use arrow::{
     array::{
         ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
@@ -1269,7 +1270,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             self.schema().clone(),
             row,
             // Explicitly setting row-count to one means it works even when there are no columns (e.g. due to heavy filtering)
-            &arrow::array::RecordBatchOptions::new().with_row_count(Some(1)),
+            &RecordBatchOptions::new().with_row_count(Some(1)),
         ) {
             Ok(batch) => Some(batch),
             Err(err) => {
@@ -1290,12 +1291,18 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         E: 'static + Send + Clone,
     {
         let row = self.next_row_async().await?;
+        let row_count = row.first().map(|a| a.len()).unwrap_or(0);
 
         // If we managed to get a row, then the state must be initialized already.
         #[allow(clippy::unwrap_used)]
         let schema = self.state.get().unwrap().arrow_schema.clone();
 
-        ArrowRecordBatch::try_new(schema, row).ok()
+        ArrowRecordBatch::try_new_with_options(
+            schema,
+            row,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
+        .ok()
     }
 }
 

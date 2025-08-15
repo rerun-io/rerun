@@ -159,7 +159,7 @@ def find_best_utm_crs(measurements: list[Measurement]) -> CRS:
     def get_area_of_interest(measurements: list[Measurement]) -> AreaOfInterest:
         """Compute the span of coordinates for all provided measurements."""
 
-        print("Computing area of interest...")
+        print("Computing area of interest…")
         all_long_lat = [
             (a.longitude, a.latitude) for a in measurements if a.latitude is not None and a.longitude is not None
         ]

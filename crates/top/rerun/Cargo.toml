@@ -50,7 +50,7 @@ clap = ["dep:clap"]
 ##
 ## See our `log_file` example and <https://www.rerun.io/docs/reference/data-loaders/overview>
 ## for more information.
-data_loaders = ["re_sdk?/data_loaders"]
+data_loaders = ["dep:re_mcap", "re_sdk?/data_loaders"]
 
 ## Demo helpers for examples.
 demo = []
@@ -169,7 +169,9 @@ re_chunk_store = { workspace = true, optional = true }
 re_crash_handler = { workspace = true, optional = true }
 re_data_source = { workspace = true, optional = true }
 re_dataframe = { workspace = true, optional = true }
+re_global_context = { workspace = true, optional = true }
 re_grpc_server = { workspace = true, optional = true }
+re_mcap = { workspace = true, optional = true }
 re_sdk = { workspace = true, optional = true }
 re_types = { workspace = true, optional = true }
 re_viewer = { workspace = true, optional = true }

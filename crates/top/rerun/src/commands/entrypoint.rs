@@ -411,7 +411,7 @@ impl Args {
                 .trim()
                 .to_owned();
 
-            // E.g. "**Usage**: `rerun [OPTIONS] [URL_OR_PATHS]... [COMMAND]`"
+            // E.g. "**Usage**: `rerun [OPTIONS] [URL_OR_PATHS]… [COMMAND]`"
             let usage = {
                 let usage = cmd.render_usage().to_string();
                 let (_, usage) = usage.split_at(7);
@@ -524,7 +524,7 @@ impl Args {
 
         generate_markdown_manual(Vec::new(), &mut out, &mut Self::command());
 
-        out.trim().replace("...", "…")
+        out.trim().replace("...", "…") // NOLINT
     }
 }
 

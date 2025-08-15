@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import time
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
@@ -28,10 +29,26 @@ class Example:
 
 
 def get_thumbnail_dimensions(thumbnail: str) -> tuple[int, int]:
-    response = requests.get(thumbnail)
-    response.raise_for_status()
-    size: tuple[int, int] = Image.open(BytesIO(response.content)).size
-    return size
+    max_retries = 3
+    timeout = 10  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(thumbnail, timeout=timeout)
+            response.raise_for_status()
+            size: tuple[int, int] = Image.open(BytesIO(response.content)).size
+            return size
+        except (requests.Timeout, requests.ConnectionError):
+            if attempt == max_retries - 1:
+                raise
+            wait_time = 2**attempt  # exponential backoff: 1, 2, 4 seconds
+            print(
+                f"Timeout/connection error for {thumbnail}, retrying in {wait_time}s… (attempt {attempt + 1}/{max_retries})"
+            )
+            time.sleep(wait_time)
+
+    # This should never be reached due to the raise in the loop
+    raise RuntimeError("Unexpected retry loop exit")
 
 
 def examples_with_thumbnails() -> Generator[Example, None, None]:

@@ -127,7 +127,7 @@ def run_llm_ner(text: str) -> None:
     token_ids = tokenizer.encode(text)
     token_words = tokenizer.convert_ids_to_tokens(token_ids)
 
-    print("Computing embeddings and output...")
+    print("Computing embeddings and output…")
     # NOTE The embeddings are currently computed twice (next line and as part of the pipeline)
     #  It'd be better to directly log from inside the pipeline to avoid this.
     embeddings = ner_pipeline.model.base_model(torch.tensor([token_ids])).last_hidden_state

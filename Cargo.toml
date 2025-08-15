@@ -99,7 +99,7 @@ re_error = { path = "crates/utils/re_error", version = "=0.25.0-alpha.1", defaul
 re_format = { path = "crates/utils/re_format", version = "=0.25.0-alpha.1", default-features = false }
 re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.25.0-alpha.1", default-features = false }
 re_log = { path = "crates/utils/re_log", version = "=0.25.0-alpha.1", default-features = false }
-re_mcap_ros2 = { path = "crates/utils/re_mcap_ros2", version = "=0.25.0-alpha.1", default-features = false }
+re_mcap = { path = "crates/utils/re_mcap", version = "=0.25.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.25.0-alpha.1", default-features = false }
 re_perf_telemetry = { path = "crates/utils/re_perf_telemetry", version = "=0.25.0-alpha.1", default-features = false }
 re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.25.0-alpha.1", default-features = false }

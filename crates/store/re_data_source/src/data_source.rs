@@ -315,10 +315,10 @@ mod tests {
             "D:/file.jpg",
         ];
         let http = [
-            "http://example/foo.rrd",
-            "https://example/foo.rrd",
+            "http://example.com/foo.rrd",
+            "https://example.com/foo.rrd",
+            "http://example.com/foo.rrd?useless_param=1",
             "example.zip/foo.rrd",
-            "http://bar.rrd/foo.rrd?useless_param=1",
             "www.foo.zip/foo.rrd",
             "www.foo.zip/blueprint.rbl",
         ];
