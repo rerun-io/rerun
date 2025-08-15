@@ -43,7 +43,7 @@ def get_thumbnail_dimensions(thumbnail: str) -> tuple[int, int]:
                 raise
             wait_time = 2**attempt  # exponential backoff: 1, 2, 4 seconds
             print(
-                f"Timeout/connection error for {thumbnail}, retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})"
+                f"Timeout/connection error for {thumbnail}, retrying in {wait_time}s… (attempt {attempt + 1}/{max_retries})"
             )
             time.sleep(wait_time)
 
