@@ -34,6 +34,12 @@ impl Blob {
 
 impl Eq for Blob {}
 
+impl From<arrow::buffer::Buffer> for Blob {
+    fn from(buffer: arrow::buffer::Buffer) -> Self {
+        Self(buffer.into())
+    }
+}
+
 impl From<Vec<u8>> for Blob {
     fn from(bytes: Vec<u8>) -> Self {
         Self(bytes.into())

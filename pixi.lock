@@ -3892,7 +3892,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/25/8a/c46dcc25341b5bce5472c718902eb3d38600a903b14fa6aeecef3f21a46f/asttokens-3.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/03/49/d10027df9fce941cb8184e78a02857af36360d33e1721df81c5ed2179a1a/async_lru-2.0.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/77/06/bb80f5f86020c4551da315d78b3ab75e8228f89f0162f2c3a819e407941a/attrs-25.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/ed/64/6dcfb449ed287a590ecf70d6259f1f2c06fa9a576996f53d1949d65c4ee5/av-15.0.0-cp311-cp311-manylinux_2_28_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/af/3a/4156fa8234aa388c8aa6106f6356aad2e03682a4bca238c259caa4db7ecd/av-14.2.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/b8/3fe70c75fe32afc4bb507f75563d39bc5642255d1d94f1f23604725780bf/babel-2.17.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/50/cd/30110dc0ffcf3b131156077b90e9f60ed75711223f306da4db08eff8403b/beautifulsoup4-4.13.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
@@ -4076,48 +4076,48 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b4/b0/9fc566b0fe08b282c850063591a756057c3247b2362b9286429ec5bf1721/wrapt-1.17.2-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/c9/1e/631c80e0f97aef46eb73549b9b0f60d94057294e040740f4cad0cb1f48e4/yfinance-0.2.65-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
-      - pypi: ./examples/python/air_traffic_data
-      - pypi: ./examples/python/arkit_scenes
-      - pypi: ./examples/python/blueprint
-      - pypi: ./examples/python/blueprint_stocks
-      - pypi: ./examples/python/camera_video_stream
-      - pypi: ./examples/python/clock
-      - pypi: ./examples/python/controlnet
-      - pypi: ./examples/python/dataframe_query
-      - pypi: ./examples/python/detect_and_track_objects
-      - pypi: ./examples/python/dicom_mri
-      - pypi: ./examples/python/dna
-      - pypi: ./examples/python/drone_lidar
-      - pypi: ./examples/python/face_tracking
-      - pypi: ./examples/python/gesture_detection
-      - pypi: ./examples/python/graph_lattice
-      - pypi: ./examples/python/graphs
-      - pypi: ./examples/python/human_pose_tracking
-      - pypi: ./examples/python/imu_signals
-      - pypi: ./examples/python/incremental_logging
-      - pypi: ./examples/python/lidar
-      - pypi: ./examples/python/live_camera_edge_detection
-      - pypi: ./examples/python/live_scrolling_plot
-      - pypi: ./examples/python/llm_embedding_ner
-      - pypi: ./examples/python/log_file
-      - pypi: ./examples/python/minimal
-      - pypi: ./examples/python/minimal_options
-      - pypi: ./examples/python/multiprocess_logging
-      - pypi: ./examples/python/multithreading
-      - pypi: ./examples/python/nuscenes_dataset
-      - pypi: ./examples/python/nv12
-      - pypi: ./examples/python/objectron
-      - pypi: ./examples/python/open_photogrammetry_format
-      - pypi: ./examples/python/openstreetmap_data
-      - pypi: ./examples/python/plots
-      - pypi: ./examples/python/raw_mesh
-      - pypi: ./examples/python/rgbd
-      - pypi: ./examples/python/rrt_star
-      - pypi: ./examples/python/segment_anything_model
-      - pypi: ./examples/python/shared_recording
-      - pypi: ./examples/python/stdio
-      - pypi: ./examples/python/structure_from_motion
-      - pypi: ./rerun_py
+      - pypi: examples/python/air_traffic_data
+      - pypi: examples/python/arkit_scenes
+      - pypi: examples/python/blueprint
+      - pypi: examples/python/blueprint_stocks
+      - pypi: examples/python/camera_video_stream
+      - pypi: examples/python/clock
+      - pypi: examples/python/controlnet
+      - pypi: examples/python/dataframe_query
+      - pypi: examples/python/detect_and_track_objects
+      - pypi: examples/python/dicom_mri
+      - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
+      - pypi: examples/python/face_tracking
+      - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
+      - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
+      - pypi: examples/python/incremental_logging
+      - pypi: examples/python/lidar
+      - pypi: examples/python/live_camera_edge_detection
+      - pypi: examples/python/live_scrolling_plot
+      - pypi: examples/python/llm_embedding_ner
+      - pypi: examples/python/log_file
+      - pypi: examples/python/minimal
+      - pypi: examples/python/minimal_options
+      - pypi: examples/python/multiprocess_logging
+      - pypi: examples/python/multithreading
+      - pypi: examples/python/nuscenes_dataset
+      - pypi: examples/python/nv12
+      - pypi: examples/python/objectron
+      - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
+      - pypi: examples/python/plots
+      - pypi: examples/python/raw_mesh
+      - pypi: examples/python/rgbd
+      - pypi: examples/python/rrt_star
+      - pypi: examples/python/segment_anything_model
+      - pypi: examples/python/shared_recording
+      - pypi: examples/python/stdio
+      - pypi: examples/python/structure_from_motion
+      - pypi: rerun_py
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aom-3.9.1-h7bae524_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aws-c-auth-0.8.0-h9b725a8_10.conda
@@ -4299,7 +4299,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/25/8a/c46dcc25341b5bce5472c718902eb3d38600a903b14fa6aeecef3f21a46f/asttokens-3.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/03/49/d10027df9fce941cb8184e78a02857af36360d33e1721df81c5ed2179a1a/async_lru-2.0.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/77/06/bb80f5f86020c4551da315d78b3ab75e8228f89f0162f2c3a819e407941a/attrs-25.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/17/89/940a509ee7e9449f0c877fa984b37b7cc485546035cc67bbc353f2ac20f3/av-15.0.0.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/75/d9/f93c06716ee45e5ec78814179f13ccef80593df69c2b8f48c6633a2157d0/av-14.2.0-cp311-cp311-macosx_12_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/b8/3fe70c75fe32afc4bb507f75563d39bc5642255d1d94f1f23604725780bf/babel-2.17.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/50/cd/30110dc0ffcf3b131156077b90e9f60ed75711223f306da4db08eff8403b/beautifulsoup4-4.13.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
@@ -4464,48 +4464,48 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/65/46/5a917ce85b5c3b490d35c02bf71aedaa9f2f63f2d15d9949cc4ba56e8ba9/wrapt-1.17.2-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/c9/1e/631c80e0f97aef46eb73549b9b0f60d94057294e040740f4cad0cb1f48e4/yfinance-0.2.65-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
-      - pypi: ./examples/python/air_traffic_data
-      - pypi: ./examples/python/arkit_scenes
-      - pypi: ./examples/python/blueprint
-      - pypi: ./examples/python/blueprint_stocks
-      - pypi: ./examples/python/camera_video_stream
-      - pypi: ./examples/python/clock
-      - pypi: ./examples/python/controlnet
-      - pypi: ./examples/python/dataframe_query
-      - pypi: ./examples/python/detect_and_track_objects
-      - pypi: ./examples/python/dicom_mri
-      - pypi: ./examples/python/dna
-      - pypi: ./examples/python/drone_lidar
-      - pypi: ./examples/python/face_tracking
-      - pypi: ./examples/python/gesture_detection
-      - pypi: ./examples/python/graph_lattice
-      - pypi: ./examples/python/graphs
-      - pypi: ./examples/python/human_pose_tracking
-      - pypi: ./examples/python/imu_signals
-      - pypi: ./examples/python/incremental_logging
-      - pypi: ./examples/python/lidar
-      - pypi: ./examples/python/live_camera_edge_detection
-      - pypi: ./examples/python/live_scrolling_plot
-      - pypi: ./examples/python/llm_embedding_ner
-      - pypi: ./examples/python/log_file
-      - pypi: ./examples/python/minimal
-      - pypi: ./examples/python/minimal_options
-      - pypi: ./examples/python/multiprocess_logging
-      - pypi: ./examples/python/multithreading
-      - pypi: ./examples/python/nuscenes_dataset
-      - pypi: ./examples/python/nv12
-      - pypi: ./examples/python/objectron
-      - pypi: ./examples/python/open_photogrammetry_format
-      - pypi: ./examples/python/openstreetmap_data
-      - pypi: ./examples/python/plots
-      - pypi: ./examples/python/raw_mesh
-      - pypi: ./examples/python/rgbd
-      - pypi: ./examples/python/rrt_star
-      - pypi: ./examples/python/segment_anything_model
-      - pypi: ./examples/python/shared_recording
-      - pypi: ./examples/python/stdio
-      - pypi: ./examples/python/structure_from_motion
-      - pypi: ./rerun_py
+      - pypi: examples/python/air_traffic_data
+      - pypi: examples/python/arkit_scenes
+      - pypi: examples/python/blueprint
+      - pypi: examples/python/blueprint_stocks
+      - pypi: examples/python/camera_video_stream
+      - pypi: examples/python/clock
+      - pypi: examples/python/controlnet
+      - pypi: examples/python/dataframe_query
+      - pypi: examples/python/detect_and_track_objects
+      - pypi: examples/python/dicom_mri
+      - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
+      - pypi: examples/python/face_tracking
+      - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
+      - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
+      - pypi: examples/python/incremental_logging
+      - pypi: examples/python/lidar
+      - pypi: examples/python/live_camera_edge_detection
+      - pypi: examples/python/live_scrolling_plot
+      - pypi: examples/python/llm_embedding_ner
+      - pypi: examples/python/log_file
+      - pypi: examples/python/minimal
+      - pypi: examples/python/minimal_options
+      - pypi: examples/python/multiprocess_logging
+      - pypi: examples/python/multithreading
+      - pypi: examples/python/nuscenes_dataset
+      - pypi: examples/python/nv12
+      - pypi: examples/python/objectron
+      - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
+      - pypi: examples/python/plots
+      - pypi: examples/python/raw_mesh
+      - pypi: examples/python/rgbd
+      - pypi: examples/python/rrt_star
+      - pypi: examples/python/segment_anything_model
+      - pypi: examples/python/shared_recording
+      - pypi: examples/python/stdio
+      - pypi: examples/python/structure_from_motion
+      - pypi: rerun_py
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/aom-3.9.1-he0c23c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-auth-0.8.0-h6c5491b_10.conda
@@ -4682,7 +4682,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/25/8a/c46dcc25341b5bce5472c718902eb3d38600a903b14fa6aeecef3f21a46f/asttokens-3.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/03/49/d10027df9fce941cb8184e78a02857af36360d33e1721df81c5ed2179a1a/async_lru-2.0.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/77/06/bb80f5f86020c4551da315d78b3ab75e8228f89f0162f2c3a819e407941a/attrs-25.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/de/ca/0c77802f70248bc3e182451a174db30fca349858840c4fbf1c7f8e1beaa0/av-15.0.0-cp311-cp311-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/1a/ab/ddc797e2e99b84c674d7405ca3f99318d7bd7ff3ad13430911bc037ea3a9/av-14.2.0-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/b8/3fe70c75fe32afc4bb507f75563d39bc5642255d1d94f1f23604725780bf/babel-2.17.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/50/cd/30110dc0ffcf3b131156077b90e9f60ed75711223f306da4db08eff8403b/beautifulsoup4-4.13.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
@@ -4850,48 +4850,48 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/47/f8/fb1773491a253cbc123c5d5dc15c86041f746ed30416535f2a8df1f4a392/wrapt-1.17.2-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/c9/1e/631c80e0f97aef46eb73549b9b0f60d94057294e040740f4cad0cb1f48e4/yfinance-0.2.65-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
-      - pypi: ./examples/python/air_traffic_data
-      - pypi: ./examples/python/arkit_scenes
-      - pypi: ./examples/python/blueprint
-      - pypi: ./examples/python/blueprint_stocks
-      - pypi: ./examples/python/camera_video_stream
-      - pypi: ./examples/python/clock
-      - pypi: ./examples/python/controlnet
-      - pypi: ./examples/python/dataframe_query
-      - pypi: ./examples/python/detect_and_track_objects
-      - pypi: ./examples/python/dicom_mri
-      - pypi: ./examples/python/dna
-      - pypi: ./examples/python/drone_lidar
-      - pypi: ./examples/python/face_tracking
-      - pypi: ./examples/python/gesture_detection
-      - pypi: ./examples/python/graph_lattice
-      - pypi: ./examples/python/graphs
-      - pypi: ./examples/python/human_pose_tracking
-      - pypi: ./examples/python/imu_signals
-      - pypi: ./examples/python/incremental_logging
-      - pypi: ./examples/python/lidar
-      - pypi: ./examples/python/live_camera_edge_detection
-      - pypi: ./examples/python/live_scrolling_plot
-      - pypi: ./examples/python/llm_embedding_ner
-      - pypi: ./examples/python/log_file
-      - pypi: ./examples/python/minimal
-      - pypi: ./examples/python/minimal_options
-      - pypi: ./examples/python/multiprocess_logging
-      - pypi: ./examples/python/multithreading
-      - pypi: ./examples/python/nuscenes_dataset
-      - pypi: ./examples/python/nv12
-      - pypi: ./examples/python/objectron
-      - pypi: ./examples/python/open_photogrammetry_format
-      - pypi: ./examples/python/openstreetmap_data
-      - pypi: ./examples/python/plots
-      - pypi: ./examples/python/raw_mesh
-      - pypi: ./examples/python/rgbd
-      - pypi: ./examples/python/rrt_star
-      - pypi: ./examples/python/segment_anything_model
-      - pypi: ./examples/python/shared_recording
-      - pypi: ./examples/python/stdio
-      - pypi: ./examples/python/structure_from_motion
-      - pypi: ./rerun_py
+      - pypi: examples/python/air_traffic_data
+      - pypi: examples/python/arkit_scenes
+      - pypi: examples/python/blueprint
+      - pypi: examples/python/blueprint_stocks
+      - pypi: examples/python/camera_video_stream
+      - pypi: examples/python/clock
+      - pypi: examples/python/controlnet
+      - pypi: examples/python/dataframe_query
+      - pypi: examples/python/detect_and_track_objects
+      - pypi: examples/python/dicom_mri
+      - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
+      - pypi: examples/python/face_tracking
+      - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
+      - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
+      - pypi: examples/python/incremental_logging
+      - pypi: examples/python/lidar
+      - pypi: examples/python/live_camera_edge_detection
+      - pypi: examples/python/live_scrolling_plot
+      - pypi: examples/python/llm_embedding_ner
+      - pypi: examples/python/log_file
+      - pypi: examples/python/minimal
+      - pypi: examples/python/minimal_options
+      - pypi: examples/python/multiprocess_logging
+      - pypi: examples/python/multithreading
+      - pypi: examples/python/nuscenes_dataset
+      - pypi: examples/python/nv12
+      - pypi: examples/python/objectron
+      - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
+      - pypi: examples/python/plots
+      - pypi: examples/python/raw_mesh
+      - pypi: examples/python/rgbd
+      - pypi: examples/python/rrt_star
+      - pypi: examples/python/segment_anything_model
+      - pypi: examples/python/shared_recording
+      - pypi: examples/python/stdio
+      - pypi: examples/python/structure_from_motion
+      - pypi: rerun_py
   examples-pypi:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -5117,7 +5117,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/25/8a/c46dcc25341b5bce5472c718902eb3d38600a903b14fa6aeecef3f21a46f/asttokens-3.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/03/49/d10027df9fce941cb8184e78a02857af36360d33e1721df81c5ed2179a1a/async_lru-2.0.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/77/06/bb80f5f86020c4551da315d78b3ab75e8228f89f0162f2c3a819e407941a/attrs-25.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/ed/64/6dcfb449ed287a590ecf70d6259f1f2c06fa9a576996f53d1949d65c4ee5/av-15.0.0-cp311-cp311-manylinux_2_28_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/af/3a/4156fa8234aa388c8aa6106f6356aad2e03682a4bca238c259caa4db7ecd/av-14.2.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/b8/3fe70c75fe32afc4bb507f75563d39bc5642255d1d94f1f23604725780bf/babel-2.17.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/50/cd/30110dc0ffcf3b131156077b90e9f60ed75711223f306da4db08eff8403b/beautifulsoup4-4.13.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
@@ -5307,47 +5307,47 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b4/b0/9fc566b0fe08b282c850063591a756057c3247b2362b9286429ec5bf1721/wrapt-1.17.2-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/c9/1e/631c80e0f97aef46eb73549b9b0f60d94057294e040740f4cad0cb1f48e4/yfinance-0.2.65-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
-      - pypi: ./examples/python/air_traffic_data
-      - pypi: ./examples/python/arkit_scenes
-      - pypi: ./examples/python/blueprint
-      - pypi: ./examples/python/blueprint_stocks
-      - pypi: ./examples/python/camera_video_stream
-      - pypi: ./examples/python/clock
-      - pypi: ./examples/python/controlnet
-      - pypi: ./examples/python/dataframe_query
-      - pypi: ./examples/python/detect_and_track_objects
-      - pypi: ./examples/python/dicom_mri
-      - pypi: ./examples/python/dna
-      - pypi: ./examples/python/drone_lidar
-      - pypi: ./examples/python/face_tracking
-      - pypi: ./examples/python/gesture_detection
-      - pypi: ./examples/python/graph_lattice
-      - pypi: ./examples/python/graphs
-      - pypi: ./examples/python/human_pose_tracking
-      - pypi: ./examples/python/imu_signals
-      - pypi: ./examples/python/incremental_logging
-      - pypi: ./examples/python/lidar
-      - pypi: ./examples/python/live_camera_edge_detection
-      - pypi: ./examples/python/live_scrolling_plot
-      - pypi: ./examples/python/llm_embedding_ner
-      - pypi: ./examples/python/log_file
-      - pypi: ./examples/python/minimal
-      - pypi: ./examples/python/minimal_options
-      - pypi: ./examples/python/multiprocess_logging
-      - pypi: ./examples/python/multithreading
-      - pypi: ./examples/python/nuscenes_dataset
-      - pypi: ./examples/python/nv12
-      - pypi: ./examples/python/objectron
-      - pypi: ./examples/python/open_photogrammetry_format
-      - pypi: ./examples/python/openstreetmap_data
-      - pypi: ./examples/python/plots
-      - pypi: ./examples/python/raw_mesh
-      - pypi: ./examples/python/rgbd
-      - pypi: ./examples/python/rrt_star
-      - pypi: ./examples/python/segment_anything_model
-      - pypi: ./examples/python/shared_recording
-      - pypi: ./examples/python/stdio
-      - pypi: ./examples/python/structure_from_motion
+      - pypi: examples/python/air_traffic_data
+      - pypi: examples/python/arkit_scenes
+      - pypi: examples/python/blueprint
+      - pypi: examples/python/blueprint_stocks
+      - pypi: examples/python/camera_video_stream
+      - pypi: examples/python/clock
+      - pypi: examples/python/controlnet
+      - pypi: examples/python/dataframe_query
+      - pypi: examples/python/detect_and_track_objects
+      - pypi: examples/python/dicom_mri
+      - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
+      - pypi: examples/python/face_tracking
+      - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
+      - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
+      - pypi: examples/python/incremental_logging
+      - pypi: examples/python/lidar
+      - pypi: examples/python/live_camera_edge_detection
+      - pypi: examples/python/live_scrolling_plot
+      - pypi: examples/python/llm_embedding_ner
+      - pypi: examples/python/log_file
+      - pypi: examples/python/minimal
+      - pypi: examples/python/minimal_options
+      - pypi: examples/python/multiprocess_logging
+      - pypi: examples/python/multithreading
+      - pypi: examples/python/nuscenes_dataset
+      - pypi: examples/python/nv12
+      - pypi: examples/python/objectron
+      - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
+      - pypi: examples/python/plots
+      - pypi: examples/python/raw_mesh
+      - pypi: examples/python/rgbd
+      - pypi: examples/python/rrt_star
+      - pypi: examples/python/segment_anything_model
+      - pypi: examples/python/shared_recording
+      - pypi: examples/python/stdio
+      - pypi: examples/python/structure_from_motion
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aom-3.9.1-h7bae524_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/buf-1.56.0-h75b854d_0.conda
@@ -5499,7 +5499,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/25/8a/c46dcc25341b5bce5472c718902eb3d38600a903b14fa6aeecef3f21a46f/asttokens-3.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/03/49/d10027df9fce941cb8184e78a02857af36360d33e1721df81c5ed2179a1a/async_lru-2.0.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/77/06/bb80f5f86020c4551da315d78b3ab75e8228f89f0162f2c3a819e407941a/attrs-25.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/17/89/940a509ee7e9449f0c877fa984b37b7cc485546035cc67bbc353f2ac20f3/av-15.0.0.tar.gz
+      - pypi: https://files.pythonhosted.org/packages/75/d9/f93c06716ee45e5ec78814179f13ccef80593df69c2b8f48c6633a2157d0/av-14.2.0-cp311-cp311-macosx_12_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/b8/3fe70c75fe32afc4bb507f75563d39bc5642255d1d94f1f23604725780bf/babel-2.17.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/50/cd/30110dc0ffcf3b131156077b90e9f60ed75711223f306da4db08eff8403b/beautifulsoup4-4.13.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
@@ -5670,47 +5670,47 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/65/46/5a917ce85b5c3b490d35c02bf71aedaa9f2f63f2d15d9949cc4ba56e8ba9/wrapt-1.17.2-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/c9/1e/631c80e0f97aef46eb73549b9b0f60d94057294e040740f4cad0cb1f48e4/yfinance-0.2.65-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
-      - pypi: ./examples/python/air_traffic_data
-      - pypi: ./examples/python/arkit_scenes
-      - pypi: ./examples/python/blueprint
-      - pypi: ./examples/python/blueprint_stocks
-      - pypi: ./examples/python/camera_video_stream
-      - pypi: ./examples/python/clock
-      - pypi: ./examples/python/controlnet
-      - pypi: ./examples/python/dataframe_query
-      - pypi: ./examples/python/detect_and_track_objects
-      - pypi: ./examples/python/dicom_mri
-      - pypi: ./examples/python/dna
-      - pypi: ./examples/python/drone_lidar
-      - pypi: ./examples/python/face_tracking
-      - pypi: ./examples/python/gesture_detection
-      - pypi: ./examples/python/graph_lattice
-      - pypi: ./examples/python/graphs
-      - pypi: ./examples/python/human_pose_tracking
-      - pypi: ./examples/python/imu_signals
-      - pypi: ./examples/python/incremental_logging
-      - pypi: ./examples/python/lidar
-      - pypi: ./examples/python/live_camera_edge_detection
-      - pypi: ./examples/python/live_scrolling_plot
-      - pypi: ./examples/python/llm_embedding_ner
-      - pypi: ./examples/python/log_file
-      - pypi: ./examples/python/minimal
-      - pypi: ./examples/python/minimal_options
-      - pypi: ./examples/python/multiprocess_logging
-      - pypi: ./examples/python/multithreading
-      - pypi: ./examples/python/nuscenes_dataset
-      - pypi: ./examples/python/nv12
-      - pypi: ./examples/python/objectron
-      - pypi: ./examples/python/open_photogrammetry_format
-      - pypi: ./examples/python/openstreetmap_data
-      - pypi: ./examples/python/plots
-      - pypi: ./examples/python/raw_mesh
-      - pypi: ./examples/python/rgbd
-      - pypi: ./examples/python/rrt_star
-      - pypi: ./examples/python/segment_anything_model
-      - pypi: ./examples/python/shared_recording
-      - pypi: ./examples/python/stdio
-      - pypi: ./examples/python/structure_from_motion
+      - pypi: examples/python/air_traffic_data
+      - pypi: examples/python/arkit_scenes
+      - pypi: examples/python/blueprint
+      - pypi: examples/python/blueprint_stocks
+      - pypi: examples/python/camera_video_stream
+      - pypi: examples/python/clock
+      - pypi: examples/python/controlnet
+      - pypi: examples/python/dataframe_query
+      - pypi: examples/python/detect_and_track_objects
+      - pypi: examples/python/dicom_mri
+      - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
+      - pypi: examples/python/face_tracking
+      - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
+      - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
+      - pypi: examples/python/incremental_logging
+      - pypi: examples/python/lidar
+      - pypi: examples/python/live_camera_edge_detection
+      - pypi: examples/python/live_scrolling_plot
+      - pypi: examples/python/llm_embedding_ner
+      - pypi: examples/python/log_file
+      - pypi: examples/python/minimal
+      - pypi: examples/python/minimal_options
+      - pypi: examples/python/multiprocess_logging
+      - pypi: examples/python/multithreading
+      - pypi: examples/python/nuscenes_dataset
+      - pypi: examples/python/nv12
+      - pypi: examples/python/objectron
+      - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
+      - pypi: examples/python/plots
+      - pypi: examples/python/raw_mesh
+      - pypi: examples/python/rgbd
+      - pypi: examples/python/rrt_star
+      - pypi: examples/python/segment_anything_model
+      - pypi: examples/python/shared_recording
+      - pypi: examples/python/stdio
+      - pypi: examples/python/structure_from_motion
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/_libavif_api-1.3.0-h57928b3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aom-3.9.1-he0c23c2_0.conda
@@ -5849,7 +5849,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/25/8a/c46dcc25341b5bce5472c718902eb3d38600a903b14fa6aeecef3f21a46f/asttokens-3.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/03/49/d10027df9fce941cb8184e78a02857af36360d33e1721df81c5ed2179a1a/async_lru-2.0.5-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/77/06/bb80f5f86020c4551da315d78b3ab75e8228f89f0162f2c3a819e407941a/attrs-25.3.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/de/ca/0c77802f70248bc3e182451a174db30fca349858840c4fbf1c7f8e1beaa0/av-15.0.0-cp311-cp311-win_amd64.whl
+      - pypi: https://files.pythonhosted.org/packages/1a/ab/ddc797e2e99b84c674d7405ca3f99318d7bd7ff3ad13430911bc037ea3a9/av-14.2.0-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/b7/b8/3fe70c75fe32afc4bb507f75563d39bc5642255d1d94f1f23604725780bf/babel-2.17.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/50/cd/30110dc0ffcf3b131156077b90e9f60ed75711223f306da4db08eff8403b/beautifulsoup4-4.13.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
@@ -6023,47 +6023,47 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/47/f8/fb1773491a253cbc123c5d5dc15c86041f746ed30416535f2a8df1f4a392/wrapt-1.17.2-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/c9/1e/631c80e0f97aef46eb73549b9b0f60d94057294e040740f4cad0cb1f48e4/yfinance-0.2.65-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
-      - pypi: ./examples/python/air_traffic_data
-      - pypi: ./examples/python/arkit_scenes
-      - pypi: ./examples/python/blueprint
-      - pypi: ./examples/python/blueprint_stocks
-      - pypi: ./examples/python/camera_video_stream
-      - pypi: ./examples/python/clock
-      - pypi: ./examples/python/controlnet
-      - pypi: ./examples/python/dataframe_query
-      - pypi: ./examples/python/detect_and_track_objects
-      - pypi: ./examples/python/dicom_mri
-      - pypi: ./examples/python/dna
-      - pypi: ./examples/python/drone_lidar
-      - pypi: ./examples/python/face_tracking
-      - pypi: ./examples/python/gesture_detection
-      - pypi: ./examples/python/graph_lattice
-      - pypi: ./examples/python/graphs
-      - pypi: ./examples/python/human_pose_tracking
-      - pypi: ./examples/python/imu_signals
-      - pypi: ./examples/python/incremental_logging
-      - pypi: ./examples/python/lidar
-      - pypi: ./examples/python/live_camera_edge_detection
-      - pypi: ./examples/python/live_scrolling_plot
-      - pypi: ./examples/python/llm_embedding_ner
-      - pypi: ./examples/python/log_file
-      - pypi: ./examples/python/minimal
-      - pypi: ./examples/python/minimal_options
-      - pypi: ./examples/python/multiprocess_logging
-      - pypi: ./examples/python/multithreading
-      - pypi: ./examples/python/nuscenes_dataset
-      - pypi: ./examples/python/nv12
-      - pypi: ./examples/python/objectron
-      - pypi: ./examples/python/open_photogrammetry_format
-      - pypi: ./examples/python/openstreetmap_data
-      - pypi: ./examples/python/plots
-      - pypi: ./examples/python/raw_mesh
-      - pypi: ./examples/python/rgbd
-      - pypi: ./examples/python/rrt_star
-      - pypi: ./examples/python/segment_anything_model
-      - pypi: ./examples/python/shared_recording
-      - pypi: ./examples/python/stdio
-      - pypi: ./examples/python/structure_from_motion
+      - pypi: examples/python/air_traffic_data
+      - pypi: examples/python/arkit_scenes
+      - pypi: examples/python/blueprint
+      - pypi: examples/python/blueprint_stocks
+      - pypi: examples/python/camera_video_stream
+      - pypi: examples/python/clock
+      - pypi: examples/python/controlnet
+      - pypi: examples/python/dataframe_query
+      - pypi: examples/python/detect_and_track_objects
+      - pypi: examples/python/dicom_mri
+      - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
+      - pypi: examples/python/face_tracking
+      - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
+      - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
+      - pypi: examples/python/incremental_logging
+      - pypi: examples/python/lidar
+      - pypi: examples/python/live_camera_edge_detection
+      - pypi: examples/python/live_scrolling_plot
+      - pypi: examples/python/llm_embedding_ner
+      - pypi: examples/python/log_file
+      - pypi: examples/python/minimal
+      - pypi: examples/python/minimal_options
+      - pypi: examples/python/multiprocess_logging
+      - pypi: examples/python/multithreading
+      - pypi: examples/python/nuscenes_dataset
+      - pypi: examples/python/nv12
+      - pypi: examples/python/objectron
+      - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
+      - pypi: examples/python/plots
+      - pypi: examples/python/raw_mesh
+      - pypi: examples/python/rgbd
+      - pypi: examples/python/rrt_star
+      - pypi: examples/python/segment_anything_model
+      - pypi: examples/python/shared_recording
+      - pypi: examples/python/stdio
+      - pypi: examples/python/structure_from_motion
   py:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -6510,7 +6510,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b4/b0/9fc566b0fe08b282c850063591a756057c3247b2362b9286429ec5bf1721/wrapt-1.17.2-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/76/3f/dbafccf19cfeca25bbabf6f2dd81796b7218f768ec400f043edc767015a6/zstandard-0.23.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: ./rerun_py
+      - pypi: rerun_py
       linux-aarch64:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/_openmp_mutex-4.5-2_gnu.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/aiohttp-3.9.5-py311hcd402e7_0.conda
@@ -6894,7 +6894,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/ca/74/336c918d2915a4943501c77566db41d1bd6e9f4dbc317f356b9a244dfe83/wrapt-1.17.2-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/63/b6/677e65c095d8e12b66b8f862b069bcf1f1d781b9c9c6f12eb55000d57583/zstandard-0.23.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
-      - pypi: ./rerun_py
+      - pypi: rerun_py
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aiohttp-3.9.5-py311h05b510d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.4.0-pyhd8ed1ab_0.conda
@@ -7256,13 +7256,13 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/65/46/5a917ce85b5c3b490d35c02bf71aedaa9f2f63f2d15d9949cc4ba56e8ba9/wrapt-1.17.2-cp311-cp311-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/46/66d5b55f4d737dd6ab75851b224abf0afe5774976fe511a54d2eb9063a41/zstandard-0.23.0-cp311-cp311-macosx_11_0_arm64.whl
-      - pypi: ./rerun_py
+      - pypi: rerun_py
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/aiohttp-3.9.5-py311ha68e1ae_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aom-3.9.1-he0c23c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/attrs-25.3.0-pyh71513ae_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/av-15.0.0-py311h1ce0600_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/av-14.2.0-py311h641bbc9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-auth-0.8.0-h6c5491b_10.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-cal-0.8.0-hb414858_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-common-0.10.3-h2466b09_0.conda
@@ -7617,7 +7617,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/47/f8/fb1773491a253cbc123c5d5dc15c86041f746ed30416535f2a8df1f4a392/wrapt-1.17.2-cp311-cp311-win_amd64.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/be/a2/4272175d47c623ff78196f3c10e9dc7045c1b9caf3735bf041e65271eca4/zstandard-0.23.0-cp311-cp311-win_amd64.whl
-      - pypi: ./rerun_py
+      - pypi: rerun_py
   py-docs:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -10022,47 +10022,47 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c9/1e/631c80e0f97aef46eb73549b9b0f60d94057294e040740f4cad0cb1f48e4/yfinance-0.2.65-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/76/3f/dbafccf19cfeca25bbabf6f2dd81796b7218f768ec400f043edc767015a6/zstandard-0.23.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: ./examples/python/air_traffic_data
-      - pypi: ./examples/python/arkit_scenes
-      - pypi: ./examples/python/blueprint
-      - pypi: ./examples/python/blueprint_stocks
-      - pypi: ./examples/python/camera_video_stream
-      - pypi: ./examples/python/clock
-      - pypi: ./examples/python/controlnet
-      - pypi: ./examples/python/dataframe_query
-      - pypi: ./examples/python/detect_and_track_objects
-      - pypi: ./examples/python/dicom_mri
-      - pypi: ./examples/python/dna
-      - pypi: ./examples/python/drone_lidar
-      - pypi: ./examples/python/face_tracking
-      - pypi: ./examples/python/gesture_detection
-      - pypi: ./examples/python/graph_lattice
-      - pypi: ./examples/python/graphs
-      - pypi: ./examples/python/human_pose_tracking
-      - pypi: ./examples/python/imu_signals
-      - pypi: ./examples/python/incremental_logging
-      - pypi: ./examples/python/lidar
-      - pypi: ./examples/python/live_camera_edge_detection
-      - pypi: ./examples/python/live_scrolling_plot
-      - pypi: ./examples/python/llm_embedding_ner
-      - pypi: ./examples/python/log_file
-      - pypi: ./examples/python/minimal
-      - pypi: ./examples/python/minimal_options
-      - pypi: ./examples/python/multiprocess_logging
-      - pypi: ./examples/python/multithreading
-      - pypi: ./examples/python/nuscenes_dataset
-      - pypi: ./examples/python/nv12
-      - pypi: ./examples/python/objectron
-      - pypi: ./examples/python/open_photogrammetry_format
-      - pypi: ./examples/python/openstreetmap_data
-      - pypi: ./examples/python/plots
-      - pypi: ./examples/python/raw_mesh
-      - pypi: ./examples/python/rgbd
-      - pypi: ./examples/python/rrt_star
-      - pypi: ./examples/python/segment_anything_model
-      - pypi: ./examples/python/shared_recording
-      - pypi: ./examples/python/stdio
-      - pypi: ./examples/python/structure_from_motion
+      - pypi: examples/python/air_traffic_data
+      - pypi: examples/python/arkit_scenes
+      - pypi: examples/python/blueprint
+      - pypi: examples/python/blueprint_stocks
+      - pypi: examples/python/camera_video_stream
+      - pypi: examples/python/clock
+      - pypi: examples/python/controlnet
+      - pypi: examples/python/dataframe_query
+      - pypi: examples/python/detect_and_track_objects
+      - pypi: examples/python/dicom_mri
+      - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
+      - pypi: examples/python/face_tracking
+      - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
+      - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
+      - pypi: examples/python/incremental_logging
+      - pypi: examples/python/lidar
+      - pypi: examples/python/live_camera_edge_detection
+      - pypi: examples/python/live_scrolling_plot
+      - pypi: examples/python/llm_embedding_ner
+      - pypi: examples/python/log_file
+      - pypi: examples/python/minimal
+      - pypi: examples/python/minimal_options
+      - pypi: examples/python/multiprocess_logging
+      - pypi: examples/python/multithreading
+      - pypi: examples/python/nuscenes_dataset
+      - pypi: examples/python/nv12
+      - pypi: examples/python/objectron
+      - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
+      - pypi: examples/python/plots
+      - pypi: examples/python/raw_mesh
+      - pypi: examples/python/rgbd
+      - pypi: examples/python/rrt_star
+      - pypi: examples/python/segment_anything_model
+      - pypi: examples/python/shared_recording
+      - pypi: examples/python/stdio
+      - pypi: examples/python/structure_from_motion
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/aiohttp-3.9.5-py311h05b510d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.4.0-pyhd8ed1ab_0.conda
@@ -10499,53 +10499,53 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c9/1e/631c80e0f97aef46eb73549b9b0f60d94057294e040740f4cad0cb1f48e4/yfinance-0.2.65-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e8/46/66d5b55f4d737dd6ab75851b224abf0afe5774976fe511a54d2eb9063a41/zstandard-0.23.0-cp311-cp311-macosx_11_0_arm64.whl
-      - pypi: ./examples/python/air_traffic_data
-      - pypi: ./examples/python/arkit_scenes
-      - pypi: ./examples/python/blueprint
-      - pypi: ./examples/python/blueprint_stocks
-      - pypi: ./examples/python/camera_video_stream
-      - pypi: ./examples/python/clock
-      - pypi: ./examples/python/controlnet
-      - pypi: ./examples/python/dataframe_query
-      - pypi: ./examples/python/detect_and_track_objects
-      - pypi: ./examples/python/dicom_mri
-      - pypi: ./examples/python/dna
-      - pypi: ./examples/python/drone_lidar
-      - pypi: ./examples/python/face_tracking
-      - pypi: ./examples/python/gesture_detection
-      - pypi: ./examples/python/graph_lattice
-      - pypi: ./examples/python/graphs
-      - pypi: ./examples/python/human_pose_tracking
-      - pypi: ./examples/python/imu_signals
-      - pypi: ./examples/python/incremental_logging
-      - pypi: ./examples/python/lidar
-      - pypi: ./examples/python/live_camera_edge_detection
-      - pypi: ./examples/python/live_scrolling_plot
-      - pypi: ./examples/python/llm_embedding_ner
-      - pypi: ./examples/python/log_file
-      - pypi: ./examples/python/minimal
-      - pypi: ./examples/python/minimal_options
-      - pypi: ./examples/python/multiprocess_logging
-      - pypi: ./examples/python/multithreading
-      - pypi: ./examples/python/nuscenes_dataset
-      - pypi: ./examples/python/nv12
-      - pypi: ./examples/python/objectron
-      - pypi: ./examples/python/open_photogrammetry_format
-      - pypi: ./examples/python/openstreetmap_data
-      - pypi: ./examples/python/plots
-      - pypi: ./examples/python/raw_mesh
-      - pypi: ./examples/python/rgbd
-      - pypi: ./examples/python/rrt_star
-      - pypi: ./examples/python/segment_anything_model
-      - pypi: ./examples/python/shared_recording
-      - pypi: ./examples/python/stdio
-      - pypi: ./examples/python/structure_from_motion
+      - pypi: examples/python/air_traffic_data
+      - pypi: examples/python/arkit_scenes
+      - pypi: examples/python/blueprint
+      - pypi: examples/python/blueprint_stocks
+      - pypi: examples/python/camera_video_stream
+      - pypi: examples/python/clock
+      - pypi: examples/python/controlnet
+      - pypi: examples/python/dataframe_query
+      - pypi: examples/python/detect_and_track_objects
+      - pypi: examples/python/dicom_mri
+      - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
+      - pypi: examples/python/face_tracking
+      - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
+      - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
+      - pypi: examples/python/incremental_logging
+      - pypi: examples/python/lidar
+      - pypi: examples/python/live_camera_edge_detection
+      - pypi: examples/python/live_scrolling_plot
+      - pypi: examples/python/llm_embedding_ner
+      - pypi: examples/python/log_file
+      - pypi: examples/python/minimal
+      - pypi: examples/python/minimal_options
+      - pypi: examples/python/multiprocess_logging
+      - pypi: examples/python/multithreading
+      - pypi: examples/python/nuscenes_dataset
+      - pypi: examples/python/nv12
+      - pypi: examples/python/objectron
+      - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
+      - pypi: examples/python/plots
+      - pypi: examples/python/raw_mesh
+      - pypi: examples/python/rgbd
+      - pypi: examples/python/rrt_star
+      - pypi: examples/python/segment_anything_model
+      - pypi: examples/python/shared_recording
+      - pypi: examples/python/stdio
+      - pypi: examples/python/structure_from_motion
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/aiohttp-3.9.5-py311ha68e1ae_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aom-3.9.1-he0c23c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/attrs-25.3.0-pyh71513ae_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/av-15.0.0-py311h1ce0600_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/av-14.2.0-py311h641bbc9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-auth-0.8.0-h6c5491b_10.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-cal-0.8.0-hb414858_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-common-0.10.3-h2466b09_0.conda
@@ -10978,47 +10978,47 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c9/1e/631c80e0f97aef46eb73549b9b0f60d94057294e040740f4cad0cb1f48e4/yfinance-0.2.65-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/be/a2/4272175d47c623ff78196f3c10e9dc7045c1b9caf3735bf041e65271eca4/zstandard-0.23.0-cp311-cp311-win_amd64.whl
-      - pypi: ./examples/python/air_traffic_data
-      - pypi: ./examples/python/arkit_scenes
-      - pypi: ./examples/python/blueprint
-      - pypi: ./examples/python/blueprint_stocks
-      - pypi: ./examples/python/camera_video_stream
-      - pypi: ./examples/python/clock
-      - pypi: ./examples/python/controlnet
-      - pypi: ./examples/python/dataframe_query
-      - pypi: ./examples/python/detect_and_track_objects
-      - pypi: ./examples/python/dicom_mri
-      - pypi: ./examples/python/dna
-      - pypi: ./examples/python/drone_lidar
-      - pypi: ./examples/python/face_tracking
-      - pypi: ./examples/python/gesture_detection
-      - pypi: ./examples/python/graph_lattice
-      - pypi: ./examples/python/graphs
-      - pypi: ./examples/python/human_pose_tracking
-      - pypi: ./examples/python/imu_signals
-      - pypi: ./examples/python/incremental_logging
-      - pypi: ./examples/python/lidar
-      - pypi: ./examples/python/live_camera_edge_detection
-      - pypi: ./examples/python/live_scrolling_plot
-      - pypi: ./examples/python/llm_embedding_ner
-      - pypi: ./examples/python/log_file
-      - pypi: ./examples/python/minimal
-      - pypi: ./examples/python/minimal_options
-      - pypi: ./examples/python/multiprocess_logging
-      - pypi: ./examples/python/multithreading
-      - pypi: ./examples/python/nuscenes_dataset
-      - pypi: ./examples/python/nv12
-      - pypi: ./examples/python/objectron
-      - pypi: ./examples/python/open_photogrammetry_format
-      - pypi: ./examples/python/openstreetmap_data
-      - pypi: ./examples/python/plots
-      - pypi: ./examples/python/raw_mesh
-      - pypi: ./examples/python/rgbd
-      - pypi: ./examples/python/rrt_star
-      - pypi: ./examples/python/segment_anything_model
-      - pypi: ./examples/python/shared_recording
-      - pypi: ./examples/python/stdio
-      - pypi: ./examples/python/structure_from_motion
+      - pypi: examples/python/air_traffic_data
+      - pypi: examples/python/arkit_scenes
+      - pypi: examples/python/blueprint
+      - pypi: examples/python/blueprint_stocks
+      - pypi: examples/python/camera_video_stream
+      - pypi: examples/python/clock
+      - pypi: examples/python/controlnet
+      - pypi: examples/python/dataframe_query
+      - pypi: examples/python/detect_and_track_objects
+      - pypi: examples/python/dicom_mri
+      - pypi: examples/python/dna
+      - pypi: examples/python/drone_lidar
+      - pypi: examples/python/face_tracking
+      - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_lattice
+      - pypi: examples/python/graphs
+      - pypi: examples/python/human_pose_tracking
+      - pypi: examples/python/imu_signals
+      - pypi: examples/python/incremental_logging
+      - pypi: examples/python/lidar
+      - pypi: examples/python/live_camera_edge_detection
+      - pypi: examples/python/live_scrolling_plot
+      - pypi: examples/python/llm_embedding_ner
+      - pypi: examples/python/log_file
+      - pypi: examples/python/minimal
+      - pypi: examples/python/minimal_options
+      - pypi: examples/python/multiprocess_logging
+      - pypi: examples/python/multithreading
+      - pypi: examples/python/nuscenes_dataset
+      - pypi: examples/python/nv12
+      - pypi: examples/python/objectron
+      - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
+      - pypi: examples/python/plots
+      - pypi: examples/python/raw_mesh
+      - pypi: examples/python/rgbd
+      - pypi: examples/python/rrt_star
+      - pypi: examples/python/segment_anything_model
+      - pypi: examples/python/shared_recording
+      - pypi: examples/python/stdio
+      - pypi: examples/python/structure_from_motion
   wheel-test-min:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
@@ -12226,7 +12226,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/aiosignal-1.4.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aom-3.9.1-he0c23c2_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/attrs-25.3.0-pyh71513ae_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/av-15.0.0-py311h1ce0600_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/av-14.2.0-py311h641bbc9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-auth-0.8.0-h6c5491b_10.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-cal-0.8.0-hb414858_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/aws-c-common-0.10.3-h2466b09_0.conda
@@ -12816,7 +12816,7 @@ packages:
   - pkg:pypi/aiosignal?source=hash-mapping
   size: 13688
   timestamp: 1751626573984
-- pypi: ./examples/python/air_traffic_data
+- pypi: examples/python/air_traffic_data
   name: air-traffic-data
   version: 0.1.0
   sha256: 3d5600bb5caf00e2fdef1cf4f1f368b06da955d385b95cd6b7a7ccd6d47f5a91
@@ -12984,7 +12984,7 @@ packages:
   name: argparse
   version: 1.4.0
   sha256: c31647edb69fd3d465a847ea3157d37bed1f95f19760b11a47aa91c04b666314
-- pypi: ./examples/python/arkit_scenes
+- pypi: examples/python/arkit_scenes
   name: arkit-scenes
   version: 0.1.0
   sha256: 1ea1defa403966ebbc7e54ff7b92f65fdb6c98ee3e242d8af0be46023ed87961
@@ -13113,20 +13113,20 @@ packages:
   - pkg:pypi/attrs?source=hash-mapping
   size: 57181
   timestamp: 1741918625732
-- pypi: https://files.pythonhosted.org/packages/17/89/940a509ee7e9449f0c877fa984b37b7cc485546035cc67bbc353f2ac20f3/av-15.0.0.tar.gz
+- pypi: https://files.pythonhosted.org/packages/1a/ab/ddc797e2e99b84c674d7405ca3f99318d7bd7ff3ad13430911bc037ea3a9/av-14.2.0-cp311-cp311-win_amd64.whl
   name: av
-  version: 15.0.0
-  sha256: 871c1a9becddf00b60b1294dc0bff9ff193ac31286aeec1a34039bd27e650183
+  version: 14.2.0
+  sha256: 530800028f1056be744bd002b4f60fe85395d94603627a2e0aa26acf90cd4521
   requires_python: '>=3.9'
-- pypi: https://files.pythonhosted.org/packages/de/ca/0c77802f70248bc3e182451a174db30fca349858840c4fbf1c7f8e1beaa0/av-15.0.0-cp311-cp311-win_amd64.whl
+- pypi: https://files.pythonhosted.org/packages/75/d9/f93c06716ee45e5ec78814179f13ccef80593df69c2b8f48c6633a2157d0/av-14.2.0-cp311-cp311-macosx_12_0_arm64.whl
   name: av
-  version: 15.0.0
-  sha256: cb7a85b4fe853a9c2725cdf02f457221fcc24f0391c8333b25a3a889e16ff26d
+  version: 14.2.0
+  sha256: 42d0067654f3b05a86ddfaf4d82d4cb913d914024c5bbc8245dfe76357dfa350
   requires_python: '>=3.9'
-- pypi: https://files.pythonhosted.org/packages/ed/64/6dcfb449ed287a590ecf70d6259f1f2c06fa9a576996f53d1949d65c4ee5/av-15.0.0-cp311-cp311-manylinux_2_28_x86_64.whl
+- pypi: https://files.pythonhosted.org/packages/af/3a/4156fa8234aa388c8aa6106f6356aad2e03682a4bca238c259caa4db7ecd/av-14.2.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
   name: av
-  version: 15.0.0
-  sha256: e2a5f0d1817ab73370fdb35e2e2ecd4c2e5a45d43b8d96d5ae8dfe86098fb9b3
+  version: 14.2.0
+  sha256: e7647d4a8d1855d05fe70784a962b15e103a2d4a0eba1dea7bfbfd95753dedb9
   requires_python: '>=3.9'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/av-14.2.0-py311h943d919_0.conda
   sha256: 7dc35f421a27eff4696af7bbc7f1dcbaaa71ec7e1c78919b7278130ab1af0665
@@ -13182,25 +13182,25 @@ packages:
   - pkg:pypi/av?source=hash-mapping
   size: 1068063
   timestamp: 1740887945702
-- conda: https://conda.anaconda.org/conda-forge/win-64/av-15.0.0-py311h1ce0600_0.conda
-  sha256: fa32a95b30106f386a321d0c99c980ce0e4a7705d97b74942844fd158119ad87
-  md5: 7010a8e51035ec3bf7cc24945cd461d4
+- conda: https://conda.anaconda.org/conda-forge/win-64/av-14.2.0-py311h641bbc9_0.conda
+  sha256: 8697bbc12157270e3eb95a78431995f758101f5cd034542900eac5d2597357f6
+  md5: ca1140979b07b0174fff629055759a53
   depends:
-  - ffmpeg >=7.1.1,<8.0a0
+  - ffmpeg >=7.1.0,<8.0a0
+  - numpy >=1.19,<3
   - numpy >=1.22
-  - numpy >=1.23,<3
   - pillow
   - python >=3.11,<3.12.0a0
   - python_abi 3.11.* *_cp311
   - ucrt >=10.0.20348.0
-  - vc >=14.3,<15
-  - vc14_runtime >=14.44.35208
+  - vc >=14.2,<15
+  - vc14_runtime >=14.29.30139
   license: BSD-3-Clause
   license_family: BSD
   purls:
   - pkg:pypi/av?source=hash-mapping
-  size: 871745
-  timestamp: 1751745341063
+  size: 951718
+  timestamp: 1740888015509
 - conda: https://conda.anaconda.org/conda-forge/linux-64/aws-c-auth-0.8.0-hb88c0a9_10.conda
   sha256: d2837a84e6bd7d993a83e79f9e240e1465e375f3d57149ea5b1927c6a4133bcc
   md5: 409b7ee6d3473cc62bda7280f6ac20d0
@@ -14633,7 +14633,7 @@ packages:
   - webencodings
   - tinycss2>=1.1.0,<1.5 ; extra == 'css'
   requires_python: '>=3.9'
-- pypi: ./examples/python/blueprint
+- pypi: examples/python/blueprint
   name: blueprint
   version: 0.1.0
   sha256: d9a358e5994ec1e9144942903e46148b16825344cddc19e7188b285f59bc61c1
@@ -14641,7 +14641,7 @@ packages:
   - numpy
   - rerun-sdk
   editable: true
-- pypi: ./examples/python/blueprint_stocks
+- pypi: examples/python/blueprint_stocks
   name: blueprint-stocks
   version: 0.1.0
   sha256: 931c90b4c05a2f881a1c68dcb9a84887e1a185ff0fc9d366fd7e5e60e1738b50
@@ -14964,7 +14964,7 @@ packages:
   purls: []
   size: 1524254
   timestamp: 1741555212198
-- pypi: ./examples/python/camera_video_stream
+- pypi: examples/python/camera_video_stream
   name: camera-video-stream
   version: 0.1.0
   sha256: 663e01444d7ff1349d6bfea4aab12ed69d420af9070be9d04d17de808fd12bb7
@@ -15646,7 +15646,7 @@ packages:
   requires_dist:
   - colorama ; sys_platform == 'win32'
   requires_python: '>=3.10'
-- pypi: ./examples/python/clock
+- pypi: examples/python/clock
   name: clock
   version: 0.1.0
   sha256: 1ae48a7222b2fc2bd9942a31bb48fefb34225a946859ad95c25ad00bfb754cd7
@@ -15893,7 +15893,7 @@ packages:
   - pytest-xdist ; extra == 'test-no-images'
   - wurlitzer ; extra == 'test-no-images'
   requires_python: '>=3.11'
-- pypi: ./examples/python/controlnet
+- pypi: examples/python/controlnet
   name: controlnet
   version: 0.1.0
   sha256: 30af0136604c6c5d1accedd7e3e6ce71c9ef1b39e84c0ecf3c4629fa47d5dc63
@@ -16259,7 +16259,7 @@ packages:
   - marshmallow>=3.18.0,<4.0.0
   - typing-inspect>=0.4.0,<1
   requires_python: '>=3.7,<4.0'
-- pypi: ./examples/python/dataframe_query
+- pypi: examples/python/dataframe_query
   name: dataframe-query
   version: 0.1.0
   sha256: cfd25d2d2872eef690801817f4a3bf4660d4b232cc594d0bcc3ee70a783dfd46
@@ -16472,7 +16472,7 @@ packages:
   sha256: 4c62dc41109689d03e4b35de0a2bcbdeeb81047badc607c4415d5c753bd683af
   requires_dist:
   - matplotlib
-- pypi: ./examples/python/detect_and_track_objects
+- pypi: examples/python/detect_and_track_objects
   name: detect-and-track-objects
   version: 0.1.0
   sha256: a29693142a027c41d848418a478270f2a11decdd69759bc1b2db4f6df7860e3f
@@ -16486,7 +16486,7 @@ packages:
   - torch==2.8.0
   - transformers>=4.55.0
   editable: true
-- pypi: ./examples/python/dicom_mri
+- pypi: examples/python/dicom_mri
   name: dicom-mri
   version: 0.1.0
   sha256: 98cb91dc5758ae59e3cd0fb797f86f40fcf627f63e659365806f59feed4618d8
@@ -16591,7 +16591,7 @@ packages:
   name: distlib
   version: 0.4.0
   sha256: 9659f7d87e46584a30b5780e43ac7a2143098441670ff0a49d5f9034c54a6c16
-- pypi: ./examples/python/dna
+- pypi: examples/python/dna
   name: dna
   version: 0.1.0
   sha256: 15dd8b0ce0ee55262916ea9bc8fb93c72c2012cb01a78e6d24a526d92537eab4
@@ -16694,7 +16694,7 @@ packages:
   purls: []
   size: 4861033
   timestamp: 1687333355663
-- pypi: ./examples/python/drone_lidar
+- pypi: examples/python/drone_lidar
   name: drone-lidar
   version: 0.1.0
   sha256: 4de8d4135d07f9b0389eeb8a3616a5a9941a868b4d876cc91d8b5351c3b8984d
@@ -16729,7 +16729,7 @@ packages:
   - littleutils ; extra == 'tests'
   - rich ; python_full_version >= '3.11' and extra == 'tests'
   requires_python: '>=3.8'
-- pypi: ./examples/python/face_tracking
+- pypi: examples/python/face_tracking
   name: face-tracking
   version: 0.1.0
   sha256: b8725fe4d36c11aad2c6c936ba2b57c7f65a856aa179badca5d041db63119d55
@@ -18132,7 +18132,7 @@ packages:
   - pre-commit ; extra == 'dev'
   - ruff ; extra == 'dev'
   requires_python: '>=3.10'
-- pypi: ./examples/python/gesture_detection
+- pypi: examples/python/gesture_detection
   name: gesture-detection
   version: 0.1.0
   sha256: 36dfc4cc822ee47f7aa29ba951bab8a94e96b9fd737daa324a441e6962a620bd
@@ -18524,7 +18524,7 @@ packages:
   - protobuf>=3.20.2,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<7.0.0
   - grpcio>=1.44.0,<2.0.0 ; extra == 'grpc'
   requires_python: '>=3.7'
-- pypi: ./examples/python/graph_lattice
+- pypi: examples/python/graph_lattice
   name: graph-lattice
   version: 0.1.0
   sha256: f92a889e55062d414fbf9847d0b2b216b8e4bcaf8ee2965476de877102ee52f8
@@ -18588,7 +18588,7 @@ packages:
   purls: []
   size: 128965
   timestamp: 1754260467262
-- pypi: ./examples/python/graphs
+- pypi: examples/python/graphs
   name: graphs
   version: 0.1.0
   sha256: 4e848c8bfec82cd0d79a4080a37ea03ee24c33d3c64019af981b76ba0bd8d10c
@@ -19129,7 +19129,7 @@ packages:
   - types-tqdm ; extra == 'typing'
   - types-urllib3 ; extra == 'typing'
   requires_python: '>=3.8.0'
-- pypi: ./examples/python/human_pose_tracking
+- pypi: examples/python/human_pose_tracking
   name: human-pose-tracking
   version: 0.1.0
   sha256: 8a80b67528d3f6d0c82671dc5c36cf551faa4b879f4434f0d386d8ef85666e86
@@ -19317,7 +19317,7 @@ packages:
   - pytest-enabler>=2.2 ; extra == 'enabler'
   - pytest-mypy ; extra == 'type'
   requires_python: '>=3.9'
-- pypi: ./examples/python/imu_signals
+- pypi: examples/python/imu_signals
   name: imu-signals
   version: 0.1.0
   sha256: 75508db835c17913b995958c786a75cff8b309fee80913fc343992fb0c7a79c2
@@ -19329,7 +19329,7 @@ packages:
   - tqdm
   requires_python: <3.12
   editable: true
-- pypi: ./examples/python/incremental_logging
+- pypi: examples/python/incremental_logging
   name: incremental-logging
   version: 0.1.0
   sha256: c1efe33868c31fe5a07ab5f6e60d28f856735a9e0b221ff96abd2e711d60e894
@@ -27714,7 +27714,7 @@ packages:
   purls: []
   size: 55476
   timestamp: 1727963768015
-- pypi: ./examples/python/lidar
+- pypi: examples/python/lidar
   name: lidar
   version: 0.1.0
   sha256: 10fe6d7b3a80959f913aada12c01bfecd6cd9854beaf6a8843a7ecd2215cd4bd
@@ -27725,7 +27725,7 @@ packages:
   - requests
   - rerun-sdk
   editable: true
-- pypi: ./examples/python/live_camera_edge_detection
+- pypi: examples/python/live_camera_edge_detection
   name: live-camera-edge-detection
   version: 0.1.0
   sha256: f1edef43efce87f55726e3b5d6a2f813667968f8e8185873a74b9dc61c0f040f
@@ -27733,7 +27733,7 @@ packages:
   - opencv-python
   - rerun-sdk
   editable: true
-- pypi: ./examples/python/live_scrolling_plot
+- pypi: examples/python/live_scrolling_plot
   name: live-scrolling-plot
   version: 0.1.0
   sha256: 1debab1814169399bb2ed23af2cd97a4693e7a4d4ee55e74bcb8804bf421e8fc
@@ -27741,7 +27741,7 @@ packages:
   - numpy
   - rerun-sdk
   editable: true
-- pypi: ./examples/python/llm_embedding_ner
+- pypi: examples/python/llm_embedding_ner
   name: llm-embedding-ner
   version: 0.1.0
   sha256: 6f5925cbe333d529421ef9a5114f85317bdd8b4200c1e9ff6798dff5e3a7f16f
@@ -27878,7 +27878,7 @@ packages:
   - pkg:pypi/llvmlite?source=hash-mapping
   size: 18129353
   timestamp: 1742816158466
-- pypi: ./examples/python/log_file
+- pypi: examples/python/log_file
   name: log-file
   version: 0.1.0
   sha256: fb6af8faeaac3e8d16da4ab40e26a73dd0e63483f34aa36298c32f7e39324fd3
@@ -28375,7 +28375,7 @@ packages:
   version: 1.3.4
   sha256: 70775750742b25c0d8f36c55aed03d24c3384d17c951b3175d898bd778ef0307
   requires_python: '>=3.6'
-- pypi: ./examples/python/minimal
+- pypi: examples/python/minimal
   name: minimal
   version: 0.1.0
   sha256: 871c1ec39ceb3af42679653369402d66672d4bb9850a727b27db05c16653c8dd
@@ -28383,7 +28383,7 @@ packages:
   - numpy
   - rerun-sdk
   editable: true
-- pypi: ./examples/python/minimal_options
+- pypi: examples/python/minimal_options
   name: minimal-options
   version: 0.1.0
   sha256: 84d5a8787772da382454f2f3b44d54027a606bff043872dab559cc4604ac82f0
@@ -28731,7 +28731,7 @@ packages:
   - pkg:pypi/multidict?source=hash-mapping
   size: 92269
   timestamp: 1751310800405
-- pypi: ./examples/python/multiprocess_logging
+- pypi: examples/python/multiprocess_logging
   name: multiprocess-logging
   version: 0.1.0
   sha256: 90ae836d45110662ac53e73a092a5298ab67d89873eed81d1773dba601a62eb2
@@ -28742,7 +28742,7 @@ packages:
   name: multitasking
   version: 0.0.12
   sha256: 2fba2fa8ed8c4b85e227c5dd7dc41c7d658de3b6f247927316175a57349b84d1
-- pypi: ./examples/python/multithreading
+- pypi: examples/python/multithreading
   name: multithreading
   version: 0.1.0
   sha256: 85b43cb06183386edd0a8820c0c9eb50398c197fd0da8ba5050f2cf2b24bc23e
@@ -29540,7 +29540,7 @@ packages:
   - pkg:pypi/numpy?source=compressed-mapping
   size: 8017357
   timestamp: 1753401560734
-- pypi: ./examples/python/nuscenes_dataset
+- pypi: examples/python/nuscenes_dataset
   name: nuscenes-dataset
   version: 0.1.0
   sha256: 78903b7670fac2b4c27637efc9aa6f63b7b70502ce3d5f88e4353aef5607cf40
@@ -29571,7 +29571,7 @@ packages:
   - tqdm
   - pycocotools>=2.0.1
   requires_python: '>=3.6'
-- pypi: ./examples/python/nv12
+- pypi: examples/python/nv12
   name: nv12
   version: 0.1.0
   sha256: c8ca97c5d8c04037cd5eb9a65be7b1e7d667c11d4dba3ee9aad5956ccf926dc4
@@ -29659,7 +29659,7 @@ packages:
   version: 12.8.90
   sha256: 5b17e2001cc0d751a5bc2c6ec6d26ad95913324a4adb86788c944f8ce9ba441f
   requires_python: '>=3'
-- pypi: ./examples/python/objectron
+- pypi: examples/python/objectron
   name: objectron
   version: 0.1.0
   sha256: b2be2b675353b4238e7778b1cef8351950832c32b5e5c34415601c030a421a27
@@ -29683,7 +29683,7 @@ packages:
   purls: []
   size: 106742
   timestamp: 1743700382939
-- pypi: ./examples/python/open_photogrammetry_format
+- pypi: examples/python/open_photogrammetry_format
   name: open-photogrammetry-format
   version: 0.1.0
   sha256: 1bf1ac24e064bb75c7f5672b761e519b8b941354a6d9c44d824643ff64f15e80
@@ -30125,7 +30125,7 @@ packages:
   purls: []
   size: 9275175
   timestamp: 1754467904482
-- pypi: ./examples/python/openstreetmap_data
+- pypi: examples/python/openstreetmap_data
   name: openstreetmap-data
   version: 0.1.0
   sha256: 3b19fd64cb7d102a75ac934cd188cdd110fddca78c72701f10596f0ed8a0dff5
@@ -31076,7 +31076,7 @@ packages:
   - pytest>=8.3.4 ; extra == 'test'
   - mypy>=1.14.1 ; extra == 'type'
   requires_python: '>=3.9'
-- pypi: ./examples/python/plots
+- pypi: examples/python/plots
   name: plots
   version: 0.1.0
   sha256: 398c85932db816f766e2d703568060efe4520a6e734f91d69387bbdd143b3f97
@@ -33008,7 +33008,7 @@ packages:
   purls: []
   size: 4122383
   timestamp: 1746622805379
-- pypi: ./examples/python/raw_mesh
+- pypi: examples/python/raw_mesh
   name: raw-mesh
   version: 0.1.0
   sha256: 941add74b4fc4866e3e91bb4a5866d8556ab1ae39cc7819e5d1ab0463ad3fc33
@@ -33218,17 +33218,17 @@ packages:
   - pytest==7.1.2 ; extra == 'tests'
   - rerun-notebook==0.24.0 ; extra == 'notebook'
   requires_python: '>=3.9'
-- pypi: ./rerun_py
+- pypi: rerun_py
   name: rerun-sdk
   version: 0.25.0a1+dev
-  sha256: ce1efec39d978a35ecadf41d63dc970353d79607cac59a69665ddfbc88e845ef
+  sha256: e4f0d99dd01bc4414eaff0364778e243ff4502acf62f5a83418e683f0e768801
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
   - pillow>=8.0.0
   - pyarrow>=18.0.0
   - typing-extensions>=4.5
-  - pytest==7.1.2 ; extra == 'tests'
+  - pytest==8.4.1 ; extra == 'tests'
   - rerun-notebook==0.25.0a1+dev ; extra == 'notebook'
   - datafusion==47.0.0 ; extra == 'datafusion'
   - notebook ; extra == 'all'
@@ -33255,7 +33255,7 @@ packages:
   - lark>=1.2.2
   - pytest>=8.3.5 ; extra == 'testing'
   requires_python: '>=3.9'
-- pypi: ./examples/python/rgbd
+- pypi: examples/python/rgbd
   name: rgbd
   version: 0.1.0
   sha256: b2ef153b0bedd672c3e0ce89b7be1f64f4344b2b75d71748899faea270383fa2
@@ -33341,7 +33341,7 @@ packages:
   version: 0.27.0
   sha256: 7ec85994f96a58cf7ed288caa344b7fe31fd1d503bdf13d7331ead5f70ab60d5
   requires_python: '>=3.9'
-- pypi: ./examples/python/rrt_star
+- pypi: examples/python/rrt_star
   name: rrt-star
   version: 0.1.0
   sha256: 41993fc9e48ad077ad59ee5918ccc59c86628fd3d8ea4d36bd0706e9880ce6df
@@ -33922,7 +33922,7 @@ packages:
   - isort ; extra == 'dev'
   - black ; extra == 'dev'
   - mypy ; extra == 'dev'
-- pypi: ./examples/python/segment_anything_model
+- pypi: examples/python/segment_anything_model
   name: segment-anything-model
   version: 0.1.0
   sha256: ac45b3defcd03e201ecd5f178f50fa08a612ae773100e3af36ffc4a55ad32148
@@ -34070,7 +34070,7 @@ packages:
   - pytest-cov ; extra == 'test'
   - scipy-doctest ; extra == 'test'
   requires_python: '>=3.10'
-- pypi: ./examples/python/shared_recording
+- pypi: examples/python/shared_recording
   name: shared-recording
   version: 0.1.0
   sha256: 6f605379e813578a2304663522ed82ab2fd6486cee725b969abd533b5ac8072f
@@ -34280,7 +34280,7 @@ packages:
   - pygments ; extra == 'tests'
   - littleutils ; extra == 'tests'
   - cython ; extra == 'tests'
-- pypi: ./examples/python/stdio
+- pypi: examples/python/stdio
   name: stdio
   version: 0.1.0
   sha256: 15fb60d3e1c8b7b2d1a4dfcc223bddb267451e8ef7534d42f663d116166d92e2
@@ -34291,7 +34291,7 @@ packages:
   name: stringcase
   version: 1.2.0
   sha256: 48a06980661908efe8d9d34eab2b6c13aefa2163b3ced26972902e3bdfd87008
-- pypi: ./examples/python/structure_from_motion
+- pypi: examples/python/structure_from_motion
   name: structure-from-motion
   version: 0.1.0
   sha256: b20b79aa7bb2b4225b37d3cb28872a70dc7e9ab2ca9ab138b90d60fc8d7b4c15

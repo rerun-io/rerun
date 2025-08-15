@@ -22,17 +22,14 @@ all-features = true
 [dependencies]
 re_auth.workspace = true
 re_component_ui.workspace = true
-re_data_ui.workspace = true
 re_dataframe_ui.workspace = true
 re_datafusion.workspace = true
-re_entity_db.workspace = true
 re_grpc_client.workspace = true
 re_log.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
 re_sorbet.workspace = true
-re_types.workspace = true
 re_ui.workspace = true
 re_uri.workspace = true
 re_viewer_context.workspace = true

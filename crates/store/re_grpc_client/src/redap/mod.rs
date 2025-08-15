@@ -90,6 +90,15 @@ pub enum ConnectionError {
     UnencryptedServer,
 }
 
+#[test]
+fn test_error_size() {
+    assert!(
+        std::mem::size_of::<ConnectionError>() <= 64,
+        "Size of error is {} bytes. Let's try to keep errors small.",
+        std::mem::size_of::<ConnectionError>()
+    );
+}
+
 #[cfg(target_arch = "wasm32")]
 pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, ConnectionError> {
     let channel = tonic_web_wasm_client::Client::new_with_options(

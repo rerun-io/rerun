@@ -21,7 +21,30 @@ const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]
-pub struct TonicStatusError(pub tonic::Status);
+pub struct TonicStatusError(Box<tonic::Status>);
+
+#[test]
+fn test_error_size() {
+    assert!(
+        std::mem::size_of::<TonicStatusError>() <= 32,
+        "Size of error is {} bytes. Let's try to keep errors small.",
+        std::mem::size_of::<TonicStatusError>()
+    );
+}
+
+impl AsRef<tonic::Status> for TonicStatusError {
+    #[inline]
+    fn as_ref(&self) -> &tonic::Status {
+        &self.0
+    }
+}
+
+impl TonicStatusError {
+    /// Returns the inner [`tonic::Status`].
+    pub fn into_inner(self) -> tonic::Status {
+        *self.0
+    }
+}
 
 impl std::fmt::Display for TonicStatusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -49,7 +72,7 @@ impl std::fmt::Display for TonicStatusError {
 
 impl From<tonic::Status> for TonicStatusError {
     fn from(value: tonic::Status) -> Self {
-        Self(value)
+        Self(Box::new(value))
     }
 }
 
@@ -104,6 +127,15 @@ pub enum StreamError {
 
     #[error("arrow error: {0}")]
     ArrowError(#[from] arrow::error::ArrowError),
+}
+
+#[test]
+fn test_stream_error_size() {
+    assert!(
+        std::mem::size_of::<StreamError>() <= 80,
+        "Size of error is {} bytes. Let's try to keep errors small.",
+        std::mem::size_of::<StreamError>()
+    );
 }
 
 impl From<tonic::Status> for StreamError {

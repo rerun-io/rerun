@@ -127,7 +127,6 @@ impl std::fmt::Display for DisplayDatatype<'_> {
 }
 
 fn format_inner_field(field: &Field) -> String {
-    debug_assert_eq!(field.name(), "item");
     let datatype_display = DisplayDatatype(field.data_type());
     if field.is_nullable() {
         format!("nullable {datatype_display}")

@@ -56,6 +56,7 @@ disallowed-methods = [
   { path = "arrow::compute::filter", reason = "Use `re_arrow_util::arrow_util::filter_array` instead" },
   { path = "arrow::compute::take", reason = "Use `re_arrow_util::arrow_util::take_array` instead" },
   { path = "arrow::datatypes::Schema::new", reason = "Use `arrow::datatypes::Schema::new_with_metadata` instead. There is usually some metadata you want to preserve." },
+  { path = "arrow_array::record_batch::RecordBatch::try_new", reason = "Use `arrow_array::record_batch::RecordBatch::try_new_with_options` instead. There is a corner case for empty batches that require the length specified." },
 
   { path = "ecolor::Color32::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "ecolor::Color32::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },

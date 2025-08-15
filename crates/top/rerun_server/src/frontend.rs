@@ -1,6 +1,6 @@
 use arrow::array::{
-    ArrayRef, BooleanArray, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
-    TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
+    ArrayRef, BooleanArray, DurationNanosecondArray, Int64Array, RecordBatch, RecordBatchOptions,
+    StringArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
     TimestampSecondArray, UInt64Array,
 };
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
@@ -705,6 +705,7 @@ impl FrontendService for FrontendHandler {
                     ),
                     Field::new("chunk_byte_len", arrow::datatypes::DataType::UInt64, false),
                 ];
+                let row_count = chunk_partition_id.len();
                 let mut arrays = vec![
                     Arc::new(StringArray::from(chunk_partition_id)) as ArrayRef,
                     EntityPath::to_arrow(chunk_entity_path).map_err(|err| {
@@ -737,7 +738,12 @@ impl FrontendService for FrontendHandler {
                 }
 
                 let schema = Arc::new(Schema::new_with_metadata(output_fields, HashMap::default()));
-                let batch = RecordBatch::try_new(schema, arrays).map_err(|err| {
+                let batch = RecordBatch::try_new_with_options(
+                    schema,
+                    arrays,
+                    &RecordBatchOptions::default().with_row_count(Some(row_count)),
+                )
+                .map_err(|err| {
                     tonic::Status::internal(format!("record batch creation failed: {err:#}"))
                 })?;
 

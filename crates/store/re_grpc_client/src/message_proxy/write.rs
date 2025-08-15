@@ -284,7 +284,7 @@ async fn message_proxy_client(
     let disconnect_result = if let Err(status) = client.write_messages(stream).await {
         re_log::error!(
             "Write messages call failed: {}",
-            TonicStatusError(status.clone())
+            TonicStatusError::from(status.clone())
         );
 
         // Ignore status code "Unknown" since this was observed to happen on regular Viewer shutdowns.

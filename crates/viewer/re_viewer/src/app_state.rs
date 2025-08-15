@@ -40,6 +40,7 @@ pub struct AppState {
     pub blueprint_cfg: RecordingConfig,
 
     /// Maps blueprint id to the current undo state for it.
+    #[serde(skip)]
     pub blueprint_undo_state: HashMap<StoreId, BlueprintUndoState>,
 
     selection_panel: re_selection_panel::SelectionPanel,
@@ -572,16 +573,16 @@ impl AppState {
                                             re_recording_panel::recordings_panel_ui(
                                                 &ctx,
                                                 ui,
-                                                welcome_screen_state.hide_examples,
                                                 redap_servers,
+                                                welcome_screen_state.hide_examples,
                                             );
                                         });
                                 } else {
                                     re_recording_panel::recordings_panel_ui(
                                         &ctx,
                                         ui,
-                                        welcome_screen_state.hide_examples,
                                         redap_servers,
+                                        welcome_screen_state.hide_examples,
                                     );
                                 }
 

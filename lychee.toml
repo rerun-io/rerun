@@ -56,6 +56,8 @@ exclude_path = [
   "rerun_cpp/docs/html",
   "rerun_cpp/docs/xml",
   "rerun_cpp/tmp/",
+  "rerun_js/node_modules/",
+  "rerun_notebook/node_modules/",
   "rerun_py/site/",
   "target_ra",
   "target_wasm",
@@ -64,12 +66,12 @@ exclude_path = [
 
   # Actually ignored files beyond .gitignore
   "crates/utils/re_analytics/src/event.rs",        # Contains test with malformed urls
-  "scripts/lint.py",                               # Contains url-matching regexes that aren't actual urls
-  "scripts/screenshot_compare/assets/templates/",
-  "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
   "crates/utils/re_uri/src/lib.rs",                # Contains some malformed URLs, but they are not actual links.
   "crates/utils/re_uri/src/redap_uri.rs",          # Same as above.
+  "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
   "docs/snippets/INDEX.md",                        # The snippet index is guaranteed should be correct by design.
+  "scripts/lint.py",                               # Contains url-matching regexes that aren't actual urls
+  "scripts/screenshot_compare/assets/templates/",
 ]
 # Exclude URLs and mail addresses from checking (supports regex).
 exclude = [
@@ -125,6 +127,7 @@ exclude = [
   'http://wrong-scheme',
   'rerun\+http://localhost:\{grpc_port\}/proxy',
   '.*scheme:/.*',
+  'http(s)?://example.com/.*',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.
@@ -146,6 +149,7 @@ exclude = [
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
   'https://github.com/rerun-io/documentation',
+  'https://github.com/rerun-io/dataplatform',
 
   # Needs authentication
   'https://edge.meilisearch.com',
@@ -157,10 +161,13 @@ exclude = [
   # Temporarily down or not accessible.
   'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
   'https://dl.acm.org/doi/10.1145/3638550.3643617',                 # We might be getting rate-limited here.
+  'https://wiki.ros.org/.*',                                        # Constant timeouts.
+  'https://www.doxygen.nl/.*',                                      # Getting 403, but the links work.
 
   # Works but is really slow at times:
-  'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',
   'https://anaconda.org/conda-forge/arrow-cpp',
+  'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',
+  'https://picsum.photos/*',
 
   # These are APIs:
   'https://rerun.io/login',

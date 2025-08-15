@@ -1,10 +1,17 @@
 use arrow::{
     array::{Array, ArrayRef, ListArray, RecordBatch},
-    buffer::ScalarBuffer,
+    buffer::{Buffer, ScalarBuffer},
     datatypes::{ArrowNativeType, DataType, Field, Fields, Schema, UnionFields},
 };
 
 use super::SizeBytes;
+
+impl SizeBytes for Buffer {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.capacity() as u64
+    }
+}
 
 impl SizeBytes for dyn Array {
     #[inline]
