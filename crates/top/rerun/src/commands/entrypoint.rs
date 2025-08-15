@@ -850,6 +850,14 @@ fn run_impl(
     } else if args.connect.is_none() && is_another_server_already_running(server_addr) {
         connect_to_existing_server(url_or_paths, &connection_registry, server_addr)
     } else {
+        #[cfg(not(feature = "native_viewer"))]
+        {
+            anyhow::bail!(
+                "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
+            )
+        }
+
+        #[cfg(feature = "native_viewer")]
         start_native_viewer(
             url_or_paths,
             args.connect.is_some(),
@@ -867,6 +875,7 @@ fn run_impl(
     }
 }
 
+#[cfg(feature = "native_viewer")]
 #[expect(clippy::too_many_arguments)]
 fn start_native_viewer(
     url_or_paths: Vec<String>,
@@ -910,56 +919,47 @@ fn start_native_viewer(
         table_receivers.push(table_server);
     }
 
-    #[cfg(feature = "native_viewer")]
-    {
-        let tokio_runtime_handle = tokio_runtime_handle.clone();
+    let tokio_runtime_handle = tokio_runtime_handle.clone();
 
-        // Start catching `re_log::info/warn/error` messages
-        // so we can show them in the notification panel.
-        // In particular: create this before calling `run_native_app`
-        // so we catch any warnings produced during startup.
-        let text_log_rx = re_viewer::register_text_log_receiver();
+    // Start catching `re_log::info/warn/error` messages
+    // so we can show them in the notification panel.
+    // In particular: create this before calling `run_native_app`
+    // so we catch any warnings produced during startup.
+    let text_log_rx = re_viewer::register_text_log_receiver();
 
-        re_viewer::run_native_app(
-            _main_thread_token,
-            Box::new(move |cc| {
-                let mut app = re_viewer::App::with_commands(
-                    _main_thread_token,
-                    _build_info,
-                    call_source.app_env(),
-                    startup_options,
-                    cc,
-                    Some(connection_registry),
-                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
-                    text_log_rx,
-                    re_viewer::command_channel(),
-                );
-                app.set_profiler(profiler);
-                for rx in log_receivers {
-                    app.add_log_receiver(rx);
-                }
-                for rx in table_receivers {
-                    app.add_table_receiver(rx);
-                }
-                for url in urls_to_pass_on_to_viewer {
-                    app.open_url_or_file(&url);
-                }
-                if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
-                    app.set_examples_manifest_url(url);
-                }
+    re_viewer::run_native_app(
+        _main_thread_token,
+        Box::new(move |cc| {
+            let mut app = re_viewer::App::with_commands(
+                _main_thread_token,
+                _build_info,
+                call_source.app_env(),
+                startup_options,
+                cc,
+                Some(connection_registry),
+                re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+                text_log_rx,
+                re_viewer::command_channel(),
+            );
+            app.set_profiler(profiler);
+            for rx in log_receivers {
+                app.add_log_receiver(rx);
+            }
+            for rx in table_receivers {
+                app.add_table_receiver(rx);
+            }
+            for url in urls_to_pass_on_to_viewer {
+                app.open_url_or_file(&url);
+            }
+            if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
+                app.set_examples_manifest_url(url);
+            }
 
-                Box::new(app)
-            }),
-            renderer,
-        )
-        .map_err(|err| err.into())
-    }
-
-    #[cfg(not(feature = "native_viewer"))]
-    {
-        _ = call_source;
-        anyhow::bail!("Can't start viewer - rerun was compiled without the 'native_viewer' feature")
-    }
+            Box::new(app)
+        }),
+        renderer,
+    )
+    .map_err(|err| err.into())
 }
 
 fn connect_to_existing_server(
@@ -1369,6 +1369,7 @@ impl UrlParamProcessingConfig {
         }
     }
 
+    #[allow(dead_code)] // May be unused depending on feature flags.
     fn native_viewer() -> Self {
         // Native viewer passes everything on to the viewer unchanged.
         Self {
