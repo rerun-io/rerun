@@ -18,11 +18,11 @@ pub struct CommandPalette {
 #[derive(Clone)]
 pub enum CommandPaletteAction {
     UiCommand(UICommand),
-    OpenUrl(CommandPalleteUrl),
+    OpenUrl(CommandPaletteUrl),
 }
 
 #[derive(Clone)]
-pub struct CommandPalleteUrl {
+pub struct CommandPaletteUrl {
     /// The URL that should be opened.
     pub url: String,
 
@@ -65,7 +65,7 @@ impl CommandPalette {
     pub fn show(
         &mut self,
         egui_ctx: &egui::Context,
-        parse_url: &dyn Fn(&str) -> Option<CommandPalleteUrl>,
+        parse_url: &dyn Fn(&str) -> Option<CommandPaletteUrl>,
     ) -> Option<CommandPaletteAction> {
         self.visible &= !egui_ctx.input_mut(|i| i.key_pressed(Key::Escape));
         if !self.visible {
@@ -100,7 +100,7 @@ impl CommandPalette {
     fn window_content_ui(
         &mut self,
         ui: &mut egui::Ui,
-        parse_url: &dyn Fn(&str) -> Option<CommandPalleteUrl>,
+        parse_url: &dyn Fn(&str) -> Option<CommandPaletteUrl>,
     ) -> Option<CommandPaletteAction> {
         // Check _before_ we add the `TextEdit`, so it doesn't steal it.
         let enter_pressed = ui.input_mut(|i| i.consume_key(Default::default(), Key::Enter));
@@ -137,7 +137,7 @@ impl CommandPalette {
         ui: &mut egui::Ui,
         enter_pressed: bool,
         mut scroll_to_selected_alternative: bool,
-        parse_url: &dyn Fn(&str) -> Option<CommandPalleteUrl>,
+        parse_url: &dyn Fn(&str) -> Option<CommandPaletteUrl>,
     ) -> Option<CommandPaletteAction> {
         scroll_to_selected_alternative |= ui.input(|i| i.key_pressed(Key::ArrowUp));
         scroll_to_selected_alternative |= ui.input(|i| i.key_pressed(Key::ArrowDown));
@@ -242,7 +242,7 @@ struct FuzzyMatch {
 
 fn commands_that_match(
     query: &str,
-    parse_url: &dyn Fn(&str) -> Option<CommandPalleteUrl>,
+    parse_url: &dyn Fn(&str) -> Option<CommandPaletteUrl>,
 ) -> Vec<FuzzyMatch> {
     use strum::IntoEnumIterator as _;
 

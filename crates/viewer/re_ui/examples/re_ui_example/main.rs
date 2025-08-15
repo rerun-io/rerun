@@ -4,7 +4,7 @@ mod right_panel;
 
 use egui::{Modifiers, os};
 use re_ui::{
-    CommandPalette, CommandPaletteAction, CommandPalleteUrl, ContextExt as _, DesignTokens, Help,
+    CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
     IconText, UICommand, UICommandSender, UiExt as _,
     filter_widget::{FilterState, format_matching_text},
     icons, list_item, notifications,
@@ -403,8 +403,8 @@ impl eframe::App for ExampleApp {
     }
 }
 
-fn parse_url(url: &str) -> Option<CommandPalleteUrl> {
-    url.starts_with("http").then(|| CommandPalleteUrl {
+fn parse_url(url: &str) -> Option<CommandPaletteUrl> {
+    url.starts_with("http").then(|| CommandPaletteUrl {
         url: url.to_owned(),
         command_text: "Open http(s) URL".to_owned(),
     })

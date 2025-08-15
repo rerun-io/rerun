@@ -1,6 +1,6 @@
 use re_data_source::LogDataSource;
 use re_smart_channel::SmartChannelSource;
-use re_ui::CommandPalleteUrl;
+use re_ui::CommandPaletteUrl;
 use re_uri::external::url;
 use re_viewer_context::{
     CommandSender, DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _,
@@ -196,12 +196,12 @@ impl ViewerImportUrl {
         egui_ctx.request_repaint();
     }
 
-    pub fn command_palette_parse_url(url: &str) -> Option<CommandPalleteUrl> {
+    pub fn command_palette_parse_url(url: &str) -> Option<CommandPaletteUrl> {
         let Ok(import_url) = url.parse::<Self>() else {
             return None;
         };
 
-        Some(CommandPalleteUrl {
+        Some(CommandPaletteUrl {
             url: url.to_owned(),
             command_text: import_url.open_description(),
         })
