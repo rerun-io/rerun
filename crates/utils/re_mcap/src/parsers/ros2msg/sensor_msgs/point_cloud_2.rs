@@ -1,18 +1,20 @@
 use std::io::Cursor;
 
 use super::super::definitions::sensor_msgs::{self, PointField, PointFieldDatatype};
+use anyhow::Context as _;
 use arrow::{
     array::{
-        BooleanBuilder, FixedSizeListBuilder, ListBuilder, StringBuilder, StructBuilder,
-        UInt8Builder, UInt32Builder,
+        ArrayBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder, Float64Builder,
+        Int8Builder, Int16Builder, Int32Builder, ListBuilder, StringBuilder, StructBuilder,
+        UInt8Builder, UInt16Builder, UInt32Builder,
     },
     datatypes::{DataType, Field, Fields},
 };
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt as _};
 use re_chunk::{Chunk, ChunkComponents, ChunkId};
 use re_types::{
-    AsComponents as _, Component as _, ComponentDescriptor, SerializedComponentColumn, archetypes,
-    components, reflection::ComponentDescriptorExt as _,
+    Archetype as _, AsComponents as _, Component as _, ComponentDescriptor,
+    SerializedComponentColumn, archetypes, components, reflection::ComponentDescriptorExt as _,
 };
 use std::collections::HashMap;
 
@@ -37,6 +39,8 @@ pub struct PointCloud2MessageParser {
     row_step: FixedSizeListBuilder<UInt32Builder>,
     data: FixedSizeListBuilder<ListBuilder<UInt8Builder>>,
     is_dense: FixedSizeListBuilder<BooleanBuilder>,
+
+    points: Vec<(String, ListBuilder<Box<dyn ArrayBuilder>>)>,
 
     // We lazily create this, only if we can interpret the point cloud semantically.
     // For now, this is the case if there are fields with names `x`,`y`, and `z` present.
@@ -80,8 +84,24 @@ impl Ros2MessageParser for PointCloud2MessageParser {
             data: blob_list_builder(num_rows),
             is_dense: fixed_size_list_builder(1, num_rows),
 
+            points: Default::default(),
+
             points_3ds: None,
         }
+    }
+}
+
+fn builder_from_datatype(datatype: PointFieldDatatype) -> Box<dyn ArrayBuilder> {
+    match datatype {
+        PointFieldDatatype::Unknown => unreachable!(),
+        PointFieldDatatype::Int8 => Box::new(Int8Builder::new()),
+        PointFieldDatatype::UInt8 => Box::new(UInt8Builder::new()),
+        PointFieldDatatype::Int16 => Box::new(Int16Builder::new()),
+        PointFieldDatatype::UInt16 => Box::new(UInt16Builder::new()),
+        PointFieldDatatype::Int32 => Box::new(Int32Builder::new()),
+        PointFieldDatatype::UInt32 => Box::new(UInt32Builder::new()),
+        PointFieldDatatype::Float32 => Box::new(Float32Builder::new()),
+        PointFieldDatatype::Float64 => Box::new(Float64Builder::new()),
     }
 }
 
@@ -103,6 +123,22 @@ fn access(data: &[u8], datatype: PointFieldDatatype, is_big_endian: bool) -> std
         (false, PointFieldDatatype::UInt32) => rdr.read_u32::<LittleEndian>().map(|x| x as f32),
         (false, PointFieldDatatype::Float32) => rdr.read_f32::<LittleEndian>(),
         (false, PointFieldDatatype::Float64) => rdr.read_f64::<LittleEndian>().map(|x| x as f32),
+    }
+}
+
+impl From<PointFieldDatatype> for DataType {
+    fn from(value: PointFieldDatatype) -> Self {
+        match value {
+            PointFieldDatatype::Unknown => unreachable!(), // Not part of the MCAP spec
+            PointFieldDatatype::Int8 => Self::Int8,
+            PointFieldDatatype::UInt8 => Self::UInt8,
+            PointFieldDatatype::Int16 => Self::Int16,
+            PointFieldDatatype::UInt16 => Self::UInt16,
+            PointFieldDatatype::Int32 => Self::Int32,
+            PointFieldDatatype::UInt32 => Self::UInt32,
+            PointFieldDatatype::Float32 => Self::Float32,
+            PointFieldDatatype::Float64 => Self::Float64,
+        }
     }
 }
 
@@ -172,6 +208,128 @@ impl Iterator for Position3DIter<'_> {
     }
 }
 
+fn add_field_value(
+    builder: &mut Box<dyn ArrayBuilder>,
+    field: &PointField,
+    is_big_endian: bool,
+    data: &[u8],
+) -> anyhow::Result<()> {
+    let mut rdr = Cursor::new(data);
+    match field.datatype {
+        PointFieldDatatype::Unknown => unreachable!(),
+        PointFieldDatatype::Int8 => {
+            let builder = builder
+                .as_any_mut()
+                .downcast_mut::<Int8Builder>()
+                .with_context(|| {
+                    format!("found datatype {:?}, but `Int8Builder`", field.datatype)
+                })?;
+            let val = rdr.read_i8()?;
+            builder.append_value(val);
+        }
+        PointFieldDatatype::UInt8 => {
+            let builder = builder
+                .as_any_mut()
+                .downcast_mut::<UInt8Builder>()
+                .with_context(|| {
+                    format!("found datatype {:?}, but `UInt8Builder`", field.datatype)
+                })?;
+            let val = rdr.read_u8()?;
+            builder.append_value(val);
+        }
+        PointFieldDatatype::Int16 => {
+            let builder = builder
+                .as_any_mut()
+                .downcast_mut::<Int16Builder>()
+                .with_context(|| {
+                    format!("found datatype {:?}, but `Int16Builder`", field.datatype)
+                })?;
+            let val = if is_big_endian {
+                rdr.read_i16::<BigEndian>()?
+            } else {
+                rdr.read_i16::<LittleEndian>()?
+            };
+            builder.append_value(val);
+        }
+        PointFieldDatatype::UInt16 => {
+            let builder = builder
+                .as_any_mut()
+                .downcast_mut::<UInt16Builder>()
+                .with_context(|| {
+                    format!("found datatype {:?}, but `UInt16Builder`", field.datatype)
+                })?;
+            let val = if is_big_endian {
+                rdr.read_u16::<BigEndian>()?
+            } else {
+                rdr.read_u16::<LittleEndian>()?
+            };
+            builder.append_value(val);
+        }
+
+        PointFieldDatatype::Int32 => {
+            let builder = builder
+                .as_any_mut()
+                .downcast_mut::<Int32Builder>()
+                .with_context(|| {
+                    format!("found datatype {:?}, but `Int32Builder`", field.datatype)
+                })?;
+
+            let val = if is_big_endian {
+                rdr.read_i32::<BigEndian>()?
+            } else {
+                rdr.read_i32::<LittleEndian>()?
+            };
+            builder.append_value(val);
+        }
+        PointFieldDatatype::UInt32 => {
+            let builder = builder
+                .as_any_mut()
+                .downcast_mut::<UInt32Builder>()
+                .with_context(|| {
+                    format!("found datatype {:?}, but `UInt16Builder`", field.datatype)
+                })?;
+            let val = if is_big_endian {
+                rdr.read_u32::<BigEndian>()?
+            } else {
+                rdr.read_u32::<LittleEndian>()?
+            };
+            builder.append_value(val);
+        }
+
+        PointFieldDatatype::Float32 => {
+            let builder = builder
+                .as_any_mut()
+                .downcast_mut::<Float32Builder>()
+                .with_context(|| {
+                    format!("found datatype {:?}, but `Float32Builder`", field.datatype)
+                })?;
+            let val = if is_big_endian {
+                rdr.read_f32::<BigEndian>()?
+            } else {
+                rdr.read_f32::<LittleEndian>()?
+            };
+            builder.append_value(val);
+        }
+
+        PointFieldDatatype::Float64 => {
+            let builder = builder
+                .as_any_mut()
+                .downcast_mut::<Float64Builder>()
+                .with_context(|| {
+                    format!("found datatype {:?}, but `Float64Builder`", field.datatype)
+                })?;
+            let val = if is_big_endian {
+                rdr.read_f64::<BigEndian>()?
+            } else {
+                rdr.read_f64::<LittleEndian>()?
+            };
+            builder.append_value(val);
+        }
+    }
+
+    Ok(())
+}
+
 impl MessageParser for PointCloud2MessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         let point_cloud = cdr::try_decode_message::<sensor_msgs::PointCloud2>(msg.data.as_ref())
@@ -194,6 +352,8 @@ impl MessageParser for PointCloud2MessageParser {
             data,
             is_dense,
 
+            points,
+
             points_3ds,
         } = self;
 
@@ -206,6 +366,31 @@ impl MessageParser for PointCloud2MessageParser {
             point_cloud.is_bigendian,
             &point_cloud.fields,
         );
+
+        // We lazily initialize the builders for the values in the point cloud.
+        if points.len() != point_cloud.fields.len() {
+            *points = point_cloud
+                .fields
+                .iter()
+                .map(|field| {
+                    (
+                        field.name.clone(),
+                        ListBuilder::new(builder_from_datatype(field.datatype)),
+                    )
+                })
+                .collect();
+        }
+
+        for point in point_cloud.data.chunks(point_cloud.point_step as usize) {
+            for (field, (_name, builder)) in point_cloud.fields.iter().zip(points.iter_mut()) {
+                let field_builder = builder.values();
+                add_field_value(field_builder, field, point_cloud.is_bigendian, point)?;
+            }
+        }
+
+        for (_name, builder) in points {
+            builder.append(true);
+        }
 
         if let Some(position_iter) = position_iter {
             points_3ds
@@ -290,12 +475,14 @@ impl MessageParser for PointCloud2MessageParser {
             mut data,
             mut is_dense,
 
+            points,
+
             points_3ds,
         } = *self;
 
         let mut chunks = Vec::new();
 
-        for (i, points_3d) in points_3ds.into_iter().enumerate() {
+        for (i, points_3d) in points_3ds.iter().enumerate() {
             let timelines = timelines
                 .iter()
                 .map(|(timeline, time_col)| (*timeline, time_col.row_sliced(i, 1).clone()))
@@ -365,6 +552,18 @@ impl MessageParser for PointCloud2MessageParser {
                 ),
             ]
             .into_iter()
+            .chain(points.into_iter().filter_map(|(name, mut builder)| {
+                points_3ds.as_ref()?;
+                if ["x", "y", "z"].contains(&name.as_str()) {
+                    None
+                } else {
+                    Some((
+                        ComponentDescriptor::partial(name.clone())
+                            .with_builtin_archetype(archetypes::Points3D::name()),
+                        builder.finish(),
+                    ))
+                }
+            }))
             .collect(),
         )?;
 
