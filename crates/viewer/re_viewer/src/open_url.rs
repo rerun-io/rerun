@@ -1,5 +1,6 @@
 use re_data_source::LogDataSource;
 use re_smart_channel::SmartChannelSource;
+use re_uri::external::url;
 use re_viewer_context::{
     CommandSender, DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _,
 };
@@ -10,116 +11,189 @@ pub const INTRA_RECORDING_URL_SCHEME: &str = "recording://";
 /// An eventListener for rrd posted from containing html
 pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 
-/// Tries to open a content URL or file inside the viewer.
+/// Types of URLs that can be opened directly in the viewer.
 ///
-/// This is for handling opening arbitrary URLs inside the viewer
-/// (as opposed to opening them in a new tab) for both native and web.
-/// Supported are:
-/// * any URL or file path that can be interpreted as a [`LogDataSource`]
-/// * intra-recording links (typically links to an entity)
-/// * web event listeners
-///
-/// This is the highest level way of opening arbitrary URLs inside the viewer.
+/// This is the highest level way of handling arbitrary URLs inside the viewer.
 /// The only higher level way of opening URLs is `ui.ctx().open_url(...)` which will
 /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
-///
-/// Returns `Ok(())` if the URL schema was recognized, `Err(())` if the URL was not a valid content URL.
-pub fn try_open_url_or_file_in_viewer(
-    _egui_ctx: &egui::Context,
-    url: &str,
-    follow_if_http: bool,
-    select_redap_source_when_loaded: bool,
-    command_sender: &CommandSender,
-) -> Result<(), ()> {
-    re_log::debug!("Opening URL: {url:?}");
+#[derive(Debug, Clone)]
+pub enum ViewerImportUrl {
+    /// A URL that points to a selection (typically an entity) within the currently active recording.
+    IntraRecordingSelection(Item),
 
-    // This might be a web-viewer URL with `url` parameters.
-    // Extract the `url` parameter and call this function again.
-    if let Ok(url) = re_uri::external::url::Url::parse(url) {
-        // It's rare, but there might be several `url` parameters.
-        let url_params = url
-            .query_pairs()
-            .filter_map(|(key, value)| (key == "url").then_some(value))
-            .collect::<Vec<_>>();
+    /// A URL that points to a data source.
+    LogDataSource(LogDataSource),
 
-        if !url_params.is_empty() {
-            #[cfg(target_arch = "wasm32")]
-            {
-                // We _are_ a web viewer.
-                // If the base URL doesn't match our own then that's reason for concern (==warn),
-                // because this URL was probably meant to be opened in a different Rerun version.
-                if let Some(window) = web_sys::window()
-                    && let Ok(location) = window.location().href()
-                {
-                    let base_url = match re_uri::external::url::Url::parse(&location) {
-                        Ok(u) => u,
-                        Err(_) => return Err(()),
-                    };
-                    if base_url.origin() != url.origin() {
-                        re_log::warn!(
-                            "The base URL of the web viewer ({:?}) does not match the URL being opened ({:?}). This URL may be intended for a different Rerun version.",
-                            base_url.origin().unicode_serialization(),
-                            url.origin().unicode_serialization()
-                        );
-                    }
+    /// A URL that points to a redap server.
+    RedapCatalog(re_uri::CatalogUri),
+
+    /// A URL that points to a redap entry.
+    RedapEntry(re_uri::EntryUri),
+
+    /// A URL that points to a web event listener.
+    ///
+    /// This is used only for legacy notebooks.
+    WebEventListener(String),
+
+    /// A web viewer URL with one or more url parameters which all individually can be imported.
+    WebViewerUrl {
+        /// The base URL of the web viewer (this no longer includes any queries and fragments).
+        base_url: url::Origin,
+
+        /// The url parameter(s) that can be imported individually.
+        url_parameters: vec1::Vec1<ViewerImportUrl>,
+    },
+}
+
+impl std::str::FromStr for ViewerImportUrl {
+    type Err = anyhow::Error;
+
+    /// Tries to parse a content URL or file inside the viewer.
+    ///
+    /// This is for handling opening arbitrary URLs inside the viewer
+    /// (as opposed to opening them in a new tab) for both native and web.
+    /// Supported are:
+    /// * any URL or file path that can be interpreted as a [`LogDataSource`]
+    /// * intra-recording links (typically links to an entity)
+    /// * web event listeners
+    fn from_str(url: &str) -> Result<Self, Self::Err> {
+        // This might be a web-viewer URL with `url` parameters.
+        // Extract the `url` parameter and call this function again.
+        if let Ok(url) = url::Url::parse(url) {
+            // It's rare, but there might be *several* `url` parameters.
+            let url_params = url
+                .query_pairs()
+                .filter_map(|(key, value)| (key == "url").then(|| Self::from_str(&value)))
+                .collect::<anyhow::Result<Vec<_>>>()?;
+
+            if let Ok(url_parameters) = vec1::Vec1::try_from_vec(url_params) {
+                return Ok(Self::WebViewerUrl {
+                    base_url: url.origin(),
+                    url_parameters,
+                });
+            }
+        }
+
+        if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
+            Ok(Self::RedapCatalog(uri))
+        } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
+            Ok(Self::RedapEntry(uri))
+        } else if let Some(data_source) =
+            LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
+        {
+            Ok(Self::LogDataSource(data_source))
+        } else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
+            match selection.parse::<Item>() {
+                Ok(item) => Ok(Self::IntraRecordingSelection(item)),
+                Err(err) => {
+                    anyhow::bail!("Failed to parse selection path {selection:?}: {err}")
                 }
             }
-
-            for url in url_params {
-                try_open_url_or_file_in_viewer(
-                    _egui_ctx,
-                    &url,
-                    follow_if_http,
-                    select_redap_source_when_loaded,
-                    command_sender,
-                )?;
-            }
-
-            return Ok(());
+        } else if let Some(url) = url.strip_prefix(WEB_EVENT_LISTENER_SCHEME) {
+            Ok(Self::WebEventListener(url.to_owned()))
+        } else {
+            anyhow::bail!("Failed to parse URL: {url}")
         }
     }
+}
 
-    if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
-        command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-        command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-            uri.origin,
-        )));
-    } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
-        command_sender.send_system(SystemCommand::AddRedapServer(uri.origin));
-        command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
-    } else if let Some(mut data_source) =
-        LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
-    {
-        if let LogDataSource::RedapDatasetPartition {
-            select_when_loaded, ..
-        } = &mut data_source
-        {
-            // `select_when_loaded` is not encoded in the url itself. As of writing, `DataSource::from_uri` will just always set `select_when_loaded` to `true`.
-            // We overwrite this with the passed in value.
-            *select_when_loaded = select_redap_source_when_loaded;
-        } else if let LogDataSource::RrdHttpUrl { follow, .. } = &mut data_source {
-            // `follow` is not encoded in the url itself. As of writing, `DataSource::from_uri` will just always set `follow` to `false`.
-            // We overwrite this with the passed in value.
-            *follow = follow_if_http;
-        }
+impl ViewerImportUrl {
+    /// Opens a content URL or file inside the viewer.
+    ///
+    /// This is for handling opening arbitrary URLs inside the viewer
+    /// (as opposed to opening them in a new tab) for both native and web.
+    /// Supported are:
+    /// * any URL or file path that can be interpreted as a [`LogDataSource`]
+    /// * intra-recording links (typically links to an entity)
+    /// * web event listeners
+    ///
+    /// This is the highest level way of opening arbitrary URLs inside the viewer.
+    /// The only higher level way of opening URLs is `ui.ctx().open_url(...)` which will
+    /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
+    pub fn open(
+        self,
+        egui_ctx: &egui::Context,
+        follow_if_http: bool,
+        select_redap_source_when_loaded: bool,
+        command_sender: &CommandSender,
+    ) {
+        re_log::debug!("Opening URL: {:?}", &self);
 
-        command_sender.send_system(SystemCommand::LoadDataSource(data_source));
-    } else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
-        match selection.parse::<Item>() {
-            Ok(item) => {
+        match self {
+            Self::IntraRecordingSelection(item) => {
                 command_sender.send_system(SystemCommand::SetSelection(item));
             }
-            Err(err) => {
-                re_log::warn!("Failed to parse selection path {selection:?}: {err}");
+
+            Self::LogDataSource(mut data_source) => {
+                if let LogDataSource::RedapDatasetPartition {
+                    select_when_loaded, ..
+                } = &mut data_source
+                {
+                    // `select_when_loaded` is not encoded in the url itself. As of writing, `DataSource::from_uri` will just always set `select_when_loaded` to `true`.
+                    // We overwrite this with the passed in value.
+                    *select_when_loaded = select_redap_source_when_loaded;
+                } else if let LogDataSource::RrdHttpUrl { follow, .. } = &mut data_source {
+                    // `follow` is not encoded in the url itself. As of writing, `DataSource::from_uri` will just always set `follow` to `false`.
+                    // We overwrite this with the passed in value.
+                    *follow = follow_if_http;
+                }
+
+                command_sender.send_system(SystemCommand::LoadDataSource(data_source));
+            }
+
+            Self::RedapCatalog(uri) => {
+                command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                command_sender.send_system(SystemCommand::ChangeDisplayMode(
+                    DisplayMode::RedapServer(uri.origin),
+                ));
+            }
+
+            Self::RedapEntry(uri) => {
+                command_sender.send_system(SystemCommand::AddRedapServer(uri.origin));
+                command_sender
+                    .send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
+            }
+
+            Self::WebEventListener(url) => {
+                handle_web_event_listener(egui_ctx, &url, command_sender);
+            }
+
+            Self::WebViewerUrl {
+                base_url: _base_url,
+                url_parameters,
+            } => {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    // We _are_ a web viewer.
+                    // If the base URL doesn't match our own then that's reason for concern (==warn),
+                    // because this URL was probably meant to be opened in a different Rerun version.
+                    if let Some(window) = web_sys::window()
+                        && let Ok(location) = window.location().href()
+                    {
+                        if _base_url != location.origin() {
+                            re_log::warn!(
+                                "The base URL of the web viewer ({:?}) does not match the URL being opened ({:?}). This URL may be intended for a different Rerun version.",
+                                base_url.origin().unicode_serialization(),
+                                url.origin().unicode_serialization()
+                            );
+                        }
+                    }
+                }
+
+                for url in url_parameters {
+                    url.open(
+                        egui_ctx,
+                        follow_if_http,
+                        select_redap_source_when_loaded,
+                        command_sender,
+                    );
+                }
             }
         }
-    } else if let Some(url) = url.strip_prefix(WEB_EVENT_LISTENER_SCHEME) {
-        handle_web_event_listener(_egui_ctx, url, command_sender);
-    } else {
-        return Err(());
-    }
 
-    Ok(())
+        // All of these send commands, make sure they'll be processed.
+        egui_ctx.request_repaint();
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
