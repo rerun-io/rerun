@@ -21,11 +21,11 @@ use re_sdk::web_viewer::WebViewerConfig;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
-#[cfg(feature = "analytics")]
-use crate::commands::AnalyticsCommands;
-
 #[cfg(feature = "auth")]
 use super::auth::AuthCommands;
+#[cfg(feature = "analytics")]
+use crate::commands::AnalyticsCommands;
+use re_server::Args as ServerArgs;
 
 // ---
 
@@ -563,6 +563,10 @@ enum Command {
     #[cfg(feature = "auth")]
     #[command(subcommand)]
     Auth(AuthCommands),
+
+    /// In memory rerun data server
+    #[command(name = "server")]
+    Server(ServerArgs),
 }
 
 /// Run the Rerun application and return an exit code.
@@ -657,6 +661,8 @@ where
                     re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
                 cmd.run(&runtime).map_err(Into::into)
             }
+
+            Command::Server(server) => server.run(),
         }
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]

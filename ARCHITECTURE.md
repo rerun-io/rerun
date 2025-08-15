@@ -126,7 +126,6 @@ Update instructions:
 | Rerun                | Rerun Rust SDK and Viewer shim crate |
 | rerun_c              | Rerun C SDK                          |
 | rerun_py             | Rerun Python SDK                     |
-| rerun_server         | In-memory server example             |
 | re_sdk               | Rerun logging SDK                    |
 
 ### Viewer crates
@@ -179,6 +178,7 @@ Update instructions:
 | re_log_encoding | Helpers for encoding and transporting Rerun log messages        |
 | re_protos       | Rerun remote store gRPC API types                               |
 | re_query        | Querying data in the re_chunk_store                             |
+| re_server       | In-memory data server                                           |
 | re_types        | The built-in Rerun data types, component types, and archetypes. |
 
 ### Low-level store

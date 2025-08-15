@@ -77,6 +77,7 @@ re_protos = { path = "crates/store/re_protos", version = "=0.25.0-alpha.1", defa
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.25.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.25.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.25.0-alpha.1", default-features = false }
+re_server = { path = "crates/store/re_server", version = "=0.25.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.25.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.25.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.25.0-alpha.1", default-features = false }

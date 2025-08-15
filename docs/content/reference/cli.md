@@ -22,6 +22,7 @@ The Rerun command-line interface:
 * `reset`: Reset the memory of the Rerun Viewer.
 * `man`: Generates the Rerun CLI manual (markdown).
 * `auth`: Authentication with the redap.
+* `server`: In memory rerun data server.
 
 **Arguments**
 
@@ -622,3 +623,27 @@ To sign up, contact us through the form linked at <https://rerun.io/#open-source
 > Trigger the full login flow even if valid credentials already exist.
 >
 > [Default: `false`]
+
+## rerun server
+
+In memory rerun data server.
+
+**Usage**: `rerun server [OPTIONS]`
+
+**Options**
+
+* `--addr <ADDR>`
+> Address to listen on.
+>
+> [Default: `0.0.0.0`]
+
+* `-p, --port <PORT>`
+> Port to bind to.
+>
+> [Default: `51234`]
+
+* `-d, --dataset <DATASETS>`
+> Load a directory of RRD as dataset (can be specified multiple times).
+
+* `-V, --version `
+> Print version.
