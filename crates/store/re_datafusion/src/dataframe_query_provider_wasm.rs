@@ -1,7 +1,7 @@
 use crate::dataframe_query_common::{
     ChunkInfo, align_record_batch_to_schema, compute_partition_stream_chunk_info,
 };
-use arrow::array::{Array, RecordBatch, StringArray};
+use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use datafusion::common::hash_utils::HashValue as _;
@@ -288,10 +288,9 @@ fn create_next_row(
         return plan_err!("Unexpected number of columns returned from query");
     }
 
-    let pid_array = Arc::new(StringArray::from(vec![
-        partition_id.to_owned();
-        next_row[0].len()
-    ])) as Arc<dyn Array>;
+    let num_rows = next_row[0].len();
+    let pid_array =
+        Arc::new(StringArray::from(vec![partition_id.to_owned(); num_rows])) as Arc<dyn Array>;
 
     let mut arrays = Vec::with_capacity(num_fields + 1);
     arrays.push(pid_array);
@@ -302,7 +301,11 @@ fn create_next_row(
         DATASET_MANIFEST_ID_FIELD_NAME,
     ));
 
-    let batch = RecordBatch::try_new(batch_schema, arrays)?;
+    let batch = RecordBatch::try_new_with_options(
+        batch_schema,
+        arrays,
+        &RecordBatchOptions::default().with_row_count(Some(num_rows)),
+    )?;
 
     let output_batch = align_record_batch_to_schema(&batch, target_schema)?;
 

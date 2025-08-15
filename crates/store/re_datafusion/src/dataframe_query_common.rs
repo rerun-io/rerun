@@ -4,6 +4,7 @@ use arrow::array::{
     TimestampSecondArray, UInt64Array, new_null_array,
 };
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
+use arrow::record_batch::RecordBatchOptions;
 use async_trait::async_trait;
 use datafusion::catalog::{Session, TableProvider};
 use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusion_err};
@@ -406,9 +407,10 @@ pub fn align_record_batch_to_schema(
         }
     }
 
-    Ok(RecordBatch::try_new(
+    Ok(RecordBatch::try_new_with_options(
         target_schema.clone(),
         aligned_columns,
+        &RecordBatchOptions::new().with_row_count(Some(num_rows)),
     )?)
 }
 
