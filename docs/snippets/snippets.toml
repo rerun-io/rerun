@@ -90,7 +90,8 @@ features = [
 
 [opt_out]
 backwards_check = [
-  "concepts/explicit_recording", # The file path differs locally and on CI
+  "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
+  "concepts/explicit_recording",       # The file path differs locally and on CI
 ]
 
 
