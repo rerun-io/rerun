@@ -85,7 +85,7 @@ def serve_assets(
     print("Starting asset server due to RERUN_NOTEBOOK_ASSET=serve-local")
     global assets
     if assets is None:
-        print("Loading assets into memory...")
+        print("Loading assets into memory…")
         assets = {
             "widget.js": _Asset(WIDGET_PATH, "text/javascript"),
             "re_viewer_bg.wasm": _Asset(WASM_PATH, "application/wasm", encode_gzip=True),

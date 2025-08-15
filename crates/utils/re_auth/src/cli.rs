@@ -176,11 +176,11 @@ pub async fn login(context: &AuthContext, options: LoginOptions<'_>) -> Result<(
     p.inc(1);
 
     // 3. Wait for callback
-    p.set_message("Waiting for browser...");
+    p.set_message("Waiting for browser…");
     let auth = wait_for_browser_response(&server, &p)?;
 
     // 4. Verify credentials
-    p.set_message("Verifying login...");
+    p.set_message("Verifying login…");
     let credentials = Credentials::verify_auth_response(context, auth.into())?;
 
     // 5. Store credentials

@@ -35,7 +35,7 @@ where
     use clap::Parser as _;
     let args = Args::parse_from(args);
 
-    info!("starting rerun-server...");
+    info!("starting rerun-server…");
 
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(run_async(args))?;

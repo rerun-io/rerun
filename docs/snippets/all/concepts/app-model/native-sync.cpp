@@ -8,6 +8,6 @@ int main() {
 
     // Log data as usual, thereby pushing it into the gRPC connection.
     while (true) {
-        rec.log("log", rerun::TextLog("Logging things..."));
+        rec.log("log", rerun::TextLog("Logging things…"));
     }
 }

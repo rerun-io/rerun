@@ -1618,17 +1618,17 @@ fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str) ->
         if from.starts_with("rerun.datatypes") {
             "from ... import datatypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.datatypes").as_str()) {
-            format!("from ...{scope} import datatypes as {scope}_datatypes")
+            format!("from ...{scope} import datatypes as {scope}_datatypes") // NOLINT
         } else if from.starts_with("rerun.components") {
             "from ... import components".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.components").as_str()) {
-            format!("from ...{scope} import components as {scope}_components")
+            format!("from ...{scope} import components as {scope}_components") // NOLINT
         } else if from.starts_with("rerun.archetypes") {
             // NOTE: This is assuming importing other archetypes is legal… which whether it is or
             // isn't for this code generator to say.
             "from ... import archetypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.archetytpes").as_str()) {
-            format!("from ...{scope} import archetypes as {scope}_archetypes")
+            format!("from ...{scope} import archetypes as {scope}_archetypes") // NOLINT
         } else if from.is_empty() {
             format!("from . import {class}")
         } else {

@@ -857,6 +857,7 @@ pub fn from_arrow_encoded(mut data: RecordBatch) -> Result<TableMsg, Box<dyn std
 mod tests {
     use super::*;
     use arrow::ArrowError;
+    use arrow::array::{RecordBatch, RecordBatchOptions};
 
     /// Returns the [`TableMsg`] encoded as a record batch.
     // This is required to send bytes to a viewer running in a notebook.
@@ -873,7 +874,11 @@ mod tests {
         ));
 
         // Create a new record batch with the same data but updated schema
-        RecordBatch::try_new(new_schema, table.data.columns().to_vec())
+        RecordBatch::try_new_with_options(
+            new_schema,
+            table.data.columns().to_vec(),
+            &RecordBatchOptions::default(),
+        )
     }
 
     #[test]
@@ -911,7 +916,8 @@ mod tests {
             ];
 
             // Create a RecordBatch
-            ArrowRecordBatch::try_new(schema, arrays).unwrap()
+            ArrowRecordBatch::try_new_with_options(schema, arrays, &RecordBatchOptions::default())
+                .unwrap()
         };
 
         let msg = TableMsg {
