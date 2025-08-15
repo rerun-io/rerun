@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{str::FromStr as _, sync::Arc};
 
 use itertools::Itertools as _;
 
@@ -416,14 +416,14 @@ impl App {
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
 
-        if crate::open_url::try_open_url_or_file_in_viewer(
-            &self.egui_ctx,
-            url,
-            follow_if_http,
-            select_redap_source_when_loaded,
-            &self.command_sender,
-        ) == Err(())
-        {
+        if let Ok(url) = crate::open_url::ViewerImportUrl::from_str(url) {
+            url.open(
+                &self.egui_ctx,
+                follow_if_http,
+                select_redap_source_when_loaded,
+                &self.command_sender,
+            );
+        } else {
             re_log::warn!("Failed to open URL: {url}");
         }
     }
@@ -2675,15 +2675,18 @@ impl eframe::App for App {
                         let follow_if_http = false;
                         let select_redap_source_when_loaded = true;
 
-                        if crate::open_url::try_open_url_or_file_in_viewer(
-                            egui_ctx,
-                            &url,
-                            follow_if_http,
-                            select_redap_source_when_loaded,
-                            &self.command_sender,
-                        ) == Err(())
-                        {
-                            re_log::warn!("Failed to open URL: {url}");
+                        match crate::open_url::ViewerImportUrl::from_str(&url) {
+                            Ok(url) => {
+                                url.open(
+                                    egui_ctx,
+                                    follow_if_http,
+                                    select_redap_source_when_loaded,
+                                    &self.command_sender,
+                                );
+                            }
+                            Err(err) => {
+                                re_log::warn!("{err}");
+                            }
                         }
 
                         // Note that we can't use `ui.ctx().open_url(egui::OpenUrl::same_tab(uri))` here because..

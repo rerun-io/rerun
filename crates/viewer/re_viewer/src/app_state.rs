@@ -1,3 +1,5 @@
+use std::str::FromStr as _;
+
 use ahash::HashMap;
 use egui::{NumExt as _, Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 
@@ -858,24 +860,16 @@ pub(crate) fn recording_config_entry<'cfgs>(
 ///
 /// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
 fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &CommandSender) {
-    let mut opened_any_url = false;
     let follow_if_http = false;
+
+    let mut urls = Vec::new();
 
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                let select_redap_source_when_loaded = open_url.new_tab;
+                if let Ok(url) = open_url::ViewerImportUrl::from_str(&open_url.url) {
+                    urls.push((url, open_url.new_tab));
 
-                if open_url::try_open_url_or_file_in_viewer(
-                    egui_ctx,
-                    &open_url.url,
-                    follow_if_http,
-                    select_redap_source_when_loaded,
-                    command_sender,
-                )
-                .is_ok()
-                {
-                    opened_any_url = true;
                     // We handled the URL, therefore egui shouldn't do anything anymore with it.
                     return false;
                 } else {
@@ -887,9 +881,14 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
         });
     });
 
-    if opened_any_url {
-        // Make sure we process commands that were sent by the `try_open_content_url_in_viewer` call.
-        egui_ctx.request_repaint();
+    for (url, new_tab) in urls {
+        let select_redap_source_when_loaded = new_tab;
+        url.open(
+            egui_ctx,
+            follow_if_http,
+            select_redap_source_when_loaded,
+            command_sender,
+        );
     }
 }
 
