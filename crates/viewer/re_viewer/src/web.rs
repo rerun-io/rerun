@@ -17,7 +17,7 @@ use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
-use crate::open_url::try_open_url_or_file_in_viewer;
+use crate::open_url;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]
@@ -205,19 +205,19 @@ impl WebHandle {
         // TODO(andreas): should follow_if_http be part of the fragments?
         let follow_if_http = follow_if_http.unwrap_or(false);
         let select_redap_source_when_loaded = true;
-        if try_open_url_or_file_in_viewer(
-            &app.egui_ctx,
-            url,
-            follow_if_http,
-            select_redap_source_when_loaded,
-            &app.command_sender,
-        )
-        .is_err()
-        {
-            re_log::warn!("Failed to open URL: {url}");
-        } else {
-            // Make sure we process any commands from the url opening.
-            app.egui_ctx.request_repaint();
+
+        match url.parse::<open_url::ViewerImportUrl>() {
+            Ok(url) => {
+                url.open(
+                    &app.egui_ctx,
+                    follow_if_http,
+                    select_redap_source_when_loaded,
+                    &app.command_sender,
+                );
+            }
+            Err(err) => {
+                re_log::warn!("Failed to open URL {url:?}: {err}");
+            }
         }
     }
 
@@ -806,17 +806,20 @@ fn create_app(
     if let Some(urls) = url {
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
+
         for url in urls.into_inner() {
-            if try_open_url_or_file_in_viewer(
-                &app.egui_ctx,
-                &url,
-                follow_if_http,
-                select_redap_source_when_loaded,
-                &app.command_sender,
-            )
-            .is_err()
-            {
-                re_log::warn!("Failed to open URL: {url}");
+            match url.parse::<open_url::ViewerImportUrl>() {
+                Ok(url) => {
+                    url.open(
+                        &app.egui_ctx,
+                        follow_if_http,
+                        select_redap_source_when_loaded,
+                        &app.command_sender,
+                    );
+                }
+                Err(err) => {
+                    re_log::warn!("Failed to open URL {url:?}: {err}");
+                }
             }
         }
     }
