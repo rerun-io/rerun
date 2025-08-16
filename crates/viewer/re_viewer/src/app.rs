@@ -1008,6 +1008,12 @@ impl App {
                 StoreId::recording(application_id, recording_id)
             });
 
+        // // Clear any shortcut input before firing up any UI components
+        // egui_ctx.input_mut(|input| {
+        //     input.modifiers = Default::default();
+        //     input.keys_down = Default::default();
+        // });
+
         match cmd {
             UICommand::SaveRecording => {
                 #[cfg(target_arch = "wasm32")] // Web
