@@ -160,14 +160,10 @@ pub enum MeshError {
     CpuWriteGpuReadError(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<MeshError>() <= 64,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<MeshError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<MeshError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 #[derive(Clone)]
 pub struct Material {

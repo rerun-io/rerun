@@ -39,11 +39,7 @@ pub enum SorbetError {
     ChunkIdDeserializationError(String),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<SorbetError>() <= 64,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<SorbetError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<SorbetError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);

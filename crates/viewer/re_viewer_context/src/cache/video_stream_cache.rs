@@ -137,14 +137,10 @@ pub enum VideoStreamProcessingError {
     FailedReadingCodec(Box<re_chunk::ChunkError>),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<VideoStreamProcessingError>() <= 64,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<VideoStreamProcessingError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<VideoStreamProcessingError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 pub type SharablePlayableVideoStream = Arc<RwLock<PlayableVideoStream>>;
 

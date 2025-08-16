@@ -21,14 +21,10 @@ const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 #[derive(Debug)]
 pub struct TonicStatusError(Box<tonic::Status>);
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<TonicStatusError>() <= 32,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<TonicStatusError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<TonicStatusError>() <= 32,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 impl AsRef<tonic::Status> for TonicStatusError {
     #[inline]
@@ -127,14 +123,10 @@ pub enum StreamError {
     ArrowError(#[from] arrow::error::ArrowError),
 }
 
-#[test]
-fn test_stream_error_size() {
-    assert!(
-        std::mem::size_of::<StreamError>() <= 80,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<StreamError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<StreamError>() <= 80,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 impl From<tonic::Status> for StreamError {
     fn from(value: tonic::Status) -> Self {
