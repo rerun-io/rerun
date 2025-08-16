@@ -645,6 +645,139 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
     }
 }
 
+// --- ChunkKey ---
+
+#[derive(Debug, Clone)]
+pub struct ChunkKey {
+    pub location_url: url::Url,
+    pub location_details: prost_types::Any,
+}
+
+impl ChunkKey {
+    pub fn as_bytes(&self) -> Vec<u8> {
+        use prost::Message as _;
+
+        let chunk_key: crate::common::v1alpha1::ChunkKey = self.clone().into();
+        chunk_key.encode_to_vec()
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::ChunkKey> for ChunkKey {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::ChunkKey) -> Result<Self, Self::Error> {
+        let location_url = value
+            .location_url
+            .ok_or(missing_field!(
+                crate::common::v1alpha1::ChunkKey,
+                "location_url"
+            ))?
+            .parse()?;
+
+        let location_details = value.location_details.ok_or(missing_field!(
+            crate::common::v1alpha1::ChunkKey,
+            "location_details"
+        ))?;
+
+        Ok(Self {
+            location_url,
+            location_details,
+        })
+    }
+}
+
+impl TryFrom<&[u8]> for ChunkKey {
+    type Error = TypeConversionError;
+
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        use prost::Message as _;
+
+        let proto_chunk_key = crate::common::v1alpha1::ChunkKey::decode(bytes)
+            .map_err(|err| TypeConversionError::DecodeError(err))?;
+
+        proto_chunk_key.try_into()
+    }
+}
+
+impl From<ChunkKey> for crate::common::v1alpha1::ChunkKey {
+    fn from(value: ChunkKey) -> Self {
+        Self {
+            location_url: Some(value.location_url.to_string()),
+            location_details: Some(value.location_details),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RrdLocationDetails {
+    pub chunk_id: re_chunk::ChunkId,
+    pub offset: u64,
+    pub length: u64,
+}
+
+impl TryFrom<crate::common::v1alpha1::RrdLocationDetails> for RrdLocationDetails {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::RrdLocationDetails) -> Result<Self, Self::Error> {
+        let tuid = value.chunk_id.ok_or(missing_field!(
+            crate::common::v1alpha1::RrdLocationDetails,
+            "chunk_id"
+        ))?;
+        let id: re_tuid::Tuid = tuid.try_into()?;
+        let chunk_id = re_chunk::ChunkId::from_u128(id.as_u128());
+
+        let offset = value.offset.ok_or(missing_field!(
+            crate::common::v1alpha1::RrdLocationDetails,
+            "offset"
+        ))?;
+
+        let length = value.length.ok_or(missing_field!(
+            crate::common::v1alpha1::RrdLocationDetails,
+            "length"
+        ))?;
+
+        Ok(RrdLocationDetails {
+            chunk_id,
+            offset,
+            length,
+        })
+    }
+}
+
+impl From<RrdLocationDetails> for crate::common::v1alpha1::RrdLocationDetails {
+    fn from(value: RrdLocationDetails) -> Self {
+        let tuid =
+            crate::common::v1alpha1::Tuid::from(re_tuid::Tuid::from_u128(value.chunk_id.as_u128()));
+        Self {
+            chunk_id: Some(tuid),
+            offset: Some(value.offset),
+            length: Some(value.length),
+        }
+    }
+}
+
+// --- ChunkLocationDetails ---
+
+pub trait ChunkLocationDetails {
+    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError>;
+
+    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError>
+    where
+        Self: Sized;
+}
+
+impl ChunkLocationDetails for RrdLocationDetails {
+    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
+        let as_proto: crate::common::v1alpha1::RrdLocationDetails = self.clone().into();
+        Ok(prost_types::Any::from_msg(&as_proto)?)
+    }
+
+    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
+        let as_proto = any.to_msg::<crate::common::v1alpha1::RrdLocationDetails>()?;
+        Ok(as_proto.try_into()?)
+    }
+}
+
 // ---
 
 impl Eq for TaskId {}

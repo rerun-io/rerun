@@ -1,7 +1,7 @@
 use re_log_types::{EntityPath, EntryId};
 
 use crate::v1alpha1::rerun_common_v1alpha1;
-use crate::v1alpha1::rerun_common_v1alpha1_ext::{IfDuplicateBehavior, ScanParameters};
+use crate::v1alpha1::rerun_common_v1alpha1_ext::{ChunkKey, IfDuplicateBehavior, ScanParameters};
 use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::{DataSource, Query};
 use crate::{TypeConversionError, missing_field};
 
@@ -143,6 +143,37 @@ impl TryFrom<crate::frontend::v1alpha1::GetChunksRequest> for GetChunksRequest {
                 .collect::<Result<Vec<_>, _>>()?,
 
             query: value.query.map(|q| q.try_into()).transpose()?,
+        })
+    }
+}
+
+// -- FetchChunksRequest --
+
+#[derive(Debug, Clone)]
+pub struct FetchChunksRequest {
+    pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
+    pub partition_layers: Vec<String>,
+    pub chunk_keys: Vec<ChunkKey>,
+}
+
+impl TryFrom<crate::frontend::v1alpha1::FetchChunksRequest> for FetchChunksRequest {
+    type Error = tonic::Status;
+
+    fn try_from(value: crate::frontend::v1alpha1::FetchChunksRequest) -> Result<Self, Self::Error> {
+        Ok(Self {
+            partition_ids: value
+                .partition_ids
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
+
+            partition_layers: value.partition_layers,
+
+            chunk_keys: value
+                .chunk_keys
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
         })
     }
 }

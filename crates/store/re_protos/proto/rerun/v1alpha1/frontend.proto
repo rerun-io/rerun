@@ -104,6 +104,10 @@ service FrontendService {
   // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
   rpc GetChunks(GetChunksRequest) returns (stream rerun.manifest_registry.v1alpha1.GetChunksResponse) {}
 
+  // Fetch chunks given the chunks location
+  // TODO(zehiko) rename to GetChunks once we get rid of existing GetChunks
+  rpc FetchChunks(FetchChunksRequest) returns (stream rerun.manifest_registry.v1alpha1.FetchChunksResponse) {}
+
   // --- Table Apis ---
   // TODO(jleibs): This will be replaced / extended by Arrow Flight
 
@@ -304,6 +308,21 @@ message GetChunksRequest {
 
   // Query details
   rerun.manifest_registry.v1alpha1.Query query = 5;
+}
+
+message FetchChunksRequest {
+  // We currently need to know to which partition chunk belongs to in order to include that
+  // in the response metadata
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 1;
+
+  // Same as with partition ids, we need to know the layer for each chunk
+  repeated string partition_layers = 2;
+
+  // The location of the chunks to fetch. Note that we don't support client side streaming of chunks
+  // as there's no plan to support it on grpc-web at the moment.
+  //
+  // Chunks to fetch (described by their `ChunkKey`)
+  repeated rerun.common.v1alpha1.ChunkKey chunk_keys = 3;
 }
 
 // --- Table Apis ---
