@@ -8911,6 +8911,7 @@ dependencies = [
  "strum_macros",
  "tap",
  "thiserror 1.0.69",
+ "vec1",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
