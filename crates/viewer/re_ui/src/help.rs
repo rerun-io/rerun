@@ -157,7 +157,10 @@ impl Help {
                                     ui.visuals().widgets.inactive.text_color()
                                 };
 
-                                ui.label(RichText::new("Docs").color(tint).size(11.0));
+                                ui.add(
+                                    egui::Label::new(RichText::new("Docs").color(tint).size(11.0))
+                                        .selectable(false),
+                                );
 
                                 ui.small_icon(&icons::EXTERNAL_LINK, Some(tint));
                             })
