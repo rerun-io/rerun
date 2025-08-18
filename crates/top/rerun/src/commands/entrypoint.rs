@@ -6,7 +6,6 @@ use tokio::runtime::Runtime;
 
 use re_data_source::LogDataSource;
 use re_log_types::LogMsg;
-use re_server::Args as ServerArgs;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 use crate::{CallSource, commands::RrdCommands};
@@ -562,8 +561,9 @@ enum Command {
     Rrd(RrdCommands),
 
     /// In-memory Rerun data server
+    #[cfg(feature = "oss_server")]
     #[command(name = "server")]
-    Server(ServerArgs),
+    Server(re_server::Args),
 }
 
 /// Run the Rerun application and return an exit code.
@@ -626,16 +626,15 @@ where
 
     let res = if let Some(command) = args.command {
         match command {
+            #[cfg(feature = "auth")]
+            Command::Auth(cmd) => {
+                let runtime =
+                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
+                cmd.run(&runtime).map_err(Into::into)
+            }
+
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
-
-            #[cfg(feature = "data_loaders")]
-            Command::Mcap(mcap) => mcap.run(),
-
-            Command::Rrd(rrd) => rrd.run(),
-
-            #[cfg(feature = "native_viewer")]
-            Command::Reset => re_viewer::reset_viewer_persistence(),
 
             Command::Manual => {
                 let man = Args::generate_markdown_manual();
@@ -651,13 +650,15 @@ where
                 Ok(())
             }
 
-            #[cfg(feature = "auth")]
-            Command::Auth(cmd) => {
-                let runtime =
-                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
-                cmd.run(&runtime).map_err(Into::into)
-            }
+            #[cfg(feature = "data_loaders")]
+            Command::Mcap(mcap) => mcap.run(),
 
+            #[cfg(feature = "native_viewer")]
+            Command::Reset => re_viewer::reset_viewer_persistence(),
+
+            Command::Rrd(rrd) => rrd.run(),
+
+            #[cfg(feature = "oss_server")]
             Command::Server(server) => server.run(),
         }
     } else {
