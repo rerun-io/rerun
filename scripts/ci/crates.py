@@ -439,8 +439,9 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
     retry_attempts = 5
     while True:
         try:
+            # We use hakari for re_workspace_hack. See https://crates.io/crates/cargo-hakari
             cargo(
-                f"publish --quiet --locked --token {token}",
+                f"hakari publish --quiet --locked --token {token}",
                 cwd=crate.path,
                 env=env,
                 dry_run=False,
