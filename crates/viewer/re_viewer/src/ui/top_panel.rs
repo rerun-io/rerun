@@ -26,7 +26,7 @@ pub fn top_panel(
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
         // React to dragging and double-clicking the top bar:
         #[cfg(not(target_arch = "wasm32"))]
-        if !re_ui::NATIVE_WINDOW_BAR {
+        if !re_ui::native_window_bar(ui.ctx().os()) {
             // Interact with background first, so that buttons in the top bar gets input priority
             // (last added widget has priority for input).
             let title_bar_response = ui.interact(
@@ -69,7 +69,7 @@ pub fn top_panel(
 
     // On MacOS, we show the close/minimize/maximize buttons in the top panel.
     // We _always_ want to show the top panel in that case, and only hide its content.
-    if !re_ui::NATIVE_WINDOW_BAR {
+    if !re_ui::native_window_bar(ui.ctx().os()) {
         panel.show_inside(ui, |ui| content(ui, is_expanded));
     } else {
         panel.show_animated_inside(ui, is_expanded, |ui| content(ui, is_expanded));

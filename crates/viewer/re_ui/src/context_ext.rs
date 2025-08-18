@@ -98,8 +98,10 @@ pub trait ContextExt {
 
         // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
         // This means we need to make room for them.
-        let make_room_for_window_buttons =
-            !style_like_web && cfg!(target_os = "macos") && crate::FULLSIZE_CONTENT && !fullscreen;
+        let make_room_for_window_buttons = !style_like_web
+            && cfg!(target_os = "macos")
+            && crate::fullsize_content(self.ctx().os())
+            && !fullscreen;
 
         let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
 
