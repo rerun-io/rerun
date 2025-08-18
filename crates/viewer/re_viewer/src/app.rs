@@ -1412,6 +1412,10 @@ impl App {
                 }
             }
 
+            UICommand::CopyEntityHierarchy => {
+                self.copy_entity_hierarchy_to_clipboard(egui_ctx, store_context);
+            }
+
             UICommand::AddRedapServer => {
                 self.state.redap_servers.open_add_server_modal();
             }
@@ -1628,6 +1632,75 @@ impl App {
         self.egui_ctx.copy_text(url.clone());
         self.notifications
             .success(format!("Copied {url:?} to clipboard"));
+    }
+
+    fn copy_entity_hierarchy_to_clipboard(
+        &mut self,
+        egui_ctx: &egui::Context,
+        store_context: Option<&StoreContext<'_>>,
+    ) {
+        let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
+            re_log::warn!("Could not copy entity hierarchy: No active recording");
+            return;
+        };
+
+        let entity_tree = entity_db.tree();
+        let mut hierarchy_text = String::new();
+
+        fn format_entity_tree(
+            tree: &re_entity_db::EntityTree,
+            depth: usize,
+            text: &mut String,
+            entity_db: &re_entity_db::EntityDb,
+        ) {
+            let indent = "  ".repeat(depth);
+            let entity_path = &tree.path;
+            
+            if !entity_path.is_root() {
+                text.push_str(&format!("{}{}\n", indent, entity_path));
+                
+                // Add component schema information
+                if let Some(components) = entity_db.storage_engine().store().all_components_for_entity_sorted(entity_path) {
+                    for component in components.iter() {
+                        let component_indent = "  ".repeat(depth + 1);
+                        if let Some(component_type) = &component.component_type {
+                            if let Some(datatype) = entity_db.storage_engine().store().lookup_datatype(component_type) {
+                                text.push_str(&format!("{}{}: {}\n", 
+                                    component_indent, 
+                                    component_type.short_name(), 
+                                    re_arrow_util::format_data_type(&datatype)
+                                ));
+                            } else {
+                                text.push_str(&format!("{}{}\n", 
+                                    component_indent, 
+                                    component_type.short_name()
+                                ));
+                            }
+                        } else {
+                            // Fallback to component identifier if component_type is None
+                            text.push_str(&format!("{}{}\n", 
+                                component_indent, 
+                                component.component
+                            ));
+                        }
+                    }
+                }
+            }
+
+            for child in tree.children.values() {
+                format_entity_tree(child, if entity_path.is_root() { 0 } else { depth + 1 }, text, entity_db);
+            }
+        }
+
+        format_entity_tree(entity_tree, 0, &mut hierarchy_text, entity_db);
+
+        if hierarchy_text.is_empty() {
+            hierarchy_text = "(no entities)".to_string();
+        }
+
+        egui_ctx.copy_text(hierarchy_text.clone());
+        self.notifications
+            .success("Copied entity hierarchy with schema to clipboard".to_string());
     }
 
     fn memory_panel_ui(
