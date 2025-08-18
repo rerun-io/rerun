@@ -48,7 +48,7 @@ libc = "2.28"
 [activation.env]
 # Put pixi builds in its own build dir, otherwise `pixi run cargo build`
 # conflicts with vanialla `cargo build`, and running one invalidates (parts) of the other.
-# See
+# See https://github.com/rerun-io/rerun/issues/10934 for more.
 CARGO_TARGET_DIR = "target_pixi"
 
 [target.unix.activation.env]
