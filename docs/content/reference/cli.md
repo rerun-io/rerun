@@ -17,11 +17,11 @@ The Rerun command-line interface:
 **Commands**
 
 * `analytics`: Configure the behavior of our analytics.
-* `mcap`: Manipulate the contents of .mcap files.
-* `rrd`: Manipulate the contents of .rrd and .rbl files.
-* `reset`: Reset the memory of the Rerun Viewer.
-* `man`: Generates the Rerun CLI manual (markdown).
 * `auth`: Authentication with the redap.
+* `man`: Generates the Rerun CLI manual (markdown).
+* `mcap`: Manipulate the contents of .mcap files.
+* `reset`: Reset the memory of the Rerun Viewer.
+* `rrd`: Manipulate the contents of .rrd and .rbl files.
 * `server`: In memory rerun data server.
 
 **Arguments**
@@ -233,6 +233,45 @@ Associate an email address with the current user.
 **Arguments**
 
 * `<EMAIL>`
+
+## rerun auth
+
+Authentication with the redap.
+
+**Usage**: `rerun auth <COMMAND>`
+
+**Commands**
+
+* `login`: Log into Rerun.
+* `token`: Retrieve the stored access token.
+
+## rerun auth login
+
+Log into Rerun.
+
+This command opens a page in your default browser, allowing you to log in to the Rerun data platform.
+
+Once you've logged in, your credentials are stored on your machine.
+
+To sign up, contact us through the form linked at <https://rerun.io/#open-source-vs-commercial>.
+
+**Usage**: `rerun auth login [OPTIONS]`
+
+**Options**
+
+* `--login-url <LOGIN_URL>`
+>
+> [Default: `https://rerun.io/login`]
+
+* `--no-open-browser <NO_OPEN_BROWSER>`
+> Post a link instead of directly opening in the browser.
+>
+> [Default: `false`]
+
+* `--force <FORCE>`
+> Trigger the full login flow even if valid credentials already exist.
+>
+> [Default: `false`]
 
 ## rerun mcap
 
@@ -579,45 +618,6 @@ Can be used to ensure that the current Rerun version can load the data.
 
 * `<PATH_TO_INPUT_RRDS>`
 > Paths to read from. Reads from standard input if none are specified.
-
-## rerun auth
-
-Authentication with the redap.
-
-**Usage**: `rerun auth <COMMAND>`
-
-**Commands**
-
-* `login`: Log into Rerun.
-* `token`: Retrieve the stored access token.
-
-## rerun auth login
-
-Log into Rerun.
-
-This command opens a page in your default browser, allowing you to log in to the Rerun data platform.
-
-Once you've logged in, your credentials are stored on your machine.
-
-To sign up, contact us through the form linked at <https://rerun.io/#open-source-vs-commercial>.
-
-**Usage**: `rerun auth login [OPTIONS]`
-
-**Options**
-
-* `--login-url <LOGIN_URL>`
->
-> [Default: `https://rerun.io/login`]
-
-* `--no-open-browser <NO_OPEN_BROWSER>`
-> Post a link instead of directly opening in the browser.
->
-> [Default: `false`]
-
-* `--force <FORCE>`
-> Trigger the full login flow even if valid credentials already exist.
->
-> [Default: `false`]
 
 ## rerun server
 

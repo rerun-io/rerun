@@ -526,6 +526,7 @@ impl Args {
     }
 }
 
+// Commands sorted alphabetically:
 #[derive(Debug, Clone, Subcommand)]
 enum Command {
     /// Configure the behavior of our analytics.
@@ -533,12 +534,20 @@ enum Command {
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 
+    /// Authentication with the redap.
+    #[cfg(feature = "auth")]
+    #[command(subcommand)]
+    Auth(AuthCommands),
+
+    /// Generates the Rerun CLI manual (markdown).
+    ///
+    /// Example: `rerun man > docs/content/reference/cli.md`
+    #[command(name = "man")]
+    Manual,
+
     #[cfg(feature = "data_loaders")]
     #[command(subcommand)]
     Mcap(McapCommands),
-
-    #[command(subcommand)]
-    Rrd(RrdCommands),
 
     /// Reset the memory of the Rerun Viewer.
     ///
@@ -549,16 +558,8 @@ enum Command {
     #[cfg(feature = "native_viewer")]
     Reset,
 
-    /// Generates the Rerun CLI manual (markdown).
-    ///
-    /// Example: `rerun man > docs/content/reference/cli.md`
-    #[command(name = "man")]
-    Manual,
-
-    /// Authentication with the redap.
-    #[cfg(feature = "auth")]
     #[command(subcommand)]
-    Auth(AuthCommands),
+    Rrd(RrdCommands),
 
     /// In memory rerun data server
     #[command(name = "server")]
