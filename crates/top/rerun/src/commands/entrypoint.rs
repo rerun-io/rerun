@@ -561,7 +561,7 @@ enum Command {
     #[command(subcommand)]
     Rrd(RrdCommands),
 
-    /// In memory rerun data server
+    /// In-memory Rerun data server
     #[command(name = "server")]
     Server(ServerArgs),
 }
