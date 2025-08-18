@@ -243,6 +243,10 @@ impl App {
             state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
         }
 
+        if app_env.is_test() {
+            state.app_options.show_metrics = false;
+        }
+
         let view_class_registry = crate::default_views::create_view_class_registry()
             .unwrap_or_else(|err| {
                 re_log::error!("Failed to create view class registry: {err}");
@@ -1712,6 +1716,7 @@ impl App {
                         }
 
                         self.state.show(
+                            &self.app_env,
                             app_blueprint,
                             ui,
                             render_ctx,
