@@ -5,14 +5,13 @@ use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
-use re_data_source::{DataSource, FileContents};
+use re_data_source::{FileContents, LogDataSource};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
 use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
-use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
@@ -407,6 +406,23 @@ impl App {
         self.state.app_options_mut()
     }
 
+    /// Open a content URL in the viewer.
+    pub fn open_url_or_file(&self, url: &str) {
+        let follow_if_http = false;
+        let select_redap_source_when_loaded = true;
+
+        if crate::open_url::try_open_url_or_file_in_viewer(
+            &self.egui_ctx,
+            url,
+            follow_if_http,
+            select_redap_source_when_loaded,
+            &self.command_sender,
+        ) == Err(())
+        {
+            re_log::warn!("Failed to open URL: {url}");
+        }
+    }
+
     pub fn is_screenshotting(&self) -> bool {
         self.screenshotter.is_screenshotting()
     }
@@ -424,8 +440,8 @@ impl App {
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
         if let SmartChannelSource::RedapGrpcStream { uri, .. } = rx.source() {
-            self.add_redap_server(uri.origin.clone());
-
+            self.command_sender
+                .send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
             self.go_to_dataset_data(uri);
         }
 
@@ -588,6 +604,10 @@ impl App {
             }
 
             SystemCommand::AddRedapServer(origin) => {
+                if self.state.redap_servers.has_server(&origin) {
+                    return;
+                }
+
                 self.state.redap_servers.add_server(origin.clone());
 
                 if self
@@ -785,7 +805,7 @@ impl App {
         &mut self,
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
-        data_source: &DataSource,
+        data_source: &LogDataSource,
     ) {
         // Check if we've already loaded this data source and should just switch to it.
         //
@@ -799,7 +819,7 @@ impl App {
         let mut all_sources = store_sources.chain(active_sources.iter().map(|s| s.as_ref()));
 
         match data_source {
-            DataSource::RrdHttpUrl { url, follow } => {
+            LogDataSource::RrdHttpUrl { url, follow } => {
                 let new_source = SmartChannelSource::RrdHttpStream {
                     url: url.clone(),
                     follow: *follow,
@@ -825,39 +845,31 @@ impl App {
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            DataSource::FilePath(_file_source, path) => {
+            LogDataSource::FilePath(_file_source, path) => {
                 let new_source = SmartChannelSource::File(path.clone());
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
-                    if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
-                        let store_id = entity_db.store_id().clone();
-                        debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
-                        drop(all_sources);
-                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
-                    }
+                    drop(all_sources);
+                    self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);
                     return;
                 }
             }
 
-            DataSource::FileContents(_file_source, _file_contents) => {
+            LogDataSource::FileContents(_file_source, _file_contents) => {
                 // For raw file contents we currently can't determine whether we're already receiving them.
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            DataSource::Stdin => {
+            LogDataSource::Stdin => {
                 let new_source = SmartChannelSource::Stdin;
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
-                    if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
-                        let store_id = entity_db.store_id().clone();
-                        debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
-                        drop(all_sources);
-                        self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
-                    }
+                    drop(all_sources);
+                    self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);
                     return;
                 }
             }
 
-            DataSource::RerunGrpcStream {
-                uri: re_uri::RedapUri::DatasetData(uri),
+            LogDataSource::RedapDatasetPartition {
+                uri,
                 select_when_loaded,
             } => {
                 let new_source = SmartChannelSource::RedapGrpcStream {
@@ -883,11 +895,13 @@ impl App {
                 }
             }
 
-            DataSource::RerunGrpcStream {
-                uri: _,
-                select_when_loaded: _,
-            } => {
-                // Other URI types don't need the skipping code here as they won't add a data source anyways.
+            LogDataSource::RedapProxy(uri) => {
+                let new_source = SmartChannelSource::MessageProxy(uri.clone());
+                if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
+                    drop(all_sources);
+                    self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);
+                    return;
+                }
             }
         }
         // On native, `add_receiver` spawns a thread that wakes up the ui thread
@@ -901,10 +915,10 @@ impl App {
                 egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
             })
         };
-        let on_cmd = {
+        let on_ui_cmd = {
             let command_sender = self.command_sender.clone();
             Box::new(move |cmd| match cmd {
-                re_data_source::DataSourceCommand::SetLoopSelection {
+                re_grpc_client::UiCommand::SetLoopSelection {
                     recording_id,
                     timeline,
                     time_range,
@@ -918,22 +932,9 @@ impl App {
 
         match data_source
             .clone()
-            .stream(&self.connection_registry, on_cmd, Some(waker))
+            .stream(&self.connection_registry, Some(on_ui_cmd), Some(waker))
         {
-            Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
-
-            Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
-                self.add_redap_server(uri.origin.clone());
-                self.command_sender
-                    .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                        uri.origin.clone(),
-                    )));
-            }
-
-            Ok(re_data_source::StreamSource::EntryUri(uri)) => {
-                self.select_redap_entry(&uri);
-            }
-
+            Ok(rx) => self.add_log_receiver(rx),
             Err(err) => {
                 re_log::error!("Failed to open data source: {}", re_error::format(err));
             }
@@ -943,7 +944,7 @@ impl App {
     /// Applies the fragment of a dataset data URI to the viewer.
     ///
     /// Does *not* switch the active recording.
-    fn go_to_dataset_data(&self, uri: &re_uri::DatasetDataUri) {
+    fn go_to_dataset_data(&self, uri: &re_uri::DatasetPartitionUri) {
         let re_uri::Fragment { focus, when } = uri.fragment.clone();
 
         if let Some(focus) = focus {
@@ -1083,7 +1084,7 @@ impl App {
             UICommand::Open => {
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
                             FileSource::FileDialog {
                                 recommended_store_id: None,
                                 force_store_info,
@@ -1113,7 +1114,7 @@ impl App {
             UICommand::Import => {
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
                             FileSource::FileDialog {
                                 recommended_store_id: Some(active_store_id.clone()),
                                 force_store_info,
@@ -1950,6 +1951,20 @@ impl App {
         }
     }
 
+    /// Makes the first recording store active that is found for a given data source if any.
+    fn try_make_recording_from_source_active(
+        &self,
+        egui_ctx: &egui::Context,
+        store_hub: &mut StoreHub,
+        new_source: &SmartChannelSource,
+    ) {
+        if let Some(entity_db) = store_hub.find_recording_store_by_source(new_source) {
+            let store_id = entity_db.store_id().clone();
+            debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
+            self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
+        }
+    }
+
     /// Makes the given store active and request user attention if Rerun in the background.
     fn make_store_active_and_highlight(
         &self,
@@ -2152,7 +2167,7 @@ impl App {
             if let Some(bytes) = file.bytes {
                 // This is what we get on Web.
                 command_sender.send_system(SystemCommand::LoadDataSource(
-                    DataSource::FileContents(
+                    LogDataSource::FileContents(
                         FileSource::DragAndDrop {
                             recommended_store_id: Some(active_store_id.clone()),
                             force_store_info,
@@ -2169,7 +2184,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = file.path {
-                command_sender.send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
                     FileSource::DragAndDrop {
                         recommended_store_id: Some(active_store_id.clone()),
                         force_store_info,
@@ -2335,14 +2350,6 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
             self.screenshotter.save(&self.egui_ctx, image);
         }
-    }
-
-    pub fn add_redap_server(&self, origin: Origin) {
-        self.state.add_redap_server(&self.command_sender, origin);
-    }
-
-    pub fn select_redap_entry(&self, uri: &re_uri::EntryUri) {
-        self.state.select_redap_entry(&self.command_sender, uri);
     }
 }
 
@@ -2513,7 +2520,7 @@ impl eframe::App for App {
             if let Some(files) = promise.ready() {
                 for file in files {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FileContents(
                             FileSource::FileDialog {
                                 recommended_store_id: recommended_store_id.clone(),
                                 force_store_info: *force_store_info,

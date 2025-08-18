@@ -10,7 +10,6 @@ use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, UiExt as _};
-use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandSender,
     ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
@@ -128,19 +127,6 @@ impl AppState {
 
     pub fn app_options_mut(&mut self) -> &mut AppOptions {
         &mut self.app_options
-    }
-
-    pub fn add_redap_server(&self, command_sender: &CommandSender, origin: Origin) {
-        if !self.redap_servers.has_server(&origin) {
-            command_sender.send_system(SystemCommand::AddRedapServer(origin));
-        }
-    }
-
-    pub fn select_redap_entry(&self, command_sender: &CommandSender, uri: &re_uri::EntryUri) {
-        // make sure the server exists
-        self.add_redap_server(command_sender, uri.origin.clone());
-
-        command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
     }
 
     /// Currently selected section of time, if any.
@@ -573,16 +559,16 @@ impl AppState {
                                             re_recording_panel::recordings_panel_ui(
                                                 &ctx,
                                                 ui,
-                                                welcome_screen_state.hide_examples,
                                                 redap_servers,
+                                                welcome_screen_state.hide_examples,
                                             );
                                         });
                                 } else {
                                     re_recording_panel::recordings_panel_ui(
                                         &ctx,
                                         ui,
-                                        welcome_screen_state.hide_examples,
                                         redap_servers,
+                                        welcome_screen_state.hide_examples,
                                     );
                                 }
 
@@ -879,7 +865,7 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 let select_redap_source_when_loaded = open_url.new_tab;
 
-                if open_url::try_open_url_in_viewer(
+                if open_url::try_open_url_or_file_in_viewer(
                     egui_ctx,
                     &open_url.url,
                     follow_if_http,

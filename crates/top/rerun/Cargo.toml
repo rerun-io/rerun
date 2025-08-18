@@ -103,7 +103,6 @@ run = [
   "dep:re_chunk_store",
   "dep:re_crash_handler",
   "dep:re_data_source",
-  "dep:re_global_context",
   "re_log_encoding/decoder",
   "re_log_encoding/encoder",
   "sdk",
@@ -197,4 +196,9 @@ re_build_tools.workspace = true
 
 [package.metadata.cargo-shear]
 # We only depend on re_video so we can enable extra features for it
-ignored = ["re_video", "puffin"]
+ignored = [
+  "re_video",
+  "puffin",
+  # Local runs of `cargo shear` don't bring up `re_global_context` but CI runs do.
+  "re_global_context",
+]

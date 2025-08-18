@@ -1,16 +1,35 @@
+use std::fmt::Formatter;
+use std::hash::{DefaultHasher, Hash as _, Hasher as _};
+
 use egui::{Atom, Image, ImageSource};
 
 use crate::DesignTokens;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct Icon {
-    /// Human readable unique id.
+    /// Human-readable unique id.
     ///
     /// This usually ends with `.png` or `.svg`.
     uri: &'static str,
 
     /// The raw contents of e.g. a PNG or SVG file.
     image_bytes: &'static [u8],
+}
+
+impl std::fmt::Debug for Icon {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut hasher = DefaultHasher::new();
+        self.image_bytes.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        f.debug_struct("Icon")
+            .field("uri", &self.uri)
+            .field(
+                "image_bytes",
+                &format!("len: {}, hash: {:#x}", self.image_bytes.len(), hash),
+            )
+            .finish()
+    }
 }
 
 impl Icon {

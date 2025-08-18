@@ -88,15 +88,10 @@ The Rerun command-line interface:
 * `--screenshot-to <SCREENSHOT_TO>`
 > Take a screenshot of the app and quit. We use this to generate screenshots of our examples. Useful together with `--window-size`.
 
-* `--serve <SERVE>`
-> Deprecated: use `--serve-web` instead.
->
-> [Default: `false`]
-
 * `--serve-web <SERVE_WEB>`
-> This will host a web-viewer over HTTP, and a gRPC server.
+> This will host a web-viewer over HTTP, and a gRPC server, unless one or more URIs are provided that can be viewed directly in the web viewer.
 >
-> The server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
+> If started, the web server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
 >
 > Using this sets the default `--server-memory-limit` to 25% of available system memory.
 >

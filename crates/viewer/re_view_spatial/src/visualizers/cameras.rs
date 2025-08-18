@@ -17,7 +17,7 @@ use re_viewer_context::{
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 use crate::{
     contexts::TransformTreeContext, resolution_of_image_at, space_camera_3d::SpaceCamera3D,
-    ui::SpatialViewState,
+    ui::SpatialViewState, visualizers::process_radius,
 };
 
 pub struct CamerasVisualizer {
@@ -63,6 +63,10 @@ impl CamerasVisualizer {
         let w = pinhole_properties.pinhole.resolution.x;
         let h = pinhole_properties.pinhole.resolution.y;
         let z = pinhole_properties.image_plane_distance;
+        let color = pinhole_properties
+            .pinhole
+            .color
+            .unwrap_or(tokens.frustum_color);
         if !w.is_finite() || !h.is_finite() || w <= 0.0 || h <= 0.0 {
             return;
         }
@@ -164,7 +168,11 @@ impl CamerasVisualizer {
             ),
         ];
 
-        let radius = re_renderer::Size::new_ui_points(1.0);
+        let radius = pinhole_properties
+            .pinhole
+            .line_width
+            .unwrap_or(re_renderer::Size::new_ui_points(1.0));
+
         let instance_path_for_picking =
             re_entity_db::InstancePathHash::instance(ent_path, instance);
         let instance_layer_id =
@@ -185,7 +193,7 @@ impl CamerasVisualizer {
             let lines = batch
                 .add_strip(strip.into_iter())
                 .radius(radius)
-                .color(tokens.frustum_color)
+                .color(color)
                 .flags(flags)
                 .picking_instance_id(instance_layer_id.instance);
 
@@ -266,11 +274,19 @@ impl VisualizerSystem for CamerasVisualizer {
                     &Pinhole::descriptor_image_plane_distance(),
                 )
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
+            let color = query_results
+                .get_mono::<components::Color>(&Pinhole::descriptor_color())
+                .map(|color| color.into());
+            let line_width = query_results
+                .get_mono::<components::Radius>(&Pinhole::descriptor_line_width())
+                .map(|radius| process_radius(&data_result.entity_path, radius));
 
             let component_data = CameraComponentDataWithFallbacks {
                 pinhole: crate::Pinhole {
                     image_from_camera: pinhole_projection.0.into(),
                     resolution: resolution.into(),
+                    color,
+                    line_width,
                 },
                 camera_xyz,
                 image_plane_distance: image_plane_distance.into(),

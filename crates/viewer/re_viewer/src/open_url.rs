@@ -1,4 +1,4 @@
-use re_data_source::DataSource;
+use re_data_source::LogDataSource;
 use re_smart_channel::SmartChannelSource;
 use re_viewer_context::{
     CommandSender, DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _,
@@ -10,12 +10,12 @@ pub const INTRA_RECORDING_URL_SCHEME: &str = "recording://";
 /// An eventListener for rrd posted from containing html
 pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 
-/// Tries to open a content URL inside the viewer.
+/// Tries to open a content URL or file inside the viewer.
 ///
 /// This is for handling opening arbitrary URLs inside the viewer
 /// (as opposed to opening them in a new tab) for both native and web.
 /// Supported are:
-/// * any URL that can be interpreted as a [`DataSource`]
+/// * any URL or file path that can be interpreted as a [`LogDataSource`]
 /// * intra-recording links (typically links to an entity)
 /// * web event listeners
 ///
@@ -24,7 +24,7 @@ pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
 ///
 /// Returns `Ok(())` if the URL schema was recognized, `Err(())` if the URL was not a valid content URL.
-pub fn try_open_url_in_viewer(
+pub fn try_open_url_or_file_in_viewer(
     _egui_ctx: &egui::Context,
     url: &str,
     follow_if_http: bool,
@@ -33,15 +33,25 @@ pub fn try_open_url_in_viewer(
 ) -> Result<(), ()> {
     re_log::debug!("Opening URL: {url:?}");
 
-    if let Some(mut data_source) = DataSource::from_uri(re_log_types::FileSource::Uri, url) {
-        if let DataSource::RerunGrpcStream {
+    if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
+        command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+        command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+            uri.origin,
+        )));
+    } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
+        command_sender.send_system(SystemCommand::AddRedapServer(uri.origin));
+        command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
+    } else if let Some(mut data_source) =
+        LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
+    {
+        if let LogDataSource::RedapDatasetPartition {
             select_when_loaded, ..
         } = &mut data_source
         {
             // `select_when_loaded` is not encoded in the url itself. As of writing, `DataSource::from_uri` will just always set `select_when_loaded` to `true`.
             // We overwrite this with the passed in value.
             *select_when_loaded = select_redap_source_when_loaded;
-        } else if let DataSource::RrdHttpUrl { follow, .. } = &mut data_source {
+        } else if let LogDataSource::RrdHttpUrl { follow, .. } = &mut data_source {
             // `follow` is not encoded in the url itself. As of writing, `DataSource::from_uri` will just always set `follow` to `false`.
             // We overwrite this with the passed in value.
             *follow = follow_if_http;

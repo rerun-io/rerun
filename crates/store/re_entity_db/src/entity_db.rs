@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 use nohash_hasher::IntMap;
@@ -34,6 +35,7 @@ pub const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::fro
 /// The class is used to semantically group recordings in the UI (e.g. in the recording panel) and
 /// to determine how to source the default blueprint. For example, `DatasetPartition` dbs might have
 /// their default blueprint sourced remotely.
+#[derive(Debug, PartialEq, Eq)]
 pub enum EntityDbClass<'a> {
     /// This is a regular local recording (e.g. loaded from a `.rrd` file or logged to the viewer).
     LocalRecording,
@@ -42,7 +44,7 @@ pub enum EntityDbClass<'a> {
     ExampleRecording,
 
     /// This is a recording loaded from a remote dataset partition.
-    DatasetPartition(&'a re_uri::DatasetDataUri),
+    DatasetPartition(&'a re_uri::DatasetPartitionUri),
 
     /// This is a blueprint.
     Blueprint,
@@ -106,6 +108,16 @@ pub struct EntityDb {
     storage_engine: StorageEngine,
 
     stats: IngestionStatistics,
+}
+
+impl Debug for EntityDb {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EntityDb")
+            .field("store_id", &self.store_id)
+            .field("data_source", &self.data_source)
+            .field("set_store_info", &self.set_store_info)
+            .finish()
+    }
 }
 
 impl EntityDb {

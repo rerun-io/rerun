@@ -141,7 +141,7 @@ impl RerunArgs {
 
                 crate::serve_web_viewer(crate::web_viewer::WebViewerConfig {
                     open_browser: true,
-                    connect_to: Some("rerun+http://localhost:9876/proxy".to_owned()),
+                    connect_to: vec!["rerun+http://localhost:9876/proxy".to_owned()],
                     ..Default::default()
                 })?
                 .detach();

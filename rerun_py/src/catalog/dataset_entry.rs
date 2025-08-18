@@ -235,7 +235,7 @@ impl PyDatasetEntry {
                         .unwrap_or(re_log_types::NonMinI64::MAX),
                 ),
             });
-        Ok(re_uri::DatasetDataUri {
+        Ok(re_uri::DatasetPartitionUri {
             origin: connection.origin().clone(),
             dataset_id: super_.details.id.id,
             partition_id,

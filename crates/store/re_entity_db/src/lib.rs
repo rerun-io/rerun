@@ -18,10 +18,7 @@ pub use self::{
     entity_tree::EntityTree,
     ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats},
     instance_path::{InstancePath, InstancePathHash},
-    store_bundle::{
-        DatasetRecordings, LocalRecordings, RemoteRecordings, SortDatasetsResults, StoreBundle,
-        StoreLoadError,
-    },
+    store_bundle::{StoreBundle, StoreLoadError},
     time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline},
     times_per_timeline::{TimeCounts, TimesPerTimeline},
     versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash},
