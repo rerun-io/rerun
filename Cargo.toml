@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "crates/build/*",
+  "crates/re_workspace_hack",
   "crates/store/*",
   "crates/top/*",
   "crates/utils/*",
