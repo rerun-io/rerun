@@ -1,3 +1,5 @@
+#![cfg(feature = "testing")]
+
 use re_entity_db::EntityDb;
 use re_log_types::{StoreId, StoreKind};
 use re_recording_panel::data::RecordingPanelData;
