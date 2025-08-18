@@ -45,6 +45,12 @@ libc = "2.28"
 
 [activation]
 
+[activation.env]
+# Put pixi builds in its own build dir, otherwise `pixi run cargo build`
+# conflicts with vanialla `cargo build`, and running one invalidates (parts) of the other.
+# See
+CARGO_TARGET_DIR = "target_pixi"
+
 [target.unix.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ""
