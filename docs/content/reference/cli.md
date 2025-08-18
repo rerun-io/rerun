@@ -22,7 +22,7 @@ The Rerun command-line interface:
 * `mcap`: Manipulate the contents of .mcap files.
 * `reset`: Reset the memory of the Rerun Viewer.
 * `rrd`: Manipulate the contents of .rrd and .rbl files.
-* `server`: In memory rerun data server.
+* `server`: In-memory Rerun data server.
 
 **Arguments**
 
@@ -621,7 +621,7 @@ Can be used to ensure that the current Rerun version can load the data.
 
 ## rerun server
 
-In memory rerun data server.
+In-memory Rerun data server.
 
 **Usage**: `rerun server [OPTIONS]`
 
