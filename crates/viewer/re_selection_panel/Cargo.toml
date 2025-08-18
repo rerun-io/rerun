@@ -41,6 +41,7 @@ nohash-hasher.workspace = true
 serde = { workspace = true, features = ["derive"] }
 smallvec.workspace = true
 static_assertions.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 [dev-dependencies]
 re_component_ui.workspace = true

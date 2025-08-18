@@ -51,6 +51,7 @@ tempfile.workspace = true
 toml = { workspace = true, features = ["parse", "preserve_order"] }
 unindent.workspace = true
 xshell.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 
 [build-dependencies]

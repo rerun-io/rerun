@@ -59,6 +59,7 @@ thiserror.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 [build-dependencies]
 re_build_tools.workspace = true

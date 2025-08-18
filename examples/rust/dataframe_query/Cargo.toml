@@ -13,3 +13,4 @@ rerun = { path = "../../../crates/top/rerun", default-features = false, features
 
 itertools = "0.14"
 unindent = "0.2"
+re_workspace_hack = { version = "0.1", path = "../../../crates/re_workspace_hack" }

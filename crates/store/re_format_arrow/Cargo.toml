@@ -27,6 +27,7 @@ re_types_core.workspace = true # tuid serialization
 arrow.workspace = true
 itertools.workspace = true
 serde_json.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

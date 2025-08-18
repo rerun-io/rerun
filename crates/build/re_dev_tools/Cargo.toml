@@ -43,3 +43,4 @@ toml = { workspace = true, features = ["parse", "preserve_order"] }
 ureq = { workspace = true, features = ["json"] }
 url.workspace = true
 wasm-bindgen-cli-support.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }

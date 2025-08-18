@@ -50,6 +50,7 @@ rfd.workspace = true
 serde.workspace = true
 strum_macros.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 
 # Native dependencies:

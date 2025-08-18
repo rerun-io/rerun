@@ -55,6 +55,7 @@ tower.workspace = true
 tower-service.workspace = true
 tracing.workspace = true
 url.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 
 [build-dependencies]

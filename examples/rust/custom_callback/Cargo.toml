@@ -39,3 +39,4 @@ tokio = { version = "1.14.0", features = [
   "sync",
   "signal",
 ] }
+re_workspace_hack = { version = "0.1", path = "../../../crates/re_workspace_hack" }

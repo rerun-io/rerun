@@ -44,3 +44,4 @@ ahash.workspace = true
 arrow = { workspace = true, features = ["ffi"] }
 infer.workspace = true
 parking_lot.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }

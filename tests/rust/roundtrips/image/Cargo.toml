@@ -18,3 +18,4 @@ clap = { workspace = true, features = ["derive"] }
 image.workspace = true
 half.workspace = true
 ndarray.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../../../crates/re_workspace_hack" }

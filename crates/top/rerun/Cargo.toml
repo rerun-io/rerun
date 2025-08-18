@@ -185,6 +185,7 @@ re_web_viewer_server = { workspace = true, optional = true }
 
 env_filter = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

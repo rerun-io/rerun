@@ -50,6 +50,7 @@ parking_lot = { workspace = true, features = ["arc_lock"] }
 paste.workspace = true
 seq-macro.workspace = true
 thiserror.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 
 [dev-dependencies]
