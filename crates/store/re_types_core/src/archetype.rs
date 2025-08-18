@@ -94,7 +94,7 @@ pub trait Archetype {
         _ = data; // NOTE: do this here to avoid breaking users' autocomplete snippets
         Err(crate::DeserializationError::NotImplemented {
             fqname: Self::name().to_string(),
-            backtrace: std::backtrace::Backtrace::capture(),
+            backtrace: Box::new(std::backtrace::Backtrace::capture()),
         })
     }
 }

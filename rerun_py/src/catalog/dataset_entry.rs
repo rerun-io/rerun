@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use arrow::array::{RecordBatch, StringArray};
+use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
 use pyo3::Bound;
@@ -235,7 +235,7 @@ impl PyDatasetEntry {
                         .unwrap_or(re_log_types::NonMinI64::MAX),
                 ),
             });
-        Ok(re_uri::DatasetDataUri {
+        Ok(re_uri::DatasetPartitionUri {
             origin: connection.origin().clone(),
             dataset_id: super_.details.id.id,
             partition_id,
@@ -629,9 +629,10 @@ impl PyDatasetEntry {
             Default::default(),
         );
 
-        let query = RecordBatch::try_new(
+        let query = RecordBatch::try_new_with_options(
             Arc::new(schema),
             vec![Arc::new(StringArray::from_iter_values([query]))],
+            &RecordBatchOptions::default().with_row_count(Some(1)),
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 

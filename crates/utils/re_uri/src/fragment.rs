@@ -1,6 +1,6 @@
 use re_log_types::{DataPath, TimeCell, TimelineName};
 
-/// We use the `#fragment` of the URI to point to a specific entity.
+/// We use the `#fragment` of the URI to point to a specific entity or time.
 ///
 /// ```
 /// # use re_uri::Fragment;

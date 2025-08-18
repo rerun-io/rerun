@@ -30,7 +30,7 @@ This means that `@rerun-io/web-viewer-react@0.10.0` can only connect to a data s
 import WebViewer from "@rerun-io/web-viewer-react";
 
 export default function App() {
-  return <WebViewer width="800px" height="600px" rrd="..."/>
+  return <WebViewer width="800px" height="600px" rrd="…"/>
 }
 ```
 

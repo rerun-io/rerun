@@ -84,7 +84,7 @@ In the future, Rerun will be adding support for additional types of transforms.
 
 Say you have a 3D world with two cameras with known extrinsics (pose) and intrinsics (pinhole model and resolution). You want to log some things in the shared 3D space, and also log each camera image and some detection in these images.
 
-```py
+```python
 # Log some data to the 3D world:
 rr.log("world/points", rr.Points3D(…))
 

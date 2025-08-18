@@ -3,12 +3,9 @@ use std::{collections::BTreeSet, fs::File, io::BufWriter, sync::mpsc::Receiver};
 use clap::Subcommand;
 use re_log_encoding::encoder::DroppableEncoder;
 use re_log_types::{LogMsg, RecordingId};
+use re_mcap::{LayerIdentifier, SelectedLayers};
 use re_sdk::{
-    ApplicationId, DataLoader, DataLoaderSettings, LoadedData,
-    external::re_data_loader::{
-        McapLoader,
-        mcap::layers::{LayerIdentifier, SelectedLayers},
-    },
+    ApplicationId, DataLoader, DataLoaderSettings, LoadedData, external::re_data_loader::McapLoader,
 };
 
 #[derive(Debug, Clone, clap::Parser)]
