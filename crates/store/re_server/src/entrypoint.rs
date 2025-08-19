@@ -40,7 +40,10 @@ impl Args {
             let mut builder = crate::FrontendHandlerBuilder::new();
 
             for dataset in &self.datasets {
-                builder = builder.with_directory_as_dataset(dataset)?;
+                builder = builder.with_directory_as_dataset(
+                    dataset,
+                    re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
+                )?;
             }
 
             FrontendServiceServer::new(builder.build())

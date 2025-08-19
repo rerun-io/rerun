@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fs::File, path::Path};
+use std::{
+    collections::{HashMap, hash_map::Entry},
+    fs::File,
+    path::Path,
+};
 
 use arrow::{array::RecordBatch, datatypes::Schema};
 
@@ -9,7 +13,7 @@ use re_protos::{
         EntryKind,
         ext::{DatasetEntry, EntryDetails},
     },
-    common::v1alpha1::ext::{DatasetHandle, PartitionId},
+    common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
     manifest_registry::v1alpha1::ScanPartitionTableResponse,
 };
 
@@ -153,22 +157,48 @@ impl Dataset {
         self.updated_at = jiff::Timestamp::now();
     }
 
-    pub fn load_rrd(&mut self, path: &Path) -> Result<(), Error> {
+    pub fn load_rrd(
+        &mut self,
+        path: &Path,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<(), Error> {
         re_log::info!("Loading RRD: {}", path.display());
         let mut contents = StoreBundle::from_rrd(File::open(path)?)?;
+
         for entity_db in contents.drain_entity_dbs() {
             let store_id = entity_db.store_id();
+            if !store_id.is_recording() {
+                continue;
+            }
 
-            if store_id.is_recording() {
-                self.partitions.insert(
-                    PartitionId::new(store_id.recording_id().to_string()),
-                    Partition {
+            let partition_id = PartitionId::new(store_id.recording_id().to_string());
+
+            match self.partitions.entry(partition_id.clone()) {
+                Entry::Vacant(entry) => {
+                    entry.insert(Partition {
                         entity_db,
                         registration_time: jiff::Timestamp::now(),
-                    },
-                );
+                    });
+                }
+                Entry::Occupied(mut entry) => match on_duplicate {
+                    IfDuplicateBehavior::Overwrite => {
+                        re_log::info!("Overwriting {partition_id}");
+                        entry.insert(Partition {
+                            entity_db,
+                            registration_time: jiff::Timestamp::now(),
+                        });
+                    }
+                    IfDuplicateBehavior::Skip => {
+                        re_log::info!("Ignoring {partition_id}: it already exists");
+                        return Ok(());
+                    }
+                    IfDuplicateBehavior::Error => {
+                        return Err(Error::DuplicateEntryNameError(partition_id.to_string()));
+                    }
+                },
             }
         }
+
         Ok(())
     }
 }
@@ -182,7 +212,11 @@ pub struct InMemoryStore {
 
 impl InMemoryStore {
     /// Load a directory of RRDs.
-    pub fn load_directory_as_dataset(&mut self, directory: &std::path::Path) -> Result<(), Error> {
+    pub fn load_directory_as_dataset(
+        &mut self,
+        directory: &std::path::Path,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<(), Error> {
         let directory = directory.canonicalize()?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
@@ -210,7 +244,7 @@ impl InMemoryStore {
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
                 if is_rrd {
-                    dataset.load_rrd(&entry.path())?;
+                    dataset.load_rrd(&entry.path(), on_duplicate)?;
                 }
             }
         }

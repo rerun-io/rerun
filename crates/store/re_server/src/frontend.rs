@@ -20,9 +20,6 @@ use re_entity_db::external::re_query::StorageEngine;
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::catalog::v1alpha1::{
-    DeleteEntryResponse, EntryKind, RegisterTableRequest, RegisterTableResponse,
-};
 use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::ext::{GetChunksRequest, ScanPartitionTableRequest};
 use re_protos::manifest_registry::v1alpha1::{
@@ -32,6 +29,12 @@ use re_protos::manifest_registry::v1alpha1::{
 use re_protos::{
     catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse},
     manifest_registry::v1alpha1::ext,
+};
+use re_protos::{
+    catalog::v1alpha1::{
+        DeleteEntryResponse, EntryKind, RegisterTableRequest, RegisterTableResponse,
+    },
+    common::v1alpha1::ext::IfDuplicateBehavior,
 };
 use re_protos::{
     frontend::v1alpha1::frontend_service_server::FrontendService,
@@ -59,8 +62,10 @@ impl FrontendHandlerBuilder {
     pub fn with_directory_as_dataset(
         mut self,
         directory: &std::path::Path,
+        on_duplicate: IfDuplicateBehavior,
     ) -> Result<Self, crate::store::Error> {
-        self.store.load_directory_as_dataset(directory)?;
+        self.store
+            .load_directory_as_dataset(directory, on_duplicate)?;
 
         Ok(self)
     }
@@ -376,7 +381,11 @@ impl FrontendService for FrontendHandler {
                 kind,
             } = source;
 
-            assert!(layer.is_empty(), "TODO: what is this??");
+            if layer != "base" {
+                return Err(tonic::Status::unimplemented(format!(
+                    "register_with_dataset: only 'base' layer is implemented, got {layer:?}"
+                )));
+            }
 
             if kind != ext::DataSourceKind::Rrd {
                 return Err(tonic::Status::unimplemented(
@@ -385,12 +394,14 @@ impl FrontendService for FrontendHandler {
             }
 
             if let Some(rrd_path) = storage_url.as_str().strip_prefix("file://") {
-                dataset.load_rrd(&PathBuf::from(rrd_path))?;
+                dataset.load_rrd(&PathBuf::from(rrd_path), on_duplicate)?;
             }
         }
 
-        Err(tonic::Status::unimplemented(
-            "register_with_dataset not implemented",
+        Ok(tonic::Response::new(
+            re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse {
+                data: None, // TODO
+            },
         ))
     }
 
