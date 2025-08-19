@@ -7,8 +7,7 @@ name = "re_workspace_hack"
 version = "0.1.0"
 edition = "2021"
 description = "workspace-hack package, managed by hakari"
-# You can choose to publish this crate: see https://docs.rs/cargo-hakari/latest/cargo_hakari/publishing.
-publish = false
+publish = false  # We do NOT want to publish this!
 
 [lints]
 workspace = true

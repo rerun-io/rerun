@@ -642,6 +642,9 @@ def check_publish_flags() -> None:
         if should_publish:
             traverse(wrong_publish, crates, crate)
 
+    assert "re_workspace_hack" in wrong_publish
+    wrong_publish.remove("re_workspace_hack")  # re_workspace_hack is manually excluded by the publish step
+
     if len(wrong_publish) > 0:
         for name in wrong_publish:
             print(f"{name} needs to be changed to `publish=true`")
