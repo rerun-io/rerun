@@ -1,6 +1,8 @@
 use anyhow::Context as _;
 use arrow::array::RecordBatch;
 use crossbeam::channel::Receiver;
+use datafusion::prelude::*;
+
 use itertools::Either;
 use re_build_info::CrateVersion;
 use re_log_types::{EntityPathFilter, EntityPathSubs, LogMsg, ResolvedEntityPathFilter};
@@ -32,8 +34,9 @@ struct TransformRule {
 }
 
 impl TransformRule {
-    fn parse(s: &str) -> anyhow::Result<Self> {
-        let (path_expression, sql_expression) = s
+    fn parse(input: &str) -> anyhow::Result<Self> {
+        let input = input.replace('\n', "");
+        let (path_expression, sql_expression) = input
             .split_once('=')
             .ok_or_else(|| anyhow::anyhow!("expected '='"))?;
 
@@ -81,6 +84,9 @@ fn process_messages(
 ) -> anyhow::Result<()> {
     re_log::info!("processing input…");
 
+    let df_ctx = SessionContext::new();
+    let tokio_rt = tokio::runtime::Handle::current();
+
     // TODO(cmc): might want to make this configurable at some point.
     let (tx_encoder, rx_encoder) = crossbeam::channel::bounded(100);
     let encoding_handle = spawn_encode_thread(path_to_output_rrd, rx_encoder);
@@ -101,8 +107,13 @@ fn process_messages(
 
                         for transform in transforms {
                             if transform.path_expression.matches(&entity_path) {
-                                match run_datafusion_query(record_batch, &transform.sql_expression)
-                                {
+                                let result = tokio_rt.block_on(run_datafusion_query(
+                                    &df_ctx,
+                                    record_batch.clone(), // TODO: this clone an issue? how to avoid it?
+                                    &transform.sql_expression,
+                                ));
+
+                                match result {
                                     Ok(new_batch) => {
                                         *record_batch = new_batch;
                                     }
@@ -149,18 +160,32 @@ fn process_messages(
     Ok(())
 }
 
-fn run_datafusion_query(
-    record_batch: &RecordBatch,
+async fn run_datafusion_query(
+    df_ctx: &SessionContext,
+    record_batch: RecordBatch,
     sql_expression: &str,
 ) -> anyhow::Result<RecordBatch> {
-    re_log::info!(
-        "transforming record batch with sql expression: {}",
-        sql_expression
-    );
+    re_log::debug!("transforming chunk with {sql_expression:?}");
 
-    // TODO: implement query execution.
+    const TABLE_NAME: &str = "input";
 
-    Ok(record_batch.clone())
+    df_ctx.deregister_table(TABLE_NAME)?; // TODO: deregister on function exit
+    df_ctx.register_batch(TABLE_NAME, record_batch)?;
+
+    let dataframe = df_ctx.sql(sql_expression).await?;
+    let batches = dataframe.collect().await?;
+
+    // Concatenate the resulting RecordBatches into one
+    if batches.is_empty() {
+        anyhow::bail!("no results from datafusion query. TODO: allow fully dropping");
+    } else if batches.len() == 1 {
+        Ok(batches.into_iter().next().expect("Can't be empty").clone())
+    } else {
+        Ok(datafusion::arrow::compute::concat_batches(
+            &batches[0].schema(),
+            &batches,
+        )?)
+    }
 }
 
 // TODO: same thing as in filter.rs and maybe others.
