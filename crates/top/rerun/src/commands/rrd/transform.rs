@@ -1,8 +1,10 @@
 use anyhow::Context as _;
+use arrow::array::RecordBatch;
 use crossbeam::channel::Receiver;
 use itertools::Either;
 use re_build_info::CrateVersion;
 use re_log_types::{EntityPathFilter, EntityPathSubs, LogMsg, ResolvedEntityPathFilter};
+use re_sdk::EntityPath;
 
 use crate::commands::{read_rrd_streams_from_file_or_stdin, stdio::InputSource};
 
@@ -92,7 +94,31 @@ fn process_messages(
                 if let re_log_types::LogMsg::ArrowMsg(_store_id, msg) = &mut msg {
                     let record_batch = &mut msg.batch;
 
-                    dbg!(&record_batch.schema().metadata.get("rerun:entity_path"));
+                    if let Some(entity_path) =
+                        record_batch.schema().metadata.get("rerun:entity_path")
+                    {
+                        let entity_path = EntityPath::parse_forgiving(entity_path);
+
+                        for transform in transforms {
+                            if transform.path_expression.matches(&entity_path) {
+                                match run_datafusion_query(record_batch, &transform.sql_expression)
+                                {
+                                    Ok(new_batch) => {
+                                        *record_batch = new_batch;
+                                    }
+                                    Err(err) => {
+                                        re_log::error!(err = re_error::format(err));
+                                        is_success = false;
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        re_log::warn!(
+                            "no entity path found in record batch, expected meta key 'rerun:entity_path' "
+                        );
+                        is_success = false;
+                    }
                 }
 
                 // TODO: skip empty messages.
@@ -121,6 +147,20 @@ fn process_messages(
     // TODO: print some stats.
 
     Ok(())
+}
+
+fn run_datafusion_query(
+    record_batch: &RecordBatch,
+    sql_expression: &str,
+) -> anyhow::Result<RecordBatch> {
+    re_log::info!(
+        "transforming record batch with sql expression: {}",
+        sql_expression
+    );
+
+    // TODO: implement query execution.
+
+    Ok(record_batch.clone())
 }
 
 // TODO: same thing as in filter.rs and maybe others.
