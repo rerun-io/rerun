@@ -175,7 +175,7 @@ man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/conten
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --"
+rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,oss_server --"
 
 # Compile and run the rerun viewer, with performance telemetry.
 #
