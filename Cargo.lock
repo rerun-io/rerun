@@ -9337,7 +9337,6 @@ dependencies = [
  "winapi",
  "windows 0.58.0",
  "windows 0.61.3",
- "windows-sys 0.48.0",
  "windows-sys 0.52.0",
  "windows-sys 0.59.0",
  "winit",

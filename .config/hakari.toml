@@ -30,4 +30,7 @@ platforms = [
 [traversal-excludes]
 third-party = [
   { name = "insta" }, # dev-dependency
+
+  # Causes misc problems:
+  { name = "mio" },
 ]
