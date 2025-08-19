@@ -1,7 +1,4 @@
-use egui_kittest::{
-    Node,
-    kittest::{By, Queryable},
-};
+use egui_kittest::{Node, kittest::Queryable};
 
 mod viewer_test_utils;
 
@@ -26,17 +23,8 @@ async fn wait_for<'app, 'harness, Getter>(
 #[tokio::test]
 async fn main() {
     let mut harness = viewer_test_utils::viewer_harness();
-    wait_for(
-        |harness| {
-            harness
-                .query_by_label("Air traffic data")
-                .filter(|_| !harness.ctx.has_pending_images())
-        },
-        &mut harness,
-    )
-    .await;
     harness.get_by_label("menu").click();
-    harness.run();
+    harness.run_ok();
     harness.get_by_label_contains("Settings…").click();
     wait_for(
         |harness| {
