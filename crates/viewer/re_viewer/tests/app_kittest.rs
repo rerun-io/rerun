@@ -6,7 +6,7 @@ mod viewer_test_utils;
 #[tokio::test]
 async fn settings_screen() {
     let mut harness = viewer_test_utils::viewer_harness();
-    harness.get_by_label("menu").click();
+    harness.get_by_label("Menu").click();
     harness.run_ok();
     harness.get_by_label_contains("Settings…").click();
     // Wait for the FFmpeg-check loading spinner to disappear.

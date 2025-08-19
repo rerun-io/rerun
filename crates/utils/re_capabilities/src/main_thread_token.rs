@@ -45,7 +45,7 @@ impl MainThreadToken {
         }
     }
 
-    /// Only call this from tests, where the main thread would have a different name than "main".
+    /// Only call this from tests, where the thread wouldn't be "main".
     pub fn i_promise_i_am_only_using_this_for_a_test() -> Self {
         Self {
             _dont_send_me: std::marker::PhantomData,

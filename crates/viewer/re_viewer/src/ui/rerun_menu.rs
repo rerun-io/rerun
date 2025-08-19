@@ -33,7 +33,7 @@ impl App {
             .as_image()
             .max_height(desired_icon_height)
             .tint(ui.tokens().strong_fg_color)
-            .alt_text("menu");
+            .alt_text("Menu");
 
         MenuButton::from_button(Button::image(image))
             .config(MenuConfig::new().style(menu_style()))
