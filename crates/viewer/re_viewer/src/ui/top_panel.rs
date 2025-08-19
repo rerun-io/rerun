@@ -153,6 +153,7 @@ fn top_bar_ui(
     });
 }
 
+#[cfg_attr(test, allow(unused_variables))]
 fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui) {
     // We could log these as warning instead and relying on the notification panel to show it.
     // However, there are a few benefits of instead showing it like this:
@@ -170,6 +171,9 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui) {
         .on_hover_text("egui was compiled with debug assertions enabled.");
     }
 
+    // The rasterizer warning isn't shown in tests for consistent snapshot rendering
+    // across all CI runners (with or without GPU).
+    #[cfg(not(test))]
     show_software_rasterizer_warning(frame, ui);
 
     if crate::docker_detection::is_docker() {
@@ -186,6 +190,7 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui) {
     }
 }
 
+#[cfg_attr(test, allow(dead_code))]
 fn show_software_rasterizer_warning(frame: &eframe::Frame, ui: &mut egui::Ui) {
     if let Some(wgpu) = frame.wgpu_render_state() {
         let info = wgpu.adapter.get_info();
