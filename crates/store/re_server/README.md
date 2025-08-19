@@ -7,10 +7,10 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-In-memory opensource implementation of the Redap server.
+In-memory opensource implementation of the Rerun server.
 
-To run:
+The goal for this crate is to support most of the same gRPC endpoints that our commercial Rerun Cloud service supports, but do so in-memory for maximum simplicity.
 
-```
-cargo run --bin rerun-server -- --help
-```
+We use this internally for testing, but in the future it might be useful for users too.
+
+This is (currently) NOT the server you get when running `rerun --serve-grpc`, though we hope to unify the two at some point.
