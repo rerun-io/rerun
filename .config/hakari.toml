@@ -1,5 +1,6 @@
 # This file contains settings for `cargo hakari`.
 # See https://docs.rs/cargo-hakari/latest/cargo_hakari/config for a full list of options.
+# After editing this, run `cargo hakari generate` to apply the changes.
 
 hakari-package = "re_workspace_hack"
 
@@ -25,3 +26,8 @@ platforms = [
 
 # Write out exact versions rather than a semver range. (Defaults to false.)
 # exact-versions = true
+
+[traversal-excludes]
+third-party = [
+  { name = "insta" }, # dev-dependency
+]

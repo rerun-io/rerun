@@ -76,7 +76,6 @@ hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 indexmap = { version = "2", features = ["serde"] }
-insta = { version = "1", features = ["filters", "redactions", "yaml"] }
 itertools = { version = "0.14" }
 jiff = { version = "0.2", features = ["js", "serde"] }
 js-sys = { version = "0.3" }
@@ -125,7 +124,6 @@ rustls-webpki = { version = "0.103", default-features = false, features = ["ring
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_json = { version = "1", features = ["raw_value", "unbounded_depth"] }
-similar = { version = "2", features = ["inline", "unicode"] }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
 stable_deref_trait = { version = "1", default-features = false, features = ["std"] }
 strum = { version = "0.26", features = ["derive"] }
@@ -211,7 +209,6 @@ hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 indexmap = { version = "2", features = ["serde"] }
-insta = { version = "1", features = ["filters", "redactions", "yaml"] }
 itertools = { version = "0.14" }
 jiff = { version = "0.2", features = ["js", "serde"] }
 js-sys = { version = "0.3" }
@@ -261,7 +258,6 @@ rustls-webpki = { version = "0.103", default-features = false, features = ["ring
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_json = { version = "1", features = ["raw_value", "unbounded_depth"] }
-similar = { version = "2", features = ["inline", "unicode"] }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
 stable_deref_trait = { version = "1", default-features = false, features = ["std"] }
 strum = { version = "0.26", features = ["derive"] }
