@@ -591,25 +591,8 @@ impl TryFrom<i32> for IfDuplicateBehavior {
     type Error = TypeConversionError;
 
     fn try_from(value: i32) -> Result<Self, TypeConversionError> {
-        match Self::Overwrite {
-            IfDuplicateBehavior::Overwrite
-            | IfDuplicateBehavior::Skip
-            | IfDuplicateBehavior::Error => {
-                // Update
-            }
-        }
-
-        match value {
-            n if n == crate::common::v1alpha1::IfDuplicateBehavior::Overwrite as i32 => {
-                Ok(Self::Overwrite)
-            }
-            n if n == crate::common::v1alpha1::IfDuplicateBehavior::Skip as i32 => Ok(Self::Skip),
-            n if n == crate::common::v1alpha1::IfDuplicateBehavior::Error as i32 => Ok(Self::Error),
-            _ => Err(TypeConversionError::InvalidEnumValue(format!(
-                "Unknown IfDuplicateBehavior value: {}",
-                value
-            ))),
-        }
+        let proto_value = crate::common::v1alpha1::IfDuplicateBehavior::try_from(value)?;
+        Ok(Self::from(proto_value))
     }
 }
 

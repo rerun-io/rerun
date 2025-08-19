@@ -170,9 +170,6 @@ pub enum TypeConversionError {
     //TODO(#10730): delete when removing 0.24 back compat
     #[error("unexpected legacy `StoreId`: {0}")]
     LegacyStoreIdError(String),
-
-    #[error("invalid enum`: {0}")]
-    InvalidEnumValue(String),
 }
 
 impl TypeConversionError {
