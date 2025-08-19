@@ -1664,7 +1664,7 @@ impl App {
             let entity_path = &tree.path;
 
             if !entity_path.is_root() {
-                text.push_str(&format!("{}{}\n", indent, entity_path));
+                text.push_str(&format!("{indent}{entity_path}\n"));
 
                 // Add component schema information
                 if let Some(components) = entity_db
@@ -1672,7 +1672,7 @@ impl App {
                     .store()
                     .all_components_for_entity_sorted(entity_path)
                 {
-                    for component in components.iter() {
+                    for component in &components {
                         let component_indent = "  ".repeat(depth + 1);
                         if let Some(component_type) = &component.component_type {
                             if let Some(datatype) = entity_db
@@ -1717,12 +1717,12 @@ impl App {
         format_entity_tree(entity_tree, 0, &mut hierarchy_text, entity_db);
 
         if hierarchy_text.is_empty() {
-            hierarchy_text = "(no entities)".to_string();
+            hierarchy_text = "(no entities)".to_owned();
         }
 
         egui_ctx.copy_text(hierarchy_text.clone());
         self.notifications
-            .success("Copied entity hierarchy with schema to clipboard".to_string());
+            .success("Copied entity hierarchy with schema to clipboard".to_owned());
     }
 
     fn memory_panel_ui(
