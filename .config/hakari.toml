@@ -32,5 +32,7 @@ third-party = [
   { name = "insta" }, # dev-dependency
 
   # Causes misc problems:
+  { name = "crossbeam" },
   { name = "mio" },
+  { name = "notify" },
 ]

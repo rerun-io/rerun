@@ -9193,8 +9193,6 @@ dependencies = [
  "core-foundation-sys",
  "core-graphics-types",
  "core_extensions",
- "crossbeam-channel",
- "crossbeam-deque",
  "crossbeam-utils",
  "datafusion",
  "datafusion-common",
