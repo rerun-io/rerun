@@ -5,6 +5,7 @@ mod migrate;
 mod print;
 mod route;
 mod stats;
+mod transform;
 mod verify;
 
 use self::{
@@ -15,6 +16,7 @@ use self::{
     print::PrintCommand,
     route::RouteCommand,
     stats::StatsCommand,
+    transform::TransformCommand,
     verify::VerifyCommand,
 };
 
@@ -102,6 +104,11 @@ pub enum RrdCommands {
     ///
     /// Can be used to ensure that the current Rerun version can load the data.
     Verify(VerifyCommand),
+
+    /// Apply a transform to the input data.
+    ///
+    /// TODO: I owe you a better description.
+    Transform(TransformCommand),
 }
 
 impl RrdCommands {
@@ -120,6 +127,7 @@ impl RrdCommands {
             Self::Route(cmd) => cmd.run(),
             Self::Stats(cmd) => cmd.run(),
             Self::Verify(cmd) => cmd.run(),
+            Self::Transform(cmd) => cmd.run(),
         }
     }
 }
