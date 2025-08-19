@@ -110,6 +110,9 @@ service ManifestRegistryService {
 
   // Retrieves the chunk manifest for a specific index.
   rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
+
+  // Hard delete datasets from storage and return the list of datasets that were successfully deleted.
+  rpc CleanupDatasets(CleanupDatasetsRequest) returns (CleanupDatasetsResponse) {}
 }
 
 // --- Write data ---
@@ -556,6 +559,16 @@ message DoMaintenanceRequest {
 
 message DoMaintenanceResponse {
   string report = 1;
+}
+
+message CleanupDatasetsRequest {
+  // list of datasets that should be hard-deleted from storage
+  repeated rerun.common.v1alpha1.EntryId entries_to_delete = 1;
+}
+
+message CleanupDatasetsResponse {
+  // list of datasets that were successfully deleted
+  repeated rerun.common.v1alpha1.EntryId deleted_entries = 1;
 }
 
 // ----------------- Error handling -----------------

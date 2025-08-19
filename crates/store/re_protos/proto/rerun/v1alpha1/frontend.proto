@@ -35,6 +35,12 @@ service FrontendService {
 
   rpc ReadTableEntry(rerun.catalog.v1alpha1.ReadTableEntryRequest) returns (rerun.catalog.v1alpha1.ReadTableEntryResponse) {}
 
+  // Cleanup internal data for datasets that are no longer referenced by any entries in the catalog.
+  // The API is asynchronous, and will return immediately after setting up the cleanup task.
+  //
+  // TODO(andrea): this should eventually become a private catalog-only API, and be removed from the frontend.
+  rpc CleanupDatasets(CleanupDatasetsRequest) returns (CleanupDatasetsResponse) {}
+
   // --- Manifest Registry ---
   // Automatically handles entry/dataset resolution.
 
@@ -127,6 +133,7 @@ service FrontendService {
 
   // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
   rpc DoMaintenance(DoMaintenanceRequest) returns (rerun.manifest_registry.v1alpha1.DoMaintenanceResponse) {}
+
 }
 
 message VersionRequest {}
@@ -344,4 +351,12 @@ message DoMaintenanceRequest {
 
   // If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
   google.protobuf.Timestamp cleanup_before = 4;
+
 }
+
+message CleanupDatasetsRequest {
+  // If set, all datasets that were soft-deleted before this timestamp will be
+  // permanently removed. Defaults to: "now - 1week".
+  optional google.protobuf.Timestamp cleanup_before = 4;
+}
+message CleanupDatasetsResponse {}

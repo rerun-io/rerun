@@ -23,6 +23,12 @@ service CatalogService {
   rpc RegisterTable(RegisterTableRequest) returns (RegisterTableResponse) {}
 
   rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {}
+
+  // Cleanup internal data for datasets that are no longer referenced by any entries in the catalog.
+  // The API is asynchronous, and will return immediately after setting up the cleanup task.
+  //
+  // TODO(andrea): this should eventually become a private catalog-only API, and be removed from the frontend.
+  rpc CleanupDatasets(CleanupDatasetsRequest) returns (CleanupDatasetsResponse) {}
 }
 
 // ---------------- Services ------------------
@@ -232,3 +238,11 @@ message LanceTable {
   // The URL of the Lance table.
   string table_url = 1;
 }
+
+
+message CleanupDatasetsRequest {
+  // If set, all datasets that were soft-deleted before this timestamp will be
+  // permanently removed. Defaults to: "now - 1week".
+  optional google.protobuf.Timestamp cleanup_before = 4;
+}
+message CleanupDatasetsResponse {}

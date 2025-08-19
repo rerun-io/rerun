@@ -417,6 +417,35 @@ impl ::prost::Name for LanceTable {
         "/rerun.catalog.v1alpha1.LanceTable".into()
     }
 }
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct CleanupDatasetsRequest {
+    /// If set, all datasets that were soft-deleted before this timestamp will be
+    /// permanently removed. Defaults to: "now - 1week".
+    #[prost(message, optional, tag = "4")]
+    pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
+}
+impl ::prost::Name for CleanupDatasetsRequest {
+    const NAME: &'static str = "CleanupDatasetsRequest";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.CleanupDatasetsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.CleanupDatasetsRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct CleanupDatasetsResponse {}
+impl ::prost::Name for CleanupDatasetsResponse {
+    const NAME: &'static str = "CleanupDatasetsResponse";
+    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.catalog.v1alpha1.CleanupDatasetsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.catalog.v1alpha1.CleanupDatasetsResponse".into()
+    }
+}
 /// What type of entry. This has strong implication on which APIs are available for this entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -722,6 +751,29 @@ pub mod catalog_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Cleanup internal data for datasets that are no longer referenced by any entries in the catalog.
+        /// The API is asynchronous, and will return immediately after setting up the cleanup task.
+        ///
+        /// TODO(andrea): this should eventually become a private catalog-only API, and be removed from the frontend.
+        pub async fn cleanup_datasets(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CleanupDatasetsRequest>,
+        ) -> std::result::Result<tonic::Response<super::CleanupDatasetsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.catalog.v1alpha1.CatalogService/CleanupDatasets",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.catalog.v1alpha1.CatalogService",
+                "CleanupDatasets",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -770,6 +822,14 @@ pub mod catalog_service_server {
             &self,
             request: tonic::Request<super::ReadTableEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::ReadTableEntryResponse>, tonic::Status>;
+        /// Cleanup internal data for datasets that are no longer referenced by any entries in the catalog.
+        /// The API is asynchronous, and will return immediately after setting up the cleanup task.
+        ///
+        /// TODO(andrea): this should eventually become a private catalog-only API, and be removed from the frontend.
+        async fn cleanup_datasets(
+            &self,
+            request: tonic::Request<super::CleanupDatasetsRequest>,
+        ) -> std::result::Result<tonic::Response<super::CleanupDatasetsResponse>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct CatalogServiceServer<T> {
@@ -1161,6 +1221,48 @@ pub mod catalog_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ReadTableEntrySvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.catalog.v1alpha1.CatalogService/CleanupDatasets" => {
+                    #[allow(non_camel_case_types)]
+                    struct CleanupDatasetsSvc<T: CatalogService>(pub Arc<T>);
+                    impl<T: CatalogService>
+                        tonic::server::UnaryService<super::CleanupDatasetsRequest>
+                        for CleanupDatasetsSvc<T>
+                    {
+                        type Response = super::CleanupDatasetsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CleanupDatasetsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as CatalogService>::cleanup_datasets(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CleanupDatasetsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
