@@ -1655,32 +1655,42 @@ impl App {
         ) {
             let indent = "  ".repeat(depth);
             let entity_path = &tree.path;
-            
+
             if !entity_path.is_root() {
                 text.push_str(&format!("{}{}\n", indent, entity_path));
-                
+
                 // Add component schema information
-                if let Some(components) = entity_db.storage_engine().store().all_components_for_entity_sorted(entity_path) {
+                if let Some(components) = entity_db
+                    .storage_engine()
+                    .store()
+                    .all_components_for_entity_sorted(entity_path)
+                {
                     for component in components.iter() {
                         let component_indent = "  ".repeat(depth + 1);
                         if let Some(component_type) = &component.component_type {
-                            if let Some(datatype) = entity_db.storage_engine().store().lookup_datatype(component_type) {
-                                text.push_str(&format!("{}{}: {}\n", 
-                                    component_indent, 
-                                    component_type.short_name(), 
+                            if let Some(datatype) = entity_db
+                                .storage_engine()
+                                .store()
+                                .lookup_datatype(component_type)
+                            {
+                                text.push_str(&format!(
+                                    "{}{}: {}\n",
+                                    component_indent,
+                                    component_type.short_name(),
                                     re_arrow_util::format_data_type(&datatype)
                                 ));
                             } else {
-                                text.push_str(&format!("{}{}\n", 
-                                    component_indent, 
+                                text.push_str(&format!(
+                                    "{}{}\n",
+                                    component_indent,
                                     component_type.short_name()
                                 ));
                             }
                         } else {
                             // Fallback to component identifier if component_type is None
-                            text.push_str(&format!("{}{}\n", 
-                                component_indent, 
-                                component.component
+                            text.push_str(&format!(
+                                "{}{}\n",
+                                component_indent, component.component
                             ));
                         }
                     }
@@ -1688,7 +1698,12 @@ impl App {
             }
 
             for child in tree.children.values() {
-                format_entity_tree(child, if entity_path.is_root() { 0 } else { depth + 1 }, text, entity_db);
+                format_entity_tree(
+                    child,
+                    if entity_path.is_root() { 0 } else { depth + 1 },
+                    text,
+                    entity_db,
+                );
             }
         }
 
