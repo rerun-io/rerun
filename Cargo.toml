@@ -268,7 +268,7 @@ ndarray = "0.16"
 ndarray-rand = "0.15"
 never = "0.1"
 nohash-hasher = "0.2"
-notify = { version = "6.1.1", features = ["macos_kqueue"] }
+notify = { version = "8.2.0", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
 numpy = "0.24"
