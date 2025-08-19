@@ -424,7 +424,6 @@ impl FrontendService for FrontendHandler {
         .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;
         Ok(tonic::Response::new(
             re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse {
-                // TODO: I have no idea what we are supposed to return here. We haven't documented it in the .protos.
                 data: Some(record_batch.encode().map_err(|err| {
                     tonic::Status::internal(format!("Failed to encode dataframe: {err:#}"))
                 })?),
