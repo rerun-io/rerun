@@ -196,6 +196,7 @@ pub async fn serve_from_channel(
                     break;
                 }
                 Err(re_smart_channel::TryRecvError::Empty) => {
+                    // Sleep briefly to avoid busy loop when no data is available
                     tokio::time::sleep(Duration::from_millis(10)).await;
                     continue;
                 }
@@ -254,9 +255,10 @@ pub fn spawn_from_rx_set(
                     // We won't ever receive more data:
                     break;
                 }
-                // Because `try_recv` is blocking, we should give other tasks
+                // Because `try_recv` is non-blocking, we should give other tasks
                 // a chance to run before we continue
-                tokio::task::yield_now().await;
+                // Sleep briefly to avoid busy loop when no data is available
+                tokio::time::sleep(Duration::from_millis(10)).await;
                 continue;
             };
 
