@@ -5,7 +5,7 @@ pub mod shutdown;
 use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::pin::Pin;
-
+use std::time::Duration;
 use re_byte_size::SizeBytes;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::TableMsg;
@@ -196,8 +196,7 @@ pub async fn serve_from_channel(
                     break;
                 }
                 Err(re_smart_channel::TryRecvError::Empty) => {
-                    // Let other tokio tasks run:
-                    tokio::task::yield_now().await;
+                    tokio::time::sleep(Duration::from_millis(10)).await;
                     continue;
                 }
             };
