@@ -10,6 +10,9 @@ description = "workspace-hack package, managed by hakari"
 # You can choose to publish this crate: see https://docs.rs/cargo-hakari/latest/cargo_hakari/publishing.
 publish = false
 
+[lints]
+workspace = true
+
 # The parts of the file between the BEGIN HAKARI SECTION and END HAKARI SECTION comments
 # are managed by hakari.
 
@@ -108,7 +111,7 @@ prost-types = { version = "0.13" }
 pyo3 = { version = "0.24", features = ["abi3-py39", "chrono", "extension-module"] }
 pyo3-ffi = { version = "0.24", features = ["abi3-py39", "extension-module"] }
 quote = { version = "1" }
-rand = { version = "0.8", features = ["small_rng"] }
+rand-c38e5c1d305a1b54 = { package = "rand", version = "0.8", features = ["small_rng"] }
 rand_chacha = { version = "0.3", default-features = false, features = ["std"] }
 rand_core = { version = "0.6", default-features = false, features = ["std"] }
 rand_distr = { version = "0.4" }
@@ -244,7 +247,7 @@ pyo3 = { version = "0.24", features = ["abi3-py39", "chrono", "extension-module"
 pyo3-build-config = { version = "0.24", features = ["abi3-py39", "extension-module", "resolve-config"] }
 pyo3-ffi = { version = "0.24", features = ["abi3-py39", "extension-module"] }
 quote = { version = "1" }
-rand = { version = "0.8", features = ["small_rng"] }
+rand-c38e5c1d305a1b54 = { package = "rand", version = "0.8", features = ["small_rng"] }
 rand_chacha = { version = "0.3", default-features = false, features = ["std"] }
 rand_core = { version = "0.6", default-features = false, features = ["std"] }
 rand_distr = { version = "0.4" }
@@ -284,5 +287,261 @@ vec1 = { version = "1", features = ["smallvec-v1"] }
 wgpu = { version = "25", features = ["fragile-send-sync-non-atomic-wasm", "webgl"] }
 wgpu-core = { version = "25", features = ["dx12", "fragile-send-sync-non-atomic-wasm", "gles", "metal", "vulkan", "webgl", "wgsl"] }
 wgpu-types = { version = "25", features = ["fragile-send-sync-non-atomic-wasm"] }
+
+[target.aarch64-apple-darwin.dependencies]
+anstream = { version = "0.6" }
+bitflags = { version = "2", default-features = false, features = ["std"] }
+block2 = { version = "0.6" }
+comfy-table = { version = "7", default-features = false, features = ["tty"] }
+core-foundation = { version = "0.9" }
+core-foundation-sys = { version = "0.8" }
+core-graphics-types = { version = "0.1" }
+egui-wgpu = { version = "0.32", default-features = false, features = ["wayland", "winit", "x11"] }
+egui-winit = { version = "0.32", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+ehttp = { version = "0.5", default-features = false, features = ["json", "native-async"] }
+hyper-util = { version = "0.1", default-features = false, features = ["client-proxy"] }
+image = { version = "0.25", default-features = false, features = ["tiff"] }
+libc = { version = "0.2", features = ["extra_traits"] }
+naga = { version = "25", features = ["msl-out", "wgsl-in"] }
+objc2-app-kit-468e82937335b1c9 = { package = "objc2-app-kit", version = "0.3", default-features = false, features = ["NSAlert", "NSApplication", "NSButton", "NSControl", "NSImage", "NSOpenPanel", "NSPanel", "NSPasteboard", "NSPasteboardItem", "NSResponder", "NSRunningApplication", "NSSavePanel", "NSView", "NSWindow", "block2", "objc2-core-graphics", "std"] }
+objc2-app-kit-6f8ce4dd05d13bba = { package = "objc2-app-kit", version = "0.2", features = ["NSAccessibility", "NSAccessibilityConstants", "NSAccessibilityElement", "NSAccessibilityProtocols", "NSAppearance", "NSApplication", "NSBitmapImageRep", "NSButton", "NSColor", "NSControl", "NSCursor", "NSDragging", "NSEvent", "NSGraphics", "NSGraphicsContext", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenGLView", "NSPasteboard", "NSResponder", "NSRunningApplication", "NSScreen", "NSTextInputClient", "NSTextInputContext", "NSView", "NSWindow", "NSWindowScripting", "NSWindowTabGroup"] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["CFArray", "CFBase", "CFCGTypes", "CFData", "CFDate", "CFDictionary", "CFRunLoop", "CFString", "CFURL", "CFUserNotification", "objc2", "std"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSLocale", "NSNotification", "NSObjCRuntime", "NSObject", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "objc2-core-foundation", "std"] }
+parquet = { version = "55", features = ["object_store"] }
+puffin = { version = "0.19", features = ["serialization"] }
+re_rav1d = { version = "0.1" }
+ring = { version = "0.17", features = ["std"] }
+tokio = { version = "1", default-features = false, features = ["fs"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
+tokio-stream = { version = "0.1", default-features = false, features = ["io-util", "sync"] }
+tonic = { version = "0.13", default-features = false, features = ["tls-native-roots"] }
+tower = { version = "0.5", default-features = false, features = ["timeout"] }
+tower-http = { version = "0.6", default-features = false, features = ["follow-redirect"] }
+wgpu-core = { version = "25", default-features = false, features = ["portable-atomic", "raw-window-handle", "renderdoc"] }
+wgpu-hal = { version = "25", default-features = false, features = ["fragile-send-sync-non-atomic-wasm", "metal", "portable-atomic"] }
+winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
+zstd = { version = "0.13", features = ["zstdmt"] }
+zstd-safe = { version = "7", default-features = false, features = ["arrays", "legacy", "std", "zdict_builder", "zstdmt"] }
+zstd-sys = { version = "2", default-features = false, features = ["legacy", "std", "zdict_builder", "zstdmt"] }
+
+[target.aarch64-apple-darwin.build-dependencies]
+anstream = { version = "0.6" }
+bitflags = { version = "2", default-features = false, features = ["std"] }
+block2 = { version = "0.6" }
+comfy-table = { version = "7", default-features = false, features = ["tty"] }
+core-foundation = { version = "0.9" }
+core-foundation-sys = { version = "0.8" }
+core-graphics-types = { version = "0.1" }
+egui-wgpu = { version = "0.32", default-features = false, features = ["wayland", "winit", "x11"] }
+egui-winit = { version = "0.32", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+ehttp = { version = "0.5", default-features = false, features = ["json", "native-async"] }
+hyper-util = { version = "0.1", default-features = false, features = ["client-proxy"] }
+image = { version = "0.25", default-features = false, features = ["tiff"] }
+libc = { version = "0.2", features = ["extra_traits"] }
+naga = { version = "25", features = ["msl-out", "wgsl-in"] }
+objc2-app-kit-468e82937335b1c9 = { package = "objc2-app-kit", version = "0.3", default-features = false, features = ["NSAlert", "NSApplication", "NSButton", "NSControl", "NSImage", "NSOpenPanel", "NSPanel", "NSPasteboard", "NSPasteboardItem", "NSResponder", "NSRunningApplication", "NSSavePanel", "NSView", "NSWindow", "block2", "objc2-core-graphics", "std"] }
+objc2-app-kit-6f8ce4dd05d13bba = { package = "objc2-app-kit", version = "0.2", features = ["NSAccessibility", "NSAccessibilityConstants", "NSAccessibilityElement", "NSAccessibilityProtocols", "NSAppearance", "NSApplication", "NSBitmapImageRep", "NSButton", "NSColor", "NSControl", "NSCursor", "NSDragging", "NSEvent", "NSGraphics", "NSGraphicsContext", "NSImage", "NSImageRep", "NSMenu", "NSMenuItem", "NSOpenGLView", "NSPasteboard", "NSResponder", "NSRunningApplication", "NSScreen", "NSTextInputClient", "NSTextInputContext", "NSView", "NSWindow", "NSWindowScripting", "NSWindowTabGroup"] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["CFArray", "CFBase", "CFCGTypes", "CFData", "CFDate", "CFDictionary", "CFRunLoop", "CFString", "CFURL", "CFUserNotification", "objc2", "std"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSLocale", "NSNotification", "NSObjCRuntime", "NSObject", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "objc2-core-foundation", "std"] }
+parquet = { version = "55", features = ["object_store"] }
+puffin = { version = "0.19", features = ["serialization"] }
+re_rav1d = { version = "0.1" }
+ring = { version = "0.17", features = ["std"] }
+tokio = { version = "1", default-features = false, features = ["fs"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
+tokio-stream = { version = "0.1", default-features = false, features = ["io-util", "sync"] }
+tonic = { version = "0.13", default-features = false, features = ["tls-native-roots"] }
+tower = { version = "0.5", default-features = false, features = ["timeout"] }
+tower-http = { version = "0.6", default-features = false, features = ["follow-redirect"] }
+wgpu-core = { version = "25", default-features = false, features = ["portable-atomic", "raw-window-handle", "renderdoc"] }
+wgpu-hal = { version = "25", default-features = false, features = ["fragile-send-sync-non-atomic-wasm", "metal", "portable-atomic"] }
+winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
+zstd = { version = "0.13", features = ["zstdmt"] }
+zstd-safe = { version = "7", default-features = false, features = ["arrays", "legacy", "std", "zdict_builder", "zstdmt"] }
+zstd-sys = { version = "2", default-features = false, features = ["legacy", "std", "zdict_builder", "zstdmt"] }
+
+[target.wasm32-unknown-unknown.dependencies]
+ahash = { version = "0.8", default-features = false, features = ["compile-time-rng"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "wasmbind"] }
+egui-wgpu = { version = "0.32", default-features = false, features = ["wayland", "x11"] }
+ehttp = { version = "0.5", default-features = false, features = ["json"] }
+getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-features = false, features = ["wasm_js"] }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js"] }
+libc = { version = "0.2" }
+ring = { version = "0.17", features = ["std", "wasm32_unknown_unknown_js"] }
+slotmap = { version = "1", features = ["serde"] }
+wasm-bindgen = { version = "0.2" }
+web-sys = { version = "0.3", features = ["AbortController", "AbortSignal", "AddEventListenerOptions", "AngleInstancedArrays", "BinaryType", "BlobPropertyBag", "CanvasRenderingContext2d", "Clipboard", "ClipboardEvent", "ClipboardItem", "CompositionEvent", "CssStyleDeclaration", "DataTransfer", "DataTransferItem", "DataTransferItemList", "Document", "DomException", "DomRect", "DragEvent", "EncodedVideoChunk", "EncodedVideoChunkInit", "EncodedVideoChunkType", "EventListener", "ExtBlendMinmax", "ExtColorBufferFloat", "ExtColorBufferHalfFloat", "ExtDisjointTimerQuery", "ExtFragDepth", "ExtSRgb", "ExtShaderTextureLod", "ExtTextureFilterAnisotropic", "File", "FileList", "FileReader", "FocusEvent", "FormData", "HardwareAcceleration", "Headers", "History", "HtmlAnchorElement", "HtmlButtonElement", "HtmlCanvasElement", "HtmlImageElement", "HtmlInputElement", "HtmlVideoElement", "ImageBitmap", "ImageBitmapOptions", "ImageBitmapRenderingContext", "ImageData", "InputEvent", "IntersectionObserver", "IntersectionObserverEntry", "KeyboardEvent", "Location", "MediaQueryList", "MediaQueryListEvent", "MessageChannel", "MessageEvent", "MessagePort", "Navigator", "NodeList", "OesElementIndexUint", "OesStandardDerivatives", "OesTextureFloat", "OesTextureFloatLinear", "OesTextureHalfFloat", "OesTextureHalfFloatLinear", "OesVertexArrayObject", "OffscreenCanvas", "OrientationLockType", "OrientationType", "OvrMultiview2", "PageTransitionEvent", "Performance", "PermissionState", "PermissionStatus", "Permissions", "PointerEvent", "PopStateEvent", "PremultiplyAlpha", "QueuingStrategy", "ReadableByteStreamController", "ReadableStream", "ReadableStreamByobReader", "ReadableStreamByobRequest", "ReadableStreamDefaultController", "ReadableStreamDefaultReader", "ReadableStreamGetReaderOptions", "ReadableStreamReadResult", "ReadableStreamReaderMode", "ReadableStreamType", "ReadableWritablePair", "ReferrerPolicy", "Request", "RequestCache", "RequestCredentials", "RequestInit", "RequestMode", "RequestRedirect", "ResizeObserver", "ResizeObserverBoxOptions", "ResizeObserverEntry", "ResizeObserverOptions", "ResizeObserverSize", "Response", "Screen", "ScreenOrientation", "ServiceWorkerGlobalScope", "ShadowRoot", "Storage", "StreamPipeOptions", "Touch", "TouchEvent", "TouchList", "TransformStream", "TransformStreamDefaultController", "Transformer", "UnderlyingSink", "UnderlyingSource", "Url", "UrlSearchParams", "VideoDecoder", "VideoDecoderConfig", "VideoDecoderInit", "VideoFrame", "VisibilityState", "WebGl2RenderingContext", "WebGlActiveInfo", "WebGlBuffer", "WebGlFramebuffer", "WebGlProgram", "WebGlQuery", "WebGlRenderbuffer", "WebGlRenderingContext", "WebGlSampler", "WebGlShader", "WebGlShaderPrecisionFormat", "WebGlSync", "WebGlTexture", "WebGlTransformFeedback", "WebGlUniformLocation", "WebGlVertexArrayObject", "WebglColorBufferFloat", "WebglCompressedTextureAstc", "WebglCompressedTextureEtc", "WebglCompressedTextureEtc1", "WebglCompressedTexturePvrtc", "WebglCompressedTextureS3tc", "WebglCompressedTextureS3tcSrgb", "WebglDebugRendererInfo", "WebglDebugShaders", "WebglDepthTexture", "WebglDrawBuffers", "WebglLoseContext", "WheelEvent", "Window", "Worker", "WorkerNavigator", "WritableStream", "WritableStreamDefaultController", "WritableStreamDefaultWriter", "console"] }
+wgpu-core = { version = "25", default-features = false, features = ["raw-window-handle"] }
+zstd = { version = "0.13", features = ["wasm"] }
+zstd-safe = { version = "7", default-features = false, features = ["arrays", "legacy", "std", "zdict_builder"] }
+zstd-sys = { version = "2", default-features = false, features = ["legacy", "std", "zdict_builder"] }
+
+[target.wasm32-unknown-unknown.build-dependencies]
+ahash = { version = "0.8", default-features = false, features = ["compile-time-rng"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "wasmbind"] }
+egui-wgpu = { version = "0.32", default-features = false, features = ["wayland", "x11"] }
+ehttp = { version = "0.5", default-features = false, features = ["json"] }
+getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-features = false, features = ["wasm_js"] }
+getrandom-6f8ce4dd05d13bba = { package = "getrandom", version = "0.2", default-features = false, features = ["js"] }
+libc = { version = "0.2" }
+ring = { version = "0.17", features = ["std", "wasm32_unknown_unknown_js"] }
+slotmap = { version = "1", features = ["serde"] }
+wasm-bindgen = { version = "0.2" }
+web-sys = { version = "0.3", features = ["AbortController", "AbortSignal", "AddEventListenerOptions", "AngleInstancedArrays", "BinaryType", "BlobPropertyBag", "CanvasRenderingContext2d", "Clipboard", "ClipboardEvent", "ClipboardItem", "CompositionEvent", "CssStyleDeclaration", "DataTransfer", "DataTransferItem", "DataTransferItemList", "Document", "DomException", "DomRect", "DragEvent", "EncodedVideoChunk", "EncodedVideoChunkInit", "EncodedVideoChunkType", "EventListener", "ExtBlendMinmax", "ExtColorBufferFloat", "ExtColorBufferHalfFloat", "ExtDisjointTimerQuery", "ExtFragDepth", "ExtSRgb", "ExtShaderTextureLod", "ExtTextureFilterAnisotropic", "File", "FileList", "FileReader", "FocusEvent", "FormData", "HardwareAcceleration", "Headers", "History", "HtmlAnchorElement", "HtmlButtonElement", "HtmlCanvasElement", "HtmlImageElement", "HtmlInputElement", "HtmlVideoElement", "ImageBitmap", "ImageBitmapOptions", "ImageBitmapRenderingContext", "ImageData", "InputEvent", "IntersectionObserver", "IntersectionObserverEntry", "KeyboardEvent", "Location", "MediaQueryList", "MediaQueryListEvent", "MessageChannel", "MessageEvent", "MessagePort", "Navigator", "NodeList", "OesElementIndexUint", "OesStandardDerivatives", "OesTextureFloat", "OesTextureFloatLinear", "OesTextureHalfFloat", "OesTextureHalfFloatLinear", "OesVertexArrayObject", "OffscreenCanvas", "OrientationLockType", "OrientationType", "OvrMultiview2", "PageTransitionEvent", "Performance", "PermissionState", "PermissionStatus", "Permissions", "PointerEvent", "PopStateEvent", "PremultiplyAlpha", "QueuingStrategy", "ReadableByteStreamController", "ReadableStream", "ReadableStreamByobReader", "ReadableStreamByobRequest", "ReadableStreamDefaultController", "ReadableStreamDefaultReader", "ReadableStreamGetReaderOptions", "ReadableStreamReadResult", "ReadableStreamReaderMode", "ReadableStreamType", "ReadableWritablePair", "ReferrerPolicy", "Request", "RequestCache", "RequestCredentials", "RequestInit", "RequestMode", "RequestRedirect", "ResizeObserver", "ResizeObserverBoxOptions", "ResizeObserverEntry", "ResizeObserverOptions", "ResizeObserverSize", "Response", "Screen", "ScreenOrientation", "ServiceWorkerGlobalScope", "ShadowRoot", "Storage", "StreamPipeOptions", "Touch", "TouchEvent", "TouchList", "TransformStream", "TransformStreamDefaultController", "Transformer", "UnderlyingSink", "UnderlyingSource", "Url", "UrlSearchParams", "VideoDecoder", "VideoDecoderConfig", "VideoDecoderInit", "VideoFrame", "VisibilityState", "WebGl2RenderingContext", "WebGlActiveInfo", "WebGlBuffer", "WebGlFramebuffer", "WebGlProgram", "WebGlQuery", "WebGlRenderbuffer", "WebGlRenderingContext", "WebGlSampler", "WebGlShader", "WebGlShaderPrecisionFormat", "WebGlSync", "WebGlTexture", "WebGlTransformFeedback", "WebGlUniformLocation", "WebGlVertexArrayObject", "WebglColorBufferFloat", "WebglCompressedTextureAstc", "WebglCompressedTextureEtc", "WebglCompressedTextureEtc1", "WebglCompressedTexturePvrtc", "WebglCompressedTextureS3tc", "WebglCompressedTextureS3tcSrgb", "WebglDebugRendererInfo", "WebglDebugShaders", "WebglDepthTexture", "WebglDrawBuffers", "WebglLoseContext", "WheelEvent", "Window", "Worker", "WorkerNavigator", "WritableStream", "WritableStreamDefaultController", "WritableStreamDefaultWriter", "console"] }
+wgpu-core = { version = "25", default-features = false, features = ["raw-window-handle"] }
+zstd = { version = "0.13", features = ["wasm"] }
+zstd-safe = { version = "7", default-features = false, features = ["arrays", "legacy", "std", "zdict_builder"] }
+zstd-sys = { version = "2", default-features = false, features = ["legacy", "std", "zdict_builder"] }
+
+[target.x86_64-pc-windows-msvc.dependencies]
+anstream = { version = "0.6" }
+comfy-table = { version = "7", default-features = false, features = ["tty"] }
+egui-wgpu = { version = "0.32", default-features = false, features = ["wayland", "winit", "x11"] }
+egui-winit = { version = "0.32", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+ehttp = { version = "0.5", default-features = false, features = ["json", "native-async"] }
+hyper-util = { version = "0.1", default-features = false, features = ["client-proxy"] }
+naga = { version = "25", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
+ordered-float = { version = "4" }
+parquet = { version = "55", features = ["object_store"] }
+puffin = { version = "0.19", features = ["serialization"] }
+re_rav1d = { version = "0.1" }
+ring = { version = "0.17", features = ["std"] }
+tokio = { version = "1", default-features = false, features = ["fs"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
+tokio-stream = { version = "0.1", default-features = false, features = ["io-util", "sync"] }
+tonic = { version = "0.13", default-features = false, features = ["tls-native-roots"] }
+tower = { version = "0.5", default-features = false, features = ["timeout"] }
+tower-http = { version = "0.6", default-features = false, features = ["follow-redirect"] }
+wgpu-core = { version = "25", default-features = false, features = ["portable-atomic", "raw-window-handle", "renderdoc"] }
+wgpu-core-deps-windows-linux-android = { version = "25", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
+wgpu-hal = { version = "25", default-features = false, features = ["dx12", "fragile-send-sync-non-atomic-wasm", "gles", "portable-atomic", "renderdoc", "vulkan"] }
+winapi = { version = "0.3", default-features = false, features = ["cfg", "consoleapi", "errhandlingapi", "evntrace", "fileapi", "handleapi", "impl-default", "in6addr", "inaddr", "libloaderapi", "minwinbase", "ntsecapi", "processenv", "processthreadsapi", "synchapi", "winbase", "windef", "winerror", "winioctl", "winuser"] }
+windows-332723e2a07a5e2a = { package = "windows", version = "0.58", features = ["Win32_Graphics_Direct3D12", "Win32_Graphics_Direct3D_Dxc", "Win32_Graphics_Direct3D_Fxc", "Win32_Graphics_DirectComposition", "Win32_Graphics_Dxgi_Common", "Win32_Graphics_Gdi", "Win32_Graphics_OpenGL", "Win32_Security", "Win32_System_Diagnostics_Debug", "Win32_System_Kernel", "Win32_System_LibraryLoader", "Win32_System_Performance", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
+windows-d4189bed749088b6 = { package = "windows", version = "0.61", features = ["Win32_Graphics_Gdi", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_IO", "Win32_System_Ioctl", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_SystemServices", "Win32_System_Variant", "Win32_UI_Accessibility", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Graphics_Gdi", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_Pipes", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-c8eced492e86ede7 = { package = "windows-sys", version = "0.48", features = ["Win32_Foundation", "Win32_Globalization", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_IO", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
+winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
+zstd = { version = "0.13", features = ["zstdmt"] }
+zstd-safe = { version = "7", default-features = false, features = ["arrays", "legacy", "std", "zdict_builder", "zstdmt"] }
+zstd-sys = { version = "2", default-features = false, features = ["legacy", "std", "zdict_builder", "zstdmt"] }
+
+[target.x86_64-pc-windows-msvc.build-dependencies]
+anstream = { version = "0.6" }
+comfy-table = { version = "7", default-features = false, features = ["tty"] }
+egui-wgpu = { version = "0.32", default-features = false, features = ["wayland", "winit", "x11"] }
+egui-winit = { version = "0.32", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+ehttp = { version = "0.5", default-features = false, features = ["json", "native-async"] }
+hyper-util = { version = "0.1", default-features = false, features = ["client-proxy"] }
+naga = { version = "25", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
+ordered-float = { version = "4" }
+parquet = { version = "55", features = ["object_store"] }
+puffin = { version = "0.19", features = ["serialization"] }
+re_rav1d = { version = "0.1" }
+ring = { version = "0.17", features = ["std"] }
+tokio = { version = "1", default-features = false, features = ["fs"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
+tokio-stream = { version = "0.1", default-features = false, features = ["io-util", "sync"] }
+tonic = { version = "0.13", default-features = false, features = ["tls-native-roots"] }
+tower = { version = "0.5", default-features = false, features = ["timeout"] }
+tower-http = { version = "0.6", default-features = false, features = ["follow-redirect"] }
+wgpu-core = { version = "25", default-features = false, features = ["portable-atomic", "raw-window-handle", "renderdoc"] }
+wgpu-core-deps-windows-linux-android = { version = "25", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
+wgpu-hal = { version = "25", default-features = false, features = ["dx12", "fragile-send-sync-non-atomic-wasm", "gles", "portable-atomic", "renderdoc", "vulkan"] }
+winapi = { version = "0.3", default-features = false, features = ["cfg", "consoleapi", "errhandlingapi", "evntrace", "fileapi", "handleapi", "impl-default", "in6addr", "inaddr", "libloaderapi", "minwinbase", "ntsecapi", "processenv", "processthreadsapi", "synchapi", "winbase", "windef", "winerror", "winioctl", "winuser"] }
+windows-332723e2a07a5e2a = { package = "windows", version = "0.58", features = ["Win32_Graphics_Direct3D12", "Win32_Graphics_Direct3D_Dxc", "Win32_Graphics_Direct3D_Fxc", "Win32_Graphics_DirectComposition", "Win32_Graphics_Dxgi_Common", "Win32_Graphics_Gdi", "Win32_Graphics_OpenGL", "Win32_Security", "Win32_System_Diagnostics_Debug", "Win32_System_Kernel", "Win32_System_LibraryLoader", "Win32_System_Performance", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
+windows-d4189bed749088b6 = { package = "windows", version = "0.61", features = ["Win32_Graphics_Gdi", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_IO", "Win32_System_Ioctl", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_SystemServices", "Win32_System_Variant", "Win32_UI_Accessibility", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Graphics_Gdi", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_Pipes", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-c8eced492e86ede7 = { package = "windows-sys", version = "0.48", features = ["Win32_Foundation", "Win32_Globalization", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_IO", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
+winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
+zstd = { version = "0.13", features = ["zstdmt"] }
+zstd-safe = { version = "7", default-features = false, features = ["arrays", "legacy", "std", "zdict_builder", "zstdmt"] }
+zstd-sys = { version = "2", default-features = false, features = ["legacy", "std", "zdict_builder", "zstdmt"] }
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+anstream = { version = "0.6" }
+bitflags = { version = "2", default-features = false, features = ["std"] }
+comfy-table = { version = "7", default-features = false, features = ["tty"] }
+concurrent-queue = { version = "2" }
+egui-wgpu = { version = "0.32", default-features = false, features = ["wayland", "winit", "x11"] }
+egui-winit = { version = "0.32", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+ehttp = { version = "0.5", default-features = false, features = ["json", "native-async"] }
+event-listener = { version = "5" }
+event-listener-strategy = { version = "0.5" }
+futures-io = { version = "0.3" }
+hyper-util = { version = "0.1", default-features = false, features = ["client-proxy"] }
+libc = { version = "0.2", features = ["extra_traits"] }
+linux-raw-sys-274715c4dabd11b0 = { package = "linux-raw-sys", version = "0.9", default-features = false, features = ["elf", "errno", "general", "if_ether", "ioctl", "net", "netlink", "no_std", "prctl", "xdp"] }
+linux-raw-sys-9fbad63c4bcf4a8f = { package = "linux-raw-sys", version = "0.4", default-features = false, features = ["elf", "errno", "general", "if_ether", "ioctl", "net", "netlink", "no_std", "prctl", "system", "xdp"] }
+naga = { version = "25", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
+ordered-float = { version = "4" }
+parquet = { version = "55", features = ["object_store"] }
+puffin = { version = "0.19", features = ["serialization"] }
+rand-274715c4dabd11b0 = { package = "rand", version = "0.9", default-features = false, features = ["small_rng", "thread_rng"] }
+re_rav1d = { version = "0.1" }
+ring = { version = "0.17", features = ["std"] }
+rustix-d585fab2519d2d1 = { package = "rustix", version = "0.38", features = ["event", "net", "pipe", "process", "shm", "stdio", "system", "termios", "thread"] }
+rustix-dff4ba8e3ae991db = { package = "rustix", version = "1", features = ["event", "fs", "net", "pipe", "process", "time"] }
+tokio = { version = "1", default-features = false, features = ["fs"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
+tokio-stream = { version = "0.1", default-features = false, features = ["io-util", "sync"] }
+toml_datetime = { version = "0.6", default-features = false, features = ["serde"] }
+tonic = { version = "0.13", default-features = false, features = ["tls-native-roots"] }
+tower = { version = "0.5", default-features = false, features = ["timeout"] }
+tower-http = { version = "0.6", default-features = false, features = ["follow-redirect"] }
+wayland-sys = { version = "0.31", default-features = false, features = ["client", "dlopen"] }
+wgpu-core = { version = "25", default-features = false, features = ["portable-atomic", "raw-window-handle", "renderdoc"] }
+wgpu-core-deps-windows-linux-android = { version = "25", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
+wgpu-hal = { version = "25", default-features = false, features = ["dx12", "fragile-send-sync-non-atomic-wasm", "gles", "portable-atomic", "renderdoc", "vulkan"] }
+winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
+zbus = { version = "5", default-features = false, features = ["async-io", "url"] }
+zstd = { version = "0.13", features = ["zstdmt"] }
+zstd-safe = { version = "7", default-features = false, features = ["arrays", "legacy", "std", "zdict_builder", "zstdmt"] }
+zstd-sys = { version = "2", default-features = false, features = ["legacy", "std", "zdict_builder", "zstdmt"] }
+zvariant = { version = "5", features = ["enumflags2", "url"] }
+
+[target.x86_64-unknown-linux-gnu.build-dependencies]
+anstream = { version = "0.6" }
+bitflags = { version = "2", default-features = false, features = ["std"] }
+comfy-table = { version = "7", default-features = false, features = ["tty"] }
+concurrent-queue = { version = "2" }
+egui-wgpu = { version = "0.32", default-features = false, features = ["wayland", "winit", "x11"] }
+egui-winit = { version = "0.32", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+ehttp = { version = "0.5", default-features = false, features = ["json", "native-async"] }
+event-listener = { version = "5" }
+event-listener-strategy = { version = "0.5" }
+futures-io = { version = "0.3" }
+hyper-util = { version = "0.1", default-features = false, features = ["client-proxy"] }
+libc = { version = "0.2", features = ["extra_traits"] }
+linux-raw-sys-274715c4dabd11b0 = { package = "linux-raw-sys", version = "0.9", default-features = false, features = ["elf", "errno", "general", "if_ether", "ioctl", "net", "netlink", "no_std", "prctl", "xdp"] }
+linux-raw-sys-9fbad63c4bcf4a8f = { package = "linux-raw-sys", version = "0.4", default-features = false, features = ["elf", "errno", "general", "if_ether", "ioctl", "net", "netlink", "no_std", "prctl", "system", "xdp"] }
+naga = { version = "25", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
+ordered-float = { version = "4" }
+parquet = { version = "55", features = ["object_store"] }
+puffin = { version = "0.19", features = ["serialization"] }
+rand-274715c4dabd11b0 = { package = "rand", version = "0.9", default-features = false, features = ["small_rng", "thread_rng"] }
+re_rav1d = { version = "0.1" }
+ring = { version = "0.17", features = ["std"] }
+rustix-d585fab2519d2d1 = { package = "rustix", version = "0.38", features = ["event", "net", "pipe", "process", "shm", "stdio", "system", "termios", "thread"] }
+rustix-dff4ba8e3ae991db = { package = "rustix", version = "1", features = ["event", "fs", "net", "pipe", "process", "time"] }
+tokio = { version = "1", default-features = false, features = ["fs"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
+tokio-stream = { version = "0.1", default-features = false, features = ["io-util", "sync"] }
+toml_datetime = { version = "0.6", default-features = false, features = ["serde"] }
+tonic = { version = "0.13", default-features = false, features = ["tls-native-roots"] }
+tower = { version = "0.5", default-features = false, features = ["timeout"] }
+tower-http = { version = "0.6", default-features = false, features = ["follow-redirect"] }
+wayland-sys = { version = "0.31", default-features = false, features = ["client", "dlopen"] }
+wgpu-core = { version = "25", default-features = false, features = ["portable-atomic", "raw-window-handle", "renderdoc"] }
+wgpu-core-deps-windows-linux-android = { version = "25", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
+wgpu-hal = { version = "25", default-features = false, features = ["dx12", "fragile-send-sync-non-atomic-wasm", "gles", "portable-atomic", "renderdoc", "vulkan"] }
+winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
+zbus = { version = "5", default-features = false, features = ["async-io", "url"] }
+zstd = { version = "0.13", features = ["zstdmt"] }
+zstd-safe = { version = "7", default-features = false, features = ["arrays", "legacy", "std", "zdict_builder", "zstdmt"] }
+zstd-sys = { version = "2", default-features = false, features = ["legacy", "std", "zdict_builder", "zstdmt"] }
+zvariant = { version = "5", features = ["enumflags2", "url"] }
 
 ### END HAKARI SECTION
