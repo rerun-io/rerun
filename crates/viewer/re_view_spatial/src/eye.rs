@@ -361,7 +361,7 @@ impl ViewEye {
                 self,
                 &EyeControls3D::descriptor_speed(),
             )
-            .unwrap_debug_or_log_error() // Should never fail.
+            .ok_or_log_error() // Should never fail.
             .unwrap_or(1.0.into());
 
         // Modify speed based on modifiers:

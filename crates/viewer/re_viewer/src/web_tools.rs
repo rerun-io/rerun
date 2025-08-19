@@ -17,10 +17,6 @@ pub trait JsResultExt<T> {
     /// Log a warning if there is an `Err`, but only log the exact same message once.
     #[allow(unused)]
     fn warn_on_js_err_once(self, msg: impl std::fmt::Display) -> Option<T>;
-
-    /// Unwraps in debug builds otherwise logs an error if the result is an error and returns the result.
-    #[allow(unused)]
-    fn unwrap_debug_or_log_js_error(self) -> Option<T>;
 }
 
 impl<T> JsResultExt<T> for Result<T, JsValue> {
@@ -34,11 +30,6 @@ impl<T> JsResultExt<T> for Result<T, JsValue> {
 
     fn warn_on_js_err_once(self, msg: impl std::fmt::Display) -> Option<T> {
         self.map_err(string_from_js_value).warn_on_err_once(msg)
-    }
-
-    fn unwrap_debug_or_log_js_error(self) -> Option<T> {
-        self.map_err(string_from_js_value)
-            .unwrap_debug_or_log_error()
     }
 }
 
