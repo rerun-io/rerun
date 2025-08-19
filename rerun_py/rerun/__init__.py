@@ -30,7 +30,7 @@ if "RERUN_CLI_PATH" not in os.environ:
     import rerun_bindings as bindings
 
     flavor = "debug" if bindings.is_dev_build() else "release"
-    target_path = pathlib.Path(__file__).parent.parent.parent.joinpath(f"target/{flavor}/rerun").resolve()
+    target_path = pathlib.Path(__file__).parent.parent.parent.joinpath(f"target_pixi/{flavor}/rerun").resolve()
     os.environ["RERUN_CLI_PATH"] = str(target_path)
 
 sys.path.insert(0, str(real_path))

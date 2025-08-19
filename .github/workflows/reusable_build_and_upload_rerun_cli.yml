@@ -187,7 +187,7 @@ jobs:
       - name: "Upload rerun-cli (commit)"
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          path: "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false
@@ -196,7 +196,7 @@ jobs:
         if: ${{ inputs.ADHOC_NAME != '' }}
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          path: "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false
