@@ -232,3 +232,4 @@ message LanceTable {
   // The URL of the Lance table.
   string table_url = 1;
 }
+

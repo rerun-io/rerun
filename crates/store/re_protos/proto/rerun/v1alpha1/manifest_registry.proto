@@ -110,6 +110,9 @@ service ManifestRegistryService {
 
   // Retrieves the chunk manifest for a specific index.
   rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
+
+  // Cleanup manifests for orphaned datasets from their backing storage.
+  rpc CleanupDatasets(CleanupDatasetsRequest) returns (CleanupDatasetsResponse) {}
 }
 
 // --- Write data ---
@@ -555,6 +558,15 @@ message DoMaintenanceRequest {
 }
 
 message DoMaintenanceResponse {
+  string report = 1;
+}
+
+message CleanupDatasetsRequest {
+  // manifests that are not currently orphaned and should be kept
+  repeated rerun.common.v1alpha1.DatasetHandle entries_to_keep = 1;
+}
+
+message CleanupDatasetsResponse {
   string report = 1;
 }
 

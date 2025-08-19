@@ -127,6 +127,9 @@ service FrontendService {
 
   // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
   rpc DoMaintenance(DoMaintenanceRequest) returns (rerun.manifest_registry.v1alpha1.DoMaintenanceResponse) {}
+
+  // Cleanup internal data for datasets that are no longer referenced by any entries in the catalog.
+  rpc CleanupDatasets(CleanupDatasetsRequest) returns (rerun.manifest_registry.v1alpha1.CleanupDatasetsResponse) {}
 }
 
 message VersionRequest {}
@@ -344,4 +347,7 @@ message DoMaintenanceRequest {
 
   // If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
   google.protobuf.Timestamp cleanup_before = 4;
+
 }
+
+message CleanupDatasetsRequest {}
