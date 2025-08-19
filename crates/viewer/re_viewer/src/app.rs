@@ -1647,6 +1647,13 @@ impl App {
         let entity_tree = entity_db.tree();
         let mut hierarchy_text = String::new();
 
+        // Add application ID and recording ID header
+        hierarchy_text.push_str(&format!(
+            "Application ID: {}\nRecording ID: {}\n\n",
+            entity_db.application_id(),
+            entity_db.recording_id()
+        ));
+
         fn format_entity_tree(
             tree: &re_entity_db::EntityTree,
             depth: usize,
