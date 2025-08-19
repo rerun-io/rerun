@@ -21,6 +21,7 @@ _deps
 
 # Rust compile target directory:
 **/target
+**/target_pixi
 **/target_ra
 **/target_wasm
 
