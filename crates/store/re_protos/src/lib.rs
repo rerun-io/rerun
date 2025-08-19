@@ -111,7 +111,6 @@ pub mod frontend {
         pub use crate::v1alpha1::rerun_frontend_v1alpha1::*;
         pub mod ext {
             pub use crate::v1alpha1::rerun_frontend_v1alpha1_ext::*;
-            pub use crate::v1alpha1::rerun_frontend_v1alpha1_ext::*;
         }
     }
 }

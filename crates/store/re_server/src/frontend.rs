@@ -5,8 +5,11 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use nohash_hasher::IntSet;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap},
+    path::PathBuf,
+};
 use tokio_stream::StreamExt as _;
 
 use crate::store::{Dataset, InMemoryStore};
@@ -17,7 +20,6 @@ use re_entity_db::external::re_query::StorageEngine;
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse};
 use re_protos::catalog::v1alpha1::{
     DeleteEntryResponse, EntryKind, RegisterTableRequest, RegisterTableResponse,
 };
@@ -26,6 +28,10 @@ use re_protos::frontend::v1alpha1::ext::{GetChunksRequest, ScanPartitionTableReq
 use re_protos::manifest_registry::v1alpha1::{
     GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
     QueryDatasetResponse, ScanPartitionTableResponse,
+};
+use re_protos::{
+    catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse},
+    manifest_registry::v1alpha1::ext,
 };
 use re_protos::{
     frontend::v1alpha1::frontend_service_server::FrontendService,
@@ -269,14 +275,11 @@ impl FrontendService for FrontendHandler {
         let dataset_name: String = request.into_inner().try_into()?;
 
         let mut store = self.store.write().await;
-        let entry_id = store.create_dataset(&dataset_name).map_err(|err| {
+        let dataset = store.create_dataset(&dataset_name).map_err(|err| {
             tonic::Status::internal(format!("Failed to create dataset entry: {err:#}"))
         })?;
 
-        let dataset_entry = store
-            .dataset(entry_id)
-            .expect("was just successfully created")
-            .as_dataset_entry();
+        let dataset_entry = dataset.as_dataset_entry();
 
         Ok(tonic::Response::new(
             CreateDatasetEntryResponse {
@@ -350,11 +353,42 @@ impl FrontendService for FrontendHandler {
 
     async fn register_with_dataset(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::RegisterWithDatasetRequest>,
+        request: tonic::Request<re_protos::frontend::v1alpha1::RegisterWithDatasetRequest>,
     ) -> Result<
         tonic::Response<re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse>,
         tonic::Status,
     > {
+        let re_protos::frontend::v1alpha1::ext::RegisterWithDatasetRequest {
+            dataset_id,
+            data_sources,
+            on_duplicate,
+        } = request.into_inner().try_into()?;
+
+        let mut store = self.store.write().await;
+        let dataset = store.dataset_mut(dataset_id).ok_or_else(|| {
+            tonic::Status::not_found(format!("Dataset with ID {dataset_id} not found"))
+        })?;
+
+        for source in data_sources {
+            let ext::DataSource {
+                storage_url,
+                layer,
+                kind,
+            } = source;
+
+            assert!(layer.is_empty(), "TODO: what is this??");
+
+            if kind != ext::DataSourceKind::Rrd {
+                return Err(tonic::Status::unimplemented(
+                    "register_with_dataset: only RRD data sources are implemented",
+                ));
+            }
+
+            if let Some(rrd_path) = storage_url.as_str().strip_prefix("file://") {
+                dataset.load_rrd(&PathBuf::from(rrd_path))?;
+            }
+        }
+
         Err(tonic::Status::unimplemented(
             "register_with_dataset not implemented",
         ))

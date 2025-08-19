@@ -107,14 +107,7 @@ impl TryFrom<crate::frontend::v1alpha1::RegisterWithDatasetRequest> for Register
                 .into_iter()
                 .map(TryInto::try_into)
                 .collect::<Result<Vec<_>, _>>()?,
-            on_duplicate: match on_duplicate {
-                1 => IfDuplicateBehavior::Overwrite,
-                2 => IfDuplicateBehavior::Skip,
-                3 => IfDuplicateBehavior::Error,
-                _ => {
-                    todo!() // TODO: there must be a better way
-                }
-            },
+            on_duplicate: on_duplicate.try_into()?,
         })
     }
 }

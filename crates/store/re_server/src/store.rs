@@ -197,7 +197,7 @@ impl InMemoryStore {
             .expect("the directory should have a name and the path was canonicalized")
             .to_string_lossy();
 
-        let entry_id = self
+        let dataset = self
             .create_dataset(&entry_name)
             .expect("Name cannot yet exist");
 
@@ -210,8 +210,7 @@ impl InMemoryStore {
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
                 if is_rrd {
-                    self.get_or_create_dataset(entry_id, &entry_name)
-                        .load_rrd(&entry.path())?;
+                    dataset.load_rrd(&entry.path())?;
                 }
             }
         }
@@ -219,7 +218,7 @@ impl InMemoryStore {
         Ok(())
     }
 
-    pub fn create_dataset(&mut self, name: &str) -> Result<EntryId, Error> {
+    pub fn create_dataset(&mut self, name: &str) -> Result<&mut Dataset, Error> {
         re_log::debug!(name, "create_dataset");
         let name = name.to_owned();
         if self.id_by_name.contains_key(&name) {
@@ -229,31 +228,13 @@ impl InMemoryStore {
         let entry_id = EntryId::new();
         self.id_by_name.insert(name.clone(), entry_id);
 
-        self.datasets.insert(
-            entry_id,
-            Dataset {
-                id: entry_id,
-                name,
-                partitions: HashMap::new(),
-                created_at: jiff::Timestamp::now(),
-                updated_at: jiff::Timestamp::now(),
-            },
-        );
-
-        // TODO: return &mut Entry here
-
-        Ok(entry_id)
-    }
-
-    fn get_or_create_dataset(&mut self, entry_id: EntryId, entry_name: &str) -> &mut Dataset {
-        let dataset = self.datasets.entry(entry_id).or_insert_with(|| Dataset {
+        Ok(self.datasets.entry(entry_id).or_insert_with(|| Dataset {
             id: entry_id,
-            name: entry_name.to_string(),
+            name,
             partitions: HashMap::new(),
             created_at: jiff::Timestamp::now(),
             updated_at: jiff::Timestamp::now(),
-        });
-        dataset
+        }))
     }
 
     pub fn delete_dataset(&mut self, entry_id: EntryId) -> Result<(), Error> {
