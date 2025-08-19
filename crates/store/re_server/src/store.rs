@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, hash_map::Entry},
+    collections::{BTreeSet, HashMap, hash_map::Entry},
     fs::File,
     path::Path,
 };
@@ -161,9 +161,11 @@ impl Dataset {
         &mut self,
         path: &Path,
         on_duplicate: IfDuplicateBehavior,
-    ) -> Result<(), Error> {
+    ) -> Result<BTreeSet<PartitionId>, Error> {
         re_log::info!("Loading RRD: {}", path.display());
         let mut contents = StoreBundle::from_rrd(File::open(path)?)?;
+
+        let mut new_partition_ids = BTreeSet::default();
 
         for entity_db in contents.drain_entity_dbs() {
             let store_id = entity_db.store_id();
@@ -175,6 +177,7 @@ impl Dataset {
 
             match self.partitions.entry(partition_id.clone()) {
                 Entry::Vacant(entry) => {
+                    new_partition_ids.insert(partition_id);
                     entry.insert(Partition {
                         entity_db,
                         registration_time: jiff::Timestamp::now(),
@@ -190,7 +193,6 @@ impl Dataset {
                     }
                     IfDuplicateBehavior::Skip => {
                         re_log::info!("Ignoring {partition_id}: it already exists");
-                        return Ok(());
                     }
                     IfDuplicateBehavior::Error => {
                         return Err(Error::DuplicateEntryNameError(partition_id.to_string()));
@@ -199,7 +201,7 @@ impl Dataset {
             }
         }
 
-        Ok(())
+        Ok(new_partition_ids)
     }
 }
 
