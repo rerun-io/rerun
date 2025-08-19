@@ -37,18 +37,19 @@ version = "0.25.0-alpha.1+dev"
 
 [workspace.metadata.cargo-shear]
 ignored = [
-  # rerun crates
-  "rerun_c",
+  # rerun crates:
   "re_dev_tools",
-  "rerun-cli",
-  "re_types_builder",
   "re_protos_builder",
   "re_renderer_examples",
+  "re_types_builder",
+  "re_workspace_hack",
+  "rerun_c",
+  "rerun-cli",
 
-  # used for specific targets or features
-  "wayland-sys",
+  # used for specific targets or features:
   "home",
   "profiling",
+  "wayland-sys",
 ]
 
 [workspace.dependencies]
