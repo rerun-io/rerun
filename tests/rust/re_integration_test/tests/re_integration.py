@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-Connect to the OSS Server (or Rerun Cloud Server) and
-* Add some data to it
-* Query out that data again
-"""
+Connect to the OSS Server (or Rerun Cloud Server) and test it.
 
+* Add some data to it
+* Query out that data again.
+"""
 
 from __future__ import annotations
 
 from argparse import ArgumentParser
+
 import rerun as rr
+
 
 def main() -> None:
     parser = ArgumentParser(description="Test OSS Server")
@@ -55,7 +57,6 @@ def main() -> None:
         contents={"/scalar": ["Scalars:scalars"]},
     ).df()
     print(f"{df}")
-
 
 
 if __name__ == "__main__":
