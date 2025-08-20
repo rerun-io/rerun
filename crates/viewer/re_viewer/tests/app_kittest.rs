@@ -1,6 +1,8 @@
+#![cfg(feature = "testing")]
+
 use egui_kittest::kittest::Queryable as _;
 
-mod viewer_test_utils;
+use re_viewer::viewer_test_utils;
 
 /// Navigates from welcome to settings screen and snapshots it.
 #[tokio::test]

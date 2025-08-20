@@ -9,8 +9,11 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[dependencies]
+nix = { version = "0.30", features = ["signal"] }
+
 [dev-dependencies]
-re_dev_tools.workspace = true
+insta.workspace = true
 
 [lints]
 workspace = true
