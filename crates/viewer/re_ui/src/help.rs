@@ -145,10 +145,11 @@ impl Help {
                 |ui| {
                     if let Some(docs_link) = &docs_link {
                         let response = ui.add(
-                            egui::Button::new((
+                            egui::Button::image_and_text(
                                 &icons::EXTERNAL_LINK,
                                 RichText::new("Docs").size(11.0),
-                            ))
+                            )
+                            .image_tint_follows_text_color(true)
                             .frame(false),
                         );
 
