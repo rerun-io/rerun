@@ -24,7 +24,7 @@ MESA_VERSION = "24.2.3"
 # Corresponds to https://github.com/gfx-rs/ci-build/releases
 CI_BINARY_BUILD = "build19"
 
-TARGET_DIR = Path("target/debug")
+CARGO_TARGET_DIR = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
 
 
 def run(
@@ -137,8 +137,8 @@ def setup_lavapipe_for_windows() -> dict[str, str]:
     ])
 
     # Copy files to target directory.
-    copytree("mesa", TARGET_DIR)
-    copytree("mesa", TARGET_DIR / "deps")
+    copytree("mesa", CARGO_TARGET_DIR / "debug")
+    copytree("mesa", CARGO_TARGET_DIR / "debug" / "deps")
 
     # Print icd file that should be used.
     icd_json_path = Path(os.path.join(os.getcwd(), "mesa", "lvp_icd.x86_64.json")).resolve()

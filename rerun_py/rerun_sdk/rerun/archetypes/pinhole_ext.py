@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Any, cast
 
-from ..datatypes import Mat3x3Like, Vec2D, Vec2DLike, ViewCoordinatesLike
+from ..datatypes import Float32Like, Mat3x3Like, Rgba32Like, Vec2D, Vec2DLike, ViewCoordinatesLike
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
@@ -26,6 +26,8 @@ class PinholeExt:
         fov_y: float | None = None,
         aspect_ratio: float | None = None,
         image_plane_distance: float | None = None,
+        color: Rgba32Like | None = None,
+        line_width: Float32Like | None = None,
     ) -> None:
         """
         Create a new instance of the Pinhole archetype.
@@ -88,6 +90,10 @@ class PinholeExt:
         image_plane_distance:
             The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
             This is only used for visualization purposes, and does not affect the projection itself.
+        color:
+            Color of the camera frustum lines in the 3D viewer.
+        line_width:
+            Width of the camera frustum lines in the 3D viewer.
 
         """
 
@@ -156,6 +162,8 @@ class PinholeExt:
                 resolution=resolution,
                 camera_xyz=camera_xyz,
                 image_plane_distance=image_plane_distance,
+                color=color,
+                line_width=line_width,
             )
             return
 

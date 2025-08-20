@@ -17,7 +17,7 @@ use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
-use crate::open_url::try_open_url_in_viewer;
+use crate::open_url::try_open_url_or_file_in_viewer;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]
@@ -205,7 +205,7 @@ impl WebHandle {
         // TODO(andreas): should follow_if_http be part of the fragments?
         let follow_if_http = follow_if_http.unwrap_or(false);
         let select_redap_source_when_loaded = true;
-        if try_open_url_in_viewer(
+        if try_open_url_or_file_in_viewer(
             &app.egui_ctx,
             url,
             follow_if_http,
@@ -807,7 +807,7 @@ fn create_app(
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
         for url in urls.into_inner() {
-            if try_open_url_in_viewer(
+            if try_open_url_or_file_in_viewer(
                 &app.egui_ctx,
                 &url,
                 follow_if_http,

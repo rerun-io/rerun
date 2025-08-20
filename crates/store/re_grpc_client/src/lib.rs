@@ -11,7 +11,7 @@ pub use self::{
         ClientConnectionError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
     },
     redap::{
-        Command, ConnectionError, RedapClient, channel,
+        ConnectionError, RedapClient, UiCommand, channel,
         get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
         stream_dataset_from_redap,
     },

@@ -8235,6 +8235,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_server"
+version = "0.25.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "clap",
+ "futures",
+ "http",
+ "itertools 0.14.0",
+ "jiff",
+ "nohash-hasher",
+ "re_build_info",
+ "re_build_tools",
+ "re_chunk_store",
+ "re_entity_db",
+ "re_grpc_server",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_protos",
+ "re_tuid",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-web",
+ "tower",
+ "tower-service",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "re_smart_channel"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
@@ -8911,6 +8944,7 @@ dependencies = [
  "strum_macros",
  "tap",
  "thiserror 1.0.69",
+ "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -9262,6 +9296,7 @@ dependencies = [
  "re_perf_telemetry",
  "re_protos",
  "re_sdk",
+ "re_server",
  "re_smart_channel",
  "re_sorbet",
  "re_tracing",
@@ -9367,42 +9402,6 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
-]
-
-[[package]]
-name = "rerun_server"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "arrow",
- "clap",
- "futures",
- "http",
- "itertools 0.14.0",
- "jiff",
- "mimalloc",
- "nohash-hasher",
- "re_build_info",
- "re_build_tools",
- "re_chunk_store",
- "re_entity_db",
- "re_error",
- "re_grpc_server",
- "re_log",
- "re_log_encoding",
- "re_log_types",
- "re_memory",
- "re_protos",
- "re_tuid",
- "thiserror 1.0.69",
- "tokio",
- "tokio-stream",
- "tonic",
- "tonic-web",
- "tower",
- "tower-service",
- "tracing",
- "url",
 ]
 
 [[package]]

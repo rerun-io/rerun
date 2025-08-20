@@ -1,22 +1,16 @@
 [package]
-name = "rerun_server"
+name = "re_server"
 authors.workspace = true
 description = "A Rerun server implementation backed by an in-memory store"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
-publish = false
+publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
-
-
-[[bin]]
-name = "rerun-server"
-path = "src/bin/main.rs"
-
 
 [lints]
 workspace = true
@@ -31,18 +25,15 @@ default = []
 
 
 [dependencies]
-# NOTE: redap dependencies are forbidden here -- this is meant to become part of the OSS offering.
 
 # Rerun
 re_chunk_store.workspace = true
 re_build_info.workspace = true
 re_entity_db.workspace = true
-re_error.workspace = true
 re_grpc_server.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding.workspace = true
 re_log_types.workspace = true
-re_memory.workspace = true
 re_protos.workspace = true
 re_tuid.workspace = true
 
@@ -54,7 +45,6 @@ futures.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 http.workspace = true
-mimalloc.workspace = true
 nohash-hasher.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }

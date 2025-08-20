@@ -344,10 +344,13 @@ def run_prebuilt_rust(example: Example, release: bool, target: str | None, targe
 
     if target_dir is None:
         mode = "release" if release else "debug"
+
+        CARGO_TARGET_DIR = Path(os.environ.get("CARGO_TARGET_DIR", "./target"))
+
         if target is not None:
-            target_dir = f"./target/{target}/{mode}/snippets"
+            target_dir = f"{CARGO_TARGET_DIR}/{target}/{mode}/snippets"
         else:
-            target_dir = f"./target/{mode}/snippets"
+            target_dir = f"{CARGO_TARGET_DIR}/{mode}/snippets"
 
     cmd = [f"{target_dir}{extension}"]
     cmd += [example.name]

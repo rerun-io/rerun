@@ -65,7 +65,7 @@ jobs:
         with:
           toolchain: 1.88.0
 
-      - run: cargo build -p rerun
+      - run: pixi run cargo build -p rerun
 
   build-web:
     name: "Build web viewer"

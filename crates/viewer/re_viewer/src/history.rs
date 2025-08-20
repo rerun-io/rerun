@@ -19,7 +19,7 @@ use wasm_bindgen::{JsCast as _, JsError, JsValue, closure::Closure, prelude::was
 use web_sys::{History, UrlSearchParams};
 
 use crate::{
-    open_url::try_open_url_in_viewer,
+    open_url::try_open_url_or_file_in_viewer,
     web_tools::{JsResultExt as _, window},
 };
 use re_viewer_context::CommandSender;
@@ -160,7 +160,7 @@ fn handle_popstate(
 
     let follow_if_http = false;
     let select_redap_source_when_loaded = true;
-    if try_open_url_in_viewer(
+    if try_open_url_or_file_in_viewer(
         egui_ctx,
         &entry.url,
         follow_if_http,
