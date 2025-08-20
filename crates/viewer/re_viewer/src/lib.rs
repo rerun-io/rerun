@@ -24,6 +24,7 @@ mod ui;
 mod viewer_analytics;
 
 #[cfg(feature = "testing")]
+#[cfg(not(target_arch = "wasm32"))]
 pub mod viewer_test_utils;
 
 #[cfg(not(target_arch = "wasm32"))]
