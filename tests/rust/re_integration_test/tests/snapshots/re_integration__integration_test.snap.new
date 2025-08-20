@@ -1,0 +1,7 @@
+---
+source: tests/rust/re_integration_test/tests/re_integration.rs
+assertion_line: 14
+expression: test_output
+---
+All datasets: []
+Creating dataset 'my_dataset'…

@@ -2,6 +2,7 @@ use std::process::{Child, Command, Stdio};
 
 pub struct TestServer {
     server: Child,
+    pub port: u16,
 }
 
 impl TestServer {
@@ -15,7 +16,10 @@ impl TestServer {
         server.args(["server"]);
         let mut server = server.spawn().unwrap();
 
-        Self { server }
+        Self {
+            server,
+            port: 51234,
+        }
     }
 }
 
