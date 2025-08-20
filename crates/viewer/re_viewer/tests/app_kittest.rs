@@ -1,4 +1,4 @@
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::Queryable as _;
 
 mod viewer_test_utils;
 
