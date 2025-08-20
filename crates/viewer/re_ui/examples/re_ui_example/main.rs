@@ -2,7 +2,7 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
-use egui::Modifiers;
+use egui::{Modifiers, os};
 use re_ui::{
     CommandPalette, ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
     filter_widget::FilterState, list_item,
@@ -42,15 +42,16 @@ fn command_channel() -> (CommandSender, CommandReceiver) {
 fn main() -> eframe::Result {
     re_log::setup_logging();
 
+    let fullsize_content = re_ui::fullsize_content(os::OperatingSystem::default());
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_app_id("re_ui_example")
             .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
-            .with_fullsize_content_view(re_ui::FULLSIZE_CONTENT)
+            .with_fullsize_content_view(fullsize_content)
             .with_inner_size([1200.0, 800.0])
-            .with_title_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_title_shown(!fullsize_content)
             .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
-            .with_titlebar_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_titlebar_shown(!fullsize_content)
             .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
 
         ..Default::default()
@@ -406,7 +407,7 @@ impl ExampleApp {
             .exact_height(top_bar_style.height)
             .show(egui_ctx, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
-                if !re_ui::NATIVE_WINDOW_BAR {
+                if !re_ui::native_window_bar(egui_ctx.os()) {
                     // Interact with background first, so that buttons in the top bar gets input priority
                     // (last added widget has priority for input).
                     let title_bar_response = ui.interact(

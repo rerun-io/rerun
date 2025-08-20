@@ -10,11 +10,11 @@ use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 use crate::{CallSource, commands::RrdCommands};
 
-#[cfg(feature = "data_loaders")]
-use crate::commands::McapCommands;
-
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
+
+#[cfg(feature = "data_loaders")]
+use crate::commands::McapCommands;
 
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
@@ -525,6 +525,7 @@ impl Args {
     }
 }
 
+// Commands sorted alphabetically:
 #[derive(Debug, Clone, Subcommand)]
 enum Command {
     /// Configure the behavior of our analytics.
@@ -532,12 +533,20 @@ enum Command {
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 
+    /// Authentication with the redap.
+    #[cfg(feature = "auth")]
+    #[command(subcommand)]
+    Auth(AuthCommands),
+
+    /// Generates the Rerun CLI manual (markdown).
+    ///
+    /// Example: `rerun man > docs/content/reference/cli.md`
+    #[command(name = "man")]
+    Manual,
+
     #[cfg(feature = "data_loaders")]
     #[command(subcommand)]
     Mcap(McapCommands),
-
-    #[command(subcommand)]
-    Rrd(RrdCommands),
 
     /// Reset the memory of the Rerun Viewer.
     ///
@@ -548,16 +557,13 @@ enum Command {
     #[cfg(feature = "native_viewer")]
     Reset,
 
-    /// Generates the Rerun CLI manual (markdown).
-    ///
-    /// Example: `rerun man > docs/content/reference/cli.md`
-    #[command(name = "man")]
-    Manual,
-
-    /// Authentication with the redap.
-    #[cfg(feature = "auth")]
     #[command(subcommand)]
-    Auth(AuthCommands),
+    Rrd(RrdCommands),
+
+    /// In-memory Rerun data server
+    #[cfg(feature = "oss_server")]
+    #[command(name = "server")]
+    Server(re_server::Args),
 }
 
 /// Run the Rerun application and return an exit code.
@@ -620,16 +626,15 @@ where
 
     let res = if let Some(command) = args.command {
         match command {
+            #[cfg(feature = "auth")]
+            Command::Auth(cmd) => {
+                let runtime =
+                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
+                cmd.run(&runtime).map_err(Into::into)
+            }
+
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
-
-            #[cfg(feature = "data_loaders")]
-            Command::Mcap(mcap) => mcap.run(),
-
-            Command::Rrd(rrd) => rrd.run(),
-
-            #[cfg(feature = "native_viewer")]
-            Command::Reset => re_viewer::reset_viewer_persistence(),
 
             Command::Manual => {
                 let man = Args::generate_markdown_manual();
@@ -645,12 +650,16 @@ where
                 Ok(())
             }
 
-            #[cfg(feature = "auth")]
-            Command::Auth(cmd) => {
-                let runtime =
-                    re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime.handle().clone());
-                cmd.run(&runtime).map_err(Into::into)
-            }
+            #[cfg(feature = "data_loaders")]
+            Command::Mcap(mcap) => mcap.run(),
+
+            #[cfg(feature = "native_viewer")]
+            Command::Reset => re_viewer::reset_viewer_persistence(),
+
+            Command::Rrd(rrd) => rrd.run(),
+
+            #[cfg(feature = "oss_server")]
+            Command::Server(server) => server.run(),
         }
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]

@@ -174,7 +174,8 @@ class Viewer:
 
     def start(self) -> Viewer:
         print(f"\nStarting viewer on {'web ' if self.web else ''}port {self.sdk_port}")
-        args = ["./target/debug/rerun", f"--port={self.sdk_port}"]
+        CARGO_TARGET_DIR = Path(os.environ.get("CARGO_TARGET_DIR", "./target"))
+        args = [f"{CARGO_TARGET_DIR}/debug/rerun", f"--port={self.sdk_port}"]
         if self.web:
             args += [
                 "--web-viewer",

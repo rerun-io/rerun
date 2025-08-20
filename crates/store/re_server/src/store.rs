@@ -1,15 +1,21 @@
-use std::collections::HashMap;
-use std::fs::File;
+use std::{
+    collections::{BTreeSet, HashMap, hash_map::Entry},
+    fs::File,
+    path::Path,
+};
 
-use arrow::array::RecordBatch;
-use arrow::datatypes::Schema;
+use arrow::{array::RecordBatch, datatypes::Schema};
 
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{EntryId, StoreKind};
-use re_protos::catalog::v1alpha1::EntryKind;
-use re_protos::catalog::v1alpha1::ext::{DatasetEntry, EntryDetails};
-use re_protos::common::v1alpha1::ext::{DatasetHandle, PartitionId};
-use re_protos::manifest_registry::v1alpha1::ScanPartitionTableResponse;
+use re_protos::{
+    catalog::v1alpha1::{
+        EntryKind,
+        ext::{DatasetEntry, EntryDetails},
+    },
+    common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
+    manifest_registry::v1alpha1::ScanPartitionTableResponse,
+};
 
 #[derive(thiserror::Error, Debug)]
 #[expect(clippy::enum_variant_names)]
@@ -140,6 +146,7 @@ impl Dataset {
     }
 
     pub fn add_partition(&mut self, partition_id: PartitionId, entity_db: EntityDb) {
+        re_log::debug!(?partition_id, "add_partition");
         self.partitions.insert(
             partition_id,
             Partition {
@@ -148,6 +155,53 @@ impl Dataset {
             },
         );
         self.updated_at = jiff::Timestamp::now();
+    }
+
+    pub fn load_rrd(
+        &mut self,
+        path: &Path,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<BTreeSet<PartitionId>, Error> {
+        re_log::info!("Loading RRD: {}", path.display());
+        let mut contents = StoreBundle::from_rrd(File::open(path)?)?;
+
+        let mut new_partition_ids = BTreeSet::default();
+
+        for entity_db in contents.drain_entity_dbs() {
+            let store_id = entity_db.store_id();
+            if !store_id.is_recording() {
+                continue;
+            }
+
+            let partition_id = PartitionId::new(store_id.recording_id().to_string());
+
+            match self.partitions.entry(partition_id.clone()) {
+                Entry::Vacant(entry) => {
+                    new_partition_ids.insert(partition_id);
+                    entry.insert(Partition {
+                        entity_db,
+                        registration_time: jiff::Timestamp::now(),
+                    });
+                }
+                Entry::Occupied(mut entry) => match on_duplicate {
+                    IfDuplicateBehavior::Overwrite => {
+                        re_log::info!("Overwriting {partition_id}");
+                        entry.insert(Partition {
+                            entity_db,
+                            registration_time: jiff::Timestamp::now(),
+                        });
+                    }
+                    IfDuplicateBehavior::Skip => {
+                        re_log::info!("Ignoring {partition_id}: it already exists");
+                    }
+                    IfDuplicateBehavior::Error => {
+                        return Err(Error::DuplicateEntryNameError(partition_id.to_string()));
+                    }
+                },
+            }
+        }
+
+        Ok(new_partition_ids)
     }
 }
 
@@ -160,7 +214,11 @@ pub struct InMemoryStore {
 
 impl InMemoryStore {
     /// Load a directory of RRDs.
-    pub fn load_directory_as_dataset(&mut self, directory: &std::path::Path) -> Result<(), Error> {
+    pub fn load_directory_as_dataset(
+        &mut self,
+        directory: &std::path::Path,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<(), Error> {
         let directory = directory.canonicalize()?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
@@ -175,7 +233,7 @@ impl InMemoryStore {
             .expect("the directory should have a name and the path was canonicalized")
             .to_string_lossy();
 
-        let entry_id = self
+        let dataset = self
             .create_dataset(&entry_name)
             .expect("Name cannot yet exist");
 
@@ -188,33 +246,7 @@ impl InMemoryStore {
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
                 if is_rrd {
-                    re_log::info!("Loading RRD: {}", entry.path().display());
-
-                    let mut contents = StoreBundle::from_rrd(File::open(entry.path())?)?;
-
-                    for entity_db in contents.drain_entity_dbs() {
-                        let store_id = entity_db.store_id();
-
-                        if store_id.is_recording() {
-                            self.datasets
-                                .entry(entry_id)
-                                .or_insert_with(|| Dataset {
-                                    id: entry_id,
-                                    name: entry_name.to_string(),
-                                    partitions: HashMap::new(),
-                                    created_at: jiff::Timestamp::now(),
-                                    updated_at: jiff::Timestamp::now(),
-                                })
-                                .partitions
-                                .insert(
-                                    PartitionId::new(store_id.recording_id().to_string()),
-                                    Partition {
-                                        entity_db,
-                                        registration_time: jiff::Timestamp::now(),
-                                    },
-                                );
-                        }
-                    }
+                    dataset.load_rrd(&entry.path(), on_duplicate)?;
                 }
             }
         }
@@ -222,7 +254,8 @@ impl InMemoryStore {
         Ok(())
     }
 
-    pub fn create_dataset(&mut self, name: &str) -> Result<EntryId, Error> {
+    pub fn create_dataset(&mut self, name: &str) -> Result<&mut Dataset, Error> {
+        re_log::debug!(name, "create_dataset");
         let name = name.to_owned();
         if self.id_by_name.contains_key(&name) {
             return Err(Error::DuplicateEntryNameError(name));
@@ -231,21 +264,17 @@ impl InMemoryStore {
         let entry_id = EntryId::new();
         self.id_by_name.insert(name.clone(), entry_id);
 
-        self.datasets.insert(
-            entry_id,
-            Dataset {
-                id: entry_id,
-                name,
-                partitions: HashMap::new(),
-                created_at: jiff::Timestamp::now(),
-                updated_at: jiff::Timestamp::now(),
-            },
-        );
-
-        Ok(entry_id)
+        Ok(self.datasets.entry(entry_id).or_insert_with(|| Dataset {
+            id: entry_id,
+            name,
+            partitions: HashMap::new(),
+            created_at: jiff::Timestamp::now(),
+            updated_at: jiff::Timestamp::now(),
+        }))
     }
 
     pub fn delete_dataset(&mut self, entry_id: EntryId) -> Result<(), Error> {
+        re_log::debug!(?entry_id, "delete_dataset");
         if let Some(dataset) = self.datasets.remove(&entry_id) {
             self.id_by_name.remove(&dataset.name);
             Ok(())
