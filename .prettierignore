@@ -13,6 +13,7 @@ crates/viewer/re_web_viewer_server/web_viewer/re_viewer.js
 /compare_screenshot
 **/target
 **/target_pixi
+**/target_pixi_wasm
 **/target_ra
 **/target_wasm
 **/venv*

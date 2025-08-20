@@ -70,6 +70,7 @@ lint.explicit-preview-rules = true
 extend-exclude = [
   # Automatically generated test artifacts
   "target_pixi/",
+  "target_pixi_wasm/",
   "target_ra/",
   "target_wasm/",
   "target/",
