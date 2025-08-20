@@ -129,7 +129,7 @@ fn top_bar_ui(
             multi_pass_warning_dot_ui(ui);
         }
 
-        show_warnings(frame, ui, &app.app_options());
+        show_warnings(frame, ui, app.app_options());
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
