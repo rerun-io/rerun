@@ -52,10 +52,14 @@ def main() -> None:
 
     print(f"Arrow schema:\n{dataset.arrow_schema()}")
 
-    df = dataset.dataframe_query_view(
-        index="test_time",
-        contents={"/scalar": ["Scalars:scalars"]},
-    ).df()
+    df = (
+        dataset.dataframe_query_view(
+            index="test_time",
+            contents={"/scalar": ["Scalars:scalars"]},
+        )
+        .df()
+        .drop("log_time")
+    )
     print(f"{df}")
 
 
