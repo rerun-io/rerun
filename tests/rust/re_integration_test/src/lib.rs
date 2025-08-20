@@ -6,8 +6,9 @@ pub struct TestServer {
 
 impl TestServer {
     pub fn spawn() -> Self {
+        // First build the binary:
         let mut build = Command::new("pixi");
-        build.args(["run", "rerun", "--help"]);
+        build.args(["run", "rerun-build"]);
         build.stdout(Stdio::null());
         build.spawn().unwrap().wait_for_success();
 
