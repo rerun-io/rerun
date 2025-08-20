@@ -1,4 +1,4 @@
-use egui::{AtomLayout, Atoms, IntoAtoms, OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
+use egui::{AtomLayout, Atoms, IntoAtoms, OpenUrl, RichText, TextStyle, Ui};
 
 use crate::{UiExt as _, icons};
 
@@ -144,27 +144,13 @@ impl Help {
                 },
                 |ui| {
                     if let Some(docs_link) = &docs_link {
-                        // Since we are in rtl layout, we need to make our own link since the
-                        // re_ui link icon would be reversed.
-                        let response = ui
-                            .scope_builder(UiBuilder::new().sense(Sense::click()), |ui| {
-                                ui.spacing_mut().item_spacing.x = 2.0;
-                                let hovered = ui.response().hovered();
-
-                                let tint = if hovered {
-                                    ui.visuals().widgets.hovered.text_color()
-                                } else {
-                                    ui.visuals().widgets.inactive.text_color()
-                                };
-
-                                ui.add(
-                                    egui::Label::new(RichText::new("Docs").color(tint).size(11.0))
-                                        .selectable(false),
-                                );
-
-                                ui.small_icon(&icons::EXTERNAL_LINK, Some(tint));
-                            })
-                            .response;
+                        let response = ui.add(
+                            egui::Button::new((
+                                &icons::EXTERNAL_LINK,
+                                RichText::new("Docs").size(11.0),
+                            ))
+                            .frame(false),
+                        );
 
                         if response.clicked() {
                             ui.ctx().open_url(OpenUrl::new_tab(docs_link));
