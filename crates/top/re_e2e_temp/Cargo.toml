@@ -1,0 +1,95 @@
+[package]
+name = "re_e2e_temp"
+authors.workspace = true
+categories = ["visualization", "computer-vision"]
+description = "Rerun e2e test"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords = ["mesh", "plotting", "point-cloud", "robotics", "visualization"]
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+## Support for using Rerun's data-loaders directly from the SDK.
+##
+## See our `log_file` example and <https://www.rerun.io/docs/reference/data-loaders/overview>
+## for more information.
+data_loaders = ["dep:re_data_loader", "dep:re_smart_channel"]
+
+## Support serving a web viewer over HTTP.
+##
+## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.
+##
+## For faster & easier builds, a pre-built web-views comes bundled with the crate as a Wasm binary.
+## Enabling this feature will embed this pre-built web viewer.
+##
+## However, when building from source in the repository, this feature adds quite a bit
+## to the compile time since it requires compiling and bundling the viewer as wasm.
+web_viewer = [
+  "dep:re_smart_channel",
+  "dep:re_web_viewer_server",
+  "dep:tokio",
+  "dep:webbrowser",
+]
+
+server = ["dep:re_smart_channel", "dep:tokio"]
+
+
+[dependencies]
+re_build_info.workspace = true
+re_byte_size.workspace = true
+re_chunk.workspace = true
+re_grpc_client.workspace = true
+re_grpc_server.workspace = true
+re_log_encoding = { workspace = true, features = ["encoder"] }
+re_log_types.workspace = true
+re_log.workspace = true
+re_memory.workspace = true
+re_tracing.workspace = true
+re_types.workspace = true
+re_uri.workspace = true
+
+ahash.workspace = true
+const_format.workspace = true
+crossbeam.workspace = true
+document-features.workspace = true
+itertools.workspace = true
+nohash-hasher.workspace = true
+parking_lot.workspace = true
+percent-encoding.workspace = true
+thiserror.workspace = true
+
+# Optional dependencies
+
+re_data_loader = { workspace = true, optional = true }
+re_smart_channel = { workspace = true, optional = true }
+re_web_viewer_server = { workspace = true, optional = true }
+
+tokio = { workspace = true, optional = true, features = ["full"] }
+webbrowser = { workspace = true, optional = true }
+
+# Native unix dependencies:
+[target.'cfg(target_family = "unix")'.dependencies]
+libc.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+similar-asserts.workspace = true
+
+
+[build-dependencies]
+re_build_tools.workspace = true

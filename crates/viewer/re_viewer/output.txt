@@ -1,0 +1,193 @@
+
+running 1 test
+test settings_screen ... FAILED
+
+failures:
+
+---- settings_screen stdout ----
+
+thread 'settings_screen' panicked at crates/viewer/re_viewer/tests/app_kittest.rs:13:13:
+No nodes found matching the query:
+By {
+    label: "Left panel toggle",
+}
+
+On node:
+Node {
+    id: #13826925289788388,
+    role: Window,
+    focused: true,
+    hidden: false,
+    disabled: false,
+    children: [
+        Node {
+            id: #10891067036629865097,
+            role: Button,
+            label: "Menu",
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [],
+        },
+        Node {
+            id: #16565455431609157779,
+            role: Button,
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [],
+        },
+        Node {
+            id: #15782982948451362368,
+            role: Label,
+            value: "⚠ Debug build",
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [
+                Node {
+                    id: #9944945959534308728,
+                    role: TextRun,
+                    value: "⚠ Debug build",
+                    focused: false,
+                    hidden: false,
+                    disabled: false,
+                    children: [],
+                },
+            ],
+        },
+        Node {
+            id: #14900422930609109318,
+            role: Button,
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [],
+        },
+        Node {
+            id: #9450464747229725927,
+            role: Button,
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [],
+        },
+        Node {
+            id: #2000309995047835315,
+            role: Button,
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [],
+        },
+        Node {
+            id: #15620336122817188184,
+            role: Button,
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [],
+        },
+        Node {
+            id: #4843728323892819762,
+            role: Label,
+            value: "Visualize multimodal data",
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [
+                Node {
+                    id: #3928824386606383206,
+                    role: TextRun,
+                    value: "Visualize multimodal data",
+                    focused: false,
+                    hidden: false,
+                    disabled: false,
+                    children: [],
+                },
+            ],
+        },
+        Node {
+            id: #11662480921555420310,
+            role: Label,
+            value: "Log data with the Rerun SDK in C++, Python, or Rust",
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [
+                Node {
+                    id: #4936815073853226661,
+                    role: TextRun,
+                    value: "Log data with the Rerun SDK in C++, Python, or Rust",
+                    focused: false,
+                    hidden: false,
+                    disabled: false,
+                    children: [],
+                },
+            ],
+        },
+        Node {
+            id: #6826380671522893675,
+            role: Label,
+            value: "Visualize and explore live or recorded data",
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [
+                Node {
+                    id: #14543356860081620273,
+                    role: TextRun,
+                    value: "Visualize and explore live or recorded data",
+                    focused: false,
+                    hidden: false,
+                    disabled: false,
+                    children: [],
+                },
+            ],
+        },
+        Node {
+            id: #487094263152679263,
+            role: Label,
+            value: "Configure the viewer interactively or through code",
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [
+                Node {
+                    id: #2654511052060395190,
+                    role: TextRun,
+                    value: "Configure the viewer interactively or through code",
+                    focused: false,
+                    hidden: false,
+                    disabled: false,
+                    children: [],
+                },
+            ],
+        },
+        Node {
+            id: #10293021327938787610,
+            role: Button,
+            label: "Go to documentation",
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [],
+        },
+        Node {
+            id: #15042142769822243930,
+            role: ProgressIndicator,
+            focused: false,
+            hidden: false,
+            disabled: false,
+            children: [],
+        },
+    ],
+}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    settings_screen
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.66s
+

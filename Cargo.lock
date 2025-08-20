@@ -7628,6 +7628,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_e2e_temp"
+version = "0.25.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "const_format",
+ "crossbeam",
+ "document-features",
+ "insta",
+ "itertools 0.14.0",
+ "libc",
+ "nohash-hasher",
+ "parking_lot",
+ "percent-encoding",
+ "re_build_info",
+ "re_build_tools",
+ "re_byte_size",
+ "re_chunk",
+ "re_data_loader",
+ "re_grpc_client",
+ "re_grpc_server",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_memory",
+ "re_smart_channel",
+ "re_tracing",
+ "re_types",
+ "re_uri",
+ "re_web_viewer_server",
+ "similar-asserts",
+ "thiserror 1.0.69",
+ "tokio",
+ "webbrowser",
+]
+
+[[package]]
 name = "re_entity_db"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
@@ -10811,6 +10847,7 @@ dependencies = [
  "io-uring",
  "libc",
  "mio 1.0.4",
+ "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
  "slab",

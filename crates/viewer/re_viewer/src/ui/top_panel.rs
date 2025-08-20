@@ -354,6 +354,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                "Selection panel toggle",
                 &mut app_blueprint.selection_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
@@ -367,6 +368,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                "Time panel toggle",
                 &mut app_blueprint.time_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
@@ -380,6 +382,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
+                "Blueprint panel toggle",
                 &mut app_blueprint.blueprint_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))

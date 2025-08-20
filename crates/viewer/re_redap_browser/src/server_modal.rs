@@ -101,7 +101,7 @@ impl ServerModal {
 
                 ui.add_space(14.0);
 
-                ui.label("Host name:");
+                let host_label_response = ui.label("Host name:");
                 let mut host = url::Host::parse(&self.host);
 
                 if host.is_err()
@@ -128,7 +128,8 @@ impl ServerModal {
                     if host.is_err() {
                         style_invalid_field(ui);
                     }
-                    ui.add(egui::TextEdit::singleline(&mut self.host).lock_focus(false));
+                    ui.add(egui::TextEdit::singleline(&mut self.host).lock_focus(false))
+                        .labelled_by(host_label_response.id);
                     self.host = self.host.trim().to_owned();
                 });
 

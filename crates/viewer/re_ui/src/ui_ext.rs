@@ -108,7 +108,12 @@ pub trait UiExt {
         rect
     }
 
-    fn medium_icon_toggle_button(&mut self, icon: &Icon, selected: &mut bool) -> egui::Response {
+    fn medium_icon_toggle_button(
+        &mut self,
+        icon: &Icon,
+        alt_text: impl Into<String>,
+        selected: &mut bool,
+    ) -> egui::Response {
         let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from design tokens
 
         let tint = if *selected {
@@ -116,9 +121,11 @@ pub trait UiExt {
         } else {
             self.ui().visuals().widgets.noninteractive.fg_stroke.color
         };
-        let mut response = self
-            .ui_mut()
-            .add(egui::ImageButton::new(icon.as_image().fit_to_exact_size(size_points)).tint(tint));
+        let mut response = self.ui_mut().add(egui::Button::new(
+            icon.as_image()
+                .fit_to_exact_size(size_points)
+                .alt_text(alt_text.into()),
+        ));
         if response.clicked() {
             *selected = !*selected;
             response.mark_changed();
