@@ -244,6 +244,15 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          # For PRs, we need to fetch the base branch to compare against
+          fetch-depth: 0
+
+      - name: Set up Python
+        if: github.event_name == 'pull_request'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
       - name: Restore lychee cache
         id: restore-cache
@@ -253,8 +262,23 @@ jobs:
           key: cache-lychee-${{ github.sha }}
           restore-keys: cache-lychee-
 
-      # Check https://github.com/lycheeverse/lychee on how to run locally.
-      - name: Link Checker
+      # For PRs: Check only links in added lines
+      - name: PR Link Checker (added lines only)
+        if: github.event_name == 'pull_request'
+        run: |
+          # Install lychee
+          curl -sSL https://github.com/lycheeverse/lychee/releases/download/v0.15.1/lychee-v0.15.1-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+          sudo mv lychee /usr/local/bin/
+
+          # Fetch the base branch
+          git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
+
+          # Run our custom PR link checker
+          python3 scripts/ci/pr_link_checker.py --base-ref origin/${{ github.base_ref }}
+
+      # For non-PRs (main branch, nightly, etc.): Check all links in the entire codebase
+      - name: Full Link Checker
+        if: github.event_name != 'pull_request'
         id: lychee
         uses: lycheeverse/lychee-action@v1.10.0
         with:
@@ -266,5 +290,5 @@ jobs:
             --verbose --cache --max-cache-age 1d . --base . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
 
       - name: Warn because of broken links
-        if: ${{ steps.lychee.outputs.exit_code != '0' }}
+        if: ${{ (github.event_name != 'pull_request' && steps.lychee.outputs.exit_code != '0') }}
         run: echo "::warning title="Link checker"::Link checker detected broken links!"
