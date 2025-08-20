@@ -7796,7 +7796,8 @@ dependencies = [
 name = "re_integration_test"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
- "re_dev_tools",
+ "insta",
+ "nix",
 ]
 
 [[package]]
