@@ -161,6 +161,7 @@ arrow.workspace = true
 camino.workspace = true
 crossbeam.workspace = true
 datafusion.workspace = true                                  # TODO: Limit with some feature flag?
+datafusion-expr.workspace = true
 document-features.workspace = true
 indexmap.workspace = true
 indicatif.workspace = true

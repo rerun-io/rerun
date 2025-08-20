@@ -1,14 +1,136 @@
-use anyhow::Context as _;
-use arrow::array::RecordBatch;
-use crossbeam::channel::Receiver;
-use datafusion::prelude::*;
+use std::sync::Arc;
 
+use anyhow::Context as _;
+use arrow::{
+    array::RecordBatch,
+    datatypes::{DataType, Field},
+};
+use crossbeam::channel::Receiver;
+use datafusion::{
+    common::plan_err,
+    logical_expr::{ArrayFunctionArgument, Signature},
+    prelude::*,
+};
+
+use datafusion_expr::{ReturnFieldArgs, ScalarFunctionArgs, ScalarUDF, ScalarUDFImpl, Volatility};
 use itertools::Either;
 use re_build_info::CrateVersion;
 use re_log_types::{EntityPathFilter, EntityPathSubs, LogMsg, ResolvedEntityPathFilter};
 use re_sdk::EntityPath;
 
 use crate::commands::{read_rrd_streams_from_file_or_stdin, stdio::InputSource};
+
+#[derive(Debug)]
+struct ComponentDescriptorUdf;
+
+impl ComponentDescriptorUdf {
+    fn new() -> Self {
+        Self
+    }
+
+    fn signature() -> Signature {
+        Signature {
+            type_signature: datafusion_expr::TypeSignature::ArraySignature(
+                datafusion_expr::ArrayFunctionSignature::Array {
+                    arguments: vec![
+                        ArrayFunctionArgument::Array,  // column
+                        ArrayFunctionArgument::String, // archetype
+                        ArrayFunctionArgument::String, // component identifier
+                        ArrayFunctionArgument::String, // component type
+                    ],
+                    array_coercion: None,
+                },
+            ),
+            volatility: Volatility::Immutable,
+        }
+    }
+}
+
+impl ScalarUDFImpl for ComponentDescriptorUdf {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn name(&self) -> &str {
+        "describe"
+    }
+
+    fn signature(&self) -> &datafusion_expr::Signature {
+        use std::sync::OnceLock;
+        static SIGNATURE: OnceLock<Signature> = OnceLock::new();
+        SIGNATURE.get_or_init(|| Self::signature())
+    }
+
+    fn return_type(&self, arg_types: &[DataType]) -> datafusion::error::Result<DataType> {
+        arg_types.first().cloned().ok_or_else(|| {
+            datafusion::error::DataFusionError::Plan(
+                "invalid number of arguments: missing component".to_string(),
+            )
+        })
+    }
+
+    fn return_field_from_args(
+        &self,
+        args: ReturnFieldArgs,
+    ) -> datafusion::error::Result<Arc<Field>> {
+        let ReturnFieldArgs {
+            arg_fields,
+            scalar_arguments,
+        } = args;
+        let [_, Some(archetype), Some(identifier), Some(component_type)] = scalar_arguments else {
+            return plan_err!("Expected arguments");
+        };
+
+        let archetype_str = archetype
+            .try_as_str()
+            .ok_or_else(|| {
+                datafusion::error::DataFusionError::Plan("Archetype must be a string".to_string())
+            })?
+            .unwrap();
+        let component_str = identifier
+            .try_as_str()
+            .ok_or_else(|| {
+                datafusion::error::DataFusionError::Plan(
+                    "Component identifier must be a string".to_string(),
+                )
+            })?
+            .unwrap();
+        let component_type_str = component_type
+            .try_as_str()
+            .ok_or_else(|| {
+                datafusion::error::DataFusionError::Plan(
+                    "Component type must be a string".to_string(),
+                )
+            })?
+            .unwrap();
+
+        // TODO: Add existing metadata on the initial column
+        let field = Field::new("item", arg_fields[0].data_type().clone(), true).with_metadata(
+            [
+                ("rerun:archetype".to_owned(), archetype_str.to_owned()),
+                ("rerun:component".to_owned(), component_str.to_owned()),
+                (
+                    "rerun:component_type".to_owned(),
+                    component_type_str.to_owned(),
+                ),
+            ]
+            .into(),
+        );
+
+        Ok(Arc::new(field))
+    }
+
+    fn invoke_with_args(
+        &self,
+        args: ScalarFunctionArgs,
+    ) -> datafusion::error::Result<datafusion_expr::ColumnarValue> {
+        args.args.first().cloned().ok_or_else(|| {
+            datafusion::error::DataFusionError::Plan(
+                "invalid number of arguments: missing component".to_string(),
+            )
+        })
+    }
+}
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct TransformCommand {
@@ -35,6 +157,7 @@ struct TransformRule {
 
 impl TransformRule {
     fn parse(input: &str) -> anyhow::Result<Self> {
+        dbg!(input);
         let input = input.replace('\n', "");
         let (path_expression, sql_expression) = input
             .split_once('=')
@@ -86,6 +209,8 @@ fn process_messages(
 
     let df_ctx = SessionContext::new();
     let tokio_rt = tokio::runtime::Handle::current();
+
+    df_ctx.register_udf(ScalarUDF::from(ComponentDescriptorUdf::new()));
 
     // TODO(cmc): might want to make this configurable at some point.
     let (tx_encoder, rx_encoder) = crossbeam::channel::bounded(100);
@@ -171,6 +296,8 @@ async fn run_datafusion_query(
 
     df_ctx.deregister_table(TABLE_NAME)?; // TODO: deregister on function exit
     df_ctx.register_batch(TABLE_NAME, record_batch)?;
+
+    dbg!(&sql_expression);
 
     let dataframe = df_ctx.sql(sql_expression).await?;
     let batches = dataframe.collect().await?;

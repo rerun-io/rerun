@@ -216,8 +216,9 @@ const_format = "0.2"
 convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
-datafusion = { version = "47", default-features = false }
-datafusion-ffi = "47"
+datafusion = { version = "49", default-features = false }
+datafusion-expr = { version = "49", default-features = false }
+datafusion-ffi = "49"
 directories = "5"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes
