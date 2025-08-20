@@ -20,6 +20,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    dataset_name = "my_dataset"
+
     # Create a simple recording:
     filepath = "/tmp/rerun_example_test.rrd"
     rec = rr.RecordingStream("rerun_example_test", recording_id="new_recording_id")
@@ -30,15 +32,23 @@ def main() -> None:
     rec.flush()
 
     client = rr.catalog.CatalogClient(args.url)
-    assert len(client.all_entries()) == 0
+    if len(client.all_entries()) != 0:
+        print(f"Expected no catalogs, found {len(client.all_entries())}")
 
-    dataset = client.create_dataset("my_dataset")
+    print(f"All datasets: {client.dataset_names()}")
+
+    if dataset_name in client.dataset_names():
+        # TODO: kill it instead
+        print(f"Using existing dataset '{dataset_name}'")
+        dataset = client.get_dataset(name=dataset_name)
+    else:
+        print(f"Creating dataset '{dataset_name}'")
+        dataset = client.create_dataset(dataset_name)
+
     dataset.register(f"file://{filepath}")
 
-    candidate_url = dataset.partition_url("new_recording_id") + "#test_time=5"
+    print(f"Arrow schema:\n{dataset.arrow_schema()}")
 
-    print("Run the command:")
-    print(f'pixi run rerun "{candidate_url}"')
 
 
 if __name__ == "__main__":
