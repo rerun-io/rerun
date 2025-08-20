@@ -28,7 +28,7 @@ def main() -> None:
     rec.save(filepath)
     for x in range(20):
         rec.set_time("test_time", sequence=x)
-        rec.log(chr(ord("a") + x % 3), rr.Scalars(x))
+        rec.log("/scalar", rr.Scalars(x))
     rec.flush()
 
     client = rr.catalog.CatalogClient(args.url)
@@ -39,15 +39,22 @@ def main() -> None:
 
     if dataset_name in client.dataset_names():
         # TODO: kill it instead
-        print(f"Using existing dataset '{dataset_name}'")
+        print(f"Deleting existing dataset '{dataset_name}'…")
         dataset = client.get_dataset(name=dataset_name)
-    else:
-        print(f"Creating dataset '{dataset_name}'")
-        dataset = client.create_dataset(dataset_name)
+        dataset.delete()
+
+    print(f"Creating dataset '{dataset_name}'…")
+    dataset = client.create_dataset(dataset_name)
 
     dataset.register(f"file://{filepath}")
 
     print(f"Arrow schema:\n{dataset.arrow_schema()}")
+
+    df = dataset.dataframe_query_view(
+        index="test_time",
+        contents={"/scalar": ["Scalars:scalars"]},
+    ).df()
+    print(f"{df}")
 
 
 
