@@ -21,6 +21,7 @@ testing = ["re_global_context/testing"]
 
 [dependencies]
 re_arrow_util.workspace = true
+re_arrow_ui.workspace = true
 re_byte_size.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true
@@ -36,7 +37,7 @@ re_string_interner.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_types_core.workspace = true
-re_ui = { workspace = true, features = ["arrow"] }
+re_ui.workspace = true
 re_video = { workspace = true, features = ["serde"] }
 
 ahash.workspace = true

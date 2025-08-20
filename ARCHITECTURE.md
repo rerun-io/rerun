@@ -134,6 +134,7 @@ Update instructions:
 
 | Crate                 | Description                                                                                                |
 |-----------------------|------------------------------------------------------------------------------------------------------------|
+| re_arrow_ui           | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
 | re_blueprint_tree     | The UI for the blueprint tree in the left panel.                                                           |
 | re_redap_browser      | The UI and communication to implement the in-viewer redap server browser.                                  |
 | re_chunk_store_ui     | A chunk store browser UI.                                                                                  |
