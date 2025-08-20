@@ -200,13 +200,16 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    fn loading_ui(ui: &mut egui::Ui) {
-        Frame::new().inner_margin(16.0).show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.spinner();
-                ui.label("Loading table…");
-            });
-        });
+    fn loading_ui(ui: &mut egui::Ui) -> egui::Response {
+        Frame::new()
+            .inner_margin(16.0)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label("Loading table…");
+                });
+            })
+            .response
     }
 
     pub fn show(
@@ -227,12 +230,18 @@ impl<'a> DataFusionTableWidget<'a> {
             initial_blueprint,
         } = self;
 
-        if !session_ctx
-            .table_exist(table_ref.clone())
-            .unwrap_or_default()
-        {
-            Self::loading_ui(ui);
-            return;
+        match session_ctx.table_exist(table_ref.clone()) {
+            Ok(true) => {}
+            Ok(false) => {
+                Self::loading_ui(ui).on_hover_text("Waiting…");
+                return;
+            }
+            Err(err) => {
+                Self::loading_ui(ui).on_hover_ui(|ui| {
+                    ui.label(err.to_string());
+                });
+                return;
+            }
         }
 
         // The TableConfig should be persisted across sessions, so we also need a static id.
