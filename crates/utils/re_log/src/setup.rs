@@ -156,7 +156,7 @@ impl log::Log for PanicOnWarn {
         }
     }
 
-    // That must be a single place where panicing is allowed.
+    // Panic is expected only in this method as the logger requires it while the rest of the code must be panic-free.
     #[expect(clippy::panic)]
     fn log(&self, record: &log::Record<'_>) {
         // `enabled` isn't called automatically by the `log!` macros, so we have to call it here.
