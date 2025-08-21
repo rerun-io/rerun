@@ -1,4 +1,4 @@
-use super::definitions::sensor_msgs;
+use arrow::array::{FixedSizeListBuilder, StringBuilder, UInt32Builder};
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::TimeCell;
 use re_types::{
@@ -7,9 +7,14 @@ use re_types::{
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
 };
 
-use crate::parsers::{
-    cdr,
-    decode::{MessageParser, ParserContext},
+use crate::{
+    Error,
+    parsers::{
+        cdr,
+        decode::{MessageParser, ParserContext},
+        ros2msg::definitions::sensor_msgs,
+        util::fixed_size_list_builder,
+    },
 };
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
@@ -128,7 +133,12 @@ impl MessageParser for ImageMessageParser {
                 .collect()
         };
 
-        let chunk = Chunk::from_auto_row_ids(ChunkId::new(), entity_path, timelines, images)?;
+        let chunk = Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            entity_path.clone(),
+            timelines.clone(),
+            images,
+        )?;
 
         let metadata_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),
@@ -164,9 +174,9 @@ impl MessageParser for ImageMessageParser {
             .into_iter()
             .collect(),
         )
-        .map_err(|err| PluginError::Other(anyhow::anyhow!(err)))?;
+        .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
-        Ok(vec![image_chunk, metadata_chunk])
+        Ok(vec![chunk, metadata_chunk])
     }
 }
 
