@@ -183,7 +183,7 @@ rerun = "cargo run --package rerun-cli --no-default-features --features map_view
 rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer"
+rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,oss_server"
 
 # Compile `rerun-cli` without the web-viewer.
 rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features map_view,nasm,native_viewer"

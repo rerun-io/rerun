@@ -155,8 +155,9 @@ impl ServerModal {
 
                 ui.add_space(14.0);
 
-                ui.label("Port:");
-                ui.add(egui::DragValue::new(&mut self.port));
+                let port_label_response = ui.label("Port:");
+                ui.add(egui::DragValue::new(&mut self.port))
+                    .labelled_by(port_label_response.id);
 
                 let origin = host.map(|host| re_uri::Origin {
                     scheme: self.scheme,
