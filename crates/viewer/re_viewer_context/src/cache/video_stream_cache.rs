@@ -298,6 +298,41 @@ fn read_samples_from_chunk(
 ) -> Result<(), VideoStreamProcessingError> {
     re_tracing::profile_function!();
 
+    let sample_descr = VideoStream::descriptor_sample();
+    let Some(raw_array) = chunk.raw_component_array(&sample_descr) else {
+        // This chunk doesn't have any video chunks.
+        return Ok(());
+    };
+
+    if let Some(binary_array) = raw_array.downcast_array_ref::<arrow::array::BinaryArray>() {
+        read_sample_from_binary_array(timeline, chunk, video_descr, chunk_buffers, binary_array);
+        Ok(())
+    } else {
+        Err(VideoStreamProcessingError::InvalidVideoSampleType(
+            raw_array.data_type().clone(),
+        ))
+    }
+}
+
+fn read_sample_from_binary_array(
+    timeline: TimelineName,
+    chunk: &re_chunk::Chunk,
+    video_descr: &mut re_video::VideoDataDescription,
+    chunk_buffers: &mut StableIndexDeque<SampleBuffer>,
+    binary_array: &arrow::array::GenericByteArray<arrow::datatypes::GenericBinaryType<i32>>,
+) {
+    // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
+    // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
+    // (each VideoStream has exactly one VideoSample instance per time)`.
+    //
+    // Because of how arrow works, the bytes of all the blobs are actually sequential in memory (yay!) in a single buffer,
+    // what you call values below (could use a better name btw).
+    //
+    // We want to figure out the byte offsets of each blob within the arrow buffer that holds all the blobs,
+    // i.e. get out a Vec<ByteRange>.
+
+    let sample_descr = VideoStream::descriptor_sample();
+
     let re_video::VideoDataDescription {
         codec,
         samples,
@@ -305,12 +340,6 @@ fn read_samples_from_chunk(
         encoding_details,
         ..
     } = video_descr;
-
-    let sample_descr = VideoStream::descriptor_sample();
-    let Some(raw_array) = chunk.raw_component_array(&sample_descr) else {
-        // This chunk doesn't have any video chunks.
-        return Ok(());
-    };
 
     let mut previous_max_presentation_timestamp = samples
         .back()
@@ -328,32 +357,18 @@ fn read_samples_from_chunk(
                 re_log::warn_once!(
                     "Out of order logging on video streams is not supported. Ignoring any out of order samples."
                 );
-                return Ok(());
+                return;
             }
         }
         None => {
             // This chunk doesn't have any data on this timeline.
-            return Ok(());
+            return;
         }
     }
 
     // Make sure our index is sorted by the timeline we're interested in.
     let chunk = chunk.sorted_by_timeline_if_unsorted(&timeline);
 
-    // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
-    // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
-    // (each VideoStream has exactly one VideoSample instance per time)`.
-    //
-    // Because of how arrow works, the bytes of all the blobs are actually sequential in memory (yay!) in a single buffer,
-    // what you call values below (could use a better name btw).
-    //
-    // We want to figure out the byte offsets of each blob within the arrow buffer that holds all the blobs,
-    // i.e. get out a Vec<ByteRange>.
-    let binary_array = raw_array
-        .downcast_array_ref::<arrow::array::BinaryArray>()
-        .ok_or(VideoStreamProcessingError::InvalidVideoSampleType(
-            raw_array.data_type().clone(),
-        ))?;
     let buffer = binary_array.values();
 
     let offsets = binary_array.offsets();
@@ -459,7 +474,7 @@ fn read_samples_from_chunk(
 
     // Any new samples actually added? Early out if not.
     if sample_base_idx == samples.next_index() {
-        return Ok(());
+        return;
     }
 
     // Fill out durations for all new samples plus the first existing sample for which we didn't know the duration yet.
@@ -499,8 +514,6 @@ fn read_samples_from_chunk(
             chunk.entity_path()
         );
     }
-
-    Ok(())
 }
 
 impl Cache for VideoStreamCache {
