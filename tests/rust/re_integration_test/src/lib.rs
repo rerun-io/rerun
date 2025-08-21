@@ -10,11 +10,14 @@ impl TestServer {
         let mut build = Command::new("pixi");
         build.args(["run", "rerun-build"]);
         build.stdout(Stdio::null());
-        build.spawn().unwrap().wait_for_success();
+        build
+            .spawn()
+            .expect("Failed to start pixi")
+            .wait_for_success();
 
         let mut server = Command::new("../../../target_pixi/debug/rerun");
         server.args(["server"]);
-        let mut server = server.spawn().unwrap();
+        let server = server.spawn().expect("Failed to start rerun server");
 
         Self { server }
     }
@@ -22,12 +25,12 @@ impl TestServer {
 
 impl Drop for TestServer {
     fn drop(&mut self) {
-        sigint(&mut self.server)
+        sigint_and_wait(&mut self.server);
     }
 }
 
 /// Send SIGINT and wait for the child process to exit successfully.
-pub fn sigint(child: &mut Child) {
+pub fn sigint_and_wait(child: &mut Child) {
     if let Err(e) = nix::sys::signal::kill(
         nix::unistd::Pid::from_raw(child.id() as i32),
         nix::sys::signal::Signal::SIGINT,
@@ -38,11 +41,14 @@ pub fn sigint(child: &mut Child) {
     child.wait_for_success();
 }
 
-/// Run re_integration.py to load some test data.
+/// Run `re_integration.py` to load some test data.
 pub fn load_test_data() -> String {
     let mut script = Command::new("pixi");
     script.args(["run", "-e", "py", "python", "tests/re_integration.py"]);
-    let mut output = script.output().unwrap().stdout;
+    let output = script
+        .output()
+        .expect("Failed to run re_integration.py script")
+        .stdout;
     String::from_utf8(output).expect("Failed to convert output to string")
 }
 

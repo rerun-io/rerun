@@ -1,8 +1,4 @@
-use insta::with_settings;
 use re_integration_test::{TestServer, load_test_data};
-use std::process::{Command, Stdio};
-use std::thread;
-use std::time::Duration;
 
 #[test]
 pub fn integration_test() {
