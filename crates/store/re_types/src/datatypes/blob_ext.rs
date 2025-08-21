@@ -46,6 +46,7 @@ impl Blob {
         None
     }
 }
+
 impl Eq for Blob {}
 
 impl From<ScalarBuffer<u8>> for Blob {
