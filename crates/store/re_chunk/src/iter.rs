@@ -12,7 +12,7 @@ use arrow::{
 };
 use itertools::{Either, Itertools as _, izip};
 
-use re_arrow_util::{ArrowArrayDowncastRef as _, offsets_lengths};
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_span::Span;
 use re_types_core::{ArrowString, Component, ComponentDescriptor};
@@ -205,7 +205,7 @@ impl Chunk {
         };
 
         let offsets = list_array.offsets().iter().map(|idx| *idx as usize);
-        let lengths = offsets_lengths(list_array.offsets());
+        let lengths = list_array.offsets().lengths();
 
         if let Some(validity) = list_array.nulls() {
             Either::Right(Either::Left(
@@ -520,7 +520,7 @@ where
 
     let values = values.values();
     let offsets = inner_list_array.offsets();
-    let lengths = offsets_lengths(inner_list_array.offsets()).collect_vec();
+    let lengths = offsets.lengths().collect_vec();
 
     // NOTE: No need for validity checks here, `component_spans` already takes care of that.
     Either::Right(component_spans.map(move |span| {
@@ -542,7 +542,7 @@ fn slice_as_u8<'a>(
     if let Some(binary_array) = array.downcast_array_ref::<BinaryArray>() {
         let values = binary_array.values();
         let offsets = binary_array.offsets();
-        let lengths = offsets_lengths(binary_array.offsets()).collect_vec();
+        let lengths = offsets.lengths().collect_vec();
 
         // NOTE: No need for validity checks here, `component_spans` already takes care of that.
         Either::Left(component_spans.map(move |span| {
@@ -639,7 +639,7 @@ where
     };
 
     let inner_offsets = inner_list_array.offsets();
-    let inner_lengths = offsets_lengths(inner_list_array.offsets()).collect_vec();
+    let inner_lengths = inner_offsets.lengths().collect_vec();
 
     let Some(fixed_size_list_array) = inner_list_array
         .values()
@@ -738,7 +738,7 @@ impl ChunkComponentSlicer for String {
 
         let values = utf8_array.values().clone();
         let offsets = utf8_array.offsets().clone();
-        let lengths = offsets_lengths(utf8_array.offsets()).collect_vec();
+        let lengths = offsets.lengths().collect_vec();
 
         // NOTE: No need for validity checks here, `component_spans` already takes care of that.
         Either::Right(component_spans.map(move |range| {
