@@ -29,7 +29,7 @@ impl TestServer {
         let server = server.spawn().expect("Failed to start rerun server");
 
         let mut success = false;
-        for _ in 0..1000 {
+        for _ in 0..50 {
             let result = ureq::get(&format!("http://localhost:{port}"))
                 .call()
                 .or_any_status();
