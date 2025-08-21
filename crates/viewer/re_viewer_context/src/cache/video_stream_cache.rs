@@ -307,6 +307,11 @@ fn read_samples_from_chunk(
     if let Some(binary_array) = raw_array.downcast_array_ref::<arrow::array::BinaryArray>() {
         read_sample_from_binary_array(timeline, chunk, video_descr, chunk_buffers, binary_array);
         Ok(())
+    } else if let Some(binary_array) =
+        raw_array.downcast_array_ref::<arrow::array::LargeBinaryArray>()
+    {
+        read_sample_from_binary_array(timeline, chunk, video_descr, chunk_buffers, binary_array);
+        Ok(())
     } else {
         Err(VideoStreamProcessingError::InvalidVideoSampleType(
             raw_array.data_type().clone(),
@@ -314,13 +319,15 @@ fn read_samples_from_chunk(
     }
 }
 
-fn read_sample_from_binary_array(
+fn read_sample_from_binary_array<O: arrow::array::OffsetSizeTrait>(
     timeline: TimelineName,
     chunk: &re_chunk::Chunk,
     video_descr: &mut re_video::VideoDataDescription,
     chunk_buffers: &mut StableIndexDeque<SampleBuffer>,
-    binary_array: &arrow::array::GenericByteArray<arrow::datatypes::GenericBinaryType<i32>>,
-) {
+    binary_array: &arrow::array::GenericByteArray<arrow::datatypes::GenericBinaryType<O>>,
+) where
+    usize: TryFrom<O>,
+{
     // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
     // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
     // (each VideoStream has exactly one VideoSample instance per time)`.
@@ -395,7 +402,7 @@ fn read_sample_from_binary_array(
                 }
 
                 let sample_idx = sample_base_idx + start;
-                let byte_span = Span { start: offsets[start] as usize, len: lengths[start] };
+                let byte_span = Span { start: usize::try_from(offsets[start]).unwrap_or_default(), len: lengths[start] };
                 let sample_bytes = &buffer[byte_span.range()];
 
                 // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
