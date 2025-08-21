@@ -1,3 +1,5 @@
+//! Integration tests for rerun and the in memory server.
+
 use std::process::{Child, Command, Stdio};
 
 pub struct TestServer {
