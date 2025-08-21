@@ -50,8 +50,6 @@ def main() -> None:
 
     dataset.register(f"file://{filepath}")
 
-    print(f"Arrow schema:\n{dataset.arrow_schema()}")
-
     df = (
         dataset.dataframe_query_view(
             index="test_time",

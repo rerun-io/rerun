@@ -4,41 +4,6 @@ expression: test_output
 ---
 All datasets: []
 Creating dataset 'my_dataset'…
-Arrow schema:
-rerun.controls.RowId: fixed_size_binary[16] not null
-  -- field metadata --
-  ARROW:extension:name: 'rerun.datatypes.TUID'
-  rerun:kind: 'control'
-  ARROW:extension:metadata: '{"namespace":"row"}'
-log_tick: int64
-  -- field metadata --
-  rerun:index_name: 'log_tick'
-  rerun:kind: 'index'
-log_time: timestamp[ns]
-  -- field metadata --
-  rerun:index_name: 'log_time'
-  rerun:kind: 'index'
-test_time: int64
-  -- field metadata --
-  rerun:index_name: 'test_time'
-  rerun:kind: 'index'
-/scalar:Scalars:scalars: list<item: double>
-  child 0, item: double
-  -- field metadata --
-  rerun:archetype: 'rerun.archetypes.Scalars'
-  rerun:component_type: 'rerun.components.Scalar'
-  rerun:component: 'Scalars:scalars'
-  rerun:kind: 'data'
-  rerun:entity_path: '/scalar'
-property:RecordingInfo:start_time: list<item: int64>
-  child 0, item: int64
-  -- field metadata --
-  rerun:component: 'RecordingInfo:start_time'
-  rerun:component_type: 'rerun.components.Timestamp'
-  rerun:archetype: 'rerun.archetypes.RecordingInfo'
-  rerun:entity_path: '/__properties'
-  rerun:kind: 'data'
-  rerun:is_static: 'true'
 ┌────────────────────┬───────────────────────┬──────────────────────┬────────────────────────────┐
 │ rerun_partition_id ┆ test_time             ┆ log_tick             ┆ /scalar:Scalars:scalars    │
 │ ---                ┆ ---                   ┆ ---                  ┆ ---                        │
