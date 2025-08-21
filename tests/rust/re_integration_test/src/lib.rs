@@ -2,6 +2,7 @@
 
 use std::net::TcpListener;
 use std::process::{Child, Command, Stdio};
+
 use ureq::OrAnyStatus as _;
 
 pub struct TestServer {
@@ -13,10 +14,7 @@ impl TestServer {
     pub fn spawn() -> Self {
         // Get a random free port
         let port = get_free_port();
-        Self::spawn_with_port(port)
-    }
 
-    pub fn spawn_with_port(port: u16) -> Self {
         // First build the binary:
         let mut build = Command::new("pixi");
         build.args(["run", "rerun-build"]);
@@ -31,7 +29,7 @@ impl TestServer {
         let server = server.spawn().expect("Failed to start rerun server");
 
         let mut success = false;
-        for _ in 0..1000 {
+        for _ in 0..50 {
             let result = ureq::get(&format!("http://localhost:{port}"))
                 .call()
                 .or_any_status();
@@ -42,8 +40,6 @@ impl TestServer {
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
         assert!(success, "Failed to connect to rerun server");
-
-        println!("Server ready on port {port}");
 
         Self { server, port }
     }
