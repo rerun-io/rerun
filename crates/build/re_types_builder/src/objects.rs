@@ -1192,6 +1192,8 @@ pub enum Type {
     Float64,
 
     /// A list of bytes of arbitrary length.
+    ///
+    /// 32-bit or 64-bit
     Binary,
 
     /// Utf8
@@ -1550,6 +1552,8 @@ pub enum ElementType {
     Float64,
 
     /// A list of bytes of arbitrary length.
+    ///
+    /// 32-bit or 64-bit
     Binary,
 
     /// Utf8

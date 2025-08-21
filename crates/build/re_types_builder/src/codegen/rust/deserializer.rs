@@ -542,7 +542,9 @@ fn quote_arrow_field_deserializer(
 
             let quoted_downcast = {
                 let cast_as = if is_binary {
-                    quote!(LargeBinaryArray)
+                    // TODO(emilk): ideally we should support deserializing both 32-bit and 64-bit binary arrays.
+                    // In practice we never use the generated deserializer.
+                    quote!(BinaryArray)
                 } else {
                     quote!(StringArray)
                 };

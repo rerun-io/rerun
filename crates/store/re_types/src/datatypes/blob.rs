@@ -90,7 +90,7 @@ impl ::re_types_core::Loggable for Blob {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<LargeBinaryArray>()
+                .downcast_ref::<BinaryArray>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
