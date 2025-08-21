@@ -60,7 +60,7 @@ impl ::re_types_core::Loggable for Blob {
                 any_nones.then(|| somes.into())
             };
             {
-                let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                     data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
@@ -73,7 +73,7 @@ impl ::re_types_core::Loggable for Blob {
                     buffer_builder.append_slice(data);
                 }
                 let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-                as_array_ref(BinaryArray::new(offsets, inner_data, data0_validity))
+                as_array_ref(LargeBinaryArray::new(offsets, inner_data, data0_validity))
             }
         })
     }
@@ -90,7 +90,7 @@ impl ::re_types_core::Loggable for Blob {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<BinaryArray>()
+                .downcast_ref::<LargeBinaryArray>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();

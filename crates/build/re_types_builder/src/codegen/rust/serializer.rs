@@ -630,7 +630,7 @@ fn quote_arrow_field_serializer(
 
             let inner_data_and_offsets = if elements_are_nullable {
                 quote! {
-                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                         #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length .unwrap_or_default())
                     );
 
@@ -649,7 +649,7 @@ fn quote_arrow_field_serializer(
                 }
             } else {
                 quote! {
-                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                         #data_src.iter() #quoted_transparent_length
                     );
 
@@ -669,7 +669,7 @@ fn quote_arrow_field_serializer(
             if is_binary {
                 quote! {{
                     #inner_data_and_offsets
-                    as_array_ref(BinaryArray::new(offsets, inner_data, #validity_src))
+                    as_array_ref(LargeBinaryArray::new(offsets, inner_data, #validity_src))
                 }}
             } else {
                 quote! {{

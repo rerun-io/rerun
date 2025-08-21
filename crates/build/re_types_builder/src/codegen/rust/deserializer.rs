@@ -542,7 +542,7 @@ fn quote_arrow_field_deserializer(
 
             let quoted_downcast = {
                 let cast_as = if is_binary {
-                    quote!(BinaryArray)
+                    quote!(LargeBinaryArray)
                 } else {
                     quote!(StringArray)
                 };

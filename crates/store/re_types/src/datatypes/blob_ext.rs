@@ -17,23 +17,35 @@ impl Blob {
 
     /// Returns the bytes of a serialized blob batch without copying it.
     ///
-    /// Returns `None` if the serialized component batch didn't have the expected shape.
+    /// Returns `None` if the serialized component batch didn't have the expected type or shape.
     pub fn serialized_blob_as_slice(
         serialized_blob: &re_types_core::SerializedComponentBatch,
     ) -> Option<&[u8]> {
-        let blob_data = serialized_blob
-            .array
-            .as_any()
-            .downcast_ref::<arrow::array::BinaryArray>()?;
+        Self::binary_array_as_slice(&serialized_blob.array)
+    }
 
-        if blob_data.len() == 1 {
-            Some(blob_data.value(0))
-        } else {
-            None
+    /// Returns the bytes of a serialized blob batch without copying it.
+    ///
+    /// Returns `None` if the serialized component batch didn't have the expected type or shape.
+    pub fn binary_array_as_slice(array: &std::sync::Arc<dyn arrow::array::Array>) -> Option<&[u8]> {
+        if let Some(blob_data) = array.as_any().downcast_ref::<arrow::array::BinaryArray>() {
+            if blob_data.len() == 1 {
+                return Some(blob_data.value(0));
+            }
         }
+
+        if let Some(blob_data) = array
+            .as_any()
+            .downcast_ref::<arrow::array::LargeBinaryArray>()
+        {
+            if blob_data.len() == 1 {
+                return Some(blob_data.value(0));
+            }
+        }
+
+        None
     }
 }
-
 impl Eq for Blob {}
 
 impl From<ScalarBuffer<u8>> for Blob {
