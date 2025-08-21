@@ -235,7 +235,7 @@ pub struct TransformCommand {
     path_to_output_rrd: Option<String>,
     //
     // If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
-    #[clap(long = "continue-on-error", default_value_t = false)]
+    #[clap(long = "continue-on-error", default_value_t = true)]
     continue_on_error: bool,
 }
 
