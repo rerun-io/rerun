@@ -111,6 +111,8 @@ fn migrate_blobs(batch: RecordBatch) -> RecordBatch {
 
 /// `List[List[u8]]` -> `List[Binary]`
 fn convert_list_list_u8_to_list_binary(list_array: &dyn Array) -> Option<ListArray> {
+    re_tracing::profile_function!();
+
     // The outer `List[List[u8]]`
     let list_array = list_array.as_list_opt()?;
 
