@@ -693,6 +693,8 @@ impl ConnectionHandle {
     }
 
     // TODO(ab): migrate this to the `ConnectionClient` API.
+    //
+    // TODO: who even uses this?
     #[tracing::instrument(level = "info", skip_all)]
     pub fn get_chunk_ids_for_dataframe_query(
         &self,
