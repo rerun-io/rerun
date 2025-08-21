@@ -3,7 +3,7 @@
 use std::net::TcpListener;
 use std::process::{Child, Command, Stdio};
 
-use ureq::OrAnyStatus;
+use ureq::OrAnyStatus as _;
 
 pub struct TestServer {
     server: Child,
