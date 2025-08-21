@@ -39,8 +39,8 @@ def main() -> None:
 
     print(f"All datasets: {client.dataset_names()}")
 
+    # When testing its useful if you can run the script multiple times
     if dataset_name in client.dataset_names():
-        # TODO: kill it instead
         print(f"Deleting existing dataset '{dataset_name}'…")
         dataset = client.get_dataset(name=dataset_name)
         dataset.delete()
