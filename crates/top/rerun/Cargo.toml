@@ -166,6 +166,7 @@ document-features.workspace = true
 indexmap.workspace = true
 indicatif.workspace = true
 itertools.workspace = true
+regex-lite.workspace = true
 similar-asserts.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fs, path::Path, sync::Arc};
 
 use anyhow::Context as _;
 use arrow::{
@@ -8,6 +8,7 @@ use arrow::{
 use crossbeam::channel::Receiver;
 use datafusion::{
     common::plan_err,
+    functions::regex,
     logical_expr::{ArrayFunctionArgument, Signature},
     prelude::*,
 };
@@ -17,6 +18,7 @@ use itertools::Either;
 use re_build_info::CrateVersion;
 use re_log_types::{EntityPathFilter, EntityPathSubs, LogMsg, ResolvedEntityPathFilter};
 use re_sdk::EntityPath;
+use regex_lite::Regex;
 
 use crate::commands::{read_rrd_streams_from_file_or_stdin, stdio::InputSource};
 
@@ -131,6 +133,90 @@ impl ScalarUDFImpl for ComponentDescriptorUdf {
         })
     }
 }
+#[derive(Debug)]
+struct ScalarExtractorUdf;
+
+impl ScalarExtractorUdf {
+    fn new() -> Self {
+        Self
+    }
+
+    fn signature() -> Signature {
+        Signature {
+            type_signature: datafusion_expr::TypeSignature::ArraySignature(
+                datafusion_expr::ArrayFunctionSignature::Array {
+                    arguments: vec![
+                        ArrayFunctionArgument::Array, // column
+                        ArrayFunctionArgument::Array, // archetype
+                    ],
+                    array_coercion: None,
+                },
+            ),
+            volatility: Volatility::Immutable,
+        }
+    }
+}
+
+// impl ScalarUDFImpl for ScalarExtractorUdf {
+//     fn as_any(&self) -> &dyn std::any::Any {
+//         self
+//     }
+
+//     fn name(&self) -> &str {
+//         "scalar_extract"
+//     }
+
+//     fn signature(&self) -> &datafusion_expr::Signature {
+//         use std::sync::OnceLock;
+//         static SIGNATURE: OnceLock<Signature> = OnceLock::new();
+//         SIGNATURE.get_or_init(|| Self::signature())
+//     }
+
+//     fn return_type(&self, arg_types: &[DataType]) -> datafusion::error::Result<DataType> {
+//         unreachable!() // we implement `return_field_from_args`
+//     }
+
+//     fn return_field_from_args(
+//         &self,
+//         args: ReturnFieldArgs,
+//     ) -> datafusion::error::Result<Arc<Field>> {
+//         let ReturnFieldArgs {
+//             arg_fields,
+//             scalar_arguments,
+//         } = args;
+//         let [list_component_batch, xpath] = arg_fields else {
+//             return plan_err!("Expected arguments");
+//         };
+
+//         dbg!(xpath);
+
+//         // TODO: Add existing metadata on the initial column
+//         let field = Field::new("item", arg_fields[0].data_type().clone(), true).with_metadata(
+//             [
+//                 ("rerun:archetype".to_owned(), archetype_str.to_owned()),
+//                 ("rerun:component".to_owned(), component_str.to_owned()),
+//                 (
+//                     "rerun:component_type".to_owned(),
+//                     component_type_str.to_owned(),
+//                 ),
+//             ]
+//             .into(),
+//         );
+
+//         Ok(Arc::new(field))
+//     }
+
+//     fn invoke_with_args(
+//         &self,
+//         args: ScalarFunctionArgs,
+//     ) -> datafusion::error::Result<datafusion_expr::ColumnarValue> {
+//         args.args.first().cloned().ok_or_else(|| {
+//             datafusion::error::DataFusionError::Plan(
+//                 "invalid number of arguments: missing component".to_string(),
+//             )
+//         })
+//     }
+// }
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct TransformCommand {
@@ -141,6 +227,9 @@ pub struct TransformCommand {
     #[arg(short = 't', long = "transform")]
     transforms: Vec<String>,
 
+    #[arg(short = 'f', long = "transform-file")]
+    transform_file: Vec<String>,
+
     /// Path to write to. Writes to standard output if unspecified.
     #[arg(short = 'o', long = "output", value_name = "dst.rrd")]
     path_to_output_rrd: Option<String>,
@@ -150,6 +239,7 @@ pub struct TransformCommand {
     continue_on_error: bool,
 }
 
+#[derive(Debug)]
 struct TransformRule {
     path_expression: ResolvedEntityPathFilter,
     sql_expression: String,
@@ -173,20 +263,63 @@ impl TransformRule {
     }
 }
 
+fn extract_rerun_path(line: &str) -> Option<String> {
+    let line = line.trim();
+    if !line.starts_with("-- rerun") {
+        return None;
+    }
+
+    // Match: -- rerun entity_path="value"
+    let pattern = r#"entity_path="([^"]*)""#;
+    let re = Regex::new(pattern).ok()?;
+
+    re.captures(line)?.get(1).map(|m| m.as_str().to_string())
+}
+
+fn read_sql_file<P: AsRef<Path>>(path: P) -> Result<TransformRule, std::io::Error> {
+    let content = fs::read_to_string(path)?;
+    let mut path_expression = None;
+
+    for line in content.lines() {
+        if let Some(path_expr) = extract_rerun_path(line) {
+            let path_expr = EntityPathFilter::parse_forgiving(path_expr);
+            let path_expr = path_expr.resolve_forgiving(&EntityPathSubs::empty());
+            path_expression = Some(path_expr);
+            break; // Assuming single occurrence
+        }
+    }
+
+    Ok(TransformRule {
+        path_expression: path_expression.unwrap(),
+        sql_expression: content,
+    })
+}
+
 impl TransformCommand {
     pub fn run(&self) -> anyhow::Result<()> {
         let Self {
             path_to_input_rrds,
             transforms,
+            transform_file,
             path_to_output_rrd,
             continue_on_error,
         } = self;
 
-        let transforms = transforms
+        let mut transforms = transforms
             .iter()
             .map(|s| TransformRule::parse(s))
             .collect::<Result<Vec<_>, _>>()
             .context("parsing transform rules")?;
+
+        let transform_files = self
+            .transform_file
+            .iter()
+            .map(|path| read_sql_file(path))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        transforms.extend(transform_files);
+
+        dbg!(&transforms);
 
         let (rx, _) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
@@ -211,6 +344,7 @@ fn process_messages(
     let tokio_rt = tokio::runtime::Handle::current();
 
     df_ctx.register_udf(ScalarUDF::from(ComponentDescriptorUdf::new()));
+    // df_ctx.register_udf(ScalarUDF::from(ScalarExtractorUdf::new()));
 
     // TODO(cmc): might want to make this configurable at some point.
     let (tx_encoder, rx_encoder) = crossbeam::channel::bounded(100);
