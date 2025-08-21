@@ -1248,7 +1248,7 @@ impl Type {
                     if typ == FbsBaseType::Vector && field_type.element() == FbsBaseType::UByte {
                         return Self::Binary;
                     } else {
-                        panic!("{fqname}: 'binary' can only be used on '[ubyte]', git {typ:?}")
+                        panic!("{fqname}: 'binary' can only be used on '[ubyte]', got {typ:?}")
                     }
                 }
                 "float16" => {
