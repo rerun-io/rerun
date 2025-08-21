@@ -7802,6 +7802,7 @@ dependencies = [
  "nix",
  "re_viewer",
  "tokio",
+ "ureq",
 ]
 
 [[package]]

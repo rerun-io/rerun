@@ -2,6 +2,7 @@
 
 use std::net::TcpListener;
 use std::process::{Child, Command, Stdio};
+use ureq::OrAnyStatus;
 
 pub struct TestServer {
     server: Child,
@@ -28,6 +29,21 @@ impl TestServer {
         let mut server = Command::new("../../../target_pixi/debug/rerun");
         server.args(["server", "--port", &port.to_string()]);
         let server = server.spawn().expect("Failed to start rerun server");
+
+        let mut success = false;
+        for _ in 0..1000 {
+            let result = ureq::get(&format!("http://localhost:{port}"))
+                .call()
+                .or_any_status();
+            if result.is_ok() {
+                success = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        assert!(success, "Failed to connect to rerun server");
+
+        println!("Server ready on port {port}");
 
         Self { server, port }
     }
