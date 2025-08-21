@@ -7797,7 +7797,6 @@ name = "re_integration_test"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
  "insta",
- "nix",
  "ureq",
 ]
 
