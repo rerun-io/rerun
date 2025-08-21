@@ -1,13 +1,18 @@
 //! Integration tests for rerun and the in memory server.
 
+use std::net::TcpListener;
 use std::process::{Child, Command, Stdio};
 
 pub struct TestServer {
     server: Child,
+    port: u16,
 }
 
 impl TestServer {
     pub fn spawn() -> Self {
+        // Get a random free port
+        let port = get_free_port();
+
         // First build the binary:
         let mut build = Command::new("pixi");
         build.args(["run", "rerun-build"]);
@@ -18,10 +23,14 @@ impl TestServer {
             .wait_for_success();
 
         let mut server = Command::new("../../../target_pixi/debug/rerun");
-        server.args(["server"]);
+        server.args(["server", "--port", &port.to_string()]);
         let server = server.spawn().expect("Failed to start rerun server");
 
-        Self { server }
+        Self { server, port }
+    }
+
+    pub fn port(&self) -> u16 {
+        self.port
     }
 }
 
@@ -43,10 +52,26 @@ pub fn sigint_and_wait(child: &mut Child) {
     child.wait_for_success();
 }
 
+/// Get a free port from the OS.
+fn get_free_port() -> u16 {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to a random port");
+    let addr = listener.local_addr().expect("Failed to get local address");
+    addr.port()
+}
+
 /// Run `re_integration.py` to load some test data.
-pub fn load_test_data() -> String {
+pub fn load_test_data(port: u16) -> String {
+    let url = format!("rerun+http://localhost:{}", port);
     let mut script = Command::new("pixi");
-    script.args(["run", "-e", "py", "python", "tests/re_integration.py"]);
+    script.args([
+        "run",
+        "-e",
+        "py",
+        "python",
+        "tests/re_integration.py",
+        "--url",
+        &url,
+    ]);
     let output = script
         .output()
         .expect("Failed to run re_integration.py script")
