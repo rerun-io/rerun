@@ -107,12 +107,9 @@ impl ServerModal {
                 if host.is_err()
                     && let Ok(url) = url::Url::parse(&self.host)
                 {
-                    dbg!(&url);
                     // Maybe the user pasted a full URL, with scheme and port?
                     // Then handle that gracefully!
-                    let scheme = format!("{}://", url.scheme());
-                    dbg!(Scheme::from_str(&scheme));
-                    if let Ok(scheme) = Scheme::from_str(&scheme) {
+                    if let Ok(scheme) = Scheme::from_str(&self.host) {
                         self.scheme = scheme;
                     }
 

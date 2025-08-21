@@ -1,3 +1,4 @@
+use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
 use insta::with_settings;
 use re_integration_test::{TestServer, load_test_data};
@@ -15,11 +16,12 @@ use std::time::Duration;
 // }
 
 #[tokio::test]
-pub async fn integration_test_2() {
-    let _server = TestServer::spawn();
-    let test_output = load_test_data();
+pub async fn dataset_load_test() {
+    let server = TestServer::spawn();
+    load_test_data();
 
     let mut harness = viewer_test_utils::viewer_harness();
+    let mut snapshot_results = SnapshotResults::new();
 
     harness.get_by_label("Blueprint panel toggle").click();
     harness.run_ok();
@@ -28,7 +30,7 @@ pub async fn integration_test_2() {
     harness.run_ok();
     harness.get_by_label_contains("Add Redap server").click();
     harness.run_ok();
-    // harness.snapshot("temp1");
+    snapshot_results.add(harness.try_snapshot("dataset-load-1"));
 
     harness
         .get_by_role_and_label(egui::accesskit::Role::TextInput, "Host name:")
@@ -36,35 +38,30 @@ pub async fn integration_test_2() {
     harness.run_ok();
     harness
         .get_by_role_and_label(egui::accesskit::Role::TextInput, "Host name:")
-        .type_text(&format!("rerun+http://localhost:{}", _server.port));
+        .type_text(&format!("rerun+http://localhost:{}", server.port));
     harness.run_ok();
-
-    // harness.snapshot("temp2");
+    snapshot_results.add(harness.try_snapshot("dataset-load-2"));
 
     harness.get_by_label("Add").click();
-    harness.run_ok();
-
-    tokio::time::sleep(Duration::from_secs(2)).await;
-    harness.run_ok();
+    viewer_test_utils::step_until(
+        &mut harness,
+        |harness| harness.query_by_label_contains("my_dataset").is_some(),
+        tokio::time::Duration::from_millis(100),
+        tokio::time::Duration::from_secs(5),
+    )
+    .await;
 
     harness.get_by_label("my_dataset").click();
-    harness.run_ok();
-
-    tokio::time::sleep(Duration::from_secs(2)).await;
-    harness.run_ok();
-
-    // viewer_test_utils::step_until(
-    //     &mut harness,
-    //     |harness| {
-    //         harness
-    //             .query_by_label_contains("new_recording_id")
-    //             .is_some()
-    //     },
-    //     tokio::time::Duration::from_millis(100),
-    //     tokio::time::Duration::from_secs(5),
-    // )
-    // .await;
-    harness.snapshot("temp3");
-
-    insta::assert_snapshot!(test_output);
+    viewer_test_utils::step_until(
+        &mut harness,
+        |harness| {
+            harness
+                .query_by_label_contains("new_recording_id")
+                .is_some()
+        },
+        tokio::time::Duration::from_millis(100),
+        tokio::time::Duration::from_secs(5),
+    )
+    .await;
+    snapshot_results.add(harness.try_snapshot("dataset-load-3"));
 }
