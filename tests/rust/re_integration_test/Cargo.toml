@@ -8,9 +8,10 @@ license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
+publish = false
 
 [dependencies]
-nix = { version = "0.30", features = ["signal"] }
+nix = { workspace = true, features = ["signal"] }
 
 [dev-dependencies]
 insta.workspace = true
