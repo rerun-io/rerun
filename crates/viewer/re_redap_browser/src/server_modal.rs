@@ -108,7 +108,8 @@ impl ServerModal {
                     && let Ok(url) = url::Url::parse(&self.host)
                 {
                     // Maybe the user pasted a full URL, with scheme and port?
-                    // Then handle that gracefully!
+                    // Then handle that gracefully! `from_str` requires the url
+                    // with the "://" part so we just pass the whole url.
                     if let Ok(scheme) = Scheme::from_str(&self.host) {
                         self.scheme = scheme;
                     }

@@ -12,7 +12,7 @@ pub fn integration_test() {
 }
 
 #[tokio::test]
-pub async fn dataset_load_test() {
+pub async fn dataset_ui_test() {
     let server = TestServer::spawn();
     load_test_data(server.port());
 
@@ -26,7 +26,7 @@ pub async fn dataset_load_test() {
     harness.run_ok();
     harness.get_by_label_contains("Add Redap server").click();
     harness.run_ok();
-    snapshot_results.add(harness.try_snapshot("dataset-load-1"));
+    snapshot_results.add(harness.try_snapshot("dataset_ui_empty_form"));
 
     harness
         .get_by_role_and_label(egui::accesskit::Role::TextInput, "Host name:")
@@ -60,5 +60,5 @@ pub async fn dataset_load_test() {
         tokio::time::Duration::from_secs(5),
     )
     .await;
-    snapshot_results.add(harness.try_snapshot("dataset-load-2"));
+    snapshot_results.add(harness.try_snapshot("dataset_ui_table"));
 }
