@@ -73,6 +73,9 @@ nasm = ["rerun/nasm"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["rerun/native_viewer"]
 
+## Enable the in-memory Rerun Server, useful for testing.
+oss_server = ["rerun/oss_server"]
+
 ## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
 ##
 ## This only works on native.

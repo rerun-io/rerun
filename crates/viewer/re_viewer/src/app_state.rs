@@ -148,6 +148,7 @@ impl AppState {
     #[expect(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
+        app_env: &crate::AppEnvironment,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
@@ -304,7 +305,7 @@ impl AppState {
                 let display_mode = self.navigation.peek();
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
-                        is_test: false,
+                        is_test: app_env.is_test(),
 
                         app_options,
                         reflection,
@@ -385,7 +386,7 @@ impl AppState {
                 // it's just a bunch of refs so not really that big of a deal in practice.
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
-                        is_test: false,
+                        is_test: app_env.is_test(),
 
                         app_options,
                         reflection,

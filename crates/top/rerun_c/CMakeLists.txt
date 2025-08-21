@@ -1,12 +1,13 @@
 # Builds rerun_c from source.
 
 # Determine Rust's librerun path.
+# This assumes building with pixi, e.g. `pixi run -e cpp cpp-build-all`
 if(APPLE)
-    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target/$ENV{CARGO_BUILD_TARGET}/release/librerun_c.a)
+    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target_pixi/$ENV{CARGO_BUILD_TARGET}/release/librerun_c.a)
 elseif(UNIX) # if(LINUX) # CMake 3.25
-    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target/$ENV{CARGO_BUILD_TARGET}/release/librerun_c.a)
+    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target_pixi/$ENV{CARGO_BUILD_TARGET}/release/librerun_c.a)
 elseif(WIN32)
-    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target/$ENV{CARGO_BUILD_TARGET}/release/rerun_c.lib)
+    set(RERUN_C_BUILD_ARTIFACT ${PROJECT_SOURCE_DIR}/target_pixi/$ENV{CARGO_BUILD_TARGET}/release/rerun_c.lib)
 else()
     message(FATAL_ERROR "Unsupported platform.")
 endif()

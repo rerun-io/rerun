@@ -69,8 +69,12 @@ lint.explicit-preview-rules = true
 
 extend-exclude = [
   # Automatically generated test artifacts
-  "venv/",
+  "target_pixi/",
+  "target_pixi_wasm/",
+  "target_ra/",
+  "target_wasm/",
   "target/",
+  "venv/",
 
   "scripts/ci/compare_path_digest.py",
 
