@@ -12,6 +12,7 @@ publish = false
 
 [dependencies]
 nix = { workspace = true, features = ["signal"] }
+ureq.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
