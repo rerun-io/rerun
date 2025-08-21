@@ -20,39 +20,40 @@ DATASET_NAME = "dataset"
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
 
 def shutdown_process(process):
-
     main_pid = process.pid
 
     # Teardown: kill the specific process and any child processes
     try:
-        # First try to kill the main process
         if psutil.pid_exists(main_pid):
             main_process = psutil.Process(main_pid)
 
             # Get all child processes
             children = main_process.children(recursive=True)
 
-            # Terminate main process
-            # main_process.terminate()
-
             # Terminate children
-            # for child in children:
-            #     try:
-            #         child.terminate()
-            #     except (psutil.NoSuchProcess, psutil.AccessDenied):
-            #         pass
+            for child in children:
+                try:
+                    child.terminate()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
 
-            # # Wait for processes to terminate
-            # gone, still_alive = psutil.wait_procs([main_process] + children, timeout=1)
-            #
-            # # Force kill any remaining processes
-            # for p in still_alive:
-            #     try:
-            #         p.kill()
-            #     except (psutil.NoSuchProcess, psutil.AccessDenied):
-            #         pass
+            if process.stdout:
+                process.stdout.close()
+            if process.stderr:
+                process.stderr.close()
+            if process.stdin:
+                process.stdin.close()
+
+            # Terminate main process
+            process.terminate()
+
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=30)
         else:
-            print("main pid does not exist?")
+            pass
 
     except Exception as e:
         print(f"Error during cleanup: {e}")
@@ -73,8 +74,7 @@ def server_instance():
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,
                                       text=True)
-    time.sleep(3.5)  # Wait for rerun server to start to remove a logged warning
-
+    time.sleep(0.5)  # Wait for rerun server to start to remove a logged warning
 
     client = rr.catalog.CatalogClient(CATALOG_URL)
     dataset = client.get_dataset(name=DATASET_NAME)
