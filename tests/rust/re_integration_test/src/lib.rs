@@ -61,7 +61,7 @@ fn get_free_port() -> u16 {
 
 /// Run `re_integration.py` to load some test data.
 pub fn load_test_data(port: u16) -> String {
-    let url = format!("rerun+http://localhost:{}", port);
+    let url = format!("rerun+http://localhost:{port}");
     let mut script = Command::new("pixi");
     script.args([
         "run",
