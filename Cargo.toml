@@ -12,6 +12,7 @@ members = [
   "run_wasm",
   "tests/rust/log_benchmark",
   "tests/rust/plot_dashboard_stress",
+  "tests/rust/re_integration_test",
   "tests/rust/roundtrips/*",
   "tests/rust/test_*",
 ]
@@ -265,6 +266,7 @@ natord = "1.0.9"
 ndarray = "0.16"
 ndarray-rand = "0.15"
 never = "0.1"
+nix = "0.30"
 nohash-hasher = "0.2"
 notify = { version = "6.1.1", features = ["macos_kqueue"] }
 num-derive = "0.4"
