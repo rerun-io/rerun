@@ -51,16 +51,16 @@ impl TestServer {
 
 impl Drop for TestServer {
     fn drop(&mut self) {
-        sigint_and_wait(&mut self.server);
+        kill_and_wait(&mut self.server);
     }
 }
 
 /// Send SIGINT and wait for the child process to exit successfully.
-pub fn sigint_and_wait(child: &mut Child) {
+pub fn kill_and_wait(child: &mut Child) {
     if let Err(err) = child.kill() {
         eprintln!("Failed to kill process {}: {err}", child.id());
     }
-    child.wait().unwrap();
+    child.wait().expect("Failed to wait on child process");
 }
 
 /// Get a free port from the OS.
