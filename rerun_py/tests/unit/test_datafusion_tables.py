@@ -2,24 +2,28 @@ from __future__ import annotations
 
 import os
 import pathlib
+import subprocess
+import time
+from typing import TYPE_CHECKING
+
 import psutil
 import pyarrow as pa
 import pytest
-import subprocess
-import sys
-import threading
-import time
-
+import rerun as rr
 from datafusion import col, functions as f
 
-import rerun as rr
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from rerun_bindings import DatasetEntry
 
 CATALOG_URL = "rerun+http://localhost:51234"
 DATASET_NAME = "dataset"
 
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
 
-def shutdown_process(process):
+
+def shutdown_process(process: subprocess.Popen[str]) -> None:
     main_pid = process.pid
 
     # Teardown: kill the specific process and any child processes
@@ -60,7 +64,7 @@ def shutdown_process(process):
 
 
 @pytest.fixture(scope="module")
-def server_instance():
+def server_instance() -> Generator[tuple[subprocess.Popen[str], DatasetEntry], None, None]:
     assert DATASET_FILEPATH.is_dir()
 
     env = os.environ.copy()
@@ -69,11 +73,7 @@ def server_instance():
         env["RUST_LOG"] = "warning"
 
     cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH)]
-    server_process = subprocess.Popen(cmd,
-                                      env=env,
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE,
-                                      text=True)
+    server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     time.sleep(0.5)  # Wait for rerun server to start to remove a logged warning
 
     client = rr.catalog.CatalogClient(CATALOG_URL)
@@ -84,7 +84,8 @@ def server_instance():
 
     shutdown_process(server_process)
 
-def test_df_aggregation(server_instance) -> None:
+
+def test_df_aggregation(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:
     (_process, dataset) = server_instance
 
     results = (
@@ -105,7 +106,7 @@ def test_df_aggregation(server_instance) -> None:
     assert results[0][1][0] == pa.scalar(50.0, type=pa.float32())
 
 
-def test_partition_ordering(server_instance) -> None:
+def test_partition_ordering(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:
     (_process, dataset) = server_instance
 
     for time_index in ["time_1", "time_2", "time_3"]:
