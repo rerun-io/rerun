@@ -128,7 +128,7 @@ def test_iterable_any_value() -> None:
 
     assert len(batches) == 2
     assert batches[0].as_arrow_array() == pa.array([SHORT_TEXT], type=pa.string())
-    assert batches[1].as_arrow_array() == pa.array([SHORT_BYTES], type=pa.binary())
+    assert batches[1].as_arrow_array() == pa.array([SHORT_BYTES], type=pa.large_binary())
 
     # Issue #8781 - ensure subsequent calls do not truncate data
     values = rr.AnyValues(str_values=LONG_TEXT, bytes_values=LONG_BYTES)
@@ -136,7 +136,7 @@ def test_iterable_any_value() -> None:
 
     assert len(batches) == 2
     assert batches[0].as_arrow_array() == pa.array([LONG_TEXT], type=pa.string())
-    assert batches[1].as_arrow_array() == pa.array([LONG_BYTES], type=pa.binary())
+    assert batches[1].as_arrow_array() == pa.array([LONG_BYTES], type=pa.large_binary())
 
     # Ensure iterables of these types are handled as arrays
     values = rr.AnyValues(str_values=[SHORT_TEXT, LONG_TEXT], bytes_values=[SHORT_BYTES, LONG_BYTES])
@@ -144,7 +144,7 @@ def test_iterable_any_value() -> None:
 
     assert len(batches) == 2
     assert batches[0].as_arrow_array() == pa.array([SHORT_TEXT, LONG_TEXT], type=pa.string())
-    assert batches[1].as_arrow_array() == pa.array([SHORT_BYTES, LONG_BYTES], type=pa.binary())
+    assert batches[1].as_arrow_array() == pa.array([SHORT_BYTES, LONG_BYTES], type=pa.large_binary())
 
 
 def test_any_values_numpy() -> None:

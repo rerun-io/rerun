@@ -28,30 +28,39 @@ class BlobExt:
         # numpy fast path:
         elif isinstance(data, np.ndarray):
             if len(data) == 0:
-                return pa.array([], type=pa.binary())
+                return pa.array([], type=pa.large_binary())
             elif data.ndim == 1:
-                return pa.array([np.array(data, dtype=np.uint8).tobytes()], type=pa.binary())
+                return pa.array([np.array(data, dtype=np.uint8).tobytes()], type=pa.large_binary())
             else:
-                return pa.array([np.array(arr, dtype=np.uint8).tobytes() for arr in data], type=pa.binary())
+                return pa.array([np.array(arr, dtype=np.uint8).tobytes() for arr in data], type=pa.large_binary())
 
         elif isinstance(data, Blob):
-            return pa.array([data.data], type=pa.binary())
+            return pa.array([data.data], type=pa.large_binary())
 
         elif isinstance(data, bytes):
-            return pa.array([data], type=pa.binary())
+            return pa.array([data], type=pa.large_binary())
 
         elif hasattr(data, "read"):
-            return pa.array([data.read()], type=pa.binary())
+            return pa.array([data.read()], type=pa.large_binary())
 
         elif isinstance(data, Sequence):
             if len(data) == 0:
-                return pa.array([], type=pa.binary())
+                return pa.array([], type=pa.large_binary())
             elif isinstance(data[0], Blob):
-                return pa.array([np.array(datum.data, dtype=np.uint8).tobytes() for datum in data], type=pa.binary())  # type: ignore[union-attr]
+                return pa.array(
+                    [
+                        np.array(
+                            datum.data,  # type: ignore[union-attr]
+                            dtype=np.uint8,
+                        ).tobytes()
+                        for datum in data
+                    ],
+                    type=pa.large_binary(),
+                )
             elif isinstance(data[0], bytes):
-                return pa.array(list(data), type=pa.binary())  # type: ignore[arg-type]
+                return pa.array(list(data), type=pa.large_binary())  # type: ignore[arg-type]
             else:
-                return pa.array([np.array(datum, dtype=np.uint8).tobytes() for datum in data], type=pa.binary())
+                return pa.array([np.array(datum, dtype=np.uint8).tobytes() for datum in data], type=pa.large_binary())
 
         else:
-            return pa.array([np.array(data.data, dtype=np.uint8).tobytes()], type=pa.binary())
+            return pa.array([np.array(data.data, dtype=np.uint8).tobytes()], type=pa.large_binary())

@@ -2822,7 +2822,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
         DataType::Atomic(AtomicDataType::Float32) => "pa.float32()".to_owned(),
         DataType::Atomic(AtomicDataType::Float64) => "pa.float64()".to_owned(),
 
-        DataType::Binary => "pa.binary()".to_owned(),
+        DataType::Binary => "pa.large_binary()".to_owned(),
 
         DataType::Utf8 => "pa.utf8()".to_owned(),
 

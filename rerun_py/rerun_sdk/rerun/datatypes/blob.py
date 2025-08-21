@@ -43,7 +43,7 @@ BlobArrayLike = Union[Blob, Sequence[BlobLike], bytes, npt.NDArray[np.uint8]]
 
 
 class BlobBatch(BaseBatch[BlobArrayLike]):
-    _ARROW_DATATYPE = pa.binary()
+    _ARROW_DATATYPE = pa.large_binary()
 
     @staticmethod
     def _native_to_pa_array(data: BlobArrayLike, data_type: pa.DataType) -> pa.Array:
