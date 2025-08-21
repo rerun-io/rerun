@@ -40,14 +40,10 @@ pub enum EncodeError {
     MissingField(&'static str),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<EncodeError>() <= 48,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<EncodeError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<EncodeError>() <= 48,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 impl From<ChunkError> for EncodeError {
     fn from(err: ChunkError) -> Self {
