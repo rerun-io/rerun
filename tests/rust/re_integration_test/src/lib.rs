@@ -57,14 +57,10 @@ impl Drop for TestServer {
 
 /// Send SIGINT and wait for the child process to exit successfully.
 pub fn sigint_and_wait(child: &mut Child) {
-    if let Err(err) = nix::sys::signal::kill(
-        nix::unistd::Pid::from_raw(child.id() as i32),
-        nix::sys::signal::Signal::SIGINT,
-    ) {
-        eprintln!("Failed to send SIGINT to process {}: {err}", child.id());
+    if let Err(err) = child.kill() {
+        eprintln!("Failed to kill process {}: {err}", child.id());
     }
-
-    child.wait_for_success();
+    child.wait().unwrap();
 }
 
 /// Get a free port from the OS.
