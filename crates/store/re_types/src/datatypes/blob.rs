@@ -33,7 +33,7 @@ impl ::re_types_core::Loggable for Blob {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow::datatypes::*;
-        DataType::Binary
+        DataType::LargeBinary
     }
 
     fn to_arrow_opt<'a>(
@@ -88,39 +88,52 @@ impl ::re_types_core::Loggable for Blob {
         use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<BinaryArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.datatypes.Blob#data")?;
-            let arrow_data_buf = arrow_data.values();
-            let offsets = arrow_data.offsets();
-            ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
-                .map(|elem| {
-                    elem.map(|window| {
-                        let start = window[0] as usize;
-                        let end = window[1] as usize;
-                        let len = end - start;
-                        if arrow_data_buf.len() < end {
-                            return Err(DeserializationError::offset_slice_oob(
-                                (start, end),
-                                arrow_data_buf.len(),
-                            ));
-                        }
+            fn extract_from_binary<O>(
+                arrow_data: &arrow::array::GenericByteArray<arrow::datatypes::GenericBinaryType<O>>,
+            ) -> DeserializationResult<std::vec::Vec<Option<arrow::buffer::Buffer>>>
+            where
+                O: ::arrow::array::OffsetSizeTrait,
+            {
+                use ::arrow::array::Array as _;
+                use ::re_types_core::arrow_zip_validity::ZipValidity;
+                let arrow_data_buf = arrow_data.values();
+                let offsets = arrow_data.offsets();
+                ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
+                    .map(|elem| {
+                        elem.map(|window| {
+                            let start = window[0].as_usize();
+                            let end = window[1].as_usize();
+                            let len = end - start;
+                            if arrow_data_buf.len() < end {
+                                return Err(DeserializationError::offset_slice_oob(
+                                    (start, end),
+                                    arrow_data_buf.len(),
+                                ));
+                            }
 
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = arrow_data_buf.slice_with_length(start, len);
-                        Ok(data)
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            let data = arrow_data_buf.slice_with_length(start, len);
+                            Ok(data)
+                        })
+                        .transpose()
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.datatypes.Blob#data")?
-                .into_iter()
+                    .collect::<DeserializationResult<Vec<Option<_>>>>()
+            }
+            if let Some(arrow_data) = arrow_data.as_any().downcast_ref::<BinaryArray>() {
+                extract_from_binary(arrow_data)
+                    .with_context("rerun.datatypes.Blob#data")?
+                    .into_iter()
+            } else if let Some(arrow_data) = arrow_data.as_any().downcast_ref::<LargeBinaryArray>()
+            {
+                extract_from_binary(arrow_data)
+                    .with_context("rerun.datatypes.Blob#data")?
+                    .into_iter()
+            } else {
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                return Err(DeserializationError::datatype_mismatch(expected, actual))
+                    .with_context("rerun.datatypes.Blob#data");
+            }
         }
         .map(|v| v.ok_or_else(DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))

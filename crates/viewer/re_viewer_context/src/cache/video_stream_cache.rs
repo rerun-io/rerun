@@ -325,9 +325,7 @@ fn read_sample_from_binary_array<O: arrow::array::OffsetSizeTrait>(
     video_descr: &mut re_video::VideoDataDescription,
     chunk_buffers: &mut StableIndexDeque<SampleBuffer>,
     binary_array: &arrow::array::GenericByteArray<arrow::datatypes::GenericBinaryType<O>>,
-) where
-    usize: TryFrom<O>,
-{
+) {
     // The underlying data within a chunk is logically a Vec<Vec<Blob>>,
     // where the inner Vec always has a len=1, because we're dealing with a "mono-component"
     // (each VideoStream has exactly one VideoSample instance per time)`.
@@ -402,7 +400,7 @@ fn read_sample_from_binary_array<O: arrow::array::OffsetSizeTrait>(
                 }
 
                 let sample_idx = sample_base_idx + start;
-                let byte_span = Span { start: usize::try_from(offsets[start]).unwrap_or_default(), len: lengths[start] };
+                let byte_span = Span { start: offsets[start].as_usize(), len: lengths[start] };
                 let sample_bytes = &buffer[byte_span.range()];
 
                 // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
