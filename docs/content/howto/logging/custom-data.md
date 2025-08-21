@@ -9,8 +9,8 @@ Rerun comes with many pre-built [Types](../../reference/types.md) that you can u
 For Python and Rust we have helpers for this, called `AnyValues`, allowing you to easily attach custom values to any entity instance.
 You find the documentation for these helpers here:
 
-* [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/)
-* [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html)
+-   [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/)
+-   [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html)
 
 ```python
 rr.log(
@@ -20,13 +20,6 @@ rr.log(
         homepage="https://www.rerun.io",
         repository="https://github.com/rerun-io/rerun",
     )
-    # Using Rerun's builtin components.
-    .with_field(
-        rr.ComponentDescriptor("confidence", component_type=rr.components.ScalarBatch._COMPONENT_TYPE), [1.2, 3.4, 5.6]
-    )
-    .with_field(
-        rr.ComponentDescriptor("description", component_type=rr.components.TextBatch._COMPONENT_TYPE), "Bla bla bla…"
-    ),
 )
 ```
 
