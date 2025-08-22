@@ -2255,7 +2255,7 @@ fn quote_append_single_value_to_builder(
         }
         Type::Binary => {
             quote!(
-                ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access.data(), static_cast<int32_t>(#value_access.size())));
+                ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access.data(), static_cast<int64_t>(#value_access.size())));
             )
         }
         Type::Float16 => {
@@ -2670,7 +2670,7 @@ fn quote_arrow_datatype(
         Type::Float16 => quote!(arrow::float16()),
         Type::Float32 => quote!(arrow::float32()),
         Type::Float64 => quote!(arrow::float64()),
-        Type::Binary => quote!(arrow::binary()),
+        Type::Binary => quote!(arrow::large_binary()),
         Type::String => quote!(arrow::utf8()),
         Type::Bool => quote!(arrow::boolean()),
 

@@ -10,7 +10,7 @@ namespace rerun::datatypes {}
 
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<datatypes::Blob>::arrow_datatype() {
-        static const auto datatype = arrow::binary();
+        static const auto datatype = arrow::large_binary();
         return datatype;
     }
 
@@ -51,7 +51,7 @@ namespace rerun {
         for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
             ARROW_RETURN_NOT_OK(builder->Append(
                 elements[elem_idx].data.data(),
-                static_cast<int32_t>(elements[elem_idx].data.size())
+                static_cast<int64_t>(elements[elem_idx].data.size())
             ));
         }
 
