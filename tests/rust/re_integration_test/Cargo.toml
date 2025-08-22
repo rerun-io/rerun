@@ -19,7 +19,6 @@ re_server.workspace = true
 re_grpc_server.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
-ureq.workspace = true           #
 
 [dev-dependencies]
 re_viewer = { workspace = true, features = ["testing"] }

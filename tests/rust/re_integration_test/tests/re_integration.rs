@@ -1,13 +1,12 @@
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
-use re_integration_test::{TestServer, load_test_data};
+use re_integration_test::TestServer;
 use re_viewer::viewer_test_utils;
 
 #[cfg(not(windows))] // TODO(#10971): Fix it
 #[tokio::test]
 pub async fn dataset_ui_test() {
-    let server = TestServer::spawn().await;
-    let _ = load_test_data(server.port()).await;
+    let server = TestServer::spawn().await.with_test_data().await;
 
     let mut harness = viewer_test_utils::viewer_harness();
     let mut snapshot_results = SnapshotResults::new();

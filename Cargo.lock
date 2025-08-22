@@ -7807,7 +7807,6 @@ dependencies = [
  "re_viewer",
  "tempfile",
  "tokio",
- "ureq",
 ]
 
 [[package]]
