@@ -1,4 +1,4 @@
-use re_grpc_client::client;
+use re_grpc_client::ConnectionRegistry;
 use re_protos::catalog::v1alpha1::EntryFilter;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::manifest_registry::v1alpha1::ext::DataSource;
@@ -29,9 +29,7 @@ pub async fn load_test_data(port: u16) -> Result<(), Box<dyn Error>> {
         port,
         scheme: Scheme::RerunHttp,
     };
-    let client = client(origin, None).await.expect("Failed to connect");
-
-    let mut client = re_grpc_client::ConnectionClient::new(client);
+    let mut client = ConnectionRegistry::new().client(origin).await?;
 
     assert!(
         client
