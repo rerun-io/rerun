@@ -2,8 +2,9 @@
 
 use std::net::{SocketAddr, TcpListener};
 use std::process::Command;
+use std::time::Duration;
 
-use re_server::{ServerBuilder, ServerHandle};
+use re_server::{FrontendHandlerBuilder, ServerBuilder, ServerHandle};
 use tokio::task::spawn_blocking;
 use ureq::OrAnyStatus as _;
 
@@ -19,8 +20,18 @@ impl TestServer {
 
         println!("Spawning server on port {port}");
 
-        let server_builder =
-            ServerBuilder::default().with_address(SocketAddr::from(([0, 0, 0, 0], port)));
+        let frontend_server = {
+            use re_protos::frontend::v1alpha1::frontend_service_server::FrontendServiceServer;
+            let mut builder = FrontendHandlerBuilder::new();
+            FrontendServiceServer::new(builder.build())
+                .max_decoding_message_size(re_grpc_server::MAX_DECODING_MESSAGE_SIZE)
+                .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE)
+        };
+
+        let server_builder = ServerBuilder::default()
+            .with_address(SocketAddr::from(([0, 0, 0, 0], port)))
+            .with_service(frontend_server);
+
         let server = server_builder.build();
         let mut server_handle = server.start();
 
@@ -62,6 +73,8 @@ impl TestServer {
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
         assert!(success, "Failed to connect to rerun server");
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
 
         println!("Server answers on port {port}");
 

@@ -7800,6 +7800,8 @@ dependencies = [
  "egui_kittest",
  "insta",
  "nix",
+ "re_grpc_server",
+ "re_protos",
  "re_server",
  "re_viewer",
  "tokio",

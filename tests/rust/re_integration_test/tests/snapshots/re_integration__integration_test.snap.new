@@ -1,6 +1,0 @@
----
-source: tests/rust/re_integration_test/tests/re_integration.rs
-assertion_line: 11
-expression: test_output
----
-
