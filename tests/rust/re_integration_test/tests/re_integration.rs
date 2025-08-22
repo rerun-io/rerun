@@ -1,22 +1,7 @@
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
-use insta::with_settings;
 use re_integration_test::{TestServer, load_test_data};
 use re_viewer::viewer_test_utils;
-
-#[tokio::test]
-pub async fn integration_test() {
-    let server = TestServer::spawn().await;
-    let test_output = load_test_data(server.port()).await;
-
-    with_settings!({
-        filters => vec![
-            (r"Re-importing rerun from: .+", "Re-importing rerun from: /fake/path"),
-        ]
-    }, {
-        insta::assert_snapshot!(test_output);
-    });
-}
 
 #[cfg(not(windows))] // TODO(#10971): Fix it
 #[tokio::test]

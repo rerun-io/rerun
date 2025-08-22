@@ -7798,11 +7798,14 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_kittest",
- "insta",
+ "re_grpc_client",
  "re_grpc_server",
  "re_protos",
+ "re_sdk",
  "re_server",
+ "re_uri",
  "re_viewer",
+ "tempfile",
  "tokio",
  "ureq",
 ]
