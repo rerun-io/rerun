@@ -576,6 +576,7 @@ impl App {
                         SmartChannelSource::RrdHttpStream { .. } => true,
 
                         // Specific GRPC streams should stop streaming when closing them.
+                        // TODO(#10967): We still stream in some data after that.
                         SmartChannelSource::RedapGrpcStream { .. } => true,
 
                         // Don't close generic connections (like to an SDK) that may feed in different recordings over time.
