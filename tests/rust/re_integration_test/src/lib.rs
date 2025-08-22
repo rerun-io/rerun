@@ -118,9 +118,11 @@ pub async fn load_test_data(port: u16) -> String {
         ]);
         let output = script
             .output()
-            .expect("Failed to run re_integration.py script")
-            .stdout;
-        String::from_utf8(output).expect("Failed to convert output to string")
+            .expect("Failed to run re_integration.py script");
+        let stderr = String::from_utf8(output.stderr).expect("Failed to convert stderr to string");
+        let stdout = String::from_utf8(output.stdout).expect("Failed to convert output to string");
+
+        format!("{}\n\n{}", stdout.trim(), stderr.trim())
     })
     .await
     .expect("Failed to run re_integration.py script")
