@@ -7799,7 +7799,6 @@ dependencies = [
  "egui",
  "egui_kittest",
  "insta",
- "nix",
  "re_grpc_server",
  "re_protos",
  "re_server",
