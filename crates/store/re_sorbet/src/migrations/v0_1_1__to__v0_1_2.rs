@@ -4,8 +4,7 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        Array, ArrayRef, AsArray as _, BinaryArray, ListArray, RecordBatch, RecordBatchOptions,
-        UInt8Array,
+        Array, ArrayRef, AsArray as _, ListArray, RecordBatch, RecordBatchOptions, UInt8Array,
     },
     datatypes::{DataType, Field, FieldRef, Schema},
 };
@@ -117,14 +116,21 @@ fn convert_list_list_u8_to_list_binary(list_array: &dyn Array) -> Option<ListArr
     let list_array = list_array.as_list_opt()?;
 
     // The inner List[u8] array
-    let inner_list_array = list_array.values().as_list_opt()?;
+    let inner_list_array: &ListArray = list_array.values().as_list_opt()?;
 
     // The underlying u8 values
     let u8_array: &UInt8Array = inner_list_array.values().as_primitive_opt()?;
 
+    // We consistently use 64-bit offsets for binary data in order to keep our backwards-compatibility checks simpler.
     // Create the binary array reusing existing buffers
-    let binary_array = BinaryArray::try_new(
-        inner_list_array.offsets().clone(),
+    let binary_array = arrow::array::LargeBinaryArray::try_new(
+        arrow::buffer::OffsetBuffer::new(
+            inner_list_array
+                .offsets()
+                .iter()
+                .map(|&o| o as i64)
+                .collect(),
+        ),
         u8_array.values().clone().into_inner(),
         inner_list_array.nulls().cloned(),
     )
@@ -132,7 +138,7 @@ fn convert_list_list_u8_to_list_binary(list_array: &dyn Array) -> Option<ListArr
 
     // Create the outer list array with binary inner type
     let outer_list = ListArray::try_new(
-        Arc::new(Field::new("item", DataType::Binary, true)),
+        Arc::new(Field::new("item", DataType::LargeBinary, true)),
         list_array.offsets().clone(),
         Arc::new(binary_array),
         list_array.nulls().cloned(),
