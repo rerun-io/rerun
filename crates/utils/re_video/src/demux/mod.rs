@@ -788,7 +788,7 @@ impl SampleMetadata {
 /// Errors that can occur when loading a video.
 #[derive(thiserror::Error, Debug)]
 pub enum VideoLoadError {
-    #[error("Failed to determine media type from data: {0}")]
+    #[error("MP4 error: {0}")]
     ParseMp4(#[from] re_mp4::Error),
 
     #[error("Video file has no video tracks")]
