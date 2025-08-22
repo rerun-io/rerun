@@ -1,5 +1,6 @@
 use egui::{Rangef, RichText};
 use std::collections::BTreeMap;
+use vec1::Vec1;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
@@ -80,17 +81,18 @@ impl DataUi for InstancePath {
         // Keep previously established order.
         let mut components_by_archetype: BTreeMap<
             Option<ArchetypeName>,
-            Vec<(ComponentDescriptor, UnitChunkShared)>,
+            Vec1<(ComponentDescriptor, UnitChunkShared)>,
         > = components_by_archetype
             .into_iter()
-            .map(|(archetype, components)| {
-                (
-                    archetype,
+            .filter_map(|(archetype, components)| {
+                Vec1::try_from_vec(
                     components
                         .into_iter()
                         .filter_map(|c| query_results.components.remove(&c).map(|chunk| (c, chunk)))
                         .collect(),
                 )
+                .ok()
+                .map(|components| (archetype, components))
             })
             .collect();
 
@@ -177,7 +179,7 @@ fn component_list_ui(
     instance: &re_log_types::Instance,
     components_by_archetype: &BTreeMap<
         Option<ArchetypeName>,
-        Vec<(ComponentDescriptor, UnitChunkShared)>,
+        Vec1<(ComponentDescriptor, UnitChunkShared)>,
     >,
 ) {
     let interactive = ui_layout != UiLayout::Tooltip;

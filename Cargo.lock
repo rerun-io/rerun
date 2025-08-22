@@ -7507,6 +7507,7 @@ dependencies = [
  "re_viewer_context",
  "rexif",
  "unindent",
+ "vec1",
 ]
 
 [[package]]
