@@ -1,6 +1,6 @@
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
-use re_integration_test::{TestServer, load_test_data};
+use re_integration_test::TestServer;
 use re_viewer::viewer_test_utils;
 
 #[cfg(not(windows))] // TODO(emilk): fix
