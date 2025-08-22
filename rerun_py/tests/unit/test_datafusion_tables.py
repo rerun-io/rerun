@@ -99,7 +99,18 @@ def server_instance() -> Generator[tuple[subprocess.Popen[str], DatasetEntry], N
     cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH)]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    wait_for_server_ready()
+    try:
+        wait_for_server_ready()
+    except Exception as e:
+        print(f"Error during waiting for server to start: {e}")
+        if server_process.stdout:
+            print("--- Server STDOUT ---")
+            for line in server_process.stdout:
+                print(line.strip())
+    if server_process.stderr:
+        print("--- Server STDERR ---")
+        for line in server_process.stderr:
+            print(line.strip())
 
     client = rr.catalog.CatalogClient(CATALOG_URL)
     dataset = client.get_dataset(name=DATASET_NAME)
