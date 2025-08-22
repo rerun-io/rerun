@@ -16,7 +16,6 @@ re_protos.workspace = true
 re_sdk.workspace = true
 re_uri.workspace = true
 re_server.workspace = true
-re_grpc_server.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 
