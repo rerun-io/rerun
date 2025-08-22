@@ -18,7 +18,8 @@ pub fn integration_test() {
     });
 }
 
-// #[tokio::test] // TODO(emilk): re-enable when they actually work
+#[cfg(not(windows)) // TODO(emilk): fix
+#[tokio::test]
 pub async fn dataset_ui_test() {
     let server = TestServer::spawn();
     load_test_data(server.port());
