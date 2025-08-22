@@ -3,9 +3,9 @@
 mod test_data;
 
 use re_grpc_client::{ConnectionClient, ConnectionError, ConnectionRegistry};
-use re_server::{FrontendHandlerBuilder, ServerBuilder, ServerHandle};
+use re_server::ServerHandle;
 use re_uri::external::url::Host;
-use std::net::{SocketAddr, TcpListener};
+use std::net::TcpListener;
 
 pub struct TestServer {
     _server_handle: ServerHandle,
@@ -17,29 +17,15 @@ impl TestServer {
         // Get a random free port
         let port = get_free_port();
 
-        println!("Spawning server on port {port}");
-
-        let frontend_server = {
-            use re_protos::frontend::v1alpha1::frontend_service_server::FrontendServiceServer;
-            let builder = FrontendHandlerBuilder::new();
-            FrontendServiceServer::new(builder.build())
-                .max_decoding_message_size(re_grpc_server::MAX_DECODING_MESSAGE_SIZE)
-                .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE)
+        let args = re_server::Args {
+            addr: "127.0.0.1".to_owned(),
+            port,
+            datasets: vec![],
         };
-
-        let server_builder = ServerBuilder::default()
-            .with_address(SocketAddr::from(([0, 0, 0, 0], port)))
-            .with_service(frontend_server);
-
-        let server = server_builder.build();
-        let mut server_handle = server.start();
-
-        server_handle
-            .wait_for_ready()
+        let server_handle = args
+            .create_server_handle()
             .await
-            .expect("Can't start server");
-
-        println!("Server ready on port {port}");
+            .expect("Can't create server");
 
         Self {
             _server_handle: server_handle,
