@@ -110,15 +110,15 @@ namespace rerun::archetypes {
             int32_t num_bytes_i32;
             bytes = binary_array->GetValue(0, &num_bytes_i32);
             num_bytes = static_cast<int64_t>(num_bytes_i32);
-        } else if (auto binary_array = std::dynamic_pointer_cast<arrow::LargeBinaryArray>(array)) {
-            if (binary_array->length() != 1) {
+        } else if (auto large_binary_array = std::dynamic_pointer_cast<arrow::LargeBinaryArray>(array)) {
+            if (large_binary_array->length() != 1) {
                 return Error(
                     ErrorCode::InvalidComponent,
                     "Video blob array should be a single video file"
                 );
             }
 
-            bytes = binary_array->GetValue(0, &num_bytes);
+            bytes = large_binary_array->GetValue(0, &num_bytes);
         } else {
             return Error(ErrorCode::InvalidComponent, "Video blob array is not a binary array");
         }
