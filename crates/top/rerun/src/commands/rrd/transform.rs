@@ -146,8 +146,11 @@ impl ScalarExtractorUdf {
             type_signature: datafusion_expr::TypeSignature::ArraySignature(
                 datafusion_expr::ArrayFunctionSignature::Array {
                     arguments: vec![
-                        ArrayFunctionArgument::Array, // column
-                        ArrayFunctionArgument::Array, // archetype
+                        ArrayFunctionArgument::Array,  // column
+                        ArrayFunctionArgument::Array,  // xpath
+                        ArrayFunctionArgument::String, // archetype
+                        ArrayFunctionArgument::String, // component identifier
+                        ArrayFunctionArgument::String, // component type
                     ],
                     array_coercion: None,
                 },
@@ -157,66 +160,94 @@ impl ScalarExtractorUdf {
     }
 }
 
-// impl ScalarUDFImpl for ScalarExtractorUdf {
-//     fn as_any(&self) -> &dyn std::any::Any {
-//         self
-//     }
+impl ScalarUDFImpl for ScalarExtractorUdf {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 
-//     fn name(&self) -> &str {
-//         "scalar_extract"
-//     }
+    fn name(&self) -> &str {
+        "scalar_extract"
+    }
 
-//     fn signature(&self) -> &datafusion_expr::Signature {
-//         use std::sync::OnceLock;
-//         static SIGNATURE: OnceLock<Signature> = OnceLock::new();
-//         SIGNATURE.get_or_init(|| Self::signature())
-//     }
+    fn signature(&self) -> &datafusion_expr::Signature {
+        use std::sync::OnceLock;
+        static SIGNATURE: OnceLock<Signature> = OnceLock::new();
+        SIGNATURE.get_or_init(|| Self::signature())
+    }
 
-//     fn return_type(&self, arg_types: &[DataType]) -> datafusion::error::Result<DataType> {
-//         unreachable!() // we implement `return_field_from_args`
-//     }
+    fn return_type(&self, arg_types: &[DataType]) -> datafusion::error::Result<DataType> {
+        unreachable!() // we implement `return_field_from_args`
+    }
 
-//     fn return_field_from_args(
-//         &self,
-//         args: ReturnFieldArgs,
-//     ) -> datafusion::error::Result<Arc<Field>> {
-//         let ReturnFieldArgs {
-//             arg_fields,
-//             scalar_arguments,
-//         } = args;
-//         let [list_component_batch, xpath] = arg_fields else {
-//             return plan_err!("Expected arguments");
-//         };
+    fn return_field_from_args(
+        &self,
+        args: ReturnFieldArgs,
+    ) -> datafusion::error::Result<Arc<Field>> {
+        let ReturnFieldArgs {
+            arg_fields,
+            scalar_arguments,
+        } = args;
+        let [list_component_batch, xpath] = arg_fields else {
+            return plan_err!("Expected arguments");
+        };
 
-//         dbg!(xpath);
+        panic!("LOOK HERE: {xpath:?}");
 
-//         // TODO: Add existing metadata on the initial column
-//         let field = Field::new("item", arg_fields[0].data_type().clone(), true).with_metadata(
-//             [
-//                 ("rerun:archetype".to_owned(), archetype_str.to_owned()),
-//                 ("rerun:component".to_owned(), component_str.to_owned()),
-//                 (
-//                     "rerun:component_type".to_owned(),
-//                     component_type_str.to_owned(),
-//                 ),
-//             ]
-//             .into(),
-//         );
+        let [Some(archetype), Some(identifier), Some(component_type)] = scalar_arguments else {
+            return plan_err!("Expected arguments");
+        };
 
-//         Ok(Arc::new(field))
-//     }
+        let archetype_str = archetype
+            .try_as_str()
+            .ok_or_else(|| {
+                datafusion::error::DataFusionError::Plan("Archetype must be a string".to_string())
+            })?
+            .unwrap();
+        let component_str = identifier
+            .try_as_str()
+            .ok_or_else(|| {
+                datafusion::error::DataFusionError::Plan(
+                    "Component identifier must be a string".to_string(),
+                )
+            })?
+            .unwrap();
+        let component_type_str = component_type
+            .try_as_str()
+            .ok_or_else(|| {
+                datafusion::error::DataFusionError::Plan(
+                    "Component type must be a string".to_string(),
+                )
+            })?
+            .unwrap();
 
-//     fn invoke_with_args(
-//         &self,
-//         args: ScalarFunctionArgs,
-//     ) -> datafusion::error::Result<datafusion_expr::ColumnarValue> {
-//         args.args.first().cloned().ok_or_else(|| {
-//             datafusion::error::DataFusionError::Plan(
-//                 "invalid number of arguments: missing component".to_string(),
-//             )
-//         })
-//     }
-// }
+        // TODO: Add existing metadata on the initial column
+        let field = Field::new("item", list_component_batch.data_type().clone(), true)
+            .with_metadata(
+                [
+                    ("rerun:archetype".to_owned(), archetype_str.to_owned()),
+                    ("rerun:component".to_owned(), component_str.to_owned()),
+                    (
+                        "rerun:component_type".to_owned(),
+                        component_type_str.to_owned(),
+                    ),
+                ]
+                .into(),
+            );
+
+        Ok(Arc::new(field))
+    }
+
+    fn invoke_with_args(
+        &self,
+        args: ScalarFunctionArgs,
+    ) -> datafusion::error::Result<datafusion_expr::ColumnarValue> {
+        args.args.first().cloned().ok_or_else(|| {
+            datafusion::error::DataFusionError::Plan(
+                "invalid number of arguments: missing component".to_string(),
+            )
+        })
+    }
+}
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct TransformCommand {
@@ -344,7 +375,7 @@ fn process_messages(
     let tokio_rt = tokio::runtime::Handle::current();
 
     df_ctx.register_udf(ScalarUDF::from(ComponentDescriptorUdf::new()));
-    // df_ctx.register_udf(ScalarUDF::from(ScalarExtractorUdf::new()));
+    df_ctx.register_udf(ScalarUDF::from(ScalarExtractorUdf::new()));
 
     // TODO(cmc): might want to make this configurable at some point.
     let (tx_encoder, rx_encoder) = crossbeam::channel::bounded(100);
@@ -377,7 +408,7 @@ fn process_messages(
                                         *record_batch = new_batch;
                                     }
                                     Err(err) => {
-                                        re_log::error!(err = re_error::format(err));
+                                        re_log::error_once!("{}", re_error::format(err));
                                         is_success = false;
                                     }
                                 }
