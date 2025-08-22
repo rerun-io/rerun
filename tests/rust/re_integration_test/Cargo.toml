@@ -13,13 +13,14 @@ publish = false
 [dependencies]
 nix = { workspace = true, features = ["signal"] }
 ureq.workspace = true
+re_server.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
 re_viewer = { workspace = true, features = ["testing"] }
 egui_kittest.workspace = true
 egui.workspace = true
-tokio.workspace = true
 
 [lints]
 workspace = true
