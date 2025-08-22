@@ -78,6 +78,16 @@ impl DataUi for InstancePath {
                 .cache()
                 .latest_at(query, entity_path, &unordered_components);
 
+        // Don't care about empty results here.
+        query_results.components.retain(|desc, chunk| {
+            // If there's only a single row, make sure that row isn't empty.
+            dbg!(&chunk);
+            chunk.num_rows() > 1
+                || chunk
+                    .raw_component_array(desc)
+                    .is_some_and(|arr| !arr.is_empty())
+        });
+
         // Keep previously established order.
         let mut components_by_archetype: BTreeMap<
             Option<ArchetypeName>,
@@ -133,11 +143,13 @@ impl DataUi for InstancePath {
             // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
             // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
             if !self.is_all() {
-                for components in components_by_archetype.values_mut() {
-                    components.retain(|(component, _chunk)| {
-                        component.component_type != Some(components::GraphEdge::name())
-                    });
-                }
+                components_by_archetype.retain(|_, components| {
+                    components
+                        .retain(|(component, _chunk)| {
+                            component.component_type != Some(components::GraphEdge::name())
+                        })
+                        .is_ok() // Empty component lists fail creating and are removed by the `retain` above.
+                });
             }
 
             component_list_ui(
