@@ -67,7 +67,7 @@ fn arrow_array_builder_type_and_declaration(
             ident
         }
         Type::Binary => {
-            let ident = format_ident!("BinaryBuilder");
+            let ident = format_ident!("LargeBinaryBuilder");
             declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
             ident
         }

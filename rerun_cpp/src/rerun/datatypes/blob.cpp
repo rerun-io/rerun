@@ -24,7 +24,7 @@ namespace rerun {
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
             RR_RETURN_NOT_OK(Loggable<datatypes::Blob>::fill_arrow_array_builder(
-                static_cast<arrow::BinaryBuilder*>(builder.get()),
+                static_cast<arrow::LargeBinaryBuilder*>(builder.get()),
                 instances,
                 num_instances
             ));
@@ -35,7 +35,7 @@ namespace rerun {
     }
 
     rerun::Error Loggable<datatypes::Blob>::fill_arrow_array_builder(
-        arrow::BinaryBuilder* builder, const datatypes::Blob* elements, size_t num_elements
+        arrow::LargeBinaryBuilder* builder, const datatypes::Blob* elements, size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");

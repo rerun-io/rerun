@@ -93,19 +93,35 @@ namespace rerun::archetypes {
         if (!blob.has_value()) {
             return std::vector<std::chrono::nanoseconds>();
         }
-        auto binary_array = std::dynamic_pointer_cast<arrow::BinaryArray>(blob.value().array);
-        if (!binary_array) {
+
+        auto& array = blob.value().array;
+
+        int64_t num_bytes;
+        const uint8_t* bytes;
+
+        if (auto binary_array = std::dynamic_pointer_cast<arrow::BinaryArray>(array)) {
+            if (binary_array->length() != 1) {
+                return Error(
+                    ErrorCode::InvalidComponent,
+                    "Video blob array should be a single video file"
+                );
+            }
+
+            int32_t num_bytes_i32;
+            bytes = binary_array->GetValue(0, &num_bytes_i32);
+            num_bytes = static_cast<int64_t>(num_bytes_i32);
+        } else if (auto binary_array = std::dynamic_pointer_cast<arrow::LargeBinaryArray>(array)) {
+            if (binary_array->length() != 1) {
+                return Error(
+                    ErrorCode::InvalidComponent,
+                    "Video blob array should be a single video file"
+                );
+            }
+
+            bytes = binary_array->GetValue(0, &num_bytes);
+        } else {
             return Error(ErrorCode::InvalidComponent, "Video blob array is not a binary array");
         }
-        if (binary_array->length() != 1) {
-            return Error(
-                ErrorCode::InvalidComponent,
-                "Video blob array should be a single video file"
-            );
-        }
-
-        int32_t num_bytes;
-        const uint8_t* bytes = binary_array->GetValue(0, &num_bytes);
 
         rr_string media_type_c = detail::to_rr_string(std::nullopt);
         if (media_type.has_value()) {
