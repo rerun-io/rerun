@@ -6,8 +6,7 @@ use re_viewer::viewer_test_utils;
 #[cfg(not(windows))] // TODO(emilk): fix
 #[tokio::test]
 pub async fn dataset_ui_test() {
-    let server = TestServer::spawn();
-    load_test_data(server.port()).await;
+    let server = TestServer::spawn().with_test_data().await;
 
     let mut harness = viewer_test_utils::viewer_harness();
     let mut snapshot_results = SnapshotResults::new();

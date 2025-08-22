@@ -5,6 +5,8 @@ mod test_data;
 use std::net::TcpListener;
 use std::process::{Child, Command, Stdio};
 
+use re_grpc_client::{ConnectionClient, ConnectionError, ConnectionRegistry};
+use re_uri::external::url::Host;
 use ureq::OrAnyStatus as _;
 
 pub struct TestServer {
@@ -46,8 +48,29 @@ impl TestServer {
         Self { server, port }
     }
 
+    pub async fn with_test_data(mut self) -> Self {
+        self.add_test_data().await;
+        self
+    }
+
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    pub async fn client(&self) -> Result<ConnectionClient, ConnectionError> {
+        let origin = re_uri::Origin {
+            host: Host::Domain("localhost".to_owned()),
+            port: self.port,
+            scheme: re_uri::Scheme::RerunHttp,
+        };
+        ConnectionRegistry::new().client(origin).await
+    }
+
+    pub async fn add_test_data(&self) {
+        let client = self.client().await.expect("Failed to connect");
+        test_data::load_test_data(client)
+            .await
+            .expect("Failed to load test data");
     }
 }
 
@@ -70,13 +93,6 @@ fn get_free_port() -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to a random port");
     let addr = listener.local_addr().expect("Failed to get local address");
     addr.port()
-}
-
-/// Run `re_integration.py` to load some test data.
-pub async fn load_test_data(port: u16) {
-    test_data::load_test_data(port)
-        .await
-        .expect("Failed to load test data");
 }
 
 trait ChildExt {

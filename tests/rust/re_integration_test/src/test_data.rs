@@ -1,14 +1,12 @@
-use re_grpc_client::ConnectionRegistry;
+use re_grpc_client::{ConnectionClient, ConnectionRegistry};
 use re_protos::catalog::v1alpha1::EntryFilter;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::manifest_registry::v1alpha1::ext::DataSource;
 use re_sdk::time::TimeType;
 use re_sdk::{RecordingStreamBuilder, TimeCell};
-use re_uri::external::url::Host;
-use re_uri::{Origin, Scheme};
 use std::error::Error;
 
-pub async fn load_test_data(port: u16) -> Result<(), Box<dyn Error>> {
+pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn Error>> {
     let path = {
         let path = tempfile::NamedTempFile::new()?;
         let stream = RecordingStreamBuilder::new("rerun_example_integration_test")
@@ -23,13 +21,6 @@ pub async fn load_test_data(port: u16) -> Result<(), Box<dyn Error>> {
 
         path
     };
-
-    let origin = Origin {
-        host: Host::Domain("localhost".to_owned()),
-        port,
-        scheme: Scheme::RerunHttp,
-    };
-    let mut client = ConnectionRegistry::new().client(origin).await?;
 
     assert!(
         client
