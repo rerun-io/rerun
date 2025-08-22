@@ -17,7 +17,9 @@ if TYPE_CHECKING:
 
     from rerun_bindings import DatasetEntry
 
-CATALOG_URL = "rerun+http://localhost:51234"
+HOST = "localhost"
+PORT = 51234
+CATALOG_URL = f"rerun+http://{HOST}:{PORT}"
 DATASET_NAME = "dataset"
 
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
@@ -63,6 +65,28 @@ def shutdown_process(process: subprocess.Popen[str]) -> None:
         print(f"Error during cleanup: {e}")
 
 
+def wait_for_server_ready(timeout: int = 30) -> None:
+    import socket
+
+    def is_port_open() -> bool:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        try:
+            result = sock.connect_ex((HOST, PORT))
+            return result == 0
+        finally:
+            sock.close()
+
+    # Wait for port to be open
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        if is_port_open():
+            break
+        time.sleep(0.1)
+    else:
+        raise TimeoutError(f"Server port {PORT} not ready within {timeout}s")
+
+
 @pytest.fixture(scope="module")
 def server_instance() -> Generator[tuple[subprocess.Popen[str], DatasetEntry], None, None]:
     assert DATASET_FILEPATH.is_dir()
@@ -74,7 +98,8 @@ def server_instance() -> Generator[tuple[subprocess.Popen[str], DatasetEntry], N
 
     cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH)]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    time.sleep(0.5)  # Wait for rerun server to start to remove a logged warning
+
+    wait_for_server_ready()
 
     client = rr.catalog.CatalogClient(CATALOG_URL)
     dataset = client.get_dataset(name=DATASET_NAME)
