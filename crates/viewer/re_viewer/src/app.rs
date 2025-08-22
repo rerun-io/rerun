@@ -558,7 +558,18 @@ impl App {
 
             SystemCommand::CloseRecordingOrTable(entry) => {
                 // TODO(#9464): Find a better successor here.
+
+                let data_source = match &entry {
+                    RecordingOrTable::Recording { store_id } => {
+                        store_hub.entity_db_mut(store_id).data_source.clone()
+                    }
+                    RecordingOrTable::Table { .. } => None,
+                };
+                self.rx_log
+                    .retain(|r| Some(r.source()) != data_source.as_ref());
+
                 store_hub.remove(&entry);
+
                 update_web_address_bar(
                     self.startup_options.web_history_enabled(),
                     store_hub,
