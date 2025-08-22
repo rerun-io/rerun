@@ -14,7 +14,7 @@ publish = false
 ureq.workspace = true
 
 [dev-dependencies]
-insta.workspace = true
+insta = { workspace = true, features = ["filters"] }
 re_viewer = { workspace = true, features = ["testing"] }
 egui_kittest.workspace = true
 egui.workspace = true
