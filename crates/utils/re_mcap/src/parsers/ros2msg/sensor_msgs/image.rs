@@ -1,20 +1,18 @@
-use arrow::array::{FixedSizeListBuilder, StringBuilder, UInt32Builder};
+use anyhow::Context as _;
+use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, StringBuilder, UInt32Builder};
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::TimeCell;
 use re_types::{
-    ComponentDescriptor,
+    ComponentDescriptor, SerializedComponentColumn,
     archetypes::{DepthImage, Image},
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
 };
 
-use crate::{
-    Error,
-    parsers::{
-        cdr,
-        decode::{MessageParser, ParserContext},
-        ros2msg::definitions::sensor_msgs,
-        util::fixed_size_list_builder,
-    },
+use crate::parsers::{
+    cdr,
+    decode::{MessageParser, ParserContext},
+    ros2msg::definitions::sensor_msgs,
+    util::fixed_size_list_builder,
 };
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
@@ -50,13 +48,19 @@ impl ImageMessageParser {
             is_depth_image: false,
         }
     }
+
+    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
+        SerializedComponentColumn {
+            list_array: array.into(),
+            descriptor: ComponentDescriptor::partial(name)
+                .with_archetype(Self::ARCHETYPE_NAME.into()),
+        }
+    }
 }
 
 impl MessageParser for ImageMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
-        // TODO(#10725): Do we want to log the unused fields?
-        #[allow(unused)]
         let sensor_msgs::Image {
             header,
             data,
@@ -65,7 +69,8 @@ impl MessageParser for ImageMessageParser {
             encoding,
             is_bigendian,
             step,
-        } = cdr::try_decode_message::<sensor_msgs::Image<'_>>(&msg.data)?;
+        } = cdr::try_decode_message::<sensor_msgs::Image<'_>>(&msg.data)
+            .context("Failed to decode sensor_msgs::Image message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
@@ -74,7 +79,8 @@ impl MessageParser for ImageMessageParser {
         );
 
         let dimensions = [width, height];
-        let img_format = decode_image_format(&encoding, dimensions)?;
+        let img_format = decode_image_format(&encoding, dimensions)
+            .with_context(|| format!("Failed to decode image format for encoding '{encoding}' with dimensions {width}x{height}"))?;
 
         // TODO(#10726): big assumption here: image format can technically be different for each image on the topic.
         // `color_model` is `None` for formats created with `ImageFormat::depth`
@@ -119,7 +125,7 @@ impl MessageParser for ImageMessageParser {
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 
-        let images = if is_depth_image {
+        let mut chunk_components: Vec<_> = if is_depth_image {
             DepthImage::update_fields()
                 .with_many_buffer(blobs)
                 .with_many_format(image_formats)
@@ -133,50 +139,20 @@ impl MessageParser for ImageMessageParser {
                 .collect()
         };
 
-        let chunk = Chunk::from_auto_row_ids(
+        chunk_components.extend([
+            Self::create_metadata_column("height", height.finish()),
+            Self::create_metadata_column("width", width.finish()),
+            Self::create_metadata_column("encoding", encoding.finish()),
+            Self::create_metadata_column("is_bigendian", is_bigendian.finish()),
+            Self::create_metadata_column("step", step.finish()),
+        ]);
+
+        Ok(vec![Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path.clone(),
             timelines.clone(),
-            images,
-        )?;
-
-        let metadata_chunk = Chunk::from_auto_row_ids(
-            ChunkId::new(),
-            entity_path.clone(),
-            timelines.clone(),
-            [
-                (
-                    ComponentDescriptor::partial("height")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
-                    height.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("width")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
-                    width.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("encoding")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
-                    encoding.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("is_bigendian")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
-                    is_bigendian.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("step")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
-                    step.finish().into(),
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        )
-        .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
-
-        Ok(vec![chunk, metadata_chunk])
+            chunk_components.into_iter().collect(),
+        )?])
     }
 }
 
@@ -241,7 +217,10 @@ fn decode_image_format(encoding: &str, dimensions: [u32; 2]) -> anyhow::Result<I
         "32FC1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::F32)),
         // Other
         format => {
-            anyhow::bail!("Unsupported image format: {format}")
+            anyhow::bail!(
+                "Unsupported image encoding '{}'. Supported encodings include: rgb8, rgba8, rgb16, rgba16, bgr8, bgra8, bgr16, bgra16, mono8, mono16, yuyv, yuv422_yuy2, nv12, 8UC1, 8SC1, 16UC1, 16SC1, 32SC1, 32FC1",
+                format
+            )
         }
     }
 }
