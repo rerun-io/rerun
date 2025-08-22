@@ -565,8 +565,31 @@ impl App {
                     }
                     RecordingOrTable::Table { .. } => None,
                 };
-                self.rx_log
-                    .retain(|r| Some(r.source()) != data_source.as_ref());
+                if let Some(data_source) = data_source {
+                    // Only certain sources should be closed.
+                    #[allow(clippy::match_same_arms)]
+                    let should_close = match &data_source {
+                        // Specific files should stop streaming when closing them.
+                        SmartChannelSource::File(_) => true,
+
+                        // Specific HTTP streams should stop streaming when closing them.
+                        SmartChannelSource::RrdHttpStream { .. } => true,
+
+                        // Specific GRPC streams should stop streaming when closing them.
+                        SmartChannelSource::RedapGrpcStream { .. } => true,
+
+                        // Don't close generic connections (like to an SDK) that may feed in different recordings over time.
+                        SmartChannelSource::RrdWebEventListener
+                        | SmartChannelSource::JsChannel { .. }
+                        | SmartChannelSource::Sdk
+                        | SmartChannelSource::Stdin
+                        | SmartChannelSource::MessageProxy(_) => false,
+                    };
+
+                    if should_close {
+                        self.rx_log.retain(|r| r.source() != &data_source);
+                    }
+                }
 
                 store_hub.remove(&entry);
 
