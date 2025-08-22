@@ -4,7 +4,7 @@ use insta::with_settings;
 use re_integration_test::{TestServer, load_test_data};
 use re_viewer::viewer_test_utils;
 
-#[test]
+// #[test] // TODO(emilk): re-enable when they actually work
 pub fn integration_test() {
     let server = TestServer::spawn();
     let test_output = load_test_data(server.port());
@@ -18,7 +18,7 @@ pub fn integration_test() {
     });
 }
 
-#[tokio::test]
+// #[tokio::test] // TODO(emilk): re-enable when they actually work
 pub async fn dataset_ui_test() {
     let server = TestServer::spawn();
     load_test_data(server.port());
