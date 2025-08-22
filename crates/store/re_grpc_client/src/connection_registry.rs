@@ -141,14 +141,18 @@ impl ConnectionRegistryHandle {
     /// Dump all tokens for persistence purposes.
     pub fn dump_tokens(&self) -> SerializedTokens {
         wrap_blocking_lock(|| {
-            SerializedTokens(
-                self.inner
-                    .blocking_read()
-                    .saved_tokens
-                    .iter()
-                    .map(|(origin, token)| (origin.clone(), token.to_string()))
-                    .collect(),
-            )
+            let this = self.inner.blocking_read();
+            let per_origin = this
+                .saved_tokens
+                .iter()
+                .map(|(origin, token)| (origin.clone(), token.to_string()))
+                .collect();
+            let fallback = this.fallback_token.clone().map(|v| v.to_string());
+
+            SerializedTokens {
+                tokens_per_origin: per_origin,
+                fallback_token: fallback,
+            }
         })
     }
 
@@ -159,7 +163,7 @@ impl ConnectionRegistryHandle {
     pub fn load_tokens(&self, tokens: SerializedTokens) {
         wrap_blocking_lock(|| {
             let mut inner = self.inner.blocking_write();
-            for (origin, token) in tokens.0 {
+            for (origin, token) in tokens.tokens_per_origin {
                 if let Entry::Vacant(e) = inner.saved_tokens.entry(origin.clone()) {
                     if let Ok(jwt) = Jwt::try_from(token) {
                         e.insert(jwt);
@@ -168,6 +172,15 @@ impl ConnectionRegistryHandle {
                     }
                 } else {
                     re_log::trace!("Ignoring token for origin {origin} as it is already set");
+                }
+            }
+
+            if let Some(fallback_token) = tokens
+                .fallback_token
+                .and_then(|token| Jwt::try_from(token).ok())
+            {
+                if inner.fallback_token.is_none() {
+                    inner.fallback_token = Some(fallback_token);
                 }
             }
         });
@@ -195,7 +208,10 @@ where
 // ---
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct SerializedTokens(Vec<(re_uri::Origin, String)>);
+pub struct SerializedTokens {
+    tokens_per_origin: Vec<(re_uri::Origin, String)>,
+    fallback_token: Option<String>,
+}
 
 // ---
 
