@@ -7799,7 +7799,6 @@ dependencies = [
  "egui",
  "egui_kittest",
  "re_grpc_client",
- "re_grpc_server",
  "re_protos",
  "re_sdk",
  "re_server",
