@@ -11,7 +11,7 @@ use std::error::Error;
 pub async fn load_test_data(port: u16) -> Result<(), Box<dyn Error>> {
     let path = {
         let path = tempfile::NamedTempFile::new()?;
-        let stream = RecordingStreamBuilder::new("re_integration_test")
+        let stream = RecordingStreamBuilder::new("rerun_example_integration_test")
             .recording_id("new_recording_id")
             .save(path.path())?;
 

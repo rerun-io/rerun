@@ -214,7 +214,7 @@ pub type RedapClientInner = tonic::service::interceptor::InterceptedService<
 pub type RedapClient = FrontendServiceClient<RedapClientInner>;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn client(
+pub(crate) async fn client(
     origin: Origin,
     token: Option<re_auth::Jwt>,
 ) -> Result<RedapClient, ConnectionError> {

@@ -20,7 +20,6 @@ ureq.workspace = true
 tempfile.workspace = true
 
 [dev-dependencies]
-insta = { workspace = true, features = ["filters"] }
 re_viewer = { workspace = true, features = ["testing"] }
 egui_kittest.workspace = true
 egui.workspace = true
