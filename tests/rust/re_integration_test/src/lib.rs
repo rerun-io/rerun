@@ -48,7 +48,7 @@ impl TestServer {
         Self { server, port }
     }
 
-    pub async fn with_test_data(mut self) -> Self {
+    pub async fn with_test_data(self) -> Self {
         self.add_test_data().await;
         self
     }
