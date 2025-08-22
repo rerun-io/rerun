@@ -300,6 +300,9 @@ pub mod view_coordinates;
 pub mod any_values;
 pub use any_values::AnyValues;
 
+pub mod archetype_builder;
+pub use archetype_builder::ArchetypeBuilder;
+
 mod rotation3d;
 pub use rotation3d::Rotation3D;
 
