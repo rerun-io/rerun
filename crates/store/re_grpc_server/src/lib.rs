@@ -170,11 +170,11 @@ pub async fn serve_from_channel(
     let message_proxy = MessageProxy::new(memory_limit);
     let event_tx = message_proxy.event_tx.clone();
 
-    tokio::spawn(async move {
+    tokio::task::spawn_blocking(move || {
         use re_smart_channel::SmartMessagePayload;
 
         loop {
-            let msg = match channel_rx.try_recv() {
+            let msg = match channel_rx.recv() {
                 Ok(msg) => match msg.payload {
                     SmartMessagePayload::Msg(msg) => msg,
                     SmartMessagePayload::Flush { on_flush_done } => {
@@ -190,14 +190,9 @@ pub async fn serve_from_channel(
                         break;
                     }
                 },
-                Err(re_smart_channel::TryRecvError::Disconnected) => {
+                Err(re_smart_channel::RecvError) => {
                     re_log::debug!("smart channel sender closed, closing receiver");
                     break;
-                }
-                Err(re_smart_channel::TryRecvError::Empty) => {
-                    // Let other tokio tasks run:
-                    tokio::task::yield_now().await;
-                    continue;
                 }
             };
 
@@ -212,7 +207,7 @@ pub async fn serve_from_channel(
                 }
             };
 
-            if event_tx.send(Event::Message(msg)).await.is_err() {
+            if event_tx.blocking_send(Event::Message(msg)).is_err() {
                 re_log::debug!("shut down, closing sender");
                 break;
             }
