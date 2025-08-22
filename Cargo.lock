@@ -7920,6 +7920,7 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
+ "re_types_core",
  "serde",
  "serde_bytes",
  "thiserror 1.0.69",

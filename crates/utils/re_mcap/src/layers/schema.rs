@@ -5,10 +5,8 @@ use arrow::{
     error::ArrowError,
 };
 use re_chunk::{Chunk, RowId, TimePoint};
-use re_types::{
-    ComponentBatch as _, ComponentDescriptor, SerializedComponentBatch, components,
-    reflection::ComponentDescriptorExt as _,
-};
+use re_types::{ArchetypeBuilder, ComponentBatch as _, SerializedComponentBatch, components};
+use re_types_core::AsComponents as _;
 
 use crate::Error;
 
@@ -74,24 +72,17 @@ fn from_channel(
     let metadata = builder.finish();
     let archetype = "rerun.mcap.Channel";
 
-    Ok(vec![
-        SerializedComponentBatch::new(
-            Arc::new(UInt16Array::from(vec![*id])),
-            ComponentDescriptor::partial("id").with_builtin_archetype(archetype),
-        ),
-        SerializedComponentBatch::new(
-            Arc::new(StringArray::from(vec![topic.clone()])),
-            ComponentDescriptor::partial("topic").with_builtin_archetype(archetype),
-        ),
-        SerializedComponentBatch::new(
-            Arc::new(metadata),
-            ComponentDescriptor::partial("metadata").with_builtin_archetype(archetype),
-        ),
-        SerializedComponentBatch::new(
+    let channel = ArchetypeBuilder::new(archetype)
+        .with_field("id", Arc::new(UInt16Array::from(vec![*id])))
+        .with_field("topic", Arc::new(StringArray::from(vec![topic.clone()])))
+        .with_field("metadata", Arc::new(metadata))
+        .with_field(
+            "message_encoding",
             Arc::new(StringArray::from(vec![message_encoding.clone()])),
-            ComponentDescriptor::partial("message_encoding").with_builtin_archetype(archetype),
-        ),
-    ])
+        );
+
+    // TODO(nick): Now that we have the nicer archetypes builder just pass that through instead of batches
+    Ok(channel.as_serialized_batches())
 }
 
 fn from_schema(
@@ -110,22 +101,14 @@ fn from_schema(
 
     // Adds a field of arbitrary data to this archetype.
     let archetype = "rerun.mcap.Schema";
-    Ok(vec![
-        SerializedComponentBatch::new(
-            Arc::new(UInt16Array::from(vec![*id])),
-            ComponentDescriptor::partial("id").with_builtin_archetype(archetype),
-        ),
-        SerializedComponentBatch::new(
-            Arc::new(StringArray::from(vec![name.clone()])),
-            ComponentDescriptor::partial("name").with_builtin_archetype(archetype),
-        ),
-        SerializedComponentBatch::new(
-            blob.to_arrow()?,
-            ComponentDescriptor::partial("data").with_builtin_archetype(archetype),
-        ),
-        SerializedComponentBatch::new(
+
+    let schema = ArchetypeBuilder::new(archetype)
+        .with_field("id", Arc::new(UInt16Array::from(vec![*id])))
+        .with_field("name", Arc::new(StringArray::from(vec![name.clone()])))
+        .with_field("data", blob.to_arrow()?)
+        .with_field(
+            "encoding",
             Arc::new(StringArray::from(vec![encoding.clone()])),
-            ComponentDescriptor::partial("encoding").with_builtin_archetype(archetype),
-        ),
-    ])
+        );
+    Ok(schema.as_serialized_batches())
 }

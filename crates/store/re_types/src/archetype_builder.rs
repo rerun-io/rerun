@@ -8,7 +8,9 @@ use crate::{
 };
 use re_types_core::{try_serialize_field, AsComponents, ComponentType, Loggable};
 
-/// A helper for logging an archetype to Rerun.
+/// A helper for logging a dynamically defined archetype to Rerun.
+/// component names will be modified in a way similar to Rerun
+/// internal types to avoid name collisions.
 //TODO(nick): Should this allow default or is THAT a footgun?
 pub struct ArchetypeBuilder {
     archetype_name: Option<ArchetypeName>,
