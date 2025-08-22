@@ -7799,7 +7799,6 @@ dependencies = [
  "egui",
  "egui_kittest",
  "insta",
- "nix",
  "re_viewer",
  "tokio",
  "ureq",

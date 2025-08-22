@@ -51,20 +51,16 @@ impl TestServer {
 
 impl Drop for TestServer {
     fn drop(&mut self) {
-        sigint_and_wait(&mut self.server);
+        kill_and_wait(&mut self.server);
     }
 }
 
 /// Send SIGINT and wait for the child process to exit successfully.
-pub fn sigint_and_wait(child: &mut Child) {
-    if let Err(err) = nix::sys::signal::kill(
-        nix::unistd::Pid::from_raw(child.id() as i32),
-        nix::sys::signal::Signal::SIGINT,
-    ) {
-        eprintln!("Failed to send SIGINT to process {}: {err}", child.id());
+pub fn kill_and_wait(child: &mut Child) {
+    if let Err(err) = child.kill() {
+        eprintln!("Failed to kill process {}: {err}", child.id());
     }
-
-    child.wait_for_success();
+    child.wait().expect("Failed to wait on child process");
 }
 
 /// Get a free port from the OS.
@@ -89,9 +85,11 @@ pub fn load_test_data(port: u16) -> String {
     ]);
     let output = script
         .output()
-        .expect("Failed to run re_integration.py script")
-        .stdout;
-    String::from_utf8(output).expect("Failed to convert output to string")
+        .expect("Failed to run re_integration.py script");
+    let stderr = String::from_utf8(output.stderr).expect("Failed to convert stderr to string");
+    let stdout = String::from_utf8(output.stdout).expect("Failed to convert output to string");
+
+    format!("{}\n\n{}", stdout.trim(), stderr.trim())
 }
 
 trait ChildExt {

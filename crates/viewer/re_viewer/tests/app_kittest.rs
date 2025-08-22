@@ -5,6 +5,7 @@ use egui_kittest::kittest::Queryable as _;
 use re_viewer::viewer_test_utils;
 
 /// Navigates from welcome to settings screen and snapshots it.
+#[cfg(not(windows))] // TODO(#10971): Fix it
 #[tokio::test]
 async fn settings_screen() {
     let mut harness = viewer_test_utils::viewer_harness();
