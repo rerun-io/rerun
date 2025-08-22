@@ -93,16 +93,12 @@ impl ConnectionRegistryHandle {
     /// client instances for longer than the immediate needs. In the future, authentication may
     /// require periodic tokens refresh, so it is necessary to always get a "fresh" client.
     ///
-    /// If a token has already been registered for this origin, it will be used. It will attempt to
+    /// If a token has already been registered for this origin, it will be used. Otherwise, it will attempt to
     /// use the following token, in this order:
     /// - The fallback token, if set via [`Self::set_fallback_token`].
     /// - The `REDAP_TOKEN` environment variable is set.
     ///
     /// Failing that, no token will be used.
-    ///
-    /// Note that a token set via `REDAP_TOKEN` will not be persisted unless [`Self::set_token`] is
-    /// explicitly called. The rationale is to avoid sneakily saving in clear text potentially
-    /// sensitive information.
     pub async fn client(
         &self,
         origin: re_uri::Origin,
