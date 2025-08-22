@@ -334,14 +334,14 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
-        let icon = if app.is_fullscreen_mode() {
-            &re_ui::icons::MINIMIZE
+        let (icon, label) = if app.is_fullscreen_mode() {
+            (&re_ui::icons::MINIMIZE, "Minimize")
         } else {
-            &re_ui::icons::MAXIMIZE
+            (&re_ui::icons::MAXIMIZE, "Maximize")
         };
 
         if ui
-            .medium_icon_toggle_button(icon, &mut true)
+            .medium_icon_toggle_button(icon, label, &mut true)
             .on_hover_text("Toggle fullscreen")
             .clicked()
         {
@@ -354,6 +354,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                "Selection panel toggle",
                 &mut app_blueprint.selection_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
@@ -367,6 +368,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                "Time panel toggle",
                 &mut app_blueprint.time_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
@@ -380,6 +382,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
+                "Blueprint panel toggle",
                 &mut app_blueprint.blueprint_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))
