@@ -451,14 +451,17 @@ impl ExampleApp {
 
             ui.medium_icon_toggle_button(
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                "Selection panel toggle",
                 &mut self.show_right_panel,
             );
             ui.medium_icon_toggle_button(
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                "Time panel toggle",
                 &mut self.show_bottom_panel,
             );
             ui.medium_icon_toggle_button(
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
+                "Blueprint panel toggle",
                 &mut self.show_left_panel,
             );
 

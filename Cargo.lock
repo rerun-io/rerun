@@ -7796,8 +7796,12 @@ dependencies = [
 name = "re_integration_test"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
+ "egui",
+ "egui_kittest",
  "insta",
  "nix",
+ "re_viewer",
+ "tokio",
  "ureq",
 ]
 
