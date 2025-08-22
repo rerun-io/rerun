@@ -297,7 +297,7 @@ impl UICommand {
 
             Self::CopyEntityHierarchy => (
                 "Copy entity hierarchy",
-                "Copy the complete entity hierarchy tree to the clipboard",
+                "Copy the complete entity hierarchy tree of the currently active recording to the clipboard.",
             ),
 
             #[cfg(target_arch = "wasm32")]
