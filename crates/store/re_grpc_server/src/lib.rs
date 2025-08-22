@@ -248,18 +248,20 @@ pub fn spawn_from_rx_set(
         }
     });
 
-    tokio::spawn(async move {
+    tokio::task::spawn_blocking(move || {
         loop {
-            let Some(msg) = rxs.try_recv().and_then(|(_, m)| m.into_data()) else {
-                if rxs.is_empty() {
-                    // We won't ever receive more data:
-                    break;
+            let msg = match rxs.recv() {
+                Ok(msg) => match msg.into_data() {
+                    Some(data) => data,
+                    None => continue,
+                },
+                Err(_) => {
+                    if rxs.is_empty() {
+                        // We won't ever receive more data:
+                        break;
+                    }
+                    continue;
                 }
-                // Because `try_recv` is non-blocking, we should give other tasks
-                // a chance to run before we continue
-                // Sleep briefly to avoid busy loop when no data is available
-                tokio::time::sleep(Duration::from_millis(10)).await;
-                continue;
             };
 
             let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
@@ -273,7 +275,7 @@ pub fn spawn_from_rx_set(
                 }
             };
 
-            if event_tx.send(Event::Message(msg)).await.is_err() {
+            if event_tx.blocking_send(Event::Message(msg)).is_err() {
                 re_log::debug!("shut down, closing sender");
                 break;
             }
