@@ -911,8 +911,9 @@ fn start_native_viewer(
     #[allow(unused_mut)]
     let mut table_receivers = Vec::new();
 
+    // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
     #[cfg(feature = "server")]
-    if connect {
+    if !connect {
         let (log_server, table_server): (
             Receiver<LogMsg>,
             crossbeam::channel::Receiver<re_log_types::TableMsg>,
