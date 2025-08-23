@@ -107,18 +107,20 @@ fn top_bar_ui(
             if let Some(latency_snapshot) = latency_snapshot {
                 // Should we show the e2e latency?
 
-                // High enough to be consering; low enough to be believable (and almost realtime).
+                // High enough to be concerning; low enough to be believable (and almost realtime).
                 let is_latency_interesting = latency_snapshot
                     .e2e
                     .is_some_and(|e2e| app.app_options().warn_e2e_latency < e2e && e2e < 60.0);
 
-                // Avoid flicker by showing the latency for 1 seconds ince it was last deemned interesting:
-
+                // Avoid flicker by showing the latency for 1 second since it was last deemed interesting:
                 if is_latency_interesting {
-                    app.latest_latency_interest = web_time::Instant::now();
+                    app.latest_latency_interest = Some(web_time::Instant::now());
                 }
 
-                if app.latest_latency_interest.elapsed().as_secs_f32() < 1.0 {
+                if app
+                    .latest_latency_interest
+                    .is_some_and(|instant| instant.elapsed().as_secs_f32() < 1.0)
+                {
                     ui.separator();
                     latency_snapshot_button_ui(ui, latency_snapshot);
                 }
