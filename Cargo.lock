@@ -8547,6 +8547,7 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "notify",
+ "num-traits",
  "parking_lot",
  "rand 0.8.5",
  "re_analytics",
