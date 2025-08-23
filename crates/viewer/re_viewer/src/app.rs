@@ -243,6 +243,12 @@ impl App {
             state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
         }
 
+        if app_env.is_test() {
+            // Disable certain labels/warnings/etc that would be flaky or not CI-runner-agnostic in snapshot tests.
+            state.app_options.show_metrics = false;
+            state.app_options.show_software_rasterizer_warning = false;
+        }
+
         let view_class_registry = crate::default_views::create_view_class_registry()
             .unwrap_or_else(|err| {
                 re_log::error!("Failed to create view class registry: {err}");
@@ -552,7 +558,18 @@ impl App {
 
             SystemCommand::CloseRecordingOrTable(entry) => {
                 // TODO(#9464): Find a better successor here.
+
+                let data_source = match &entry {
+                    RecordingOrTable::Recording { store_id } => {
+                        store_hub.entity_db_mut(store_id).data_source.clone()
+                    }
+                    RecordingOrTable::Table { .. } => None,
+                };
+                self.rx_log
+                    .retain(|r| Some(r.source()) != data_source.as_ref());
+
                 store_hub.remove(&entry);
+
                 update_web_address_bar(
                     self.startup_options.web_history_enabled(),
                     store_hub,
@@ -1712,6 +1729,7 @@ impl App {
                         }
 
                         self.state.show(
+                            &self.app_env,
                             app_blueprint,
                             ui,
                             render_ctx,

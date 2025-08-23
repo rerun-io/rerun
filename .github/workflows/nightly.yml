@@ -65,7 +65,7 @@ jobs:
         with:
           toolchain: 1.88.0
 
-      - run: pixi run cargo build -p rerun
+      - run: cargo build -p rerun # Intentionally NOT using pixi, becasue we wanna check that we can build outside of pixi
 
   build-web:
     name: "Build web viewer"

@@ -5,7 +5,7 @@ use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UiExt as _};
-use re_viewer_context::StoreContext;
+use re_viewer_context::{AppOptions, StoreContext};
 
 use crate::{App, app_blueprint::AppBlueprint};
 
@@ -26,7 +26,7 @@ pub fn top_panel(
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
         // React to dragging and double-clicking the top bar:
         #[cfg(not(target_arch = "wasm32"))]
-        if !re_ui::NATIVE_WINDOW_BAR {
+        if !re_ui::native_window_bar(ui.ctx().os()) {
             // Interact with background first, so that buttons in the top bar gets input priority
             // (last added widget has priority for input).
             let title_bar_response = ui.interact(
@@ -69,7 +69,7 @@ pub fn top_panel(
 
     // On MacOS, we show the close/minimize/maximize buttons in the top panel.
     // We _always_ want to show the top panel in that case, and only hide its content.
-    if !re_ui::NATIVE_WINDOW_BAR {
+    if !re_ui::native_window_bar(ui.ctx().os()) {
         panel.show_inside(ui, |ui| content(ui, is_expanded));
     } else {
         panel.show_animated_inside(ui, is_expanded, |ui| content(ui, is_expanded));
@@ -129,7 +129,7 @@ fn top_bar_ui(
             multi_pass_warning_dot_ui(ui);
         }
 
-        show_warnings(frame, ui);
+        show_warnings(frame, ui, app.app_options());
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -153,7 +153,7 @@ fn top_bar_ui(
     });
 }
 
-fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui) {
+fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_options: &AppOptions) {
     // We could log these as warning instead and relying on the notification panel to show it.
     // However, there are a few benefits of instead showing it like this:
     // * it's more visible
@@ -170,7 +170,9 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui) {
         .on_hover_text("egui was compiled with debug assertions enabled.");
     }
 
-    show_software_rasterizer_warning(frame, ui);
+    if app_options.show_software_rasterizer_warning {
+        show_software_rasterizer_warning(frame, ui);
+    }
 
     if crate::docker_detection::is_docker() {
         ui.hyperlink_to(
@@ -332,14 +334,14 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
-        let icon = if app.is_fullscreen_mode() {
-            &re_ui::icons::MINIMIZE
+        let (icon, label) = if app.is_fullscreen_mode() {
+            (&re_ui::icons::MINIMIZE, "Minimize")
         } else {
-            &re_ui::icons::MAXIMIZE
+            (&re_ui::icons::MAXIMIZE, "Maximize")
         };
 
         if ui
-            .medium_icon_toggle_button(icon, &mut true)
+            .medium_icon_toggle_button(icon, label, &mut true)
             .on_hover_text("Toggle fullscreen")
             .clicked()
         {
@@ -352,6 +354,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                "Selection panel toggle",
                 &mut app_blueprint.selection_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
@@ -365,6 +368,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                "Time panel toggle",
                 &mut app_blueprint.time_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
@@ -378,6 +382,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
+                "Blueprint panel toggle",
                 &mut app_blueprint.blueprint_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))

@@ -7793,6 +7793,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_integration_test"
+version = "0.25.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_kittest",
+ "insta",
+ "re_viewer",
+ "tokio",
+ "ureq",
+]
+
+[[package]]
 name = "re_log"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
@@ -8535,6 +8547,7 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "notify",
+ "num-traits",
  "parking_lot",
  "rand 0.8.5",
  "re_analytics",
@@ -8944,6 +8957,7 @@ dependencies = [
  "strum_macros",
  "tap",
  "thiserror 1.0.69",
+ "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

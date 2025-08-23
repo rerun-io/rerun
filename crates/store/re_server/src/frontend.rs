@@ -5,8 +5,11 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use nohash_hasher::IntSet;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap},
+    path::PathBuf,
+};
 use tokio_stream::StreamExt as _;
 
 use crate::store::{Dataset, InMemoryStore};
@@ -17,15 +20,23 @@ use re_entity_db::external::re_query::StorageEngine;
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse};
-use re_protos::catalog::v1alpha1::{
-    DeleteEntryResponse, EntryKind, RegisterTableRequest, RegisterTableResponse,
-};
-use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::ext::{GetChunksRequest, ScanPartitionTableRequest};
 use re_protos::manifest_registry::v1alpha1::{
     GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
     QueryDatasetResponse, ScanPartitionTableResponse,
+};
+use re_protos::{
+    catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse},
+    manifest_registry::v1alpha1::ext,
+};
+use re_protos::{
+    catalog::v1alpha1::{
+        DeleteEntryResponse, EntryKind, RegisterTableRequest, RegisterTableResponse,
+    },
+    common::v1alpha1::ext::IfDuplicateBehavior,
+};
+use re_protos::{
+    common::v1alpha1::ext::PartitionId, manifest_registry::v1alpha1::RegisterWithDatasetResponse,
 };
 use re_protos::{
     frontend::v1alpha1::frontend_service_server::FrontendService,
@@ -53,8 +64,10 @@ impl FrontendHandlerBuilder {
     pub fn with_directory_as_dataset(
         mut self,
         directory: &std::path::Path,
+        on_duplicate: IfDuplicateBehavior,
     ) -> Result<Self, crate::store::Error> {
-        self.store.load_directory_as_dataset(directory)?;
+        self.store
+            .load_directory_as_dataset(directory, on_duplicate)?;
 
         Ok(self)
     }
@@ -269,14 +282,11 @@ impl FrontendService for FrontendHandler {
         let dataset_name: String = request.into_inner().try_into()?;
 
         let mut store = self.store.write().await;
-        let entry_id = store.create_dataset(&dataset_name).map_err(|err| {
+        let dataset = store.create_dataset(&dataset_name).map_err(|err| {
             tonic::Status::internal(format!("Failed to create dataset entry: {err:#}"))
         })?;
 
-        let dataset_entry = store
-            .dataset(entry_id)
-            .expect("was just successfully created")
-            .as_dataset_entry();
+        let dataset_entry = dataset.as_dataset_entry();
 
         Ok(tonic::Response::new(
             CreateDatasetEntryResponse {
@@ -350,13 +360,74 @@ impl FrontendService for FrontendHandler {
 
     async fn register_with_dataset(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::RegisterWithDatasetRequest>,
+        request: tonic::Request<re_protos::frontend::v1alpha1::RegisterWithDatasetRequest>,
     ) -> Result<
         tonic::Response<re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse>,
         tonic::Status,
     > {
-        Err(tonic::Status::unimplemented(
-            "register_with_dataset not implemented",
+        let re_protos::frontend::v1alpha1::ext::RegisterWithDatasetRequest {
+            dataset_id,
+            data_sources,
+            on_duplicate,
+        } = request.into_inner().try_into()?;
+
+        let mut store = self.store.write().await;
+        let dataset = store.dataset_mut(dataset_id).ok_or_else(|| {
+            tonic::Status::not_found(format!("Dataset with ID {dataset_id} not found"))
+        })?;
+
+        let mut partition_ids: Vec<String> = vec![];
+        let mut partition_layers: Vec<String> = vec![];
+        let mut partition_types: Vec<String> = vec![];
+        let mut storage_urls: Vec<String> = vec![];
+        let mut task_ids: Vec<String> = vec![];
+
+        for source in data_sources {
+            let ext::DataSource {
+                storage_url,
+                layer,
+                kind,
+            } = source;
+
+            if layer != "base" {
+                return Err(tonic::Status::unimplemented(format!(
+                    "register_with_dataset: only 'base' layer is implemented, got {layer:?}"
+                )));
+            }
+
+            if kind != ext::DataSourceKind::Rrd {
+                return Err(tonic::Status::unimplemented(
+                    "register_with_dataset: only RRD data sources are implemented",
+                ));
+            }
+
+            if let Some(rrd_path) = storage_url.as_str().strip_prefix("file://") {
+                let new_partition_ids = dataset.load_rrd(&PathBuf::from(rrd_path), on_duplicate)?;
+
+                for partition_id in new_partition_ids {
+                    partition_ids.push(partition_id.to_string());
+                    partition_layers.push(layer.clone());
+                    partition_types.push("rrd".to_owned());
+                    storage_urls.push(storage_url.to_string());
+                    task_ids.push("<DUMMY TASK ID>".to_owned());
+                }
+            }
+        }
+
+        let record_batch = RegisterWithDatasetResponse::create_dataframe(
+            partition_ids,
+            partition_layers,
+            partition_types,
+            storage_urls,
+            task_ids,
+        )
+        .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;
+        Ok(tonic::Response::new(
+            re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse {
+                data: Some(record_batch.encode().map_err(|err| {
+                    tonic::Status::internal(format!("Failed to encode dataframe: {err:#}"))
+                })?),
+            },
         ))
     }
 
@@ -882,8 +953,9 @@ impl FrontendService for FrontendHandler {
         &self,
         _request: tonic::Request<QueryTasksOnCompletionRequest>,
     ) -> Result<tonic::Response<Self::QueryTasksOnCompletionStream>, tonic::Status> {
-        Err(tonic::Status::unimplemented(
-            "query_tasks_on_completion not implemented",
+        // All tasks finish emmidiately in the OSS server
+        Ok(tonic::Response::new(
+            Box::pin(futures::stream::empty()) as Self::QueryTasksOnCompletionStream
         ))
     }
 

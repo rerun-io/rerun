@@ -12,6 +12,7 @@ members = [
   "run_wasm",
   "tests/rust/log_benchmark",
   "tests/rust/plot_dashboard_stress",
+  "tests/rust/re_integration_test",
   "tests/rust/roundtrips/*",
   "tests/rust/test_*",
 ]

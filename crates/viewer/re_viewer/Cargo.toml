@@ -47,6 +47,8 @@ map_view = ["dep:re_view_map"]
 ## This only works on native.
 perf_telemetry = ["dep:re_perf_telemetry", "re_grpc_client/perf_telemetry"]
 
+testing = ["dep:egui_kittest", "dep:tokio"]
+
 
 [dependencies]
 # Internal:
@@ -102,6 +104,10 @@ re_viewport.workspace = true
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
+
+# Test dependencies (optional):
+egui_kittest = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
 
 
 # External
@@ -168,6 +174,7 @@ web-sys = { workspace = true, features = [
 [dev-dependencies]
 egui_kittest.workspace = true
 re_test_context.workspace = true
+tokio.workspace = true
 
 
 [build-dependencies]
