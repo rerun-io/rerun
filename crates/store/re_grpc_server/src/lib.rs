@@ -2,9 +2,6 @@
 
 pub mod shutdown;
 
-use std::collections::VecDeque;
-use std::net::SocketAddr;
-use std::pin::Pin;
 use re_byte_size::SizeBytes;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::TableMsg;
@@ -13,6 +10,9 @@ use re_protos::sdk_comms::v1alpha1::ReadTablesResponse;
 use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
 use re_protos::sdk_comms::v1alpha1::WriteTableRequest;
 use re_protos::sdk_comms::v1alpha1::WriteTableResponse;
+use std::collections::VecDeque;
+use std::net::SocketAddr;
+use std::pin::Pin;
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
@@ -174,8 +174,8 @@ pub async fn serve_from_channel(
         use re_smart_channel::SmartMessagePayload;
 
         loop {
-            let msg = match channel_rx.recv() {
-                Ok(msg) => match msg.payload {
+            let msg = if let Ok(msg) = channel_rx.recv() {
+                match msg.payload {
                     SmartMessagePayload::Msg(msg) => msg,
                     SmartMessagePayload::Flush { on_flush_done } => {
                         on_flush_done(); // we don't buffer
@@ -189,11 +189,10 @@ pub async fn serve_from_channel(
                         }
                         break;
                     }
-                },
-                Err(re_smart_channel::RecvError) => {
-                    re_log::debug!("smart channel sender closed, closing receiver");
-                    break;
                 }
+            } else {
+                re_log::debug!("smart channel sender closed, closing receiver");
+                break;
             };
 
             let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
@@ -243,19 +242,35 @@ pub fn spawn_from_rx_set(
     });
 
     tokio::task::spawn_blocking(move || {
+        use re_smart_channel::SmartMessagePayload;
+
         loop {
-            let msg = match rxs.recv() {
-                Ok(msg) => match msg.into_data() {
-                    Some(data) => data,
-                    None => continue,
-                },
-                Err(_) => {
-                    if rxs.is_empty() {
-                        // We won't ever receive more data:
-                        break;
+            let msg = if let Ok(msg) = rxs.recv() {
+                match msg.payload {
+                    SmartMessagePayload::Msg(msg) => msg,
+                    SmartMessagePayload::Flush { on_flush_done } => {
+                        on_flush_done(); // we don't buffer
+                        continue;
                     }
-                    continue;
+                    SmartMessagePayload::Quit(err) => {
+                        if let Some(err) = err {
+                            re_log::debug!("smart channel sender quit: {err}");
+                        } else {
+                            re_log::debug!("smart channel sender quit");
+                        }
+                        if rxs.is_empty() {
+                            // We won't ever receive more data:
+                            break;
+                        }
+                        continue;
+                    }
                 }
+            } else {
+                if rxs.is_empty() {
+                    // We won't ever receive more data:
+                    break;
+                }
+                continue;
             };
 
             let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
