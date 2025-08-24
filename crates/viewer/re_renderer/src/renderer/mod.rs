@@ -147,10 +147,6 @@ pub trait Renderer {
         pass: &mut wgpu::RenderPass<'_>,
         draw_data: &Self::RendererDrawData,
     ) -> Result<(), DrawError>;
-
-    /// Combination of flags indicating in which phases [`Renderer::draw`] should be called.
-    // TODO: this is obsolete with draw data collection
-    fn participated_phases() -> &'static [DrawPhase];
 }
 
 /// Gets or creates a vertex shader module for drawing a screen filling triangle.

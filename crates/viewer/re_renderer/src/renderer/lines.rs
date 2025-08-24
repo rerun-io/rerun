@@ -579,14 +579,6 @@ impl LineRenderer {
 impl Renderer for LineRenderer {
     type RendererDrawData = LineDrawData;
 
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[
-            DrawPhase::Opaque,
-            DrawPhase::OutlineMask,
-            DrawPhase::PickingLayer,
-        ]
-    }
-
     fn create_renderer(ctx: &RenderContext) -> Self {
         profile_function!();
 

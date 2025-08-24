@@ -364,14 +364,6 @@ pub struct DepthCloudRenderer {
 impl Renderer for DepthCloudRenderer {
     type RendererDrawData = DepthCloudDrawData;
 
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[
-            DrawPhase::Opaque,
-            DrawPhase::PickingLayer,
-            DrawPhase::OutlineMask,
-        ]
-    }
-
     fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
 

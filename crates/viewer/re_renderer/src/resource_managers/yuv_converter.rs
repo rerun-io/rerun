@@ -557,9 +557,4 @@ impl Renderer for YuvFormatConverter {
 
         Ok(())
     }
-
-    fn participated_phases() -> &'static [crate::draw_phases::DrawPhase] {
-        // Doesn't participate in regular rendering.
-        &[]
-    }
 }

@@ -75,7 +75,6 @@ impl DrawPhaseManager {
         );
 
         // TODO: sort drawables according to the phases's requirements.
-
         // TODO: Batch multiple draw data into a single renderer invocation.
         for draw_data in &self.draw_data {
             let res = draw_data.draw(renderers, gpu_resources, phase, pass);

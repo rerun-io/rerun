@@ -101,8 +101,4 @@ impl Renderer for TestTriangle {
         pass.draw(0..3, 0..1);
         Ok(())
     }
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Opaque]
-    }
 }

@@ -707,13 +707,4 @@ impl Renderer for RectangleRenderer {
 
         Ok(())
     }
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        // TODO(andreas): This a hack. We have both opaque and transparent.
-        &[
-            DrawPhase::OutlineMask,
-            DrawPhase::Opaque,
-            DrawPhase::PickingLayer,
-        ]
-    }
 }
