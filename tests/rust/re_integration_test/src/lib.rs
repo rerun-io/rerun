@@ -24,8 +24,11 @@ impl TestServer {
             .expect("Failed to start pixi")
             .wait_for_success();
 
-        let mut server = Command::new("../../../target_pixi/debug/rerun");
+        let cargo_target =
+            std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_owned());
+        let mut server = Command::new(format!("../../../{cargo_target}/debug/rerun"));
         server.args(["server", "--port", &port.to_string()]);
+        eprintln!("Starting rerun server at {server:?}");
         let server = server.spawn().expect("Failed to start rerun server");
 
         let mut success = false;

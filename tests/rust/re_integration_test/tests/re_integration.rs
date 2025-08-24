@@ -49,6 +49,7 @@ pub async fn dataset_ui_test() {
     harness.run_ok();
 
     viewer_test_utils::step_until(
+        "Redap server dataset appears",
         &mut harness,
         |harness| harness.query_by_label_contains("my_dataset").is_some(),
         tokio::time::Duration::from_millis(100),
@@ -58,6 +59,7 @@ pub async fn dataset_ui_test() {
 
     harness.get_by_label("my_dataset").click();
     viewer_test_utils::step_until(
+        "Redap recording id appears",
         &mut harness,
         |harness| {
             harness
