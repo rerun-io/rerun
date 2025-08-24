@@ -12,48 +12,62 @@ pub enum QueueableDrawDataError {
 
     #[error(transparent)]
     DrawError(#[from] DrawError),
-
-    #[error("Mismatching draw data type, expected {0}")]
-    UnexpectedDrawDataType(&'static str),
 }
 
-type DrawFn = dyn for<'pipelines, 'encoder> Fn(
-        &Renderers,
-        &GpuRenderPipelinePoolAccessor<'pipelines>,
-        DrawPhase,
-        &mut wgpu::RenderPass<'encoder>,
-        &dyn std::any::Any,
-    ) -> Result<(), QueueableDrawDataError>
-    + Sync
-    + Send;
+pub trait TypeErasedDrawData {
+    fn draw(
+        &self,
+        renderers: &Renderers,
+        gpu_resources: &GpuRenderPipelinePoolAccessor<'_>,
+        phase: DrawPhase,
+        pass: &mut wgpu::RenderPass<'_>,
+    ) -> Result<(), QueueableDrawDataError>;
+
+    fn renderer_name(&self) -> &'static str;
+
+    fn participated_phases(&self) -> &'static [DrawPhase];
+}
+
+impl<D: DrawData + 'static> TypeErasedDrawData for D {
+    fn draw(
+        &self,
+        renderers: &Renderers,
+        gpu_resources: &GpuRenderPipelinePoolAccessor<'_>,
+        phase: DrawPhase,
+        pass: &mut wgpu::RenderPass<'_>,
+    ) -> Result<(), QueueableDrawDataError> {
+        let renderer = renderers.get::<D::Renderer>().ok_or(
+            QueueableDrawDataError::FailedToRetrieveRenderer(std::any::type_name::<D::Renderer>()),
+        )?;
+
+        renderer
+            .draw(gpu_resources, phase, pass, self)
+            .map_err(QueueableDrawDataError::from)
+    }
+
+    fn renderer_name(&self) -> &'static str {
+        std::any::type_name::<D::Renderer>()
+    }
+
+    fn participated_phases(&self) -> &'static [DrawPhase] {
+        D::Renderer::participated_phases()
+    }
+}
 
 /// Type erased draw data that can be submitted directly to the view builder.
-pub struct QueueableDrawData {
-    pub(crate) draw_func: Box<DrawFn>,
-    pub(crate) draw_data: Box<dyn std::any::Any + std::marker::Send + std::marker::Sync>,
-    pub(crate) renderer_name: &'static str,
-    pub(crate) participated_phases: &'static [DrawPhase],
+pub struct QueueableDrawData(Box<dyn TypeErasedDrawData + Send + Sync>);
+
+impl<D: TypeErasedDrawData + DrawData + Sync + Send + 'static> From<D> for QueueableDrawData {
+    fn from(draw_data: D) -> Self {
+        Self(Box::new(draw_data))
+    }
 }
 
-impl<D: DrawData + Sync + Send + 'static> From<D> for QueueableDrawData {
-    fn from(draw_data: D) -> Self {
-        Self {
-            draw_func: Box::new(move |renderers, gpu_resources, phase, pass, draw_data| {
-                let renderer = renderers.get::<D::Renderer>().ok_or(
-                    QueueableDrawDataError::FailedToRetrieveRenderer(std::any::type_name::<
-                        D::Renderer,
-                    >()),
-                )?;
-                let draw_data = draw_data.downcast_ref::<D>().ok_or(
-                    QueueableDrawDataError::UnexpectedDrawDataType(std::any::type_name::<D>()),
-                )?;
-                renderer
-                    .draw(gpu_resources, phase, pass, draw_data)
-                    .map_err(QueueableDrawDataError::from)
-            }),
-            draw_data: Box::new(draw_data),
-            renderer_name: std::any::type_name::<D::Renderer>(),
-            participated_phases: D::Renderer::participated_phases(),
-        }
+impl std::ops::Deref for QueueableDrawData {
+    type Target = dyn TypeErasedDrawData;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref()
     }
 }

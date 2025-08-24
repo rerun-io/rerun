@@ -136,7 +136,7 @@ pub struct RenderContext {
 
 /// Struct owning *all* [`Renderer`].
 /// [`Renderer`] are created lazily and stay around indefinitely.
-pub(crate) struct Renderers {
+pub struct Renderers {
     renderers: concurrent::TypeMap,
 }
 
