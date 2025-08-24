@@ -8,6 +8,8 @@ Connect to the OSS Server (or Rerun Cloud Server) and test it.
 
 from __future__ import annotations
 
+import os
+import tempfile
 from argparse import ArgumentParser
 
 import rerun as rr
@@ -25,7 +27,9 @@ def main() -> None:
     dataset_name = "my_dataset"
 
     # Create a simple recording:
-    filepath = "/tmp/rerun_example_test.rrd"
+    filepath = os.path.join(tempfile.gettempdir(), "rerun_example_test.rrd")
+    print(f"Saving recording to {filepath}")
+
     rec = rr.RecordingStream("rerun_example_test", recording_id="new_recording_id")
     rec.save(filepath)
     for x in range(20):
