@@ -4,7 +4,7 @@ use std::sync::{
 };
 
 use parking_lot::{MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard};
-use type_map::concurrent::{self, TypeMap};
+use type_map::concurrent::TypeMap;
 
 use crate::{
     FileServer, RecommendedFileResolver,
@@ -12,7 +12,7 @@ use crate::{
     device_caps::DeviceCaps,
     error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
-    renderer::Renderer,
+    renderer::{Renderer, RendererExt, RendererTypeId},
     resource_managers::TextureManager2D,
     wgpu_resources::WgpuResourcePools,
 };
@@ -136,23 +136,71 @@ pub struct RenderContext {
 
 /// Struct owning *all* [`Renderer`].
 /// [`Renderer`] are created lazily and stay around indefinitely.
+#[derive(Default)]
 pub struct Renderers {
-    renderers: concurrent::TypeMap,
+    renderers: TypeMap,
+    renderers_by_key: Vec<Arc<dyn RendererExt>>,
+}
+
+pub struct RendererWithKey<T: Renderer> {
+    renderer: Arc<T>,
+    key: RendererTypeId,
+}
+
+impl<T: Renderer> std::ops::Deref for RendererWithKey<T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.renderer.as_ref()
+    }
+}
+
+impl<T: Renderer> RendererWithKey<T> {
+    /// Returns the key of the renderer.
+    ///
+    /// The key is guaranteed to be unique and constant for the lifetime of the renderer.
+    /// It is kept as small as possible to aid with sorting drawables.
+    #[inline]
+    pub fn key(&self) -> RendererTypeId {
+        self.key
+    }
 }
 
 impl Renderers {
     pub fn get_or_create<R: 'static + Renderer + Send + Sync>(
         &mut self,
         ctx: &RenderContext,
-    ) -> &R {
+    ) -> &RendererWithKey<R> {
         self.renderers.entry().or_insert_with(|| {
             re_tracing::profile_scope!("create_renderer", std::any::type_name::<R>());
-            R::create_renderer(ctx)
+
+            let key = RendererTypeId::try_from(self.renderers_by_key.len()).unwrap_or_else(|_| {
+                re_log::error!(
+                    "Supporting at most {} distinct renderer types.",
+                    RendererTypeId::MAX
+                );
+                RendererTypeId::MAX
+            });
+
+            let renderer = Arc::new(R::create_renderer(ctx));
+            self.renderers_by_key.push(renderer.clone());
+
+            RendererWithKey { key, renderer }
         })
     }
 
-    pub fn get<R: 'static + Renderer>(&self) -> Option<&R> {
-        self.renderers.get::<R>()
+    pub fn get<R: 'static + Renderer>(&self) -> Option<&RendererWithKey<R>> {
+        self.renderers.get::<RendererWithKey<R>>()
+    }
+
+    /// Gets a renderer by its key.
+    ///
+    /// For this to succeed, the renderer must have been initialized prior.
+    /// (there would be no key otherwise anyways!)
+    /// The returned type is the type erased [`RendererExt`] rather than a concrete renderer type.
+    pub fn get_by_key(&self, key: RendererTypeId) -> Option<&dyn RendererExt> {
+        self.renderers_by_key.get(key as usize).map(|r| r.as_ref())
     }
 }
 
@@ -276,9 +324,7 @@ impl RenderContext {
             config,
             output_format_color,
             global_bindings,
-            renderers: RwLock::new(Renderers {
-                renderers: TypeMap::new(),
-            }),
+            renderers: RwLock::new(Renderers::default()),
             resolver,
             top_level_error_tracker,
             texture_manager_2d,
@@ -455,7 +501,9 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     }
 
     /// Gets a renderer with the specified type, initializing it if necessary.
-    pub fn renderer<R: 'static + Renderer + Send + Sync>(&self) -> MappedRwLockReadGuard<'_, R> {
+    pub fn renderer<R: 'static + Renderer + Send + Sync>(
+        &self,
+    ) -> MappedRwLockReadGuard<'_, RendererWithKey<R>> {
         // Most likely we already have the renderer. Take a read lock and return it.
         if let Ok(renderer) =
             parking_lot::RwLockReadGuard::try_map(self.renderers.read(), |r| r.get::<R>())
