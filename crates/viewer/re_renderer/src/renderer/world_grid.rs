@@ -1,8 +1,9 @@
 use crate::{
-    ViewBuilder,
+    DrawableCollector, ViewBuilder,
     allocator::create_and_fill_uniform_buffer,
     draw_phases::DrawPhase,
     include_shader_module,
+    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
     wgpu_resources::{
         BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
@@ -66,6 +67,23 @@ pub struct WorldGridDrawData {
 
 impl DrawData for WorldGridDrawData {
     type Renderer = WorldGridRenderer;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        collector.add_drawable(
+            DrawPhase::Transparent,
+            DrawDataDrawable {
+                // The grid is everywhere, making it a bit hard to sort against other transparent objects.
+                // We could use distance from the plane, but we rather use a stable sorting here to avoid flickering,
+                // therefore we want to draw it before any other "real" transparentobjects.
+                distance_sort_key: -1.0,
+                intra_draw_data_key: 0,
+            },
+        );
+    }
 }
 
 impl WorldGridDrawData {

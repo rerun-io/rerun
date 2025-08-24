@@ -1,7 +1,8 @@
 use crate::{
+    DrawableCollector,
     context::Renderers,
     draw_phases::DrawPhase,
-    renderer::{DrawData, DrawError, Renderer as _},
+    renderer::{DrawData, DrawError, DrawableCollectionViewInfo, Renderer as _},
     wgpu_resources::GpuRenderPipelinePoolAccessor,
 };
 
@@ -15,6 +16,12 @@ pub enum QueueableDrawDataError {
 }
 
 pub trait TypeErasedDrawData {
+    fn collect_drawables(
+        &self,
+        view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    );
+
     fn draw(
         &self,
         renderers: &Renderers,
@@ -29,6 +36,14 @@ pub trait TypeErasedDrawData {
 }
 
 impl<D: DrawData + 'static> TypeErasedDrawData for D {
+    fn collect_drawables(
+        &self,
+        view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        <D as DrawData>::collect_drawables(self, view_info, collector);
+    }
+
     fn draw(
         &self,
         renderers: &Renderers,

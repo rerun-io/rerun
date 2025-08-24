@@ -14,11 +14,12 @@ use itertools::{Itertools as _, izip};
 use smallvec::smallvec;
 
 use crate::{
-    Colormap, OutlineMaskPreference, PickingLayerProcessor, Rgba,
+    Colormap, DrawableCollector, OutlineMaskPreference, PickingLayerProcessor, Rgba,
     allocator::create_and_fill_uniform_buffer_batch,
     depth_offset::DepthOffset,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
+    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
     resource_managers::GpuTexture2D,
     view_builder::ViewBuilder,
     wgpu_resources::{
@@ -390,6 +391,7 @@ mod gpu_data {
 
 #[derive(Clone)]
 struct RectangleInstance {
+    center_position: glam::Vec3A,
     bind_group: GpuBindGroup,
     draw_outline_mask: bool,
 }
@@ -401,6 +403,27 @@ pub struct RectangleDrawData {
 
 impl DrawData for RectangleDrawData {
     type Renderer = RectangleRenderer;
+
+    fn collect_drawables(
+        &self,
+        view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        // TODO(#1025, #4787): Better handling of 2D objects, use per-2d layer sorting instead of depth offsets.
+        // This is extra hacky here since we actually have transparent objects, but putting them on that layer messes with the
+        // 2D setup we have so far.
+        let phases = DrawPhase::Opaque | DrawPhase::PickingLayer | DrawPhase::OutlineMask;
+
+        let drawables = self
+            .instances
+            .iter()
+            .enumerate()
+            .map(|(i, instance)| {
+                DrawDataDrawable::from_world_position(view_info, instance.center_position, i as u32)
+            })
+            .collect::<Vec<_>>();
+        collector.add_drawables(phases, &drawables);
+    }
 }
 
 impl RectangleDrawData {
@@ -470,6 +493,10 @@ impl RectangleDrawData {
                 };
 
             instances.push(RectangleInstance {
+                center_position: (rectangle.top_left_corner_position
+                    + rectangle.extent_u * 0.5
+                    + rectangle.extent_v * 0.5)
+                    .into(),
                 bind_group: ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &ctx.gpu_resources,

@@ -1,8 +1,9 @@
 use crate::{
-    RectInt,
+    DrawableCollector, RectInt,
     allocator::create_and_fill_uniform_buffer,
     draw_phases::DrawPhase,
     include_shader_module,
+    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
@@ -67,6 +68,20 @@ pub struct DebugOverlayDrawData {
 
 impl DrawData for DebugOverlayDrawData {
     type Renderer = DebugOverlayRenderer;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        collector.add_drawable(
+            DrawPhase::Compositing,
+            DrawDataDrawable {
+                distance_sort_key: 100.0, // Should draw after compositing.
+                intra_draw_data_key: 0,
+            },
+        );
+    }
 }
 
 impl DebugOverlayDrawData {

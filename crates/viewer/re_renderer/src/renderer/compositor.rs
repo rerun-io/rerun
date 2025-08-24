@@ -1,8 +1,11 @@
 use crate::{
-    OutlineConfig, Rgba,
+    DrawableCollector, OutlineConfig, Rgba,
     allocator::create_and_fill_uniform_buffer,
     include_shader_module,
-    renderer::{DrawData, DrawError, Renderer, screen_triangle_vertex_shader},
+    renderer::{
+        DrawData, DrawDataDrawable, DrawError, DrawableCollectionViewInfo, Renderer,
+        screen_triangle_vertex_shader,
+    },
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
@@ -50,6 +53,20 @@ pub struct CompositorDrawData {
 
 impl DrawData for CompositorDrawData {
     type Renderer = Compositor;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        collector.add_drawable(
+            DrawPhase::Compositing | DrawPhase::CompositingScreenshot,
+            DrawDataDrawable {
+                distance_sort_key: 0.0,
+                intra_draw_data_key: 0,
+            },
+        );
+    }
 }
 
 impl CompositorDrawData {

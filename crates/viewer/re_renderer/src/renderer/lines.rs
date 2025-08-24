@@ -83,11 +83,12 @@ use re_tracing::profile_function;
 use smallvec::smallvec;
 
 use crate::{
-    DebugLabel, DepthOffset, LineDrawableBuilder, OutlineMaskPreference, PickingLayerObjectId,
-    PickingLayerProcessor,
+    DebugLabel, DepthOffset, DrawableCollector, LineDrawableBuilder, OutlineMaskPreference,
+    PickingLayerObjectId, PickingLayerProcessor,
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
+    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
@@ -192,6 +193,25 @@ pub struct LineDrawData {
 
 impl DrawData for LineDrawData {
     type Renderer = LineRenderer;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        // TODO(#1611): transparency, split drawables for some semblence of transparency ordering.
+        // TODO(#1025, #4787): Better handling of 2D objects.
+        let phases = DrawPhase::Opaque | DrawPhase::PickingLayer | DrawPhase::OutlineMask;
+
+        collector.add_drawable(
+            phases,
+            DrawDataDrawable {
+                // TODO(andreas): Don't have distance information yet. For now just always draw lines last since they're quite expensive.
+                distance_sort_key: f32::MAX,
+                intra_draw_data_key: 0,
+            },
+        );
+    }
 }
 
 bitflags! {

@@ -15,10 +15,12 @@ use itertools::Itertools as _;
 use smallvec::smallvec;
 
 use crate::{
-    Colormap, OutlineMaskPreference, PickingLayerObjectId, PickingLayerProcessor,
+    Colormap, DrawableCollector, OutlineMaskPreference, PickingLayerObjectId,
+    PickingLayerProcessor,
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
+    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
     resource_managers::GpuTexture2D,
     view_builder::ViewBuilder,
     wgpu_resources::{
@@ -207,6 +209,8 @@ pub struct DepthClouds {
 
 #[derive(Clone)]
 struct DepthCloudDrawInstance {
+    sorting_world_position: glam::Vec3A,
+
     bind_group_opaque: GpuBindGroup,
     bind_group_outline: GpuBindGroup,
     num_points: u32,
@@ -220,6 +224,28 @@ pub struct DepthCloudDrawData {
 
 impl DrawData for DepthCloudDrawData {
     type Renderer = DepthCloudRenderer;
+
+    fn collect_drawables(
+        &self,
+        view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        let phases = DrawPhase::Opaque | DrawPhase::PickingLayer | DrawPhase::OutlineMask;
+        let drawables = self
+            .instances
+            .iter()
+            .enumerate()
+            .map(|(index, instance)| {
+                DrawDataDrawable::from_world_position(
+                    view_info,
+                    instance.sorting_world_position,
+                    index as u32,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        collector.add_drawables(phases, &drawables);
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -316,6 +342,7 @@ impl DepthCloudDrawData {
             let bind_group_opaque = mk_bind_group("depth_cloud_opaque".into(), ubo_opaque);
 
             instances.push(DepthCloudDrawInstance {
+                sorting_world_position: depth_cloud.world_from_rdf.translation,
                 num_points: depth_cloud.depth_dimensions.x * depth_cloud.depth_dimensions.y,
                 bind_group_opaque,
                 bind_group_outline,

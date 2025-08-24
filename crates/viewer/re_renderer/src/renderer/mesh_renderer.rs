@@ -8,10 +8,12 @@ use std::{collections::BTreeMap, sync::Arc};
 use smallvec::smallvec;
 
 use crate::{
-    Color32, CpuWriteGpuReadError, OutlineMaskPreference, PickingLayerId, PickingLayerProcessor,
+    Color32, CpuWriteGpuReadError, DrawableCollector, OutlineMaskPreference, PickingLayerId,
+    PickingLayerProcessor,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
     mesh::{GpuMesh, gpu_data::MaterialUniformBuffer, mesh_vertices},
+    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
@@ -107,6 +109,23 @@ pub struct MeshDrawData {
 
 impl DrawData for MeshDrawData {
     type Renderer = MeshRenderer;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        // TODO: transparency, distance sorting etc.
+        let phases = DrawPhase::Opaque | DrawPhase::PickingLayer | DrawPhase::OutlineMask;
+
+        collector.add_drawable(
+            phases,
+            DrawDataDrawable {
+                distance_sort_key: f32::MAX,
+                intra_draw_data_key: 0,
+            },
+        );
+    }
 }
 
 pub struct GpuMeshInstance {
