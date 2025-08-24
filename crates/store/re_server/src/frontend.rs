@@ -5,11 +5,8 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use nohash_hasher::IntSet;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
-use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
-    path::PathBuf,
-};
 use tokio_stream::StreamExt as _;
 
 use crate::store::{Dataset, InMemoryStore};
@@ -401,8 +398,8 @@ impl FrontendService for FrontendHandler {
                 ));
             }
 
-            if let Some(rrd_path) = storage_url.as_str().strip_prefix("file://") {
-                let new_partition_ids = dataset.load_rrd(&PathBuf::from(rrd_path), on_duplicate)?;
+            if let Ok(rrd_path) = storage_url.to_file_path() {
+                let new_partition_ids = dataset.load_rrd(&rrd_path, on_duplicate)?;
 
                 for partition_id in new_partition_ids {
                     partition_ids.push(partition_id.to_string());
