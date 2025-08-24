@@ -18,10 +18,10 @@ resolver = "2"
 # Add triples corresponding to platforms commonly used by developers here.
 # https://doc.rust-lang.org/rustc/platform-support.html
 platforms = [
-  "aarch64-apple-darwin",
-  "wasm32-unknown-unknown",
-  "x86_64-pc-windows-msvc",
-  "x86_64-unknown-linux-gnu",
+  # "aarch64-apple-darwin",
+  # "wasm32-unknown-unknown",
+  # "x86_64-pc-windows-msvc",
+  # "x86_64-unknown-linux-gnu",
 ]
 
 # Write out exact versions rather than a semver range. (Defaults to false.)
@@ -31,8 +31,19 @@ platforms = [
 third-party = [
   { name = "insta" }, # dev-dependency
 
-  # Causes misc problems:
+  # Randomly disabling some crates to get the build to work:
+  { name = "cc" },
   { name = "crossbeam" },
+  { name = "futures-io" },
+  { name = "futures" },
+  { name = "hyper" },
+  { name = "libc" },
   { name = "mio" },
   { name = "notify" },
+  { name = "pyo3-ffi" },
+  { name = "pyo3" },
+  { name = "reqwest" },
+  { name = "rustls" },
+  { name = "tokio" },
+  { name = "tonic" },
 ]

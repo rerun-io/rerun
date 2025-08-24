@@ -44,7 +44,6 @@ crossbeam.workspace = true
 image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
-notify.workspace = true
 mcap.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
@@ -55,7 +54,9 @@ urdf-rs.workspace = true
 walkdir.workspace = true
 re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
+# Native
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]
+notify.workspace = true
 parquet = { workspace = true, features = ["arrow", "snap"] }
 re_crash_handler.workspace = true
 

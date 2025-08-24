@@ -165,7 +165,6 @@ indexmap.workspace = true
 indicatif.workspace = true
 itertools.workspace = true
 similar-asserts.workspace = true
-tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
@@ -191,6 +190,7 @@ re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin.workspace = true
 rayon.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 # Native, optional:
 re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
