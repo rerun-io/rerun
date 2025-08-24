@@ -16,10 +16,11 @@
 use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
-    DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
+    DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference, PointCloudBuilder,
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     include_shader_module,
+    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
     wgpu_resources::GpuRenderPipelinePoolAccessor,
 };
 use bitflags::bitflags;
@@ -112,6 +113,25 @@ pub struct PointCloudDrawData {
 
 impl DrawData for PointCloudDrawData {
     type Renderer = PointCloudRenderer;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        // TODO(#1611): transparency, split drawables for some semblence of transparency ordering.
+        // TODO(#1025, #4787): Better handling of 2D objects, use per-2d layer sorting instead of depth offsets.
+        let phases = DrawPhase::Opaque | DrawPhase::PickingLayer | DrawPhase::OutlineMask;
+
+        collector.add_drawable(
+            phases,
+            DrawDataDrawable {
+                // TODO(andreas): Don't have distance information yet. For now just always draw points last since they're quite expensive.
+                distance_sort_key: f32::MAX,
+                intra_draw_data_key: 0,
+            },
+        );
+    }
 }
 
 /// Data that is valid for a batch of point cloud points.

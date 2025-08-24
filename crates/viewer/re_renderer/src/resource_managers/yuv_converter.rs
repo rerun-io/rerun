@@ -1,10 +1,12 @@
 use smallvec::smallvec;
 
 use crate::{
-    RenderContext,
+    DrawableCollector, RenderContext,
     allocator::create_and_fill_uniform_buffer,
     include_shader_module,
-    renderer::{DrawData, DrawError, Renderer, screen_triangle_vertex_shader},
+    renderer::{
+        DrawData, DrawError, DrawableCollectionViewInfo, Renderer, screen_triangle_vertex_shader,
+    },
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
@@ -349,6 +351,14 @@ pub struct YuvFormatConversionTask {
 
 impl DrawData for YuvFormatConversionTask {
     type Renderer = YuvFormatConverter;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        _collector: &mut DrawableCollector<'_>,
+    ) {
+        // Doesn't participate in regular rendering.
+    }
 }
 
 impl YuvFormatConversionTask {

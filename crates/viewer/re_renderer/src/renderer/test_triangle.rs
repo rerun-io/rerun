@@ -1,7 +1,8 @@
 use smallvec::smallvec;
 
 use crate::{
-    include_shader_module,
+    DrawableCollector, include_shader_module,
+    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
     view_builder::ViewBuilder,
     wgpu_resources::{GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc},
 };
@@ -19,6 +20,20 @@ pub struct TestTriangleDrawData;
 
 impl DrawData for TestTriangleDrawData {
     type Renderer = TestTriangle;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        collector.add_drawable(
+            DrawPhase::Opaque,
+            DrawDataDrawable {
+                distance_sort_key: 0.0,
+                intra_draw_data_key: 0,
+            },
+        );
+    }
 }
 
 impl TestTriangleDrawData {
