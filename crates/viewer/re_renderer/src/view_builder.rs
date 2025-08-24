@@ -631,16 +631,10 @@ impl ViewBuilder {
         re_tracing::profile_function!();
 
         for queued_draw in &self.queued_draws {
-            if queued_draw.participated_phases.contains(&phase) {
-                let res = (queued_draw.draw_func)(
-                    renderers,
-                    render_pipelines,
-                    phase,
-                    pass,
-                    queued_draw.draw_data.as_ref(),
-                );
+            if queued_draw.participated_phases().contains(&phase) {
+                let res = queued_draw.draw(renderers, render_pipelines, phase, pass);
                 if let Err(err) = res {
-                    re_log::error!(renderer=%queued_draw.renderer_name, %err,
+                    re_log::error!(renderer=%queued_draw.renderer_name(), %err,
                         "renderer failed to draw");
                 }
             }
