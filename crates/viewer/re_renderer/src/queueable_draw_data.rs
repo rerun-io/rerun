@@ -2,7 +2,7 @@ use crate::{
     DrawableCollector,
     context::Renderers,
     draw_phases::DrawPhase,
-    renderer::{DrawData, DrawError, DrawableCollectionViewInfo, Renderer as _},
+    renderer::{DrawData, DrawError, DrawInstruction, DrawableCollectionViewInfo, Renderer as _},
     wgpu_resources::GpuRenderPipelinePoolAccessor,
 };
 
@@ -28,6 +28,7 @@ pub trait TypeErasedDrawData {
         gpu_resources: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
+        draw_instructions: &[DrawInstruction<'_, Self>],
     ) -> Result<(), QueueableDrawDataError>;
 
     fn renderer_name(&self) -> &'static str;
@@ -48,13 +49,14 @@ impl<D: DrawData + 'static> TypeErasedDrawData for D {
         gpu_resources: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
+        draw_instructions: &[DrawInstruction<'_, D>],
     ) -> Result<(), QueueableDrawDataError> {
         let renderer = renderers.get::<D::Renderer>().ok_or(
             QueueableDrawDataError::FailedToRetrieveRenderer(std::any::type_name::<D::Renderer>()),
         )?;
 
         renderer
-            .draw(gpu_resources, phase, pass, self)
+            .draw(gpu_resources, phase, pass, draw_instructions)
             .map_err(QueueableDrawDataError::from)
     }
 

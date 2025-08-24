@@ -127,6 +127,12 @@ pub enum DrawError {
     Pool(#[from] PoolError),
 }
 
+/// A draw instruction specifies which drawables of a given [`DrawData`] should be rendered.
+pub struct DrawInstruction<'a, D: DrawData> {
+    pub draw_data: &'a D,
+    pub drawables: &'a [DrawDataDrawable],
+}
+
 /// A Renderer encapsulate the knowledge of how to render a certain kind of primitives.
 ///
 /// It is an immutable, long-lived datastructure that only holds onto resources that will be needed
@@ -145,7 +151,7 @@ pub trait Renderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError>;
 }
 
