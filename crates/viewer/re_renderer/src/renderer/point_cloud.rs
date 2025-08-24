@@ -441,14 +441,6 @@ impl PointCloudRenderer {
 impl Renderer for PointCloudRenderer {
     type RendererDrawData = PointCloudDrawData;
 
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[
-            DrawPhase::OutlineMask,
-            DrawPhase::Opaque,
-            DrawPhase::PickingLayer,
-        ]
-    }
-
     fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
 

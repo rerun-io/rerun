@@ -31,8 +31,6 @@ pub trait TypeErasedDrawData {
     ) -> Result<(), QueueableDrawDataError>;
 
     fn renderer_name(&self) -> &'static str;
-
-    fn participated_phases(&self) -> &'static [DrawPhase];
 }
 
 impl<D: DrawData + 'static> TypeErasedDrawData for D {
@@ -62,10 +60,6 @@ impl<D: DrawData + 'static> TypeErasedDrawData for D {
 
     fn renderer_name(&self) -> &'static str {
         std::any::type_name::<D::Renderer>()
-    }
-
-    fn participated_phases(&self) -> &'static [DrawPhase] {
-        D::Renderer::participated_phases()
     }
 }
 

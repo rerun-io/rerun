@@ -181,8 +181,4 @@ impl Renderer for GenericSkybox {
 
         Ok(())
     }
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Background]
-    }
 }

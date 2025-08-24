@@ -254,8 +254,4 @@ impl Renderer for Compositor {
 
         Ok(())
     }
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Compositing, DrawPhase::CompositingScreenshot]
-    }
 }

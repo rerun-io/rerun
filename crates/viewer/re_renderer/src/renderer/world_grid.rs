@@ -208,8 +208,4 @@ impl Renderer for WorldGridRenderer {
 
         Ok(())
     }
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Transparent]
-    }
 }

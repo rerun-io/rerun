@@ -311,14 +311,6 @@ pub struct MeshRenderer {
 impl Renderer for MeshRenderer {
     type RendererDrawData = MeshDrawData;
 
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[
-            DrawPhase::Opaque,
-            DrawPhase::OutlineMask,
-            DrawPhase::PickingLayer,
-        ]
-    }
-
     fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
 

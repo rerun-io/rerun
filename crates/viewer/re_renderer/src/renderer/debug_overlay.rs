@@ -253,8 +253,4 @@ impl Renderer for DebugOverlayRenderer {
 
         Ok(())
     }
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[DrawPhase::Compositing]
-    }
 }
