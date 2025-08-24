@@ -68,13 +68,10 @@ tracing.workspace = true
 bytes = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true, features = ["streaming"] }
 lz4_flex = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["io-util"] }
 tokio-stream = { workspace = true, optional = true }
 web-time = { workspace = true, optional = true }
 re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
-
-# Native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { workspace = true, optional = true, features = ["io-util"] }
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
