@@ -597,6 +597,8 @@ impl CpuWriteGpuReadBelt {
         re_tracing::profile_function!();
         self.receive_chunks();
 
+        // TODO(andreas): Use `map_buffer_on_submit` https://github.com/gfx-rs/wgpu/pull/8125 once available.
+
         let sender = &self.sender;
         for chunk in self.closed_chunks.drain(..) {
             let sender = sender.clone();
