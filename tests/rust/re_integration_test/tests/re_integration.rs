@@ -3,9 +3,9 @@ use egui_kittest::kittest::Queryable as _;
 use re_integration_test::TestServer;
 use re_viewer::viewer_test_utils;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 pub async fn dataset_ui_test() {
-    let mut server = TestServer::spawn().await.with_test_data().await;
+    let server = TestServer::spawn().await.with_test_data().await;
 
     let mut harness = viewer_test_utils::viewer_harness();
     let mut snapshot_results = SnapshotResults::new();
@@ -54,6 +54,4 @@ pub async fn dataset_ui_test() {
     )
     .await;
     snapshot_results.add(harness.try_snapshot("dataset_ui_table"));
-
-    server.shutdown().await;
 }
