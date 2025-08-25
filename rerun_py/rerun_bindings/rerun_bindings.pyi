@@ -1035,9 +1035,7 @@ def serve_grpc(
     Returns the URI of the server so you can connect the viewer to it.
     """
 
-def serve_web_viewer(
-    web_port: int | None = None, open_browser: bool = True, connect_to: str | None = None
-) -> None:
+def serve_web_viewer(web_port: int | None = None, open_browser: bool = True, connect_to: str | None = None) -> None:
     """
     Serve a web-viewer over HTTP.
 
@@ -1204,9 +1202,7 @@ def new_entity_path(parts: list[str]) -> str:
 def new_property_entity_path(parts: list[str]) -> str:
     """Create a property entity path."""
 
-def asset_video_read_frame_timestamps_nanos(
-    video_bytes_arrow_array: Any, media_type: str | None = None
-) -> list[int]:
+def asset_video_read_frame_timestamps_nanos(video_bytes_arrow_array: Any, media_type: str | None = None) -> list[int]:
     """
     Reads the timestamps of all frames in a video asset.
 
