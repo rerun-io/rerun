@@ -7,7 +7,9 @@ mod redap;
 
 pub use self::{
     connection_client::GenericConnectionClient,
-    connection_registry::{ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle},
+    connection_registry::{
+        ClientConnectionError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
+    },
     redap::{
         ConnectionError, RedapClient, UiCommand, channel,
         get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
@@ -84,7 +86,7 @@ pub enum StreamError {
     Transport(#[from] tonic::transport::Error),
 
     #[error(transparent)]
-    ConnectionError(#[from] redap::ConnectionError),
+    ClientConnectionError(#[from] ClientConnectionError),
 
     #[error(transparent)]
     TonicStatus(#[from] TonicStatusError),
