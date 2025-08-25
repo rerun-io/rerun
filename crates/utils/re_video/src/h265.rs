@@ -7,7 +7,10 @@ use crate::{
         write_length_prefixed_nalus_to_annexb_stream,
     },
 };
-use cros_codecs::codec::h265::parser::{Nalu, NaluType, Parser, Sps};
+use cros_codecs::codec::{
+    h264::nalu::Header,
+    h265::parser::{Nalu, NaluType, Parser, Sps},
+};
 
 /// Retrieve [`VideoEncodingDetails`] from an H.265 SPS.
 pub fn encoding_details_from_h265_sps(sps: &Sps) -> VideoEncodingDetails {
@@ -49,6 +52,13 @@ pub fn detect_h265_annexb_gop(data: &[u8]) -> Result<GopStartDetection, DetectGo
     while let Ok(nalu) = Nalu::next(&mut cursor) {
         match nalu.header.type_ {
             NaluType::SpsNut if details.is_none() => {
+                if nalu.as_ref().len() < nalu.header.len() {
+                    // Prevent panic inside of `parse_sps`.
+                    return Err(DetectGopStartError::FailedToExtractEncodingDetails(
+                        "SPS NALU is incomplete".to_owned(),
+                    ));
+                }
+
                 // parse_sps returns &Sps, so bind to a reference
                 let sps_ref: &Sps = parser
                     .parse_sps(&nalu)
@@ -119,4 +129,76 @@ pub fn write_hevc_chunk_to_nalu_stream(
     let length_prefix_size = (hvcc.hvcc.contents.length_size_minus_one as usize & 0x03) + 1;
 
     write_length_prefixed_nalus_to_annexb_stream(nalu_stream, &chunk.data, length_prefix_size)
+}
+
+#[cfg(test)]
+mod test {
+    use super::{GopStartDetection, detect_h265_annexb_gop};
+    use crate::{ChromaSubsamplingModes, DetectGopStartError, VideoEncodingDetails};
+
+    #[test]
+    fn test_detect_h265_annexb_gop() {
+        // Example H.265 Annex B encoded data containing VPS, SPS and IDR frame. (extracted from "tests/assets/video/Big_Buck_Bunny_1080_1s_h265.mp4")
+        let sample_data = &[
+            // VPS NAL unit (NAL type 32)
+            0x00, 0x00, 0x00, 0x01, 0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x01, 0x60, 0x00, 0x00,
+            0x03, 0x00, 0x90, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x78, 0x95, 0x98, 0x09,
+            // SPS NAL unit (NAL type 33)
+            0x00, 0x00, 0x00, 0x01, 0x42, 0x01, 0x01, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00, 0x90,
+            0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x78, 0xa0, 0x03, 0xc0, 0x80, 0x10, 0xe5,
+            0x96, 0x56, 0x69, 0x24, 0xca, 0xf0, 0x16, 0x9c, 0x20, 0x00, 0x00, 0x03, 0x00, 0x20,
+            0x00, 0x00, 0x03, 0x03, 0xc1, //
+            // PPS NAL unit (NAL type 34)
+            0x00, 0x00, 0x00, 0x01, 0x44, 0x01, 0xc1, 0x72, 0xb4, 0x62, 0x40,
+            // IDR frame NAL unit (NAL type 19)
+            0x00, 0x00, 0x00, 0x01, 0x26, 0x01, 0x88, 0x84, 0x21, 0x43, 0x02, 0x4C, 0x82, 0x54,
+            0x2B, 0x8F, 0x2C, 0x8C, 0x54, 0x4A, 0x92, 0x54, 0x2B, 0x8F, 0x2C, 0x8C, 0x54, 0x4A,
+        ];
+        let result = detect_h265_annexb_gop(sample_data);
+        assert_eq!(
+            result,
+            Ok(GopStartDetection::StartOfGop(VideoEncodingDetails {
+                codec_string: "hvc1.01.L120".to_owned(),
+                coded_dimensions: [1920, 1080],
+                bit_depth: Some(8),
+                chroma_subsampling: Some(ChromaSubsamplingModes::Yuv420),
+                stsd: None,
+            }))
+        );
+
+        // Example H.265 Annex B encoded data containing broken SPS and IDR frame. (above example but messed with the SPS)
+        let sample_data = &[
+            // VPS NAL unit (NAL type 32)
+            0x00, 0x00, 0x00, 0x01, 0x40, 0x01, 0x0C, 0x01, 0xFF, 0xFF, 0x01, 0x60, 0x00, 0x00,
+            0x03, 0x00, 0x90, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x5D, 0x95, 0x98, 0x09,
+            // Broken SPS NAL unit (NAL type 33)
+            0x00, 0x00, 0x00, 0x01, 0x42, 0x00, 0x00, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00, 0x90,
+            0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x5D, 0xA0, 0x02, 0x80, 0x80, 0x2D, 0x1F,
+            0xE5, 0x8E, 0x49, 0x24, 0x94, 0x92, 0x49, 0x24, 0x92, 0x49, 0x24, 0x94, 0x92, 0x49,
+            // IDR frame NAL unit (NAL type 19)
+            0x00, 0x00, 0x00, 0x01, 0x26, 0x01, 0x88, 0x84, 0x21, 0x43, 0x02, 0x4C, 0x82, 0x54,
+            0x2B, 0x8F, 0x2C, 0x8C, 0x54, 0x4A, 0x92, 0x54, 0x2B, 0x8F, 0x2C, 0x8C, 0x54, 0x4A,
+        ];
+        let result = detect_h265_annexb_gop(sample_data);
+        assert_eq!(
+            result,
+            Err(DetectGopStartError::FailedToExtractEncodingDetails(
+                "SPS NALU is incomplete".to_owned()
+            ))
+        );
+
+        // Garbage data, still annex b shaped. (ai generated)
+        let sample_data = &[
+            0x00, 0x00, 0x00, 0x01, 0x67, 0x64, 0x00, 0x0A, 0xAC, 0x72, 0x84, 0x44, 0x26, 0x84,
+            0x00, 0x00, 0x03, 0x00, 0x04, 0x00, 0x00, 0x03, 0x00, 0xCA, 0x3C, 0x48, 0x96, 0x11,
+            0x80,
+        ];
+        let result = detect_h265_annexb_gop(sample_data);
+        assert_eq!(result, Ok(GopStartDetection::NotStartOfGop));
+
+        // Garbage data, no detectable nalu units.
+        let sample_data = &[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A];
+        let result = detect_h265_annexb_gop(sample_data);
+        assert_eq!(result, Ok(GopStartDetection::NotStartOfGop));
+    }
 }
