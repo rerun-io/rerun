@@ -116,6 +116,11 @@ impl<T: Send> ReceiveSet<T> {
         let mut rx = self.receivers.lock();
 
         rx.retain(|r| r.is_connected());
+        if rx.is_empty() {
+            // Have to early out here, because `Select::select` will panic if there are no channels to select from.
+            return Err(RecvError);
+        }
+
         let mut sel = Select::new();
         for r in rx.iter() {
             sel.recv(&r.rx);
