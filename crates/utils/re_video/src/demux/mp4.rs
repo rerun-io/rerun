@@ -9,6 +9,7 @@ use crate::{
     demux::{ChromaSubsamplingModes, SamplesStatistics, VideoEncodingDetails},
     h264::encoding_details_from_h264_sps,
     h265::encoding_details_from_h265_sps,
+    nalu::ANNEXB_NAL_START_CODE,
 };
 use cros_codecs::codec::h265::parser::{
     Nalu as H265Nalu, NaluType as H265NaluType, Parser as H265Parser,
@@ -200,8 +201,9 @@ fn codec_details_from_stds(
                     && matches!(nalu_type, H265NaluType::SpsNut)
                 {
                     for nal in &array.nalus {
-                        let mut annexb = Vec::with_capacity(4 + nal.size as usize);
-                        annexb.extend_from_slice(&[0, 0, 0, 1]);
+                        let mut annexb =
+                            Vec::with_capacity(ANNEXB_NAL_START_CODE.len() + nal.size as usize);
+                        annexb.extend_from_slice(ANNEXB_NAL_START_CODE);
                         annexb.extend_from_slice(&nal.data);
 
                         let mut parser = H265Parser::default();

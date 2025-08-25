@@ -9,17 +9,12 @@ use crate::{
 };
 use cros_codecs::codec::{
     h264::nalu::Header as _,
-    h265::parser::{Nalu, NaluType, Parser, Sps},
+    h265::parser::{Nalu, NaluType, Parser, ProfileTierLevel, Sps},
 };
 
 /// Retrieve [`VideoEncodingDetails`] from an H.265 SPS.
 pub fn encoding_details_from_h265_sps(sps: &Sps) -> VideoEncodingDetails {
-    let profile_idc = sps.profile_tier_level.general_profile_idc;
-    let level_idc: u8 = sps.profile_tier_level.general_level_idc as u8;
-
-    // WebCodecs HEVC strings are usually "hvc1.<profile>.<level>" (with optional flags)
-    let codec_string = format!("hvc1.{profile_idc:02X}.L{level_idc:02}");
-
+    let codec_string = hevc_codec_string(&sps.profile_tier_level);
     let width = sps.width();
     let height = sps.height();
     let coded_dimensions = [width, height];
@@ -41,6 +36,70 @@ pub fn encoding_details_from_h265_sps(sps: &Sps) -> VideoEncodingDetails {
         chroma_subsampling,
         stsd: None,
     }
+}
+
+/// Builds a codec string for HEVC.
+fn hevc_codec_string(profile_tier_level: &ProfileTierLevel) -> String {
+    // See <https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/codecs_parameter#hevc_mp4_quicktime_matroska>
+    // Codec string has the form hvc1[.A.B.C.D]
+    let mut codec = "hvc1.".to_owned();
+
+    // .A: The general_profile_space. This is encoded as one or two characters.
+    match profile_tier_level.general_profile_space {
+        1 => codec.push('A'),
+        2 => codec.push('B'),
+        3 => codec.push('C'),
+        _ => {}
+    }
+    codec.push_str(&format!("{}", profile_tier_level.general_profile_idc));
+
+    // .B: A 32-bit value representing one or more general profile compatibility flags.
+    let mut reversed = 0;
+    for i in 0..32 {
+        reversed |= profile_tier_level.general_profile_compatibility_flag[i] as u32;
+        if i != 31 {
+            reversed <<= 1;
+        }
+    }
+    codec.push_str(format!(".{reversed:X}").trim_end_matches('0'));
+
+    // .C: The general_tier_flag, encoded as L (general_tier_flag === 0) or H (general_tier_flag === 1), followed by the general_level_idc, encoded as a decimal number.
+    if profile_tier_level.general_tier_flag {
+        codec.push_str(".H");
+    } else {
+        codec.push_str(".L");
+    }
+    codec.push_str(&format!("{}", profile_tier_level.general_level_idc as u8));
+
+    // .D: One or more 6-byte constraint flags. Note that each flag is encoded as a hexadecimal number, and separated by an additional period; trailing bytes that are zero may be omitted.
+    let mut constraints = [0u8; 2];
+    // Build constraint indicators from individual constraint flags
+    // Everything is in reverse order!
+    constraints[1] |= (profile_tier_level.general_progressive_source_flag as u8) << 7;
+    constraints[1] |= (profile_tier_level.general_interlaced_source_flag as u8) << 6;
+    constraints[1] |= (profile_tier_level.general_non_packed_constraint_flag as u8) << 5;
+    constraints[1] |= (profile_tier_level.general_frame_only_constraint_flag as u8) << 4;
+    constraints[1] |= (profile_tier_level.general_max_12bit_constraint_flag as u8) << 3;
+    constraints[1] |= (profile_tier_level.general_max_10bit_constraint_flag as u8) << 2;
+    constraints[1] |= (profile_tier_level.general_max_8bit_constraint_flag as u8) << 1;
+    constraints[1] |= profile_tier_level.general_max_422chroma_constraint_flag as u8;
+
+    constraints[0] |= (profile_tier_level.general_max_420chroma_constraint_flag as u8) << 7;
+    constraints[0] |= (profile_tier_level.general_max_monochrome_constraint_flag as u8) << 6;
+    constraints[0] |= (profile_tier_level.general_intra_constraint_flag as u8) << 5;
+    constraints[0] |= (profile_tier_level.general_one_picture_only_constraint_flag as u8) << 4;
+    constraints[0] |= (profile_tier_level.general_lower_bit_rate_constraint_flag as u8) << 3;
+    constraints[0] |= (profile_tier_level.general_max_14bit_constraint_flag as u8) << 2;
+
+    let mut has_byte = false;
+    for constraint in constraints {
+        if constraint > 0 || has_byte {
+            codec.push_str(&format!(".{constraint:X}"));
+            has_byte = true;
+        }
+    }
+
+    codec
 }
 
 pub fn detect_h265_annexb_gop(data: &[u8]) -> Result<GopStartDetection, DetectGopStartError> {
@@ -158,7 +217,7 @@ mod test {
         assert_eq!(
             result,
             Ok(GopStartDetection::StartOfGop(VideoEncodingDetails {
-                codec_string: "hvc1.01.L120".to_owned(),
+                codec_string: "hvc1.1.6.L120.90".to_owned(),
                 coded_dimensions: [1920, 1080],
                 bit_depth: Some(8),
                 chroma_subsampling: Some(ChromaSubsamplingModes::Yuv420),
