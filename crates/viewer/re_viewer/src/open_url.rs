@@ -42,9 +42,12 @@ pub enum ViewerImportUrl {
     /// A web viewer URL with one or more url parameters which all individually can be imported.
     WebViewerUrl {
         /// The base URL of the web viewer (this no longer includes any queries and fragments).
-        base_url: url::Origin,
+        base_url: url::Url,
 
         /// The url parameter(s) that can be imported individually.
+        ///
+        /// Several can be present by providing multiple `url` parameters,
+        /// but it's guaranteed to at least one if we hit this enum variant.
         url_parameters: vec1::Vec1<ViewerImportUrl>,
     },
 }
@@ -61,44 +64,68 @@ impl std::str::FromStr for ViewerImportUrl {
     /// * intra-recording links (typically links to an entity)
     /// * web event listeners
     fn from_str(url: &str) -> Result<Self, Self::Err> {
-        // This might be a web-viewer URL with `url` parameters.
-        // Extract the `url` parameter and call this function again.
-        if let Ok(url) = url::Url::parse(url) {
-            // It's rare, but there might be *several* `url` parameters.
-            let url_params = url
-                .query_pairs()
-                .filter_map(|(key, value)| (key == "url").then(|| Self::from_str(&value)))
-                .collect::<anyhow::Result<Vec<_>>>()?;
-
-            if let Ok(url_parameters) = vec1::Vec1::try_from_vec(url_params) {
-                return Ok(Self::WebViewerUrl {
-                    base_url: url.origin(),
-                    url_parameters,
-                });
-            }
-        }
-
+        // Catalog URI.
         if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
             Ok(Self::RedapCatalog(uri))
-        } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
+        }
+        // Entry URI.
+        else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
             Ok(Self::RedapEntry(uri))
-        } else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
+        }
+        // Intra-recording selection.
+        else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
             match selection.parse::<Item>() {
                 Ok(item) => Ok(Self::IntraRecordingSelection(item)),
                 Err(err) => {
                     anyhow::bail!("Failed to parse selection path {selection:?}: {err}")
                 }
             }
-        } else if let Some(url) = url.strip_prefix(WEB_EVENT_LISTENER_SCHEME) {
+        }
+        // Web event listener (legacy notebooks).
+        else if let Some(url) = url.strip_prefix(WEB_EVENT_LISTENER_SCHEME) {
             Ok(Self::WebEventListener(url.to_owned()))
-        } else if let Some(data_source) =
+        }
+        // Log data source.
+        else if let Some(data_source) =
             LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
         {
             Ok(Self::LogDataSource(data_source))
-        } else {
+        }
+        // Web viewer URL with `url` parameters.
+        else if let Ok(url) = parse_webviewer_url(url) {
+            Ok(url)
+        }
+        // Failed to parse.
+        else {
             anyhow::bail!("Failed to parse URL: {url}")
         }
     }
+}
+
+fn parse_webviewer_url(url: &str) -> Result<ViewerImportUrl, anyhow::Error> {
+    use std::str::FromStr as _;
+
+    let url = url::Url::parse(url)?;
+
+    // It's rare, but there might be *several* `url` parameters.
+    let url_params = vec1::Vec1::try_from_vec(
+        url.query_pairs()
+            .filter_map(|(key, value)| (key == "url").then(|| ViewerImportUrl::from_str(&value)))
+            .collect::<anyhow::Result<Vec<_>>>()?,
+    )?;
+
+    Ok(ViewerImportUrl::WebViewerUrl {
+        base_url: base_url(&url),
+        url_parameters: url_params,
+    })
+}
+
+/// URL stripped of query and fragment.
+fn base_url(url: &url::Url) -> url::Url {
+    let mut base_url = url.clone();
+    base_url.set_query(None);
+    base_url.set_fragment(None);
+    base_url
 }
 
 impl ViewerImportUrl {
@@ -174,7 +201,7 @@ impl ViewerImportUrl {
                     if let Some(window) = web_sys::window()
                         && let Ok(location) = window.location().href()
                         && let Ok(location) = url::Url::parse(&location)
-                        && _base_url != location.origin()
+                        && _base_url != base_url(&location)
                     {
                         re_log::warn!(
                             "The base URL of the web viewer ({:?}) does not match the URL being opened ({:?}). This URL may be intended for a different Rerun version.",
