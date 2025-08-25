@@ -313,9 +313,11 @@ message GetChunksRequest {
 message FetchChunksRequest {
   // We currently need to know to which partition chunk belongs to in order to include that
   // in the response metadata
+  // Value at specific index corresponds to the value in `chunk_keys`, hence must be the same length.
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 1;
 
   // Same as with partition ids, we need to know the layer for each chunk
+  // Value at specific index corresponds to the value in `chunk_keys`, hence must be the same length.
   repeated string partition_layers = 2;
 
   // The location of the chunks to fetch. Note that we don't support client side streaming of chunks

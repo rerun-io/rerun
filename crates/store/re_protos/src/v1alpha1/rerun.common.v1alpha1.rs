@@ -407,7 +407,7 @@ impl ::prost::Name for ChunkKey {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct RrdLocationDetails {
+pub struct RrdChunkLocationDetails {
     /// Chunk unique identifier
     #[prost(message, optional, tag = "1")]
     pub chunk_id: ::core::option::Option<Tuid>,
@@ -418,14 +418,14 @@ pub struct RrdLocationDetails {
     #[prost(uint64, optional, tag = "3")]
     pub length: ::core::option::Option<u64>,
 }
-impl ::prost::Name for RrdLocationDetails {
-    const NAME: &'static str = "RrdLocationDetails";
+impl ::prost::Name for RrdChunkLocationDetails {
+    const NAME: &'static str = "RrdChunkLocationDetails";
     const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.RrdLocationDetails".into()
+        "rerun.common.v1alpha1.RrdChunkLocationDetails".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.RrdLocationDetails".into()
+        "/rerun.common.v1alpha1.RrdChunkLocationDetails".into()
     }
 }
 /// Mirrors `re_build_info::BuildInfo`.

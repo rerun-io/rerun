@@ -301,9 +301,11 @@ impl ::prost::Name for GetChunksRequest {
 pub struct FetchChunksRequest {
     /// We currently need to know to which partition chunk belongs to in order to include that
     /// in the response metadata
+    /// Value at specific index corresponds to the value in `chunk_keys`, hence must be the same length.
     #[prost(message, repeated, tag = "1")]
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
     /// Same as with partition ids, we need to know the layer for each chunk
+    /// Value at specific index corresponds to the value in `chunk_keys`, hence must be the same length.
     #[prost(string, repeated, tag = "2")]
     pub partition_layers: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// The location of the chunks to fetch. Note that we don't support client side streaming of chunks

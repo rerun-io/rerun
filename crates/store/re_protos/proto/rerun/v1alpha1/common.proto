@@ -233,7 +233,7 @@ message ChunkKey {
   google.protobuf.Any location_details = 3;
 }
 
-message RrdLocationDetails {
+message RrdChunkLocationDetails {
   // Chunk unique identifier
   rerun.common.v1alpha1.Tuid chunk_id = 1;
 
