@@ -157,7 +157,7 @@ extend-ignore-re = [
   # 16 character hashses following a leading underscore.
   # Just don't spell "defaced" wrong.
   "\"[a-f0-9]{8}\"",
-  "_[a-f0-9]{16}",
+  "[a-f0-9]{16}",
 
 
   "np.arange",        # numpy spells "arrange" wrong

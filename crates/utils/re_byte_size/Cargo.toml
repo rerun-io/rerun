@@ -27,3 +27,4 @@ all-features = true
 arrow.workspace = true
 half.workspace = true
 smallvec.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }

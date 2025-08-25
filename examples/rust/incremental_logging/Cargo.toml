@@ -15,3 +15,4 @@ rerun = { path = "../../../crates/top/rerun", features = [
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 rand = "0.8"
+re_workspace_hack = { version = "0.1", path = "../../../crates/re_workspace_hack" }

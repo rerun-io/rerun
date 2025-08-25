@@ -30,6 +30,7 @@ anyhow.workspace = true
 arrow.workspace = true
 half.workspace = true
 itertools.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 [dev-dependencies]
 insta.workspace = true

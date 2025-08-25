@@ -38,6 +38,7 @@ ahash.workspace = true
 egui.workspace = true
 itertools.workspace = true
 serde = { workspace = true, optional = true }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 
 [dev-dependencies]

@@ -23,3 +23,4 @@ re_tuid.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 url = { workspace = true, features = ["serde"] }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }

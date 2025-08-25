@@ -61,6 +61,7 @@ winit = { workspace = true, default-features = false, features = [
   "wayland",
   "wayland-dlopen",
 ] }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook.workspace = true

@@ -50,3 +50,4 @@ itertools.workspace = true
 rexif.workspace = true
 unindent.workspace = true
 jiff.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }

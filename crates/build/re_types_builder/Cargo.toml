@@ -44,13 +44,14 @@ prettyplease.workspace = true
 proc-macro2.workspace = true
 quote.workspace = true
 rayon.workspace = true
-rust-format.workspace = true                                        # TODO(#9943): Update or remove
+rust-format.workspace = true                                              # TODO(#9943): Update or remove
 serde = { workspace = true, features = ["derive"] }
 syn.workspace = true
 tempfile.workspace = true
 toml = { workspace = true, features = ["parse", "preserve_order"] }
 unindent.workspace = true
 xshell.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 
 [build-dependencies]

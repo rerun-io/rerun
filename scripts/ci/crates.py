@@ -439,8 +439,9 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
     retry_attempts = 5
     while True:
         try:
+            # We use hakari for re_workspace_hack. See https://crates.io/crates/cargo-hakari
             cargo(
-                f"publish --quiet --locked --token {token}",
+                f"hakari publish --quiet --locked --token {token}",
                 cwd=crate.path,
                 env=env,
                 dry_run=False,
@@ -640,6 +641,9 @@ def check_publish_flags() -> None:
         should_publish = crate.manifest["package"]["publish"]
         if should_publish:
             traverse(wrong_publish, crates, crate)
+
+    assert "re_workspace_hack" in wrong_publish
+    wrong_publish.remove("re_workspace_hack")  # re_workspace_hack is manually excluded by the publish step
 
     if len(wrong_publish) > 0:
         for name in wrong_publish:

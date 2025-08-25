@@ -11,6 +11,7 @@ rerun = { path = "../../../crates/top/rerun", features = [
   "native_viewer",
   "run",
 ] }
+re_workspace_hack = { version = "0.1", path = "../../../crates/re_workspace_hack" }
 
 [build-dependencies]
 re_build_tools = { path = "../../../crates/build/re_build_tools" }

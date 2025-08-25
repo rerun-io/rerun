@@ -66,6 +66,7 @@ smallvec = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
 vec1 = { workspace = true, features = ["smallvec-v1"] }
 web-time.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 
 [dev-dependencies]

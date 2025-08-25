@@ -81,6 +81,7 @@ re_web_viewer_server = { workspace = true, optional = true }
 
 tokio = { workspace = true, optional = true }
 webbrowser = { workspace = true, optional = true }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 # Native unix dependencies:
 [target.'cfg(target_family = "unix")'.dependencies]

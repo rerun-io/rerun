@@ -37,6 +37,7 @@ parking_lot.workspace = true
 
 # make sure dependencies that user tracing gets forwarded to `log`:
 tracing = { workspace = true, features = ["log"] }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

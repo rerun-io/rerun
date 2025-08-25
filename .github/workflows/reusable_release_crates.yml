@@ -39,5 +39,10 @@ jobs:
       - name: Build web-viewer (release)
         run: pixi run rerun-build-web-release
 
+      # See https://crates.io/crates/cargo-hakari
+      - name: Install cargo-hakari
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hakari
       - name: Publish
         run: pixi run python scripts/ci/crates.py publish --token ${{ secrets.CRATES_IO_TOKEN }}

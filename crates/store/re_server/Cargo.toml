@@ -23,8 +23,8 @@ all-features = true
 [features]
 default = []
 
-
-[dependencies]
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 
 # Rerun
 re_chunk_store.workspace = true
@@ -55,6 +55,7 @@ tower.workspace = true
 tower-service.workspace = true
 tracing.workspace = true
 url.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 
 [build-dependencies]

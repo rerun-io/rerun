@@ -77,6 +77,7 @@ web-time.workspace = true
 
 # Optional dependencies:
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 [dev-dependencies]
 criterion.workspace = true

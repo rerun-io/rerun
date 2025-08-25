@@ -12,3 +12,4 @@ workspace = true
 [dependencies]
 re_chunk.workspace = true
 rerun = { path = "../../../crates/top/rerun" }
+re_workspace_hack = { version = "0.1", path = "../../../crates/re_workspace_hack" }

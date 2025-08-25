@@ -21,3 +21,4 @@ all-features = true
 
 [dependencies]
 num-traits.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
