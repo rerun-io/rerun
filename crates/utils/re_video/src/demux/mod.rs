@@ -457,6 +457,10 @@ impl VideoDataDescription {
         media_type: &str,
         debug_name: &str,
     ) -> Result<Self, VideoLoadError> {
+        if data.is_empty() {
+            return Err(VideoLoadError::ZeroBytes);
+        }
+
         re_tracing::profile_function!();
         match media_type {
             "video/mp4" => Self::load_mp4(data, debug_name),
@@ -788,7 +792,10 @@ impl SampleMetadata {
 /// Errors that can occur when loading a video.
 #[derive(thiserror::Error, Debug)]
 pub enum VideoLoadError {
-    #[error("Failed to determine media type from data: {0}")]
+    #[error("The video file is empty (zero bytes)")]
+    ZeroBytes,
+
+    #[error("MP4 error: {0}")]
     ParseMp4(#[from] re_mp4::Error),
 
     #[error("Video file has no video tracks")]

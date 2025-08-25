@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{str::FromStr as _, sync::Arc};
 
 use itertools::Itertools as _;
 
@@ -26,6 +26,7 @@ use crate::{
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     event::ViewerEventDispatcher,
+    open_url::ViewerImportUrl,
     startup_options::StartupOptions,
 };
 
@@ -112,7 +113,11 @@ pub struct App {
 
     egui_debug_panel_open: bool,
 
-    pub(crate) latest_latency_interest: web_time::Instant,
+    /// Last time the latency was deemed interesting.
+    ///
+    /// Note that initializing with an "old" `Instant` won't work reliably cross platform
+    /// since `Instant`'s counter may start at program start.
+    pub(crate) latest_latency_interest: Option<web_time::Instant>,
 
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
@@ -268,11 +273,6 @@ impl App {
         let mut component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut component_ui_registry);
 
-        // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.;
-        let long_time_ago = web_time::Instant::now()
-            .checked_sub(web_time::Duration::from_secs(1_000_000_000))
-            .unwrap_or(web_time::Instant::now());
-
         let (_adapter_backend, _device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
             (
                 wgpu::Backend::Noop,
@@ -364,7 +364,7 @@ impl App {
 
             egui_debug_panel_open: false,
 
-            latest_latency_interest: long_time_ago,
+            latest_latency_interest: None,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
@@ -417,14 +417,14 @@ impl App {
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
 
-        if crate::open_url::try_open_url_or_file_in_viewer(
-            &self.egui_ctx,
-            url,
-            follow_if_http,
-            select_redap_source_when_loaded,
-            &self.command_sender,
-        ) == Err(())
-        {
+        if let Ok(url) = crate::open_url::ViewerImportUrl::from_str(url) {
+            url.open(
+                &self.egui_ctx,
+                follow_if_http,
+                select_redap_source_when_loaded,
+                &self.command_sender,
+            );
+        } else {
             re_log::warn!("Failed to open URL: {url}");
         }
     }
@@ -565,8 +565,32 @@ impl App {
                     }
                     RecordingOrTable::Table { .. } => None,
                 };
-                self.rx_log
-                    .retain(|r| Some(r.source()) != data_source.as_ref());
+                if let Some(data_source) = data_source {
+                    // Only certain sources should be closed.
+                    #[allow(clippy::match_same_arms)]
+                    let should_close = match &data_source {
+                        // Specific files should stop streaming when closing them.
+                        SmartChannelSource::File(_) => true,
+
+                        // Specific HTTP streams should stop streaming when closing them.
+                        SmartChannelSource::RrdHttpStream { .. } => true,
+
+                        // Specific GRPC streams should stop streaming when closing them.
+                        // TODO(#10967): We still stream in some data after that.
+                        SmartChannelSource::RedapGrpcStream { .. } => true,
+
+                        // Don't close generic connections (like to an SDK) that may feed in different recordings over time.
+                        SmartChannelSource::RrdWebEventListener
+                        | SmartChannelSource::JsChannel { .. }
+                        | SmartChannelSource::Sdk
+                        | SmartChannelSource::Stdin
+                        | SmartChannelSource::MessageProxy(_) => false,
+                    };
+
+                    if should_close {
+                        self.rx_log.retain(|r| r.source() != &data_source);
+                    }
+                }
 
                 store_hub.remove(&entry);
 
@@ -2667,8 +2691,37 @@ impl eframe::App for App {
                 paint_native_window_frame(egui_ctx);
             }
 
-            if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-                self.command_sender.send_ui(cmd);
+            if let Some(cmd) = self
+                .cmd_palette
+                .show(egui_ctx, &ViewerImportUrl::command_palette_parse_url)
+            {
+                match cmd {
+                    re_ui::CommandPaletteAction::UiCommand(cmd) => {
+                        self.command_sender.send_ui(cmd);
+                    }
+                    re_ui::CommandPaletteAction::OpenUrl(url_desc) => {
+                        let follow_if_http = false;
+                        let select_redap_source_when_loaded = true;
+
+                        match url_desc.url.parse::<ViewerImportUrl>() {
+                            Ok(url) => {
+                                url.open(
+                                    egui_ctx,
+                                    follow_if_http,
+                                    select_redap_source_when_loaded,
+                                    &self.command_sender,
+                                );
+                            }
+                            Err(err) => {
+                                re_log::warn!("{err}");
+                            }
+                        }
+
+                        // Note that we can't use `ui.ctx().open_url(egui::OpenUrl::same_tab(uri))` here because..
+                        // * the url redirect in `check_for_clicked_hyperlinks` wouldn't be hit
+                        // * we don't actually want to open any URLs in the browser here ever, only ever into the current viewer
+                    }
+                }
             }
 
             Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);

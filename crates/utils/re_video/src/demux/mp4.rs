@@ -13,6 +13,7 @@ use crate::{
 impl VideoDataDescription {
     pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
+
         let mp4 = {
             re_tracing::profile_scope!("Mp4::read_bytes");
             re_mp4::Mp4::read_bytes(bytes)?

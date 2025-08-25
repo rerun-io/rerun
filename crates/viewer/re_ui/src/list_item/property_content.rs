@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 
 use egui::{Align, Align2, NumExt as _, Ui, text::TextWrapping};
 
@@ -191,6 +191,15 @@ impl<'a> PropertyContent<'a> {
         self.value_fn(move |ui, _| {
             ui.add(egui::Label::new(text.into()).truncate());
         })
+    }
+
+    /// Show a number, nicely formatted.
+    #[inline]
+    pub fn value_uint<Uint>(self, number: Uint) -> Self
+    where
+        Uint: Display + num_traits::Unsigned,
+    {
+        self.value_text(re_format::format_uint(number))
     }
 
     /// Show an editable text in the value column.
