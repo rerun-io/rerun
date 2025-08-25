@@ -153,6 +153,53 @@ impl EntityDb {
         &self.tree
     }
 
+    /// Formats the entity tree into a human-readable text representation with component schema information.
+    pub fn format_with_components(&self) -> String {
+        let mut text = String::new();
+        self.tree.visit_children_recursively(|entity_path| {
+            if entity_path.is_root() {
+                return;
+            }
+            let depth = entity_path.len() - 1;
+            let indent = "  ".repeat(depth);
+            text.push_str(&format!("{indent}{entity_path}\n"));
+            let Some(components) = self
+                .storage_engine()
+                .store()
+                .all_components_for_entity_sorted(entity_path)
+            else {
+                return;
+            };
+            for component in &components {
+                let component_indent = "  ".repeat(depth + 1);
+                if let Some(component_type) = &component.component_type {
+                    if let Some(datatype) = self
+                        .storage_engine()
+                        .store()
+                        .lookup_datatype(component_type)
+                    {
+                        text.push_str(&format!(
+                            "{}{}: {}\n",
+                            component_indent,
+                            component_type.short_name(),
+                            re_arrow_util::format_data_type(&datatype)
+                        ));
+                    } else {
+                        text.push_str(&format!(
+                            "{}{}\n",
+                            component_indent,
+                            component_type.short_name()
+                        ));
+                    }
+                } else {
+                    // Fallback to component identifier
+                    text.push_str(&format!("{}{}\n", component_indent, component.component));
+                }
+            }
+        });
+        text
+    }
+
     /// Returns a read-only guard to the backing [`StorageEngine`].
     #[inline]
     pub fn storage_engine(&self) -> StorageEngineReadGuard<'_> {
@@ -937,5 +984,56 @@ impl re_byte_size::SizeBytes for EntityDb {
             .stats()
             .total()
             .total_size_bytes
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use re_chunk::{Chunk, RowId};
+    use re_log_types::{
+        StoreId, TimePoint, Timeline,
+        example_components::{MyPoint, MyPoints},
+    };
+
+    use super::*;
+
+    #[test]
+    fn format_with_components() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut db = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+
+        let timeline_frame = Timeline::new_sequence("frame");
+
+        // Add some test data
+        {
+            let row_id = RowId::new();
+            let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
+            let point = MyPoint::new(1.0, 2.0);
+            let chunk = Chunk::builder("parent/child1/grandchild")
+                .with_component_batches(
+                    row_id,
+                    timepoint,
+                    [(MyPoints::descriptor_points(), &[point] as _)],
+                )
+                .build()?;
+
+            db.add_chunk(&Arc::new(chunk))?;
+        }
+
+        // Test formatting
+        let formatted = db.format_with_components();
+        assert!(formatted.contains("parent"));
+        assert!(formatted.contains("parent/child1"));
+        assert!(formatted.contains("parent/child1/grandchild"));
+
+        assert!(formatted.contains("example.MyPoint: Struct[2]"));
+
+        Ok(())
     }
 }
