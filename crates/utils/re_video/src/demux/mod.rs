@@ -369,17 +369,6 @@ pub struct VideoEncodingDetails {
     pub stsd: Option<re_mp4::StsdBox>,
 }
 
-impl VideoEncodingDetails {
-    /// Get the AVCC box from the stsd box if any.
-    pub fn avcc(&self) -> Option<&re_mp4::Avc1Box> {
-        let stsd = self.stsd.as_ref()?;
-        match &stsd.contents {
-            re_mp4::StsdBoxContent::Avc1(avc1) => Some(avc1),
-            _ => None,
-        }
-    }
-}
-
 /// Meta informationa about the video samples.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SamplesStatistics {

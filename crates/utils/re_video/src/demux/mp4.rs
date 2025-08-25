@@ -8,7 +8,13 @@ use crate::{
     StableIndexDeque, Time, Timescale,
     demux::{ChromaSubsamplingModes, SamplesStatistics, VideoEncodingDetails},
     h264::encoding_details_from_h264_sps,
+    h265::encoding_details_from_h265_sps,
+    nalu::ANNEXB_NAL_START_CODE,
 };
+use cros_codecs::codec::h265::parser::{
+    Nalu as H265Nalu, NaluType as H265NaluType, Parser as H265Parser,
+};
+use std::io::Cursor;
 
 impl VideoDataDescription {
     pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
@@ -172,20 +178,53 @@ fn codec_details_from_stds(
     // For AVC we don't have to rely on the stsd box, since we can parse the SPS directly.
     // re_mp4 doesn't have a full SPS parser, so almost certainly we're getting more information out this way,
     // also this means that we have less divergence with the video streaming case.
-    if let re_mp4::StsdBoxContent::Avc1(avcc_box) = &stsd.contents {
-        // TODO(andreas): How to handle multiple SPS?
-        if let Some(sps_nal) = avcc_box.avcc.sequence_parameter_sets.first() {
-            let complete = true;
-            let sps_nal = nal::RefNal::new(sps_nal.bytes.as_slice(), &[], complete);
+    match &stsd.contents {
+        re_mp4::StsdBoxContent::Avc1(avcc_box) => {
+            if let Some(sps_nal) = avcc_box.avcc.sequence_parameter_sets.first() {
+                let complete = true;
+                let sps_nal = nal::RefNal::new(sps_nal.bytes.as_slice(), &[], complete);
 
-            return nal::sps::SeqParameterSet::from_bits(sps_nal.rbsp_bits())
-                .and_then(|sps| encoding_details_from_h264_sps(&sps))
-                .map_err(VideoLoadError::SpsParsingError)
-                .map(|details| VideoEncodingDetails {
-                    stsd: Some(stsd),
-                    ..details
-                });
+                return nal::sps::SeqParameterSet::from_bits(sps_nal.rbsp_bits())
+                    .and_then(|sps| encoding_details_from_h264_sps(&sps))
+                    .map_err(VideoLoadError::SpsParsingError)
+                    .map(|details| VideoEncodingDetails {
+                        stsd: Some(stsd),
+                        ..details
+                    });
+            }
         }
+        re_mp4::StsdBoxContent::Hev1(hvc1_box) | re_mp4::StsdBoxContent::Hvc1(hvc1_box) => {
+            let hvcc = &*hvc1_box.hvcc;
+
+            for array in &hvcc.arrays {
+                if let Ok(nalu_type) = H265NaluType::try_from(array.nal_unit_type as u32)
+                    && matches!(nalu_type, H265NaluType::SpsNut)
+                {
+                    for nal in &array.nalus {
+                        let mut annexb =
+                            Vec::with_capacity(ANNEXB_NAL_START_CODE.len() + nal.size as usize);
+                        annexb.extend_from_slice(ANNEXB_NAL_START_CODE);
+                        annexb.extend_from_slice(&nal.data);
+
+                        let mut parser = H265Parser::default();
+                        let mut rdr = Cursor::new(annexb.as_slice());
+
+                        if let Ok(nalu) = H265Nalu::next(&mut rdr) {
+                            let sps_ref = parser
+                                .parse_sps(&nalu)
+                                .map_err(|_err| VideoLoadError::NoVideoTrack)?;
+                            let details = encoding_details_from_h265_sps(sps_ref);
+
+                            return Ok(VideoEncodingDetails {
+                                stsd: Some(stsd.clone()),
+                                ..details
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        _ => {}
     }
 
     Ok(VideoEncodingDetails {

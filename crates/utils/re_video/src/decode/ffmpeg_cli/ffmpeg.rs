@@ -22,9 +22,12 @@ use crate::{
     PixelFormat, Time, VideoDataDescription, VideoEncodingDetails,
     decode::{
         AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, OutputCallback,
-        ffmpeg_h264::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
+        ffmpeg_cli::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
     },
     demux::ChromaSubsamplingModes,
+    h264::write_avc_chunk_to_nalu_stream,
+    h265::write_hevc_chunk_to_nalu_stream,
+    nalu::{ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError},
 };
 
 use super::version::FFmpegVersionParseError;
@@ -104,13 +107,14 @@ impl From<Error> for DecodeError {
     }
 }
 
-/// In Annex-B before every NAL unit is a NAL start code.
-///
-/// This is used in Annex-B byte stream formats such as h264 files.
-/// Packet transform systems (RTP) may omit these.
-///
-/// Note that there's also a less commonly used short version with only 2 zeros: `0x00, 0x00, 0x01`.
-const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
+impl From<AnnexBStreamWriteError> for Error {
+    fn from(err: AnnexBStreamWriteError) -> Self {
+        match err {
+            AnnexBStreamWriteError::BadVideoData(msg) => Self::BadVideoData(msg),
+            AnnexBStreamWriteError::FailedToWriteToStream(err) => Self::FailedToWriteToFfmpeg(err),
+        }
+    }
+}
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
 #[derive(Clone, Debug)]
@@ -210,6 +214,7 @@ impl FFmpegProcessAndListener {
         on_output: Arc<OutputCallback>,
         encoding_details: &Option<VideoEncodingDetails>,
         ffmpeg_path: Option<&std::path::Path>,
+        codec: &crate::VideoCodec,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
@@ -256,6 +261,12 @@ impl FFmpegProcessAndListener {
             FfmpegCommand::new()
         };
 
+        let codec_str = match codec {
+            crate::VideoCodec::H264 => "h264",
+            crate::VideoCodec::H265 => "hevc",
+            _ => unreachable!(),
+        };
+
         let mut ffmpeg = ffmpeg_command
             // Keep banner enabled so we can check on the version more easily.
             //.hide_banner()
@@ -271,7 +282,7 @@ impl FFmpegProcessAndListener {
                 "0",
             ])
             // Keep in mind that all arguments that are about the input, need to go before!
-            .format("h264") // TODO(andreas): should we check ahead of time whether this is available?
+            .format(codec_str) // TODO(andreas): should we check ahead of time whether this is available?
             //.fps_mode("0")
             .input("-") // stdin is our input!
             // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
@@ -326,7 +337,11 @@ impl FFmpegProcessAndListener {
             })
             .expect("Failed to spawn ffmpeg listener thread");
 
-        let avcc = encoding_details.as_ref().and_then(|e| e.avcc()).cloned();
+        let codec_meta = encoding_details
+            .as_ref()
+            .and_then(|e| e.stsd.as_ref())
+            .and_then(CodecMeta::from_stsd)
+            .unwrap_or(CodecMeta::RawBytestream);
 
         // Writes video data to the ffmpeg process:
         let write_thread = std::thread::Builder::new()
@@ -343,7 +358,7 @@ impl FFmpegProcessAndListener {
                         &mut ffmpeg_stdin,
                         &frame_data_rx,
                         on_output.as_ref(),
-                        &avcc,
+                        &codec_meta,
                     );
                 }
             })
@@ -464,9 +479,9 @@ fn write_ffmpeg_input(
     ffmpeg_stdin: &mut dyn std::io::Write,
     frame_data_rx: &Receiver<FFmpegFrameData>,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
-    avcc: &Option<re_mp4::Avc1Box>,
+    codec_meta: &CodecMeta,
 ) {
-    let mut state = NaluStreamState::default();
+    let mut state = AnnexBStreamState::default();
 
     while let Ok(data) = frame_data_rx.recv() {
         let chunk = match data {
@@ -491,12 +506,16 @@ fn write_ffmpeg_input(
             }
         };
 
-        let write_result = if let Some(avcc) = avcc {
-            write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state)
-        } else {
-            // If there was no AVCC box, we assume the data is already in Annex B format.
-            // TODO(andreas): feels a bit implicit, would be nice to make this more clear.
-            write_bytes(ffmpeg_stdin, &chunk.data)
+        let write_result = match codec_meta {
+            CodecMeta::Avc(avcc) => {
+                write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state)
+                    .map_err(Error::from)
+            }
+            CodecMeta::Hevc(hvcc) => {
+                write_hevc_chunk_to_nalu_stream(hvcc, ffmpeg_stdin, &chunk, &mut state)
+                    .map_err(Error::from)
+            }
+            CodecMeta::RawBytestream => write_bytes(ffmpeg_stdin, &chunk.data),
         };
 
         if let Err(err) = write_result {
@@ -828,21 +847,23 @@ fn read_ffmpeg_output(
     Some(())
 }
 
-/// Decode H.264 video via ffmpeg over CLI
-pub struct FFmpegCliH264Decoder {
+/// Decode video via ffmpeg over CLI
+pub struct FFmpegCliDecoder {
     debug_name: String,
     // Restarted on reset
     ffmpeg: FFmpegProcessAndListener,
     on_output: Arc<OutputCallback>,
     ffmpeg_path: Option<std::path::PathBuf>,
+    codec: crate::VideoCodec,
 }
 
-impl FFmpegCliH264Decoder {
+impl FFmpegCliDecoder {
     pub fn new(
         debug_name: String,
         encoding_details: &Option<VideoEncodingDetails>,
         on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
         ffmpeg_path: Option<std::path::PathBuf>,
+        codec: &crate::VideoCodec,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
@@ -861,6 +882,7 @@ impl FFmpegCliH264Decoder {
             on_output.clone(),
             encoding_details,
             ffmpeg_path.as_deref(),
+            codec,
         )?;
 
         Ok(Self {
@@ -868,6 +890,7 @@ impl FFmpegCliH264Decoder {
             ffmpeg,
             on_output,
             ffmpeg_path,
+            codec: *codec,
         })
     }
 }
@@ -900,7 +923,7 @@ fn check_ffmpeg_version(
     }
 }
 
-impl AsyncDecoder for FFmpegCliH264Decoder {
+impl AsyncDecoder for FFmpegCliDecoder {
     fn submit_chunk(&mut self, chunk: Chunk) -> crate::decode::Result<()> {
         re_tracing::profile_function!();
 
@@ -930,6 +953,7 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
             self.on_output.clone(),
             &video_descr.encoding_details,
             self.ffmpeg_path.as_deref(),
+            &self.codec,
         )?;
         Ok(())
     }
@@ -943,136 +967,8 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
     }
 }
 
-#[derive(Default)]
-struct NaluStreamState {
-    previous_frame_was_idr: bool,
-}
-
 fn write_bytes(stream: &mut dyn std::io::Write, data: &[u8]) -> Result<(), Error> {
     stream.write_all(data).map_err(Error::FailedToWriteToFfmpeg)
-}
-
-fn write_avc_chunk_to_nalu_stream(
-    avcc: &re_mp4::Avc1Box,
-    nalu_stream: &mut dyn std::io::Write,
-    chunk: &Chunk,
-    state: &mut NaluStreamState,
-) -> Result<(), Error> {
-    re_tracing::profile_function!();
-
-    let avcc = &avcc.avcc;
-
-    // We expect the stream of chunks to not have any SPS (Sequence Parameter Set) & PPS (Picture Parameter Set)
-    // just as it is the case with MP4 data.
-    // In order to have every IDR frame be able to be fully re-entrant, we need to prepend the SPS & PPS NAL units.
-    // Otherwise the decoder is not able to get the necessary information about how the video stream is encoded.
-    if chunk.is_sync && !state.previous_frame_was_idr {
-        for sps in &avcc.sequence_parameter_sets {
-            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-            write_bytes(nalu_stream, &sps.bytes)?;
-        }
-        for pps in &avcc.picture_parameter_sets {
-            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-            write_bytes(nalu_stream, &pps.bytes)?;
-        }
-        state.previous_frame_was_idr = true;
-    } else {
-        state.previous_frame_was_idr = false;
-    }
-
-    // A single chunk may consist of multiple NAL units, each of which need our special treatment.
-    // (most of the time it's 1:1, but there might be extra NAL units for info, especially at the start).
-    let mut buffer_offset: usize = 0;
-    let sample_end = chunk.data.len();
-    while buffer_offset < sample_end {
-        re_tracing::profile_scope!("write_nalu");
-
-        // Each NAL unit in mp4 is prefixed with a length prefix.
-        // In Annex B this doesn't exist.
-        let length_prefix_size = avcc.length_size_minus_one as usize + 1;
-
-        if sample_end < buffer_offset + length_prefix_size {
-            return Err(Error::BadVideoData(
-                "Not enough bytes to fit the length prefix".to_owned(),
-            ));
-        }
-
-        let nal_unit_size = match length_prefix_size {
-            1 => chunk.data[buffer_offset] as usize,
-
-            2 => u16::from_be_bytes(
-                #[expect(clippy::unwrap_used)] // can't fail
-                chunk.data[buffer_offset..(buffer_offset + 2)]
-                    .try_into()
-                    .unwrap(),
-            ) as usize,
-
-            4 => u32::from_be_bytes(
-                #[expect(clippy::unwrap_used)] // can't fail
-                chunk.data[buffer_offset..(buffer_offset + 4)]
-                    .try_into()
-                    .unwrap(),
-            ) as usize,
-
-            _ => {
-                return Err(Error::BadVideoData(format!(
-                    "Bad length prefix size: {length_prefix_size}"
-                )));
-            }
-        };
-
-        let data_start = buffer_offset + length_prefix_size; // Skip the size.
-        let data_end = buffer_offset + nal_unit_size + length_prefix_size;
-
-        if chunk.data.len() < data_end {
-            return Err(Error::BadVideoData("Not enough bytes to".to_owned()));
-        }
-
-        // Can be useful for finding issues, but naturally very spammy.
-        // let nal_header = NalHeader(chunk.data[data_start]);
-        // re_log::trace!(
-        //     "nal_header: {:?}, {}",
-        //     nal_header.unit_type(),
-        //     nal_header.ref_idc()
-        // );
-
-        let data = &chunk.data[data_start..data_end];
-
-        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-
-        // Note that we don't have to insert "emulation prevention bytes" since mp4 NALU still use them.
-        // (unlike the NAL start code, the presentation bytes are part of the NAL spec!)
-
-        re_tracing::profile_scope!("write_bytes", data.len().to_string());
-        write_bytes(nalu_stream, data)?;
-
-        buffer_offset = data_end;
-    }
-
-    // We observed with both Mac & Windows FFMpeg 7.1 that the following block causes spurious errors with messages like:
-    // "missing picture in access unit with size 17"
-    // "no frame!"
-    // Not adding the Access Unit Delimiters makes these go away reliably
-    // (over several test runs comparing before/after with the same video material).
-    if false {
-        // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
-        // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
-        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-        write_bytes(
-            nalu_stream,
-            &[
-                // We use to use an IDC ("priority") of 3 here. But it doesn't seem to make much of a difference either way.
-                // Has also no effect on the errors describe above.
-                UnitType::AccessUnitDelimiter.id(),
-                // Two arbitrary bytes? 0000 worked as well, but this is what
-                // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
-                0xFF,
-                0x80,
-            ],
-        )?;
-    }
-
-    Ok(())
 }
 
 /// Ignore some common output from ffmpeg.
@@ -1083,6 +979,9 @@ fn should_ignore_log_msg(msg: &str) -> bool {
         "encoder         : ", // Describes the encoder that was used to encode a video.
         "Metadata:",
         "Stream mapping:",
+        // TODO(andreas): We see invalid IDR frames (NAL unit 5) on otherwise perfectly fine H265 video material
+        // This one might be an actual bug! But so far no issues in playback have been observed.
+        "Invalid NAL unit 5, skipping.",
         // It likes to say this a lot, almost no matter the format.
         // Some sources say this is more about internal formats, i.e. specific decoders using the wrong values, rather than the cli passed formats.
         "deprecated pixel format used, make sure you did set range correctly",
@@ -1135,6 +1034,26 @@ fn sanitize_ffmpeg_log_message(msg: &str) -> String {
     }
 
     msg
+}
+
+#[derive(Clone)]
+enum CodecMeta {
+    RawBytestream, // generic “pass-through” label for any format that’s ready to feed to the decoder as-is.
+    Avc(re_mp4::Avc1Box),
+    Hevc(re_mp4::HevcBox),
+}
+
+impl CodecMeta {
+    fn from_stsd(stsd: &re_mp4::StsdBox) -> Option<Self> {
+        use re_mp4::StsdBoxContent::{Avc1, Hev1, Hvc1};
+
+        match &stsd.contents {
+            Avc1(avc) => Some(Self::Avc(avc.clone())),
+            Hev1(hevc) | Hvc1(hevc) => Some(Self::Hevc(hevc.clone())),
+
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
