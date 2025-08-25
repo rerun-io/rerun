@@ -137,8 +137,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
     }
 
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("Frame count")
-            .value_text(re_format::format_uint(video_descr.num_samples())),
+        PropertyContent::new("Frame count").value_uint(video_descr.num_samples()),
     );
 
     if let Some(fps) = video_descr.average_fps() {
@@ -171,7 +170,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
     ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("Number of GOPs")
-                    .value_text(video_descr.gops.num_elements().to_string()),
+                    .value_uint(video_descr.gops.num_elements()),
             )
             .on_hover_text("The total number of Group of Pictures (GOPs) in the video.");
 

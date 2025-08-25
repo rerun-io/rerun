@@ -112,7 +112,11 @@ pub struct App {
 
     egui_debug_panel_open: bool,
 
-    pub(crate) latest_latency_interest: web_time::Instant,
+    /// Last time the latency was deemed interesting.
+    ///
+    /// Note that initializing with an "old" `Instant` won't work reliably cross platform
+    /// since `Instant`'s counter may start at program start.
+    pub(crate) latest_latency_interest: Option<web_time::Instant>,
 
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
@@ -268,11 +272,6 @@ impl App {
         let mut component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut component_ui_registry);
 
-        // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.;
-        let long_time_ago = web_time::Instant::now()
-            .checked_sub(web_time::Duration::from_secs(1_000_000_000))
-            .unwrap_or(web_time::Instant::now());
-
         let (_adapter_backend, _device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
             (
                 wgpu::Backend::Noop,
@@ -364,7 +363,7 @@ impl App {
 
             egui_debug_panel_open: false,
 
-            latest_latency_interest: long_time_ago,
+            latest_latency_interest: None,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 

@@ -52,7 +52,7 @@ impl AssetVideo {
         re_tracing::profile_function!();
 
         let Some(blob_bytes) = self.blob.as_ref().and_then(Blob::serialized_blob_as_slice) else {
-            return Ok(Vec::new());
+            return Err(re_video::VideoLoadError::NoVideoTrack); // Error type is close enough
         };
 
         let Some(media_type) = self

@@ -24,8 +24,11 @@ impl TestServer {
             .expect("Failed to start pixi")
             .wait_for_success();
 
-        let mut server = Command::new("../../../target_pixi/debug/rerun");
+        let cargo_target =
+            std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_owned());
+        let mut server = Command::new(format!("../../../{cargo_target}/debug/rerun"));
         server.args(["server", "--port", &port.to_string()]);
+        eprintln!("Starting rerun server at {server:?}");
         let server = server.spawn().expect("Failed to start rerun server");
 
         let mut success = false;
@@ -51,20 +54,16 @@ impl TestServer {
 
 impl Drop for TestServer {
     fn drop(&mut self) {
-        sigint_and_wait(&mut self.server);
+        kill_and_wait(&mut self.server);
     }
 }
 
 /// Send SIGINT and wait for the child process to exit successfully.
-pub fn sigint_and_wait(child: &mut Child) {
-    if let Err(err) = nix::sys::signal::kill(
-        nix::unistd::Pid::from_raw(child.id() as i32),
-        nix::sys::signal::Signal::SIGINT,
-    ) {
-        eprintln!("Failed to send SIGINT to process {}: {err}", child.id());
+pub fn kill_and_wait(child: &mut Child) {
+    if let Err(err) = child.kill() {
+        eprintln!("Failed to kill process {}: {err}", child.id());
     }
-
-    child.wait_for_success();
+    child.wait().expect("Failed to wait on child process");
 }
 
 /// Get a free port from the OS.
@@ -75,23 +74,35 @@ fn get_free_port() -> u16 {
 }
 
 /// Run `re_integration.py` to load some test data.
-pub fn load_test_data(port: u16) -> String {
+pub fn load_test_data(port: u16) -> Result<String, String> {
     let url = format!("rerun+http://localhost:{port}");
     let mut script = Command::new("pixi");
-    script.args([
-        "run",
-        "-e",
-        "py",
-        "python",
-        "tests/re_integration.py",
-        "--url",
-        &url,
-    ]);
+    script
+        .args([
+            "run",
+            "-e",
+            "py",
+            "python",
+            "tests/re_integration.py",
+            "--url",
+            &url,
+        ])
+        // Fix very silly encoding issues when printing UTF-8 on Windows while being in a commandline with different encoding.
+        .env("PYTHONIOENCODING", "utf-8");
+
     let output = script
         .output()
-        .expect("Failed to run re_integration.py script")
-        .stdout;
-    String::from_utf8(output).expect("Failed to convert output to string")
+        .expect("Failed to run re_integration.py script");
+
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let output_text = format!("{}\n\n{}", stdout.trim(), stderr.trim());
+
+    if output.status.success() {
+        Ok(output_text)
+    } else {
+        Err(output_text)
+    }
 }
 
 trait ChildExt {
