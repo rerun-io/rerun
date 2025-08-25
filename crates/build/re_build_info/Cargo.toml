@@ -27,7 +27,6 @@ serde = ["dep:serde"]
 
 
 [dependencies]
-re_build_tools.workspace = true
 re_byte_size.workspace = true
 
 # Optional dependencies:

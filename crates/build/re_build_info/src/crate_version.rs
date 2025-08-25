@@ -288,13 +288,14 @@ impl CrateVersion {
     /// Parse a version string according to our subset of semver.
     ///
     /// See [`CrateVersion`] for more information.
+    #[expect(clippy::panic)]
     pub const fn parse(version_string: &'static str) -> Self {
         match Self::try_parse(version_string) {
             Ok(version) => version,
             Err(_err) => {
                 // We previously used const_panic to concatenate the actual version but it crashed
                 // the 1.72.0 linker on mac :/
-                cargo_error!("invalid version string")
+                panic!("invalid version string")
             }
         }
     }

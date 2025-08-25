@@ -7,7 +7,6 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
-use re_build_tools::cargo_error;
 use unindent::unindent;
 
 use crate::{
@@ -1714,6 +1713,7 @@ fn quote_field_type_from_field(
 /// Returns a default converter function for the given field.
 ///
 /// Returns the converter name and, if needed, the converter function itself.
+#[expect(clippy::panic)]
 fn quote_field_converter_from_field(
     obj: &Object,
     objects: &Objects,
@@ -1723,7 +1723,7 @@ fn quote_field_converter_from_field(
 
     let converter = match &field.typ {
         Type::Unit => {
-            cargo_error!("Unit type should only occur for enum variants");
+            panic!("Unit type should only occur for enum variants");
         }
         Type::UInt8
         | Type::UInt16
@@ -1835,6 +1835,7 @@ fn quote_field_converter_from_field(
     (converter, function)
 }
 
+#[expect(clippy::panic)]
 fn fqname_to_type(fqname: &str) -> String {
     let fqname = fqname.replace(".testing", "");
 
@@ -1848,15 +1849,16 @@ fn fqname_to_type(fqname: &str) -> String {
         ["rerun", scope, "components", name] => format!("{scope}_components.{name}"),
         ["rerun", scope, "archetypes", name] => format!("{scope}_archetypes.{name}"),
         _ => {
-            cargo_error!("Unexpected fqname: {fqname}");
+            panic!("Unexpected fqname: {fqname}");
         }
     }
 }
 
+#[expect(clippy::panic)]
 fn quote_type_from_type(typ: &Type) -> String {
     match typ {
         Type::Unit => {
-            cargo_error!("Unit type should only occur for enum variants");
+            panic!("Unit type should only occur for enum variants");
         }
 
         Type::UInt8

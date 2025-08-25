@@ -7,7 +7,6 @@ use std::{
 
 use camino::Utf8PathBuf;
 use itertools::Itertools as _;
-use re_build_tools::cargo_error;
 
 use crate::{
     CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
@@ -580,10 +579,10 @@ fn write_archetype_fields(
 
         for field in fields {
             let Some(fqname) = field.typ.fqname() else {
-                cargo_error!("Archetype field should be object: {:?}", field.name);
+                panic!("Archetype field should be object: {:?}", field.name);
             };
             let Some(ty) = objects.get(fqname) else {
-                cargo_error!("Archetype field should be object: {:?}", field.name);
+                panic!("Archetype field should be object: {:?}", field.name);
             };
 
             putln!(

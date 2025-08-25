@@ -3,7 +3,6 @@
 use camino::Utf8Path;
 use proc_macro2::TokenStream;
 use quote::quote;
-use re_build_tools::cargo_error;
 
 use crate::{
     ATTR_RUST_TUPLE_STRUCT, Docs, Object, ObjectKind, Objects, Reporter,
@@ -272,6 +271,7 @@ fn unescape_string(input: &str) -> String {
     output
 }
 
+#[expect(clippy::panic)]
 fn unescape_string_into(input: &str, output: &mut String) {
     let mut chars = input.chars();
 
@@ -285,7 +285,7 @@ fn unescape_string_into(input: &str, output: &mut String) {
                 '\\' => output.push('\\'),
                 '"' => output.push('"'),
                 '\'' => output.push('\''),
-                _ => cargo_error!("Unknown escape sequence: \\{c}"),
+                _ => panic!("Unknown escape sequence: \\{c}"),
             }
         } else {
             output.push(c);

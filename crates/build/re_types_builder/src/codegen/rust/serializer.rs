@@ -1,6 +1,5 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
-use re_build_tools::cargo_error;
 
 use crate::{
     Object, Objects, TypeRegistry,
@@ -510,8 +509,9 @@ fn quote_arrow_field_serializer(
     let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
 
     match datatype.to_logical_type() {
+        #[expect(clippy::panic)]
         DataType::Atomic(AtomicDataType::Null) => {
-            cargo_error!(
+            panic!(
                 "Null fields should only occur within enums and unions where they are handled separately."
             );
         }

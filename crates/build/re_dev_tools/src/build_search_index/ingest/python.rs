@@ -2,7 +2,6 @@ use super::{Context, DocumentData, DocumentKind};
 use crate::build_search_index::util::CommandExt as _;
 use crate::build_search_index::util::ProgressBarExt as _;
 use anyhow::Context as _;
-use re_build_tools::cargo_error;
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -175,7 +174,7 @@ fn collect_docstrings(root: &Item) -> Docstrings {
     let mut visitor = CollectDocstrings::default();
 
     let Item::Module(root) = root else {
-        cargo_error!("root must be a module");
+        panic!("root must be a module");
     };
 
     for member in root.members.values() {

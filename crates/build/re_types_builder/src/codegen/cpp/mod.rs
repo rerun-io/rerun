@@ -10,7 +10,6 @@ use itertools::Itertools as _;
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{format_ident, quote};
 use rayon::prelude::*;
-use re_build_tools::cargo_error;
 
 use crate::{
     ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD, Docs, ElementType,
@@ -299,10 +298,10 @@ fn hpp_type_extensions(
 
     while let Some(start) = remaining_content.find(COPY_TO_HEADER_START_MARKER) {
         let end = remaining_content.find(COPY_TO_HEADER_END_MARKER).unwrap_or_else(||
-            cargo_error!("C++ extension file has a start marker but no end marker. Expected to find '{COPY_TO_HEADER_END_MARKER}' in {extension_file:?}")
+            panic!("C++ extension file has a start marker but no end marker. Expected to find '{COPY_TO_HEADER_END_MARKER}' in {extension_file:?}")
         );
         let end = remaining_content[..end].rfind('\n').unwrap_or_else(||
-            cargo_error!("Expected line break at some point before {COPY_TO_HEADER_END_MARKER} in {extension_file:?}")
+            panic!("Expected line break at some point before {COPY_TO_HEADER_END_MARKER} in {extension_file:?}")
         );
 
         let extensions = &remaining_content[start + COPY_TO_HEADER_START_MARKER.len()..end];
@@ -312,7 +311,7 @@ fn hpp_type_extensions(
             if line.starts_with("#include") {
                 if let Some(start) = line.find('\"') {
                     let end = line.rfind('\"').unwrap_or_else(|| {
-                        cargo_error!(
+                        panic!(
                             "Expected to find ending '\"' in include line {line} in file {extension_file:?}"
                         )
                     });
@@ -320,13 +319,13 @@ fn hpp_type_extensions(
                     includes.insert_relative(&line[start + 1..end]);
                 } else if let Some(start) = line.find('<') {
                     let end = line.rfind('>').unwrap_or_else(|| {
-                        cargo_error!(
+                        panic!(
                         "Expected to find or '>' in include line {line} in file {extension_file:?}"
                     )
                     });
                     includes.insert_system(&line[start + 1..end]);
                 } else {
-                    cargo_error!(
+                    panic!(
                         "Expected to find '\"' or '<' in include line {line} in file {extension_file:?}"
                     );
                 }
@@ -400,7 +399,7 @@ struct QuotedObject {
 }
 
 impl QuotedObject {
-    #[allow(clippy::unnecessary_wraps)] // TODO(emilk): implement proper error handling instead of exiting on the first cargo_error
+    #[allow(clippy::unnecessary_wraps)] // TODO(emilk): implement proper error handling instead of panicking
     pub fn new(
         reporter: &Reporter,
         objects: &Objects,
@@ -2405,7 +2404,7 @@ fn quote_archetype_unserialized_type(
             quote! { Collection<#elem_type> }
         }
         Type::Object { fqname } => quote_fqname_as_type_path(hpp_includes, fqname),
-        _ => cargo_error!("Only vectors and objects are allowed in archetypes."),
+        _ => panic!("Only vectors and objects are allowed in archetypes."),
     }
 }
 
@@ -2431,7 +2430,7 @@ fn quote_variable_with_docstring(
 fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenStream {
     #[allow(clippy::match_same_arms)]
     let typ = match &obj_field.typ {
-        Type::Unit => cargo_error!("Can't express the unit type directly"),
+        Type::Unit => panic!("Can't express the unit type directly"),
 
         Type::UInt8 => quote! { uint8_t  },
         Type::UInt16 => quote! { uint16_t  },

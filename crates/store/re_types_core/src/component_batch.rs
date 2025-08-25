@@ -56,6 +56,7 @@ pub trait ComponentBatch {
             Ok(array) => Some(array),
 
             #[cfg(debug_assertions)]
+            #[expect(clippy::panic)]
             Err(err) => {
                 panic!(
                     "failed to serialize data for {}: {}",
