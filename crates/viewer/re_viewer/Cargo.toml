@@ -52,7 +52,6 @@ testing = ["dep:egui_kittest", "dep:tokio"]
 
 [dependencies]
 # Internal:
-re_arrow_util.workspace = true
 re_auth.workspace = true
 re_blueprint_tree.workspace = true
 re_build_info.workspace = true
