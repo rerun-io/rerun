@@ -197,7 +197,7 @@ class catch_and_log_exceptions:
             # If there was an exception before returning from func
             return self.exception_return_value
 
-        return cast(_TFunc, wrapper)
+        return cast("_TFunc", wrapper)
 
     def __exit__(
         self,
@@ -266,7 +266,7 @@ def deprecated_param(name: str, *, use_instead: str | None = None, since: str | 
         # Preserve the original signature
         wrapper.__signature__ = sig  # type: ignore[attr-defined]
 
-        return cast(T, wrapper)
+        return cast("T", wrapper)
 
     return decorator
 

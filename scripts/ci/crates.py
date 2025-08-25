@@ -327,7 +327,7 @@ def bump_dependency_versions(
             ctx.bump(
                 f"{crate}.{dependency.name}",
                 str(info["version"]),
-                cast(VersionInfo, update_to),
+                cast("VersionInfo", update_to),
             )
             info["version"] = update_to
 

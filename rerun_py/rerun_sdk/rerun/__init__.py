@@ -408,7 +408,7 @@ def shutdown_at_exit(func: _TFunc) -> _TFunc:
         finally:
             rerun_shutdown()
 
-    return cast(_TFunc, wrapper)
+    return cast("_TFunc", wrapper)
 
 
 # ---

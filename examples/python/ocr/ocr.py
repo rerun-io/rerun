@@ -8,7 +8,7 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final, Optional
+from typing import TYPE_CHECKING, Any, Final
 
 import cv2 as cv2
 import numpy as np
@@ -128,7 +128,7 @@ Layout Class:
 
 class Layout:
     def __init__(self, page_number: int, show_unknown: bool = False) -> None:
-        self.counts = {layout_type: 0 for layout_type in LayoutType}
+        self.counts = dict.fromkeys(LayoutType, 0)
         self.records: dict[LayoutType, Any] = {layout_type: [] for layout_type in LayoutType}
         self.recovery = """"""
         self.page_number = page_number
@@ -138,9 +138,9 @@ class Layout:
         self,
         layout_type: LayoutType,
         bounding_box: list[int],
-        detections: Optional[Iterable[dict[str, Any]]] = None,
-        table: Optional[str] = None,
-        figure: Optional[dict[str, Any]] = None,
+        detections: Iterable[dict[str, Any]] | None = None,
+        table: str | None = None,
+        figure: dict[str, Any] | None = None,
     ) -> None:
         if layout_type in LayoutType:
             self.counts[layout_type] += 1

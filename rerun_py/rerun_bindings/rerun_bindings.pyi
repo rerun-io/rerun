@@ -4,7 +4,7 @@ import os
 from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Optional, Self
+from typing import Any, Callable, Self
 
 import datafusion as dfn
 import pyarrow as pa
@@ -180,7 +180,7 @@ class Schema:
     def component_columns(self) -> list[ComponentColumnDescriptor]:
         """Return a list of all the component columns in the schema."""
 
-    def column_for(self, entity_path: str, component: str) -> Optional[ComponentColumnDescriptor]:
+    def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None:
         """
         Look up the column descriptor for a specific entity path and component.
 
@@ -403,7 +403,7 @@ class RecordingView:
 
         """
 
-    def select(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
+    def select(self, *args: AnyColumn, columns: Sequence[AnyColumn] | None = None) -> pa.RecordBatchReader:
         """
         Select the columns from the view.
 
@@ -439,7 +439,7 @@ class RecordingView:
         """Use `view(index=None)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-24 for more details.""",
     )
-    def select_static(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader:
+    def select_static(self, *args: AnyColumn, columns: Sequence[AnyColumn] | None = None) -> pa.RecordBatchReader:
         """
         Select only the static columns from the view.
 
@@ -730,7 +730,7 @@ class ChunkBatcherConfig:
         """Never flushes unless manually told to (or hitting one the builtin invariants)."""
 
 class PyMemorySinkStorage:
-    def concat_as_bytes(self, concat: Optional[PyMemorySinkStorage] = None) -> bytes:
+    def concat_as_bytes(self, concat: PyMemorySinkStorage | None = None) -> bytes:
         """
         Concatenate the contents of the [`MemorySinkStorage`] as bytes.
 
@@ -768,12 +768,12 @@ def flush_and_cleanup_orphaned_recordings() -> None:
 
 def new_recording(
     application_id: str,
-    recording_id: Optional[str] = None,
+    recording_id: str | None = None,
     make_default: bool = True,
     make_thread_default: bool = True,
     default_enabled: bool = True,
     send_properties: bool = True,
-    batcher_config: Optional[ChunkBatcherConfig] = None,
+    batcher_config: ChunkBatcherConfig | None = None,
 ) -> PyRecordingStream:
     """Create a new recording stream."""
 
@@ -798,7 +798,7 @@ def spawn(
     hide_welcome_screen: bool = False,
     detach_process: bool = True,
     executable_name: str = ...,
-    executable_path: Optional[str] = None,
+    executable_path: str | None = None,
     extra_args: list[str] = ...,
     extra_env: list[tuple[str, str]] = ...,
 ) -> None:
@@ -808,54 +808,54 @@ def spawn(
 # recordings
 #
 
-def get_application_id(recording: Optional[PyRecordingStream] = None) -> Optional[str]:
+def get_application_id(recording: PyRecordingStream | None = None) -> str | None:
     """Get the current recording stream's application ID."""
 
-def get_recording_id(recording: Optional[PyRecordingStream] = None) -> Optional[str]:
+def get_recording_id(recording: PyRecordingStream | None = None) -> str | None:
     """Get the current recording stream's recording ID."""
 
-def get_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+def get_data_recording(recording: PyRecordingStream | None = None) -> PyRecordingStream | None:
     """Returns the currently active data recording in the global scope, if any; fallbacks to the specified recording otherwise, if any."""
 
-def get_global_data_recording() -> Optional[PyRecordingStream]:
+def get_global_data_recording() -> PyRecordingStream | None:
     """Returns the currently active data recording in the global scope, if any."""
 
-def set_global_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+def set_global_data_recording(recording: PyRecordingStream | None = None) -> PyRecordingStream | None:
     """
     Replaces the currently active recording in the global scope with the specified one.
 
     Returns the previous one, if any.
     """
 
-def get_thread_local_data_recording() -> Optional[PyRecordingStream]:
+def get_thread_local_data_recording() -> PyRecordingStream | None:
     """Returns the currently active data recording in the thread-local scope, if any."""
 
-def set_thread_local_data_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+def set_thread_local_data_recording(recording: PyRecordingStream | None = None) -> PyRecordingStream | None:
     """
     Replaces the currently active recording in the thread-local scope with the specified one.
 
     Returns the previous one, if any.
     """
 
-def get_blueprint_recording(overrides: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+def get_blueprint_recording(overrides: PyRecordingStream | None = None) -> PyRecordingStream | None:
     """Returns the currently active blueprint recording in the global scope, if any; fallbacks to the specified recording otherwise, if any."""
 
-def get_global_blueprint_recording() -> Optional[PyRecordingStream]:
+def get_global_blueprint_recording() -> PyRecordingStream | None:
     """Returns the currently active blueprint recording in the global scope, if any."""
 
-def set_global_blueprint_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyRecordingStream]:
+def set_global_blueprint_recording(recording: PyRecordingStream | None = None) -> PyRecordingStream | None:
     """
     Replaces the currently active recording in the global scope with the specified one.
 
     Returns the previous one, if any.
     """
 
-def get_thread_local_blueprint_recording() -> Optional[PyRecordingStream]:
+def get_thread_local_blueprint_recording() -> PyRecordingStream | None:
     """Returns the currently active blueprint recording in the thread-local scope, if any."""
 
 def set_thread_local_blueprint_recording(
-    recording: Optional[PyRecordingStream] = None,
-) -> Optional[PyRecordingStream]:
+    recording: PyRecordingStream | None = None,
+) -> PyRecordingStream | None:
     """
     Replaces the currently active recording in the thread-local scope with the specified one.
 
@@ -916,10 +916,10 @@ class ComponentDescriptor:
 # sinks
 #
 
-def is_enabled(recording: Optional[PyRecordingStream] = None) -> bool:
+def is_enabled(recording: PyRecordingStream | None = None) -> bool:
     """Whether the recording stream enabled."""
 
-def binary_stream(recording: Optional[PyRecordingStream] = None) -> Optional[PyBinarySinkStorage]:
+def binary_stream(recording: PyRecordingStream | None = None) -> PyBinarySinkStorage | None:
     """Create a new binary stream sink, and return the associated binary stream."""
 
 class GrpcSink:
@@ -969,21 +969,21 @@ class FileSink:
 
 def set_sinks(
     sinks: list[Any],
-    default_blueprint: Optional[PyMemorySinkStorage] = None,
-    recording: Optional[PyRecordingStream] = None,
+    default_blueprint: PyMemorySinkStorage | None = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Stream data to multiple sinks."""
 
 def connect_grpc(
-    url: Optional[str],
-    flush_timeout_sec: Optional[float] = ...,
-    default_blueprint: Optional[PyMemorySinkStorage] = None,
-    recording: Optional[PyRecordingStream] = None,
+    url: str | None,
+    flush_timeout_sec: float | None = ...,
+    default_blueprint: PyMemorySinkStorage | None = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Connect the recording stream to a remote Rerun Viewer on the given URL."""
 
 def connect_grpc_blueprint(
-    url: Optional[str],
+    url: str | None,
     make_active: bool,
     make_default: bool,
     blueprint_stream: PyRecordingStream,
@@ -992,8 +992,8 @@ def connect_grpc_blueprint(
 
 def save(
     path: str,
-    default_blueprint: Optional[PyMemorySinkStorage] = None,
-    recording: Optional[PyRecordingStream] = None,
+    default_blueprint: PyMemorySinkStorage | None = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Save the recording stream to a file."""
 
@@ -1001,17 +1001,17 @@ def save_blueprint(path: str, blueprint_stream: PyRecordingStream) -> None:
     """Special binding for directly savings a blueprint stream to a file."""
 
 def stdout(
-    default_blueprint: Optional[PyMemorySinkStorage] = None,
-    recording: Optional[PyRecordingStream] = None,
+    default_blueprint: PyMemorySinkStorage | None = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Save to stdout."""
 
-def memory_recording(recording: Optional[PyRecordingStream] = None) -> Optional[PyMemorySinkStorage]:
+def memory_recording(recording: PyRecordingStream | None = None) -> PyMemorySinkStorage | None:
     """Create an in-memory rrd file."""
 
 def set_callback_sink(
     callback: Callable[[bytes], Any],
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Set callback sink."""
 
@@ -1019,15 +1019,15 @@ def set_callback_sink_blueprint(
     callback: Callable[[bytes], Any],
     make_active: bool,
     make_default: bool,
-    blueprint_stream: Optional[PyRecordingStream],
+    blueprint_stream: PyRecordingStream | None,
 ) -> None:
     """Set callback sink for blueprint."""
 
 def serve_grpc(
-    grpc_port: Optional[int],
+    grpc_port: int | None,
     server_memory_limit: str,
-    default_blueprint: Optional[PyMemorySinkStorage] = None,
-    recording: Optional[PyRecordingStream] = None,
+    default_blueprint: PyMemorySinkStorage | None = None,
+    recording: PyRecordingStream | None = None,
 ) -> str:
     """
     Spawn a gRPC server which an SDK or Viewer can connect to.
@@ -1036,7 +1036,7 @@ def serve_grpc(
     """
 
 def serve_web_viewer(
-    web_port: Optional[int] = None, open_browser: bool = True, connect_to: Optional[str] = None
+    web_port: int | None = None, open_browser: bool = True, connect_to: str | None = None
 ) -> None:
     """
     Serve a web-viewer over HTTP.
@@ -1046,22 +1046,22 @@ def serve_web_viewer(
 
 def serve_web(
     open_browser: bool,
-    web_port: Optional[int],
-    grpc_port: Optional[int],
+    web_port: int | None,
+    grpc_port: int | None,
     server_memory_limit: str,
-    default_blueprint: Optional[PyMemorySinkStorage] = None,
-    recording: Optional[PyRecordingStream] = None,
+    default_blueprint: PyMemorySinkStorage | None = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Serve a web-viewer AND host a gRPC server."""
 
-def disconnect(recording: Optional[PyRecordingStream] = None) -> None:
+def disconnect(recording: PyRecordingStream | None = None) -> None:
     """
     Disconnect from remote server (if any).
 
     Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
     """
 
-def flush(blocking: bool, recording: Optional[PyRecordingStream] = None) -> None:
+def flush(blocking: bool, recording: PyRecordingStream | None = None) -> None:
     """Block until outstanding data has been flushed to the sink."""
 
 #
@@ -1071,43 +1071,43 @@ def flush(blocking: bool, recording: Optional[PyRecordingStream] = None) -> None
 def set_time_sequence(
     timeline: str,
     sequence: int,
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Set the current time for this thread as an integer sequence."""
 
 def set_time_duration_nanos(
     timeline: str,
     nanos: int,
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Set the current duration for this thread in nanoseconds."""
 
 def set_time_timestamp_nanos_since_epoch(
     timeline: str,
     nanos: int,
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Set the current time for this thread in nanoseconds."""
 
 def send_recording_name(
     name: str,
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Send the name of the recording."""
 
 def send_recording_start_time_nanos(
     nanos: int,
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Send the start time of the recording."""
 
 def disable_timeline(
     timeline: str,
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Clear time information for the specified timeline on this thread."""
 
-def reset_time(recording: Optional[PyRecordingStream] = None) -> None:
+def reset_time(recording: PyRecordingStream | None = None) -> None:
     """Clear all timeline information on this thread."""
 
 #
@@ -1118,7 +1118,7 @@ def log_arrow_msg(
     entity_path: str,
     components: dict[Any, Any],
     static_: bool,
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Log an arrow message."""
 
@@ -1126,7 +1126,7 @@ def send_arrow_chunk(
     entity_path: str,
     timelines: dict[Any, Any],
     components: dict[Any, Any],
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """
     Directly send an arrow chunk to the recording stream.
@@ -1143,18 +1143,18 @@ def send_arrow_chunk(
 
 def log_file_from_path(
     file_path: str | os.PathLike[str],
-    entity_path_prefix: Optional[str] = None,
+    entity_path_prefix: str | None = None,
     static_: bool = False,
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Log a file by path."""
 
 def log_file_from_contents(
     file_path: str | os.PathLike[str],
     file_contents: bytes,
-    entity_path_prefix: Optional[str] = None,
+    entity_path_prefix: str | None = None,
     static_: bool = False,
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Log a file by contents."""
 
@@ -1162,11 +1162,11 @@ def send_blueprint(
     blueprint: PyMemorySinkStorage,
     make_active: bool = False,
     make_default: bool = True,
-    recording: Optional[PyRecordingStream] = None,
+    recording: PyRecordingStream | None = None,
 ) -> None:
     """Send a blueprint to the given recording stream."""
 
-def send_recording(rrd: Recording, recording: Optional[PyRecordingStream] = None) -> None:
+def send_recording(rrd: Recording, recording: PyRecordingStream | None = None) -> None:
     """
     Send all chunks from a [`PyRecording`] to the given recording stream.
 
@@ -1205,7 +1205,7 @@ def new_property_entity_path(parts: list[str]) -> str:
     """Create a property entity path."""
 
 def asset_video_read_frame_timestamps_nanos(
-    video_bytes_arrow_array: Any, media_type: Optional[str] = None
+    video_bytes_arrow_array: Any, media_type: str | None = None
 ) -> list[int]:
     """
     Reads the timestamps of all frames in a video asset.
@@ -1499,7 +1499,7 @@ class DatasetEntry(Entry):
         self,
         build_scalar_index: bool = False,
         compact_fragments: bool = False,
-        cleanup_before: Optional[datetime] = None,
+        cleanup_before: datetime | None = None,
     ) -> None:
         """Perform maintenance tasks on the datasets."""
 

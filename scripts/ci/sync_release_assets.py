@@ -18,10 +18,10 @@ import time
 from typing import TYPE_CHECKING, cast
 
 from github import Github
-from github.GitRelease import GitRelease
 from google.cloud import storage
 
 if TYPE_CHECKING:
+    from github.GitRelease import GitRelease
     from github.Repository import Repository
 
 Assets = dict[str, storage.Blob]
@@ -273,7 +273,7 @@ def main() -> None:
 
     gh = Github(args.github_token, timeout=args.github_timeout)
     repo = gh.get_repo(args.github_repository)
-    release = cast(GitRelease, get_any_release(repo, args.github_release))
+    release = cast("GitRelease", get_any_release(repo, args.github_release))
     commit = {tag.name: tag.commit for tag in repo.get_tags()}[args.github_release]
 
     print(
