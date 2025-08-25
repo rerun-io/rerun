@@ -9,6 +9,7 @@ use std::{
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
+use re_build_tools::cargo_error;
 
 use crate::{CodeGenerator, GeneratedFiles, Object, ObjectKind, Objects, Reporter};
 
@@ -246,7 +247,11 @@ impl SnippetsRefCodeGenerator {
                     }
 
                     if let Some(deprecation_summary) = obj.deprecation_summary() {
-                        panic!("Snippet {} contained reference to deprecated object '{}'. Please migrate the snippet. Migration notice: {deprecation_summary}", snippet.name_qualified, obj.fqname);
+                        cargo_error!(
+                            "Snippet {} contained reference to deprecated object '{}'. Please migrate the snippet. Migration notice: {deprecation_summary}",
+                            snippet.name_qualified,
+                            obj.fqname
+                        );
                     }
 
                     if obj.kind == ObjectKind::Archetype

@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use proc_macro2::TokenStream;
 use quote::quote;
+use re_build_tools::cargo_error;
 
 use crate::objects::is_testing_fqname;
 
@@ -58,7 +59,7 @@ impl Includes {
             ["rerun", obj_kind, typname] => (obj_kind.to_owned(), typname),
             ["rerun", scope, obj_kind, typname] => (format!("{scope}/{obj_kind}"), typname),
             _ => {
-                panic!(
+                cargo_error!(
                     "Can't figure out include for {included_fqname:?} when adding includes for {:?}",
                     self.fqname
                 );

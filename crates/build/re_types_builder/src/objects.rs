@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
+use re_build_tools::cargo_error;
 
 use crate::{
     ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED, ATTR_RERUN_COMPONENT_REQUIRED,
@@ -237,7 +238,7 @@ impl std::ops::Index<&str> for Objects {
     fn index(&self, fqname: &str) -> &Self::Output {
         self.objects
             .get(fqname)
-            .unwrap_or_else(|| panic!("unknown object: {fqname:?}"))
+            .unwrap_or_else(|| cargo_error!("unknown object: {fqname:?}"))
     }
 }
 
@@ -340,7 +341,7 @@ impl ObjectKind {
             // Not bothering with scope attributes on views since they're always part of the blueprint.
             Self::View
         } else {
-            panic!("unknown package {pkg_name:?}");
+            cargo_error!("unknown package {pkg_name:?}");
         }
     }
 
@@ -460,7 +461,7 @@ impl Object {
 
         let fqname = obj.name().to_owned();
         let (pkg_name, name) = fqname.rsplit_once('.').map_or_else(
-            || panic!("Missing '.' separator in fqname: {fqname:?} - Did you forget to put it in a `namespace`?"),
+            || cargo_error!("Missing '.' separator in fqname: {fqname:?} - Did you forget to put it in a `namespace`?"),
             |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
         );
 
@@ -592,7 +593,7 @@ impl Object {
 
         let fqname = enm.name().to_owned();
         let (pkg_name, name) = fqname.rsplit_once('.').map_or_else(
-            || panic!("Missing '.' separator in fqname: {fqname:?} - Did you forget to put it in a `namespace`?"),
+            || cargo_error!("Missing '.' separator in fqname: {fqname:?} - Did you forget to put it in a `namespace`?"),
             |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
         );
 
@@ -1769,7 +1770,7 @@ fn filepath_from_declaration_file(
             .join(crate::format_path(&declaration_file))
     };
 
-    declaration_file
-        .canonicalize_utf8()
-        .unwrap_or_else(|_| panic!("Failed to canonicalize declaration path {declaration_file:?}"))
+    declaration_file.canonicalize_utf8().unwrap_or_else(|_| {
+        cargo_error!("Failed to canonicalize declaration path {declaration_file:?}")
+    })
 }

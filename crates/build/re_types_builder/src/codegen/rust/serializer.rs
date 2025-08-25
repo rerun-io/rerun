@@ -1,5 +1,6 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
+use re_build_tools::cargo_error;
 
 use crate::{
     Object, Objects, TypeRegistry,
@@ -510,7 +511,7 @@ fn quote_arrow_field_serializer(
 
     match datatype.to_logical_type() {
         DataType::Atomic(AtomicDataType::Null) => {
-            panic!(
+            cargo_error!(
                 "Null fields should only occur within enums and unions where they are handled separately."
             );
         }

@@ -7,6 +7,7 @@ use cargo_metadata::semver::Version;
 use indicatif::ProgressBar;
 use rayon::prelude::IntoParallelIterator as _;
 use rayon::prelude::ParallelIterator as _;
+use re_build_tools::cargo_error;
 use rustdoc_types::Crate;
 use rustdoc_types::Id as ItemId;
 use rustdoc_types::Impl;
@@ -211,7 +212,7 @@ impl<'a> Visitor<'a> {
 
     fn visit_item(&mut self, pub_in_priv: bool, id: &ItemId) {
         let Some(item) = self.krate.index.get(id) else {
-            panic!("{id:?} not found");
+            cargo_error!("{id:?} not found");
         };
 
         if item.crate_id != self.krate.index[&self.krate.root].crate_id {
@@ -252,7 +253,7 @@ impl<'a> Visitor<'a> {
                 self.push(pub_in_priv, id, ItemKind::Struct);
                 for impl_id in &struct_.impls {
                     let ItemEnum::Impl(impl_) = &self.krate.index[impl_id].inner else {
-                        panic!("invalid item {impl_id:?} expected `impl`, got {item:#?}");
+                        cargo_error!("invalid item {impl_id:?} expected `impl`, got {item:#?}");
                     };
                     if !impl_.is_inherent() {
                         continue;
@@ -264,7 +265,7 @@ impl<'a> Visitor<'a> {
                 self.push(pub_in_priv, id, ItemKind::Enum);
                 for impl_id in &enum_.impls {
                     let ItemEnum::Impl(impl_) = &self.krate.index[impl_id].inner else {
-                        panic!("invalid item {impl_id:?} expected `impl`, got {item:#?}");
+                        cargo_error!("invalid item {impl_id:?} expected `impl`, got {item:#?}");
                     };
                     if !impl_.is_inherent() {
                         continue;
@@ -371,7 +372,7 @@ impl<'a> Visitor<'a> {
             self.module_path.with_item(name)
         } else {
             let Some(summary) = self.krate.paths.get(id) else {
-                panic!(
+                cargo_error!(
                     "expected item {id:?} to have a rustdoc-generated path (module_path={:?})",
                     self.module_path
                 );

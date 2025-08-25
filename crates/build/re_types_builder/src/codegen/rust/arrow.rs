@@ -59,7 +59,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
 
                 let types = (0..fields.len()).map(|t| {
                     Literal::i8_unsuffixed(i8::try_from(t).unwrap_or_else(|_| {
-                        panic!("Expect union type tag to be in 0-127; got {t}")
+                        cargo_error!("Expect union type tag to be in 0-127; got {t}")
                     }))
                 });
                 quote!(DataType::Union(

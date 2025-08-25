@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 use anyhow::Context as _;
 use camino::Utf8PathBuf;
 use itertools::Itertools as _;
+use re_build_tools::cargo_error;
 
 use crate::{Docs, GeneratedFiles, Reporter};
 
@@ -454,7 +455,7 @@ pub fn remove_orphaned_files(reporter: &Reporter, files: &GeneratedFiles) {
             if !files.contains_key(&filepath) {
                 re_log::info!("Removing {filepath:?}");
                 if let Err(err) = std::fs::remove_file(&filepath) {
-                    panic!("Failed to remove {filepath:?}: {err}");
+                    cargo_error!("Failed to remove {filepath:?}: {err}");
                 }
             }
         }
@@ -472,8 +473,8 @@ pub fn write_file(filepath: &Utf8PathBuf, source: &str) {
 
     let parent_dir = filepath.parent().unwrap();
     std::fs::create_dir_all(parent_dir)
-        .unwrap_or_else(|err| panic!("Failed to create dir {parent_dir:?}: {err}"));
+        .unwrap_or_else(|err| cargo_error!("Failed to create dir {parent_dir:?}: {err}"));
 
     std::fs::write(filepath, source)
-        .unwrap_or_else(|err| panic!("Failed to write file {filepath:?}: {err}"));
+        .unwrap_or_else(|err| cargo_error!("Failed to write file {filepath:?}: {err}"));
 }
