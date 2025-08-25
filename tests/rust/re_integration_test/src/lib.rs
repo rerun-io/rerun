@@ -8,6 +8,9 @@ use re_uri::external::url::Host;
 use std::net::TcpListener;
 
 pub struct TestServer {
+    /// The server needs an async function to stop properly but `AsyncDrop` still is experimental.
+    /// Tracking issue: <https://github.com/rust-lang/rust/issues/126482>
+    /// These tests just do the simple thing and drop the server handle hoping for the best.
     _server_handle: ServerHandle,
     port: u16,
 }
