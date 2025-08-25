@@ -19,7 +19,7 @@ use wasm_bindgen::{JsCast as _, JsError, JsValue, closure::Closure, prelude::was
 use web_sys::{History, UrlSearchParams};
 
 use crate::{
-    open_url::try_open_url_or_file_in_viewer,
+    open_url,
     web_tools::{JsResultExt as _, window},
 };
 use re_viewer_context::CommandSender;
@@ -160,21 +160,22 @@ fn handle_popstate(
 
     let follow_if_http = false;
     let select_redap_source_when_loaded = true;
-    if try_open_url_or_file_in_viewer(
-        egui_ctx,
-        &entry.url,
-        follow_if_http,
-        select_redap_source_when_loaded,
-        command_sender,
-    )
-    .is_err()
-    {
-        re_log::warn!("Failed to open URL: {}", entry.url);
+    match entry.url.parse::<open_url::ViewerImportUrl>() {
+        Ok(url) => {
+            url.open(
+                egui_ctx,
+                follow_if_http,
+                select_redap_source_when_loaded,
+                command_sender,
+            );
+        }
+        Err(err) => {
+            re_log::warn!("Failed to open URL {:?}: {err}", entry.url);
+        }
     }
     re_log::debug!("popstate: add receiver {}", entry.url);
 
     set_stored_history_entry(Some(entry));
-    egui_ctx.request_repaint();
 }
 
 pub fn go_back() -> Option<()> {
