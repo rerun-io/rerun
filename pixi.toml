@@ -45,19 +45,24 @@ libc = "2.28"
 
 [activation]
 
-[activation.env]
-# Put pixi builds in its own build dir, otherwise `pixi run cargo build`
-# conflicts with vanilla`cargo build`, and running one invalidates (parts) of the other.
-# See https://github.com/rerun-io/rerun/issues/10934 for more.
-CARGO_TARGET_DIR = "$PIXI_PROJECT_ROOT/target_pixi"
-
 [target.unix.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ""
 
+# Put pixi builds in its own build dir, otherwise `pixi run cargo build`
+# conflicts with vanilla`cargo build`, and running one invalidates (parts) of the other.
+# See https://github.com/rerun-io/rerun/issues/10934 for more.
+#
+# As of pixi 0.53.0, environment variable resolving doesn't work with this on Windows,
+# which is why we have to use the `%` syntax for Windows instead of `$`.
+CARGO_TARGET_DIR = "$PIXI_PROJECT_ROOT/target_pixi"
+
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
+
+# See `target.unix.activation.env`.
+CARGO_TARGET_DIR = "%PIXI_PROJECT_ROOT%/target_pixi"
 
 # TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
 [target.osx-arm64.activation.env]
