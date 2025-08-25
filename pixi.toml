@@ -175,36 +175,36 @@ man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/conten
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,oss_server --"
+rerun = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --"
 
 # Compile and run the rerun viewer, with performance telemetry.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --"
+rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,perf_telemetry --"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,oss_server"
+rerun-build = "cargo build --package rerun-cli --no-default-features --features release_no_web_viewer"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features map_view,nasm,native_viewer"
+rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features release_no_web_viewer"
 
 # Compile and run the rerun viewer with --release.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-release = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --release --"
+rerun-release = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --release --"
 
 # Compile and run the rerun viewer in release, with performance telemetry.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-perf = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --release --"
+rerun-perf = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,perf_telemetry --release --"
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
-rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends-on = [
+rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features full_release --", depends-on = [
   "rerun-build-web",
 ] }
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
-rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release --release --", depends-on = [
+rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features full_release --release --", depends-on = [
   "rerun-build-web-release",
 ] }
 
