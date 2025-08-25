@@ -65,9 +65,10 @@ impl ChunkBuilder {
         // Align all columns by appending null values for rows where we don't have data.
         for (component_desc, _) in &components {
             let arrays = self.components.entry(component_desc.clone()).or_default();
-            arrays.extend(
-                std::iter::repeat(None).take(self.row_ids.len().saturating_sub(arrays.len())),
-            );
+            arrays.extend(std::iter::repeat_n(
+                None,
+                self.row_ids.len().saturating_sub(arrays.len()),
+            ));
         }
 
         self.row_ids.push(row_id);
@@ -88,9 +89,10 @@ impl ChunkBuilder {
 
         // Align all columns by appending null values for rows where we don't have data.
         for arrays in self.components.values_mut() {
-            arrays.extend(
-                std::iter::repeat(None).take(self.row_ids.len().saturating_sub(arrays.len())),
-            );
+            arrays.extend(std::iter::repeat_n(
+                None,
+                self.row_ids.len().saturating_sub(arrays.len()),
+            ));
         }
 
         self

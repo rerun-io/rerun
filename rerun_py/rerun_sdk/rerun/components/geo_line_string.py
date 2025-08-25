@@ -13,7 +13,6 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
@@ -33,8 +32,14 @@ class GeoLineString(GeoLineStringExt, ComponentMixin):
 
     lat_lon: list[datatypes.DVec2D] = field()
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of GeoLineStringExt in geo_line_string_ext.py
+        return len(self.lat_lon)
+
 
 if TYPE_CHECKING:
+    from .. import datatypes
+
     GeoLineStringLike = Union[GeoLineString, datatypes.DVec2DArrayLike, npt.NDArray[np.float64]]
 else:
     GeoLineStringLike = Any

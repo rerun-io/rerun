@@ -313,15 +313,18 @@ impl FFmpegProcessAndListener {
         // no longer receive any new frames or errors from this process.
         let on_output = Arc::new(Mutex::new(Some(on_output)));
 
+        // Reads the output from the ffmpeg process:
         let listen_thread = std::thread::Builder::new()
             .name(format!("ffmpeg-reader for {debug_name}"))
             .spawn({
                 let on_output = on_output.clone();
                 let debug_name = debug_name.to_owned();
+                let ffmpeg_path = ffmpeg_path.map(|p| p.to_owned());
                 let outstanding_frames = num_outstanding_frames.clone();
                 move || {
                     read_ffmpeg_output(
                         &debug_name,
+                        ffmpeg_path.as_deref(),
                         ffmpeg_iterator,
                         &frame_info_rx,
                         &pixel_format,
@@ -338,6 +341,7 @@ impl FFmpegProcessAndListener {
             .and_then(CodecMeta::from_stsd)
             .unwrap_or(CodecMeta::RawBytestream);
 
+        // Writes video data to the ffmpeg process:
         let write_thread = std::thread::Builder::new()
             .name(format!("ffmpeg-writer for {debug_name}"))
             .spawn({
@@ -446,18 +450,18 @@ impl Drop for FFmpegProcessAndListener {
         if false {
             {
                 re_tracing::profile_scope!("shutdown write thread");
-                if let Some(write_thread) = self.write_thread.take() {
-                    if write_thread.join().is_err() {
-                        re_log::error!("Failed to join ffmpeg listener thread.");
-                    }
+                if let Some(write_thread) = self.write_thread.take()
+                    && write_thread.join().is_err()
+                {
+                    re_log::error!("Failed to join ffmpeg listener thread.");
                 }
             }
             {
                 re_tracing::profile_scope!("shutdown listen thread");
-                if let Some(listen_thread) = self.listen_thread.take() {
-                    if listen_thread.join().is_err() {
-                        re_log::error!("Failed to join ffmpeg listener thread.");
-                    }
+                if let Some(listen_thread) = self.listen_thread.take()
+                    && listen_thread.join().is_err()
+                {
+                    re_log::error!("Failed to join ffmpeg listener thread.");
                 }
             }
         }
@@ -588,7 +592,7 @@ impl FrameBuffer {
                     self.next_frame_nr = Some(frame_info.frame_nr + 1);
                     break oldest_pending.remove_entry().1;
                 }
-            };
+            }
 
             // We haven't received the frame info for this frame yet.
             let Ok(frame_info) = frame_info_rx.recv() else {
@@ -634,12 +638,21 @@ impl FrameBuffer {
 
 fn read_ffmpeg_output(
     debug_name: &str,
+    ffmpeg_path: Option<&std::path::Path>,
     ffmpeg_iterator: ffmpeg_sidecar::iter::FfmpegIterator,
     frame_info_rx: &Receiver<FFmpegFrameInfo>,
     pixel_format: &PixelFormat,
     outstanding_frames: &AtomicI32,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
 ) -> Option<()> {
+    // Before we do anything else - make sure the ffmpeg version is compatible:
+    // Ok to block here - we're in a background thread.
+    let ffmpeg_version_result = FFmpegVersion::for_executable_blocking(ffmpeg_path);
+    if let Err(err) = check_ffmpeg_version(ffmpeg_version_result) {
+        (on_output.lock().as_ref()?)(Err(err.into()));
+        return None;
+    }
+
     let mut buffer = FrameBuffer::new();
 
     for event in ffmpeg_iterator {
@@ -850,31 +863,13 @@ impl FFmpegCliDecoder {
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
-        // Check the version once ahead of running FFmpeg.
-        // The error is still handled if it happens while running FFmpeg, but it's a bit unclear if we can get it to start in the first place then.
-        match FFmpegVersion::for_executable_blocking(ffmpeg_path.as_deref()) {
-            Ok(version) => {
-                if !version.is_compatible() {
-                    return Err(Error::UnsupportedFFmpegVersion {
-                        actual_version: version,
-                        minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
-                        minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
-                    });
-                }
-            }
-
-            Err(FFmpegVersionParseError::FFmpegNotFound(_)) => {
-                return Err(Error::FFmpegNotInstalled);
-            }
-
-            Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
-                // This happens quite often, don't fail playing video over it!
-                re_log::warn_once!("Failed to parse FFmpeg version: {raw_version}");
-            }
-
-            Err(err) => {
-                return Err(Error::FailedToDetermineFFmpegVersion(err));
-            }
+        // Check the version once ahead of running FFmpeg, if we can get it without blocking.
+        // We also check it in a background thread, but getting the error
+        // early is preferable:
+        if let std::task::Poll::Ready(ffmpeg_version_result) =
+            FFmpegVersion::for_executable_poll(ffmpeg_path.as_deref())
+        {
+            check_ffmpeg_version(ffmpeg_version_result)?;
         }
 
         let on_output = Arc::new(on_output);
@@ -893,6 +888,34 @@ impl FFmpegCliDecoder {
             ffmpeg_path,
             codec: *codec,
         })
+    }
+}
+
+fn check_ffmpeg_version(
+    ffmpeg_version_result: Result<FFmpegVersion, FFmpegVersionParseError>,
+) -> Result<(), Error> {
+    match ffmpeg_version_result {
+        Ok(version) => {
+            if version.is_compatible() {
+                Ok(())
+            } else {
+                Err(Error::UnsupportedFFmpegVersion {
+                    actual_version: version,
+                    minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
+                    minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
+                })
+            }
+        }
+
+        Err(FFmpegVersionParseError::FFmpegNotFound(_)) => Err(Error::FFmpegNotInstalled),
+
+        Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
+            // This happens quite often, don't fail playing video over it!
+            re_log::warn_once!("Failed to parse FFmpeg version: {raw_version}");
+            Ok(())
+        }
+
+        Err(err) => Err(Error::FailedToDetermineFFmpegVersion(err)),
     }
 }
 

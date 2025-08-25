@@ -19,11 +19,13 @@ import pyproj
 import requests
 import rerun as rr
 import rerun.blueprint as rrb
-import shapely
 from pyproj import CRS, Transformer
 from pyproj.aoi import AreaOfInterest
 from pyproj.database import query_utm_crs_info
 from tqdm import tqdm
+
+if typing.TYPE_CHECKING:
+    import shapely
 
 DATA_DIR = Path(__file__).parent / "dataset"
 MAP_DATA_DIR = DATA_DIR / "map_data"
@@ -157,7 +159,7 @@ def find_best_utm_crs(measurements: list[Measurement]) -> CRS:
     def get_area_of_interest(measurements: list[Measurement]) -> AreaOfInterest:
         """Compute the span of coordinates for all provided measurements."""
 
-        print("Computing area of interest...")
+        print("Computing area of interest…")
         all_long_lat = [
             (a.longitude, a.latitude) for a in measurements if a.latitude is not None and a.longitude is not None
         ]

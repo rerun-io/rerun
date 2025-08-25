@@ -1,0 +1,29 @@
+[package]
+name = "re_integration_test"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+publish = false
+
+[dependencies]
+re_grpc_client.workspace = true
+re_protos.workspace = true
+re_sdk.workspace = true
+re_uri.workspace = true
+
+ureq.workspace = true
+tempfile.workspace = true
+
+[dev-dependencies]
+re_viewer = { workspace = true, features = ["testing"] }
+egui_kittest.workspace = true
+egui.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true

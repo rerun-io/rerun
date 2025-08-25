@@ -50,10 +50,10 @@ pub enum ViewSystemExecutionError {
     VisualizerSystemNotFound(&'static str),
 
     #[error(transparent)]
-    QueryError2(#[from] re_query::QueryError),
+    QueryError(Box<re_query::QueryError>),
 
     #[error(transparent)]
-    DeserializationError(#[from] re_types::DeserializationError),
+    DeserializationError(Box<re_types::DeserializationError>),
 
     #[error("Failed to create draw data: {0}")]
     DrawDataCreationError(Box<dyn std::error::Error>),
@@ -74,6 +74,11 @@ pub enum ViewSystemExecutionError {
     ViewBuilderError(#[from] re_renderer::view_builder::ViewBuilderError),
 }
 
+const _: () = assert!(
+    std::mem::size_of::<ViewSystemExecutionError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
 // Convenience conversions for some re_renderer error types since these are so frequent.
 
 impl From<re_renderer::renderer::LineDrawDataError> for ViewSystemExecutionError {
@@ -85,5 +90,11 @@ impl From<re_renderer::renderer::LineDrawDataError> for ViewSystemExecutionError
 impl From<re_renderer::renderer::PointCloudDrawDataError> for ViewSystemExecutionError {
     fn from(val: re_renderer::renderer::PointCloudDrawDataError) -> Self {
         Self::DrawDataCreationError(Box::new(val))
+    }
+}
+
+impl From<re_types::DeserializationError> for ViewSystemExecutionError {
+    fn from(val: re_types::DeserializationError) -> Self {
+        Self::DeserializationError(Box::new(val))
     }
 }

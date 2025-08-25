@@ -26,6 +26,7 @@ config = tomlkit.loads(config_path.read_text())
 
 OPT_OUT: dict[str, Any] = cast(Container, config["opt_out"])
 OPT_OUT_ENTIRELY: dict[str, Any] = OPT_OUT["run"].value
+OPT_OUT_BACKWARDS_CHECK: list[str] = OPT_OUT["backwards_check"].value
 OPT_OUT_COMPARE = OPT_OUT["compare"].value
 EXTRA_ARGS = config["extra_args"].value
 
@@ -188,26 +189,35 @@ def main() -> None:
         example_opt_out_entirely = example.opt_out_entirely()
         example_opt_out_compare = example.opt_out_compare()
 
-        if "rust" in example_opt_out_entirely:
-            print("SKIPPED: Missing Rust baseline to compare against")
-            continue
-
         backwards_path = example.backwards_compatibility_path()
         cpp_output_path = example.output_path("cpp")
         python_output_path = example.output_path("python")
         rust_output_path = example.output_path("rust")
 
-        if args.write_missing_backward_assets:
-            if not backwards_path.exists():
-                print(f"Writing new backwards-compatibility file to {backwards_path}…")
-                backwards_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(rust_output_path, backwards_path)
-                subprocess.call(["git", "add", "-f", backwards_path])
+        if "rust" in example_opt_out_entirely and "py" in example_opt_out_entirely:
+            print("SKIPPED: Missing Rust or Python baseline to compare against")
+            continue
+
+        if "rust" in example_opt_out_entirely:
+            baseline_path = python_output_path
         else:
+            baseline_path = rust_output_path
+
+        if str(example) not in OPT_OUT_BACKWARDS_CHECK:
+            # Compare old snippet files checked in to git lfs, to the newly generated ones.
+            # They should be the same!
             try:
-                # Compare old snippet files checked in to git lfs, to the newly generated ones.
-                # They should be the same!
-                run_comparison(backwards_path, rust_output_path, args.full_dump)
+                if backwards_path.exists():
+                    run_comparison(backwards_path, baseline_path, args.full_dump)
+                elif args.write_missing_backward_assets:
+                    print(f"Writing new backwards-compatibility file to {backwards_path}…")
+                    backwards_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(baseline_path, backwards_path)
+                    subprocess.call(["git", "add", "-f", backwards_path])
+                else:
+                    raise RuntimeError(
+                        f"Missing {backwards_path}. Run compare_snippet_output.py --write-missing-backward-assets to create it"
+                    )
             except Exception as e:
                 errors.append((example, "old-rrd-files", e))
 
@@ -218,7 +228,7 @@ def main() -> None:
                 print("Skipping cpp compare")
             else:
                 try:
-                    run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+                    run_comparison(cpp_output_path, baseline_path, args.full_dump)
                 except Exception as e:
                     errors.append((example, "C++", e))
 
@@ -229,7 +239,7 @@ def main() -> None:
                 print("Skipping py compare")
             else:
                 try:
-                    run_comparison(python_output_path, rust_output_path, args.full_dump)
+                    run_comparison(python_output_path, baseline_path, args.full_dump)
                 except Exception as e:
                     errors.append((example, "Python", e))
 
@@ -239,11 +249,11 @@ def main() -> None:
         print(f"{len(errors)} errors found:")
 
         for example, comparison, _error in errors:
-            print(f"❌ {example} - {comparison} differs from Rust baseline")
+            print(f"❌ {example} - {comparison} differs")
 
         for example, comparison, error in errors:
             print()
-            print(f"❌ {example} - {comparison} differs from Rust baseline:")
+            print(f"❌ {example} - {comparison} differs:")
             print(error)
             print("--------------------------------------")
 
@@ -252,7 +262,7 @@ def main() -> None:
         print()
 
         for example, comparison, _error in errors:
-            print(f"❌ {example} - {comparison} differs from Rust baseline")
+            print(f"❌ {example} - {comparison} differs")
 
         sys.exit(1)
 
@@ -334,10 +344,13 @@ def run_prebuilt_rust(example: Example, release: bool, target: str | None, targe
 
     if target_dir is None:
         mode = "release" if release else "debug"
+
+        CARGO_TARGET_DIR = Path(os.environ.get("CARGO_TARGET_DIR", "./target"))
+
         if target is not None:
-            target_dir = f"./target/{target}/{mode}/snippets"
+            target_dir = f"{CARGO_TARGET_DIR}/{target}/{mode}/snippets"
         else:
-            target_dir = f"./target/{mode}/snippets"
+            target_dir = f"{CARGO_TARGET_DIR}/{mode}/snippets"
 
     cmd = [f"{target_dir}{extension}"]
     cmd += [example.name]

@@ -138,14 +138,14 @@ impl TensorStats {
         }
         .ok();
 
-        if let Some((min, max)) = range {
-            if max < min {
-                // Empty tensor
-                return Self {
-                    range: None,
-                    finite_range: (tensor.dtype().min_value(), tensor.dtype().max_value()),
-                };
-            }
+        if let Some((min, max)) = range
+            && max < min
+        {
+            // Empty tensor
+            return Self {
+                range: None,
+                finite_range: (tensor.dtype().min_value(), tensor.dtype().max_value()),
+            };
         }
 
         let finite_range = if range
@@ -176,6 +176,7 @@ impl TensorStats {
             };
 
             // If we didn't find a finite range, set it to None.
+            #[expect(clippy::return_and_then)] // false positive
             finite_range.and_then(|r| {
                 if r.0.is_finite() && r.1.is_finite() {
                     Some(r)

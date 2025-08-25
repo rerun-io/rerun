@@ -9,7 +9,7 @@ use nohash_hasher::IntSet;
 use re_chunk::{
     ArchetypeName, Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName,
 };
-use re_log_types::ResolvedTimeRange;
+use re_log_types::AbsoluteTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{
     ComponentDescriptor, ComponentDescriptorSet, ComponentType, UnorderedComponentDescriptorSet,
@@ -589,7 +589,7 @@ impl ChunkStore {
         &self,
         timeline: &TimelineName,
         entity_path: &EntityPath,
-    ) -> Option<ResolvedTimeRange> {
+    ) -> Option<AbsoluteTimeRange> {
         re_tracing::profile_function!();
 
         let temporal_chunk_ids_per_timeline =
@@ -599,14 +599,14 @@ impl ChunkStore {
         let start = chunk_id_sets.per_start_time.first_key_value()?.0;
         let end = chunk_id_sets.per_end_time.last_key_value()?.0;
 
-        Some(ResolvedTimeRange::new(*start, *end))
+        Some(AbsoluteTimeRange::new(*start, *end))
     }
 
     /// Returns the min and max times at which data was logged on a specific timeline, considering
     /// all entities.
     ///
     /// This ignores static data.
-    pub fn time_range(&self, timeline: &TimelineName) -> Option<ResolvedTimeRange> {
+    pub fn time_range(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
         re_tracing::profile_function!();
 
         self.temporal_chunk_ids_per_entity
@@ -615,7 +615,7 @@ impl ChunkStore {
                 let per_time = temporal_chunk_ids_per_timeline.get(timeline)?;
                 let start = per_time.per_start_time.first_key_value()?.0;
                 let end = per_time.per_end_time.last_key_value()?.0;
-                Some(ResolvedTimeRange::new(*start, *end))
+                Some(AbsoluteTimeRange::new(*start, *end))
             })
             .reduce(|r1, r2| r1.union(r2))
     }

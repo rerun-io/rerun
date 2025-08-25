@@ -1,5 +1,3 @@
-use tokio_stream::{Stream, StreamExt as _};
-
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_types::{
@@ -9,21 +7,27 @@ use re_log_types::{
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
+use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::{
     catalog::v1alpha1::ext::ReadDatasetEntryResponse, frontend::v1alpha1::GetChunksRequest,
 };
-use re_uri::{DatasetDataUri, Origin, TimeRange};
+use re_uri::{DatasetPartitionUri, Origin, TimeSelection};
+
+use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{
     ConnectionClient, ConnectionRegistryHandle, MAX_DECODING_MESSAGE_SIZE, StreamError,
     spawn_future,
 };
 
-pub enum Command {
+/// UI commands issued when streaming in datasets.
+///
+/// If you're not in a ui context you can safely ignore these.
+pub enum UiCommand {
     SetLoopSelection {
         recording_id: re_log_types::StoreId,
         timeline: re_log_types::Timeline,
-        time_range: re_log_types::ResolvedTimeRangeF,
+        time_range: re_log_types::AbsoluteTimeRangeF,
     },
 }
 
@@ -32,8 +36,8 @@ pub enum Command {
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_dataset_from_redap(
     connection_registry: &ConnectionRegistryHandle,
-    uri: DatasetDataUri,
-    on_cmd: Box<dyn Fn(Command) + Send + Sync>,
+    uri: DatasetPartitionUri,
+    on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
     re_log::debug!("Loading {uri}…");
@@ -52,19 +56,19 @@ pub fn stream_dataset_from_redap(
     async fn stream_partition(
         connection_registry: ConnectionRegistryHandle,
         tx: re_smart_channel::Sender<LogMsg>,
-        uri: DatasetDataUri,
-        on_cmd: Box<dyn Fn(Command) + Send + Sync>,
+        uri: DatasetPartitionUri,
+        on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> Result<(), StreamError> {
         let client = connection_registry.client(uri.origin.clone()).await?;
 
-        stream_blueprint_and_partition_from_server(client, tx, uri.clone(), on_cmd, on_msg).await
+        stream_blueprint_and_partition_from_server(client, tx, uri.clone(), on_ui_cmd, on_msg).await
     }
 
     let connection_registry = connection_registry.clone();
     spawn_future(async move {
         if let Err(err) =
-            stream_partition(connection_registry, tx, uri.clone(), on_cmd, on_msg).await
+            stream_partition(connection_registry, tx, uri.clone(), on_ui_cmd, on_msg).await
         {
             re_log::error!(
                 "Error while streaming {uri}: {}",
@@ -89,6 +93,11 @@ pub enum ConnectionError {
     #[error("invalid origin: {0}")]
     InvalidOrigin(String),
 }
+
+const _: () = assert!(
+    std::mem::size_of::<ConnectionError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 #[cfg(target_arch = "wasm32")]
 pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, ConnectionError> {
@@ -245,31 +254,26 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
             // not going to make this one single pipeline any faster, but it will prevent starvation of
             // the Tokio runtime (which would slow down every other futures currently scheduled!).
             tokio::task::spawn_blocking(move || {
-                resp.map_err(Into::<StreamError>::into).and_then(|r| {
-                    let _span = tracing::trace_span!(
-                        "get_chunks::batch_decode",
-                        num_chunks = r.chunks.len()
-                    )
-                    .entered();
+                let r = resp.map_err(Into::<StreamError>::into)?;
+                let _span =
+                    tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
+                        .entered();
 
-                    r.chunks
-                        .into_iter()
-                        .map(|arrow_msg| {
-                            let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+                r.chunks
+                    .into_iter()
+                    .map(|arrow_msg| {
+                        let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
-                            let arrow_msg =
-                                re_log_encoding::protobuf_conversions::arrow_msg_from_proto(
-                                    &arrow_msg,
-                                )
+                        let arrow_msg =
+                            re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
                                 .map_err(Into::<StreamError>::into)?;
 
-                            let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
-                                .map_err(Into::<StreamError>::into)?;
+                        let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                            .map_err(Into::<StreamError>::into)?;
 
-                            Ok((chunk, partition_id))
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                })
+                        Ok((chunk, partition_id))
+                    })
+                    .collect::<Result<Vec<_>, _>>()
             })
         })
         .map(|res| {
@@ -284,27 +288,27 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
     response.map(|resp| {
-        resp.map_err(Into::into).and_then(|r| {
-            let _span =
-                tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
-                    .entered();
+        let resp = resp?;
 
-            r.chunks
-                .into_iter()
-                .map(|arrow_msg| {
-                    let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+        let _span =
+            tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len())
+                .entered();
 
-                    let arrow_msg =
-                        re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
-                            .map_err(Into::<StreamError>::into)?;
+        resp.chunks
+            .into_iter()
+            .map(|arrow_msg| {
+                let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
-                    let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                let arrow_msg =
+                    re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
                         .map_err(Into::<StreamError>::into)?;
 
-                    Ok((chunk, partition_id))
-                })
-                .collect::<Result<Vec<_>, _>>()
-        })
+                let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                    .map_err(Into::<StreamError>::into)?;
+
+                Ok((chunk, partition_id))
+            })
+            .collect::<Result<Vec<_>, _>>()
     })
 }
 
@@ -320,8 +324,8 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
 pub async fn stream_blueprint_and_partition_from_server(
     mut client: ConnectionClient,
     tx: re_smart_channel::Sender<LogMsg>,
-    uri: re_uri::DatasetDataUri,
-    on_cmd: Box<dyn Fn(Command) + Send + Sync>,
+    uri: re_uri::DatasetPartitionUri,
+    on_ui_cmd: Option<Box<dyn Fn(UiCommand) + Send + Sync>>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     re_log::debug!("Loading {uri}…");
@@ -362,7 +366,7 @@ pub async fn stream_blueprint_and_partition_from_server(
             blueprint_dataset,
             blueprint_partition,
             None,
-            &on_cmd,
+            on_ui_cmd.as_deref(),
             on_msg.as_deref(),
         )
         .await?;
@@ -391,7 +395,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         store_version: None,
     };
 
-    let re_uri::DatasetDataUri {
+    let re_uri::DatasetPartitionUri {
         origin: _,
         dataset_id,
         partition_id,
@@ -406,7 +410,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         dataset_id.into(),
         partition_id.into(),
         time_range,
-        &on_cmd,
+        on_ui_cmd.as_deref(),
         on_msg.as_deref(),
     )
     .await?;
@@ -422,8 +426,8 @@ async fn stream_partition_from_server(
     tx: &re_smart_channel::Sender<LogMsg>,
     dataset_id: EntryId,
     partition_id: PartitionId,
-    time_range: Option<TimeRange>,
-    on_cmd: &(dyn Fn(Command) + Send + Sync),
+    time_range: Option<TimeSelection>,
+    on_ui_cmd: Option<&(dyn Fn(UiCommand) + Send + Sync)>,
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
     let static_chunk_stream = {
@@ -456,7 +460,26 @@ async fn stream_partition_from_server(
                 fuzzy_descriptors: vec![],
                 exclude_static_data: true,
                 exclude_temporal_data: false,
-                query: None,
+                query: time_range.clone().map(|time_range| {
+                    Query {
+                        range: Some(QueryRange {
+                            index: time_range.timeline.name().to_string(),
+                            index_range: time_range.clone().into(),
+                        }),
+                        latest_at: Some(QueryLatestAt {
+                            index: Some(time_range.timeline.name().to_string()),
+                            at: time_range.range.min(),
+                        }),
+                        columns_always_include_everything: false,
+                        columns_always_include_chunk_ids: false,
+                        columns_always_include_byte_offsets: false,
+                        columns_always_include_entity_paths: false,
+                        columns_always_include_static_indexes: false,
+                        columns_always_include_global_indexes: false,
+                        columns_always_include_component_indexes: false,
+                    }
+                    .into()
+                }),
             })
             .await?
             .into_inner()
@@ -464,8 +487,10 @@ async fn stream_partition_from_server(
 
     let store_id = store_info.store_id.clone();
 
-    if let Some(time_range) = time_range {
-        on_cmd(Command::SetLoopSelection {
+    if let Some(time_range) = time_range
+        && let Some(on_ui_cmd) = on_ui_cmd
+    {
+        on_ui_cmd(UiCommand::SetLoopSelection {
             recording_id: store_id.clone(),
             timeline: time_range.timeline,
             time_range: time_range.into(),

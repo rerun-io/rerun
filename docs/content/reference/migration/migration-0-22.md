@@ -20,7 +20,7 @@ The following snippets give a succinct before/after picture; for more informatio
 #### Python
 
 *Before*:
-```py
+```python
 positions = [[i, 0, 0] for i in range(0, 10)]
 
 rr.set_time_sequence("frame", 0)
@@ -41,7 +41,7 @@ rr.log("points", [rr.components.Position3DBatch(positions), rr.components.Radius
 ```
 
 *After*:
-```py
+```python
 positions = [[i, 0, 0] for i in range(0, 10)]
 
 rr.set_time_sequence("frame", 0)
@@ -215,7 +215,7 @@ See also the API reference:
 #### Python
 
 *Before*:
-```py
+```python
 # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
 times = np.arange(10, 15, 1.0)
 positions = [
@@ -244,7 +244,7 @@ rr.send_columns(
 ```
 
 *After*:
-```py
+```python
 # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
 times = np.arange(10, 15, 1.0)
 # fmt: off

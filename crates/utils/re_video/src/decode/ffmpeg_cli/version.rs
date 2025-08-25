@@ -1,6 +1,5 @@
 use std::{collections::HashMap, path::PathBuf, task::Poll};
 
-use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use poll_promise::Promise;
 
@@ -98,7 +97,8 @@ impl FFmpegVersion {
 
     /// Like [`Self::for_executable_poll`], but blocks until the version is ready.
     ///
-    /// WARNING: this blocks for half a second on Mac the first time this is called with a given path, maybe more on other platforms.
+    /// WARNING: this can block for SEVEN SECONDS on Mac, but usually only the first time
+    /// after a reboot. NEVER call this on the GUI thread!
     pub fn for_executable_blocking(path: Option<&std::path::Path>) -> FfmpegVersionResult {
         re_tracing::profile_function!();
 
@@ -145,7 +145,8 @@ struct VersionCache(
 
 impl VersionCache {
     fn global<R>(f: impl FnOnce(&mut Self) -> R) -> R {
-        static CACHE: Lazy<Mutex<VersionCache>> = Lazy::new(|| Mutex::new(VersionCache::default()));
+        static CACHE: std::sync::LazyLock<Mutex<VersionCache>> =
+            std::sync::LazyLock::new(|| Mutex::new(VersionCache::default()));
         f(&mut CACHE.lock())
     }
 
@@ -178,9 +179,10 @@ fn ffmpeg_version(
     // Don't use sidecar's ffmpeg_version_with_path/ffmpeg_version directly since the error message for
     // file not found isn't great and we want this for display in the UI.
 
-    let path = path
-        .cloned()
-        .unwrap_or(ffmpeg_sidecar::paths::ffmpeg_path());
+    let path = path.cloned().unwrap_or_else(|| {
+        re_tracing::profile_scope!("ffmpeg_path");
+        ffmpeg_sidecar::paths::ffmpeg_path()
+    });
     let mut cmd = match std::process::Command::new(&path)
         .arg("-version")
         .stdout(std::process::Stdio::piped()) // not stderr when calling `-version`

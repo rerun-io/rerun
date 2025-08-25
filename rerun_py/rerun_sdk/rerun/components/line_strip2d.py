@@ -13,7 +13,6 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
@@ -51,8 +50,14 @@ class LineStrip2D(LineStrip2DExt, ComponentMixin):
 
     points: list[datatypes.Vec2D] = field()
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of LineStrip2DExt in line_strip2d_ext.py
+        return len(self.points)
+
 
 if TYPE_CHECKING:
+    from .. import datatypes
+
     LineStrip2DLike = Union[LineStrip2D, datatypes.Vec2DArrayLike, npt.NDArray[np.float32]]
 else:
     LineStrip2DLike = Any

@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -14,7 +14,8 @@ from rerun._baseclasses import (
     BaseBatch,
 )
 
-from .. import datatypes
+if TYPE_CHECKING:
+    from .. import datatypes
 
 __all__ = ["MultiEnum", "MultiEnumArrayLike", "MultiEnumBatch", "MultiEnumLike"]
 
@@ -63,7 +64,7 @@ class MultiEnumBatch(BaseBatch[MultiEnumArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: MultiEnumArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.testing.datatypes import EnumTestBatch, ValuedEnumBatch
+        from . import EnumTestBatch, ValuedEnumBatch
 
         if isinstance(data, MultiEnum):
             data = [data]

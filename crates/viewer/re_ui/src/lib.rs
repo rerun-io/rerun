@@ -28,7 +28,7 @@ use egui::NumExt as _;
 
 pub use self::{
     command::{UICommand, UICommandSender},
-    command_palette::CommandPalette,
+    command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl},
     context_ext::ContextExt,
     design_tokens::{DesignTokens, TableStyle},
     help::*,
@@ -55,7 +55,9 @@ pub use self::arrow_ui::arrow_ui;
 
 /// If true, we fill the entire window, except for the close/maximize/minimize buttons in the top-left.
 /// See <https://github.com/emilk/egui/pull/2049>
-pub const FULLSIZE_CONTENT: bool = cfg!(target_os = "macos");
+pub fn fullsize_content(os: egui::os::OperatingSystem) -> bool {
+    os == egui::os::OperatingSystem::Mac
+}
 
 /// If true, we hide the native window decoration
 /// (the top bar with app title, close button etc),
@@ -64,7 +66,9 @@ pub const CUSTOM_WINDOW_DECORATIONS: bool = false; // !FULLSIZE_CONTENT; // TODO
 
 /// If true, we show the native window decorations/chrome with the
 /// close/maximize/minimize buttons and app title.
-pub const NATIVE_WINDOW_BAR: bool = !FULLSIZE_CONTENT && !CUSTOM_WINDOW_DECORATIONS;
+pub fn native_window_bar(os: egui::os::OperatingSystem) -> bool {
+    !fullsize_content(os) && !CUSTOM_WINDOW_DECORATIONS
+}
 
 // ----------------------------------------------------------------------------
 
@@ -169,11 +173,11 @@ fn format_with_decimals_in_range(
         // to round-trip the number.
         for decimals in min_decimals..max_decimals {
             let text = format_with_decimals(value, decimals);
-            if let Some(parsed) = re_format::parse_f64(&text) {
-                if egui::emath::almost_equal(parsed as f32, value as f32, epsilon) {
-                    // Enough precision to show the value accurately - good!
-                    return text;
-                }
+            if let Some(parsed) = re_format::parse_f64(&text)
+                && egui::emath::almost_equal(parsed as f32, value as f32, epsilon)
+            {
+                // Enough precision to show the value accurately - good!
+                return text;
             }
         }
         // The value has more precision than we expected.

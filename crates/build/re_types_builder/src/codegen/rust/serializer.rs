@@ -265,11 +265,11 @@ pub fn quote_arrow_serializer(
                     let type_ids: Vec<i8> = #quoted_type_ids;
                     let num_variants = #num_variants;
 
-                    let children: Vec<_> = std::iter::repeat(
+                    let children: Vec<_> = std::iter::repeat_n(
                             as_array_ref(NullArray::new(
                                 #data_src.len(),
-                            ))
-                        ).take(1 + num_variants) // +1 for the virtual `nulls` arm
+                            )),
+                            1 + num_variants) // +1 for the virtual `nulls` arm
                         .collect();
 
                     debug_assert_eq!(field_type_ids.len(), fields.len());
@@ -490,20 +490,20 @@ fn quote_arrow_field_serializer(
     };
 
     // If the inner object is an enum, then dispatch to its serializer.
-    if let Some(obj) = inner_obj {
-        if obj.is_enum() {
-            let fqname_use = quote_fqname_as_type_path(&obj.fqname);
-            let option_wrapper = if elements_are_nullable {
-                quote! {}
-            } else {
-                quote! { .into_iter().map(Some) }
-            };
+    if let Some(obj) = inner_obj
+        && obj.is_enum()
+    {
+        let fqname_use = quote_fqname_as_type_path(&obj.fqname);
+        let option_wrapper = if elements_are_nullable {
+            quote! {}
+        } else {
+            quote! { .into_iter().map(Some) }
+        };
 
-            return quote! {{
-                _ = #validity_src;
-                #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
-            }};
-        }
+        return quote! {{
+            _ = #validity_src;
+            #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
+        }};
     }
 
     let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
@@ -583,7 +583,14 @@ fn quote_arrow_field_serializer(
             }
         }
 
-        DataType::Utf8 => {
+        DataType::Binary | DataType::Utf8 => {
+            let is_binary = datatype.to_logical_type() == &DataType::Binary;
+            let as_bytes = if is_binary {
+                quote!()
+            } else {
+                quote!(.as_bytes())
+            };
+
             // NOTE: We need values for all slots, regardless of what the validity says,
             // hence `unwrap_or_default`.
             let (quoted_member_accessor, quoted_transparent_length) = if inner_is_arrow_transparent
@@ -623,7 +630,7 @@ fn quote_arrow_field_serializer(
 
             let inner_data_and_offsets = if elements_are_nullable {
                 quote! {
-                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                         #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length .unwrap_or_default())
                     );
 
@@ -636,13 +643,13 @@ fn quote_arrow_field_serializer(
                     // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
                     // about it while building the backing buffer since it's all offsets driven.
                     for data in #data_src.iter().flatten() {
-                        buffer_builder.append_slice(data #quoted_member_accessor.as_bytes());
+                        buffer_builder.append_slice(data #quoted_member_accessor #as_bytes);
                     }
                     let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
                 }
             } else {
                 quote! {
-                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                         #data_src.iter() #quoted_transparent_length
                     );
 
@@ -653,22 +660,29 @@ fn quote_arrow_field_serializer(
 
                     let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
                     for data in &#data_src {
-                        buffer_builder.append_slice(data #quoted_member_accessor.as_bytes());
+                        buffer_builder.append_slice(data #quoted_member_accessor #as_bytes);
                     }
                     let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
                 }
             };
 
-            quote! {{
-                #inner_data_and_offsets
+            if is_binary {
+                quote! {{
+                    #inner_data_and_offsets
+                    as_array_ref(LargeBinaryArray::new(offsets, inner_data, #validity_src))
+                }}
+            } else {
+                quote! {{
+                    #inner_data_and_offsets
 
-                // Safety: we're building this from actual native strings, so no need to do the
-                // whole utf8 validation _again_.
-                // It would be nice to use quote_comment here and put this safety notice in the generated code,
-                // but that seems to push us over some complexity limit causing rustfmt to fail.
-                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                as_array_ref(unsafe { StringArray::new_unchecked(offsets, inner_data, #validity_src) })
-            }}
+                    // Safety: we're building this from actual native strings, so no need to do the
+                    // whole utf8 validation _again_.
+                    // It would be nice to use quote_comment here and put this safety notice in the generated code,
+                    // but that seems to push us over some complexity limit causing rustfmt to fail.
+                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    as_array_ref(unsafe { StringArray::new_unchecked(offsets, inner_data, #validity_src) })
+                }}
+            }
         }
 
         DataType::List(inner_field) | DataType::FixedSizeList(inner_field, _) => {
@@ -772,7 +786,7 @@ fn quote_arrow_field_serializer(
                                     .flat_map(|v| match v {
                                         Some(v) => itertools::Either::Left(v.into_iter()),
                                         None => itertools::Either::Right(
-                                            std::iter::repeat(Default::default()).take(#count),
+                                            std::iter::repeat_n(Default::default(), #count),
                                         ),
                                     })
                                 }
@@ -851,15 +865,15 @@ fn quote_arrow_field_serializer(
             //
             // This workaround does not apply if we don't have any validity on the outer type.
             // (as it is always the case with unions where the nullability is encoded as a separate variant)
-            let quoted_inner_validity = if let (true, DataType::FixedSizeList(_, count)) =
-                (elements_are_nullable, datatype.to_logical_type())
+            let quoted_inner_validity = if elements_are_nullable
+                && let DataType::FixedSizeList(_, count) = datatype.to_logical_type()
             {
                 quote! {
                     let #inner_validity_ident: Option<arrow::buffer::NullBuffer> =
                         #validity_src.as_ref().map(|validity| {
                             validity
                                 .iter()
-                                .map(|b| std::iter::repeat(b).take(#count))
+                                .map(|b| std::iter::repeat_n(b, #count))
                                 .flatten()
                                 .collect::<Vec<_>>()
                                 .into()
@@ -919,6 +933,6 @@ fn quote_arrow_field_serializer(
             }}
         }
 
-        _ => unimplemented!("{datatype:#?}"),
+        DataType::Object { .. } => unimplemented!("{datatype:#?}"),
     }
 }

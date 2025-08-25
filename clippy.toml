@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Section identical to the main scripts/clippy_wasm/clippy.toml:
 
-msrv = "1.85"
+msrv = "1.88"
 
 allow-unwrap-in-tests = true
 
@@ -27,7 +27,7 @@ too-many-lines-threshold = 600 # TODO(emilk): decrease this
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_macros
 disallowed-macros = [
-  'dbg',
+  'std::dbg',
 
   { path = "egui::hex_color", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
 
@@ -55,23 +55,23 @@ disallowed-methods = [
   { path = "arrow::compute::concat", reason = "Use `re_arrow_util::arrow_util::concat_arrays` instead, which has better memory management" },
   { path = "arrow::compute::filter", reason = "Use `re_arrow_util::arrow_util::filter_array` instead" },
   { path = "arrow::compute::take", reason = "Use `re_arrow_util::arrow_util::take_array` instead" },
-
   { path = "arrow::datatypes::Schema::new", reason = "Use `arrow::datatypes::Schema::new_with_metadata` instead. There is usually some metadata you want to preserve." },
+  { path = "arrow_array::record_batch::RecordBatch::try_new", reason = "Use `arrow_array::record_batch::RecordBatch::try_new_with_options` instead. There is a corner case for empty batches that require the length specified." },
 
-  { path = "egui::Color32::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Color32::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Color32::from_gray", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Color32::from_rgb", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Color32::from_rgba_premultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Color32::from_rgba_unmultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Color32::from_white_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Rgba::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Rgba::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Rgba::from_gray", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Rgba::from_rgb", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Rgba::from_rgba_premultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Rgba::from_rgba_unmultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
-  { path = "egui::Rgba::from_white_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Color32::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Color32::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Color32::from_gray", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Color32::from_rgb", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Color32::from_rgba_premultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Color32::from_rgba_unmultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Color32::from_white_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Rgba::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Rgba::from_gray", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Rgba::from_luminance_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Rgba::from_rgb", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Rgba::from_rgba_premultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Rgba::from_rgba_unmultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "ecolor::Rgba::from_white_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
 
   # There are many things that aren't allowed on wasm,
   # but we cannot disable them all here (because of e.g. https://github.com/rust-lang/rust-clippy/issues/10406)
@@ -84,7 +84,7 @@ disallowed-names = []
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 disallowed-types = [
   { path = "egui::Checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
-  { path = "ring::digest::SHA1_FOR_LEGACY_USE_ONLY", reason = "SHA1 is cryptographically broken" },
+  { path = "once_cell::sync::OnceCell", reason = "Use `std::sync::OnceLock` instead" },
   { path = "std::sync::Condvar", reason = "Use parking_lot instead" },
   { path = "std::sync::Mutex", reason = "Use parking_lot instead" },
   { path = "std::sync::RwLock", reason = "Use parking_lot instead" },

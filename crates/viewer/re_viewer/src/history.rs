@@ -4,59 +4,58 @@
 //! - State object
 //! - URL
 //!
-//! Ideally we wouldn't have to, but we want two things:
+//! Two things are handled here:
 //! - Listen to `popstate` events and handle navigations client-side,
 //!   so that the forward/back buttons can be used to navigate between
 //!   examples and the welcome screen.
 //! - Add a `?url` query param to the address bar when navigating to
-//!   an example, so that examples can be shared directly by just
-//!   copying the link.
+//!   an example or a redap entry, for direct link sharing.
 
-use crate::web_tools::{JsResultExt as _, url_to_receiver, window};
+use std::sync::{Arc, OnceLock};
+
 use js_sys::wasm_bindgen;
 use parking_lot::Mutex;
-use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
-use std::sync::Arc;
-use std::sync::OnceLock;
-use wasm_bindgen::JsCast as _;
-use wasm_bindgen::JsError;
-use wasm_bindgen::JsValue;
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::prelude::wasm_bindgen;
-use web_sys::History;
-use web_sys::UrlSearchParams;
+use wasm_bindgen::{JsCast as _, JsError, JsValue, closure::Closure, prelude::wasm_bindgen};
+use web_sys::{History, UrlSearchParams};
 
-#[derive(Clone, Default, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+use crate::{
+    open_url,
+    web_tools::{JsResultExt as _, window},
+};
+use re_viewer_context::CommandSender;
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct HistoryEntry {
-    /// Data source URL
+    /// The URL to load/navigate to when using this entry.
     ///
-    /// We support loading multiple URLs at the same time
-    ///
-    /// `?url=`
-    pub urls: Vec<String>,
+    /// Note that the `url` parameter actually supports several urls, but
+    /// for navigation purposes we only support a single one.
+    url: String,
 }
 
 // Builder methods
 impl HistoryEntry {
-    pub const KEY: &'static str = "__rerun";
+    const KEY: &'static str = "__rerun";
 
-    /// Set the URL of the RRD to load when using this entry.
-    #[inline]
-    pub fn rrd_url(mut self, url: String) -> Self {
-        self.urls.push(url);
-        self
+    pub fn new(url: String) -> Self {
+        if url == re_redap_browser::EXAMPLES_ORIGIN.as_url()
+            || url
+                == re_uri::RedapUri::Catalog(re_uri::CatalogUri::new(
+                    re_redap_browser::EXAMPLES_ORIGIN.clone(),
+                ))
+                .to_string()
+        {
+            Self::default()
+        } else {
+            Self { url }
+        }
     }
-}
 
-// Serialization
-impl HistoryEntry {
     pub fn to_query_string(&self) -> Result<String, JsValue> {
         use std::fmt::Write as _;
 
         let params = UrlSearchParams::new()?;
-        for url in &self.urls {
-            params.append("url", url);
-        }
+        params.append("url", &self.url);
         let mut out = "?".to_owned();
         write!(&mut out, "{}", params.to_string()).ok();
 
@@ -86,11 +85,10 @@ pub fn install_popstate_listener(app: &mut crate::App) -> Result<(), JsValue> {
     let egui_ctx = app.egui_ctx.clone();
     let command_sender = app.command_sender.clone();
 
-    let connection_registry = app.connection_registry().clone();
     let closure = Closure::wrap(Box::new({
         move |event: web_sys::PopStateEvent| {
             let new_state = deserialize_from_state(&event.state())?;
-            handle_popstate(&connection_registry, &egui_ctx, &command_sender, new_state);
+            handle_popstate(&egui_ctx, &command_sender, new_state);
             Ok(())
         }
     }) as Box<EventListener<_>>);
@@ -133,7 +131,6 @@ impl Drop for PopstateListener {
 }
 
 fn handle_popstate(
-    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
     egui_ctx: &egui::Context,
     command_sender: &CommandSender,
     new_state: Option<HistoryEntry>,
@@ -148,17 +145,12 @@ fn handle_popstate(
         return;
     }
 
-    if new_state.is_none() || new_state.as_ref().is_some_and(|v| v.urls.is_empty()) {
-        re_log::debug!("popstate: clear recordings + go to welcome screen");
-
-        // the user navigated back to the history entry where the viewer was initially opened
-        // in that case they likely expect to land back at the welcome screen.
-        // We just close all recordings, which should automatically show the welcome screen or the redap browser.
-        command_sender.send_system(SystemCommand::CloseAllEntries);
-
-        set_stored_history_entry(new_state);
+    if new_state.is_none() || new_state.as_ref().is_some_and(|v| v.url.is_empty()) {
+        re_log::debug!("popstate: go to welcome screen");
+        re_redap_browser::switch_to_welcome_screen(command_sender);
         egui_ctx.request_repaint();
 
+        set_stored_history_entry(new_state);
         return;
     }
 
@@ -167,28 +159,23 @@ fn handle_popstate(
     };
 
     let follow_if_http = false;
-    for url in &entry.urls {
-        // we continue in case of errors because some receivers may be valid
-        let Some(receiver) = url_to_receiver(
-            connection_registry,
-            egui_ctx.clone(),
-            follow_if_http,
-            url.clone(),
-            command_sender.clone(),
-        ) else {
-            continue;
-        };
-
-        command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
-            receiver.source().clone(),
-        ));
-        command_sender.send_system(SystemCommand::AddReceiver(receiver));
-
-        re_log::debug!("popstate: add receiver {url:?}");
+    let select_redap_source_when_loaded = true;
+    match entry.url.parse::<open_url::ViewerImportUrl>() {
+        Ok(url) => {
+            url.open(
+                egui_ctx,
+                follow_if_http,
+                select_redap_source_when_loaded,
+                command_sender,
+            );
+        }
+        Err(err) => {
+            re_log::warn!("Failed to open URL {:?}: {err}", entry.url);
+        }
     }
+    re_log::debug!("popstate: add receiver {}", entry.url);
 
     set_stored_history_entry(Some(entry));
-    egui_ctx.request_repaint();
 }
 
 pub fn go_back() -> Option<()> {
@@ -241,6 +228,10 @@ fn get_raw_state(history: &History) -> Result<JsValue, JsValue> {
 }
 
 fn deserialize_from_state(state: &JsValue) -> Result<Option<HistoryEntry>, JsValue> {
+    if state.is_undefined() || state.is_null() {
+        return Ok(None);
+    }
+
     let key = JsValue::from_str(HistoryEntry::KEY);
     let value = js_sys::Reflect::get(state, &key)?;
     if value.is_undefined() || value.is_null() {
@@ -263,9 +254,15 @@ fn get_updated_state(history: &History, entry: &HistoryEntry) -> Result<JsValue,
 
 pub trait HistoryExt: private::Sealed {
     /// Push a history entry onto the stack, which becomes the latest entry.
+    ///
+    /// Use this for new distinct entries to which one can go back and forth.
+    /// Will not push an entry if it is identical to the current.
     fn push_entry(&self, entry: HistoryEntry) -> Result<(), JsValue>;
 
     /// Replace the latest entry.
+    ///
+    /// Use this to update the current url with a new fragment (selection, time, etc.)
+    /// to which browser history doesn't need to go back to.
     #[allow(unused)]
     fn replace_entry(&self, entry: HistoryEntry) -> Result<(), JsValue>;
 
@@ -277,6 +274,11 @@ impl private::Sealed for History {}
 
 impl HistoryExt for History {
     fn push_entry(&self, entry: HistoryEntry) -> Result<(), JsValue> {
+        // Check if this is the exact same entry as before, if so don't do anything.
+        if self.current_entry()?.unwrap_or_default() == entry {
+            return Ok(());
+        }
+
         let state = get_updated_state(self, &entry)?;
         let url = entry.to_query_string()?;
         self.push_state_with_url(&state, "", Some(&url))?;

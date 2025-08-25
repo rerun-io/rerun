@@ -28,15 +28,17 @@ import json
 import os
 import re
 import textwrap
-from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from subprocess import run
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from google.cloud import storage
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 SCRIPT_PATH = os.path.dirname(os.path.relpath(__file__))
 DATE_FORMAT = "%Y-%m-%d"

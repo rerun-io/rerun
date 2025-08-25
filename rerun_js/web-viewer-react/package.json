@@ -43,14 +43,18 @@
     "tsconfig.json"
   ],
   "dependencies": {
-    "@rerun-io/web-viewer": "0.25.0-alpha.1",
-    "@types/react": "^18.2.33",
-    "react": "^18.2.0"
+    "@rerun-io/web-viewer": "0.25.0-alpha.1"
+  },
+  "peerDependencies": {
+    "@types/react": "^18.2.33 || ^19.0.0",
+    "react": "^18.2.0 || ^19.0.0"
   },
   "devDependencies": {
     "dts-buddy": "^0.3.0",
     "typedoc": "^0.28.6",
     "typedoc-github-theme": "^0.3.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "@types/react": "^19.0.0",
+    "react": "^19.0.0"
   }
 }

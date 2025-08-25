@@ -1,4 +1,3 @@
-use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use re_sdk::ComponentDescriptor;
 
@@ -52,4 +51,5 @@ impl ComponentTypeRegistry {
 }
 
 /// All registered component types.
-pub static COMPONENT_TYPES: Lazy<RwLock<ComponentTypeRegistry>> = Lazy::new(RwLock::default);
+pub static COMPONENT_TYPES: std::sync::LazyLock<RwLock<ComponentTypeRegistry>> =
+    std::sync::LazyLock::new(RwLock::default);

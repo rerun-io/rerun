@@ -67,11 +67,11 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> 
 
     low_threshold = 100.0
     high_threshold = 200.0
-    canny_image = cv2.Canny(rgb_image, low_threshold, high_threshold)
-    canny_image = canny_image[:, :, None]
+    canny_data = cv2.Canny(rgb_image, low_threshold, high_threshold)
+    canny_data = canny_data[:, :, None]
     # cv2.dilate(kjgk
-    canny_image = np.concatenate([canny_image, canny_image, canny_image], axis=2)
-    canny_image = PIL.Image.fromarray(canny_image)
+    canny_data = np.concatenate([canny_data, canny_data, canny_data], axis=2)
+    canny_image = PIL.Image.fromarray(canny_data)
 
     rr.log("input/raw", rr.Image(image), static=True)
     rr.log("input/canny", rr.Image(canny_image), static=True)

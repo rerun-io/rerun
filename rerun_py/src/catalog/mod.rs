@@ -13,6 +13,7 @@ mod task;
 
 use std::sync::Arc;
 
+use arrow::array::RecordBatchOptions;
 use arrow::{
     array::{Float32Array, RecordBatch},
     datatypes::Field,
@@ -146,12 +147,17 @@ impl VectorLike<'_> {
                     })?
                     .to_vec();
 
-                RecordBatch::try_new(Arc::new(schema), vec![Arc::new(Float32Array::from(floats))])
-                    .map_err(to_py_err)
+                RecordBatch::try_new_with_options(
+                    Arc::new(schema),
+                    vec![Arc::new(Float32Array::from(floats))],
+                    &RecordBatchOptions::default(),
+                )
+                .map_err(to_py_err)
             }
-            VectorLike::Vector(floats) => RecordBatch::try_new(
+            VectorLike::Vector(floats) => RecordBatch::try_new_with_options(
                 Arc::new(schema),
                 vec![Arc::new(Float32Array::from(floats.clone()))],
+                &RecordBatchOptions::default(),
             )
             .map_err(to_py_err),
         }

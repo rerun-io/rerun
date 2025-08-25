@@ -12,10 +12,10 @@ use arrow::{
 use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_arrow_util::{ArrowArrayDowncastRef as _, widen_binary_arrays};
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
-    EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName,
+    AbsoluteTimeRange, EntityPath, NonMinI64, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
     ArchetypeName, ComponentDescriptor, ComponentType, DeserializationError, Loggable as _,
@@ -62,6 +62,11 @@ pub enum ChunkError {
     InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
 }
 
+const _: () = assert!(
+    std::mem::size_of::<ChunkError>() <= 72,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
 pub type ChunkResult<T> = Result<T, ChunkError>;
 
 // ---
@@ -96,6 +101,8 @@ impl ChunkComponents {
             let Some(right_array) = right.get(descr) else {
                 anyhow::bail!("rhs is missing {descr:?}");
             };
+            let left_array = widen_binary_arrays(left_array);
+            let right_array = widen_binary_arrays(right_array);
             re_arrow_util::ensure_similar(&left_array.to_data(), &right_array.to_data())
                 .with_context(|| format!("Component {descr:?}"))?;
         }
@@ -291,13 +298,13 @@ impl Chunk {
             // Filter out the recording time component from both lhs and rhs.
             let lhs_components = components
                 .iter()
-                .filter(|&(desc, _list_array)| (desc != &recording_time_descriptor))
+                .filter(|&(desc, _list_array)| desc != &recording_time_descriptor)
                 .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
                 .collect::<IntMap<_, _>>();
             let rhs_components = rhs
                 .components
                 .iter()
-                .filter(|&(desc, _list_array)| (desc != &recording_time_descriptor))
+                .filter(|&(desc, _list_array)| desc != &recording_time_descriptor)
                 .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
                 .collect::<IntMap<_, _>>();
 
@@ -389,9 +396,7 @@ impl Chunk {
 
     /// Clones the chunk into a new chunk where all [`RowId`]s are [`RowId::ZERO`].
     pub fn zeroed(self) -> Self {
-        let row_ids = std::iter::repeat(RowId::ZERO)
-            .take(self.row_ids.len())
-            .collect_vec();
+        let row_ids = vec![RowId::ZERO; self.row_ids.len()];
 
         let row_ids = RowId::arrow_from_slice(&row_ids);
 
@@ -409,7 +414,7 @@ impl Chunk {
     #[inline]
     pub fn time_range_per_component(
         &self,
-    ) -> IntMap<TimelineName, IntMap<ComponentDescriptor, ResolvedTimeRange>> {
+    ) -> IntMap<TimelineName, IntMap<ComponentDescriptor, AbsoluteTimeRange>> {
         re_tracing::profile_function!();
 
         self.timelines
@@ -505,7 +510,9 @@ impl Chunk {
                         .enumerate()
                         .for_each(|(i, is_valid)| counts_raw[i] += is_valid as u64);
                 } else {
-                    counts_raw.iter_mut().for_each(|count| *count += 1);
+                    for count in &mut counts_raw {
+                        *count += 1;
+                    }
                 }
             });
         }
@@ -673,7 +680,7 @@ pub struct TimeColumn {
     /// The time range covered by [`Self::times`].
     ///
     /// Not necessarily contiguous! Just the min and max value found in [`Self::times`].
-    pub(crate) time_range: ResolvedTimeRange,
+    pub(crate) time_range: AbsoluteTimeRange,
 }
 
 /// Errors when deserializing/parsing/reading a column of time data.
@@ -863,7 +870,7 @@ impl TimeColumn {
                 .last()
                 .copied()
                 .map_or(TimeInt::MAX, TimeInt::new_temporal);
-            ResolvedTimeRange::new(min_time, max_time)
+            AbsoluteTimeRange::new(min_time, max_time)
         } else {
             // NOTE: Do the iteration multiple times in a cache-friendly way rather than the opposite.
             // NOTE: The 'or' in 'unwrap_or' is never hit, but better safe than sorry.
@@ -877,7 +884,7 @@ impl TimeColumn {
                 .max()
                 .copied()
                 .map_or(TimeInt::MAX, TimeInt::new_temporal);
-            ResolvedTimeRange::new(min_time, max_time)
+            AbsoluteTimeRange::new(min_time, max_time)
         };
 
         Self {
@@ -1256,7 +1263,7 @@ impl TimeColumn {
     }
 
     #[inline]
-    pub fn time_range(&self) -> ResolvedTimeRange {
+    pub fn time_range(&self) -> AbsoluteTimeRange {
         self.time_range
     }
 
@@ -1314,7 +1321,7 @@ impl TimeColumn {
     pub fn time_range_per_component(
         &self,
         components: &ChunkComponents,
-    ) -> IntMap<ComponentDescriptor, ResolvedTimeRange> {
+    ) -> IntMap<ComponentDescriptor, AbsoluteTimeRange> {
         let times = self.times_raw();
         components
             .iter()
@@ -1349,7 +1356,7 @@ impl TimeColumn {
 
                     Some((
                         component_desc.clone(),
-                        ResolvedTimeRange::new(time_min, time_max),
+                        AbsoluteTimeRange::new(time_min, time_max),
                     ))
                 } else {
                     // Dense

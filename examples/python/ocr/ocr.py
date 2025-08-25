@@ -6,10 +6,9 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
-from typing import Any, Final, Optional
+from typing import TYPE_CHECKING, Any, Final, Optional
 
 import cv2 as cv2
 import numpy as np
@@ -23,6 +22,9 @@ import tqdm
 from paddleocr import PPStructure
 from paddleocr.ppstructure.recovery.recovery_to_doc import sorted_layout_boxes
 from typing_extensions import TypeAlias
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
@@ -393,10 +395,10 @@ def detect_and_log_layouts(file_path: str) -> None:
                 page_path,
             ),
         )
-        logging.info("Sending blueprint...")
+        logging.info("Sending blueprint…")
         blueprint = generate_blueprint(layouts, processed_layouts)
         rr.send_blueprint(blueprint)
-        logging.info("Blueprint sent...")
+        logging.info("Blueprint sent…")
 
 
 def detect_and_log_layout(image_rgb: npt.NDArray[np.uint8], page_number: int) -> Layout:
@@ -414,17 +416,17 @@ def detect_and_log_layout(image_rgb: npt.NDArray[np.uint8], page_number: int) ->
     )
 
     # Paddle Model - Getting Predictions
-    logging.info("Start detection... (It usually takes more than 10-20 seconds per page)")
+    logging.info("Start detection… (It usually takes more than 10-20 seconds per page)")
     ocr_model_pp = PPStructure(show_log=False, recovery=True)
     logging.info("model loaded")
     result_pp = ocr_model_pp(image_rgb)
     _, w, _ = image_rgb.shape
     result_pp = sorted_layout_boxes(result_pp, w)
-    logging.info("Detection finished...")
+    logging.info("Detection finished…")
 
     # Add results to the layout
     layout.save_all_layouts(result_pp)
-    logging.info("All results are saved...")
+    logging.info("All results are saved…")
 
     # Recovery Text Document for the detected text
     rr.log(f"{page_path}/Recovery", rr.TextDocument(layout.recovery, media_type=rr.MediaType.MARKDOWN))

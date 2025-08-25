@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ... import datatypes
 from ...error_utils import catch_and_log_exceptions
 from .. import components as blueprint_components
+
+if TYPE_CHECKING:
+    from ... import datatypes
 
 
 class VisualBounds2DExt:

@@ -1,5 +1,5 @@
 use arrow::{
-    array::Array,
+    array::{Array, BinaryArray, LargeBinaryArray},
     datatypes::DataType,
     error::ArrowError,
     util::display::{ArrayFormatter, FormatOptions},
@@ -26,19 +26,37 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         // Special-treat text.
         // This is so that we can show urls as clickable links.
         // Note: we match on the raw data here, so this works for any component containing text.
-        if let Some(entries) = array.downcast_array_ref::<StringArray>() {
-            if entries.len() == 1 {
-                let string = entries.value(0);
-                ui_layout.data_label(ui, string);
-                return;
-            }
+        if let Some(entries) = array.downcast_array_ref::<StringArray>()
+            && entries.len() == 1
+        {
+            let string = entries.value(0);
+            ui_layout.data_label(ui, string);
+            return;
         }
-        if let Some(entries) = array.downcast_array_ref::<LargeStringArray>() {
-            if entries.len() == 1 {
-                let string = entries.value(0);
-                ui_layout.data_label(ui, string);
-                return;
-            }
+        if let Some(entries) = array.downcast_array_ref::<LargeStringArray>()
+            && entries.len() == 1
+        {
+            let string = entries.value(0);
+            ui_layout.data_label(ui, string);
+            return;
+        }
+
+        // Special-case binary data (e.g. blobs).
+        // We don't want to show their contents (too slow, since they are usually huge),
+        // so we only show their size:
+        if let Some(binaries) = array.downcast_array_ref::<BinaryArray>()
+            && binaries.len() == 1
+        {
+            let binary = binaries.value(0);
+            ui_layout.data_label(ui, re_format::format_bytes(binary.len() as _));
+            return;
+        }
+        if let Some(binaries) = array.downcast_array_ref::<LargeBinaryArray>()
+            && binaries.len() == 1
+        {
+            let binary = binaries.value(0);
+            ui_layout.data_label(ui, re_format::format_bytes(binary.len() as _));
+            return;
         }
 
         // Special-treat batches that are themselves unit-lists (i.e. blobs).
@@ -46,17 +64,17 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         // What we really want to display in these instances in the underlying array, otherwise we'll
         // bring down the entire viewer trying to render a list whose single entry might itself be
         // an array with millions of values.
-        if let Some(entries) = array.downcast_array_ref::<ListArray>() {
-            if entries.len() == 1 {
-                // Don't use `values` since this may contain values before and after the single blob we want to display.
-                return arrow_ui(ui, ui_layout, &entries.value(0));
-            }
+        if let Some(entries) = array.downcast_array_ref::<ListArray>()
+            && entries.len() == 1
+        {
+            // Don't use `values` since this may contain values before and after the single blob we want to display.
+            return arrow_ui(ui, ui_layout, &entries.value(0));
         }
-        if let Some(entries) = array.downcast_array_ref::<LargeListArray>() {
-            if entries.len() == 1 {
-                // Don't use `values` since this may contain values before and after the single blob we want to display.
-                return arrow_ui(ui, ui_layout, &entries.value(0));
-            }
+        if let Some(entries) = array.downcast_array_ref::<LargeListArray>()
+            && entries.len() == 1
+        {
+            // Don't use `values` since this may contain values before and after the single blob we want to display.
+            return arrow_ui(ui, ui_layout, &entries.value(0));
         }
 
         let Ok(array_formatter) = make_formatter(array) else {
@@ -78,9 +96,7 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         } else {
             let instance_count_str = re_format::format_uint(instance_count);
 
-            let string = if array.data_type() == &DataType::UInt8 {
-                re_format::format_bytes(instance_count as _)
-            } else if let Some(dtype) = simple_datatype_string(array.data_type()) {
+            let string = if let Some(dtype) = simple_datatype_string(array.data_type()) {
                 format!("{instance_count_str} items of {dtype}")
             } else if let DataType::Struct(fields) = array.data_type() {
                 format!(

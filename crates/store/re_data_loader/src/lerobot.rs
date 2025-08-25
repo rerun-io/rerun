@@ -171,7 +171,7 @@ impl LeRobotDataset {
     pub fn read_episode_data(&self, episode: EpisodeIndex) -> Result<RecordBatch, LeRobotError> {
         if self.metadata.episodes.get(episode.0).is_none() {
             return Err(LeRobotError::InvalidEpisodeIndex(episode));
-        };
+        }
 
         let episode_data_path = self.metadata.info.episode_data_path(episode)?;
         let episode_parquet_file = self.path.join(episode_data_path);
@@ -400,12 +400,12 @@ impl Feature {
     /// from the feature's shape.
     pub fn channel_dim(&self) -> usize {
         // first check if there's a "channels" name, if there is we can use that index.
-        if let Some(names) = &self.names {
-            if let Some(channel_idx) = names.0.iter().position(|name| name == "channels") {
-                // If channel_idx is within bounds of shape, return that dimension
-                if channel_idx < self.shape.len() {
-                    return self.shape[channel_idx];
-                }
+        if let Some(names) = &self.names
+            && let Some(channel_idx) = names.0.iter().position(|name| name == "channels")
+        {
+            // If channel_idx is within bounds of shape, return that dimension
+            if channel_idx < self.shape.len() {
+                return self.shape[channel_idx];
             }
         }
 
@@ -434,7 +434,7 @@ pub enum DType {
 /// The name metadata can consist of
 /// - A flat list of names for each dimension of a feature (e.g., `["height", "width", "channel"]`).
 /// - A nested list of names for each dimension of a feature (e.g., `[[""kLeftShoulderPitch", "kLeftShoulderRoll"]]`)
-/// - A map with a string array value (e.g., `{ "motors": ["motor_0", "motor_1", ...] }` or `{ "axes": ["x", "y", "z"] }`).
+/// - A map with a string array value (e.g., `{ "motors": ["motor_0", "motor_1", …] }` or `{ "axes": ["x", "y", "z"] }`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Names(Vec<String>);
 

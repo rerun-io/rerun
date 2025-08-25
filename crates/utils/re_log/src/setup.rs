@@ -96,7 +96,7 @@ thread_local! {
 /// Note that we can't enable this for all threads since threads run in parallel and may not want to set this.
 #[cfg(not(target_arch = "wasm32"))]
 pub struct PanicOnWarnScope {
-    // The panic scope should decrease the same thread-local value, so it musn't be Send or Sync.
+    // The panic scope should decrease the same thread-local value, so it mustn't be Send or Sync.
     not_send_sync: std::marker::PhantomData<std::cell::Cell<()>>,
 }
 
@@ -125,17 +125,17 @@ impl Drop for PanicOnWarnScope {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn env_var_bool(name: &str) -> Option<bool> {
-    std::env::var(name).ok()
-        .and_then(|s| match s.to_lowercase().as_str() {
-            "0" | "false" | "off" | "no" => Some(false),
-            "1" | "true" | "on" | "yes" => Some(true),
-            _ => {
-                crate::warn!(
-                    "Invalid value for environment variable {name}={s:?}. Expected 'on' or 'off'. It will be ignored"
-                );
-                None
-            }
-        })
+    let s = std::env::var(name).ok()?;
+    match s.to_lowercase().as_str() {
+        "0" | "false" | "off" | "no" => Some(false),
+        "1" | "true" | "on" | "yes" => Some(true),
+        _ => {
+            crate::warn!(
+                "Invalid value for environment variable {name}={s:?}. Expected 'on' or 'off'. It will be ignored"
+            );
+            None
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

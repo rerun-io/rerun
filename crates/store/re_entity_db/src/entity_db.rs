@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 use nohash_hasher::IntMap;
@@ -11,8 +12,8 @@ use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, EntityPath, EntityPathHash, LogMsg, RecordingId, ResolvedTimeRange,
-    ResolvedTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
+    RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
@@ -34,6 +35,7 @@ pub const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::fro
 /// The class is used to semantically group recordings in the UI (e.g. in the recording panel) and
 /// to determine how to source the default blueprint. For example, `DatasetPartition` dbs might have
 /// their default blueprint sourced remotely.
+#[derive(Debug, PartialEq, Eq)]
 pub enum EntityDbClass<'a> {
     /// This is a regular local recording (e.g. loaded from a `.rrd` file or logged to the viewer).
     LocalRecording,
@@ -42,7 +44,7 @@ pub enum EntityDbClass<'a> {
     ExampleRecording,
 
     /// This is a recording loaded from a remote dataset partition.
-    DatasetPartition(&'a re_uri::DatasetDataUri),
+    DatasetPartition(&'a re_uri::DatasetPartitionUri),
 
     /// This is a blueprint.
     Blueprint,
@@ -106,6 +108,16 @@ pub struct EntityDb {
     storage_engine: StorageEngine,
 
     stats: IngestionStatistics,
+}
+
+impl Debug for EntityDb {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EntityDb")
+            .field("store_id", &self.store_id)
+            .field("data_source", &self.data_source)
+            .field("set_store_info", &self.set_store_info)
+            .finish()
+    }
 }
 
 impl EntityDb {
@@ -394,7 +406,8 @@ impl EntityDb {
     /// This means all active blueprints are clones.
     #[inline]
     pub fn cloned_from(&self) -> Option<&StoreId> {
-        self.store_info().and_then(|info| info.cloned_from.as_ref())
+        let info = self.store_info()?;
+        info.cloned_from.as_ref()
     }
 
     pub fn timelines(&self) -> std::collections::BTreeMap<TimelineName, Timeline> {
@@ -412,11 +425,11 @@ impl EntityDb {
     }
 
     /// Returns the time range of data on the given timeline, ignoring any static times.
-    pub fn time_range_for(&self, timeline: &TimelineName) -> Option<ResolvedTimeRange> {
+    pub fn time_range_for(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
         let hist = self.time_histogram_per_timeline.get(timeline)?;
         let min = hist.min_key()?;
         let max = hist.max_key()?;
-        Some(ResolvedTimeRange::new(min, max))
+        Some(AbsoluteTimeRange::new(min, max))
     }
 
     /// Histogram of all events on the timeeline, of all entities.
@@ -632,7 +645,7 @@ impl EntityDb {
     pub fn drop_time_range(
         &mut self,
         timeline: &TimelineName,
-        drop_range: ResolvedTimeRange,
+        drop_range: AbsoluteTimeRange,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
@@ -715,7 +728,7 @@ impl EntityDb {
     /// specific time range will be accounted for.
     pub fn to_messages(
         &self,
-        time_selection: Option<(TimelineName, ResolvedTimeRangeF)>,
+        time_selection: Option<(TimelineName, AbsoluteTimeRangeF)>,
     ) -> impl Iterator<Item = ChunkResult<LogMsg>> + '_ {
         re_tracing::profile_function!();
 
@@ -729,7 +742,7 @@ impl EntityDb {
             let time_filter = time_selection.map(|(timeline, range)| {
                 (
                     timeline,
-                    ResolvedTimeRange::new(range.min.floor(), range.max.ceil()),
+                    AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
                 )
             });
 

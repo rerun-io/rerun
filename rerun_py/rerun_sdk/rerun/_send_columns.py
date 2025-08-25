@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-from datetime import datetime, timedelta
-from typing import Protocol, TypeVar, overload
+from typing import TYPE_CHECKING, Protocol, TypeVar, overload
 
 import numpy as np
 import pyarrow as pa
@@ -11,8 +9,13 @@ from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from ._baseclasses import Archetype, ComponentColumn, ComponentDescriptor
 from .error_utils import catch_and_log_exceptions
-from .recording_stream import RecordingStream
 from .time import to_nanos, to_nanos_since_epoch
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from datetime import datetime, timedelta
+
+    from .recording_stream import RecordingStream
 
 
 class TimeColumnLike(Protocol):

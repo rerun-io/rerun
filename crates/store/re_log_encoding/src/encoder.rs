@@ -31,13 +31,24 @@ pub enum EncodeError {
     Codec(#[from] codec::CodecError),
 
     #[error("Chunk error: {0}")]
-    Chunk(#[from] ChunkError),
+    Chunk(Box<ChunkError>),
 
     #[error("Called append on already finished encoder")]
     AlreadyFinished,
 
     #[error("Missing field: {0}")]
     MissingField(&'static str),
+}
+
+const _: () = assert!(
+    std::mem::size_of::<EncodeError>() <= 48,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
+impl From<ChunkError> for EncodeError {
+    fn from(err: ChunkError) -> Self {
+        Self::Chunk(Box::new(err))
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -113,10 +124,10 @@ impl<W: std::io::Write> DroppableEncoder<W> {
 
 impl<W: std::io::Write> std::ops::Drop for DroppableEncoder<W> {
     fn drop(&mut self) {
-        if !self.is_finished {
-            if let Err(err) = self.finish() {
-                re_log::warn!("encoder couldn't be finished: {err}");
-            }
+        if !self.is_finished
+            && let Err(err) = self.finish()
+        {
+            re_log::warn!("encoder couldn't be finished: {err}");
         }
     }
 }

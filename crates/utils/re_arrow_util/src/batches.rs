@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use arrow::array::RecordBatchOptions;
 use arrow::{
     array::RecordBatch,
     datatypes::{Schema, SchemaBuilder},
@@ -69,7 +70,11 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
                         }
                     })
                     .collect_vec();
-                RecordBatch::try_new(schema_merged.clone(), columns)
+                RecordBatch::try_new_with_options(
+                    schema_merged.clone(),
+                    columns,
+                    &RecordBatchOptions::default(),
+                )
             })
             .collect();
         batches_patched?
@@ -120,9 +125,10 @@ mod tests {
                 None,
             );
 
-            RecordBatch::try_new(
+            RecordBatch::try_new_with_options(
                 Arc::new(schema),
                 vec![Arc::new(col1), Arc::new(col2), Arc::new(col3)],
+                &RecordBatchOptions::default().with_row_count(Some(1)),
             )
             .unwrap()
         };
@@ -163,13 +169,19 @@ mod tests {
         let col3_schema = Field::new("col3", DataType::Boolean, false);
         let col4_schema = Field::new("col4", DataType::UInt64, false);
 
+        let options = RecordBatchOptions::default().with_row_count(Some(1));
         let batch1 = {
             let schema = Schema::new(vec![col1_schema, col2_schema.clone()]);
 
             let col1 = Int32Array::from_iter_values([1]);
             let col2 = StringArray::from_iter_values(["col".to_owned()]);
 
-            RecordBatch::try_new(Arc::new(schema), vec![Arc::new(col1), Arc::new(col2)]).unwrap()
+            RecordBatch::try_new_with_options(
+                Arc::new(schema),
+                vec![Arc::new(col1), Arc::new(col2)],
+                &options,
+            )
+            .unwrap()
         };
         let batch2 = {
             let schema = Schema::new(vec![col3_schema, col4_schema.clone()]);
@@ -177,7 +189,12 @@ mod tests {
             let col3 = BooleanArray::from(vec![true]);
             let col4 = UInt64Array::from_iter_values([42]);
 
-            RecordBatch::try_new(Arc::new(schema), vec![Arc::new(col3), Arc::new(col4)]).unwrap()
+            RecordBatch::try_new_with_options(
+                Arc::new(schema),
+                vec![Arc::new(col3), Arc::new(col4)],
+                &options,
+            )
+            .unwrap()
         };
         let batch3 = {
             let schema = Schema::new(vec![col2_schema, col4_schema]);
@@ -185,7 +202,12 @@ mod tests {
             let col2 = StringArray::from_iter_values(["super-col".to_owned()]);
             let col4 = UInt64Array::from_iter_values([43]);
 
-            RecordBatch::try_new(Arc::new(schema), vec![Arc::new(col2), Arc::new(col4)]).unwrap()
+            RecordBatch::try_new_with_options(
+                Arc::new(schema),
+                vec![Arc::new(col2), Arc::new(col4)],
+                &options,
+            )
+            .unwrap()
         };
 
         // This will fail, because we have to insert null values to do the concatenation, and our

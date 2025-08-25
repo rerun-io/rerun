@@ -22,7 +22,7 @@ ChunkStore {
         │ ┌─────────────────────────────────────────────┬──────────────────────┬───────────────────────────────┬─────────────────────────────────┬────────────────────────────────────┐ │
         │ │ RowId                                       ┆ frame_nr             ┆ log_time                      ┆ my_index                        ┆ example.MyPoints:colors            │ │
         │ │ ---                                         ┆ ---                  ┆ ---                           ┆ ---                             ┆ ---                                │ │
-        │ │ type: FixedSizeBinary[16]                   ┆ type: i64            ┆ type: Timestamp(ns)           ┆ type: List[u64]                 ┆ type: List[u32]                    │ │
+        │ │ type: FixedSizeBinary[16]                   ┆ type: i64            ┆ type: Timestamp(ns)           ┆ type: List[nullable u64]        ┆ type: List[nullable u32]           │ │
         │ │ ARROW:extension:metadata:                   ┆ index_name: frame_nr ┆ index_name: log_time          ┆ component: my_index             ┆ archetype: example.MyPoints        │ │
         │ │ {"namespace":"row"}                         ┆ is_sorted: true      ┆ is_sorted: true               ┆ component_type: example.MyIndex ┆ component: example.MyPoints:colors │ │
         │ │ ARROW:extension:name: TUID                  ┆ kind: index          ┆ kind: index                   ┆ kind: data                      ┆ component_type: example.MyColor    │ │

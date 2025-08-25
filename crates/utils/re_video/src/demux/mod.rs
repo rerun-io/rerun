@@ -291,14 +291,14 @@ impl VideoDataDescription {
         }
 
         // The last GOP includes the last sample.
-        if let Some(front_gop) = self.gops.back() {
-            if front_gop.sample_range.end != self.samples.next_index() {
-                return Err(format!(
-                    "Last GOP sample range {:?} does not include the last sample {}.",
-                    front_gop.sample_range,
-                    self.samples.next_index() - 1
-                ));
-            }
+        if let Some(front_gop) = self.gops.back()
+            && front_gop.sample_range.end != self.samples.next_index()
+        {
+            return Err(format!(
+                "Last GOP sample range {:?} does not include the last sample {}.",
+                front_gop.sample_range,
+                self.samples.next_index() - 1
+            ));
         }
         // Note that this isn't true vice versa!
         // The first GOP may not include the first few samples.
@@ -446,6 +446,10 @@ impl VideoDataDescription {
         media_type: &str,
         debug_name: &str,
     ) -> Result<Self, VideoLoadError> {
+        if data.is_empty() {
+            return Err(VideoLoadError::ZeroBytes);
+        }
+
         re_tracing::profile_function!();
         match media_type {
             "video/mp4" => Self::load_mp4(data, debug_name),
@@ -622,12 +626,12 @@ impl VideoDataDescription {
     /// and that sample presented immediately prior to the given sample may have a higher decode timestamp.
     /// Therefore, this may be a jump on sample index.
     pub fn previous_presented_sample(&self, sample: &SampleMetadata) -> Option<&SampleMetadata> {
-        Self::latest_sample_index_at_presentation_timestamp_internal(
+        let idx = Self::latest_sample_index_at_presentation_timestamp_internal(
             &self.samples,
             &self.samples_statistics,
             sample.presentation_timestamp - Time::new(1),
-        )
-        .and_then(|idx| self.samples.get(idx))
+        )?;
+        self.samples.get(idx)
     }
 
     /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
@@ -777,7 +781,10 @@ impl SampleMetadata {
 /// Errors that can occur when loading a video.
 #[derive(thiserror::Error, Debug)]
 pub enum VideoLoadError {
-    #[error("Failed to determine media type from data: {0}")]
+    #[error("The video file is empty (zero bytes)")]
+    ZeroBytes,
+
+    #[error("MP4 error: {0}")]
     ParseMp4(#[from] re_mp4::Error),
 
     #[error("Video file has no video tracks")]

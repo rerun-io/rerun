@@ -122,7 +122,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks_rust.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      CHANNEL: pr
+      CHANNEL: main # We run the full test suite here, because we've had so many breakages
     secrets: inherit
 
   python-checks:

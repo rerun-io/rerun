@@ -268,7 +268,7 @@ impl ViewClass for MapView {
                 "Zoom level {zoom_level} rejected by walkers (probably means that it is not \
                 supported by the configured map provider)"
             );
-        };
+        }
 
         //
         // Map UI

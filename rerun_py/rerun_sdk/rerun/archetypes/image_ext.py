@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Union, cast
 
 import numpy as np
 import numpy.typing as npt
+from PIL import Image as PILImage
 
 from ..components import ImageFormat
 from ..datatypes import (
@@ -18,12 +19,11 @@ from ..datatypes import (
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from PIL import Image as PILImage
-
     ImageLike = Union[
         npt.NDArray[np.float16],
         npt.NDArray[np.float32],
         npt.NDArray[np.float64],
+        npt.NDArray[np.floating],
         npt.NDArray[np.int16],
         npt.NDArray[np.int32],
         npt.NDArray[np.int64],
@@ -32,14 +32,14 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint32],
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
+        npt.NDArray[np.integer],
+        np.ndarray[Any, np.dtype[np.floating | np.integer]],
         PILImage.Image,
     ]
     from . import EncodedImage, Image
 
 
 def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
-    from PIL import Image as PILImage
-
     # isinstance is 4x faster than catching AttributeError
     if isinstance(tensor, np.ndarray):
         return tensor
@@ -248,6 +248,52 @@ class ImageExt:
             draw_order=draw_order,
         )
 
+    def image_format(self: Any) -> ImageFormat:
+        """Returns the image format of this image."""
+        image_format_arrow = self.format.as_arrow_array()[0].as_py()
+
+        return ImageFormat(
+            width=image_format_arrow["width"],
+            height=image_format_arrow["height"],
+            pixel_format=image_format_arrow["pixel_format"],
+            channel_datatype=image_format_arrow["channel_datatype"],
+            color_model=image_format_arrow["color_model"],
+        )
+
+    def as_pil_image(self: Any) -> PILImage.Image:
+        """Convert the image to a PIL Image."""
+        from PIL import Image as PILImage
+
+        image_format = self.image_format()
+
+        # TODO(jleibs): Support conversions here
+        if image_format.pixel_format is not None:
+            raise ValueError(
+                f"Converting image with pixel_format {image_format.pixel_format} into PIL is not yet supported"
+            )
+
+        buffer = self.buffer.as_arrow_array()
+
+        if len(buffer) != 1:
+            raise ValueError(f"Expected exactly 1 buffer, got {len(buffer)}")
+
+        blob_bytes = buffer[0].as_py()
+        array = np.frombuffer(blob_bytes, dtype=image_format.channel_datatype.to_np_dtype())
+
+        # Note: np array shape is always (height, width, channels)
+        if image_format.color_model == ColorModel.L:
+            image = array.reshape(image_format.height, image_format.width)  # type: ignore[assignment]
+        else:
+            image = array.reshape(image_format.height, image_format.width, image_format.color_model.num_channels())  # type: ignore[assignment]
+
+        # PIL assumes L or RGB[A]:
+        if image_format.color_model == ColorModel.BGR:
+            image = image[:, :, ::-1]
+        elif image_format.color_model == ColorModel.BGRA:
+            image = image[:, :, [2, 1, 0, 3]]
+
+        return PILImage.fromarray(image)
+
     def compress(self: Any, jpeg_quality: int = 95) -> EncodedImage | Image:
         """
         Compress the given image as a JPEG.
@@ -265,27 +311,16 @@ class ImageExt:
 
         """
 
-        from PIL import Image as PILImage
-
         from ..archetypes import EncodedImage
 
         with catch_and_log_exceptions(context="Image compression"):
             if self.format is None:
                 raise ValueError("Cannot JPEG compress an image without a known image_format")
 
-            image_format_arrow = self.format.as_arrow_array()[0].as_py()
+            if self.buffer is None:
+                raise ValueError("Cannot JPEG compress an image without data")
 
-            image_format = ImageFormat(
-                width=image_format_arrow["width"],
-                height=image_format_arrow["height"],
-                pixel_format=image_format_arrow["pixel_format"],
-                channel_datatype=image_format_arrow["channel_datatype"],
-                color_model=image_format_arrow["color_model"],
-            )
-
-            # TODO(jleibs): Support conversions here
-            if image_format.pixel_format is not None:
-                raise ValueError(f"Cannot JPEG compress an image with pixel_format {image_format.pixel_format}")
+            image_format = self.image_format()
 
             if image_format.color_model not in (ColorModel.L, ColorModel.RGB, ColorModel.BGR):
                 raise ValueError(
@@ -299,27 +334,8 @@ class ImageExt:
                     f"Cannot JPEG compress an image of datatype {image_format.channel_datatype}. Only U8 is supported.",
                 )
 
-            buf = None
-            if self.buffer is not None:
-                buf = self.buffer.as_arrow_array().values.to_numpy().view(image_format.channel_datatype.to_np_dtype())
+            pil_image = self.as_pil_image()
 
-            if buf is None:
-                raise ValueError("Cannot JPEG compress an image without data")
-
-            # Note: np array shape is always (height, width, channels)
-            if image_format.color_model == ColorModel.L:
-                image = buf.reshape(image_format.height, image_format.width)
-            else:
-                image = buf.reshape(image_format.height, image_format.width, 3)
-
-            # PIL doesn't understand BGR.
-            if image_format.color_model == ColorModel.BGR:
-                mode = "RGB"
-                image = image[:, :, ::-1]
-            else:
-                mode = str(image_format.color_model)
-
-            pil_image = PILImage.fromarray(image).convert(mode)
             output = BytesIO()
             pil_image.save(output, format="JPEG", quality=jpeg_quality)
             jpeg_bytes = output.getvalue()

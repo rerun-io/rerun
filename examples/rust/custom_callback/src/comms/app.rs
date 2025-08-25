@@ -62,7 +62,7 @@ impl ControlApp {
 
         tokio::spawn(async move {
             loop {
-                re_log::info!("Waiting for connection...");
+                re_log::info!("Waiting for connection…");
                 let app = app.clone();
                 match app.listener.accept().await {
                     Ok((socket, addr)) => {
@@ -152,11 +152,11 @@ impl ControlApp {
             }
 
             // Encode and send response
-            if let Ok(data) = message.encode() {
-                if write_half.write_all(&data).await.is_err() {
-                    re_log::info!("Failed to send response to client");
-                    break;
-                }
+            if let Ok(data) = message.encode()
+                && write_half.write_all(&data).await.is_err()
+            {
+                re_log::info!("Failed to send response to client");
+                break;
             }
         }
     }

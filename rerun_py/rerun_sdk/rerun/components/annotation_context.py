@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
@@ -59,8 +58,14 @@ class AnnotationContext(AnnotationContextExt, ComponentMixin):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of AnnotationContextExt in annotation_context_ext.py
+        return len(self.class_map)
+
 
 if TYPE_CHECKING:
+    from .. import datatypes
+
     AnnotationContextLike = Union[
         AnnotationContext, datatypes.ClassDescriptionArrayLike, Sequence[datatypes.ClassDescriptionMapElemLike]
     ]

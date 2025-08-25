@@ -1353,7 +1353,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { name : "color",
                     display_name : "Color", component_type : "rerun.components.Color"
                     .into(), docstring_md : "The color of the bar chart", is_required :
-                    false, },
+                    false, }, ArchetypeFieldReflection { name : "abscissa", display_name
+                    : "Abscissa", component_type : "rerun.components.TensorData".into(),
+                    docstring_md :
+                    "The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.",
+                    is_required : false, },
                 ],
             },
         ),
@@ -1984,7 +1988,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     component_type : "rerun.components.ImagePlaneDistance".into(),
                     docstring_md :
                     "The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.\n\nThis is only used for visualization purposes, and does not affect the projection itself.",
-                    is_required : false, },
+                    is_required : false, }, ArchetypeFieldReflection { name : "color",
+                    display_name : "Color", component_type : "rerun.components.Color"
+                    .into(), docstring_md : "Color of the camera wireframe.", is_required
+                    : false, }, ArchetypeFieldReflection { name : "line_width",
+                    display_name : "Line width", component_type :
+                    "rerun.components.Radius".into(), docstring_md :
+                    "Width of the camera wireframe lines.", is_required : false, },
                 ],
             },
         ),

@@ -1,15 +1,11 @@
 use std::time::Duration;
 
 use egui::NumExt as _;
-use time::OffsetDateTime;
+use jiff::Timestamp;
 
 pub use re_log::Level;
 
 use crate::{UiExt as _, icons};
-
-fn now() -> OffsetDateTime {
-    OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc())
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NotificationLevel {
@@ -61,7 +57,7 @@ struct Notification {
     text: String,
 
     /// When this notification was added to the list.
-    created_at: OffsetDateTime,
+    created_at: Timestamp,
 
     /// Time to live for toasts, the notification itself lives until dismissed.
     toast_ttl: Duration,
@@ -120,7 +116,7 @@ impl NotificationUi {
             level,
             text,
 
-            created_at: now(),
+            created_at: Timestamp::now(),
             toast_ttl: base_ttl(),
             is_unread: true,
         });
@@ -135,8 +131,11 @@ impl NotificationUi {
         let popup_id = notification_panel_popup_id();
 
         let is_panel_visible = egui::Popup::is_id_open(ui.ctx(), popup_id);
-        let button_response =
-            ui.medium_icon_toggle_button(&icons::NOTIFICATION, &mut is_panel_visible.clone());
+        let button_response = ui.medium_icon_toggle_button(
+            &icons::NOTIFICATION,
+            "Notification toggle",
+            &mut is_panel_visible.clone(),
+        );
 
         if let Some(level) = self.unread_notification_level {
             let pos = button_response.rect.right_top() + egui::vec2(-2.0, 2.0);
@@ -232,7 +231,7 @@ impl NotificationUi {
             ui.horizontal_top(|ui| {
                 if ui.button("Dismiss all").clicked() {
                     dismiss_all = true;
-                };
+                }
             });
         }
 
@@ -373,7 +372,9 @@ fn show_notification(
 }
 
 fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
-    let age = (now() - notification.created_at).as_seconds_f64();
+    let age = Timestamp::now()
+        .duration_since(notification.created_at)
+        .as_secs_f64();
 
     let formatted = if age < 10.0 {
         ui.ctx().request_repaint_after(Duration::from_secs(1));
@@ -386,10 +387,7 @@ fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
     } else {
         ui.ctx().request_repaint_after(Duration::from_secs(60));
 
-        notification
-            .created_at
-            .format(&time::macros::format_description!("[hour]:[minute]"))
-            .unwrap_or_default()
+        notification.created_at.strftime("%H:%M").to_string()
     };
 
     ui.horizontal_top(|ui| {

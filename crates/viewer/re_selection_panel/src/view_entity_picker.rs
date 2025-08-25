@@ -175,7 +175,7 @@ fn add_entities_tree_ui(
                 }
             },
         );
-    };
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

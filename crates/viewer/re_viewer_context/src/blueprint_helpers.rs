@@ -139,13 +139,10 @@ impl ViewerContext<'_> {
         component_descr: &ComponentDescriptor,
     ) -> Option<ArrayRef> {
         self.store_context
-            .default_blueprint
-            .and_then(|default_blueprint| {
-                default_blueprint
-                    .latest_at(self.blueprint_query, entity_path, [component_descr])
-                    .get(component_descr)
-                    .and_then(|default_value| default_value.component_batch_raw(component_descr))
-            })
+            .default_blueprint?
+            .latest_at(self.blueprint_query, entity_path, [component_descr])
+            .get(component_descr)?
+            .component_batch_raw(component_descr)
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.

@@ -3,12 +3,15 @@ from __future__ import annotations
 import pathlib
 import tempfile
 import uuid
+from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
 import rerun as rr
-from rerun_bindings.rerun_bindings import Schema
-from rerun_bindings.types import AnyColumn, ViewContentsLike
+
+if TYPE_CHECKING:
+    from rerun_bindings.rerun_bindings import Schema
+    from rerun_bindings.types import AnyColumn, ViewContentsLike
 
 APP_ID = "rerun_example_test_recording"
 

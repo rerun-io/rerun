@@ -32,19 +32,19 @@ enum ExternalError {
     ConnectionError(#[from] ConnectionError),
 
     #[error("{0}")]
-    TonicStatusError(#[from] tonic::Status),
+    TonicStatusError(Box<tonic::Status>),
 
     #[error("{0}")]
     UriError(#[from] re_uri::Error),
 
     #[error("{0}")]
-    ChunkError(#[from] re_chunk::ChunkError),
+    ChunkError(Box<re_chunk::ChunkError>),
 
     #[error("{0}")]
-    ChunkStoreError(#[from] re_chunk_store::ChunkStoreError),
+    ChunkStoreError(Box<re_chunk_store::ChunkStoreError>),
 
     #[error("{0}")]
-    StreamError(#[from] re_grpc_client::StreamError),
+    StreamError(Box<re_grpc_client::StreamError>),
 
     #[error("{0}")]
     ArrowError(#[from] arrow::error::ArrowError),
@@ -53,7 +53,7 @@ enum ExternalError {
     UrlParseError(#[from] url::ParseError),
 
     #[error("{0}")]
-    DatafusionError(#[from] datafusion::error::DataFusionError),
+    DatafusionError(Box<datafusion::error::DataFusionError>),
 
     #[error(transparent)]
     CodecError(#[from] re_log_encoding::codec::CodecError),
@@ -68,11 +68,33 @@ enum ExternalError {
     ColumnSelectorResolveError(#[from] re_sorbet::ColumnSelectorResolveError),
 
     #[error(transparent)]
-    TypeConversionError(#[from] re_protos::TypeConversionError),
+    TypeConversionError(Box<re_protos::TypeConversionError>),
 
     #[error(transparent)]
     TokenError(#[from] re_auth::TokenError),
 }
+
+const _: () = assert!(
+    std::mem::size_of::<ExternalError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
+macro_rules! impl_from_boxed {
+    ($external_type:ty, $variant:ident) => {
+        impl From<$external_type> for ExternalError {
+            fn from(value: $external_type) -> Self {
+                Self::$variant(Box::new(value))
+            }
+        }
+    };
+}
+
+impl_from_boxed!(re_chunk::ChunkError, ChunkError);
+impl_from_boxed!(re_chunk_store::ChunkStoreError, ChunkStoreError);
+impl_from_boxed!(re_grpc_client::StreamError, StreamError);
+impl_from_boxed!(tonic::Status, TonicStatusError);
+impl_from_boxed!(datafusion::error::DataFusionError, DatafusionError);
+impl_from_boxed!(re_protos::TypeConversionError, TypeConversionError);
 
 impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
     for ExternalError

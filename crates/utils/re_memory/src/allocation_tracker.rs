@@ -125,17 +125,16 @@ impl AllocationTracker {
             return;
         }
 
-        if let Some(hash) = self.live_allocs.remove(&ptr) {
-            if let std::collections::hash_map::Entry::Occupied(mut entry) =
+        if let Some(hash) = self.live_allocs.remove(&ptr)
+            && let std::collections::hash_map::Entry::Occupied(mut entry) =
                 self.callstack_stats.entry(hash)
-            {
-                let stats = entry.get_mut();
-                stats.sub(size);
+        {
+            let stats = entry.get_mut();
+            stats.sub(size);
 
-                // Free up some memory:
-                if stats.size == 0 {
-                    entry.remove();
-                }
+            // Free up some memory:
+            if stats.size == 0 {
+                entry.remove();
             }
         }
     }

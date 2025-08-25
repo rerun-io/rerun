@@ -38,3 +38,8 @@ pub enum SorbetError {
     #[error("Failed to deserialize chunk ID: {0}")]
     ChunkIdDeserializationError(String),
 }
+
+const _: () = assert!(
+    std::mem::size_of::<SorbetError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);

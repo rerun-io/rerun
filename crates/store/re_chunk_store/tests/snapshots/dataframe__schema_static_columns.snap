@@ -1,7 +1,6 @@
 ---
 source: crates/store/re_chunk_store/tests/dataframe.rs
 expression: both_static_and_non_static
-snapshot_kind: text
 ---
 [
     "baz",

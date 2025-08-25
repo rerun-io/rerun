@@ -19,7 +19,6 @@ use arrow::{
     ffi::{FFI_ArrowArray, FFI_ArrowSchema},
 };
 use arrow_utils::arrow_array_from_c_ffi;
-use once_cell::sync::Lazy;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk::{
@@ -388,7 +387,7 @@ pub struct CError {
 #[allow(unsafe_code)]
 #[unsafe(no_mangle)]
 pub extern "C" fn rr_version_string() -> *const c_char {
-    static VERSION: Lazy<CString> = Lazy::new(|| {
+    static VERSION: std::sync::LazyLock<CString> = std::sync::LazyLock::new(|| {
         CString::new(re_sdk::build_info().version.to_string()).expect("CString::new failed")
     }); // unwrap: there won't be any NUL bytes in the string
 
@@ -497,10 +496,10 @@ fn rr_recording_stream_new_impl(
         .store_source(re_sdk::external::re_log_types::StoreSource::CSdk)
         .default_enabled(default_enabled);
 
-    if !(recording_id.is_null() || recording_id.is_empty()) {
-        if let Ok(recording_id) = recording_id.as_str("recording_id") {
-            rec_builder = rec_builder.recording_id(recording_id);
-        }
+    if !(recording_id.is_null() || recording_id.is_empty())
+        && let Ok(recording_id) = recording_id.as_str("recording_id")
+    {
+        rec_builder = rec_builder.recording_id(recording_id);
     }
 
     if store_kind == CStoreKind::Blueprint {
@@ -624,7 +623,7 @@ fn rr_recording_stream_is_enabled_impl(id: CRecordingStream) -> Result<bool, CEr
 #[allow(unsafe_code)]
 #[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
-    if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
+    if let Some(stream) = RECORDING_STREAMS.lock().get(id) {
         stream.flush_blocking();
     }
 }
@@ -935,7 +934,6 @@ fn rr_recording_stream_log_impl(
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
     let num_data_cells = num_data_cells as usize;
-    re_log::debug!("rerun_log {entity_path:?}, num_data_cells: {num_data_cells}");
 
     let batches = unsafe { std::slice::from_raw_parts_mut(batches, num_data_cells) };
 

@@ -1,21 +1,21 @@
-use re_grpc_client::{ConnectionRegistryHandle, message_proxy};
+use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{LogMsg, RecordingId};
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
-use re_uri::RedapUri;
 
 use crate::FileContents;
 
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
 
-/// Somewhere we can get Rerun data from.
-#[derive(Clone, Debug)]
-pub enum DataSource {
+/// Somewhere we can get Rerun logging data from.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum LogDataSource {
     /// A remote RRD file, served over http.
     ///
     /// Could be either an `.rrd` recording or a `.rbl` blueprint.
     RrdHttpUrl {
-        uri: String,
+        /// This is a canonicalized URL path without any parameters or fragments.
+        url: String,
 
         /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
         follow: bool,
@@ -34,29 +34,27 @@ pub enum DataSource {
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
 
-    /// A `rerun://` URI pointing to a recording or catalog.
-    RerunGrpcStream {
-        uri: RedapUri,
+    /// A `rerun://` URI pointing to a recording.
+    RedapDatasetPartition {
+        uri: re_uri::DatasetPartitionUri,
 
         /// Switch to this recording once it has been loaded?
         select_when_loaded: bool,
     },
+
+    /// A `rerun+http://` URI pointing to a proxy.
+    RedapProxy(re_uri::ProxyUri),
 }
 
-// TODO(#9058): Temporary hack, see issue for how to fix this.
-pub enum StreamSource {
-    LogMessages(Receiver<LogMsg>),
-    CatalogUri(re_uri::CatalogUri),
-    EntryUri(re_uri::EntryUri),
-}
-
-impl DataSource {
-    /// Tried to classify a URI into a [`DataSource`].
+impl LogDataSource {
+    /// Tried to classify a URI into a [`LogDataSource`].
     ///
     /// Tries to figure out if it looks like a local path,
-    /// a web-socket address, or a http url.
-    #[cfg_attr(target_arch = "wasm32", allow(clippy::needless_pass_by_value))]
-    pub fn from_uri(_file_source: re_log_types::FileSource, uri: String) -> Self {
+    /// a web-socket address, a grpc url, a http url, etc.
+    ///
+    /// Note that not all URLs are log data sources!
+    /// For instance a pure server or entry url is not a source of log data.
+    pub fn from_uri(_file_source: re_log_types::FileSource, url: &str) -> Option<Self> {
         #[cfg(not(target_arch = "wasm32"))]
         {
             use itertools::Itertools as _;
@@ -68,26 +66,33 @@ impl DataSource {
             }
 
             fn looks_like_a_file_path(uri: &str) -> bool {
-                // How do we distinguish a file path from a web url? "example.zip" could be either.
+                // Files must have a supported extension.
+                let Some(file_extension) = uri.split('.').next_back() else {
+                    return false;
+                };
+                if !re_data_loader::is_supported_file_extension(file_extension) {
+                    return false;
+                }
 
+                #[expect(clippy::if_same_then_else)]
                 if uri.starts_with('/') {
-                    return true; // Unix absolute path
-                }
-                if looks_like_windows_abs_path(uri) {
-                    return true;
-                }
-
-                // We use a simple heuristic here: if there are multiple dots, it is likely an url,
-                // like "example.com/foo.zip".
-                // If there is only one dot, we treat it as an extension and look it up in a list of common
-                // file extensions:
-
-                let parts = uri.split('.').collect_vec();
-                if parts.len() == 2 {
-                    // Extension or `.com` etc?
-                    re_data_loader::is_supported_file_extension(parts[1])
+                    true // Unix absolute path
+                } else if looks_like_windows_abs_path(uri) {
+                    true
+                } else if uri.starts_with("http:") || uri.starts_with("https:") {
+                    false
                 } else {
-                    false // Too many dots; assume an url
+                    // We use a simple heuristic here: if there are multiple dots, it is likely an url,
+                    // like "example.com/foo.zip".
+                    // If there is only one dot, we treat it as an extension and look it up in a list of common
+                    // file extensions:
+
+                    let parts = uri.split('.').collect_vec();
+                    if parts.len() == 2 {
+                        true
+                    } else {
+                        false // Too many dots; assume an url
+                    }
                 }
             }
 
@@ -97,46 +102,39 @@ impl DataSource {
             //
             // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
             // throwing errors when we shouldn't), we just make reading from standard input explicit.
-            if uri == "-" {
-                return Self::Stdin;
+            if url == "-" {
+                return Some(Self::Stdin);
             }
 
-            let path = std::path::Path::new(&uri).to_path_buf();
+            let path = std::path::Path::new(url).to_path_buf();
 
-            if uri.starts_with("file://") || path.exists() {
-                return Self::FilePath(_file_source, path);
+            if url.starts_with("file://") || path.exists() {
+                return Some(Self::FilePath(_file_source, path));
             }
 
-            if looks_like_a_file_path(&uri) {
-                return Self::FilePath(_file_source, path);
+            if looks_like_a_file_path(url) {
+                return Some(Self::FilePath(_file_source, path));
             }
         }
 
-        if let Ok(uri) = uri.as_str().parse::<RedapUri>() {
-            return Self::RerunGrpcStream {
+        if let Ok(uri) = url.parse::<re_uri::DatasetPartitionUri>() {
+            Some(Self::RedapDatasetPartition {
                 uri,
                 select_when_loaded: true,
-            };
+            })
+        } else if let Ok(uri) = url.parse::<re_uri::ProxyUri>() {
+            Some(Self::RedapProxy(uri))
+        } else {
+            let mut parsed_url = url::Url::parse(url)
+                .or_else(|_| url::Url::parse(&format!("http://{url}")))
+                .ok()?;
+
+            // Ignore any parameters, we don't support them for http urls.
+            parsed_url.set_query(None);
+            let url = parsed_url.to_string();
+            (url.ends_with(".rrd") || url.ends_with(".rbl"))
+                .then_some(Self::RrdHttpUrl { url, follow: false })
         }
-
-        // by default, we just assume an rrd over http
-        Self::RrdHttpUrl { uri, follow: false }
-    }
-
-    pub fn file_name(&self) -> Option<String> {
-        match self {
-            Self::RrdHttpUrl { uri: url, .. } => url.split('/').last().map(|r| r.to_owned()),
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(_, path) => path.file_name().map(|s| s.to_string_lossy().to_string()),
-            Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::Stdin => None,
-            Self::RerunGrpcStream { .. } => None,
-        }
-    }
-
-    pub fn is_blueprint(&self) -> Option<bool> {
-        self.file_name().map(|name| name.ends_with(".rbl"))
     }
 
     /// Stream the data from the given data source.
@@ -150,17 +148,17 @@ impl DataSource {
     pub fn stream(
         self,
         connection_registry: &ConnectionRegistryHandle,
-        on_cmd: Box<dyn Fn(DataSourceCommand) + Send + Sync>,
+        on_ui_cmd: Option<Box<dyn Fn(re_grpc_client::UiCommand) + Send + Sync>>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-    ) -> anyhow::Result<StreamSource> {
+    ) -> anyhow::Result<Receiver<LogMsg>> {
         re_tracing::profile_function!();
 
         match self {
-            Self::RrdHttpUrl { uri: url, follow } => Ok(StreamSource::LogMessages(
+            Self::RrdHttpUrl { url, follow } => Ok(
                 re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                     url, follow, on_msg,
                 ),
-            )),
+            ),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(file_source, path) => {
@@ -185,7 +183,7 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(StreamSource::LogMessages(rx))
+                Ok(rx)
             }
 
             // When loading a file on Web, or when using drag-n-drop.
@@ -217,7 +215,7 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(StreamSource::LogMessages(rx))
+                Ok(rx)
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -233,11 +231,11 @@ impl DataSource {
                     on_msg();
                 }
 
-                Ok(StreamSource::LogMessages(rx))
+                Ok(rx)
             }
 
-            Self::RerunGrpcStream {
-                uri: RedapUri::DatasetData(uri),
+            Self::RedapDatasetPartition {
+                uri,
                 select_when_loaded,
             } => {
                 let (tx, rx) = re_smart_channel::smart_channel(
@@ -251,24 +249,12 @@ impl DataSource {
                     },
                 );
 
-                let on_cmd = Box::new(move |cmd: re_grpc_client::Command| match cmd {
-                    re_grpc_client::Command::SetLoopSelection {
-                        recording_id,
-                        timeline,
-                        time_range,
-                    } => on_cmd(DataSourceCommand::SetLoopSelection {
-                        recording_id,
-                        timeline,
-                        time_range,
-                    }),
-                });
-
                 let connection_registry = connection_registry.clone();
                 let uri_clone = uri.clone();
                 let stream_partition = async move {
                     let client = connection_registry.client(uri_clone.origin.clone()).await?;
                     re_grpc_client::stream_blueprint_and_partition_from_server(
-                        client, tx, uri_clone, on_cmd, on_msg,
+                        client, tx, uri_clone, on_ui_cmd, on_msg,
                     )
                     .await
                 };
@@ -281,35 +267,12 @@ impl DataSource {
                         );
                     }
                 });
-                Ok(StreamSource::LogMessages(rx))
+                Ok(rx)
             }
 
-            Self::RerunGrpcStream {
-                uri: RedapUri::Catalog(uri),
-                ..
-            } => Ok(StreamSource::CatalogUri(uri)),
-
-            Self::RerunGrpcStream {
-                uri: re_uri::RedapUri::Entry(uri),
-                ..
-            } => Ok(StreamSource::EntryUri(uri)),
-
-            Self::RerunGrpcStream {
-                uri: re_uri::RedapUri::Proxy(uri),
-                ..
-            } => Ok(StreamSource::LogMessages(message_proxy::stream(
-                uri, on_msg,
-            ))),
+            Self::RedapProxy(uri) => Ok(re_grpc_client::message_proxy::stream(uri, on_msg)),
         }
     }
-}
-
-pub enum DataSourceCommand {
-    SetLoopSelection {
-        recording_id: re_log_types::StoreId,
-        timeline: re_log_types::Timeline,
-        time_range: re_log_types::ResolvedTimeRangeF,
-    },
 }
 
 // TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
@@ -334,69 +297,91 @@ where
     tokio::spawn(future);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-#[test]
-fn test_data_source_from_uri() {
+#[cfg(test)]
+mod tests {
+    use super::*;
     use re_log_types::FileSource;
 
-    let mut failed = false;
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_data_source_from_uri() {
+        let mut failed = false;
 
-    let file = [
-        "file://foo",
-        "foo.rrd",
-        "foo.png",
-        "/foo/bar/baz",
-        "D:/file",
-    ];
-    let http = [
-        "example.zip/foo.rrd",
-        "www.foo.zip/foo.rrd",
-        "www.foo.zip/blueprint.rbl",
-    ];
-    let grpc = [
-        "rerun://foo.zip",
-        "rerun+http://foo.zip",
-        "rerun+https://foo.zip",
-        "rerun://127.0.0.1:9876",
-        "rerun+http://127.0.0.1:9876",
-        "rerun://redap.rerun.io",
-        "rerun+https://redap.rerun.io",
-    ];
+        let file = [
+            "file://foo",
+            "foo.rrd",
+            "foo.png",
+            "/foo/bar/baz.rbl",
+            "D:/file.jpg",
+        ];
+        let http = [
+            "http://example.com/foo.rrd",
+            "https://example.com/foo.rrd",
+            "http://example.com/foo.rrd?useless_param=1",
+            "example.zip/foo.rrd",
+            "www.foo.zip/foo.rrd",
+            "www.foo.zip/blueprint.rbl",
+        ];
+        let grpc = [
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1230ms..1m12s",
+            "rerun+http://example.com/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
+        ];
 
-    let file_source = FileSource::DragAndDrop {
-        recommended_store_id: None,
-        force_store_info: false,
-    };
+        let proxy = [
+            "rerun+http://127.0.0.1:9876/proxy",
+            "rerun+https://127.0.0.1:9876/proxy",
+            "rerun+http://example.com/proxy",
+        ];
 
-    for uri in file {
-        if !matches!(
-            DataSource::from_uri(file_source.clone(), uri.to_owned()),
-            DataSource::FilePath { .. }
-        ) {
-            eprintln!("Expected {uri:?} to be categorized as FilePath");
-            failed = true;
+        let file_source = FileSource::DragAndDrop {
+            recommended_store_id: None,
+            force_store_info: false,
+        };
+
+        for uri in file {
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            if !matches!(data_source, Some(LogDataSource::FilePath { .. })) {
+                eprintln!(
+                    "Expected {uri:?} to be categorized as FilePath. Instead it got parsed as {data_source:?}"
+                );
+                failed = true;
+            }
         }
-    }
 
-    for uri in http {
-        if !matches!(
-            DataSource::from_uri(file_source.clone(), uri.to_owned()),
-            DataSource::RrdHttpUrl { .. }
-        ) {
-            eprintln!("Expected {uri:?} to be categorized as RrdHttpUrl");
-            failed = true;
+        for uri in http {
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            if !matches!(data_source, Some(LogDataSource::RrdHttpUrl { .. })) {
+                eprintln!(
+                    "Expected {uri:?} to be categorized as RrdHttpUrl. Instead it got parsed as {data_source:?}"
+                );
+                failed = true;
+            }
         }
-    }
 
-    for uri in grpc {
-        if !matches!(
-            DataSource::from_uri(file_source.clone(), uri.to_owned()),
-            DataSource::RerunGrpcStream { .. }
-        ) {
-            eprintln!("Expected {uri:?} to be categorized as MessageProxy");
-            failed = true;
+        for uri in grpc {
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            if !matches!(
+                data_source,
+                Some(LogDataSource::RedapDatasetPartition { .. })
+            ) {
+                eprintln!(
+                    "Expected {uri:?} to be categorized as readp dataset. Instead it got parsed as {data_source:?}"
+                );
+                failed = true;
+            }
         }
-    }
 
-    assert!(!failed, "one or more test cases failed");
+        for uri in proxy {
+            let data_source = LogDataSource::from_uri(file_source.clone(), uri);
+            if !matches!(data_source, Some(LogDataSource::RedapProxy { .. })) {
+                eprintln!(
+                    "Expected {uri:?} to be categorized as MessageProxy. Instead it got parsed as {data_source:?}"
+                );
+                failed = true;
+            }
+        }
+
+        assert!(!failed, "one or more test cases failed");
+    }
 }

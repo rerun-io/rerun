@@ -2,17 +2,49 @@
 
 use std::{io::Cursor, sync::mpsc::Sender};
 
+use anyhow::Context as _;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
+use re_mcap::{LayerRegistry, SelectedLayers};
 
-use crate::mcap;
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
-pub struct McapLoader;
+const MCAP_LOADER_NAME: &str = "McapLoader";
+
+/// A [`DataLoader`] for MCAP files.
+///
+/// There are many different ways to extract and interpret information from MCAP files.
+/// For example, it might be interesting to query for particular fields of messages,
+/// or show information directly in the Rerun viewer. Because use-cases can vary, the
+/// [`McapLoader`] is made up of [`re_mcap::Layer`]s, each representing different views of the
+/// underlying data.
+///
+/// These layers can be specified in the CLI wen converting an MCAP file
+/// to an .rrd. Here are a few examples:
+/// - [`re_mcap::layers::McapProtobufLayer`]
+/// - [`re_mcap::layers::McapRawLayer`]
+pub struct McapLoader {
+    selected_layers: SelectedLayers,
+}
+
+impl Default for McapLoader {
+    fn default() -> Self {
+        Self {
+            selected_layers: SelectedLayers::All,
+        }
+    }
+}
+
+impl McapLoader {
+    /// Creates a new [`McapLoader`] that only extracts the specified `layers`.
+    pub fn new(selected_layers: SelectedLayers) -> Self {
+        Self { selected_layers }
+    }
+}
 
 impl DataLoader for McapLoader {
     fn name(&self) -> crate::DataLoaderName {
-        "McapLoader".into()
+        MCAP_LOADER_NAME.into()
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -30,20 +62,25 @@ impl DataLoader for McapLoader {
             return Err(DataLoaderError::Incompatible(path)); // simply not interested
         }
 
+        re_tracing::profile_function!();
+
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
         // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
         // their response via channels: we cannot be waiting for these responses on the
         // common rayon thread pool.
         let settings = settings.clone();
+        let selected_layers = self.selected_layers.clone();
         std::thread::Builder::new()
             .name(format!("load_mcap({path:?}"))
-            .spawn(move || match load_mcap_mmap(&path, &settings, &tx) {
-                Ok(_) => {}
-                Err(err) => {
-                    re_log::error!("Failed to load MCAP file: {err}");
-                }
-            })
+            .spawn(
+                move || match load_mcap_mmap(&path, &settings, &tx, selected_layers) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        re_log::error!("Failed to load MCAP file: {err}");
+                    }
+                },
+            )
             .map_err(|err| DataLoaderError::Other(err.into()))?;
 
         Ok(())
@@ -61,7 +98,10 @@ impl DataLoader for McapLoader {
             return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
         }
 
+        re_tracing::profile_function!();
+
         let settings = settings.clone();
+        let selected_layers = self.selected_layers.clone();
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -70,12 +110,14 @@ impl DataLoader for McapLoader {
         // common rayon thread pool.
         std::thread::Builder::new()
             .name(format!("load_mcap({filepath:?}"))
-            .spawn(move || match load_mcap_mmap(&filepath, &settings, &tx) {
-                Ok(_) => {}
-                Err(err) => {
-                    re_log::error!("Failed to load MCAP file: {err}");
-                }
-            })
+            .spawn(
+                move || match load_mcap_mmap(&filepath, &settings, &tx, selected_layers) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        re_log::error!("Failed to load MCAP file: {err}");
+                    }
+                },
+            )
             .map_err(|err| DataLoaderError::Other(err.into()))?;
 
         Ok(())
@@ -91,7 +133,7 @@ impl DataLoader for McapLoader {
     ) -> std::result::Result<(), DataLoaderError> {
         let contents = contents.into_owned();
 
-        load_mcap(&contents, settings, &tx)
+        load_mcap(&contents, settings, &tx, self.selected_layers.clone())
     }
 }
 
@@ -100,6 +142,7 @@ fn load_mcap_mmap(
     filepath: &std::path::PathBuf,
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
+    selected_layers: SelectedLayers,
 ) -> std::result::Result<(), DataLoaderError> {
     use std::fs::File;
     let file = File::open(filepath)?;
@@ -108,19 +151,22 @@ fn load_mcap_mmap(
     #[allow(unsafe_code)]
     let mmap = unsafe { memmap2::Mmap::map(&file)? };
 
-    load_mcap(&mmap, settings, tx)
+    load_mcap(&mmap, settings, tx, selected_layers)
 }
 
 fn load_mcap(
     mcap: &[u8],
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
+    selected_layers: SelectedLayers,
 ) -> Result<(), DataLoaderError> {
+    re_tracing::profile_function!();
+
     let store_id = settings.recommended_store_id();
 
     if tx
         .send(LoadedData::LogMsg(
-            McapLoader.name(),
+            MCAP_LOADER_NAME.to_owned(),
             re_log_types::LogMsg::SetStoreInfo(store_info(store_id.clone())),
         ))
         .is_err()
@@ -132,83 +178,41 @@ fn load_mcap(
         return Ok(());
     }
 
+    let mut send_chunk = |chunk| {
+        if tx
+            .send(LoadedData::Chunk(
+                MCAP_LOADER_NAME.to_owned(),
+                store_id.clone(),
+                chunk,
+            ))
+            .is_err()
+        {
+            // If the other side decided to hang up this is not our problem.
+            re_log::debug_once!(
+                "Failed to send chunk because the smart channel has been closed unexpectedly."
+            );
+        }
+    };
+
     let reader = Cursor::new(&mcap);
 
-    let summary = mcap::util::read_summary(reader)?
+    let summary = re_mcap::read_summary(reader)?
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
-    let properties_chunk = mcap::build_recording_properties_chunk(&summary)?;
+    let registry = LayerRegistry::all();
 
-    if tx
-        .send(LoadedData::Chunk(
-            McapLoader.name(),
-            store_id.clone(),
-            properties_chunk,
-        ))
-        .is_err()
-    {
-        re_log::debug_once!(
-            "Failed to send property chunk because the smart channel has been closed unexpectedly."
-        );
-        // If the other side decided to hang up this is not our problem.
-        return Ok(());
+    // TODO(#10862): Add warning for channel that miss semantic information.
+
+    let mut empty = true;
+    for mut layer in registry.layers(selected_layers) {
+        re_tracing::profile_scope!("process-layer");
+        empty = false;
+        layer
+            .process(mcap, &summary, &mut send_chunk)
+            .with_context(|| "processing layers")?;
     }
-
-    let mut registry = mcap::decode::MessageDecoderRegistry::default();
-    registry
-        .register_default::<mcap::schema::sensor_msgs::CompressedImageSchemaPlugin>()
-        .register_default::<mcap::schema::sensor_msgs::ImageSchemaPlugin>()
-        .register_default::<mcap::schema::sensor_msgs::ImuSchemaPlugin>()
-        .register_default::<mcap::schema::sensor_msgs::PointCloud2SchemaPlugin>();
-
-    for chunk in &summary.chunk_indexes {
-        let channel_counts = mcap::util::get_chunk_message_count(chunk, &summary, mcap)?;
-
-        re_log::trace!(
-            "MCAP file contains {} channels with the following message counts: {:?}",
-            channel_counts.len(),
-            channel_counts
-        );
-
-        let mut decoder = mcap::decode::McapChunkDecoder::new(&registry, channel_counts);
-
-        summary
-            .stream_chunk(mcap, chunk)
-            .map_err(|err| DataLoaderError::Other(err.into()))?
-            .for_each(|msg| match msg {
-                Ok(message) => {
-                    if let Err(err) = decoder.decode_next(&message) {
-                        re_log::error!(
-                            "Failed to decode message from MCAP file: {err} on channel: {}",
-                            message.channel.topic
-                        );
-                    }
-                }
-                Err(err) => {
-                    re_log::error!("Failed to read message from MCAP file: {err}");
-                }
-            });
-
-        for chunk in decoder.finish() {
-            if let Ok(chunk) = chunk {
-                if tx
-                    .send(LoadedData::Chunk(
-                        McapLoader.name(),
-                        store_id.clone(),
-                        chunk,
-                    ))
-                    .is_err()
-                {
-                    re_log::debug_once!(
-                        "Failed to send chunk, the smart channel has closed unexpectedly."
-                    );
-                    // If the other side decided to hang up this is not our problem.
-                    break;
-                }
-            } else {
-                re_log::error!("Failed to decode chunk from MCAP file: {:?}", chunk);
-            }
-        }
+    if empty {
+        re_log::warn_once!("No layers were selected");
     }
 
     Ok(())
@@ -220,7 +224,7 @@ pub fn store_info(store_id: StoreId) -> SetStoreInfo {
         info: StoreInfo {
             store_id,
             cloned_from: None,
-            store_source: re_log_types::StoreSource::Other(McapLoader.name()),
+            store_source: re_log_types::StoreSource::Other(MCAP_LOADER_NAME.to_owned()),
             store_version: Some(re_build_info::CrateVersion::LOCAL),
         },
     }

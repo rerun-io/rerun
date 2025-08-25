@@ -46,7 +46,7 @@ pub use {
         Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId, Span,
         UnitChunkShared,
     },
-    re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline},
+    re_log_types::{AbsoluteTimeRange, TimeInt, TimeType, Timeline},
 };
 
 pub mod external {

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 
 use egui::{Align, Align2, NumExt as _, Ui, text::TextWrapping};
 
@@ -193,6 +193,15 @@ impl<'a> PropertyContent<'a> {
         })
     }
 
+    /// Show a number, nicely formatted.
+    #[inline]
+    pub fn value_uint<Uint>(self, number: Uint) -> Self
+    where
+        Uint: Display + num_traits::Unsigned,
+    {
+        self.value_text(re_format::format_uint(number))
+    }
+
     /// Show an editable text in the value column.
     #[inline]
     pub fn value_text_mut(self, text: &'a mut String) -> Self {
@@ -361,21 +370,21 @@ impl ListItemContent for PropertyContent<'_> {
         } else {
             true
         };
-        if let Some(value_fn) = value_fn {
-            if should_show_value {
-                let mut child_ui = ui.new_child(
-                    egui::UiBuilder::new()
-                        .max_rect(value_rect)
-                        .layout(egui::Layout::left_to_right(egui::Align::Center)),
-                );
-                child_ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
-                value_fn(&mut child_ui, visuals_for_value);
+        if let Some(value_fn) = value_fn
+            && should_show_value
+        {
+            let mut child_ui = ui.new_child(
+                egui::UiBuilder::new()
+                    .max_rect(value_rect)
+                    .layout(egui::Layout::left_to_right(egui::Align::Center)),
+            );
+            child_ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
+            value_fn(&mut child_ui, visuals_for_value);
 
-                context.layout_info.register_property_content_max_width(
-                    child_ui.ctx(),
-                    child_ui.min_rect().right() - context.layout_info.left_x,
-                );
-            }
+            context.layout_info.register_property_content_max_width(
+                child_ui.ctx(),
+                child_ui.min_rect().right() - context.layout_info.left_x,
+            );
         }
 
         // Draw action button

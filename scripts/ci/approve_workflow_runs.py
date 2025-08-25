@@ -12,10 +12,13 @@ This is expected to be run by the `auto_approve.yml` GitHub workflow.
 from __future__ import annotations
 
 import argparse
+from typing import TYPE_CHECKING
 
 import requests
 from github import Github
-from github.WorkflowRun import WorkflowRun
+
+if TYPE_CHECKING:
+    from github.WorkflowRun import WorkflowRun
 
 APPROVAL = "@rerun-bot approve"
 
@@ -56,7 +59,7 @@ def main() -> None:
             continue
 
         print(f"found valid approval by {comment.user.login}")
-        for workflow_run in repo.get_workflow_runs(branch=repo.get_branch(pr.head.ref)):
+        for workflow_run in repo.get_workflow_runs(head_sha=pr.head.sha):
             if workflow_run.status == "action_required" or workflow_run.conclusion == "action_required":
                 approve(args.github_token, workflow_run)
 

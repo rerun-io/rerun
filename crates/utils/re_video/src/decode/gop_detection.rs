@@ -137,7 +137,7 @@ fn detect_h264_annexb_gop(
         // In case of SPS parsing failure keep going.
         // It's unlikely, but maybe there's another SPS in the chunk that succeeds parsing.
         let handler = reader.nal_handler_ref();
-        if let (true, Some(Ok(_))) = (handler.idr_frame_found, &handler.coding_details_from_sps) {
+        if handler.idr_frame_found && matches!(handler.coding_details_from_sps, Some(Ok(_))) {
             break;
         }
 

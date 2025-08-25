@@ -6,8 +6,8 @@ use std::sync::Arc;
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
 use re_log_types::example_components::MyPoints;
+use re_log_types::{AbsoluteTimeRange, example_components::MyColor};
 use re_log_types::{EntityPath, TimePoint, Timeline};
-use re_log_types::{ResolvedTimeRange, example_components::MyColor};
 
 #[test]
 fn drop_time_range() -> anyhow::Result<()> {
@@ -113,16 +113,16 @@ fn drop_time_range() -> anyhow::Result<()> {
         assert_eq!(num_events(&store), 12);
 
         // Drop nothing:
-        store.drop_time_range(timeline.name(), ResolvedTimeRange::new(10, 100));
-        store.drop_time_range(timeline.name(), ResolvedTimeRange::new(-100, -10));
+        store.drop_time_range(timeline.name(), AbsoluteTimeRange::new(10, 100));
+        store.drop_time_range(timeline.name(), AbsoluteTimeRange::new(-100, -10));
         assert_eq!(num_events(&store), 12);
 
         // Drop stuff from the middle of the first chunk, and the start of the second:
-        store.drop_time_range(timeline.name(), ResolvedTimeRange::new(1, 2));
+        store.drop_time_range(timeline.name(), AbsoluteTimeRange::new(1, 2));
         assert_eq!(num_events(&store), 9);
 
         // Drop a bunch in the middle (including all of middle chunk):
-        store.drop_time_range(timeline.name(), ResolvedTimeRange::new(2, 5));
+        store.drop_time_range(timeline.name(), AbsoluteTimeRange::new(2, 5));
         assert_eq!(num_events(&store), 3);
     }
 

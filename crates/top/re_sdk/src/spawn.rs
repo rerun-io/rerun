@@ -108,10 +108,21 @@ impl SpawnOptions {
 
         #[cfg(debug_assertions)]
         {
-            let local_build_path = format!("target/debug/{RERUN_BINARY}");
+            let cargo_target_dir =
+                std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_owned());
+            let local_build_path = format!(
+                "{cargo_target_dir}/debug/{}{}",
+                self.executable_name,
+                std::env::consts::EXE_SUFFIX
+            );
             if std::fs::metadata(&local_build_path).is_ok() {
                 re_log::info!("Spawning the locally built rerun at {local_build_path}");
                 return local_build_path;
+            } else {
+                re_log::info!(
+                    "No locally built rerun found at {local_build_path:?}, using executable named {:?} from PATH.",
+                    self.executable_name
+                );
             }
         }
 

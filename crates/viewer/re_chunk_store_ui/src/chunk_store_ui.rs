@@ -6,7 +6,7 @@ use itertools::{Either, Itertools as _};
 
 use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
 use re_log_types::{
-    ResolvedTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
+    AbsoluteTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
 };
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::StoreContext;
@@ -322,7 +322,7 @@ impl DatastoreUi {
                         ui.label(format_time_range(timeline, time_range, timestamp_format));
                     } else {
                         ui.label("-");
-                    };
+                    }
                 });
             }
 
@@ -448,13 +448,12 @@ impl DatastoreUi {
 
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Chunk max rows")
-                        .value_text(re_format::format_uint(chunk_store.config().chunk_max_rows)),
+                        .value_uint(chunk_store.config().chunk_max_rows),
                 );
 
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Chunk max rows (unsorted)").value_text(
-                        re_format::format_uint(chunk_store.config().chunk_max_rows_if_unsorted),
-                    ),
+                    list_item::PropertyContent::new("Chunk max rows (unsorted)")
+                        .value_uint(chunk_store.config().chunk_max_rows_if_unsorted),
                 );
             });
         });
@@ -465,7 +464,7 @@ impl DatastoreUi {
 
 fn format_time_range(
     timeline: &Timeline,
-    time_range: &ResolvedTimeRange,
+    time_range: &AbsoluteTimeRange,
     timestamp_format: TimestampFormat,
 ) -> String {
     if time_range.min() == time_range.max() {

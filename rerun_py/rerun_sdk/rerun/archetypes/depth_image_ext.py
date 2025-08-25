@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, Any, Union
 import numpy as np
 import numpy.typing as npt
 
-from rerun.datatypes.range1d import Range1DLike
-
 from ..components import ColormapLike, ImageFormat
 from ..datatypes import ChannelDatatype, Float32Like
 
 if TYPE_CHECKING:
+    from rerun.datatypes.range1d import Range1DLike
+
     ImageLike = Union[
         npt.NDArray[np.float16],
         npt.NDArray[np.float32],
@@ -23,6 +23,7 @@ if TYPE_CHECKING:
         npt.NDArray[np.uint32],
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
+        np.ndarray[Any, np.dtype[np.floating | np.integer]],
     ]
 
 

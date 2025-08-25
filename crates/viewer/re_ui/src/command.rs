@@ -134,7 +134,7 @@ impl UICommand {
                 "Open any supported files (.rrd, images, meshes, …) in a new recording",
             ),
             Self::Import => (
-                "Import…",
+                "Import into current recording…",
                 "Import any supported files (.rrd, images, meshes, …) in the current recording",
             ),
 
@@ -305,7 +305,7 @@ impl UICommand {
             ),
 
             Self::AddRedapServer => (
-                "Add Redap server",
+                "Add Redap server…",
                 "Connect to a Redap server (experimental)",
             ),
         }

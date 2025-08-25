@@ -80,7 +80,7 @@ def _download_dataset(root: Path, dataset_url: str = DATASET_URL) -> None:
     if total_size != 0 and pb.n != total_size:
         raise RuntimeError("Failed to download complete dataset!")
 
-    print("Extracting dataset...")
+    print("Extracting dataset…")
     with tarfile.open(tar_path, "r:") as tar:
         tar.extractall(path=root)
     os.remove(tar_path)

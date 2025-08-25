@@ -2,10 +2,6 @@
 
 pub mod shutdown;
 
-use std::collections::VecDeque;
-use std::net::SocketAddr;
-use std::pin::Pin;
-
 use re_byte_size::SizeBytes;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::TableMsg;
@@ -14,6 +10,9 @@ use re_protos::sdk_comms::v1alpha1::ReadTablesResponse;
 use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
 use re_protos::sdk_comms::v1alpha1::WriteTableRequest;
 use re_protos::sdk_comms::v1alpha1::WriteTableResponse;
+use std::collections::VecDeque;
+use std::net::SocketAddr;
+use std::pin::Pin;
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
@@ -171,12 +170,12 @@ pub async fn serve_from_channel(
     let message_proxy = MessageProxy::new(memory_limit);
     let event_tx = message_proxy.event_tx.clone();
 
-    tokio::spawn(async move {
+    tokio::task::spawn_blocking(move || {
         use re_smart_channel::SmartMessagePayload;
 
         loop {
-            let msg = match channel_rx.try_recv() {
-                Ok(msg) => match msg.payload {
+            let msg = if let Ok(msg) = channel_rx.recv() {
+                match msg.payload {
                     SmartMessagePayload::Msg(msg) => msg,
                     SmartMessagePayload::Flush { on_flush_done } => {
                         on_flush_done(); // we don't buffer
@@ -190,16 +189,10 @@ pub async fn serve_from_channel(
                         }
                         break;
                     }
-                },
-                Err(re_smart_channel::TryRecvError::Disconnected) => {
-                    re_log::debug!("smart channel sender closed, closing receiver");
-                    break;
                 }
-                Err(re_smart_channel::TryRecvError::Empty) => {
-                    // Let other tokio tasks run:
-                    tokio::task::yield_now().await;
-                    continue;
-                }
+            } else {
+                re_log::debug!("smart channel sender closed, closing receiver");
+                break;
             };
 
             let msg = match re_log_encoding::protobuf_conversions::log_msg_to_proto(
@@ -213,7 +206,7 @@ pub async fn serve_from_channel(
                 }
             };
 
-            if event_tx.send(Event::Message(msg)).await.is_err() {
+            if event_tx.blocking_send(Event::Message(msg)).is_err() {
                 re_log::debug!("shut down, closing sender");
                 break;
             }
@@ -248,16 +241,35 @@ pub fn spawn_from_rx_set(
         }
     });
 
-    tokio::spawn(async move {
+    tokio::task::spawn_blocking(move || {
+        use re_smart_channel::SmartMessagePayload;
+
         loop {
-            let Some(msg) = rxs.try_recv().and_then(|(_, m)| m.into_data()) else {
+            let msg = if let Ok(msg) = rxs.recv() {
+                match msg.payload {
+                    SmartMessagePayload::Msg(msg) => msg,
+                    SmartMessagePayload::Flush { on_flush_done } => {
+                        on_flush_done(); // we don't buffer
+                        continue;
+                    }
+                    SmartMessagePayload::Quit(err) => {
+                        if let Some(err) = err {
+                            re_log::debug!("smart channel sender quit: {err}");
+                        } else {
+                            re_log::debug!("smart channel sender quit");
+                        }
+                        if rxs.is_empty() {
+                            // We won't ever receive more data:
+                            break;
+                        }
+                        continue;
+                    }
+                }
+            } else {
                 if rxs.is_empty() {
                     // We won't ever receive more data:
                     break;
                 }
-                // Because `try_recv` is blocking, we should give other tasks
-                // a chance to run before we continue
-                tokio::task::yield_now().await;
                 continue;
             };
 
@@ -272,7 +284,7 @@ pub fn spawn_from_rx_set(
                 }
             };
 
-            if event_tx.send(Event::Message(msg)).await.is_err() {
+            if event_tx.blocking_send(Event::Message(msg)).is_err() {
                 re_log::debug!("shut down, closing sender");
                 break;
             }
@@ -355,7 +367,6 @@ pub fn spawn_with_recv(
                 }
                 Err(err) => {
                     re_log::error!("dropping LogMsg due to failed decode: {err}");
-                    continue;
                 }
             }
         }
@@ -390,7 +401,6 @@ pub fn spawn_with_recv(
                 }
                 Err(err) => {
                     re_log::error!("dropping table due to failed decode: {err}");
-                    continue;
                 }
             }
         }
@@ -605,7 +615,7 @@ impl EventLoop {
         if max_bytes >= self.ordered_message_bytes {
             // We're not using too much memory.
             return;
-        };
+        }
 
         {
             re_tracing::profile_scope!("Drop messages");
@@ -699,7 +709,7 @@ impl MessageProxy {
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
             re_log::error!("Error accepting new client: {err}");
             return Box::pin(tokio_stream::empty());
-        };
+        }
         let (history, log_channel, _) = match receiver.await {
             Ok(v) => v,
             Err(err) => {
@@ -741,7 +751,7 @@ impl MessageProxy {
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
             re_log::error!("Error accepting new client: {err}");
             return Box::pin(tokio_stream::empty());
-        };
+        }
         let (history, _, table_channel) = match receiver.await {
             Ok(v) => v,
             Err(err) => {

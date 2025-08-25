@@ -51,10 +51,10 @@ pub fn collect_series_visibility(
                 let mut flags = visible.iter().collect_vec();
                 if flags.len() < num_series {
                     // If there are less flags than series, repeat the last flag (or true if there are no flags).
-                    flags.extend(
-                        std::iter::repeat(*flags.last().unwrap_or(&true))
-                            .take(num_series - flags.len()),
-                    );
+                    flags.extend(std::iter::repeat_n(
+                        *flags.last().unwrap_or(&true),
+                        num_series - flags.len(),
+                    ));
                 }
                 flags
             },

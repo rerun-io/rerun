@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import rerun.components as rrc
 from rerun.archetypes import ViewCoordinates
-from rerun.datatypes.view_coordinates import ViewCoordinatesArrayLike
 
 from .common_arrays import none_empty_or_value
+
+if TYPE_CHECKING:
+    from rerun.datatypes.view_coordinates import ViewCoordinatesArrayLike
 
 
 def view_coordinates_expected(obj: Any) -> rrc.ViewCoordinatesBatch:

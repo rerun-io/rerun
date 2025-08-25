@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 
 use re_chunk::{RowId, TimelineName};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreSubscriber as _, RangeQuery, ResolvedTimeRange, TimeInt,
+    AbsoluteTimeRange, ChunkStore, ChunkStoreSubscriber as _, RangeQuery, TimeInt,
     external::re_chunk::Chunk,
 };
 use re_log_types::{
@@ -68,7 +68,7 @@ fn simple_range() -> anyhow::Result<()> {
 
     let query = RangeQuery::new(
         *timepoint1[0].0.name(),
-        ResolvedTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
+        AbsoluteTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
     );
 
     let expected_points = &[
@@ -90,7 +90,7 @@ fn simple_range() -> anyhow::Result<()> {
 
     let query = RangeQuery::new(
         *timepoint1[0].0.name(),
-        ResolvedTimeRange::new(timepoint1[0].1, timepoint3[0].1),
+        AbsoluteTimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
     let expected_points = &[
@@ -178,7 +178,7 @@ fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
 
     let query = RangeQuery::new(
         *timepoint1[0].0.name(),
-        ResolvedTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
+        AbsoluteTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
     );
 
     let expected_points = &[
@@ -301,7 +301,7 @@ fn static_range() -> anyhow::Result<()> {
 
     let query = RangeQuery::new(
         *timepoint1[0].0.name(),
-        ResolvedTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
+        AbsoluteTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
     );
 
     let expected_points = &[
@@ -325,7 +325,7 @@ fn static_range() -> anyhow::Result<()> {
 
     let query = RangeQuery::new(
         *timepoint1[0].0.name(),
-        ResolvedTimeRange::new(timepoint1[0].1, timepoint3[0].1),
+        AbsoluteTimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
     let expected_points = &[
@@ -351,7 +351,7 @@ fn static_range() -> anyhow::Result<()> {
 
     let query = RangeQuery::new(
         *timepoint1[0].0.name(),
-        ResolvedTimeRange::new(TimeInt::MIN, TimeInt::MAX),
+        AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX),
     );
 
     // same expectations
@@ -407,7 +407,7 @@ fn time_back_and_forth() {
 
     // --- Query #1: `[8, 10]` ---
 
-    let query = RangeQuery::new(TimelineName::new("frame_nr"), ResolvedTimeRange::new(8, 10));
+    let query = RangeQuery::new(TimelineName::new("frame_nr"), AbsoluteTimeRange::new(8, 10));
 
     let expected_points = &[
         (
@@ -436,7 +436,7 @@ fn time_back_and_forth() {
 
     // --- Query #2: `[1, 3]` ---
 
-    let query = RangeQuery::new(TimelineName::new("frame_nr"), ResolvedTimeRange::new(1, 3));
+    let query = RangeQuery::new(TimelineName::new("frame_nr"), AbsoluteTimeRange::new(1, 3));
 
     let expected_points = &[
         (
@@ -472,7 +472,7 @@ fn time_back_and_forth() {
 
     // --- Query #3: `[5, 7]` ---
 
-    let query = RangeQuery::new(TimelineName::new("frame_nr"), ResolvedTimeRange::new(5, 7));
+    let query = RangeQuery::new(TimelineName::new("frame_nr"), AbsoluteTimeRange::new(5, 7));
 
     let expected_points = &[
         (
@@ -791,14 +791,14 @@ fn invalidation() {
     let frame_124 = build_frame_nr(124);
 
     test_invalidation(
-        RangeQuery::new(*frame_123.0.name(), ResolvedTimeRange::EVERYTHING),
+        RangeQuery::new(*frame_123.0.name(), AbsoluteTimeRange::EVERYTHING),
         [frame_123].into(),
         [frame_122].into(),
         [frame_124].into(),
     );
 
     test_invalidation(
-        RangeQuery::new(*frame_123.0.name(), ResolvedTimeRange::EVERYTHING),
+        RangeQuery::new(*frame_123.0.name(), AbsoluteTimeRange::EVERYTHING),
         [frame_123].into(),
         static_,
         [frame_124].into(),
@@ -844,7 +844,7 @@ fn invalidation_of_future_optionals() {
     let frame2 = [build_frame_nr(2)];
     let frame3 = [build_frame_nr(3)];
 
-    let query = RangeQuery::new(*frame2[0].0.name(), ResolvedTimeRange::EVERYTHING);
+    let query = RangeQuery::new(*frame2[0].0.name(), AbsoluteTimeRange::EVERYTHING);
 
     let row_id1 = RowId::new();
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -956,7 +956,7 @@ fn invalidation_static() {
     let static_ = TimePoint::default();
 
     let frame0 = [build_frame_nr(TimeInt::ZERO)];
-    let query = RangeQuery::new(*frame0[0].0.name(), ResolvedTimeRange::EVERYTHING);
+    let query = RangeQuery::new(*frame0[0].0.name(), AbsoluteTimeRange::EVERYTHING);
 
     let row_id1 = RowId::new();
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -1063,7 +1063,7 @@ fn concurrent_multitenant_edge_case() {
 
     // --- Tenant #1 queries the data, but doesn't cache the result in the deserialization cache ---
 
-    let query = RangeQuery::new(*timepoint1[0].0.name(), ResolvedTimeRange::EVERYTHING);
+    let query = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::EVERYTHING);
 
     eprintln!("{store}");
 
@@ -1075,7 +1075,7 @@ fn concurrent_multitenant_edge_case() {
 
     // --- Meanwhile, tenant #2 queries and deserializes the data ---
 
-    let query = RangeQuery::new(*timepoint1[0].0.name(), ResolvedTimeRange::EVERYTHING);
+    let query = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::EVERYTHING);
 
     let expected_points = &[
         (
@@ -1140,7 +1140,7 @@ fn concurrent_multitenant_edge_case2() {
 
     // --- Tenant #1 queries the data at (123, 223), but doesn't cache the result in the deserialization cache ---
 
-    let query1 = RangeQuery::new(*timepoint1[0].0.name(), ResolvedTimeRange::new(123, 223));
+    let query1 = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::new(123, 223));
     {
         let cached = caches.range(&query1, &entity_path, MyPoints::all_components().iter());
 
@@ -1149,7 +1149,7 @@ fn concurrent_multitenant_edge_case2() {
 
     // --- Tenant #2 queries the data at (423, 523), but doesn't cache the result in the deserialization cache ---
 
-    let query2 = RangeQuery::new(*timepoint1[0].0.name(), ResolvedTimeRange::new(423, 523));
+    let query2 = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::new(423, 523));
     {
         let cached = caches.range(&query2, &entity_path, MyPoints::all_components().iter());
 
@@ -1158,7 +1158,7 @@ fn concurrent_multitenant_edge_case2() {
 
     // --- Tenant #2 queries the data at (223, 423) and deserializes it ---
 
-    let query3 = RangeQuery::new(*timepoint1[0].0.name(), ResolvedTimeRange::new(223, 423));
+    let query3 = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::new(223, 423));
     let expected_points = &[
         (
             (TimeInt::new_temporal(223), chunk2.row_id_range().unwrap().0),

@@ -9,7 +9,7 @@ use re_byte_size::SizeBytes;
 use web_time::Instant;
 
 use re_chunk::{Chunk, ChunkId, TimelineName};
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_types_core::ComponentDescriptor;
 
 use crate::{
@@ -54,7 +54,7 @@ pub struct GarbageCollectionOptions {
     pub protect_latest: usize,
 
     /// Do not remove any data within these time ranges.
-    pub protected_time_ranges: IntMap<TimelineName, ResolvedTimeRange>,
+    pub protected_time_ranges: IntMap<TimelineName, AbsoluteTimeRange>,
 }
 
 impl GarbageCollectionOptions {
@@ -70,10 +70,10 @@ impl GarbageCollectionOptions {
     /// If true, we cannot remove this chunk.
     pub fn is_chunk_protected(&self, chunk: &Chunk) -> bool {
         for (timeline, protected_time_range) in &self.protected_time_ranges {
-            if let Some(time_column) = chunk.timelines().get(timeline) {
-                if time_column.time_range().intersects(*protected_time_range) {
-                    return true;
-                }
+            if let Some(time_column) = chunk.timelines().get(timeline)
+                && time_column.time_range().intersects(*protected_time_range)
+            {
+                return true;
             }
         }
         false
@@ -583,10 +583,10 @@ impl ChunkStore {
                             chunk_ids_removed.extend(chunk_ids);
                         }
 
-                        if let Some((start_time, time_budget)) = time_budget {
-                            if start_time.elapsed() >= time_budget {
-                                break;
-                            }
+                        if let Some((start_time, time_budget)) = time_budget
+                            && start_time.elapsed() >= time_budget
+                        {
+                            break;
                         }
                     }
 
@@ -680,9 +680,8 @@ impl ChunkStore {
 
         {
             let min_row_ids_removed = chunk_ids_removed.iter().filter_map(|chunk_id| {
-                self.chunks_per_chunk_id
-                    .get(chunk_id)
-                    .and_then(|chunk| chunk.row_id_range().map(|(min, _)| min))
+                let chunk = self.chunks_per_chunk_id.get(chunk_id)?;
+                chunk.row_id_range().map(|(min, _)| min)
             });
             for row_id in min_row_ids_removed {
                 if self.chunk_ids_per_min_row_id.remove(&row_id).is_none() {

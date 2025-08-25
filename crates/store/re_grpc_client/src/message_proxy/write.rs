@@ -130,7 +130,7 @@ impl Client {
         if self.cmd_tx.send(Cmd::Flush(tx)).is_err() {
             re_log::debug!("Flush failed: already shut down.");
             return;
-        };
+        }
 
         let start = std::time::Instant::now();
 
@@ -171,12 +171,12 @@ impl Drop for Client {
         if let Err(err) = self.shutdown_tx.try_send(()) {
             re_log::error!("Failed to gracefully shut down message proxy client: {err}");
             return;
-        };
+        }
 
         // Wait for the shutdown
         if let Some(thread) = self.thread.take() {
             thread.join().ok();
-        };
+        }
 
         re_log::debug!("Message proxy client has shut down");
     }
@@ -212,7 +212,6 @@ async fn message_proxy_client(
                         return;
                     }
                     _ = tokio::time::sleep(Duration::from_millis(100)) => {
-                        continue;
                     }
                 }
             }
@@ -263,7 +262,7 @@ async fn message_proxy_client(
                                 // Flush channel may already be closed for non-blocking flush, so this isn't an error.
                                 re_log::debug!("Failed to respond to flush: flush report channel was closed");
                                 break;
-                            };
+                            }
                         }
 
                         None => {
@@ -285,7 +284,7 @@ async fn message_proxy_client(
     let disconnect_result = if let Err(status) = client.write_messages(stream).await {
         re_log::error!(
             "Write messages call failed: {}",
-            TonicStatusError(status.clone())
+            TonicStatusError::from(status.clone())
         );
 
         // Ignore status code "Unknown" since this was observed to happen on regular Viewer shutdowns.

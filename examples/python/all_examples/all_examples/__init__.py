@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import platform
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import tomli
 from pyproject_metadata import StandardMetadata
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 # def _relative(target: Path, origin: Path) -> Path:
 #     """Return target path relative to the origin, allowing for walking up.

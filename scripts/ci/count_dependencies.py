@@ -34,6 +34,7 @@ def main() -> None:
     parser.add_argument("-p", required=True, type=str, help="Crate name")
     parser.add_argument("--all-features", default=False, action="store_true", help="Use all features")
     parser.add_argument("--no-default-features", default=False, action="store_true", help="Use no default features")
+    parser.add_argument("-F", "--features", default="", type=str, help="Additional features to enable")
 
     args = parser.parse_args()
 
@@ -44,6 +45,9 @@ def main() -> None:
         flags = "--no-default-features"
     else:
         flags = ""
+    if args.features:
+        flags += f" --features {args.features}"
+
     cmd = f'cargo tree --edges normal -p {crate} {flags} | tail -n +2 | grep -E "\\w+ v[0-9.]+" -o | sort -u | wc -l'
     print(f"Running command: {cmd}", file=sys.stderr, flush=True)
     count = int(os.popen(cmd).read().strip())

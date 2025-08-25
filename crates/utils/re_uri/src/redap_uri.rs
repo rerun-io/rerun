@@ -1,8 +1,8 @@
 use re_log_types::StoreId;
 
 use crate::{
-    CatalogUri, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT, DatasetDataUri, EntryUri, Error, Fragment,
-    Origin, ProxyUri,
+    CatalogUri, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT, DatasetPartitionUri, EntryUri, Error,
+    Fragment, Origin, ProxyUri,
 };
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
@@ -16,7 +16,7 @@ pub enum RedapUri {
     Entry(EntryUri),
 
     /// `/dataset`
-    DatasetData(DatasetDataUri),
+    DatasetData(DatasetPartitionUri),
 
     /// We use the `/proxy` endpoint to access another _local_ viewer.
     Proxy(ProxyUri),
@@ -95,7 +95,7 @@ impl std::str::FromStr for RedapUri {
             ["dataset", dataset_id] => {
                 let dataset_id = re_tuid::Tuid::from_str(dataset_id).map_err(Error::InvalidTuid)?;
 
-                DatasetDataUri::new(origin, dataset_id, &http_url).map(Self::DatasetData)
+                DatasetPartitionUri::new(origin, dataset_id, &http_url).map(Self::DatasetData)
             }
             [unknown, ..] => Err(Error::UnexpectedUri(format!("{unknown}/"))),
         }
@@ -129,11 +129,9 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::unnecessary_fallible_conversions)]
-
     use re_log_types::DataPath;
 
-    use crate::{Fragment, Scheme, TimeRange};
+    use crate::{Fragment, Scheme, TimeSelection};
 
     use super::*;
     use core::net::Ipv4Addr;
@@ -193,7 +191,7 @@ mod tests {
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid";
         let address: RedapUri = url.parse().unwrap();
 
-        let RedapUri::DatasetData(DatasetDataUri {
+        let RedapUri::DatasetData(DatasetPartitionUri {
             origin,
             dataset_id,
             partition_id,
@@ -221,7 +219,7 @@ mod tests {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#focus=/some/entity[#42]";
         let address: RedapUri = url.parse().unwrap();
 
-        let RedapUri::DatasetData(DatasetDataUri {
+        let RedapUri::DatasetData(DatasetPartitionUri {
             origin,
             dataset_id,
             partition_id,
@@ -259,7 +257,7 @@ mod tests {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@100..200";
         let address: RedapUri = url.parse().unwrap();
 
-        let RedapUri::DatasetData(DatasetDataUri {
+        let RedapUri::DatasetData(DatasetPartitionUri {
             origin,
             dataset_id,
             partition_id,
@@ -280,10 +278,9 @@ mod tests {
         assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
-            Some(TimeRange {
+            Some(TimeSelection {
                 timeline: re_log_types::Timeline::new_sequence("timeline"),
-                min: 100.try_into().unwrap(),
-                max: 200.try_into().unwrap(),
+                range: re_log_types::AbsoluteTimeRange::new(100, 200),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -294,7 +291,7 @@ mod tests {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=log_time@2022-01-01T00:00:03.123456789Z..2022-01-01T00:00:13.123456789Z";
         let address: RedapUri = url.parse().unwrap();
 
-        let RedapUri::DatasetData(DatasetDataUri {
+        let RedapUri::DatasetData(DatasetPartitionUri {
             origin,
             dataset_id,
             partition_id,
@@ -315,10 +312,12 @@ mod tests {
         assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
-            Some(TimeRange {
+            Some(TimeSelection {
                 timeline: re_log_types::Timeline::new_timestamp("log_time"),
-                min: 1_640_995_203_123_456_789.try_into().unwrap(),
-                max: 1_640_995_213_123_456_789.try_into().unwrap(),
+                range: re_log_types::AbsoluteTimeRange::new(
+                    1_640_995_203_123_456_789,
+                    1_640_995_213_123_456_789,
+                ),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -332,7 +331,7 @@ mod tests {
         ] {
             let address: RedapUri = url.parse().unwrap();
 
-            let RedapUri::DatasetData(DatasetDataUri {
+            let RedapUri::DatasetData(DatasetPartitionUri {
                 origin,
                 dataset_id,
                 partition_id,
@@ -353,10 +352,12 @@ mod tests {
             assert_eq!(partition_id, "pid");
             assert_eq!(
                 time_range,
-                Some(TimeRange {
+                Some(TimeSelection {
                     timeline: re_log_types::Timeline::new_duration("timeline"),
-                    min: re_log_types::TimeInt::from_secs(1.23).try_into().unwrap(),
-                    max: re_log_types::TimeInt::from_secs(72.0).try_into().unwrap(),
+                    range: re_log_types::AbsoluteTimeRange::new(
+                        re_log_types::TimeInt::from_secs(1.23),
+                        re_log_types::TimeInt::from_secs(72.0),
+                    ),
                 })
             );
             assert_eq!(fragment, Default::default());
@@ -425,10 +426,7 @@ mod tests {
         let url = "http://wrong-scheme:1234/recording/12345";
         let address: Result<RedapUri, _> = url.parse();
 
-        assert!(matches!(
-            address.unwrap_err(),
-            super::Error::InvalidScheme { .. }
-        ));
+        assert!(matches!(address.unwrap_err(), super::Error::InvalidScheme));
     }
 
     #[test]

@@ -525,7 +525,7 @@ fn quote_enum(
                 "Enums can only have one default value",
             );
         }
-    };
+    }
     let derives = derives.iter().map(|&derive| {
         let derive = format_ident!("{derive}");
         quote!(#derive)
@@ -783,6 +783,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Float16 => quote!(half::f16),
             Type::Float32 => quote!(f32),
             Type::Float64 => quote!(f64),
+            Type::Binary => quote!(::arrow::buffer::Buffer),
             Type::String => quote!(::re_types_core::ArrowString),
             Type::Array { elem_type, length } => {
                 if *unwrap {
@@ -821,6 +822,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Float16 => quote!(half::f16),
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
+            ElementType::Binary => quote!(::arrow::buffer::Buffer),
             ElementType::String => quote!(::re_types_core::ArrowString),
             ElementType::Object { fqname } => quote_fqname_as_type_path(fqname),
         }
@@ -1210,17 +1212,17 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             #(#all_descriptor_methods)*
         }
 
-        static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; #num_required_descriptors]> =
-            once_cell::sync::Lazy::new(|| {[#required_descriptors]});
+        static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; #num_required_descriptors]> =
+            std::sync::LazyLock::new(|| {[#required_descriptors]});
 
-        static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; #num_recommended_descriptors]> =
-            once_cell::sync::Lazy::new(|| {[#recommended_descriptors]});
+        static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; #num_recommended_descriptors]> =
+            std::sync::LazyLock::new(|| {[#recommended_descriptors]});
 
-        static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; #num_optional_descriptors]> =
-            once_cell::sync::Lazy::new(|| {[#optional_descriptors]});
+        static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; #num_optional_descriptors]> =
+            std::sync::LazyLock::new(|| {[#optional_descriptors]});
 
-        static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; #num_all_descriptors]> =
-            once_cell::sync::Lazy::new(|| {[#required_descriptors #recommended_descriptors #optional_descriptors]});
+        static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; #num_all_descriptors]> =
+            std::sync::LazyLock::new(|| {[#required_descriptors #recommended_descriptors #optional_descriptors]});
 
         impl #name {
             #num_components_docstring
@@ -1669,7 +1671,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
 
                 // NOTE: This will return an error if the different batches have different lengths,
                 // which is fine.
-                self.columns(std::iter::repeat(1).take(len))
+                self.columns(std::iter::repeat_n(1, len))
             }
         }
     });

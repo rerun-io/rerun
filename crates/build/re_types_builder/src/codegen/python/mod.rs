@@ -31,6 +31,9 @@ const INIT_METHOD: &str = "__init__";
 /// The standard numpy interface for converting to an array type
 const ARRAY_METHOD: &str = "__array__";
 
+/// The standard python len method
+const LEN_METHOD: &str = "__len__";
+
 /// The method used to convert a native type into a pyarrow array
 const NATIVE_TO_PA_ARRAY_METHOD: &str = "native_to_pa_array_override";
 
@@ -200,6 +203,12 @@ struct ExtensionClass {
 
     /// Whether the `ObjectExt` contains a `deferred_patch_class()` method
     has_deferred_patch_class: bool,
+
+    /// Whether the `ObjectExt` contains __len__()
+    ///
+    /// If the `ExtensionClass` contains its own `__len__` then we avoid generating
+    /// a default implementation.
+    has_len: bool,
 }
 
 impl ExtensionClass {
@@ -248,6 +257,7 @@ impl ExtensionClass {
 
             let has_init = methods.contains(&INIT_METHOD);
             let has_array = methods.contains(&ARRAY_METHOD);
+            let has_len = methods.contains(&LEN_METHOD);
             let has_native_to_pa_array = methods.contains(&NATIVE_TO_PA_ARRAY_METHOD);
             let has_deferred_patch_class = methods.contains(&DEFERRED_PATCH_CLASS_METHOD);
             let field_converter_overrides: Vec<String> = methods
@@ -286,6 +296,7 @@ impl ExtensionClass {
                 has_array,
                 has_native_to_pa_array,
                 has_deferred_patch_class,
+                has_len,
             }
         } else {
             Self {
@@ -298,6 +309,7 @@ impl ExtensionClass {
                 has_array: false,
                 has_native_to_pa_array: false,
                 has_deferred_patch_class: false,
+                has_len: false,
             }
         }
     }
@@ -460,10 +472,9 @@ impl PythonCodeGenerator {
                 .iter()
                 .filter_map(|field| quote_import_clauses_from_field(&obj.scope(), field))
                 .chain(obj.fields.iter().filter_map(|field| {
-                    field.typ.fqname().and_then(|fqname| {
-                        objects[fqname].delegate_datatype(objects).map(|delegate| {
-                            quote_import_clauses_from_fqname(&obj.scope(), &delegate.fqname)
-                        })
+                    let fqname = field.typ.fqname()?;
+                    objects[fqname].delegate_datatype(objects).map(|delegate| {
+                        quote_import_clauses_from_fqname(&obj.scope(), &delegate.fqname)
                     })
                 }))
                 .collect();
@@ -805,6 +816,7 @@ fn code_for_struct(
 
         code.push_indented(1, quote_array_method_from_obj(ext_class, objects, obj), 1);
         code.push_indented(1, quote_native_types_method_from_obj(objects, obj), 1);
+        code.push_indented(1, quote_len_method_from_obj(ext_class, obj), 1);
 
         if *kind != ObjectKind::Archetype {
             code.push_indented(0, quote_aliases_from_object(obj), 1);
@@ -1101,7 +1113,7 @@ fn code_for_union(
     let inner_type = if field_types.len() > 1 {
         format!("Union[{}]", field_types.iter().join(", "))
     } else {
-        field_types.iter().next().unwrap().to_string()
+        field_types.iter().next().unwrap().clone()
     };
 
     // components and datatypes have converters only if manually provided
@@ -1424,6 +1436,37 @@ fn quote_array_method_from_obj(
     ))
 }
 
+fn quote_len_method_from_obj(ext_class: &ExtensionClass, obj: &Object) -> String {
+    // allow overriding the __len__ function
+    if ext_class.has_len {
+        return format!("# __len__ can be found in {}", ext_class.file_name);
+    }
+
+    // exclude archetypes, objects which don't have a single field, and anything that isn't plural
+    if obj.kind == ObjectKind::Archetype || obj.fields.len() != 1 || !obj.fields[0].typ.is_plural()
+    {
+        return String::new();
+    }
+
+    let field_name = &obj.fields[0].name;
+
+    let null_string = if obj.fields[0].is_nullable {
+        // If the field is optional, we return 0 if it is None.
+        format!(" if self.{field_name} is not None else 0")
+    } else {
+        String::new()
+    };
+
+    unindent(&format!(
+        "
+        def __len__(self) -> int:
+            # You can define your own __len__ function as a member of {} in {}
+            return len(self.{field_name}){null_string}
+        ",
+        ext_class.name, ext_class.file_name
+    ))
+}
+
 /// Automatically implement `__str__`, `__int__`, or `__float__` as well as `__hash__` methods if the object has a single
 /// field of the corresponding type that is not optional.
 ///
@@ -1575,17 +1618,17 @@ fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str) ->
         if from.starts_with("rerun.datatypes") {
             "from ... import datatypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.datatypes").as_str()) {
-            format!("from ...{scope} import datatypes as {scope}_datatypes")
+            format!("from ...{scope} import datatypes as {scope}_datatypes") // NOLINT
         } else if from.starts_with("rerun.components") {
             "from ... import components".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.components").as_str()) {
-            format!("from ...{scope} import components as {scope}_components")
+            format!("from ...{scope} import components as {scope}_components") // NOLINT
         } else if from.starts_with("rerun.archetypes") {
             // NOTE: This is assuming importing other archetypes is legal… which whether it is or
             // isn't for this code generator to say.
             "from ... import archetypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.archetytpes").as_str()) {
-            format!("from ...{scope} import archetypes as {scope}_archetypes")
+            format!("from ...{scope} import archetypes as {scope}_archetypes") // NOLINT
         } else if from.is_empty() {
             format!("from . import {class}")
         } else {
@@ -1630,6 +1673,7 @@ fn quote_field_type_from_field(
         | Type::Int64 => "int".to_owned(),
         Type::Bool => "bool".to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::Binary => "bytes".to_owned(),
         Type::String => "str".to_owned(),
         Type::Array {
             elem_type,
@@ -1648,6 +1692,7 @@ fn quote_field_type_from_field(
             ElementType::Float16 => "npt.NDArray[np.float16]".to_owned(),
             ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
             ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
+            ElementType::Binary => "list[bytes]".to_owned(),
             ElementType::String => "list[str]".to_owned(),
             ElementType::Object { .. } => {
                 let typ = quote_type_from_element_type(elem_type);
@@ -1707,6 +1752,13 @@ fn quote_field_converter_from_field(
                 "float_or_none".to_owned()
             } else {
                 "float".to_owned()
+            }
+        }
+        Type::Binary => {
+            if field.is_nullable {
+                "bytes_or_none".to_owned()
+            } else {
+                "bytes".to_owned()
             }
         }
         Type::String => {
@@ -1825,6 +1877,7 @@ fn quote_type_from_type(typ: &Type) -> String {
         | Type::Int64 => "int".to_owned(),
         Type::Bool => "bool".to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::Binary => "bytes".to_owned(),
         Type::String => "str".to_owned(),
         Type::Object { fqname } => fqname_to_type(fqname),
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
@@ -1983,6 +2036,7 @@ fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
         Type::Float32 => Some("np.float32"),
         Type::Float64 => Some("np.float64"),
         Type::Unit
+        | Type::Binary
         | Type::String
         | Type::Array { .. }
         | Type::Vector { .. }
@@ -2046,7 +2100,11 @@ fn quote_arrow_serialization(
             let mut code = String::new();
 
             code.push_indented(0, "from typing import cast", 1);
-            code.push_indented(0, quote_local_batch_type_imports(&obj.fields), 2);
+            code.push_indented(
+                0,
+                quote_local_batch_type_imports(&obj.fields, obj.is_testing()),
+                2,
+            );
             code.push_indented(0, format!("if isinstance(data, {name}):"), 1);
             code.push_indented(1, "data = [data]", 2);
 
@@ -2075,7 +2133,11 @@ fn quote_arrow_serialization(
                         code.push_indented(2, &field_fwd, 1);
                     }
 
-                    Type::Unit | Type::String | Type::Array { .. } | Type::Vector { .. } => {
+                    Type::Unit
+                    | Type::Binary
+                    | Type::String
+                    | Type::Array { .. }
+                    | Type::Vector { .. } => {
                         return Err(
                             "We lack codegen for arrow-serialization of general structs".to_owned()
                         );
@@ -2202,6 +2264,7 @@ return pa.array(pa_data, type=data_type)
                     | Type::Float16
                     | Type::Float32
                     | Type::Float64
+                    | Type::Binary
                     | Type::String => {
                         let datatype = quote_arrow_datatype(&type_registry.get(&field.fqname));
                         format!("pa.array({variant_kind_list}, type={datatype})")
@@ -2230,7 +2293,7 @@ return pa.array(pa_data, type=data_type)
                 })
                 .join(", ");
 
-            let batch_type_imports = quote_local_batch_type_imports(&obj.fields);
+            let batch_type_imports = quote_local_batch_type_imports(&obj.fields, obj.is_testing());
             Ok(format!(
                 r##"
 {batch_type_imports}
@@ -2278,7 +2341,7 @@ return pa.UnionArray.from_buffers(
     }
 }
 
-fn quote_local_batch_type_imports(fields: &[ObjectField]) -> String {
+fn quote_local_batch_type_imports(fields: &[ObjectField], current_obj_is_testing: bool) -> String {
     let mut code = String::new();
 
     for field in fields {
@@ -2292,7 +2355,26 @@ fn quote_local_batch_type_imports(fields: &[ObjectField]) -> String {
             let mod_path = &field_fqname[..last_dot];
             let field_type_name = &field_fqname[last_dot + 1..];
 
-            code.push_unindented(format!("from {mod_path} import {field_type_name}Batch"), 1);
+            // If both the current object and the field object are testing types,
+            // use relative imports instead of absolute ones
+            let is_field_testing = crate::objects::is_testing_fqname(field_fqname);
+            let import_path = if current_obj_is_testing && is_field_testing {
+                // Extract the relative path within the testing namespace
+                if let Some(testing_prefix) = mod_path.strip_prefix("rerun.testing.datatypes") {
+                    format!(".{testing_prefix}")
+                } else if mod_path == "rerun.testing" {
+                    ".".to_owned()
+                } else {
+                    mod_path.to_owned()
+                }
+            } else {
+                mod_path.to_owned()
+            };
+
+            code.push_unindented(
+                format!("from {import_path} import {field_type_name}Batch"),
+                1,
+            );
         }
     }
     code
@@ -2450,7 +2532,7 @@ fn quote_init_method(
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = quote_doc_lines(doc_string_lines);
 
     let custom_init_hint = format!(
@@ -2574,7 +2656,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
     unindent(&format!(
@@ -2658,7 +2740,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
         for doc in parameter_docs {
             doc_string_lines.push(doc);
         }
-    };
+    }
     let doc_block = indent::indent_by(12, quote_doc_lines(doc_string_lines));
 
     let kwargs = quote_component_field_mapping(obj);
@@ -2740,7 +2822,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
         DataType::Atomic(AtomicDataType::Float32) => "pa.float32()".to_owned(),
         DataType::Atomic(AtomicDataType::Float64) => "pa.float64()".to_owned(),
 
-        DataType::Binary => "pa.binary()".to_owned(),
+        DataType::Binary => "pa.large_binary()".to_owned(),
 
         DataType::Utf8 => "pa.utf8()".to_owned(),
 

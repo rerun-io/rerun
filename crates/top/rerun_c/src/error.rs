@@ -77,7 +77,7 @@ impl CError {
     pub(crate) fn write_error(self, error: *mut Self) {
         if let Some(error) = unsafe { error.as_mut() } {
             *error = self;
-        };
+        }
     }
 }
 

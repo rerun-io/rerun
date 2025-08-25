@@ -132,7 +132,7 @@ impl ControlViewer {
                         }
                     }
 
-                    re_log::info!("Connection lost. Attempting to reconnect...");
+                    re_log::info!("Connection lost. Attempting to reconnect…");
                 }
                 Err(err) => {
                     re_log::error!(
@@ -210,18 +210,18 @@ impl ControlViewer {
             match message_option {
                 Some(message) => match message {
                     Message::Disconnect => {
-                        re_log::info!("Disconnecting...");
+                        re_log::info!("Disconnecting…");
                         break;
                     }
                     _ => {
-                        if let Ok(data) = message.encode() {
-                            if let Err(err) = write.write_all(&data).await {
-                                re_log::error!(
-                                    "Failed to send message error: {}",
-                                    re_error::format_ref(&err)
-                                );
-                                break;
-                            }
+                        if let Ok(data) = message.encode()
+                            && let Err(err) = write.write_all(&data).await
+                        {
+                            re_log::error!(
+                                "Failed to send message error: {}",
+                                re_error::format_ref(&err)
+                            );
+                            break;
                         }
                     }
                 },

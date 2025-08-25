@@ -77,16 +77,17 @@ impl ::re_types_core::Loggable for Mat3x3 {
                     .into_iter()
                     .flat_map(|v| match v {
                         Some(v) => itertools::Either::Left(v.into_iter()),
-                        None => itertools::Either::Right(
-                            std::iter::repeat(Default::default()).take(9usize),
-                        ),
+                        None => itertools::Either::Right(std::iter::repeat_n(
+                            Default::default(),
+                            9usize,
+                        )),
                     })
                     .collect();
                 let data0_inner_validity: Option<arrow::buffer::NullBuffer> =
                     data0_validity.as_ref().map(|validity| {
                         validity
                             .iter()
-                            .map(|b| std::iter::repeat(b).take(9usize))
+                            .map(|b| std::iter::repeat_n(b, 9usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()

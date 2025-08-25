@@ -34,5 +34,4 @@ egui.workspace = true
 egui_tiles.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-once_cell.workspace = true
 static_assertions.workspace = true

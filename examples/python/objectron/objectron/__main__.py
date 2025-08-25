@@ -9,9 +9,9 @@ import math
 import os
 import sys
 import time
-from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
@@ -26,6 +26,9 @@ from .download_dataset import (
     ensure_recording_available,
 )
 from .proto.objectron.proto import ARCamera, ARFrame, ARPointCloud, Object, ObjectType, Sequence
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
 
 
 @dataclass

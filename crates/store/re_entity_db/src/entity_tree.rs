@@ -241,13 +241,13 @@ impl EntityTree {
         ) -> Option<&'a EntityTree> {
             if predicate(&this.path) {
                 return Some(this);
-            };
+            }
 
             for child in this.children.values() {
                 if let Some(subtree) = visit(child, predicate) {
                     // Early return
                     return Some(subtree);
-                };
+                }
             }
 
             None

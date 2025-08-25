@@ -40,6 +40,10 @@ class Vec3D(Vec3DExt):
         # You can define your own __array__ function as a member of Vec3DExt in vec3d_ext.py
         return np.asarray(self.xyz, dtype=dtype, copy=copy)
 
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of Vec3DExt in vec3d_ext.py
+        return len(self.xyz)
+
 
 if TYPE_CHECKING:
     Vec3DLike = Union[Vec3D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
