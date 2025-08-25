@@ -114,7 +114,7 @@ fn image_diff_threshold(codec: VideoCodec) -> f32 {
     match codec {
         // Despite version pinning, ffmpeg's results are quite different depending on the platform
         // and seemingly even between runs!
-        VideoCodec::H264 => 2.2,
+        VideoCodec::H264 | VideoCodec::H265 => 2.2,
         // AV1 has this problem as well but to a lesser extent.
         VideoCodec::AV1 => 1.2,
 
@@ -126,7 +126,7 @@ fn image_failed_pixel_count_threshold(codec: VideoCodec) -> usize {
     match codec {
         // Despite version pinning, ffmpeg's results are quite different depending on the platform
         // and seemingly even between runs!
-        VideoCodec::H264 => 300,
+        VideoCodec::H264 | VideoCodec::H265 => 300,
         // AV1 has this problem as well but to a lesser extent.
         VideoCodec::AV1 => 100,
 
