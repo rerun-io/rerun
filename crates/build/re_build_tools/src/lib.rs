@@ -328,22 +328,6 @@ pub fn enabled_features_of(crate_name: &str) -> anyhow::Result<Vec<String>> {
     Ok(features)
 }
 
-/// Reports a message via `cargo:error` and terminates the process.
-///
-/// The exit code is set to 0, since then cargo doesn't make a dump.
-#[macro_export]
-macro_rules! cargo_error {
-    ($($arg:tt)+) => {
-        {
-            ::std::println!(
-                "cargo::error={msg}",
-                msg = ::std::format!($($arg)+)
-            );
-            ::std::process::exit(0)
-        }
-    };
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
