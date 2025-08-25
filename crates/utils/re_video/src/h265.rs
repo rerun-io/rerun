@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use cros_codecs::codec::{
-    h264::nalu::Header,
+    h264::nalu::Header as _,
     h265::parser::{Nalu, NaluType, Parser, Sps},
 };
 
