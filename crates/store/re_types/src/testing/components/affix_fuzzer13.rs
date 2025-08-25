@@ -78,7 +78,7 @@ impl ::re_types_core::Loggable for AffixFuzzer13 {
                     std::sync::Arc::new(Field::new("item", DataType::Utf8, false)),
                     offsets,
                     {
-                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                        let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                             data0_inner_data.iter().map(|datum| datum.len()),
                         );
 
