@@ -1026,13 +1026,10 @@ mod tests {
             db.add_chunk(&Arc::new(chunk))?;
         }
 
-        // Test formatting
-        let formatted = db.format_with_components();
-        assert!(formatted.contains("parent"));
-        assert!(formatted.contains("parent/child1"));
-        assert!(formatted.contains("parent/child1/grandchild"));
-
-        assert!(formatted.contains("example.MyPoint: Struct[2]"));
+        assert_eq!(
+            db.format_with_components(),
+            "/parent\n  /parent/child1\n    /parent/child1/grandchild\n      example.MyPoint: Struct[2]\n"
+        );
 
         Ok(())
     }
