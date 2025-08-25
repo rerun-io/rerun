@@ -17,7 +17,9 @@ pub async fn dataset_ui_test() {
     harness.run_ok();
     harness.get_by_label_contains("Add Redap server").click();
     harness.run_ok();
-    snapshot_results.add(harness.try_snapshot("dataset_ui_empty_form"));
+
+    // TODO(#10989): re-enable this snapshot when we can work around the welcome screen
+    // snapshot_results.add(harness.try_snapshot("dataset_ui_empty_form"));
 
     harness
         .get_by_role_and_label(egui::accesskit::Role::TextInput, "Host name:")
