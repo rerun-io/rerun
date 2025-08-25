@@ -7647,6 +7647,7 @@ dependencies = [
  "itertools 0.14.0",
  "nohash-hasher",
  "parking_lot",
+ "re_arrow_util",
  "re_build_info",
  "re_byte_size",
  "re_chunk",
@@ -7810,11 +7811,11 @@ dependencies = [
  "re_grpc_client",
  "re_protos",
  "re_sdk",
+ "re_server",
  "re_uri",
  "re_viewer",
  "tempfile",
  "tokio",
- "ureq",
 ]
 
 [[package]]
