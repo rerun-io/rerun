@@ -413,13 +413,13 @@ py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_
   "rerun-build-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
-# Build and install the `rerun-sdk` package with the `web_viewer` feature.
-py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends-on = [
+# Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
+py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
   "rerun-build-native-and-web", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
-# Build and install the `rerun-sdk` package with the `web_viewer` feature.
-py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends-on = [
+# Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
+py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
   "rerun-build-native-and-web-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
