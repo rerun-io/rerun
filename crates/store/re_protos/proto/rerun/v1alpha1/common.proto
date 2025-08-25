@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package rerun.common.v1alpha1;
 
+import "google/protobuf/any.proto";
+
 // TODO(cmc): aren't most of the definitions in here dead code?
 
 // supported encoder versions for encoding data
@@ -220,6 +222,26 @@ message ComponentDescriptor {
 // tasks subsystem
 message TaskId {
   string id = 1;
+}
+
+// `ChunkKey` provides chunk location details in the data store.
+message ChunkKey {
+  // where is the chunk stored (S3, local file, etc)
+  optional string location_url = 2;
+
+  // additional details about the chunk's location that are specific to the underlying data source (partition type)
+  google.protobuf.Any location_details = 3;
+}
+
+message RrdChunkLocationDetails {
+  // Chunk unique identifier
+  rerun.common.v1alpha1.Tuid chunk_id = 1;
+
+  // byte offset of the chunk within the data source
+  optional uint64 offset = 2;
+
+  // Chunk's length in bytes
+  optional uint64 length = 3;
 }
 
 // Mirrors `re_build_info::BuildInfo`.
