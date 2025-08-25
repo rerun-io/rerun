@@ -500,9 +500,9 @@ mod tests {
         // Test WebViewerUrl
         {
             // Simple - single URL parameter.
-            let url = "https://viewer.rerun.io/test?url=https://example.com/data.rrd";
+            let url = "https://foo.com/test?url=https://example.com/data.rrd";
             let expected = ViewerImportUrl::WebViewerUrl {
-                base_url: url::Url::parse("https://viewer.rerun.io/test").unwrap(),
+                base_url: url::Url::parse("https://foo.com/test").unwrap(),
                 url_parameters: vec1::vec1![ViewerImportUrl::LogDataSource(
                     LogDataSource::RrdHttpUrl {
                         url: "https://example.com/data.rrd".to_owned(),
@@ -513,9 +513,9 @@ mod tests {
             assert_eq!(ViewerImportUrl::from_str(url).unwrap(), expected);
 
             // Complex - multiple URL parameters of different typesl
-            let url = "https://viewer.rerun.io/?url=rerun://localhost:51234/catalog&url=recording://camera&url=https://example.com/data.rrd";
+            let url = "https://foo.com/?url=rerun://localhost:51234/catalog&url=recording://camera&url=https://example.com/data.rrd";
             let expected = ViewerImportUrl::WebViewerUrl {
-                base_url: url::Url::parse("https://viewer.rerun.io/").unwrap(),
+                base_url: url::Url::parse("https://foo.com/").unwrap(),
                 url_parameters: vec1::vec1![
                     ViewerImportUrl::RedapCatalog(
                         re_uri::CatalogUri::from_str("rerun://localhost:51234/catalog").unwrap()
@@ -538,8 +538,8 @@ mod tests {
         let invalid_urls = vec![
             "invalid://url",
             "recording://camera%20with%20spaces",
-            "https://viewer.rerun.io/?url=invalid_url",
-            "https://viewer.rerun.io/test?url=invalid_url",
+            "https://foo.com/?url=invalid_url",
+            "https://foo.com/test?url=invalid_url",
             "",
             "   ",
             "aaaaaaaaaaa",

@@ -93,6 +93,8 @@ pub enum UICommand {
 
     CopyTimeRangeLink,
 
+    CopyEntityHierarchy,
+
     // Graphics options:
     #[cfg(target_arch = "wasm32")]
     RestartWithWebGl,
@@ -293,6 +295,11 @@ impl UICommand {
                 "Copy a link to the part of the active recording within the loop selection bounds.",
             ),
 
+            Self::CopyEntityHierarchy => (
+                "Copy entity hierarchy",
+                "Copy the complete entity hierarchy tree of the currently active recording to the clipboard.",
+            ),
+
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGl => (
                 "Restart with WebGL",
@@ -426,6 +433,8 @@ impl UICommand {
             Self::CopyDirectLink => smallvec![],
 
             Self::CopyTimeRangeLink => smallvec![],
+
+            Self::CopyEntityHierarchy => smallvec![ctrl_shift(Key::E)],
 
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGl => smallvec![],

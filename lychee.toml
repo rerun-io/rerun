@@ -115,7 +115,8 @@ exclude = [
 
   # Intentionally faked links.
   'file://foo',
-  'http://foo.com/',
+  'http://foo.*',
+  'https://foo.*',
   'https://link.to',
   'https://rerun.rs',
   'https://static.rerun.io/my_screenshot/',
@@ -123,8 +124,7 @@ exclude = [
   'https://your-hosted-asset-url.com/re_viewer_bg.wasm',
   'file:///path/to/file',
   'rerun://localhost:51234/recording/some-recording-id',
-  'http://foo.zip',
-  'https://foo.zip',
+
   'https://redap.rerun.io',
   'http://wrong-scheme',
   'rerun\+http://localhost:\{grpc_port\}/proxy',

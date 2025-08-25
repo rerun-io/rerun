@@ -70,5 +70,5 @@ namespace rerun {
 
     namespace detail {
         rr_log_sink to_rr_log_sink(LogSink sink);
-    };
-}; // namespace rerun
+    }
+} // namespace rerun
