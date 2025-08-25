@@ -16,7 +16,7 @@ pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 /// This is the highest level way of handling arbitrary URLs inside the viewer.
 /// The only higher level way of opening URLs is `ui.ctx().open_url(...)` which will
 /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ViewerImportUrl {
     /// A URL that points to a selection (typically an entity) within the currently active recording.
     IntraRecordingSelection(Item),
@@ -102,7 +102,7 @@ impl std::str::FromStr for ViewerImportUrl {
     }
 }
 
-fn parse_webviewer_url(url: &str) -> Result<ViewerImportUrl, anyhow::Error> {
+fn parse_webviewer_url(url: &str) -> anyhow::Result<ViewerImportUrl> {
     use std::str::FromStr as _;
 
     let url = url::Url::parse(url)?;
@@ -414,6 +414,139 @@ pub fn display_mode_to_content_url(
         DisplayMode::ChunkStoreBrowser => {
             // As of writing the store browser is more of a debugging feature.
             None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr as _;
+
+    use re_data_source::LogDataSource;
+    use re_entity_db::{EntityPath, InstancePath};
+    use re_log_types::{EntryId, FileSource};
+    use re_viewer_context::Item;
+
+    use super::ViewerImportUrl;
+
+    #[test]
+    fn test_viewer_import_url_from_str() {
+        // RedapCatalog
+        {
+            let url = "rerun://localhost:51234/catalog";
+            assert_eq!(
+                ViewerImportUrl::from_str(url).unwrap(),
+                ViewerImportUrl::RedapCatalog(re_uri::CatalogUri::from_str(url).unwrap())
+            );
+        }
+        // RedapEntry
+        {
+            let entry_id = EntryId::new();
+            let url = format!("rerun://localhost:51234/entry/{entry_id}");
+            assert_eq!(
+                ViewerImportUrl::from_str(&url).unwrap(),
+                ViewerImportUrl::RedapEntry(re_uri::EntryUri::from_str(&url).unwrap())
+            );
+        }
+        // IntraRecordingSelection
+        {
+            let entity_path = EntityPath::from("camera");
+            let url = format!("recording://{entity_path}");
+            assert_eq!(
+                ViewerImportUrl::from_str(&url).unwrap(),
+                ViewerImportUrl::IntraRecordingSelection(Item::InstancePath(
+                    InstancePath::entity_all(entity_path)
+                ))
+            );
+        }
+        // WebEventListener
+        {
+            let url = "web_event:test_listener";
+            assert_eq!(
+                ViewerImportUrl::from_str(url).unwrap(),
+                ViewerImportUrl::WebEventListener("test_listener".to_owned())
+            );
+        }
+        // LogDataSource
+        {
+            // Test HTTP URL
+            let url = "https://example.com/data.rrd";
+            assert_eq!(
+                ViewerImportUrl::from_str(url).unwrap(),
+                ViewerImportUrl::LogDataSource(LogDataSource::RrdHttpUrl {
+                    url: "https://example.com/data.rrd".to_owned(),
+                    follow: false,
+                })
+            );
+
+            // Test file path (native only)
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let url = "/path/to/file.rrd";
+                assert_eq!(
+                    ViewerImportUrl::from_str(url).unwrap(),
+                    ViewerImportUrl::LogDataSource(LogDataSource::FilePath(
+                        FileSource::Uri,
+                        std::path::PathBuf::from("/path/to/file.rrd")
+                    ))
+                );
+            }
+
+            // Other variants should be sufficiently covered by `LogDataSource::from_uri` tests.
+        }
+        // Test WebViewerUrl
+        {
+            // Simple - single URL parameter.
+            let url = "https://viewer.rerun.io/test?url=https://example.com/data.rrd";
+            let expected = ViewerImportUrl::WebViewerUrl {
+                base_url: url::Url::parse("https://viewer.rerun.io/test").unwrap(),
+                url_parameters: vec1::vec1![ViewerImportUrl::LogDataSource(
+                    LogDataSource::RrdHttpUrl {
+                        url: "https://example.com/data.rrd".to_owned(),
+                        follow: false,
+                    }
+                )],
+            };
+            assert_eq!(ViewerImportUrl::from_str(url).unwrap(), expected);
+
+            // Complex - multiple URL parameters of different typesl
+            let url = "https://viewer.rerun.io/?url=rerun://localhost:51234/catalog&url=recording://camera&url=https://example.com/data.rrd";
+            let expected = ViewerImportUrl::WebViewerUrl {
+                base_url: url::Url::parse("https://viewer.rerun.io/").unwrap(),
+                url_parameters: vec1::vec1![
+                    ViewerImportUrl::RedapCatalog(
+                        re_uri::CatalogUri::from_str("rerun://localhost:51234/catalog").unwrap()
+                    ),
+                    ViewerImportUrl::IntraRecordingSelection(Item::InstancePath(
+                        InstancePath::entity_all(EntityPath::from("camera"))
+                    )),
+                    ViewerImportUrl::LogDataSource(LogDataSource::RrdHttpUrl {
+                        url: "https://example.com/data.rrd".to_owned(),
+                        follow: false,
+                    })
+                ],
+            };
+            assert_eq!(ViewerImportUrl::from_str(url).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_invalid_urls() {
+        let invalid_urls = vec![
+            "invalid://url",
+            "recording://camera%20with%20spaces",
+            "https://viewer.rerun.io/?url=invalid_url",
+            "https://viewer.rerun.io/test?url=invalid_url",
+            "",
+            "   ",
+            "aaaaaaaaaaa",
+        ];
+
+        for url in invalid_urls {
+            assert!(
+                url.parse::<ViewerImportUrl>().is_err(),
+                "Expected error for {url}"
+            );
         }
     }
 }
