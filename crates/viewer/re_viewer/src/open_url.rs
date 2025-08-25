@@ -16,7 +16,7 @@ pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 /// This is the highest level way of handling arbitrary URLs inside the viewer.
 /// The only higher level way of opening URLs is `ui.ctx().open_url(...)` which will
 /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ViewerImportUrl {
     /// A URL that points to a selection (typically an entity) within the currently active recording.
     IntraRecordingSelection(Item),
@@ -38,6 +38,18 @@ pub enum ViewerImportUrl {
     ///
     /// This is used only for legacy notebooks.
     WebEventListener(String),
+
+    /// A web viewer URL with one or more url parameters which all individually can be imported.
+    WebViewerUrl {
+        /// The base URL of the web viewer (this no longer includes any queries and fragments).
+        base_url: url::Url,
+
+        /// The url parameter(s) that can be imported individually.
+        ///
+        /// Several can be present by providing multiple `url` parameters,
+        /// but it's guaranteed to at least one if we hit this enum variant.
+        url_parameters: vec1::Vec1<ViewerImportUrl>,
+    },
 }
 
 impl std::str::FromStr for ViewerImportUrl {
@@ -52,27 +64,68 @@ impl std::str::FromStr for ViewerImportUrl {
     /// * intra-recording links (typically links to an entity)
     /// * web event listeners
     fn from_str(url: &str) -> Result<Self, Self::Err> {
+        // Catalog URI.
         if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
             Ok(Self::RedapCatalog(uri))
-        } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
+        }
+        // Entry URI.
+        else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
             Ok(Self::RedapEntry(uri))
-        } else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
+        }
+        // Intra-recording selection.
+        else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
             match selection.parse::<Item>() {
                 Ok(item) => Ok(Self::IntraRecordingSelection(item)),
                 Err(err) => {
                     anyhow::bail!("Failed to parse selection path {selection:?}: {err}")
                 }
             }
-        } else if let Some(url) = url.strip_prefix(WEB_EVENT_LISTENER_SCHEME) {
+        }
+        // Web event listener (legacy notebooks).
+        else if let Some(url) = url.strip_prefix(WEB_EVENT_LISTENER_SCHEME) {
             Ok(Self::WebEventListener(url.to_owned()))
-        } else if let Some(data_source) =
+        }
+        // Log data source.
+        else if let Some(data_source) =
             LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
         {
             Ok(Self::LogDataSource(data_source))
-        } else {
+        }
+        // Web viewer URL with `url` parameters.
+        else if let Ok(url) = parse_webviewer_url(url) {
+            Ok(url)
+        }
+        // Failed to parse.
+        else {
             anyhow::bail!("Failed to parse URL: {url}")
         }
     }
+}
+
+fn parse_webviewer_url(url: &str) -> anyhow::Result<ViewerImportUrl> {
+    use std::str::FromStr as _;
+
+    let url = url::Url::parse(url)?;
+
+    // It's rare, but there might be *several* `url` parameters.
+    let url_params = vec1::Vec1::try_from_vec(
+        url.query_pairs()
+            .filter_map(|(key, value)| (key == "url").then(|| ViewerImportUrl::from_str(&value)))
+            .collect::<anyhow::Result<Vec<_>>>()?,
+    )?;
+
+    Ok(ViewerImportUrl::WebViewerUrl {
+        base_url: base_url(&url),
+        url_parameters: url_params,
+    })
+}
+
+/// URL stripped of query and fragment.
+fn base_url(url: &url::Url) -> url::Url {
+    let mut base_url = url.clone();
+    base_url.set_query(None);
+    base_url.set_fragment(None);
+    base_url
 }
 
 impl ViewerImportUrl {
@@ -135,6 +188,41 @@ impl ViewerImportUrl {
             Self::WebEventListener(url) => {
                 handle_web_event_listener(egui_ctx, &url, command_sender);
             }
+
+            Self::WebViewerUrl {
+                base_url: _base_url,
+                url_parameters,
+            } => {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    // We _are_ a web viewer.
+                    // If the base URL doesn't match our own then that's reason for concern (==warn),
+                    // because this URL was probably meant to be opened in a different Rerun version.
+                    if let Some(window) = web_sys::window()
+                        && let Ok(location) = window.location().href()
+                        && let Ok(location) = url::Url::parse(&location)
+                    {
+                        let current_webpage_base_url = base_url(&location);
+
+                        if _base_url != current_webpage_base_url {
+                            re_log::warn!(
+                                "The base URL of the web viewer ({:?}) does not match the URL being opened ({:?}). This URL may be intended for a different Rerun version.",
+                                current_webpage_base_url.as_str(),
+                                _base_url.as_str(),
+                            );
+                        }
+                    }
+                }
+
+                for url in url_parameters {
+                    url.open(
+                        egui_ctx,
+                        follow_if_http,
+                        select_redap_source_when_loaded,
+                        command_sender,
+                    );
+                }
+            }
         }
     }
 
@@ -189,6 +277,14 @@ impl ViewerImportUrl {
             }
 
             Self::WebEventListener(_) => "Connect to web event listener".to_owned(),
+
+            Self::WebViewerUrl { url_parameters, .. } => {
+                if url_parameters.len() == 1 {
+                    url_parameters.first().open_description()
+                } else {
+                    format!("Open {} URLs", url_parameters.len())
+                }
+            }
         }
     }
 }
@@ -321,6 +417,139 @@ pub fn display_mode_to_content_url(
         DisplayMode::ChunkStoreBrowser => {
             // As of writing the store browser is more of a debugging feature.
             None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr as _;
+
+    use re_data_source::LogDataSource;
+    use re_entity_db::{EntityPath, InstancePath};
+    use re_log_types::{EntryId, FileSource};
+    use re_viewer_context::Item;
+
+    use super::ViewerImportUrl;
+
+    #[test]
+    fn test_viewer_import_url_from_str() {
+        // RedapCatalog
+        {
+            let url = "rerun://localhost:51234/catalog";
+            assert_eq!(
+                ViewerImportUrl::from_str(url).unwrap(),
+                ViewerImportUrl::RedapCatalog(re_uri::CatalogUri::from_str(url).unwrap())
+            );
+        }
+        // RedapEntry
+        {
+            let entry_id = EntryId::new();
+            let url = format!("rerun://localhost:51234/entry/{entry_id}");
+            assert_eq!(
+                ViewerImportUrl::from_str(&url).unwrap(),
+                ViewerImportUrl::RedapEntry(re_uri::EntryUri::from_str(&url).unwrap())
+            );
+        }
+        // IntraRecordingSelection
+        {
+            let entity_path = EntityPath::from("camera");
+            let url = format!("recording://{entity_path}");
+            assert_eq!(
+                ViewerImportUrl::from_str(&url).unwrap(),
+                ViewerImportUrl::IntraRecordingSelection(Item::InstancePath(
+                    InstancePath::entity_all(entity_path)
+                ))
+            );
+        }
+        // WebEventListener
+        {
+            let url = "web_event:test_listener";
+            assert_eq!(
+                ViewerImportUrl::from_str(url).unwrap(),
+                ViewerImportUrl::WebEventListener("test_listener".to_owned())
+            );
+        }
+        // LogDataSource
+        {
+            // Test HTTP URL
+            let url = "https://example.com/data.rrd";
+            assert_eq!(
+                ViewerImportUrl::from_str(url).unwrap(),
+                ViewerImportUrl::LogDataSource(LogDataSource::RrdHttpUrl {
+                    url: "https://example.com/data.rrd".to_owned(),
+                    follow: false,
+                })
+            );
+
+            // Test file path (native only)
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let url = "/path/to/file.rrd";
+                assert_eq!(
+                    ViewerImportUrl::from_str(url).unwrap(),
+                    ViewerImportUrl::LogDataSource(LogDataSource::FilePath(
+                        FileSource::Uri,
+                        std::path::PathBuf::from("/path/to/file.rrd")
+                    ))
+                );
+            }
+
+            // Other variants should be sufficiently covered by `LogDataSource::from_uri` tests.
+        }
+        // Test WebViewerUrl
+        {
+            // Simple - single URL parameter.
+            let url = "https://viewer.rerun.io/test?url=https://example.com/data.rrd";
+            let expected = ViewerImportUrl::WebViewerUrl {
+                base_url: url::Url::parse("https://viewer.rerun.io/test").unwrap(),
+                url_parameters: vec1::vec1![ViewerImportUrl::LogDataSource(
+                    LogDataSource::RrdHttpUrl {
+                        url: "https://example.com/data.rrd".to_owned(),
+                        follow: false,
+                    }
+                )],
+            };
+            assert_eq!(ViewerImportUrl::from_str(url).unwrap(), expected);
+
+            // Complex - multiple URL parameters of different typesl
+            let url = "https://viewer.rerun.io/?url=rerun://localhost:51234/catalog&url=recording://camera&url=https://example.com/data.rrd";
+            let expected = ViewerImportUrl::WebViewerUrl {
+                base_url: url::Url::parse("https://viewer.rerun.io/").unwrap(),
+                url_parameters: vec1::vec1![
+                    ViewerImportUrl::RedapCatalog(
+                        re_uri::CatalogUri::from_str("rerun://localhost:51234/catalog").unwrap()
+                    ),
+                    ViewerImportUrl::IntraRecordingSelection(Item::InstancePath(
+                        InstancePath::entity_all(EntityPath::from("camera"))
+                    )),
+                    ViewerImportUrl::LogDataSource(LogDataSource::RrdHttpUrl {
+                        url: "https://example.com/data.rrd".to_owned(),
+                        follow: false,
+                    })
+                ],
+            };
+            assert_eq!(ViewerImportUrl::from_str(url).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_invalid_urls() {
+        let invalid_urls = vec![
+            "invalid://url",
+            "recording://camera%20with%20spaces",
+            "https://viewer.rerun.io/?url=invalid_url",
+            "https://viewer.rerun.io/test?url=invalid_url",
+            "",
+            "   ",
+            "aaaaaaaaaaa",
+        ];
+
+        for url in invalid_urls {
+            assert!(
+                url.parse::<ViewerImportUrl>().is_err(),
+                "Expected error for {url}"
+            );
         }
     }
 }

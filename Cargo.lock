@@ -8962,6 +8962,8 @@ dependencies = [
  "tap",
  "thiserror 1.0.69",
  "tokio",
+ "url",
+ "vec1",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
