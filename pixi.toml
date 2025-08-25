@@ -53,7 +53,7 @@ EXECUTABLE_EXTENSION = ""
 # conflicts with vanilla`cargo build`, and running one invalidates (parts) of the other.
 # See https://github.com/rerun-io/rerun/issues/10934 for more.
 #
-# As of pixi 0.53.0, environment variable resolving doesn't work with this on Windows,
+# TODO(prefix-dev/pixi#4431): Environment variable resolving doesn't work with this on Windows,
 # which is why we have to use the `%` syntax for Windows instead of `$`.
 CARGO_TARGET_DIR = "$PIXI_PROJECT_ROOT/target_pixi"
 
