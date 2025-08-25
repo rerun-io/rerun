@@ -66,7 +66,7 @@ release_no_web_viewer = ["base", "nasm"]
 ## The features we enable when we build the pre-built binaries during our releases.
 ## These are the binaries we put in our release artifacts, and bundle in our Python wheel.
 ## This may enable features that require extra build tools that not everyone has.
-full_release = ["release_no_web_viewer", "web_viewer"]
+release_full = ["release_no_web_viewer", "web_viewer"]
 
 
 ## Support the map view.
