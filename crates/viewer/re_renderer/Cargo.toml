@@ -36,7 +36,7 @@ ignored = [
 
 
 [features]
-default = ["import-obj", "import-gltf", "import-stl"]
+default = ["import-obj", "import-gltf", "import-stl", "import-dae"]
 
 ## Support importing .obj files
 import-obj = ["dep:tobj"]
@@ -46,6 +46,9 @@ import-gltf = ["dep:gltf"]
 
 ## Support importing binary & ascii .stl files
 import-stl = ["dep:stl_io"]
+
+## Support importing .dae files
+import-dae = ["dep:dae-parser"]
 
 ## Enable (de)serialization using serde.
 serde = ["dep:serde"]
@@ -62,6 +65,7 @@ anyhow.workspace = true
 bitflags.workspace = true
 bytemuck.workspace = true
 clean-path.workspace = true
+dae-parser = { workspace = true, optional = true }
 document-features.workspace = true
 ecolor = { workspace = true, features = ["bytemuck"] }
 enumset.workspace = true
