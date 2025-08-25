@@ -7798,8 +7798,12 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_kittest",
- "insta",
+ "re_grpc_client",
+ "re_protos",
+ "re_sdk",
+ "re_uri",
  "re_viewer",
+ "tempfile",
  "tokio",
  "ureq",
 ]
@@ -8958,6 +8962,8 @@ dependencies = [
  "tap",
  "thiserror 1.0.69",
  "tokio",
+ "url",
+ "vec1",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

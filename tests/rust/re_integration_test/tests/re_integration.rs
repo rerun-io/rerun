@@ -1,27 +1,11 @@
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
-use insta::with_settings;
-use re_integration_test::{TestServer, load_test_data};
+use re_integration_test::TestServer;
 use re_viewer::viewer_test_utils;
-
-// #[test] // TODO(emilk): re-enable when they actually work
-pub fn integration_test() {
-    let server = TestServer::spawn();
-    let test_output = load_test_data(server.port()).expect("Failed to load test data");
-
-    with_settings!({
-        filters => vec![
-            (r"Re-importing rerun from: .+", "Re-importing rerun from: /fake/path"),
-        ]
-    }, {
-        insta::assert_snapshot!(test_output);
-    });
-}
 
 #[tokio::test]
 pub async fn dataset_ui_test() {
-    let server = TestServer::spawn();
-    load_test_data(server.port()).expect("Failed to load test data");
+    let server = TestServer::spawn().with_test_data().await;
 
     let mut harness = viewer_test_utils::viewer_harness();
     let mut snapshot_results = SnapshotResults::new();

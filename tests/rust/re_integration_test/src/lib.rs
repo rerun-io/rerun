@@ -1,8 +1,12 @@
 //! Integration tests for rerun and the in memory server.
 
+mod test_data;
+
 use std::net::TcpListener;
 use std::process::{Child, Command, Stdio};
 
+use re_grpc_client::{ConnectionClient, ConnectionError, ConnectionRegistry};
+use re_uri::external::url::Host;
 use ureq::OrAnyStatus as _;
 
 pub struct TestServer {
@@ -47,8 +51,29 @@ impl TestServer {
         Self { server, port }
     }
 
+    pub async fn with_test_data(self) -> Self {
+        self.add_test_data().await;
+        self
+    }
+
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    pub async fn client(&self) -> Result<ConnectionClient, ConnectionError> {
+        let origin = re_uri::Origin {
+            host: Host::Domain("localhost".to_owned()),
+            port: self.port,
+            scheme: re_uri::Scheme::RerunHttp,
+        };
+        ConnectionRegistry::new().client(origin).await
+    }
+
+    pub async fn add_test_data(&self) {
+        let client = self.client().await.expect("Failed to connect");
+        test_data::load_test_data(client)
+            .await
+            .expect("Failed to load test data");
     }
 }
 
@@ -71,38 +96,6 @@ fn get_free_port() -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to a random port");
     let addr = listener.local_addr().expect("Failed to get local address");
     addr.port()
-}
-
-/// Run `re_integration.py` to load some test data.
-pub fn load_test_data(port: u16) -> Result<String, String> {
-    let url = format!("rerun+http://localhost:{port}");
-    let mut script = Command::new("pixi");
-    script
-        .args([
-            "run",
-            "-e",
-            "py",
-            "python",
-            "tests/re_integration.py",
-            "--url",
-            &url,
-        ])
-        // Fix very silly encoding issues when printing UTF-8 on Windows while being in a commandline with different encoding.
-        .env("PYTHONIOENCODING", "utf-8");
-
-    let output = script
-        .output()
-        .expect("Failed to run re_integration.py script");
-
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let output_text = format!("{}\n\n{}", stdout.trim(), stderr.trim());
-
-    if output.status.success() {
-        Ok(output_text)
-    } else {
-        Err(output_text)
-    }
 }
 
 trait ChildExt {
