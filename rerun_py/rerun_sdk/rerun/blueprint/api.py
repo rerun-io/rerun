@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable, Mapping
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Union
 
 import rerun_bindings as bindings
 
@@ -189,12 +189,12 @@ class Container:
     def __init__(
         self,
         *args: Container | View,
-        contents: Optional[Iterable[Container | View]] = None,
+        contents: Iterable[Container | View] | None = None,
         kind: ContainerKindLike,
-        column_shares: Optional[Float32ArrayLike] = None,
-        row_shares: Optional[Float32ArrayLike] = None,
-        grid_columns: Optional[int] = None,
-        active_tab: Optional[int | str] = None,
+        column_shares: Float32ArrayLike | None = None,
+        row_shares: Float32ArrayLike | None = None,
+        grid_columns: int | None = None,
+        active_tab: int | str | None = None,
         name: Utf8Like | None,
     ) -> None:
         """

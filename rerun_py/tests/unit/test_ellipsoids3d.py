@@ -1,19 +1,10 @@
 from __future__ import annotations
 
 import itertools
-from typing import Optional, cast
+from typing import TYPE_CHECKING, Optional, cast
 
 import rerun as rr
 from rerun.components import HalfSize3DBatch, PoseRotationAxisAngleBatch, PoseRotationQuatBatch, PoseTranslation3DBatch
-from rerun.datatypes import (
-    ClassIdArrayLike,
-    Float32ArrayLike,
-    QuaternionArrayLike,
-    Rgba32ArrayLike,
-    RotationAxisAngleArrayLike,
-    Utf8ArrayLike,
-    Vec3DArrayLike,
-)
 
 from .common_arrays import (
     class_ids_arrays,
@@ -33,6 +24,17 @@ from .common_arrays import (
     vec3ds_expected as centers_expected,
     vec3ds_expected as half_sizes_expected,
 )
+
+if TYPE_CHECKING:
+    from rerun.datatypes import (
+        ClassIdArrayLike,
+        Float32ArrayLike,
+        QuaternionArrayLike,
+        Rgba32ArrayLike,
+        RotationAxisAngleArrayLike,
+        Utf8ArrayLike,
+        Vec3DArrayLike,
+    )
 
 
 def test_ellipsoids() -> None:
@@ -69,15 +71,15 @@ def test_ellipsoids() -> None:
         half_sizes = half_sizes if half_sizes is not None else half_sizes_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        half_sizes = cast(Vec3DArrayLike, half_sizes)
-        centers = cast(Vec3DArrayLike, centers)
-        rotation_axis_angles = cast(RotationAxisAngleArrayLike, rotation_axis_angles)
-        quaternions = cast(QuaternionArrayLike, quaternions)
-        line_radii = cast(Optional[Float32ArrayLike], line_radii)
-        colors = cast(Optional[Rgba32ArrayLike], colors)
-        labels = cast(Optional[Utf8ArrayLike], labels)
-        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
-        fill_mode = cast(Optional[rr.components.FillMode], fill_mode)
+        half_sizes = cast("Vec3DArrayLike", half_sizes)
+        centers = cast("Vec3DArrayLike", centers)
+        rotation_axis_angles = cast("RotationAxisAngleArrayLike", rotation_axis_angles)
+        quaternions = cast("QuaternionArrayLike", quaternions)
+        line_radii = cast("Optional[Float32ArrayLike]", line_radii)
+        colors = cast("Optional[Rgba32ArrayLike]", colors)
+        labels = cast("Optional[Utf8ArrayLike]", labels)
+        class_ids = cast("Optional[ClassIdArrayLike]", class_ids)
+        fill_mode = cast("Optional[rr.components.FillMode]", fill_mode)
 
         print(
             f"rr.Ellipsoids3D(\n"

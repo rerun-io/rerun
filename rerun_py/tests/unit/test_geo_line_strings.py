@@ -71,9 +71,9 @@ def test_geo_line_strings() -> None:
         strips = strips if strips is not None else geo_line_strings_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info through zip_longest
-        strips = cast(GeoLineStringArrayLike, strips)
-        radii = cast(Optional[Float32ArrayLike], radii)
-        colors = cast(Optional[Rgba32ArrayLike], colors)
+        strips = cast("GeoLineStringArrayLike", strips)
+        radii = cast("Optional[Float32ArrayLike]", radii)
+        colors = cast("Optional[Rgba32ArrayLike]", colors)
 
         print(f"rr.GeoLineStrings(\n    lat_lon={strips}\n    radii={radii!r}\n    colors={colors!r}\n)")
         arch = rr.GeoLineStrings(

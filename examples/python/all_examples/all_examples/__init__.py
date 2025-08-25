@@ -86,7 +86,7 @@ class Example:
         """Check that this example is compatible with the current Python version."""
         requires_python = self.standard_metadata.requires_python
         if requires_python is not None:
-            return cast(bool, requires_python.contains(platform.python_version()))
+            return cast("bool", requires_python.contains(platform.python_version()))
 
         return True
 
