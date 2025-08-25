@@ -82,3 +82,6 @@ justfile
 
 # IDE stuff
 /.idea
+
+# Lychee link checker cache
+.lycheecache

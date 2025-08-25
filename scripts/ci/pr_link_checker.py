@@ -129,7 +129,7 @@ def run_lychee(temp_files: list[str]) -> int:
     # Add all temp files
     cmd.extend(temp_files)
 
-    print(f"Running lychee on {len(temp_files)} temporary files containing added lines with links...")
+    print(f"Running lychee on {len(temp_files)} temporary files containing added lines with links…")
 
     try:
         result = subprocess.run(cmd, check=False)
