@@ -49,10 +49,10 @@ re_tracing.workspace = true
 
 ahash.workspace = true
 bit-vec.workspace = true
+cros-codecs.workspace = true
 crossbeam.workspace = true
 econtext.workspace = true
 h264-reader.workspace = true
-cros-codecs.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true
 poll-promise.workspace = true

@@ -196,27 +196,27 @@ fn codec_details_from_stds(
             let hvcc = &*hvc1_box.hvcc;
 
             for array in &hvcc.arrays {
-                if let Ok(nalu_type) = H265NaluType::try_from(array.nal_unit_type as u32) {
-                    if matches!(nalu_type, H265NaluType::SpsNut) {
-                        for nal in &array.nalus {
-                            let mut annexb = Vec::with_capacity(4 + nal.size as usize);
-                            annexb.extend_from_slice(&[0, 0, 0, 1]);
-                            annexb.extend_from_slice(&nal.data);
+                if let Ok(nalu_type) = H265NaluType::try_from(array.nal_unit_type as u32)
+                    && matches!(nalu_type, H265NaluType::SpsNut)
+                {
+                    for nal in &array.nalus {
+                        let mut annexb = Vec::with_capacity(4 + nal.size as usize);
+                        annexb.extend_from_slice(&[0, 0, 0, 1]);
+                        annexb.extend_from_slice(&nal.data);
 
-                            let mut parser = H265Parser::default();
-                            let mut rdr = Cursor::new(annexb.as_slice());
+                        let mut parser = H265Parser::default();
+                        let mut rdr = Cursor::new(annexb.as_slice());
 
-                            if let Ok(nalu) = H265Nalu::next(&mut rdr) {
-                                let sps_ref = parser
-                                    .parse_sps(&nalu)
-                                    .map_err(|_err| VideoLoadError::NoVideoTrack)?;
-                                let details = encoding_details_from_h265_sps(sps_ref);
+                        if let Ok(nalu) = H265Nalu::next(&mut rdr) {
+                            let sps_ref = parser
+                                .parse_sps(&nalu)
+                                .map_err(|_err| VideoLoadError::NoVideoTrack)?;
+                            let details = encoding_details_from_h265_sps(sps_ref);
 
-                                return Ok(VideoEncodingDetails {
-                                    stsd: Some(stsd.clone()),
-                                    ..details
-                                });
-                            }
+                            return Ok(VideoEncodingDetails {
+                                stsd: Some(stsd.clone()),
+                                ..details
+                            });
                         }
                     }
                 }
