@@ -8,10 +8,7 @@ use re_uri::external::url::Host;
 use std::net::TcpListener;
 
 pub struct TestServer {
-    /// The server needs an async function to stop properly but `AsyncDrop` still is experimental.
-    /// Tracking issue: <https://github.com/rust-lang/rust/issues/126482>
-    /// These tests just do the simple thing and drop the server handle hoping for the best.
-    _server_handle: ServerHandle,
+    server_handle: Option<ServerHandle>,
     port: u16,
 }
 
@@ -31,7 +28,7 @@ impl TestServer {
             .expect("Can't create server");
 
         Self {
-            _server_handle: server_handle,
+            server_handle: Some(server_handle),
             port,
         }
     }
@@ -59,6 +56,23 @@ impl TestServer {
         test_data::load_test_data(client)
             .await
             .expect("Failed to load test data");
+    }
+
+    pub async fn shutdown(&mut self) {
+        let server_handle = self
+            .server_handle
+            .take()
+            .expect("Server handle not initialized");
+        server_handle.shutdown().await;
+    }
+}
+
+impl Drop for TestServer {
+    fn drop(&mut self) {
+        assert!(
+            self.server_handle.is_none(),
+            "Server is still running, call `shutdown` manually."
+        );
     }
 }
 
