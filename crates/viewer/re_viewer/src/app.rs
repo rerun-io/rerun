@@ -3155,7 +3155,7 @@ fn update_web_address_bar(
     use crate::web_tools::JsResultExt as _;
 
     if let Some(history) = history().ok_or_log_js_error() {
-        // TODO(#10866): don't push if only the fragments change.
+        // TODO(#10866): Don't push if only the fragments change.
         history
             .push_entry(HistoryEntry::new(url))
             .ok_or_log_js_error();
