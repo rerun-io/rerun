@@ -1000,111 +1000,21 @@ fn write_avc_chunk_to_nalu_stream(
         state.previous_frame_was_idr = false;
     }
 
+    // Each NAL unit in mp4 is prefixed with a length prefix.
+    // In Annex B this doesn't exist.
+    let length_prefix_size = avcc.length_size_minus_one as usize + 1;
+
     // A single chunk may consist of multiple NAL units, each of which need our special treatment.
     // (most of the time it's 1:1, but there might be extra NAL units for info, especially at the start).
-    let mut buffer_offset: usize = 0;
-    let sample_end = chunk.data.len();
-    while buffer_offset < sample_end {
-        re_tracing::profile_scope!("write_nalu");
-
-        // Each NAL unit in mp4 is prefixed with a length prefix.
-        // In Annex B this doesn't exist.
-        let length_prefix_size = avcc.length_size_minus_one as usize + 1;
-
-        if sample_end < buffer_offset + length_prefix_size {
-            return Err(Error::BadVideoData(
-                "Not enough bytes to fit the length prefix".to_owned(),
-            ));
-        }
-
-        let nal_unit_size = match length_prefix_size {
-            1 => chunk.data[buffer_offset] as usize,
-
-            2 => u16::from_be_bytes(
-                #[expect(clippy::unwrap_used)] // can't fail
-                chunk.data[buffer_offset..(buffer_offset + 2)]
-                    .try_into()
-                    .unwrap(),
-            ) as usize,
-
-            4 => u32::from_be_bytes(
-                #[expect(clippy::unwrap_used)] // can't fail
-                chunk.data[buffer_offset..(buffer_offset + 4)]
-                    .try_into()
-                    .unwrap(),
-            ) as usize,
-
-            _ => {
-                return Err(Error::BadVideoData(format!(
-                    "Bad length prefix size: {length_prefix_size}"
-                )));
-            }
-        };
-
-        let data_start = buffer_offset + length_prefix_size; // Skip the size.
-        let data_end = buffer_offset + nal_unit_size + length_prefix_size;
-
-        if chunk.data.len() < data_end {
-            return Err(Error::BadVideoData(
-                "Video sample data ends with incomplete NAL unit.".to_owned(),
-            ));
-        }
-
-        // Can be useful for finding issues, but naturally very spammy.
-        // let nal_header = NalHeader(chunk.data[data_start]);
-        // re_log::trace!(
-        //     "nal_header: {:?}, {}",
-        //     nal_header.unit_type(),
-        //     nal_header.ref_idc()
-        // );
-
-        let data = &chunk.data[data_start..data_end];
-
-        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-
-        // Note that we don't have to insert "emulation prevention bytes" since mp4 NALU still use them.
-        // (unlike the NAL start code, the presentation bytes are part of the NAL spec!)
-
-        re_tracing::profile_scope!("write_bytes", data.len().to_string());
-        write_bytes(nalu_stream, data)?;
-
-        buffer_offset = data_end;
-    }
-
-    // We observed with both Mac & Windows FFMpeg 7.1 that the following block causes spurious errors with messages like:
-    // "missing picture in access unit with size 17"
-    // "no frame!"
-    // Not adding the Access Unit Delimiters makes these go away reliably
-    // (over several test runs comparing before/after with the same video material).
-    if false {
-        // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
-        // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
-        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-        write_bytes(
-            nalu_stream,
-            &[
-                // We use to use an IDC ("priority") of 3 here. But it doesn't seem to make much of a difference either way.
-                // Has also no effect on the errors describe above.
-                UnitType::AccessUnitDelimiter.id(),
-                // Two arbitrary bytes? 0000 worked as well, but this is what
-                // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
-                0xFF,
-                0x80,
-            ],
-        )?;
-    }
-
-    Ok(())
+    write_avcc_or_hevc_sample_to_annexb_stream(nalu_stream, &chunk.data, length_prefix_size)
 }
 
 fn write_hevc_chunk_to_nalu_stream(
     hvcc: &re_mp4::HevcBox,
-    out: &mut dyn std::io::Write,
+    nalu_stream: &mut dyn std::io::Write,
     chunk: &Chunk,
     state: &mut NaluStreamState,
 ) -> Result<(), Error> {
-    let nal_len_size = (hvcc.hvcc.contents.length_size_minus_one as usize & 0x03) + 1;
-
     if chunk.is_sync && !state.previous_frame_was_idr {
         let mut hvcc_ps: Vec<Vec<u8>> = Vec::new();
 
@@ -1122,34 +1032,87 @@ fn write_hevc_chunk_to_nalu_stream(
         }
 
         for ps in &hvcc_ps {
-            write_bytes(out, ANNEXB_NAL_START_CODE)?;
-            write_bytes(out, ps)?;
+            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
+            write_bytes(nalu_stream, ps)?;
         }
         state.previous_frame_was_idr = true;
     } else {
         state.previous_frame_was_idr = false;
     }
 
-    let data = &chunk.data;
-    let mut i = 0usize;
-    while i + nal_len_size <= data.len() {
-        let mut len: usize = 0;
-        for &b in &data[i..i + nal_len_size] {
-            len = (len << 8) | (b as usize);
-        }
-        i += nal_len_size;
+    // Each NAL unit in mp4 is prefixed with a length prefix.
+    // In Annex B this doesn't exist.
+    let length_prefix_size = (hvcc.hvcc.contents.length_size_minus_one as usize & 0x03) + 1;
 
-        if i + len > data.len() {
+    write_avcc_or_hevc_sample_to_annexb_stream(nalu_stream, &chunk.data, length_prefix_size)
+}
+
+fn write_avcc_or_hevc_sample_to_annexb_stream(
+    nalu_stream: &mut dyn std::io::Write,
+    data: &[u8],
+    length_prefix_size: usize,
+) -> Result<(), Error> {
+    // A single chunk/sample may consist of multiple NAL units, each of which need our special treatment.
+    // (most of the time it's 1:1, but there might be extra NAL units for info, especially at the start).
+    let mut buffer_offset: usize = 0;
+    let sample_end = data.len();
+    while buffer_offset < sample_end {
+        re_tracing::profile_scope!("write_nalu");
+
+        if sample_end < buffer_offset + length_prefix_size {
+            return Err(Error::BadVideoData(
+                "Not enough bytes to fit the length prefix".to_owned(),
+            ));
+        }
+
+        let nal_unit_size = match length_prefix_size {
+            1 => data[buffer_offset] as usize,
+
+            2 => u16::from_be_bytes(
+                #[expect(clippy::unwrap_used)] // can't fail
+                data[buffer_offset..(buffer_offset + 2)].try_into().unwrap(),
+            ) as usize,
+
+            4 => u32::from_be_bytes(
+                #[expect(clippy::unwrap_used)] // can't fail
+                data[buffer_offset..(buffer_offset + 4)].try_into().unwrap(),
+            ) as usize,
+
+            _ => {
+                return Err(Error::BadVideoData(format!(
+                    "Bad length prefix size: {length_prefix_size}"
+                )));
+            }
+        };
+
+        let data_start = buffer_offset + length_prefix_size; // Skip the size.
+        let data_end = buffer_offset + nal_unit_size + length_prefix_size;
+
+        if data.len() < data_end {
             return Err(Error::BadVideoData(
                 "Video sample data ends with incomplete NAL unit.".to_owned(),
             ));
         }
 
-        let nalu = &data[i..i + len];
-        i += len;
+        // Can be useful for finding issues, but naturally very spammy.
+        // let nal_header = NalHeader(chunk.data[data_start]);
+        // re_log::trace!(
+        //     "nal_header: {:?}, {}",
+        //     nal_header.unit_type(),
+        //     nal_header.ref_idc()
+        // );
 
-        write_bytes(out, ANNEXB_NAL_START_CODE)?;
-        write_bytes(out, nalu)?;
+        let data = &data[data_start..data_end];
+
+        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
+
+        // Note that we don't have to insert "emulation prevention bytes" since mp4 NALU still use them.
+        // (unlike the NAL start code, the presentation bytes are part of the NAL spec!)
+
+        re_tracing::profile_scope!("write_bytes", data.len().to_string());
+        write_bytes(nalu_stream, data)?;
+
+        buffer_offset = data_end;
     }
 
     Ok(())
@@ -1226,10 +1189,12 @@ enum CodecMeta {
 
 impl CodecMeta {
     fn from_stsd(stsd: &re_mp4::StsdBox) -> Option<Self> {
-        use re_mp4::StsdBoxContent::*;
+        use re_mp4::StsdBoxContent::{Avc1, Hev1, Hvc1};
+
         match &stsd.contents {
-            Avc1(avc) => Some(CodecMeta::Avc(avc.clone())),
-            Hev1(hevc) | Hvc1(hevc) => Some(CodecMeta::Hevc(hevc.clone())),
+            Avc1(avc) => Some(Self::Avc(avc.clone())),
+            Hev1(hevc) | Hvc1(hevc) => Some(Self::Hevc(hevc.clone())),
+
             _ => None,
         }
     }

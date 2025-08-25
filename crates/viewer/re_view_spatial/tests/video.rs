@@ -110,6 +110,8 @@ impl std::fmt::Display for VideoType {
     }
 }
 
+const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
+
 fn convert_avcc_sample_to_annexb(
     video_data_description: &VideoDataDescription,
     sample: &re_video::SampleMetadata,
@@ -117,8 +119,6 @@ fn convert_avcc_sample_to_annexb(
 ) -> Vec<u8> {
     // Have to convert AVCC to AnnexB.
     let mut sample_bytes = Vec::new();
-
-    const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
 
     let avcc = video_data_description
         .encoding_details
@@ -177,7 +177,6 @@ fn convert_hvcc_sample_to_annexb(
     mut raw_sample_bytes: &[u8],
 ) -> Vec<u8> {
     let mut sample_bytes = Vec::new();
-    const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
 
     // Locate hvcC
     let hevc1 = video_data_description
@@ -185,15 +184,14 @@ fn convert_hvcc_sample_to_annexb(
         .as_ref()
         .and_then(|e| e.stsd.as_ref())
         .and_then(|stsd| match &stsd.contents {
-            re_mp4::StsdBoxContent::Hvc1(h) => Some(h),
-            re_mp4::StsdBoxContent::Hev1(h) => Some(h),
+            re_mp4::StsdBoxContent::Hvc1(h) | re_mp4::StsdBoxContent::Hev1(h) => Some(h),
             _ => None,
         })
         .expect("hvcC box should be present for H.265/HEVC mp4");
 
     if sample.is_sync {
         for arr in &hevc1.hvcc.arrays {
-            if matches!(arr.nal_unit_type, 32 | 33 | 34) {
+            if arr.nal_unit_type == 32 || arr.nal_unit_type == 33 || arr.nal_unit_type == 34 {
                 for n in &arr.nalus {
                     sample_bytes.extend_from_slice(ANNEXB_NAL_START_CODE);
                     sample_bytes.extend_from_slice(&n.data);
