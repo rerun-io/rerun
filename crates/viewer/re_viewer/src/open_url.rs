@@ -136,9 +136,6 @@ impl ViewerImportUrl {
                 handle_web_event_listener(egui_ctx, &url, command_sender);
             }
         }
-
-        // All of these send commands, make sure they'll be processed.
-        egui_ctx.request_repaint();
     }
 
     pub fn command_palette_parse_url(url: &str) -> Option<CommandPaletteUrl> {

@@ -862,13 +862,17 @@ pub(crate) fn recording_config_entry<'cfgs>(
 fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &CommandSender) {
     let follow_if_http = false;
 
-    let mut urls = Vec::new();
-
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 if let Ok(url) = open_url::ViewerImportUrl::from_str(&open_url.url) {
-                    urls.push((url, open_url.new_tab));
+                    let select_redap_source_when_loaded = open_url.new_tab;
+                    url.open(
+                        egui_ctx,
+                        follow_if_http,
+                        select_redap_source_when_loaded,
+                        command_sender,
+                    );
 
                     // We handled the URL, therefore egui shouldn't do anything anymore with it.
                     return false;
@@ -880,16 +884,6 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
             true
         });
     });
-
-    for (url, new_tab) in urls {
-        let select_redap_source_when_loaded = new_tab;
-        url.open(
-            egui_ctx,
-            follow_if_http,
-            select_redap_source_when_loaded,
-            command_sender,
-        );
-    }
 }
 
 pub fn default_blueprint_panel_width(screen_width: f32) -> f32 {
