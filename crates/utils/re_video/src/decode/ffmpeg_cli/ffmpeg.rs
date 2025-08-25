@@ -979,6 +979,9 @@ fn should_ignore_log_msg(msg: &str) -> bool {
         "encoder         : ", // Describes the encoder that was used to encode a video.
         "Metadata:",
         "Stream mapping:",
+        // TODO(andreas): We see invalid IDR frames (NAL unit 5) on otherwise perfectly fine H265 video material
+        // This one might be an actual bug! But so far no issues in playback have been observed.
+        "Invalid NAL unit 5, skipping.",
         // It likes to say this a lot, almost no matter the format.
         // Some sources say this is more about internal formats, i.e. specific decoders using the wrong values, rather than the cli passed formats.
         "deprecated pixel format used, make sure you did set range correctly",
