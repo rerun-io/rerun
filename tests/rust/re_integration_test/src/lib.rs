@@ -2,53 +2,35 @@
 
 mod test_data;
 
-use std::net::TcpListener;
-use std::process::{Child, Command, Stdio};
-
 use re_grpc_client::{ConnectionClient, ConnectionError, ConnectionRegistry};
+use re_server::ServerHandle;
 use re_uri::external::url::Host;
-use ureq::OrAnyStatus as _;
+use std::net::TcpListener;
 
 pub struct TestServer {
-    server: Child,
+    server_handle: Option<ServerHandle>,
     port: u16,
 }
 
 impl TestServer {
-    pub fn spawn() -> Self {
+    pub async fn spawn() -> Self {
         // Get a random free port
         let port = get_free_port();
 
-        // First build the binary:
-        let mut build = Command::new("pixi");
-        build.args(["run", "rerun-build"]);
-        build.stdout(Stdio::null());
-        build
-            .spawn()
-            .expect("Failed to start pixi")
-            .wait_for_success();
+        let args = re_server::Args {
+            addr: "127.0.0.1".to_owned(),
+            port,
+            datasets: vec![],
+        };
+        let server_handle = args
+            .create_server_handle()
+            .await
+            .expect("Can't create server");
 
-        let cargo_target =
-            std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_owned());
-        let mut server = Command::new(format!("../../../{cargo_target}/debug/rerun"));
-        server.args(["server", "--port", &port.to_string()]);
-        eprintln!("Starting rerun server at {server:?}");
-        let server = server.spawn().expect("Failed to start rerun server");
-
-        let mut success = false;
-        for _ in 0..50 {
-            let result = ureq::get(&format!("http://localhost:{port}"))
-                .call()
-                .or_any_status();
-            if result.is_ok() {
-                success = true;
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(100));
+        Self {
+            server_handle: Some(server_handle),
+            port,
         }
-        assert!(success, "Failed to connect to rerun server");
-
-        Self { server, port }
     }
 
     pub async fn with_test_data(self) -> Self {
@@ -79,16 +61,16 @@ impl TestServer {
 
 impl Drop for TestServer {
     fn drop(&mut self) {
-        kill_and_wait(&mut self.server);
+        let server_handle = self
+            .server_handle
+            .take()
+            .expect("Server handle not initialized");
+        tokio::task::block_in_place(move || {
+            tokio::runtime::Handle::current().block_on(async move {
+                server_handle.shutdown().await;
+            });
+        });
     }
-}
-
-/// Send SIGINT and wait for the child process to exit successfully.
-pub fn kill_and_wait(child: &mut Child) {
-    if let Err(err) = child.kill() {
-        eprintln!("Failed to kill process {}: {err}", child.id());
-    }
-    child.wait().expect("Failed to wait on child process");
 }
 
 /// Get a free port from the OS.
@@ -96,20 +78,4 @@ fn get_free_port() -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to a random port");
     let addr = listener.local_addr().expect("Failed to get local address");
     addr.port()
-}
-
-trait ChildExt {
-    /// ## Panics
-    /// If the child process does not exit successfully.
-    fn wait_for_success(&mut self);
-}
-
-impl ChildExt for std::process::Child {
-    fn wait_for_success(&mut self) {
-        let status = self.wait().expect("Failed to wait on child process");
-        assert!(
-            status.success(),
-            "Child process did not exit successfully: {status:?}"
-        );
-    }
 }

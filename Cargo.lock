@@ -7802,11 +7802,11 @@ dependencies = [
  "re_grpc_client",
  "re_protos",
  "re_sdk",
+ "re_server",
  "re_uri",
  "re_viewer",
  "tempfile",
  "tokio",
- "ureq",
 ]
 
 [[package]]
