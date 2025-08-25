@@ -31,13 +31,24 @@ pub enum EncodeError {
     Codec(#[from] codec::CodecError),
 
     #[error("Chunk error: {0}")]
-    Chunk(#[from] ChunkError),
+    Chunk(Box<ChunkError>),
 
     #[error("Called append on already finished encoder")]
     AlreadyFinished,
 
     #[error("Missing field: {0}")]
     MissingField(&'static str),
+}
+
+const _: () = assert!(
+    std::mem::size_of::<EncodeError>() <= 48,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
+impl From<ChunkError> for EncodeError {
+    fn from(err: ChunkError) -> Self {
+        Self::Chunk(Box::new(err))
+    }
 }
 
 // ----------------------------------------------------------------------------

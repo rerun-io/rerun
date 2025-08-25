@@ -17,9 +17,12 @@ The Rerun command-line interface:
 **Commands**
 
 * `analytics`: Configure the behavior of our analytics.
-* `rrd`: Manipulate the contents of .rrd and .rbl files.
-* `reset`: Reset the memory of the Rerun Viewer.
+* `auth`: Authentication with the redap.
 * `man`: Generates the Rerun CLI manual (markdown).
+* `mcap`: Manipulate the contents of .mcap files.
+* `reset`: Reset the memory of the Rerun Viewer.
+* `rrd`: Manipulate the contents of .rrd and .rbl files.
+* `server`: In-memory Rerun data server.
 
 **Arguments**
 
@@ -86,15 +89,10 @@ The Rerun command-line interface:
 * `--screenshot-to <SCREENSHOT_TO>`
 > Take a screenshot of the app and quit. We use this to generate screenshots of our examples. Useful together with `--window-size`.
 
-* `--serve <SERVE>`
-> Deprecated: use `--serve-web` instead.
->
-> [Default: `false`]
-
 * `--serve-web <SERVE_WEB>`
-> This will host a web-viewer over HTTP, and a gRPC server.
+> This will host a web-viewer over HTTP, and a gRPC server, unless one or more URIs are provided that can be viewed directly in the web viewer.
 >
-> The server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
+> If started, the web server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
 >
 > Using this sets the default `--server-memory-limit` to 25% of available system memory.
 >
@@ -149,6 +147,11 @@ The Rerun command-line interface:
 > This implies `--serve-web`.
 >
 > [Default: `false`]
+
+* `--web-viewer-port <WEB_VIEWER_PORT>`
+> What port do we listen to for hosting the web viewer over HTTP. A port of 0 will pick a random port.
+>
+> [Default: `9090`]
 
 * `--hide-welcome-screen <HIDE_WELCOME_SCREEN>`
 > Hide the normal Rerun welcome screen.
@@ -230,6 +233,82 @@ Associate an email address with the current user.
 **Arguments**
 
 * `<EMAIL>`
+
+## rerun auth
+
+Authentication with the redap.
+
+**Usage**: `rerun auth <COMMAND>`
+
+**Commands**
+
+* `login`: Log into Rerun.
+* `token`: Retrieve the stored access token.
+
+## rerun auth login
+
+Log into Rerun.
+
+This command opens a page in your default browser, allowing you to log in to the Rerun data platform.
+
+Once you've logged in, your credentials are stored on your machine.
+
+To sign up, contact us through the form linked at <https://rerun.io/#open-source-vs-commercial>.
+
+**Usage**: `rerun auth login [OPTIONS]`
+
+**Options**
+
+* `--login-url <LOGIN_URL>`
+>
+> [Default: `https://rerun.io/login`]
+
+* `--no-open-browser <NO_OPEN_BROWSER>`
+> Post a link instead of directly opening in the browser.
+>
+> [Default: `false`]
+
+* `--force <FORCE>`
+> Trigger the full login flow even if valid credentials already exist.
+>
+> [Default: `false`]
+
+## rerun mcap
+
+Manipulate the contents of .mcap files.
+
+**Usage**: `rerun mcap <COMMAND>`
+
+**Commands**
+
+* `convert`: Convert an .mcap file to an .rrd.
+
+## rerun mcap convert
+
+Convert an .mcap file to an .rrd.
+
+**Usage**: `rerun mcap convert [OPTIONS] <PATH_TO_INPUT_MCAP>`
+
+**Arguments**
+
+* `<PATH_TO_INPUT_MCAP>`
+> Paths to read from. Reads from standard input if none are specified.
+
+**Options**
+
+* `-o, --output <dst.rrd>`
+> Path to write to. Writes to standard output if unspecified.
+
+* `--application-id <APPLICATION_ID>`
+> If set, specifies the application id of the output.
+
+* `-l, --layer <SELECTED_LAYERS>`
+> Specifies which layers to apply during conversion.
+
+* `--recording-id <RECORDING_ID>`
+> If set, specifies the recording id of the output.
+>
+> When this flag is set and multiple input .rdd files are specified, blueprint activation commands will be dropped from the resulting output.
 
 ## rerun rrd
 
@@ -452,8 +531,18 @@ Example: `rerun rrd print /my/recordings/*.rrd`
 
 * `--continue-on-error <CONTINUE_ON_ERROR>`
 > If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
->
-> [Default: `true`]
+
+* `--migrate <MIGRATE>`
+> Migrate chunks to latest version before printing?
+
+* `--full-metadata <FULL_METADATA>`
+> If true, includes `rerun.` prefixes on keys.
+
+* `--transposed <TRANSPOSED>`
+> Transpose record batches before printing them?
+
+* `--entity <ENTITY>`
+> Show only chunks belonging to this entity.
 
 ## rerun rrd route
 
@@ -529,3 +618,27 @@ Can be used to ensure that the current Rerun version can load the data.
 
 * `<PATH_TO_INPUT_RRDS>`
 > Paths to read from. Reads from standard input if none are specified.
+
+## rerun server
+
+In-memory Rerun data server.
+
+**Usage**: `rerun server [OPTIONS]`
+
+**Options**
+
+* `--addr <ADDR>`
+> Address to listen on.
+>
+> [Default: `0.0.0.0`]
+
+* `-p, --port <PORT>`
+> Port to bind to.
+>
+> [Default: `51234`]
+
+* `-d, --dataset <DATASETS>`
+> Load a directory of RRD as dataset (can be specified multiple times).
+
+* `-V, --version `
+> Print version.

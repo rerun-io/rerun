@@ -51,6 +51,11 @@ pub enum VideoPlayerError {
     ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
 }
 
+const _: () = assert!(
+    std::mem::size_of::<VideoPlayerError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
 impl VideoPlayerError {
     pub fn should_request_more_frames(&self) -> bool {
         // Decoders often (not always!) recover from errors and will succeed eventually.

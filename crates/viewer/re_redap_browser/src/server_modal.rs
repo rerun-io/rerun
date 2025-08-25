@@ -101,15 +101,16 @@ impl ServerModal {
 
                 ui.add_space(14.0);
 
-                ui.label("Host name:");
+                let host_label_response = ui.label("Host name:");
                 let mut host = url::Host::parse(&self.host);
 
                 if host.is_err()
                     && let Ok(url) = url::Url::parse(&self.host)
                 {
                     // Maybe the user pasted a full URL, with scheme and port?
-                    // Then handle that gracefully!
-                    if let Ok(scheme) = Scheme::from_str(url.scheme()) {
+                    // Then handle that gracefully! `from_str` requires the url
+                    // with the "://" part so we just pass the whole url.
+                    if let Ok(scheme) = Scheme::from_str(&self.host) {
                         self.scheme = scheme;
                     }
 
@@ -128,7 +129,8 @@ impl ServerModal {
                     if host.is_err() {
                         style_invalid_field(ui);
                     }
-                    ui.add(egui::TextEdit::singleline(&mut self.host).lock_focus(false));
+                    ui.add(egui::TextEdit::singleline(&mut self.host).lock_focus(false))
+                        .labelled_by(host_label_response.id);
                     self.host = self.host.trim().to_owned();
                 });
 
@@ -154,8 +156,9 @@ impl ServerModal {
 
                 ui.add_space(14.0);
 
-                ui.label("Port:");
-                ui.add(egui::DragValue::new(&mut self.port));
+                let port_label_response = ui.label("Port:");
+                ui.add(egui::DragValue::new(&mut self.port))
+                    .labelled_by(port_label_response.id);
 
                 let origin = host.map(|host| re_uri::Origin {
                     scheme: self.scheme,

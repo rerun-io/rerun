@@ -10,7 +10,7 @@ use crate::{Error, Fragment, Origin, RedapUri, TimeSelection};
 /// `partition_id` is currently mandatory, and `time_range` is optional.
 /// In the future we will add richer queries.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DatasetDataUri {
+pub struct DatasetPartitionUri {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
 
@@ -23,7 +23,7 @@ pub struct DatasetDataUri {
     pub fragment: Fragment,
 }
 
-impl std::fmt::Display for DatasetDataUri {
+impl std::fmt::Display for DatasetPartitionUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             origin,
@@ -53,7 +53,7 @@ impl std::fmt::Display for DatasetDataUri {
     }
 }
 
-impl DatasetDataUri {
+impl DatasetPartitionUri {
     pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, url: &url::Url) -> Result<Self, Error> {
         let mut partition_id = None;
         let mut time_range = None;
@@ -106,6 +106,21 @@ impl DatasetDataUri {
         self
     }
 
+    /// Returns [`Self`] without any (optional) `#fragment`.
+    pub fn without_fragment(mut self) -> Self {
+        let Self {
+            origin: _,       // Mandatory
+            dataset_id: _,   // Mandatory
+            partition_id: _, // Mandatory
+            time_range: _,
+            fragment,
+        } = &mut self;
+
+        *fragment = Default::default();
+
+        self
+    }
+
     pub fn store_id(&self) -> StoreId {
         StoreId::new(
             re_log_types::StoreKind::Recording,
@@ -115,7 +130,7 @@ impl DatasetDataUri {
     }
 }
 
-impl std::str::FromStr for DatasetDataUri {
+impl std::str::FromStr for DatasetPartitionUri {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -130,7 +145,7 @@ impl std::str::FromStr for DatasetDataUri {
 // --------------------------------
 
 // Serialize as string:
-impl serde::Serialize for DatasetDataUri {
+impl serde::Serialize for DatasetPartitionUri {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -139,7 +154,7 @@ impl serde::Serialize for DatasetDataUri {
     }
 }
 
-impl<'de> serde::Deserialize<'de> for DatasetDataUri {
+impl<'de> serde::Deserialize<'de> for DatasetPartitionUri {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,

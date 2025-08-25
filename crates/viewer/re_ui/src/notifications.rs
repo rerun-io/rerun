@@ -131,8 +131,11 @@ impl NotificationUi {
         let popup_id = notification_panel_popup_id();
 
         let is_panel_visible = egui::Popup::is_id_open(ui.ctx(), popup_id);
-        let button_response =
-            ui.medium_icon_toggle_button(&icons::NOTIFICATION, &mut is_panel_visible.clone());
+        let button_response = ui.medium_icon_toggle_button(
+            &icons::NOTIFICATION,
+            "Notification toggle",
+            &mut is_panel_visible.clone(),
+        );
 
         if let Some(level) = self.unread_notification_level {
             let pos = button_response.rect.right_top() + egui::vec2(-2.0, 2.0);

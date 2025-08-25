@@ -1,0 +1,24 @@
+[package]
+name = "re_integration_test"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+publish = false
+
+[dependencies]
+ureq.workspace = true
+
+[dev-dependencies]
+insta = { workspace = true, features = ["filters"] }
+re_viewer = { workspace = true, features = ["testing"] }
+egui_kittest.workspace = true
+egui.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true

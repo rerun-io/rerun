@@ -9,4 +9,4 @@ rr.save("/tmp/my_recording.rrd")
 
 # Log data as usual, thereby writing it into the file.
 while True:
-    rr.log("/", rr.TextLog("Logging things..."))
+    rr.log("/", rr.TextLog("Logging things…"))

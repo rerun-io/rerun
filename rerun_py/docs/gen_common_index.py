@@ -389,6 +389,12 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=["LoggingHandler", "MemoryRecording", "GrpcSink", "FileSink"],
     ),
     Section(
+        title="Catalog",
+        show_tables=False,
+        mod_path="rerun.catalog",
+        show_submodules=True,
+    ),
+    Section(
         title="Utilities",
         show_tables=False,
         mod_path="rerun.utilities",

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
+use arrow::array::RecordBatchOptions;
 use arrow::{
     array::{Array, ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 
 use re_chunk::TimelineName;
@@ -376,6 +376,7 @@ impl RegisterWithDatasetResponse {
         storage_urls: Vec<String>,
         task_ids: Vec<String>,
     ) -> arrow::error::Result<RecordBatch> {
+        let row_count = partition_ids.len();
         let schema = Arc::new(Self::schema());
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
@@ -385,7 +386,11 @@ impl RegisterWithDatasetResponse {
             Arc::new(StringArray::from(task_ids)),
         ];
 
-        RecordBatch::try_new(schema, columns)
+        RecordBatch::try_new_with_options(
+            schema,
+            columns,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
     }
 }
 
@@ -436,6 +441,7 @@ impl ScanPartitionTableResponse {
         partition_manifest_updated_ats: Vec<Option<i64>>,
         partition_manifest_urls: Vec<Option<String>>,
     ) -> arrow::error::Result<RecordBatch> {
+        let row_count = partition_ids.len();
         let schema = Arc::new(Self::schema());
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
@@ -448,7 +454,11 @@ impl ScanPartitionTableResponse {
             Arc::new(StringArray::from(partition_manifest_urls)),
         ];
 
-        RecordBatch::try_new(schema, columns)
+        RecordBatch::try_new_with_options(
+            schema,
+            columns,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
     }
 
     pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {

@@ -160,6 +160,11 @@ pub enum MeshError {
     CpuWriteGpuReadError(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
+const _: () = assert!(
+    std::mem::size_of::<MeshError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
 #[derive(Clone)]
 pub struct Material {
     pub label: DebugLabel,

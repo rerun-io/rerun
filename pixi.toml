@@ -45,6 +45,12 @@ libc = "2.28"
 
 [activation]
 
+[activation.env]
+# Put pixi builds in its own build dir, otherwise `pixi run cargo build`
+# conflicts with vanilla`cargo build`, and running one invalidates (parts) of the other.
+# See https://github.com/rerun-io/rerun/issues/10934 for more.
+CARGO_TARGET_DIR = "target_pixi"
+
 [target.unix.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ""
@@ -55,7 +61,7 @@ EXECUTABLE_EXTENSION = ".exe"
 
 # TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
 [target.osx-arm64.activation.env]
-AR = "${PIXI_PROJECT_ROOT}/.pixi/envs/default/bin/llvm-ar"
+AR = "llvm-ar"
 
 # python-dev
 
@@ -169,7 +175,7 @@ man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/conten
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --"
+rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,oss_server --"
 
 # Compile and run the rerun viewer, with performance telemetry.
 #
@@ -177,7 +183,7 @@ rerun = "cargo run --package rerun-cli --no-default-features --features map_view
 rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer"
+rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,oss_server"
 
 # Compile `rerun-cli` without the web-viewer.
 rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features map_view,nasm,native_viewer"
@@ -430,7 +436,7 @@ py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-
 
 # Build an installable wheel.
 # The wheel will contain the rerun executable including the web viewer.
-py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+py-build-wheel = { cmd = "cp target_pixi/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
 
@@ -597,7 +603,7 @@ ninja = "1.11.1.*"
 numpy = ">=2"                     # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 prettier = ">=3.6"
 pyarrow = "18.0.0.*"              # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
-pytest = ">=7"
+pytest = ">=8.4.1"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.9.6.*"
@@ -719,7 +725,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
 [feature.py-test-deps.dependencies]
 # Used for some video examples.
 # Note that it comes with its own ffmpeg, see https://pyav.basswood-io.com/docs/stable/overview/installation.html.
-av = ">=14.2.0"
+av = "==14.2.0"
 
 [feature.py-test-deps.pypi-dependencies]
 # Torch is needed to run the rerun unit tests.
@@ -764,7 +770,7 @@ umap-learn = "==0.5.7"
 
 [feature.examples-common.pypi-dependencies]
 # External deps
-av = ">=14.2.0"
+av = "==14.2.0"
 datafusion = "==47.0.0"
 jupyter = ">=1.0"
 polars = ">=0.12.0"

@@ -395,10 +395,10 @@ def detect_and_log_layouts(file_path: str) -> None:
                 page_path,
             ),
         )
-        logging.info("Sending blueprint...")
+        logging.info("Sending blueprint…")
         blueprint = generate_blueprint(layouts, processed_layouts)
         rr.send_blueprint(blueprint)
-        logging.info("Blueprint sent...")
+        logging.info("Blueprint sent…")
 
 
 def detect_and_log_layout(image_rgb: npt.NDArray[np.uint8], page_number: int) -> Layout:
@@ -416,17 +416,17 @@ def detect_and_log_layout(image_rgb: npt.NDArray[np.uint8], page_number: int) ->
     )
 
     # Paddle Model - Getting Predictions
-    logging.info("Start detection... (It usually takes more than 10-20 seconds per page)")
+    logging.info("Start detection… (It usually takes more than 10-20 seconds per page)")
     ocr_model_pp = PPStructure(show_log=False, recovery=True)
     logging.info("model loaded")
     result_pp = ocr_model_pp(image_rgb)
     _, w, _ = image_rgb.shape
     result_pp = sorted_layout_boxes(result_pp, w)
-    logging.info("Detection finished...")
+    logging.info("Detection finished…")
 
     # Add results to the layout
     layout.save_all_layouts(result_pp)
-    logging.info("All results are saved...")
+    logging.info("All results are saved…")
 
     # Recovery Text Document for the detected text
     rr.log(f"{page_path}/Recovery", rr.TextDocument(layout.recovery, media_type=rr.MediaType.MARKDOWN))

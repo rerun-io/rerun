@@ -57,7 +57,7 @@ jobs:
 
       - name: Copy rerun-cli to wheel foldcer
         run: |
-          cp target/release/rerun rerun_py/rerun_sdk/rerun_cli
+          cp target_pixi/release/rerun rerun_py/rerun_sdk/rerun_cli
 
       - name: Build the wheel
         run: |

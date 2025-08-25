@@ -368,7 +368,7 @@ pub trait ComponentDescriptorExt {
     ///
     /// Following the viewer's conventions, this also changes the archetype
     /// part of [`ComponentDescriptor::component`].
-    fn with_builtin_archetype(self, archetype: ArchetypeName) -> Self;
+    fn with_builtin_archetype(self, archetype: impl Into<ArchetypeName>) -> Self;
 
     /// Sets [`ComponentDescriptor::archetype`] to the given one iff it's not already set.
     ///
@@ -398,7 +398,8 @@ impl ComponentDescriptorExt for ComponentDescriptor {
     }
 
     #[inline]
-    fn with_builtin_archetype(mut self, archetype: ArchetypeName) -> Self {
+    fn with_builtin_archetype(mut self, archetype: impl Into<ArchetypeName>) -> Self {
+        let archetype = archetype.into();
         {
             let field_name = self.archetype_field_name();
             self.component = with_field(archetype, field_name);

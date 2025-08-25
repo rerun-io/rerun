@@ -132,7 +132,7 @@ impl ControlViewer {
                         }
                     }
 
-                    re_log::info!("Connection lost. Attempting to reconnect...");
+                    re_log::info!("Connection lost. Attempting to reconnect…");
                 }
                 Err(err) => {
                     re_log::error!(
@@ -210,7 +210,7 @@ impl ControlViewer {
             match message_option {
                 Some(message) => match message {
                     Message::Disconnect => {
-                        re_log::info!("Disconnecting...");
+                        re_log::info!("Disconnecting…");
                         break;
                     }
                     _ => {

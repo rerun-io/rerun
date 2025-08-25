@@ -587,6 +587,15 @@ impl Default for IfDuplicateBehavior {
     }
 }
 
+impl TryFrom<i32> for IfDuplicateBehavior {
+    type Error = TypeConversionError;
+
+    fn try_from(value: i32) -> Result<Self, TypeConversionError> {
+        let proto_value = crate::common::v1alpha1::IfDuplicateBehavior::try_from(value)?;
+        Ok(Self::from(proto_value))
+    }
+}
+
 impl From<crate::common::v1alpha1::IfDuplicateBehavior> for IfDuplicateBehavior {
     fn from(value: crate::common::v1alpha1::IfDuplicateBehavior) -> Self {
         use crate::common::v1alpha1 as common;

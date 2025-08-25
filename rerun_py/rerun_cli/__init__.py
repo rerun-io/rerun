@@ -27,7 +27,7 @@ real_path = pathlib.Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 print(f"DEV ENVIRONMENT DETECTED! Re-importing rerun from: {real_path}", file=sys.stderr)
 
 if "RERUN_CLI_PATH" not in os.environ:
-    target_path = pathlib.Path(__file__).parent.parent.parent.joinpath("target/debug/rerun").resolve()
+    target_path = pathlib.Path(__file__).parent.parent.parent.joinpath("target_pixi/debug/rerun").resolve()
     os.environ["RERUN_CLI_PATH"] = str(target_path)
 
 sys.path.insert(0, str(real_path))

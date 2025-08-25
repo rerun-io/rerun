@@ -39,6 +39,7 @@ re_uri.workspace = true
 anyhow.workspace = true
 itertools.workspace = true
 rayon.workspace = true
+url.workspace = true
 
 # native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
