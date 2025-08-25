@@ -22,6 +22,10 @@ pub enum ViewerImportUrl {
     IntraRecordingSelection(Item),
 
     /// A URL that points to a data source.
+    ///
+    /// Not all [`LogDataSource`]s can be opened from a URL.
+    /// For example, [`LogDataSource::FileContents`] can't be opened from a URL.
+    /// For details see [`LogDataSource::from_uri`].
     LogDataSource(LogDataSource),
 
     /// A URL that points to a redap server.
@@ -52,10 +56,6 @@ impl std::str::FromStr for ViewerImportUrl {
             Ok(Self::RedapCatalog(uri))
         } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
             Ok(Self::RedapEntry(uri))
-        } else if let Some(data_source) =
-            LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
-        {
-            Ok(Self::LogDataSource(data_source))
         } else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
             match selection.parse::<Item>() {
                 Ok(item) => Ok(Self::IntraRecordingSelection(item)),
@@ -65,6 +65,10 @@ impl std::str::FromStr for ViewerImportUrl {
             }
         } else if let Some(url) = url.strip_prefix(WEB_EVENT_LISTENER_SCHEME) {
             Ok(Self::WebEventListener(url.to_owned()))
+        } else if let Some(data_source) =
+            LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
+        {
+            Ok(Self::LogDataSource(data_source))
         } else {
             anyhow::bail!("Failed to parse URL: {url}")
         }
