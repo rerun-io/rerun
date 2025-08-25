@@ -25,9 +25,10 @@ use crate::{
         ffmpeg_cli::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
     },
     demux::ChromaSubsamplingModes,
+    h264::write_avc_chunk_to_nalu_stream,
+    h265::write_hevc_chunk_to_nalu_stream,
+    nalu::{ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError},
 };
-
-use cros_codecs::codec::h265::parser::NaluType as H265NaluType;
 
 use super::version::FFmpegVersionParseError;
 
@@ -106,13 +107,14 @@ impl From<Error> for DecodeError {
     }
 }
 
-/// In Annex-B before every NAL unit is a NAL start code.
-///
-/// This is used in Annex-B byte stream formats such as h264 files.
-/// Packet transform systems (RTP) may omit these.
-///
-/// Note that there's also a less commonly used short version with only 2 zeros: `0x00, 0x00, 0x01`.
-const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
+impl From<AnnexBStreamWriteError> for Error {
+    fn from(err: AnnexBStreamWriteError) -> Self {
+        match err {
+            AnnexBStreamWriteError::BadVideoData(msg) => Self::BadVideoData(msg),
+            AnnexBStreamWriteError::FailedToWriteToStream(err) => Self::FailedToWriteToFfmpeg(err),
+        }
+    }
+}
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
 #[derive(Clone, Debug)]
@@ -479,7 +481,7 @@ fn write_ffmpeg_input(
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
     codec_meta: &CodecMeta,
 ) {
-    let mut state = NaluStreamState::default();
+    let mut state = AnnexBStreamState::default();
 
     while let Ok(data) = frame_data_rx.recv() {
         let chunk = match data {
@@ -507,9 +509,11 @@ fn write_ffmpeg_input(
         let write_result = match codec_meta {
             CodecMeta::Avc(avcc) => {
                 write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state)
+                    .map_err(Error::from)
             }
             CodecMeta::Hevc(hvcc) => {
                 write_hevc_chunk_to_nalu_stream(hvcc, ffmpeg_stdin, &chunk, &mut state)
+                    .map_err(Error::from)
             }
             CodecMeta::RawBytestream => write_bytes(ffmpeg_stdin, &chunk.data),
         };
@@ -963,159 +967,8 @@ impl AsyncDecoder for FFmpegCliDecoder {
     }
 }
 
-#[derive(Default)]
-struct NaluStreamState {
-    previous_frame_was_idr: bool,
-}
-
 fn write_bytes(stream: &mut dyn std::io::Write, data: &[u8]) -> Result<(), Error> {
     stream.write_all(data).map_err(Error::FailedToWriteToFfmpeg)
-}
-
-fn write_avc_chunk_to_nalu_stream(
-    avcc: &re_mp4::Avc1Box,
-    nalu_stream: &mut dyn std::io::Write,
-    chunk: &Chunk,
-    state: &mut NaluStreamState,
-) -> Result<(), Error> {
-    re_tracing::profile_function!();
-
-    let avcc = &avcc.avcc;
-
-    // We expect the stream of chunks to not have any SPS (Sequence Parameter Set) & PPS (Picture Parameter Set)
-    // just as it is the case with MP4 data.
-    // In order to have every IDR frame be able to be fully re-entrant, we need to prepend the SPS & PPS NAL units.
-    // Otherwise the decoder is not able to get the necessary information about how the video stream is encoded.
-    if chunk.is_sync && !state.previous_frame_was_idr {
-        for sps in &avcc.sequence_parameter_sets {
-            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-            write_bytes(nalu_stream, &sps.bytes)?;
-        }
-        for pps in &avcc.picture_parameter_sets {
-            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-            write_bytes(nalu_stream, &pps.bytes)?;
-        }
-        state.previous_frame_was_idr = true;
-    } else {
-        state.previous_frame_was_idr = false;
-    }
-
-    // Each NAL unit in mp4 is prefixed with a length prefix.
-    // In Annex B this doesn't exist.
-    let length_prefix_size = avcc.length_size_minus_one as usize + 1;
-
-    // A single chunk may consist of multiple NAL units, each of which need our special treatment.
-    // (most of the time it's 1:1, but there might be extra NAL units for info, especially at the start).
-    write_avcc_or_hevc_sample_to_annexb_stream(nalu_stream, &chunk.data, length_prefix_size)
-}
-
-fn write_hevc_chunk_to_nalu_stream(
-    hvcc: &re_mp4::HevcBox,
-    nalu_stream: &mut dyn std::io::Write,
-    chunk: &Chunk,
-    state: &mut NaluStreamState,
-) -> Result<(), Error> {
-    if chunk.is_sync && !state.previous_frame_was_idr {
-        let mut hvcc_ps: Vec<Vec<u8>> = Vec::new();
-
-        for arr in &hvcc.hvcc.arrays {
-            if let Ok(nalu_type) = H265NaluType::try_from(arr.nal_unit_type as u32) {
-                if matches!(
-                    nalu_type,
-                    H265NaluType::VpsNut | H265NaluType::SpsNut | H265NaluType::PpsNut
-                ) {
-                    for nalu in &arr.nalus {
-                        hvcc_ps.push(nalu.data.clone());
-                    }
-                }
-            }
-        }
-
-        for ps in &hvcc_ps {
-            write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-            write_bytes(nalu_stream, ps)?;
-        }
-        state.previous_frame_was_idr = true;
-    } else {
-        state.previous_frame_was_idr = false;
-    }
-
-    // Each NAL unit in mp4 is prefixed with a length prefix.
-    // In Annex B this doesn't exist.
-    let length_prefix_size = (hvcc.hvcc.contents.length_size_minus_one as usize & 0x03) + 1;
-
-    write_avcc_or_hevc_sample_to_annexb_stream(nalu_stream, &chunk.data, length_prefix_size)
-}
-
-fn write_avcc_or_hevc_sample_to_annexb_stream(
-    nalu_stream: &mut dyn std::io::Write,
-    data: &[u8],
-    length_prefix_size: usize,
-) -> Result<(), Error> {
-    // A single chunk/sample may consist of multiple NAL units, each of which need our special treatment.
-    // (most of the time it's 1:1, but there might be extra NAL units for info, especially at the start).
-    let mut buffer_offset: usize = 0;
-    let sample_end = data.len();
-    while buffer_offset < sample_end {
-        re_tracing::profile_scope!("write_nalu");
-
-        if sample_end < buffer_offset + length_prefix_size {
-            return Err(Error::BadVideoData(
-                "Not enough bytes to fit the length prefix".to_owned(),
-            ));
-        }
-
-        let nal_unit_size = match length_prefix_size {
-            1 => data[buffer_offset] as usize,
-
-            2 => u16::from_be_bytes(
-                #[expect(clippy::unwrap_used)] // can't fail
-                data[buffer_offset..(buffer_offset + 2)].try_into().unwrap(),
-            ) as usize,
-
-            4 => u32::from_be_bytes(
-                #[expect(clippy::unwrap_used)] // can't fail
-                data[buffer_offset..(buffer_offset + 4)].try_into().unwrap(),
-            ) as usize,
-
-            _ => {
-                return Err(Error::BadVideoData(format!(
-                    "Bad length prefix size: {length_prefix_size}"
-                )));
-            }
-        };
-
-        let data_start = buffer_offset + length_prefix_size; // Skip the size.
-        let data_end = buffer_offset + nal_unit_size + length_prefix_size;
-
-        if data.len() < data_end {
-            return Err(Error::BadVideoData(
-                "Video sample data ends with incomplete NAL unit.".to_owned(),
-            ));
-        }
-
-        // Can be useful for finding issues, but naturally very spammy.
-        // let nal_header = NalHeader(chunk.data[data_start]);
-        // re_log::trace!(
-        //     "nal_header: {:?}, {}",
-        //     nal_header.unit_type(),
-        //     nal_header.ref_idc()
-        // );
-
-        let data = &data[data_start..data_end];
-
-        write_bytes(nalu_stream, ANNEXB_NAL_START_CODE)?;
-
-        // Note that we don't have to insert "emulation prevention bytes" since mp4 NALU still use them.
-        // (unlike the NAL start code, the presentation bytes are part of the NAL spec!)
-
-        re_tracing::profile_scope!("write_bytes", data.len().to_string());
-        write_bytes(nalu_stream, data)?;
-
-        buffer_offset = data_end;
-    }
-
-    Ok(())
 }
 
 /// Ignore some common output from ffmpeg.

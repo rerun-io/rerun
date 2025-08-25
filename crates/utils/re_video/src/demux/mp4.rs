@@ -209,7 +209,7 @@ fn codec_details_from_stds(
                             if let Ok(nalu) = H265Nalu::next(&mut rdr) {
                                 let sps_ref = parser
                                     .parse_sps(&nalu)
-                                    .map_err(|_| VideoLoadError::NoVideoTrack)?;
+                                    .map_err(|_err| VideoLoadError::NoVideoTrack)?;
                                 let details = encoding_details_from_h265_sps(sps_ref);
 
                                 return Ok(VideoEncodingDetails {

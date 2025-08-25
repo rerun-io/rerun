@@ -96,10 +96,6 @@ pub use ffmpeg_cli::{
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
-mod gop_detection;
-
-pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
-
 use crate::{SampleIndex, Time, VideoDataDescription};
 
 #[derive(thiserror::Error, Debug, Clone)]
