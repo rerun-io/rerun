@@ -35,12 +35,14 @@ doc = false
 ## so we have all the bells and wistles here, except those that may require extra tools
 ## (like "nasm").
 ## That is: `cargo install rerun-cli --locked` should work for _everyone_.
-default = ["native_viewer", "web_viewer", "map_view"]
+default = ["web_viewer", "base"]
 
+## Our base feature set, included in `default` and in `release`, but excludes the web viewer.
+base = ["native_viewer", "map_view", "oss_server"]
 
 # !!!IMPORTANT!!!
 #
-# Do you _really_ want to add features in `release` that are not in `default`?
+# Do you _really_ want to add features in `release_no_web_viewer` that are not in `base`?
 #
 # Here are some reasons not to:
 # - These features will be missing from the `cargo install rerun-cli --locked` command our users will inevitably use.
@@ -56,9 +58,15 @@ default = ["native_viewer", "web_viewer", "map_view"]
 # warning with instructions is printed when building `rerun-cli` in release mode without the `nasm` feature (see
 # `build.rs`).
 
-## The features we enable when we build the pre-built binaries during our releases.
+## The features we enable when we build the pre-built binaries during our releases,
+## but excluding the web viewer.
 ## This may enable features that require extra build tools that not everyone has.
-release = ["default", "nasm"]
+release_no_web_viewer = ["base", "nasm"]
+
+## The features we enable when we build the pre-built binaries during our releases.
+## These are the binaries we put in our release artifacts, and bundle in our Python wheel.
+## This may enable features that require extra build tools that not everyone has.
+release_full = ["release_no_web_viewer", "web_viewer"]
 
 
 ## Support the map view.
