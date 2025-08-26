@@ -9137,9 +9137,7 @@ name = "re_protos_builder"
 version = "0.26.0-alpha.1+dev"
 dependencies = [
  "camino",
- "prost-build 0.14.1",
  "re_log",
- "tonic-build",
  "tonic-prost-build",
 ]
 
