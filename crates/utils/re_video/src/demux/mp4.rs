@@ -6,7 +6,7 @@ use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadErro
 
 use crate::{
     StableIndexDeque, Time, Timescale,
-    demux::{ChromaSubsamplingModes, SamplesStatistics, VideoEncodingDetails, VideoUpdateType},
+    demux::{ChromaSubsamplingModes, SamplesStatistics, VideoDeliveryMethod, VideoEncodingDetails},
     h264::encoding_details_from_h264_sps,
     h265::encoding_details_from_h265_sps,
     nalu::ANNEXB_NAL_START_CODE,
@@ -144,7 +144,7 @@ impl VideoDataDescription {
             codec,
             encoding_details: Some(codec_details_from_stds(track, stsd)?),
             timescale: Some(timescale),
-            update_type: VideoUpdateType::NoUpdates {
+            delivery_method: VideoDeliveryMethod::Static {
                 duration: Time::new(track.duration as i64),
             },
             samples_statistics,

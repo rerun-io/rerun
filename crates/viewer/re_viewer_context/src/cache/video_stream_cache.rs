@@ -252,7 +252,7 @@ fn load_video_data_from_chunks(
         codec,
         encoding_details: None, // Unknown so far, we'll find out later.
         timescale: timescale_for_timeline(store, timeline),
-        update_type: re_video::VideoUpdateType::Stream {
+        delivery_method: re_video::VideoDeliveryMethod::Stream {
             last_time_updated_samples: Instant::now(),
         },
         gops: StableIndexDeque::new(),
@@ -580,7 +580,7 @@ impl Cache for VideoStreamCache {
                     video_sample_buffers,
                 } = &mut *video_stream;
                 let video_data = video_renderer.data_descr_mut();
-                video_data.update_type = re_video::VideoUpdateType::Stream {
+                video_data.delivery_method = re_video::VideoDeliveryMethod::Stream {
                     last_time_updated_samples: Instant::now(),
                 };
 
@@ -776,7 +776,7 @@ mod tests {
             codec,
             encoding_details,
             timescale,
-            update_type,
+            delivery_method: update_type,
             gops,
             samples,
             samples_statistics,
@@ -787,7 +787,7 @@ mod tests {
         assert_eq!(timescale, None); // Sequence timeline doesn't have a timescale.
         assert!(matches!(
             update_type,
-            re_video::VideoUpdateType::Stream { .. }
+            re_video::VideoDeliveryMethod::Stream { .. }
         )); // Open ended video.
         assert_eq!(samples_statistics, re_video::SamplesStatistics::NO_BFRAMES);
         assert!(mp4_tracks.is_empty());

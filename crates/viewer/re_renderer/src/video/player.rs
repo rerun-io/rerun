@@ -3,7 +3,7 @@ use std::time::Duration;
 use web_time::Instant;
 
 use re_video::{
-    DecodeSettings, FrameInfo, GopIndex, SampleIndex, StableIndexDeque, Time, VideoUpdateType,
+    DecodeSettings, FrameInfo, GopIndex, SampleIndex, StableIndexDeque, Time, VideoDeliveryMethod,
 };
 
 use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
@@ -634,9 +634,9 @@ fn treat_video_as_finite(
     // If this is a potentially live stream, signal the end of the video after a certain amount of time.
     // This helps decoders to flush out any pending frames.
     // (in particular the ffmpeg-executable based decoder profits from this as it tends to not emit the last 5~10 frames otherwise)
-    match &video_description.update_type {
-        VideoUpdateType::NoUpdates { .. } => true,
-        VideoUpdateType::Stream {
+    match &video_description.delivery_method {
+        VideoDeliveryMethod::Static { .. } => true,
+        VideoDeliveryMethod::Stream {
             last_time_updated_samples,
         } => last_time_updated_samples.elapsed() > config.time_until_video_assumed_ended,
     }

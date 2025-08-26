@@ -21,8 +21,8 @@ pub use self::decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmp
 
 pub use demux::{
     ChromaSubsamplingModes, GopIndex, GroupOfPictures, SampleIndex, SampleMetadata,
-    SamplesStatistics, VideoCodec, VideoDataDescription, VideoEncodingDetails, VideoLoadError,
-    VideoUpdateType,
+    SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails,
+    VideoLoadError,
 };
 
 // AnnexB conversions are useful for testing.

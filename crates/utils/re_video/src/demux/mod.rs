@@ -115,13 +115,13 @@ pub type GopIndex = usize;
 /// Index used for referencing into [`VideoDataDescription::samples`].
 pub type SampleIndex = usize;
 
-/// Distinguishes finate videos from video streams.
+/// Distinguishes static videos from potentially ongoing video streams.
 #[derive(Clone)]
-pub enum VideoUpdateType {
-    /// A finite video with a known duration which won't be updated further.
-    NoUpdates { duration: Time },
+pub enum VideoDeliveryMethod {
+    /// A static video with a fixed, known duration which won't be updated further.
+    Static { duration: Time },
 
-    /// A stream that may be periodically updated.
+    /// A stream that *may* be periodically updated.
     ///
     /// Video streams may drop samples at the beginning and add new samples at the end.
     /// The last sample's duration is treated as unknown.
@@ -160,7 +160,7 @@ pub struct VideoDataDescription {
     pub timescale: Option<Timescale>,
 
     /// Whether this is a finite video or a stream.
-    pub update_type: VideoUpdateType,
+    pub delivery_method: VideoDeliveryMethod,
 
     /// We split video into GOPs, each beginning with a key frame,
     /// followed by any number of delta frames.
@@ -197,7 +197,7 @@ impl re_byte_size::SizeBytes for VideoDataDescription {
             codec: _,
             encoding_details: _,
             timescale: _,
-            update_type: _,
+            delivery_method: _,
             gops,
             samples,
             samples_statistics,
@@ -512,10 +512,10 @@ impl VideoDataDescription {
     /// For videos that may still grow this is an estimate of the video length so far.
     /// (we don't know for sure how long the last sample is going to be)
     pub fn duration(&self) -> Option<std::time::Duration> {
-        match &self.update_type {
-            VideoUpdateType::NoUpdates { duration } => Some(duration.duration(self.timescale?)),
+        match &self.delivery_method {
+            VideoDeliveryMethod::Static { duration } => Some(duration.duration(self.timescale?)),
 
-            VideoUpdateType::Stream { .. } => {
+            VideoDeliveryMethod::Stream { .. } => {
                 if self.samples.num_elements() < 2 {
                     return None;
                 }
