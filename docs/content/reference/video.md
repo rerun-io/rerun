@@ -46,7 +46,7 @@ Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/lat
 Current limitations of `VideoStream`:
 * [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
   This can cause increased latency and in some cases may even stop video playback.
-* [#10184](https://github.com/rerun-io/rerun/issues/10184), [#10185](https://github.com/rerun-io/rerun/issues/10185), [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../reference/types/archetypes/video_stream.md) only supports H.264 at this point.
+* [#10184](https://github.com/rerun-io/rerun/issues/10184), [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../reference/types/archetypes/video_stream.md) only supports H.264 & H.265 at this point.
 * [#10090](https://github.com/rerun-io/rerun/issues/10090): B-frames are not yet supported for [`VideoStream`](../reference/types/archetypes/video_stream.md).
 * [#10422](https://github.com/rerun-io/rerun/issues/10422): [`VideoFrameReference`](../reference/types/archetypes/video_frame_reference.md) does not yet work with [`VideoStream`](../reference/types/archetypes/video_stream.md).
 
@@ -54,7 +54,6 @@ Current limitations of `VideoStream`:
 Discoverable for scripts/zombie_todos.py:
 TODO(#9815): fix above if ticket is outdated.
 TODO(#10184): fix above if ticket is outdated.
-TODO(#10185): fix above if ticket is outdated.
 TODO(#10186): fix above if ticket is outdated.
 TODO(#10090): fix above if ticket is outdated.
 TODO(#10422): fix above if ticket is outdated.
@@ -95,7 +94,7 @@ Codec support varies in the web & native viewer:
 | ---------- | ------- | ------ |
 | AV1        | ✅       | 🟧      |
 | H.264/avc  | ✅       | ✅      |
-| H.265/hevc | 🟧       | ❌      |
+| H.265/hevc | 🟧       | ✅      |
 | VP9        | ✅       | ❌      |
 
 <!--
@@ -128,9 +127,9 @@ TODO(#7755): fix above if ticket is outdated.
 TODO(#10184): fix above if ticket is outdated.
 -->
 
-#### H.264/avc
+#### H.264/avc & H.265/hevc
 
-H.264/avc is supported via a separately installed `FFmpeg` binary, requiring a minimum version of `5.1`.
+H.264/avc and H.265/hevc are supported via a separately installed `FFmpeg` binary, requiring a minimum version of `5.1`.
 
 The viewer does intentionally not come bundled with `FFmpeg` to avoid licensing issues.
 By default rerun will look for a system installed `FFmpeg` installation in `PATH`,

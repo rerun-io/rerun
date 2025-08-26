@@ -1,11 +1,13 @@
 use egui_kittest::Harness;
 use re_build_info::build_info;
-use re_viewer::{
-    App, AsyncRuntimeHandle, MainThreadToken, StartupOptions, customize_eframe_and_setup_renderer,
+
+use crate::{
+    App, AppEnvironment, AsyncRuntimeHandle, MainThreadToken, StartupOptions,
+    customize_eframe_and_setup_renderer,
 };
 
 /// Convenience function for creating a kittest harness of the viewer App.
-pub fn viewer_harness() -> Harness<'static, re_viewer::App> {
+pub fn viewer_harness() -> Harness<'static, App> {
     Harness::builder()
         .wgpu()
         .with_size(egui::vec2(1500., 1000.))
@@ -15,7 +17,7 @@ pub fn viewer_harness() -> Harness<'static, re_viewer::App> {
             let mut app = App::new(
                 MainThreadToken::i_promise_i_am_only_using_this_for_a_test(),
                 build_info!(),
-                re_viewer::AppEnvironment::Test,
+                AppEnvironment::Test,
                 StartupOptions::default(),
                 cc,
                 None,
@@ -31,12 +33,13 @@ pub fn viewer_harness() -> Harness<'static, re_viewer::App> {
 
 /// Steps through the harness until the `predicate` closure returns `true`.
 pub async fn step_until<'app, 'harness, Predicate>(
-    harness: &'harness mut egui_kittest::Harness<'app, re_viewer::App>,
+    test_description: &'static str,
+    harness: &'harness mut egui_kittest::Harness<'app, App>,
     mut predicate: Predicate,
     step_duration: tokio::time::Duration,
     max_duration: tokio::time::Duration,
 ) where
-    Predicate: for<'a> FnMut(&'a egui_kittest::Harness<'app, re_viewer::App>) -> bool,
+    Predicate: for<'a> FnMut(&'a egui_kittest::Harness<'app, App>) -> bool,
 {
     let start_time = std::time::Instant::now();
     let mut success = predicate(harness);
@@ -46,5 +49,20 @@ pub async fn step_until<'app, 'harness, Predicate>(
         harness.step();
         success = predicate(harness);
     }
-    assert!(success, "Timed out waiting for predicate to be true.");
+
+    if !success {
+        // Take a screenshot of the state of the harness if we failed the test.
+        // This is invaluable for debugging test failures.
+        let snapshot_path = "tests/failures";
+        harness
+            .try_snapshot_options(
+                test_description,
+                &egui_kittest::SnapshotOptions::default().output_path(snapshot_path),
+            )
+            .ok();
+
+        panic!(
+            "Timed out waiting for predicate to be true for {test_description:?}. A screenshot of the harness has been saved to `{snapshot_path}/{test_description}.new.png`."
+        );
+    }
 }

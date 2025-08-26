@@ -77,14 +77,10 @@ enum ExternalError {
     TokenError(#[from] re_auth::TokenError),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<ExternalError>() <= 64,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<ExternalError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<ExternalError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 macro_rules! impl_from_boxed {
     ($external_type:ty, $variant:ident) => {

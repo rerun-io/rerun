@@ -74,14 +74,10 @@ pub enum ViewSystemExecutionError {
     ViewBuilderError(#[from] re_renderer::view_builder::ViewBuilderError),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<ViewSystemExecutionError>() <= 64,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<ViewSystemExecutionError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<ViewSystemExecutionError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 // Convenience conversions for some re_renderer error types since these are so frequent.
 

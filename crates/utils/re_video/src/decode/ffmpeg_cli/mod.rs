@@ -1,7 +1,7 @@
 mod ffmpeg;
 mod version;
 
-pub use ffmpeg::{Error, FFmpegCliH264Decoder};
+pub use ffmpeg::{Error, FFmpegCliDecoder};
 pub use version::{
     FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
     FFmpegVersionParseError,

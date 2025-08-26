@@ -8,7 +8,7 @@ A binary blob of data.
 
 ## Arrow datatype
 ```
-List<uint8>
+binary
 ```
 
 ## API reference links

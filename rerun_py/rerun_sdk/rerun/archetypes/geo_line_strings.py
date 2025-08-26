@@ -23,7 +23,7 @@ __all__ = ["GeoLineStrings"]
 @define(str=False, repr=False, init=False)
 class GeoLineStrings(GeoLineStringsExt, Archetype):
     """
-    **Archetype**: Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
+    **Archetype**: Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
 
     Also known as "line strips" or "polylines".
 

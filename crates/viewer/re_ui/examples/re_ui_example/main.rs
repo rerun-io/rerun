@@ -4,11 +4,11 @@ mod right_panel;
 
 use egui::{Modifiers, os};
 use re_ui::{
-    CommandPalette, ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
-    filter_widget::FilterState, list_item,
+    CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
+    IconText, UICommand, UICommandSender, UiExt as _,
+    filter_widget::{FilterState, format_matching_text},
+    icons, list_item, notifications,
 };
-use re_ui::{IconText, filter_widget::format_matching_text};
-use re_ui::{icons, notifications};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -366,8 +366,13 @@ impl eframe::App for ExampleApp {
                 tabs_ui(ui, &mut self.tree);
             });
 
-        if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.command_sender.send_ui(cmd);
+        if let Some(cmd) = self.cmd_palette.show(egui_ctx, &parse_url) {
+            match cmd {
+                CommandPaletteAction::UiCommand(cmd) => self.command_sender.send_ui(cmd),
+                CommandPaletteAction::OpenUrl(url) => {
+                    egui_ctx.open_url(egui::OpenUrl::new_tab(url.url));
+                }
+            }
         }
         if let Some(cmd) = re_ui::UICommand::listen_for_kb_shortcut(egui_ctx) {
             self.command_sender.send_ui(cmd);
@@ -396,6 +401,13 @@ impl eframe::App for ExampleApp {
             }
         }
     }
+}
+
+fn parse_url(url: &str) -> Option<CommandPaletteUrl> {
+    url.starts_with("http").then(|| CommandPaletteUrl {
+        url: url.to_owned(),
+        command_text: "Open http(s) URL".to_owned(),
+    })
 }
 
 impl ExampleApp {
@@ -451,14 +463,17 @@ impl ExampleApp {
 
             ui.medium_icon_toggle_button(
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                "Selection panel toggle",
                 &mut self.show_right_panel,
             );
             ui.medium_icon_toggle_button(
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                "Time panel toggle",
                 &mut self.show_bottom_panel,
             );
             ui.medium_icon_toggle_button(
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
+                "Blueprint panel toggle",
                 &mut self.show_left_panel,
             );
 

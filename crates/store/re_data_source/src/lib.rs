@@ -20,7 +20,7 @@ pub use self::data_source::LogDataSource;
 /// This is what you get when loading a file on Web, or when using drag-n-drop.
 //
 // TODO(#4554): drag-n-drop streaming support
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FileContents {
     pub name: String,
     pub bytes: std::sync::Arc<[u8]>,

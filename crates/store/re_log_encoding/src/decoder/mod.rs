@@ -100,14 +100,10 @@ pub enum DecodeError {
     Codec(#[from] codec::CodecError),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<DecodeError>() <= 64,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<DecodeError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<DecodeError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 impl From<re_protos::TypeConversionError> for DecodeError {
     fn from(value: re_protos::TypeConversionError) -> Self {

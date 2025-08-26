@@ -93,6 +93,8 @@ pub enum UICommand {
 
     CopyTimeRangeLink,
 
+    CopyEntityHierarchy,
+
     // Graphics options:
     #[cfg(target_arch = "wasm32")]
     RestartWithWebGl,
@@ -134,7 +136,7 @@ impl UICommand {
                 "Open any supported files (.rrd, images, meshes, …) in a new recording",
             ),
             Self::Import => (
-                "Import…",
+                "Import into current recording…",
                 "Import any supported files (.rrd, images, meshes, …) in the current recording",
             ),
 
@@ -293,6 +295,11 @@ impl UICommand {
                 "Copy a link to the part of the active recording within the loop selection bounds.",
             ),
 
+            Self::CopyEntityHierarchy => (
+                "Copy entity hierarchy",
+                "Copy the complete entity hierarchy tree of the currently active recording to the clipboard.",
+            ),
+
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGl => (
                 "Restart with WebGL",
@@ -305,7 +312,7 @@ impl UICommand {
             ),
 
             Self::AddRedapServer => (
-                "Add Redap server",
+                "Add Redap server…",
                 "Connect to a Redap server (experimental)",
             ),
         }
@@ -427,6 +434,8 @@ impl UICommand {
 
             Self::CopyTimeRangeLink => smallvec![],
 
+            Self::CopyEntityHierarchy => smallvec![ctrl_shift(Key::E)],
+
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGl => smallvec![],
             #[cfg(target_arch = "wasm32")]
@@ -495,6 +504,8 @@ impl UICommand {
         egui_ctx.input_mut(|input| {
             for (kb_shortcut, command) in commands {
                 if input.consume_shortcut(&kb_shortcut) {
+                    // Clear the shortcut key from input to prevent it from propagating to other UI component.
+                    input.keys_down.remove(&kb_shortcut.logical_key);
                     return Some(command);
                 }
             }

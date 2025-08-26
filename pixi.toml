@@ -45,19 +45,24 @@ libc = "2.28"
 
 [activation]
 
-[activation.env]
-# Put pixi builds in its own build dir, otherwise `pixi run cargo build`
-# conflicts with vanilla`cargo build`, and running one invalidates (parts) of the other.
-# See https://github.com/rerun-io/rerun/issues/10934 for more.
-CARGO_TARGET_DIR = "target_pixi"
-
 [target.unix.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ""
 
+# Put pixi builds in its own build dir, otherwise `pixi run cargo build`
+# conflicts with vanilla`cargo build`, and running one invalidates (parts) of the other.
+# See https://github.com/rerun-io/rerun/issues/10934 for more.
+#
+# TODO(prefix-dev/pixi#4431): Environment variable resolving doesn't work with this on Windows,
+# which is why we have to use the `%` syntax for Windows instead of `$`.
+CARGO_TARGET_DIR = "$PIXI_PROJECT_ROOT/target_pixi"
+
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
+
+# See `target.unix.activation.env`.
+CARGO_TARGET_DIR = "%PIXI_PROJECT_ROOT%/target_pixi"
 
 # TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
 [target.osx-arm64.activation.env]
@@ -175,36 +180,36 @@ man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/conten
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,oss_server --"
+rerun = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --"
 
 # Compile and run the rerun viewer, with performance telemetry.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --"
+rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,perf_telemetry --"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer"
+rerun-build = "cargo build --package rerun-cli --no-default-features --features release_no_web_viewer"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features map_view,nasm,native_viewer"
+rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features release_no_web_viewer"
 
 # Compile and run the rerun viewer with --release.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-release = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --release --"
+rerun-release = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --release --"
 
 # Compile and run the rerun viewer in release, with performance telemetry.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-perf = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --release --"
+rerun-perf = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,perf_telemetry --release --"
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
-rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends-on = [
+rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release_full --", depends-on = [
   "rerun-build-web",
 ] }
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
-rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release --release --", depends-on = [
+rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release_full --release --", depends-on = [
   "rerun-build-web-release",
 ] }
 
@@ -413,13 +418,13 @@ py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_
   "rerun-build-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
-# Build and install the `rerun-sdk` package with the `web_viewer` feature.
-py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends-on = [
+# Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
+py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
   "rerun-build-native-and-web", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
-# Build and install the `rerun-sdk` package with the `web_viewer` feature.
-py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends-on = [
+# Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
+py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
   "rerun-build-native-and-web-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
@@ -732,6 +737,8 @@ av = "==14.2.0"
 # This dependency is here to get torch into the pixi cache because it's large and installing it
 # during the wheel-test task itself is otherwise painful.
 torch = "==2.8.0" # This must match the torch version in any package we install during `wheel-test`
+# DataFusion is needed to run integration tests, but it is an optional dependency for rerun sdk
+datafusion = "==47.0.0"
 
 [feature.wheel-test.dependencies]
 pip = ">=23"

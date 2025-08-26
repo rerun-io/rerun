@@ -107,18 +107,20 @@ fn top_bar_ui(
             if let Some(latency_snapshot) = latency_snapshot {
                 // Should we show the e2e latency?
 
-                // High enough to be consering; low enough to be believable (and almost realtime).
+                // High enough to be concerning; low enough to be believable (and almost realtime).
                 let is_latency_interesting = latency_snapshot
                     .e2e
                     .is_some_and(|e2e| app.app_options().warn_e2e_latency < e2e && e2e < 60.0);
 
-                // Avoid flicker by showing the latency for 1 seconds ince it was last deemned interesting:
-
+                // Avoid flicker by showing the latency for 1 second since it was last deemed interesting:
                 if is_latency_interesting {
-                    app.latest_latency_interest = web_time::Instant::now();
+                    app.latest_latency_interest = Some(web_time::Instant::now());
                 }
 
-                if app.latest_latency_interest.elapsed().as_secs_f32() < 1.0 {
+                if app
+                    .latest_latency_interest
+                    .is_some_and(|instant| instant.elapsed().as_secs_f32() < 1.0)
+                {
                     ui.separator();
                     latency_snapshot_button_ui(ui, latency_snapshot);
                 }
@@ -334,14 +336,14 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
-        let icon = if app.is_fullscreen_mode() {
-            &re_ui::icons::MINIMIZE
+        let (icon, label) = if app.is_fullscreen_mode() {
+            (&re_ui::icons::MINIMIZE, "Minimize")
         } else {
-            &re_ui::icons::MAXIMIZE
+            (&re_ui::icons::MAXIMIZE, "Maximize")
         };
 
         if ui
-            .medium_icon_toggle_button(icon, &mut true)
+            .medium_icon_toggle_button(icon, label, &mut true)
             .on_hover_text("Toggle fullscreen")
             .clicked()
         {
@@ -354,6 +356,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                "Selection panel toggle",
                 &mut app_blueprint.selection_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
@@ -367,6 +370,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                "Time panel toggle",
                 &mut app_blueprint.time_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
@@ -380,6 +384,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
+                "Blueprint panel toggle",
                 &mut app_blueprint.blueprint_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))

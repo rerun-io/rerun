@@ -12,6 +12,7 @@ members = [
   "run_wasm",
   "tests/rust/log_benchmark",
   "tests/rust/plot_dashboard_stress",
+  "tests/rust/re_integration_test",
   "tests/rust/roundtrips/*",
   "tests/rust/test_*",
 ]
@@ -214,6 +215,7 @@ console_error_panic_hook = "0.1.6"
 const_format = "0.2"
 convert_case = "0.6"
 criterion = "0.5"
+cros-codecs = "0.0.6"
 crossbeam = "0.8"
 datafusion = { version = "47", default-features = false }
 datafusion-ffi = "47"

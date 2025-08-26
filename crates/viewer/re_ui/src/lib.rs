@@ -28,7 +28,7 @@ use egui::NumExt as _;
 
 pub use self::{
     command::{UICommand, UICommandSender},
-    command_palette::CommandPalette,
+    command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl},
     context_ext::ContextExt,
     design_tokens::{DesignTokens, TableStyle},
     help::*,
