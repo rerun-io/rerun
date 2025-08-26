@@ -507,41 +507,49 @@ impl VideoDataDescription {
         self.samples.num_elements()
     }
 
-    /// Duration of the video.
+    /// Duration of all present samples.
     ///
-    /// For videos that may still grow this is an estimate of the video length so far.
-    /// (we don't know for sure how long the last sample is going to be)
+    /// Returns `None` iff the video has no timescale.
+    /// Other special cases like zero samples or single sample with unknown duration will return a zero duration.
+    ///
+    /// Since this is only about present samples and not historical or future data,
+    /// the duration may shrink as samples are dropped and grow as new samples are added.
+    // TODO(andreas): This makes it somewhat unsuitable for various usecases in the viewer. We should probably accumulate the max duration somewhere.
     pub fn duration(&self) -> Option<std::time::Duration> {
-        match &self.delivery_method {
-            VideoDeliveryMethod::Static { duration } => Some(duration.duration(self.timescale?)),
+        let timescale = self.timescale?;
+
+        Some(match &self.delivery_method {
+            VideoDeliveryMethod::Static { duration } => duration.duration(timescale),
 
             VideoDeliveryMethod::Stream { .. } => {
-                if self.samples.num_elements() < 2 {
-                    return None;
+                if self.samples.is_empty() {
+                    std::time::Duration::ZERO
+                } else if self.samples.num_elements() == 1 {
+                    let first = self.samples.front()?;
+                    first
+                        .duration
+                        .map_or(std::time::Duration::ZERO, |d| d.duration(timescale))
+                } else {
+                    // TODO(#10090): This is only correct because there's no b-frames on streams right now.
+                    // If there are b-frames determining the last timestamp is a bit more complicated.
+                    let first = self.samples.front()?;
+                    let last = self.samples.back()?;
+
+                    let last_sample_duration = last.duration.map_or_else(
+                        || {
+                            // Use average duration of all samples so far.
+                            (last.presentation_timestamp - first.presentation_timestamp)
+                                .duration(timescale)
+                                / (last.frame_nr - first.frame_nr)
+                        },
+                        |d| d.duration(timescale),
+                    );
+
+                    (last.presentation_timestamp - first.presentation_timestamp).duration(timescale)
+                        + last_sample_duration
                 }
-
-                // TODO(#10090): This is only correct because there's no b-frames on streams right now.
-                // If there are b-frames determining the last timestamp is a bit more complicated.
-                let first_sample = self.samples.front()?;
-                let last_sample = self.samples.back()?;
-                let timescale = self.timescale?;
-
-                // Estimate length of the last sample:
-                let second_to_last_sample = self
-                    .samples
-                    .get(self.samples.next_index().saturating_sub(2))?;
-                let estimated_average_sample_duration = (last_sample.presentation_timestamp
-                    - second_to_last_sample.presentation_timestamp)
-                    .duration(timescale)
-                    / (self.num_samples() - 1) as u32;
-
-                Some(
-                    (last_sample.presentation_timestamp - first_sample.presentation_timestamp)
-                        .duration(timescale)
-                        + estimated_average_sample_duration,
-                )
             }
-        }
+        })
     }
 
     /// `num_frames / duration`.
