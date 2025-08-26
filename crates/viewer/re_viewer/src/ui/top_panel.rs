@@ -127,7 +127,7 @@ fn top_bar_ui(
             }
         }
 
-        if !app.app_env().is_test() {
+        if cfg!(debug_assertions) && !app.app_env().is_test() {
             multi_pass_warning_dot_ui(ui);
         }
 
