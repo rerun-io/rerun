@@ -110,7 +110,9 @@ impl crate::sink::LogSink for WebViewerSink {
         self.sender
             .flush_blocking(timeout)
             .map_err(|err| match err {
-                re_smart_channel::FlushError::Closed => FlushError::Closed,
+                re_smart_channel::FlushError::Closed => {
+                    FlushError::failed("The viewer is no longer subscribed")
+                }
                 re_smart_channel::FlushError::Timeout => FlushError::Timeout,
             })
     }

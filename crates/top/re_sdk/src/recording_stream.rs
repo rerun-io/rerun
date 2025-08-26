@@ -1905,10 +1905,9 @@ impl RecordingStream {
         re_tracing::profile_function!();
 
         if self.is_forked_child() {
-            re_log::error_once!(
-                "Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
-            );
-            return Err(FlushError::Closed);
+            return Err(FlushError::failed(
+                "Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the Rerun SDK.",
+            ));
         }
 
         let f = move |inner: &RecordingStreamInner| -> Result<(), FlushError> {
@@ -1921,7 +1920,7 @@ impl RecordingStream {
                 .batcher
                 .flush_blocking(Duration::MAX)
                 .map_err(|err| match err {
-                    re_chunk::FlushError::Closed => FlushError::Closed,
+                    re_chunk::FlushError::Closed => FlushError::failed(err.to_string()),
                     re_chunk::FlushError::Timeout => FlushError::Timeout,
                 })?;
 
@@ -1929,19 +1928,26 @@ impl RecordingStream {
             inner
                 .cmds_tx
                 .send(Command::PopPendingChunks)
-                .map_err(|_ignored| FlushError::Closed)?;
+                .map_err(|_ignored| {
+                    FlushError::failed(
+                        "Sink shut down prematurely. This is likely a bug in the Rerun SDK.",
+                    )
+                })?;
 
             // 3. Asynchronously flush everything down the sink
             let (cmd, on_done) = Command::flush(Duration::MAX); // The background thread should block forever if necessary
-            inner
-                .cmds_tx
-                .send(cmd)
-                .map_err(|_ignored| FlushError::Closed)?;
+            inner.cmds_tx.send(cmd).map_err(|_ignored| {
+                FlushError::failed(
+                    "Sink shut down prematurely. This is likely a bug in the Rerun SDK.",
+                )
+            })?;
 
             if let Some(timeout) = timeout {
                 on_done.recv_timeout(timeout).map_err(|err| match err {
                     crossbeam::channel::RecvTimeoutError::Timeout => FlushError::Timeout,
-                    crossbeam::channel::RecvTimeoutError::Disconnected => FlushError::Closed,
+                    crossbeam::channel::RecvTimeoutError::Disconnected => FlushError::failed(
+                        "Flush never finished. This is likely a bug in the Rerun SDK.",
+                    ),
                 })??;
             }
 

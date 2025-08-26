@@ -82,7 +82,9 @@ impl crate::sink::LogSink for GrpcServerSink {
         self.sender
             .flush_blocking(timeout)
             .map_err(|err| match err {
-                re_smart_channel::FlushError::Closed => crate::sink::FlushError::Closed,
+                re_smart_channel::FlushError::Closed => crate::sink::FlushError::failed(
+                    "gRPC thread shut down prematurely. This is likely a bug in the Rerun SDK.",
+                ),
                 re_smart_channel::FlushError::Timeout => crate::sink::FlushError::Timeout,
             })
     }

@@ -12,13 +12,25 @@ use crate::RecordingStream;
 /// An error that can occur when flushing.
 #[derive(Debug, thiserror::Error)]
 pub enum FlushError {
-    /// Sink closed before flushing completed
-    #[error("Sink closed before flushing completed")]
-    Closed,
-
     /// Flush timed out - not all log messages were sent
     #[error("Flush timed out - not all log messages were sent")]
     Timeout,
+
+    /// Custom error occurred
+    #[error("{message}")]
+    Failed {
+        /// Details
+        message: String,
+    },
+}
+
+impl FlushError {
+    /// Custom error occurred
+    pub fn failed(message: impl Into<String>) -> Self {
+        Self::Failed {
+            message: message.into(),
+        }
+    }
 }
 
 /// Where the SDK sends its log messages.
@@ -564,7 +576,9 @@ impl LogSink for GrpcSink {
         self.client
             .flush_blocking(timeout)
             .map_err(|err| match err {
-                re_grpc_client::message_proxy::write::FlushError::Closed => FlushError::Closed,
+                re_grpc_client::message_proxy::write::FlushError::Closed => FlushError::failed(
+                    "gRPC thread shut down prematurely. This is likely a bug in the Rerun SDK.",
+                ),
                 re_grpc_client::message_proxy::write::FlushError::Timeout => FlushError::Timeout,
             })
     }

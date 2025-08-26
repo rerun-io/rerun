@@ -63,7 +63,7 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
     #[inline]
     fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), sink::FlushError> {
         Self::flush_blocking(self, timeout).map_err(|err| match err {
-            re_log_encoding::FlushError::Closed => sink::FlushError::Closed,
+            re_log_encoding::FlushError::Failed { message } => sink::FlushError::Failed { message },
             re_log_encoding::FlushError::Timeout => sink::FlushError::Timeout,
         })
     }
