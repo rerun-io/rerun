@@ -3,12 +3,12 @@
 #![allow(clippy::too_many_arguments)] // We used named arguments, so this is fine
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
-use core::time;
 use std::{
     borrow::Borrow as _,
     io::IsTerminal as _,
     path::PathBuf,
     sync::{LazyLock, OnceLock},
+    time::Duration,
 };
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
@@ -26,7 +26,7 @@ use re_log_types::{LogMsg, RecordingId};
 use re_sdk::{
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell,
     external::re_log_encoding::encoder::encode_ref_as_bytes_local,
-    sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage},
+    sink::{BinaryStreamStorage, CallbackSink, FlushError, MemorySinkStorage},
     time::TimePoint,
 };
 #[cfg(feature = "web_viewer")]
@@ -257,16 +257,16 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 // --- Init ---
 /// Flush and then cleanup any orphaned recordings.
 #[pyfunction]
-fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) {
+fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
     // Start by clearing the current global data recording. Otherwise this holds
     // a reference to the recording, which prevents it from being dropped.
     set_global_data_recording(py, None);
 
-    py.allow_threads(|| {
+    py.allow_threads(|| -> Result<(), FlushError> {
         // Now flush all recordings to handle weird cases where the data in the queue
         // is actually holding onto the ref to the recording.
         for recording in all_recordings().iter() {
-            recording.flush_blocking();
+            recording.flush_blocking()?;
         }
 
         // Flush the garbage queue.
@@ -275,21 +275,24 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) {
         // Finally remove any recordings that have a refcount of 1, which means they are ONLY
         // referenced by the `all_recordings` list and thus can't be referred to by the Python SDK.
         all_recordings().retain(|recording| recording.ref_count() > 1);
-    });
+
+        Ok(())
+    })
+    .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
 #[derive(FromPyObject)]
 enum DurationLike {
     Int(i64),
     Float(f64),
-    Duration(time::Duration),
+    Duration(Duration),
 }
 
 impl DurationLike {
-    fn into_duration(self) -> time::Duration {
+    fn into_duration(self) -> Duration {
         match self {
-            Self::Int(i) => time::Duration::from_secs(i as u64),
-            Self::Float(f) => time::Duration::from_secs_f64(f),
+            Self::Int(i) => Duration::from_secs(i as u64),
+            Self::Float(f) => Duration::from_secs_f64(f),
             Self::Duration(d) => d,
         }
     }
@@ -358,7 +361,7 @@ impl PyChunkBatcherConfig {
     /// Duration of the periodic tick.
     ///
     /// Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
-    fn get_flush_tick(&self) -> time::Duration {
+    fn get_flush_tick(&self) -> Duration {
         self.0.flush_tick
     }
 
@@ -935,11 +938,7 @@ fn set_sinks(
     for sink in sinks {
         if let Ok(sink) = sink.downcast_bound::<PyGrpcSink>(py) {
             let sink = sink.get();
-            let sink = re_sdk::sink::GrpcSink::new(
-                sink.uri.clone(),
-                sink.flush_timeout_sec
-                    .map(std::time::Duration::from_secs_f32),
-            );
+            let sink = re_sdk::sink::GrpcSink::new(sink.uri.clone());
             resolved_sinks.push(Box::new(sink));
         } else if let Ok(sink) = sink.downcast_bound::<PyFileSink>(py) {
             let sink = sink.get();
@@ -971,10 +970,9 @@ fn set_sinks(
 
 /// Connect the recording stream to a remote Rerun Viewer on the given URL.
 #[pyfunction]
-#[pyo3(signature = (url, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32(), default_blueprint = None, recording = None))]
+#[pyo3(signature = (url, default_blueprint = None, recording = None))]
 fn connect_grpc(
     url: Option<String>,
-    flush_timeout_sec: Option<f32>,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
@@ -994,10 +992,7 @@ fn connect_grpc(
     }
 
     py.allow_threads(|| {
-        let sink = re_sdk::sink::GrpcSink::new(
-            uri,
-            flush_timeout_sec.map(std::time::Duration::from_secs_f32),
-        );
+        let sink = re_sdk::sink::GrpcSink::new(uri);
 
         if let Some(default_blueprint) = default_blueprint {
             send_mem_sink_as_default_blueprint(&sink, default_blueprint);
@@ -1026,9 +1021,11 @@ fn connect_grpc_blueprint(
     if let Some(blueprint_id) = blueprint_stream.store_info().map(|info| info.store_id) {
         // The call to save, needs to flush.
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        py.allow_threads(|| {
+        py.allow_threads(|| -> PyResult<()> {
             // Flush all the pending blueprint messages before we include the Ready message
-            blueprint_stream.flush_blocking();
+            blueprint_stream
+                .flush_blocking()
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let activation_cmd = BlueprintActivationCommand {
                 blueprint_id,
@@ -1039,7 +1036,7 @@ fn connect_grpc_blueprint(
             blueprint_stream.record_msg(activation_cmd.into());
 
             blueprint_stream
-                .connect_grpc_opts(url, None)
+                .connect_grpc_opts(url)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             flush_garbage_queue();
             Ok(())
@@ -1100,9 +1097,11 @@ fn save_blueprint(
     if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
         // The call to save, needs to flush.
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        py.allow_threads(|| {
+        py.allow_threads(|| -> PyResult<_> {
             // Flush all the pending blueprint messages before we include the Ready message
-            blueprint_stream.flush_blocking();
+            blueprint_stream
+                .flush_blocking()
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let activation_cmd = BlueprintActivationCommand::make_active(blueprint_id.clone());
 
@@ -1216,34 +1215,39 @@ fn set_callback_sink_blueprint(
     make_default: bool,
     blueprint_stream: &PyRecordingStream,
     py: Python<'_>,
-) {
-    if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
-        let callback = move |msgs: &[LogMsg]| {
-            Python::with_gil(|py| {
-                let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
-                let bytes = PyBytes::new(py, &data);
-                callback.bind(py).call1((bytes,)).ok_or_log_error()?;
-                Some(())
-            });
+) -> PyResult<()> {
+    let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) else {
+        return Ok(());
+    };
+
+    let callback = move |msgs: &[LogMsg]| {
+        Python::with_gil(|py| {
+            let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
+            let bytes = PyBytes::new(py, &data);
+            callback.bind(py).call1((bytes,)).ok_or_log_error()?;
+            Some(())
+        });
+    };
+
+    // The call to `set_sink` may internally flush.
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    py.allow_threads(|| -> PyResult<()> {
+        blueprint_stream
+            .flush_blocking()
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+        let activation_cmd = BlueprintActivationCommand {
+            blueprint_id,
+            make_active,
+            make_default,
         };
 
-        // The call to `set_sink` may internally flush.
-        // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        py.allow_threads(|| {
-            blueprint_stream.flush_blocking();
+        blueprint_stream.record_msg(activation_cmd.into());
 
-            let activation_cmd = BlueprintActivationCommand {
-                blueprint_id,
-                make_active,
-                make_default,
-            };
-
-            blueprint_stream.record_msg(activation_cmd.into());
-
-            blueprint_stream.set_sink(Box::new(CallbackSink::new(callback)));
-            flush_garbage_queue();
-        });
-    }
+        blueprint_stream.set_sink(Box::new(CallbackSink::new(callback)));
+        flush_garbage_queue();
+        Ok(())
+    })
 }
 
 /// Create a new binary stream sink, and return the associated binary stream.
@@ -1343,30 +1347,53 @@ impl PyBinarySinkStorage {
     /// Read the bytes from the binary sink.
     ///
     /// If `flush` is `true`, the sink will be flushed before reading.
-    #[pyo3(signature = (*, flush = true))]
-    fn read<'p>(&self, flush: bool, py: Python<'p>) -> Option<Bound<'p, PyBytes>> {
+    #[pyo3(signature = (*, flush = true, flush_timeout_sec = f32::INFINITY))]
+    fn read<'p>(
+        &self,
+        py: Python<'p>,
+        flush: bool,
+        flush_timeout_sec: f32,
+    ) -> PyResult<Option<Bound<'p, PyBytes>>> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        py.allow_threads(|| {
+        py.allow_threads(|| -> PyResult<_> {
             if flush {
-                self.inner.flush_blocking();
+                let timeout = timeout_from_sec(flush_timeout_sec)?;
+                self.inner
+                    .flush_blocking(timeout)
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             }
 
             let bytes = self.inner.read();
 
             flush_garbage_queue();
 
-            bytes
+            Ok(bytes)
         })
-        .map(|bytes| PyBytes::new(py, &bytes))
+        .map(|bytes| bytes.map(|bytes| PyBytes::new(py, &bytes)))
     }
 
     /// Flush the binary sink manually.
-    fn flush(&self, py: Python<'_>) {
+    #[pyo3(signature = (*, timeout_sec = f32::INFINITY))]
+    fn flush(&self, py: Python<'_>, timeout_sec: f32) -> PyResult<()> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        py.allow_threads(|| {
-            self.inner.flush_blocking();
+        py.allow_threads(|| -> PyResult<_> {
+            let timeout = timeout_from_sec(timeout_sec)?;
+            self.inner
+                .flush_blocking(timeout)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             flush_garbage_queue();
-        });
+            Ok(())
+        })
+    }
+}
+
+fn timeout_from_sec(seconds: f32) -> PyResult<Duration> {
+    if seconds.is_nan() {
+        Err(PyRuntimeError::new_err("timeout_sec must not be NaN"))
+    } else if seconds < 0.0 {
+        Err(PyRuntimeError::new_err("timeout_sec must be non-negative"))
+    } else {
+        Ok(Duration::try_from_secs_f32(seconds).unwrap_or(Duration::MAX))
     }
 }
 
@@ -1537,19 +1564,22 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
 /// Block until outstanding data has been flushed to the sink.
 #[pyfunction]
 #[pyo3(signature = (blocking, recording=None))]
-fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) {
+fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
+
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
-    py.allow_threads(|| {
+    py.allow_threads(|| -> Result<(), FlushError> {
         if blocking {
-            recording.flush_blocking();
+            recording.flush_blocking()?;
         } else {
-            recording.flush_async();
+            recording.flush_async()?;
         }
         flush_garbage_queue();
-    });
+        Ok(())
+    })
+    .map_err(|err: FlushError| PyRuntimeError::new_err(err.to_string()))
 }
 
 // --- Components ---

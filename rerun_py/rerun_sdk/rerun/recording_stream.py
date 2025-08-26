@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextvars
 import functools
 import inspect
+import math
 import uuid
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
@@ -1404,7 +1405,7 @@ class BinaryStream:
     def __init__(self, storage: bindings.PyBinarySinkStorage) -> None:
         self.storage = storage
 
-    def read(self, *, flush: bool = True) -> bytes | None:
+    def read(self, *, flush: bool = True, flush_timeout_sec: float = math.inf) -> bytes | None:
         """
         Reads the available bytes from the stream.
 
@@ -1414,17 +1415,27 @@ class BinaryStream:
         ----------
         flush:
             If true (default), the stream will be flushed before reading.
+        flush_timeout_sec:
+            If flush is set, wait at most this many seconds.
+            If the timeout is reached, an error is raised.
 
         """
-        return self.storage.read(flush=flush)  # type: ignore[no-any-return]
+        return self.storage.read(flush=flush, flush_timeout_sec=flush_timeout_sec)  # type: ignore[no-any-return]
 
-    def flush(self) -> None:
+    def flush(self, timeout_sec: float = math.inf) -> None:
         """
         Flushes the recording stream and ensures that all logged messages have been encoded into the stream.
 
         This will block until the flush is complete.
+
+        Parameters
+        ----------
+        timeout_sec:
+            Wait at most this many seconds.
+            If the timeout is reached, an error is raised.
+
         """
-        self.storage.flush()
+        self.storage.flush(timeout_sec=timeout_sec)
 
 
 # ---

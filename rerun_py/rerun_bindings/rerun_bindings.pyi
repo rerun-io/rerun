@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime, timedelta
@@ -750,14 +751,34 @@ class PyMemorySinkStorage:
         """
 
 class PyBinarySinkStorage:
-    def read(self, *, flush: bool = True) -> bytes | None:
+    def read(self, *, flush: bool = True, flush_timeout_sec: float = math.inf) -> bytes | None:
         """
         Read the bytes from the binary sink.
 
         If `flush` is `true`, the sink will be flushed before reading.
+
+        Parameters
+        ----------
+        flush:
+            If true (default), the stream will be flushed before reading.
+        flush_timeout_sec:
+            If flush is set, wait at most this many seconds.
+            If the timeout is reached, an error is raised.
+
         """
-    def flush(self) -> None:
-        """Flush the binary sink manually."""
+    def flush(self, timeout_sec: float = math.inf) -> None:
+        """
+        Flushes the binary siunk and ensures that all logged messages have been encoded into the stream.
+
+        This will block until the flush is complete.
+
+        Parameters
+        ----------
+        timeout_sec:
+            Wait at most this many seconds.
+            If the timeout is reached, an error is raised.
+
+        """
 
 #
 # init
