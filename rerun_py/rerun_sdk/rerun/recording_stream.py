@@ -549,7 +549,6 @@ class RecordingStream:
         self,
         url: str | None = None,
         *,
-        flush_timeout_sec: float | None = 2.0,
         default_blueprint: BlueprintLike | None = None,
     ) -> None:
         """
@@ -566,10 +565,6 @@ class RecordingStream:
             and the pathname must be `/proxy`.
 
             The default is `rerun+http://127.0.0.1:9876/proxy`.
-        flush_timeout_sec:
-            The minimum time the SDK will wait during a flush before potentially
-            dropping data if progress is not being made. Passing `None` indicates no timeout,
-            and can cause a call to `flush` to block indefinitely.
         default_blueprint
             Optionally set a default blueprint to use for this application. If the application
             already has an active blueprint, the new blueprint won't become active until the user
@@ -580,7 +575,7 @@ class RecordingStream:
 
         from .sinks import connect_grpc
 
-        connect_grpc(url, flush_timeout_sec=flush_timeout_sec, default_blueprint=default_blueprint, recording=self)
+        connect_grpc(url, default_blueprint=default_blueprint, recording=self)
 
     def save(self, path: str | Path, default_blueprint: BlueprintLike | None = None) -> None:
         """

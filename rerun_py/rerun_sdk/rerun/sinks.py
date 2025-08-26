@@ -119,7 +119,6 @@ def set_sinks(
 def connect_grpc(
     url: str | None = None,
     *,
-    flush_timeout_sec: float | None = 2.0,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
@@ -174,7 +173,6 @@ def connect_grpc(
 
     bindings.connect_grpc(
         url=url,
-        flush_timeout_sec=flush_timeout_sec,
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
     )
