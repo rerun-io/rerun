@@ -122,7 +122,7 @@ def run_lychee(temp_files: list[str]) -> int:
         "--cache",
         "--max-cache-age",
         "1d",
-        "--base",
+        "--base-url",
         ".",
     ]
 

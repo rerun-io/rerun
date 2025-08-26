@@ -267,7 +267,7 @@ jobs:
         if: ${{ inputs.CHANNEL == 'pr' }}
         run: |
           # Install lychee
-          curl -sSL https://github.com/lycheeverse/lychee/releases/download/v0.15.1/lychee-v0.15.1-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+          curl -sSL https://github.com/lycheeverse/lychee/releases/download/lychee-v0.20.1/lychee-x86_64-unknown-linux-gnu.tar.gz | tar -xz
           sudo mv lychee /usr/local/bin/
 
           # Fetch the base branch
@@ -283,7 +283,7 @@ jobs:
         uses: lycheeverse/lychee-action@v1.10.0
         with:
           fail: true
-          lycheeVersion: "0.15.1"
+          lycheeVersion: "0.20.1"
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
           # Pass --verbose, so that all considered links are printed, making it easier to debug.
           args: |
