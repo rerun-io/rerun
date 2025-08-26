@@ -21,6 +21,10 @@ The flush will block until either it completes, fails, or the timeout is reached
 
 Previously this could only be configured for gRPC sinks, and it was configured once then first connecting.
 
+In the C and Python APIs, negative timeouts used to have special meaning. Now they are no longer permitted.
+
+The Python flush calls now raises an error if the flushing did not complete successfully.
+
 
 ## Changed arrow encoding of blobs
 We used to encode blobs as `List<uint8>`, which was rather unidiomatic.

@@ -225,7 +225,7 @@ namespace rerun {
         ///
         /// \param timeout_sec The minimum time the SDK will wait during a flush before potentially
         /// dropping data if progress is not being made. If you pass in FLT_MAX or infinity,
-        /// the function will block forever.
+        /// the function will block until it either succeeds or fails.
         ///
         /// Returns an error if we fail to flush all previously sent log messages.
         ///
