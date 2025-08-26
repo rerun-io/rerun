@@ -97,6 +97,12 @@ def create_temp_files(lines_by_ext: dict[str, list[str]]) -> list[str]:
             with os.fdopen(fd, "w") as f:
                 for line in lines:
                     f.write(line + "\n")
+
+            # TODO(lycheeverse/lychee#972): Windows absolute paths don't work.
+            # But looks like UNC paths work!
+            if sys.platform == "win32":
+                temp_path = "\\\\.\\" + temp_path
+
             temp_files.append(temp_path)
         except Exception:
             os.unlink(temp_path)
@@ -133,6 +139,13 @@ def run_lychee(temp_files: list[str]) -> int:
 
     try:
         result = subprocess.run(cmd, check=False)
+
+        if result.returncode != 0:
+            print()
+            print("An error occurred while running lychee.")
+            print("Full command:")
+            print(" ".join(cmd))
+
         return result.returncode
     except FileNotFoundError:
         print("Error: lychee not found. Please install lychee.", file=sys.stderr)
@@ -141,11 +154,12 @@ def run_lychee(temp_files: list[str]) -> int:
 
 def cleanup_temp_files(temp_files: list[str]) -> None:
     """Clean up temporary files."""
-    for temp_file in temp_files:
-        try:
-            os.unlink(temp_file)
-        except OSError:
-            pass
+    pass
+    # for temp_file in temp_files:
+    #     try:
+    #         os.unlink(temp_file)
+    #     except OSError:
+    #         pass
 
 
 def main() -> int:
