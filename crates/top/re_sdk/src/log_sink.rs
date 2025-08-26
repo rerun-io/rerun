@@ -576,9 +576,9 @@ impl LogSink for GrpcSink {
         self.client
             .flush_blocking(timeout)
             .map_err(|err| match err {
-                re_grpc_client::message_proxy::write::FlushError::Closed => FlushError::failed(
-                    "gRPC thread shut down prematurely. This is likely a bug in the Rerun SDK.",
-                ),
+                re_grpc_client::message_proxy::write::FlushError::Closed => {
+                    FlushError::failed(err.to_string())
+                }
                 re_grpc_client::message_proxy::write::FlushError::Timeout => FlushError::Timeout,
             })
     }
