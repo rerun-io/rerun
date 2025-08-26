@@ -88,11 +88,6 @@ runs:
         gcs_bucket: rerun-sccache
         gcs_read_only: false
 
-    - name: Display sccache config
-      shell: bash
-      run: |
-        cat $HOME/.config/sccache/config
-
     - name: Verify sccache
       shell: bash
       run: |
