@@ -32,7 +32,7 @@ pub enum FlushError {
 
 enum Cmd {
     LogMsg(LogMsg),
-    Flush(oneshot::Sender<()>),
+    Flush { on_done: oneshot::Sender<()> },
 }
 
 #[derive(Clone)]
@@ -141,7 +141,7 @@ impl Client {
         use tokio::sync::oneshot::error::TryRecvError;
 
         let (tx, mut rx) = oneshot::channel();
-        if self.cmd_tx.send(Cmd::Flush(tx)).is_err() {
+        if self.cmd_tx.send(Cmd::Flush { on_done: tx }).is_err() {
             re_log::debug!("Flush failed: already shut down.");
             return Err(FlushError::Closed);
         }
@@ -284,11 +284,11 @@ async fn message_proxy_client(
                             yield msg;
                         }
 
-                        Some(Cmd::Flush(tx)) => {
+                        Some(Cmd::Flush { on_done }) => {
                             // Messages are received in order, so once we receive a `flush`
                             // we know we've sent all messages before that flush through already.
                             re_log::debug!("Flush requested");
-                            if tx.send(()).is_err() {
+                            if on_done.send(()).is_err() {
                                 // Flush channel may already be closed for non-blocking flush, so this isn't an error.
                                 re_log::debug!("Failed to respond to flush: flush report channel was closed");
                                 break;

@@ -1033,6 +1033,8 @@ impl RecordingStreamInner {
 
 type InspectSinkFn = Box<dyn FnOnce(&dyn LogSink) + Send + 'static>;
 
+type FlushResult = Result<(), FlushError>;
+
 enum Command {
     RecordMsg(LogMsg),
     SwapSink {
@@ -1042,7 +1044,7 @@ enum Command {
     // TODO(#10444): This should go away with more explicit sinks.
     InspectSink(InspectSinkFn),
     Flush {
-        tx: Sender<()>,
+        on_done: Sender<FlushResult>,
         timeout: Duration,
     },
     PopPendingChunks,
@@ -1050,9 +1052,9 @@ enum Command {
 }
 
 impl Command {
-    fn flush(timeout: Duration) -> (Self, Receiver<()>) {
-        let (tx, rx) = crossbeam::channel::bounded(0); // oneshot
-        (Self::Flush { tx, timeout }, rx)
+    fn flush(timeout: Duration) -> (Self, Receiver<FlushResult>) {
+        let (on_done, rx) = crossbeam::channel::bounded(0); // oneshot
+        (Self::Flush { on_done, timeout }, rx)
     }
 }
 
@@ -1553,16 +1555,21 @@ fn forwarding_thread(
             Command::InspectSink(f) => {
                 f(sink.as_ref());
             }
-            Command::Flush { tx, timeout } => {
+            Command::Flush { on_done, timeout } => {
                 re_log::trace!("Flushing…");
 
                 // Flush the underlying sink if possible.
                 sink.drop_if_disconnected();
-                if let Err(err) = sink.flush_blocking(timeout) {
+
+                let result = sink.flush_blocking(timeout);
+
+                // Send back the result:
+                if let Err(crossbeam::channel::SendError(result)) = on_done.send(result)
+                    && let Err(err) = result
+                {
+                    // There was an error, and nobody received it:
                     re_log::error!("Failed to flush sink: {err}");
                 }
-
-                drop(tx); // signals the oneshot
             }
             Command::PopPendingChunks => {
                 // Wake up and skip the current iteration so that we can drain all pending chunks
@@ -1925,17 +1932,17 @@ impl RecordingStream {
                 .map_err(|_ignored| FlushError::Closed)?;
 
             // 3. Asynchronously flush everything down the sink
-            let (cmd, oneshot) = Command::flush(Duration::MAX); // The background thread should block forever if necessary
+            let (cmd, on_done) = Command::flush(Duration::MAX); // The background thread should block forever if necessary
             inner
                 .cmds_tx
                 .send(cmd)
                 .map_err(|_ignored| FlushError::Closed)?;
 
             if let Some(timeout) = timeout {
-                oneshot.recv_timeout(timeout).map_err(|err| match err {
+                on_done.recv_timeout(timeout).map_err(|err| match err {
                     crossbeam::channel::RecvTimeoutError::Timeout => FlushError::Timeout,
                     crossbeam::channel::RecvTimeoutError::Disconnected => FlushError::Closed,
-                })?;
+                })??;
             }
 
             Ok(())

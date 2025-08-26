@@ -28,13 +28,13 @@ pub enum FileSinkError {
 
 enum Command {
     Send(LogMsg),
-    Flush(SyncSender<()>),
+    Flush { on_done: SyncSender<()> },
 }
 
 impl Command {
     fn flush() -> (Self, Receiver<()>) {
         let (tx, rx) = std::sync::mpsc::sync_channel(0); // oneshot
-        (Self::Flush(tx), rx)
+        (Self::Flush { on_done: tx }, rx)
     }
 }
 
@@ -156,13 +156,13 @@ fn spawn_and_stream<W: std::io::Write + Send + 'static>(
                                 return;
                             }
                         }
-                        Command::Flush(oneshot) => {
+                        Command::Flush { on_done } => {
                             re_log::trace!("Flushing…");
                             if let Err(err) = encoder.flush_blocking() {
                                 re_log::error!("Failed to flush log stream to {target}: {err}");
                                 return;
                             }
-                            drop(oneshot); // signals the oneshot
+                            on_done.send(()).ok();
                         }
                     }
                 }

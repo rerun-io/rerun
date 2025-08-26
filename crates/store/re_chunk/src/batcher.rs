@@ -412,7 +412,7 @@ impl Drop for ChunkBatcherInner {
 enum Command {
     AppendChunk(Chunk),
     AppendRow(EntityPath, PendingRow),
-    Flush(Sender<()>),
+    Flush { on_done: Sender<()> },
     UpdateConfig(ChunkBatcherConfig),
     Shutdown,
 }
@@ -420,7 +420,7 @@ enum Command {
 impl Command {
     fn flush() -> (Self, Receiver<()>) {
         let (tx, rx) = crossbeam::channel::bounded(0); // oneshot
-        (Self::Flush(tx), rx)
+        (Self::Flush { on_done: tx }, rx)
     }
 }
 
@@ -539,10 +539,10 @@ impl ChunkBatcherInner {
     fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
         use crossbeam::channel::RecvTimeoutError;
 
-        let (flush_cmd, oneshot) = Command::flush();
+        let (flush_cmd, on_done) = Command::flush();
         self.send_cmd(flush_cmd);
 
-        oneshot.recv_timeout(timeout).map_err(|err| match err {
+        on_done.recv_timeout(timeout).map_err(|err| match err {
             RecvTimeoutError::Timeout => FlushError::Timeout,
             RecvTimeoutError::Disconnected => FlushError::Closed,
         })
@@ -703,12 +703,12 @@ fn batching_thread(
                         }
                     },
 
-                    Command::Flush(oneshot) => {
+                    Command::Flush{ on_done } => {
                         skip_next_tick = true;
                         for acc in accs.values_mut() {
                             do_flush_all(acc, &tx_chunk, "manual", config.chunk_max_rows_if_unsorted);
                         }
-                        drop(oneshot); // signals the oneshot
+                        on_done.send(()).ok();
                     },
 
                     Command::UpdateConfig(new_config) => {
