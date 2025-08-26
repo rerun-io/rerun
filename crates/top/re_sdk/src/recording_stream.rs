@@ -1901,7 +1901,7 @@ impl RecordingStream {
             re_log::error_once!(
                 "Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
             );
-            return Err(FlushError::Closed); // TODO: can we do better here?
+            return Err(FlushError::Closed);
         }
 
         let f = move |inner: &RecordingStreamInner| -> Result<(), FlushError> {
