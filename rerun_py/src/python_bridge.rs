@@ -1359,7 +1359,7 @@ impl PyBinarySinkStorage {
             if flush {
                 let timeout = timeout_from_sec(flush_timeout_sec)?;
                 self.inner
-                    .flush_blocking(timeout)
+                    .flush(timeout)
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             }
 
@@ -1379,7 +1379,7 @@ impl PyBinarySinkStorage {
         py.allow_threads(|| -> PyResult<_> {
             let timeout = timeout_from_sec(timeout_sec)?;
             self.inner
-                .flush_blocking(timeout)
+                .flush(timeout)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             flush_garbage_queue();
             Ok(())

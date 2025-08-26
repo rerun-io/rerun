@@ -48,14 +48,14 @@ impl BinaryStreamStorage {
     /// Flush the batcher and log encoder to guarantee that all logged messages
     /// have been written to the stream.
     #[inline]
-    pub fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), FlushError> {
+    pub fn flush(&self, timeout: std::time::Duration) -> Result<(), FlushError> {
         self.rec.flush(Some(timeout))
     }
 }
 
 impl Drop for BinaryStreamStorage {
     fn drop(&mut self) {
-        if let Err(err) = self.flush_blocking(std::time::Duration::MAX) {
+        if let Err(err) = self.flush(std::time::Duration::MAX) {
             re_log::error!("Failed to flush BinaryStreamStorage: {err}");
         }
 
