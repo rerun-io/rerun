@@ -136,11 +136,7 @@ def connect_grpc(
         and the pathname must be `/proxy`.
 
         The default is `rerun+http://127.0.0.1:9876/proxy`.
-    flush_timeout_sec:
-        The minimum time the SDK will wait during a flush before potentially
-        dropping data if progress is not being made. Passing `None` indicates no timeout,
-        and can cause a call to `flush` to block indefinitely.
-    default_blueprint
+    default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
         clicks the "reset blueprint" button. If you want to activate the new blueprint
