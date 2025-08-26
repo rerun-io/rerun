@@ -251,8 +251,6 @@ impl App {
         if app_env.is_test() {
             // Disable certain labels/warnings/etc that would be flaky or not CI-runner-agnostic in snapshot tests.
             state.app_options.show_metrics = false;
-            state.app_options.show_software_rasterizer_warning = false;
-            state.app_options.show_multi_pass_warning = false;
         }
 
         let view_class_registry = crate::default_views::create_view_class_registry()
@@ -411,6 +409,10 @@ impl App {
 
     pub fn app_options_mut(&mut self) -> &mut AppOptions {
         self.state.app_options_mut()
+    }
+
+    pub fn app_env(&self) -> &crate::AppEnvironment {
+        &self.app_env
     }
 
     /// Open a content URL in the viewer.
