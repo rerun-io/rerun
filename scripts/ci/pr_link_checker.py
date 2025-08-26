@@ -15,6 +15,12 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
+
+
+def eprint(*args: Any, **kwargs: Any) -> None:
+    """Prints a message to stderr."""
+    print(*args, file=sys.stderr, **kwargs)
 
 
 def get_added_lines_with_links(base_ref: str = "origin/main") -> dict[str, list[str]]:
@@ -46,7 +52,7 @@ def get_added_lines_with_links(base_ref: str = "origin/main") -> dict[str, list[
                 env=env,
             )
     except subprocess.CalledProcessError as e:
-        print(f"Error getting git diff: {e}", file=sys.stderr)
+        eprint(f"Error getting git diff: {e}")
         return {}
 
     lines_by_file: dict[str, list[str]] = {}
@@ -124,7 +130,7 @@ def run_lychee(temp_files: list[TempLinkFile]) -> int:
     Returns the exit code from lychee.
     """
     if not temp_files:
-        print("No files with links found in added lines.")
+        eprint("No files with links found in added lines.")
         return 0
 
     failed = False
@@ -144,15 +150,15 @@ def run_lychee(temp_files: list[TempLinkFile]) -> int:
             temp_file.path,
         ]
 
-        print(f"Running lychee on new links in {temp_file.source_file}: {' '.join(cmd)}")
+        eprint(f"Running lychee on new links in {temp_file.source_file}: {' '.join(cmd)}")
 
         try:
             result = subprocess.run(cmd, check=False)
             if result.returncode != 0:
                 failed = True
-            print()
+            eprint()
         except FileNotFoundError:
-            print("Error: lychee not found. Please install lychee.", file=sys.stderr)
+            eprint("Error: lychee not found. Please install lychee.")
             return 1
 
     return 1 if failed else 0
@@ -181,15 +187,15 @@ def main() -> int:
     lines_by_file = get_added_lines_with_links(args.base_ref)
 
     if not lines_by_file:
-        print("No added lines with links found.")
+        eprint("No added lines with links found.")
         return 0
 
     if args.dry_run:
-        print("Would check the following lines:")
+        eprint("Would check the following lines:")
         for file, lines in lines_by_file.items():
-            print(f"\n{file}:")
+            eprint(f"\n{file}:")
             for line in lines:
-                print(f"  {line}")
+                eprint(f"  {line}")
         return 0
 
     # Create temporary files
