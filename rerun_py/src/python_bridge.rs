@@ -887,6 +887,17 @@ impl std::hash::Hash for PyGrpcSink {
 
 #[pymethods]
 impl PyGrpcSink {
+    /// Initialize a gRPC sink.
+    ///
+    /// Parameters
+    /// ----------
+    /// url:
+    ///     The URL to connect to
+    ///
+    ///     The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+    ///     and the pathname must be `/proxy`.
+    ///
+    ///     The default is `rerun+http://127.0.0.1:9876/proxy`.
     #[new]
     #[pyo3(signature = (url=None))]
     #[pyo3(text_signature = "(self, url=None)")]
@@ -1347,7 +1358,15 @@ impl PyBinarySinkStorage {
     /// Read the bytes from the binary sink.
     ///
     /// If `flush` is `true`, the sink will be flushed before reading.
-    #[pyo3(signature = (*, flush = true, flush_timeout_sec = f32::INFINITY))]
+    ///
+    /// Parameters
+    /// ----------
+    /// flush:
+    ///     If true (default), the stream will be flushed before reading.
+    /// flush_timeout_sec:
+    ///     If flush is set, wait at most this many seconds.
+    ///     If the timeout is reached, an error is raised.
+    #[pyo3(signature = (*, flush = true, flush_timeout_sec = 1e38))] // Can't use infinity here because of python_check_signatures.py
     fn read<'p>(
         &self,
         py: Python<'p>,
@@ -1372,8 +1391,16 @@ impl PyBinarySinkStorage {
         .map(|bytes| bytes.map(|bytes| PyBytes::new(py, &bytes)))
     }
 
-    /// Flush the binary sink manually.
-    #[pyo3(signature = (*, timeout_sec = f32::INFINITY))]
+    /// Flushes the binary sink and ensures that all logged messages have been encoded into the stream.
+    ///
+    /// This will block until the flush is complete, or the timeout is reached, or an error occurs.
+    ///
+    /// Parameters
+    /// ----------
+    /// timeout_sec:
+    ///     Wait at most this many seconds.
+    ///     If the timeout is reached, an error is raised.
+    #[pyo3(signature = (*, timeout_sec = 1e38))] // Can't use infinity here because of python_check_signatures.py
     fn flush(&self, py: Python<'_>, timeout_sec: f32) -> PyResult<()> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| -> PyResult<_> {

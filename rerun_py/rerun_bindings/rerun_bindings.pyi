@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import os
 from collections.abc import Iterable, Iterator, Sequence
 from datetime import datetime, timedelta
@@ -751,7 +750,7 @@ class PyMemorySinkStorage:
         """
 
 class PyBinarySinkStorage:
-    def read(self, *, flush: bool = True, flush_timeout_sec: float = math.inf) -> bytes | None:
+    def read(self, *, flush: bool = True, flush_timeout_sec: float = 1e38) -> bytes | None:
         """
         Read the bytes from the binary sink.
 
@@ -766,11 +765,11 @@ class PyBinarySinkStorage:
             If the timeout is reached, an error is raised.
 
         """
-    def flush(self, timeout_sec: float = math.inf) -> None:
+    def flush(self, *, timeout_sec: float = 1e38) -> None:
         """
-        Flushes the binary siunk and ensures that all logged messages have been encoded into the stream.
+        Flushes the binary sink and ensures that all logged messages have been encoded into the stream.
 
-        This will block until the flush is complete.
+        This will block until the flush is complete, or the timeout is reached, or an error occurs.
 
         Parameters
         ----------
@@ -950,7 +949,7 @@ class GrpcSink:
     Connect the recording stream to a remote Rerun Viewer on the given URL.
     """
 
-    def __init__(self, url: str | None = None, flush_timeout_sec: float | None = None) -> None:
+    def __init__(self, url: str | None = None) -> None:
         """
         Initialize a gRPC sink.
 
@@ -963,10 +962,6 @@ class GrpcSink:
             and the pathname must be `/proxy`.
 
             The default is `rerun+http://127.0.0.1:9876/proxy`.
-        flush_timeout_sec:
-            The minimum time the SDK will wait during a flush before potentially
-            dropping data if progress is not being made. Passing `None` indicates no timeout,
-            and can cause a call to `flush` to block indefinitely.
 
         """
 
@@ -997,7 +992,6 @@ def set_sinks(
 
 def connect_grpc(
     url: Optional[str],
-    flush_timeout_sec: Optional[float] = ...,
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
