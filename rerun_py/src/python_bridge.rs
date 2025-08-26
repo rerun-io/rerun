@@ -868,7 +868,6 @@ fn spawn(
 #[pyclass(frozen, eq, hash, name = "GrpcSink")]
 struct PyGrpcSink {
     uri: re_uri::ProxyUri,
-    flush_timeout_sec: Option<f32>,
 }
 
 impl PartialEq for PyGrpcSink {
@@ -886,18 +885,15 @@ impl std::hash::Hash for PyGrpcSink {
 #[pymethods]
 impl PyGrpcSink {
     #[new]
-    #[pyo3(signature = (url=None, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32()))]
+    #[pyo3(signature = (url=None))]
     #[pyo3(text_signature = "(self, url=None, flush_timeout_sec=None)")]
-    fn new(url: Option<String>, flush_timeout_sec: Option<f32>) -> PyResult<Self> {
+    fn new(url: Option<String>) -> PyResult<Self> {
         let url = url.unwrap_or_else(|| re_sdk::DEFAULT_CONNECT_URL.to_owned());
         let uri = url
             .parse::<re_uri::ProxyUri>()
             .map_err(|err| PyRuntimeError::wrap(err, format!("invalid endpoint {url:?}")))?;
 
-        Ok(Self {
-            uri,
-            flush_timeout_sec,
-        })
+        Ok(Self { uri })
     }
 }
 

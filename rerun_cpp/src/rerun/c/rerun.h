@@ -376,6 +376,9 @@ enum {
     RR_ERROR_CODE_INVALID_RECORDING_STREAM_HANDLE,
     RR_ERROR_CODE_INVALID_SOCKET_ADDRESS,
     RR_ERROR_CODE_INVALID_COMPONENT_TYPE_HANDLE,
+    RR_ERROR_CODE_INVALID_TIME_ARGUMENT,
+    RR_ERROR_CODE_INVALID_SERVER_URL = 0x00000001a,
+    RR_ERROR_CODE_INVALID_MEMORY_LIMIT,
 
     // Recording stream errors
     _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x00000100,
@@ -385,6 +388,8 @@ enum {
     RR_ERROR_CODE_RECORDING_STREAM_STDOUT_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_SPAWN_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_CHUNK_VALIDATION_FAILURE,
+    RR_ERROR_CODE_RECORDING_STREAM_SERVE_GRPC_FAILURE,
+    RR_ERROR_CODE_RECORDING_STREAM_FLUSH_FAILURE,
 
     // Arrow data processing errors.
     _RR_ERROR_CODE_CATEGORY_ARROW = 0x00001000,
@@ -501,7 +506,7 @@ extern void rr_recording_stream_set_sinks(
 /// This function returns immediately and will only raise an error for argument parsing errors,
 /// not for connection errors as these happen asynchronously.
 extern void rr_recording_stream_connect_grpc(
-    rr_recording_stream stream, rr_string url, float flush_timeout_sec, rr_error* error
+    rr_recording_stream stream, rr_string url, rr_error* error
 );
 
 /// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
@@ -535,8 +540,7 @@ extern void rr_recording_stream_serve_grpc(
 /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
 /// and can cause a call to `flush` to block indefinitely.
 extern void rr_recording_stream_spawn(
-    rr_recording_stream stream, const rr_spawn_options* spawn_opts, float flush_timeout_sec,
-    rr_error* error
+    rr_recording_stream stream, const rr_spawn_options* spawn_opts, rr_error* error
 );
 
 /// Stream all log-data to a given `.rrd` file.
@@ -558,7 +562,9 @@ extern void rr_recording_stream_stdout(rr_recording_stream stream, rr_error* err
 ///
 /// See `rr_recording_stream` docs for ordering semantics and multithreading guarantees.
 /// No-op for destroyed/non-existing streams.
-extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
+extern void rr_recording_stream_flush_blocking(
+    rr_recording_stream stream, float timeout_sec, rr_error* error
+);
 
 /// Set the current index value of the recording, for a specific timeline, for the current calling thread.
 ///

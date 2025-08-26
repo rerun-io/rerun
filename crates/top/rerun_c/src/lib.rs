@@ -12,7 +12,10 @@ mod ptr;
 mod recording_streams;
 mod video;
 
-use std::ffi::{CString, c_char, c_float, c_uchar};
+use std::{
+    ffi::{CString, c_char, c_float, c_uchar},
+    time::Duration,
+};
 
 use arrow::{
     array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray},
@@ -344,11 +347,6 @@ pub struct CGrpcSink {
     ///
     /// Default is `rerun+http://127.0.0.1:9876/proxy`.
     pub url: CStringView,
-
-    /// The minimum time the SDK will wait during a flush before potentially
-    /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
-    /// and can cause a call to `flush` to block indefinitely.
-    pub flush_timeout_sec: c_float,
 }
 
 /// Log sink which writes messages to a file.
@@ -377,6 +375,7 @@ pub enum CLogSink {
     FileSink { file: CFileSink } = 1,
 }
 
+// ⚠️ Remember to also update `rerun.h` !
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CErrorCode {
@@ -389,6 +388,7 @@ pub enum CErrorCode {
     InvalidRecordingStreamHandle,
     InvalidSocketAddress,
     InvalidComponentTypeHandle,
+    InvalidTimeArgument,
     InvalidServerUrl = 0x0000_0001a,
     InvalidMemoryLimit,
 
@@ -400,6 +400,7 @@ pub enum CErrorCode {
     RecordingStreamSpawnFailure,
     RecordingStreamChunkValidationFailure,
     RecordingStreamServeGrpcFailure,
+    RecordingStreamFlushFailure,
 
     _CategoryArrow = 0x0000_1000,
     ArrowFfiSchemaImportError,
@@ -663,9 +664,32 @@ fn rr_recording_stream_is_enabled_impl(id: CRecordingStream) -> Result<bool, CEr
 
 #[expect(unsafe_code)]
 #[unsafe(no_mangle)]
-pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
+pub unsafe extern "C" fn rr_recording_stream_flush_blocking(
+    id: CRecordingStream,
+    timeout_sec: c_float,
+    error: *mut CError,
+) {
     if let Some(stream) = RECORDING_STREAMS.lock().get(id) {
-        stream.flush_blocking();
+        let timeout = if timeout_sec.is_nan() {
+            if let Some(error) = unsafe { error.as_mut() } {
+                *error = CError::new(CErrorCode::InvalidTimeArgument, "NaN timeout");
+            }
+            Duration::ZERO
+        } else if timeout_sec < 0.0 {
+            if let Some(error) = unsafe { error.as_mut() } {
+                *error = CError::new(CErrorCode::InvalidTimeArgument, "Negative timeout");
+            }
+            Duration::ZERO
+        } else {
+            Duration::try_from_secs_f32(timeout_sec)
+                .ok()
+                .unwrap_or(Duration::MAX)
+        };
+        if let Err(err) = stream.flush_blocking(timeout) {
+            if let Some(error) = unsafe { error.as_mut() } {
+                *error = CError::new(CErrorCode::RecordingStreamFlushFailure, &err.to_string());
+            }
+        }
     }
 }
 
@@ -689,11 +713,6 @@ fn rr_recording_stream_set_sinks_impl(
                     .as_nonempty_str("url")?
                     .parse::<re_sdk::external::re_uri::ProxyUri>()
                     .map_err(|err| CError::new(CErrorCode::InvalidServerUrl, &err.to_string()))?;
-                let flush_timeout = if grpc.flush_timeout_sec >= 0.0 {
-                    Some(std::time::Duration::from_secs_f32(grpc.flush_timeout_sec))
-                } else {
-                    None
-                };
                 sinks.push(Box::new(re_sdk::sink::GrpcSink::new(uri)));
             }
             CLogSink::FileSink { file } => {
@@ -732,18 +751,12 @@ pub extern "C" fn rr_recording_stream_set_sinks(
 fn rr_recording_stream_connect_grpc_impl(
     stream: CRecordingStream,
     url: CStringView,
-    flush_timeout_sec: f32,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
     let url = url.as_nonempty_str("url")?;
-    let flush_timeout = if flush_timeout_sec >= 0.0 {
-        Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
-    } else {
-        None
-    };
 
-    if let Err(err) = stream.connect_grpc_opts(url, flush_timeout) {
+    if let Err(err) = stream.connect_grpc_opts(url) {
         return Err(CError::new(CErrorCode::InvalidServerUrl, &err.to_string()));
     }
 
@@ -755,10 +768,9 @@ fn rr_recording_stream_connect_grpc_impl(
 pub extern "C" fn rr_recording_stream_connect_grpc(
     id: CRecordingStream,
     url: CStringView,
-    flush_timeout_sec: f32,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url, flush_timeout_sec) {
+    if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url) {
         err.write_error(error);
     }
 }
@@ -808,7 +820,6 @@ pub extern "C" fn rr_recording_stream_serve_grpc(
 fn rr_recording_stream_spawn_impl(
     stream: CRecordingStream,
     spawn_opts: *const CSpawnOptions,
-    flush_timeout_sec: f32,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
@@ -818,14 +829,9 @@ fn rr_recording_stream_spawn_impl(
         let spawn_opts = ptr::try_ptr_as_ref(spawn_opts, "spawn_opts")?;
         spawn_opts.as_rust()?
     };
-    let flush_timeout = if flush_timeout_sec >= 0.0 {
-        Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
-    } else {
-        None
-    };
 
     stream
-        .spawn_opts(&spawn_opts, flush_timeout)
+        .spawn_opts(&spawn_opts)
         .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
 
     Ok(())
@@ -836,10 +842,9 @@ fn rr_recording_stream_spawn_impl(
 pub extern "C" fn rr_recording_stream_spawn(
     id: CRecordingStream,
     spawn_opts: *const CSpawnOptions,
-    flush_timeout_sec: f32,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_spawn_impl(id, spawn_opts, flush_timeout_sec) {
+    if let Err(err) = rr_recording_stream_spawn_impl(id, spawn_opts) {
         err.write_error(error);
     }
 }

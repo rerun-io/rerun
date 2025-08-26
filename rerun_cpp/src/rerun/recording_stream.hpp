@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint> // uint32_t etc.
 #include <filesystem>
+#include <limits>
 #include <optional>
 #include <string_view>
 #include <type_traits>
@@ -158,15 +159,8 @@ namespace rerun {
         /// \param url The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
         /// and the pathname must be `/proxy`. The default is `rerun+http://127.0.0.1:9876/proxy`.
         ///
-        /// \param flush_timeout_sec The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no
-        /// timeout, and can cause a call to `flush` to block indefinitely.
-        ///
         /// This function returns immediately.
-        Error connect_grpc(
-            std::string_view url = "rerun+http://127.0.0.1:9876/proxy",
-            float flush_timeout_sec = 2.0
-        ) const;
+        Error connect_grpc(std::string_view url = "rerun+http://127.0.0.1:9876/proxy") const;
 
         /// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
         ///
@@ -191,12 +185,8 @@ namespace rerun {
         /// If a Rerun Viewer is already listening on this port, the stream will be redirected to
         /// that viewer instead of starting a new one.
         ///
-        /// \param flush_timeout_sec The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no
-        /// timeout, and can cause a call to `flush` to block indefinitely.
-        ///
         /// \param options See `rerun::SpawnOptions` for more information.
-        Error spawn(const SpawnOptions& options = {}, float flush_timeout_sec = 2.0) const;
+        Error spawn(const SpawnOptions& options = {}) const;
 
         /// @see RecordingStream::spawn
         template <typename TRep, typename TPeriod>
@@ -233,8 +223,14 @@ namespace rerun {
 
         /// Initiates a flush the batching pipeline and waits for it to propagate.
         ///
+        /// \param timeout_sec The minimum time the SDK will wait during a flush before potentially
+        /// dropping data if progress is not being made. If you pass in FLT_MAX or infinity,
+        /// the function will block forever.
+        ///
+        /// Returns an error if we fail to flush all previously sent log messages.
+        ///
         /// See `RecordingStream` docs for ordering semantics and multithreading guarantees.
-        void flush_blocking() const;
+        Error flush_blocking(float timeout_sec = std::numeric_limits<float>::infinity()) const;
 
         /// @}
 

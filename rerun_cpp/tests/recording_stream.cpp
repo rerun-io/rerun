@@ -316,14 +316,14 @@ void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStre
     AND_GIVEN("an invalid url") {
         THEN("connect call fails") {
             CHECK(
-                stream.connect_grpc("definitely not valid!", 0.1f).code ==
+                stream.connect_grpc("definitely not valid!").code ==
                 rerun::ErrorCode::InvalidServerUrl
             );
         }
     }
     AND_GIVEN("a valid socket url " << url) {
         THEN("connect call returns no error") {
-            CHECK(stream.connect_grpc(url, 0.1f).code == rerun::ErrorCode::Ok);
+            CHECK(stream.connect_grpc(url).code == rerun::ErrorCode::Ok);
 
             WHEN("logging an archetype and then flushing") {
                 check_logged_error([&] {
@@ -333,7 +333,7 @@ void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStre
                     );
                 });
 
-                stream.flush_blocking();
+                CHECK(stream.flush_blocking().code == rerun::ErrorCode::Ok);
 
                 THEN("does not crash") {
                     // No easy way to see if it got sent.
