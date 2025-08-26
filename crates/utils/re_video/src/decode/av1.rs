@@ -6,8 +6,8 @@ use crate::{Time, VideoDataDescription};
 use dav1d::{PixelLayout, PlanarImageComponent};
 
 use super::{
-    Chunk, DecodeError, Frame, FrameContent, FrameInfo, OutputCallback, PixelFormat, Result,
-    YuvMatrixCoefficients, YuvPixelLayout, YuvRange, async_decoder_wrapper::SyncDecoder,
+    Chunk, DecodeError, Frame, FrameContent, FrameInfo, PixelFormat, Result, YuvMatrixCoefficients,
+    YuvPixelLayout, YuvRange, async_decoder_wrapper::SyncDecoder,
 };
 
 pub struct SyncDav1dDecoder {
@@ -16,10 +16,15 @@ pub struct SyncDav1dDecoder {
 }
 
 impl SyncDecoder for SyncDav1dDecoder {
-    fn submit_chunk(&mut self, should_stop: &AtomicBool, chunk: Chunk, on_output: &OutputCallback) {
+    fn submit_chunk(
+        &mut self,
+        should_stop: &AtomicBool,
+        chunk: Chunk,
+        output_sender: &crossbeam::channel::Sender<Result<Frame>>,
+    ) {
         re_tracing::profile_function!();
-        self.submit_chunk(chunk, on_output);
-        self.output_frames(should_stop, on_output);
+        self.submit_chunk(chunk, output_sender);
+        self.output_frames(should_stop, output_sender);
     }
 
     /// Clear and reset everything
@@ -74,7 +79,11 @@ impl SyncDav1dDecoder {
         })
     }
 
-    fn submit_chunk(&mut self, chunk: Chunk, on_output: &OutputCallback) {
+    fn submit_chunk(
+        &mut self,
+        chunk: Chunk,
+        output_sender: &crossbeam::channel::Sender<Result<Frame>>,
+    ) {
         re_tracing::profile_function!();
         econtext::econtext_function_data!(format!(
             "chunk timestamp: {:?}",
@@ -94,13 +103,17 @@ impl SyncDav1dDecoder {
                     err != dav1d::Error::Again,
                     "Bug in AV1 decoder: send_data returned `Error::Again`. This shouldn't happen, since we process all images in a chunk right away"
                 );
-                on_output(Err(DecodeError::Dav1d(err)));
+                output_sender.send(Err(DecodeError::Dav1d(err))).ok();
             }
         }
     }
 
     /// Returns the number of new frames.
-    fn output_frames(&mut self, should_stop: &AtomicBool, on_output: &OutputCallback) -> usize {
+    fn output_frames(
+        &mut self,
+        should_stop: &AtomicBool,
+        output_sender: &crossbeam::channel::Sender<Result<Frame>>,
+    ) -> usize {
         re_tracing::profile_function!();
         let mut count = 0;
         while !should_stop.load(Ordering::SeqCst) {
@@ -111,7 +124,7 @@ impl SyncDav1dDecoder {
             match picture {
                 Ok(picture) => {
                     let frame = create_frame(&self.debug_name, &picture);
-                    on_output(frame);
+                    output_sender.send(frame).ok();
                     count += 1;
                 }
                 Err(dav1d::Error::Again) => {
@@ -119,7 +132,7 @@ impl SyncDav1dDecoder {
                     break;
                 }
                 Err(err) => {
-                    on_output(Err(DecodeError::Dav1d(err)));
+                    output_sender.send(Err(DecodeError::Dav1d(err))).ok();
                 }
             }
         }

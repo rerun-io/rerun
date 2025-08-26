@@ -155,10 +155,6 @@ impl DecodeError {
 
 pub type Result<T = (), E = DecodeError> = std::result::Result<T, E>;
 
-/// Callback for decoding a single frame, called by decoders upon decoding a frame or hitting an error.
-#[allow(dead_code)] // May be unused in some configurations where we don't have any decoder.
-pub type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
-
 /// Interface for an asynchronous video decoder.
 ///
 /// Output callback is passed in on creation of a concrete type.
@@ -209,7 +205,7 @@ pub fn new_decoder(
     debug_name: &str,
     video: &crate::VideoDataDescription,
     decode_settings: &DecodeSettings,
-    on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
+    output_sender: crossbeam::channel::Sender<Result<Frame>>,
 ) -> Result<Box<dyn AsyncDecoder>> {
     #![allow(unused_variables, clippy::needless_return)] // With some feature flags
 
@@ -224,7 +220,7 @@ pub fn new_decoder(
     return Ok(Box::new(webcodecs::WebVideoDecoder::new(
         video,
         decode_settings.hw_acceleration,
-        on_output,
+        output_sender,
     )?));
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -242,7 +238,7 @@ pub fn new_decoder(
                 return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
                     debug_name.to_owned(),
                     Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
-                    on_output,
+                    output_sender,
                 )));
             }
         }
@@ -251,7 +247,7 @@ pub fn new_decoder(
         crate::VideoCodec::H264 | crate::VideoCodec::H265 => Ok(Box::new(FFmpegCliDecoder::new(
             debug_name.to_owned(),
             &video.encoding_details,
-            on_output,
+            output_sender,
             decode_settings.ffmpeg_path.clone(),
             &video.codec,
         )?)),

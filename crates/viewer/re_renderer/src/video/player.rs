@@ -150,8 +150,8 @@ impl VideoPlayer {
             }
         }
 
-        let sample_decoder = VideoSampleDecoder::new(debug_name.clone(), |on_output| {
-            re_video::new_decoder(&debug_name, description, decode_settings, on_output)
+        let sample_decoder = VideoSampleDecoder::new(debug_name.clone(), |output_sender| {
+            re_video::new_decoder(&debug_name, description, decode_settings, output_sender)
         })?;
 
         Ok(Self {
@@ -215,13 +215,12 @@ impl VideoPlayer {
         self.enqueue_samples(video_description, requested_sample_idx, video_buffers)?;
 
         // Grab best decoded frame for the requested PTS and discard all earlier frames to save memory.
-        if let Some(decoded_frame) = self
-            .sample_decoder
+        self.sample_decoder
             // Use the `requested_pts` which may be a bit higher than the PTS of the latest-at sample for `requested_pts`.
             // This is to hedge against not well-behaved decoders, that may produce PTS values that
             // don't show up in the input data (that in and on its own is a bug, but this makes it more robust)
-            .latest_decoded_frame_at_and_drop_earlier_frames(requested_pts)
-        {
+            .process_incoming_frames_and_drop_earlier_than(requested_pts);
+        if let Some(decoded_frame) = self.sample_decoder.oldest_available_frame() {
             self.decoder_delay_state = self.determine_new_decoder_delay_state(
                 video_description,
                 requested_sample,
@@ -237,7 +236,7 @@ impl VideoPlayer {
                 update_video_texture_with_frame(
                     render_ctx,
                     &mut self.video_texture,
-                    &decoded_frame,
+                    decoded_frame,
                 )?; // Update texture errors are very unusual, error out on those immediately.
                 self.video_texture.frame_info = Some(decoded_frame.info.clone());
             }
