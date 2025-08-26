@@ -12,7 +12,10 @@ use web_sys::{
 };
 
 use super::{AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, Result};
-use crate::{DecodeError, Time, Timescale, VideoCodec, VideoDataDescription, VideoEncodingDetails};
+use crate::{
+    DecodeError, FrameResult, Time, Timescale, VideoCodec, VideoDataDescription,
+    VideoEncodingDetails,
+};
 
 #[derive(Clone)]
 #[repr(transparent)]

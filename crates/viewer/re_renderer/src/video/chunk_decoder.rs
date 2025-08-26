@@ -293,6 +293,7 @@ pub fn copy_frame_to_texture(
 }
 
 #[cfg(target_arch = "wasm32")]
+#[expect(clippy::unnecessary_wraps)]
 fn copy_web_video_frame_to_texture(
     ctx: &RenderContext,
     frame: &FrameContent,
