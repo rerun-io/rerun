@@ -140,7 +140,7 @@ def run_lychee(temp_files: list[TempLinkFile]) -> int:
             "--max-cache-age",
             "1d",
             "--base-url",
-            str(Path(temp_file.source_file).parent),
+            "file:" + str(Path(temp_file.source_file).parent.resolve()) + "/",
             temp_file.path,
         ]
 
