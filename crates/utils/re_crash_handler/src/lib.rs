@@ -80,7 +80,12 @@ fn install_panic_hook(_build_info: BuildInfo) {
                         message: None,
                         file_line,
                     });
-                    analytics.flush_blocking();
+                    let timeout = None;
+                    if let Err(err) = analytics.flush_blocking(timeout)
+                        && cfg!(debug_assertions)
+                    {
+                        eprintln!("Failed to flush analytics: {err}");
+                    }
                 }
             }
 
@@ -205,7 +210,12 @@ fn install_signal_handler(build_info: BuildInfo) {
                 signal: signal_name.to_owned(),
                 callstack,
             });
-            analytics.flush_blocking();
+            let timeout = None;
+            if let Err(err) = analytics.flush_blocking(timeout)
+                && cfg!(debug_assertions)
+            {
+                eprintln!("Failed to flush analytics: {err}");
+            }
         }
     }
 

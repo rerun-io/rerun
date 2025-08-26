@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use re_chunk::ChunkBatcherConfig;
 use re_log_types::LogMsg;
 
@@ -76,10 +78,13 @@ impl crate::sink::LogSink for GrpcServerSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {
-        if let Err(err) = self.sender.flush_blocking() {
-            re_log::error_once!("Failed to flush: {err}");
-        }
+    fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), crate::sink::FlushError> {
+        self.sender
+            .flush_blocking(timeout)
+            .map_err(|err| match err {
+                re_smart_channel::FlushError::Closed => crate::sink::FlushError::Closed,
+                re_smart_channel::FlushError::Timeout => crate::sink::FlushError::Timeout,
+            })
     }
 
     fn default_batcher_config(&self) -> ChunkBatcherConfig {
@@ -94,7 +99,10 @@ impl crate::sink::LogSink for GrpcServerSink {
 
 impl Drop for GrpcServerSink {
     fn drop(&mut self) {
-        self.sender.flush_blocking().ok();
+        let timeout = None;
+        if let Err(err) = self.sender.flush_blocking(timeout) {
+            re_log::error!("Failed to flush gRPC queue: {err}");
+        }
         self.server_shutdown_signal.stop();
     }
 }

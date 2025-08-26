@@ -46,13 +46,6 @@ pub fn default_server_addr() -> std::net::SocketAddr {
     std::net::SocketAddr::from(([127, 0, 0, 1], DEFAULT_SERVER_PORT))
 }
 
-/// The default amount of time to wait for the gRPC connection to resume during a flush
-#[allow(clippy::unnecessary_wraps)]
-pub fn default_flush_timeout() -> Option<std::time::Duration> {
-    // NOTE: This is part of the SDK and meant to be used where we accept `Option<std::time::Duration>` values.
-    Some(std::time::Duration::from_secs(3))
-}
-
 pub use re_log_types::{
     ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind, entity_path,
 };
@@ -68,8 +61,11 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {
-        Self::flush_blocking(self);
+    fn flush_blocking(&self, timeout: Option<std::time::Duration>) -> Result<(), sink::FlushError> {
+        Self::flush_blocking(self, timeout).map_err(|err| match err {
+            re_smart_channel::FlushError::Closed => sink::FlushError::Closed,
+            re_smart_channel::FlushError::Timeout => sink::FlushError::Timeout,
+        })
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -87,8 +83,8 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 pub mod sink {
     pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
     pub use crate::log_sink::{
-        BufferedSink, CallbackSink, IntoMultiSink, LogSink, MemorySink, MemorySinkStorage,
-        MultiSink,
+        BufferedSink, CallbackSink, FlushError, IntoMultiSink, LogSink, MemorySink,
+        MemorySinkStorage, MultiSink,
     };
 
     pub use crate::log_sink::{GrpcSink, GrpcSinkConnectionFailure, GrpcSinkConnectionState};

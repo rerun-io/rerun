@@ -65,7 +65,12 @@ impl<T: Send> Sender<T> {
     /// Note: This is only implemented for non-wasm targets since we cannot make
     /// blocking calls on web.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn flush_blocking(&self) -> Result<(), SendError<()>> {
+    pub fn flush_blocking(
+        &self,
+        timeout: Option<std::time::Duration>,
+    ) -> Result<(), crate::FlushError> {
+        use crate::FlushError;
+
         let (tx, rx) = std::sync::mpsc::sync_channel(0); // oneshot
         self.tx
             .send(SmartMessage {
@@ -77,10 +82,18 @@ impl<T: Send> Sender<T> {
                     }),
                 },
             })
-            .map_err(|_ignored| SendError(()))?;
+            .map_err(|_ignored| FlushError::Closed)?;
 
-        // Block:
-        rx.recv().map_err(|_ignored| SendError(()))
+        if let Some(timeout) = timeout {
+            rx.recv_timeout(timeout).map_err(|err| match err {
+                std::sync::mpsc::RecvTimeoutError::Timeout => FlushError::Timeout,
+                std::sync::mpsc::RecvTimeoutError::Disconnected => FlushError::Closed,
+            })
+        } else {
+            // Block:
+            rx.recv()
+                .map_err(|std::sync::mpsc::RecvError| FlushError::Closed)
+        }
     }
 
     /// Used to indicate that a sender has left.

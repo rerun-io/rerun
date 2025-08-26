@@ -1352,7 +1352,7 @@ impl PyBinarySinkStorage {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             if flush {
-                self.inner.flush();
+                self.inner.flush_blocking();
             }
 
             let bytes = self.inner.read();
@@ -1368,7 +1368,7 @@ impl PyBinarySinkStorage {
     fn flush(&self, py: Python<'_>) {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
-            self.inner.flush();
+            self.inner.flush_blocking();
             flush_garbage_queue();
         });
     }

@@ -7748,6 +7748,7 @@ dependencies = [
  "re_protos",
  "re_smart_channel",
  "re_sorbet",
+ "re_tracing",
  "re_uri",
  "serde",
  "thiserror 1.0.69",
@@ -8301,6 +8302,7 @@ dependencies = [
  "re_tracing",
  "re_uri",
  "serde",
+ "thiserror 1.0.69",
  "web-time",
 ]
 

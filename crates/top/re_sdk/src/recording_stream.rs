@@ -26,8 +26,8 @@ use re_types::{AsComponents, SerializationError, SerializedComponentColumn};
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
-use crate::binary_stream_sink::BinaryStreamStorage;
 use crate::sink::{LogSink, MemorySinkStorage};
+use crate::{binary_stream_sink::BinaryStreamStorage, sink::FlushError};
 
 // ---
 
@@ -407,21 +407,14 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect_grpc(self) -> RecordingStreamResult<RecordingStream> {
-        self.connect_grpc_opts(
-            format!(
-                "rerun+http://127.0.0.1:{}/proxy",
-                re_grpc_server::DEFAULT_SERVER_PORT
-            ),
-            crate::default_flush_timeout(),
-        )
+        self.connect_grpc_opts(format!(
+            "rerun+http://127.0.0.1:{}/proxy",
+            re_grpc_server::DEFAULT_SERVER_PORT
+        ))
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
-    ///
-    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
-    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// ## Example
     ///
@@ -433,7 +426,6 @@ impl RecordingStreamBuilder {
     pub fn connect_grpc_opts(
         self,
         url: impl Into<String>,
-        flush_timeout: Option<Duration>,
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
         if enabled {
@@ -447,7 +439,7 @@ impl RecordingStreamBuilder {
                 properties,
                 batcher_config,
                 batcher_hooks,
-                Box::new(crate::log_sink::GrpcSink::new(uri, flush_timeout)),
+                Box::new(crate::log_sink::GrpcSink::new(uri)),
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -604,7 +596,7 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn spawn(self) -> RecordingStreamResult<RecordingStream> {
-        self.spawn_opts(&Default::default(), crate::default_flush_timeout())
+        self.spawn_opts(&Default::default())
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
@@ -627,11 +619,7 @@ impl RecordingStreamBuilder {
     ///     .spawn_opts(&re_sdk::SpawnOptions::default(), re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn spawn_opts(
-        self,
-        opts: &crate::SpawnOptions,
-        flush_timeout: Option<Duration>,
-    ) -> RecordingStreamResult<RecordingStream> {
+    pub fn spawn_opts(self, opts: &crate::SpawnOptions) -> RecordingStreamResult<RecordingStream> {
         if !self.is_enabled() {
             re_log::debug!("Rerun disabled - call to spawn() ignored");
             return Ok(RecordingStream::disabled());
@@ -642,12 +630,12 @@ impl RecordingStreamBuilder {
         // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
         // what, thus spawning a viewer is pointless (and probably not intended).
         if forced_sink_path().is_some() {
-            return self.connect_grpc_opts(url, flush_timeout);
+            return self.connect_grpc_opts(url);
         }
 
         crate::spawn(opts)?;
 
-        self.connect_grpc_opts(url, flush_timeout)
+        self.connect_grpc_opts(url)
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -927,7 +915,10 @@ impl Drop for RecordingStreamInner {
 
         // NOTE: The command channel is private, if we're here, nothing is currently capable of
         // sending data down the pipeline.
-        self.batcher.flush_blocking();
+        let timeout = None;
+        if let Err(err) = self.batcher.flush_blocking(timeout) {
+            re_log::error!("Failed to flush batcher: {err}");
+        }
         self.cmds_tx.send(Command::PopPendingChunks).ok();
         self.cmds_tx.send(Command::Shutdown).ok();
         if let Some(handle) = self.batcher_to_sink_handle.take() {
@@ -1044,18 +1035,24 @@ type InspectSinkFn = Box<dyn FnOnce(&dyn LogSink) + Send + 'static>;
 
 enum Command {
     RecordMsg(LogMsg),
-    SwapSink(Box<dyn LogSink>),
+    SwapSink {
+        new_sink: Box<dyn LogSink>,
+        timeout: Option<Duration>,
+    },
     // TODO(#10444): This should go away with more explicit sinks.
     InspectSink(InspectSinkFn),
-    Flush(Sender<()>),
+    Flush {
+        tx: Sender<()>,
+        timeout: Option<Duration>,
+    },
     PopPendingChunks,
     Shutdown,
 }
 
 impl Command {
-    fn flush() -> (Self, Receiver<()>) {
+    fn flush(timeout: Option<Duration>) -> (Self, Receiver<()>) {
         let (tx, rx) = crossbeam::channel::bounded(0); // oneshot
-        (Self::Flush(tx), rx)
+        (Self::Flush { tx, timeout }, rx)
     }
 }
 
@@ -1519,7 +1516,7 @@ fn forwarding_thread(
             Command::RecordMsg(msg) => {
                 sink.send(msg);
             }
-            Command::SwapSink(new_sink) => {
+            Command::SwapSink { new_sink, timeout } => {
                 re_log::trace!("Swapping sink…");
 
                 let backlog = {
@@ -1528,7 +1525,7 @@ fn forwarding_thread(
 
                     // Flush the underlying sink if possible.
                     sink.drop_if_disconnected();
-                    sink.flush_blocking();
+                    sink.flush_blocking(timeout);
 
                     backlog
                 };
@@ -1554,12 +1551,14 @@ fn forwarding_thread(
             Command::InspectSink(f) => {
                 f(sink.as_ref());
             }
-            Command::Flush(oneshot) => {
+            Command::Flush { tx, timeout } => {
                 re_log::trace!("Flushing…");
+
                 // Flush the underlying sink if possible.
                 sink.drop_if_disconnected();
-                sink.flush_blocking();
-                drop(oneshot); // signals the oneshot
+                sink.flush_blocking(timeout);
+
+                drop(tx); // signals the oneshot
             }
             Command::PopPendingChunks => {
                 // Wake up and skip the current iteration so that we can drain all pending chunks
@@ -1814,7 +1813,7 @@ impl RecordingStream {
     ///
     /// If the current sink is in a broken state (e.g. a gRPC sink with a broken connection that
     /// cannot be repaired), all pending data in its buffers will be dropped.
-    pub fn set_sink(&self, sink: Box<dyn LogSink>) {
+    pub fn set_sink(&self, new_sink: Box<dyn LogSink>) {
         if self.is_forked_child() {
             re_log::error_once!(
                 "Fork detected during set_sink. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
@@ -1822,29 +1821,36 @@ impl RecordingStream {
             return;
         }
 
+        let timeout = None; // The background thread should block forever if necessary
+
         let f = move |inner: &RecordingStreamInner| {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
 
             // Flush the batcher down the chunk channel
-            inner.batcher.flush_blocking();
+            if let Err(err) = inner.batcher.flush_blocking(None) {
+                re_log::warn!("Failed to flush batched in `set_sink`: {err}");
+            }
 
             // Receive pending chunks from the batcher's channel
             inner.cmds_tx.send(Command::PopPendingChunks).ok();
 
             // Update the batcher's configuration if it's sink-dependent.
             if inner.sink_dependent_batcher_config {
-                let batcher_config = resolve_batcher_config(None, &*sink);
+                let batcher_config = resolve_batcher_config(None, &*new_sink);
                 inner.batcher.update_config(batcher_config);
             }
 
             // Swap the sink, which will internally make sure to re-ingest the backlog if needed
-            inner.cmds_tx.send(Command::SwapSink(sink)).ok();
+            inner
+                .cmds_tx
+                .send(Command::SwapSink { new_sink, timeout })
+                .ok();
 
             // Before we give control back to the caller, we need to make sure that the swap has
             // taken place: we don't want the user to send data to the old sink!
             re_log::trace!("Waiting for sink swap to complete…");
-            let (cmd, oneshot) = Command::flush();
+            let (cmd, oneshot) = Command::flush(timeout);
             inner.cmds_tx.send(cmd).ok();
             oneshot.recv().ok();
             re_log::trace!("Sink swap completed.");
@@ -1876,13 +1882,15 @@ impl RecordingStream {
             // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all chunks
             // are ready to be drained by the time this call returns.
             // It cannot block indefinitely and is fairly fast as it only requires compute (no I/O).
-            inner.batcher.flush_blocking();
+            let timeout = None;
+            inner.batcher.flush_blocking(timeout);
 
             // 2. Drain all pending chunks from the batcher's channel _before_ any other future command
             inner.cmds_tx.send(Command::PopPendingChunks).ok();
 
             // 3. Asynchronously flush everything down the sink
-            let (cmd, _) = Command::flush();
+            let timeout = None; // The background thread should block forever if necessary
+            let (cmd, _) = Command::flush(timeout);
             inner.cmds_tx.send(cmd).ok();
         };
 
@@ -1894,34 +1902,63 @@ impl RecordingStream {
     /// Initiates a flush the batching pipeline and waits for it to propagate.
     ///
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
-    pub fn flush_blocking(&self) {
+    ///
+    /// A timeout of `None` means "block forever, or until error".
+    pub fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
         re_tracing::profile_function!();
 
         if self.is_forked_child() {
             re_log::error_once!(
                 "Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
             );
-            return;
+            return Err(FlushError::Closed); // TODO: can we do better here?
         }
 
-        let f = move |inner: &RecordingStreamInner| {
+        let f = move |inner: &RecordingStreamInner| -> Result<(), FlushError> {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
 
             // 1. Flush the batcher down the chunk channel
-            inner.batcher.flush_blocking();
+            inner
+                .batcher
+                .flush_blocking(timeout)
+                .map_err(|err| match err {
+                    re_chunk::FlushError::Closed => FlushError::Closed,
+                    re_chunk::FlushError::Timeout => FlushError::Timeout,
+                })?;
 
             // 2. Drain all pending chunks from the batcher's channel _before_ any other future command
-            inner.cmds_tx.send(Command::PopPendingChunks).ok();
+            inner
+                .cmds_tx
+                .send(Command::PopPendingChunks)
+                .map_err(|_ignored| FlushError::Closed)?;
 
             // 3. Wait for all chunks to have been forwarded down the sink
-            let (cmd, oneshot) = Command::flush();
-            inner.cmds_tx.send(cmd).ok();
-            oneshot.recv().ok();
+            let (cmd, oneshot) = Command::flush(timeout);
+            inner
+                .cmds_tx
+                .send(cmd)
+                .map_err(|_ignored| FlushError::Closed)?;
+
+            if let Some(timeout) = timeout {
+                oneshot.recv_timeout(timeout).map_err(|err| match err {
+                    re_smart_channel::RecvTimeoutError::Timeout => FlushError::Timeout,
+                    re_smart_channel::RecvTimeoutError::Disconnected => FlushError::Closed,
+                })
+            } else {
+                oneshot
+                    .recv()
+                    .map_err(|re_smart_channel::RecvError| FlushError::Closed)
+            }
         };
 
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to flush_blocking() ignored");
+        match self.with(f) {
+            Some(Ok(())) => Ok(()),
+            Some(Err(err)) => Err(err),
+            None => {
+                re_log::warn_once!("Recording disabled - call to flush_blocking() ignored");
+                Ok(())
+            }
         }
     }
 }
@@ -1975,13 +2012,10 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect_grpc(&self) -> RecordingStreamResult<()> {
-        self.connect_grpc_opts(
-            format!(
-                "rerun+http://127.0.0.1:{}/proxy",
-                re_grpc_server::DEFAULT_SERVER_PORT
-            ),
-            crate::default_flush_timeout(),
-        )
+        self.connect_grpc_opts(format!(
+            "rerun+http://127.0.0.1:{}/proxy",
+            re_grpc_server::DEFAULT_SERVER_PORT
+        ))
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
@@ -1994,11 +2028,7 @@ impl RecordingStream {
     /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
     /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
-    pub fn connect_grpc_opts(
-        &self,
-        url: impl Into<String>,
-        flush_timeout: Option<Duration>,
-    ) -> RecordingStreamResult<()> {
+    pub fn connect_grpc_opts(&self, url: impl Into<String>) -> RecordingStreamResult<()> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new GrpcSink since {ENV_FORCE_SAVE} is set");
             return Ok(());
@@ -2009,7 +2039,7 @@ impl RecordingStream {
             return Err(RecordingStreamError::NotAProxyEndpoint);
         };
 
-        let sink = crate::log_sink::GrpcSink::new(uri, flush_timeout);
+        let sink = crate::log_sink::GrpcSink::new(uri);
 
         self.set_sink(Box::new(sink));
         Ok(())
@@ -2074,7 +2104,7 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn spawn(&self) -> RecordingStreamResult<()> {
-        self.spawn_opts(&Default::default(), crate::default_flush_timeout())
+        self.spawn_opts(&Default::default())
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
@@ -2094,11 +2124,7 @@ impl RecordingStream {
     /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
     /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
-    pub fn spawn_opts(
-        &self,
-        opts: &crate::SpawnOptions,
-        flush_timeout: Option<Duration>,
-    ) -> RecordingStreamResult<()> {
+    pub fn spawn_opts(&self, opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
             re_log::debug!("Rerun disabled - call to spawn() ignored");
             return Ok(());
@@ -2110,10 +2136,7 @@ impl RecordingStream {
 
         crate::spawn(opts)?;
 
-        self.connect_grpc_opts(
-            format!("rerun+http://{}/proxy", opts.connect_addr()),
-            flush_timeout,
-        )?;
+        self.connect_grpc_opts(format!("rerun+http://{}/proxy", opts.connect_addr()))?;
 
         Ok(())
     }
@@ -3088,8 +3111,8 @@ mod tests {
             // noop
         }
 
-        fn flush_blocking(&self) {
-            // noop
+        fn flush_blocking(&self, _timeout: Option<Duration>) -> Result<(), FlushError> {
+            Ok(())
         }
 
         fn as_any(&self) -> &dyn std::any::Any {

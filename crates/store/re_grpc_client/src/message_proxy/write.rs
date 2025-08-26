@@ -20,6 +20,16 @@ use tonic::transport::Endpoint;
 
 use crate::TonicStatusError;
 
+/// An error that can occur when flushing.
+#[derive(Debug, thiserror::Error)]
+pub enum FlushError {
+    #[error("gRPC connection closed before flushing completed")]
+    Closed,
+
+    #[error("Flush timed out - not all messages were sent.")]
+    Timeout,
+}
+
 enum Cmd {
     LogMsg(LogMsg),
     Flush(oneshot::Sender<()>),
@@ -28,14 +38,12 @@ enum Cmd {
 #[derive(Clone)]
 pub struct Options {
     pub compression: Compression,
-    pub flush_timeout: Option<Duration>,
 }
 
 impl Default for Options {
     fn default() -> Self {
         Self {
             compression: Compression::LZ4,
-            flush_timeout: Default::default(),
         }
     }
 }
@@ -73,13 +81,14 @@ pub struct Client {
     thread: Option<JoinHandle<()>>,
     cmd_tx: UnboundedSender<Cmd>,
     shutdown_tx: Sender<()>,
-    flush_timeout: Option<Duration>,
     status: Arc<AtomicCell<ClientConnectionState>>,
 }
 
 impl Client {
     #[expect(clippy::needless_pass_by_value)]
     pub fn new(uri: ProxyUri, options: Options) -> Self {
+        let Options { compression } = options;
+
         let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
@@ -98,7 +107,7 @@ impl Client {
                             uri,
                             cmd_rx,
                             shutdown_rx,
-                            options.compression,
+                            compression,
                             status,
                         ));
                 })
@@ -109,7 +118,6 @@ impl Client {
             thread: Some(thread),
             cmd_tx,
             shutdown_tx,
-            flush_timeout: options.flush_timeout,
             status,
         }
     }
@@ -123,38 +131,61 @@ impl Client {
         self.status.load()
     }
 
-    pub fn flush(&self) {
+    /// Block until all messages are sent.
+    ///
+    /// If a timeout is provided, we will break when that timeout is received,
+    /// returning `Err(())`.
+    ///
+    /// A timeout of `None` means "block forever, or until error".
+    pub fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
+        re_tracing::profile_function!();
+
         use tokio::sync::oneshot::error::TryRecvError;
 
         let (tx, mut rx) = oneshot::channel();
         if self.cmd_tx.send(Cmd::Flush(tx)).is_err() {
             re_log::debug!("Flush failed: already shut down.");
-            return;
+            return Err(FlushError::Closed);
         }
 
         let start = std::time::Instant::now();
 
+        let very_slow = std::time::Duration::from_secs(20);
+        let mut has_emitted_slow_warning = false;
+
         loop {
             match rx.try_recv() {
-                Ok(_) => {
-                    re_log::trace!("Flush complete");
-                    break;
+                Ok(()) => {
+                    let elapsed = start.elapsed();
+                    if has_emitted_slow_warning {
+                        re_log::info!("Flush completed in {:.1} seconds", elapsed.as_secs_f32());
+                    } else {
+                        re_log::trace!("Flush completed in {:.1} seconds", elapsed.as_secs_f32());
+                    }
+                    return Ok(());
                 }
                 Err(TryRecvError::Empty) => {
-                    if let Some(timeout) = self.flush_timeout {
-                        let elapsed = start.elapsed();
-                        if elapsed >= timeout {
+                    let elapsed = start.elapsed();
+                    if let Some(timeout) = timeout {
+                        if timeout <= elapsed {
                             re_log::warn!(
-                                "Flush timed out, not all messages were sent. The timeout can be adjusted when connecting via gRPC."
+                                "Flush timed out after {:.1}s. Not all messages were sent. The timeout can be adjusted when connecting via gRPC.",
+                                elapsed.as_secs_f32()
                             );
-                            break;
+                            return Err(FlushError::Timeout);
                         }
+                    } else if !has_emitted_slow_warning && very_slow <= start.elapsed() {
+                        re_log::warn!(
+                            "Flushing the gRPC stream has taken over {:.1}s seconds; will keep blocking until it's all flushed.",
+                            elapsed.as_secs_f32()
+                        );
+                        has_emitted_slow_warning = true;
                     }
                     std::thread::yield_now();
                 }
                 Err(TryRecvError::Closed) => {
                     re_log::warn!("Flush failed, not all messages were sent");
-                    break;
+                    return Err(FlushError::Closed);
                 }
             }
         }
@@ -164,8 +195,12 @@ impl Client {
 impl Drop for Client {
     fn drop(&mut self) {
         re_log::debug!("Shutting down message proxy client");
-        // Wait for flush
-        self.flush();
+
+        // Wait for flush, blocking forever if needed.
+        let timeout = None;
+        if let Err(err) = self.flush_blocking(timeout) {
+            re_log::error!("Failed to flush gRPC messages during shutdown: {err}");
+        }
 
         // Quit immediately - no more messages left in the queue
         if let Err(err) = self.shutdown_tx.try_send(()) {

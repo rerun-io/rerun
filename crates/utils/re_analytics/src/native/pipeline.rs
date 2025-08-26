@@ -9,7 +9,7 @@ use crossbeam::{channel, select};
 
 use super::{AbortSignal, sink::PostHogSink};
 
-use crate::{AnalyticsEvent, Config};
+use crate::{AnalyticsEvent, Config, FlushError};
 
 pub enum PipelineEvent {
     Analytics(AnalyticsEvent),
@@ -129,11 +129,25 @@ impl Pipeline {
 
     /// Tries to flush all pending events to the sink.
     ///
-    /// It blocks until either the flush completed, or it failed.
-    pub fn flush_blocking(&self) {
+    /// A timeout of `None` means "block forever, or until error".
+    pub fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
+        use crossbeam::channel::{RecvError, RecvTimeoutError};
+
         re_log::trace!("Flushing analytics events…");
         try_send_event(&self.event_tx, PipelineEvent::Flush);
-        self.flush_done_rx.recv().ok();
+
+        if let Some(timeout) = timeout {
+            self.flush_done_rx
+                .recv_timeout(timeout)
+                .map_err(|err| match err {
+                    RecvTimeoutError::Timeout => FlushError::Timeout,
+                    RecvTimeoutError::Disconnected => FlushError::Closed,
+                })
+        } else {
+            self.flush_done_rx
+                .recv()
+                .map_err(|RecvError| FlushError::Closed)
+        }
     }
 }
 

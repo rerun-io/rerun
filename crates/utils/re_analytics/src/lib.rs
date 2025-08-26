@@ -63,6 +63,20 @@ pub enum EventKind {
     Update,
 }
 
+// ----------------------------------------------------------------------------
+
+/// An error that can occur when flushing.
+#[derive(Debug, thiserror::Error)]
+pub enum FlushError {
+    #[error("Analytics connection closed before flushing completed")]
+    Closed,
+
+    #[error("Flush timed out - not all analytics messages were sent.")]
+    Timeout,
+}
+
+// ----------------------------------------------------------------------------
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AnalyticsEvent {
     time_utc: Timestamp,
@@ -226,7 +240,10 @@ pub struct Analytics {
 impl Drop for Analytics {
     fn drop(&mut self) {
         if let Some(pipeline) = self.pipeline.as_ref() {
-            pipeline.flush_blocking();
+            let timeout = None;
+            if let Err(err) = pipeline.flush_blocking(timeout) {
+                re_log::debug!("Failed to flush analytics events during shutdown: {err}");
+            }
         }
     }
 }
@@ -340,10 +357,12 @@ impl Analytics {
 
     /// Tries to flush all pending events to the sink.
     ///
-    /// It blocks until either the flush completed, or it failed.
-    pub fn flush_blocking(&self) {
+    /// A timeout of `None` means "block forever, or until error".
+    pub fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
         if let Some(pipeline) = self.pipeline.as_ref() {
-            pipeline.flush_blocking();
+            pipeline.flush_blocking(timeout)
+        } else {
+            Ok(())
         }
     }
 

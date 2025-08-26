@@ -6,8 +6,8 @@ use re_log::ResultExt as _;
 use re_log_encoding::encoder::encode_as_bytes_local;
 use re_log_types::LogMsg;
 
-use crate::RecordingStream;
 use crate::sink::LogSink;
+use crate::{RecordingStream, log_sink::FlushError};
 
 /// The storage used by [`BinaryStreamSink`].
 ///
@@ -48,16 +48,17 @@ impl BinaryStreamStorage {
     /// Flush the batcher and log encoder to guarantee that all logged messages
     /// have been written to the stream.
     ///
-    /// This will block until the flush is complete.
+    /// A timeout of `None` means "block forever, or until error".
     #[inline]
-    pub fn flush(&self) {
-        self.rec.flush_blocking();
+    pub fn flush_blocking(&self, timeout: Option<std::time::Duration>) -> Result<(), FlushError> {
+        self.rec.flush_blocking(timeout)
     }
 }
 
 impl Drop for BinaryStreamStorage {
     fn drop(&mut self) {
-        self.flush();
+        let timeout = None;
+        self.flush_blocking(timeout);
         let bytes = self.read();
 
         if let Some(bytes) = bytes {
@@ -100,7 +101,9 @@ impl LogSink for BinaryStreamSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {}
+    fn flush_blocking(&self, _timeout: Option<std::time::Duration>) -> Result<(), FlushError> {
+        Ok(())
+    }
 
     fn as_any(&self) -> &dyn std::any::Any {
         self

@@ -87,7 +87,7 @@ impl Pipeline {
         );
     }
 
-    pub fn flush_blocking(&self) {
-        // Can't block on the web… so all we can do is _hope_ that the outstanding requests made it through.
+    pub fn flush_blocking(&self, _timeout: Option<Duration>) -> Result<(), FlushError> {
+        Ok(()) // Can't block on the web… so all we can do is _hope_ that the outstanding requests made it through.
     }
 }
