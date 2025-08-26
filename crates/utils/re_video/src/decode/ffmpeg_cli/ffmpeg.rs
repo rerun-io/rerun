@@ -9,7 +9,7 @@ use std::{
     },
 };
 
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::{Receiver, SendError, Sender};
 use ffmpeg_sidecar::{
     child::FfmpegChild,
     command::FfmpegCommand,
@@ -21,7 +21,7 @@ use parking_lot::Mutex;
 use crate::{
     PixelFormat, Time, VideoDataDescription, VideoEncodingDetails,
     decode::{
-        AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, OutputCallback,
+        AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, FrameResult,
         ffmpeg_cli::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
     },
     demux::ChromaSubsamplingModes,
@@ -181,6 +181,22 @@ impl std::io::Write for StdinWithShutdown {
     }
 }
 
+/// Output sender is mutex protected `Option` so that we can stop sending output frames on ffmpeg shutdown by setting it to `None`.
+type OutputSender = Mutex<Option<Sender<FrameResult>>>;
+
+/// Send a result to the output sender.
+fn send_output(
+    output_sender: &OutputSender,
+    result: FrameResult,
+) -> Result<(), SendError<FrameResult>> {
+    let output_sender_guard = output_sender.lock();
+    if let Some(output_sender) = output_sender_guard.as_ref() {
+        output_sender.send(result)
+    } else {
+        Err(SendError(result))
+    }
+}
+
 /// Encapsulates the running of an ffmpeg process.
 ///
 /// Dropping this closes the process.
@@ -204,14 +220,14 @@ struct FFmpegProcessAndListener {
     /// If true, the write thread will not report errors. Used upon exit, so the write thread won't log spam on the hung up stdin.
     stdin_shutdown: Arc<AtomicBool>,
 
-    /// On output instance used by the threads.
-    on_output: Arc<Mutex<Option<Arc<OutputCallback>>>>,
+    /// Any output results will be sent to this channel sender.
+    output_sender: Arc<OutputSender>,
 }
 
 impl FFmpegProcessAndListener {
     fn new(
         debug_name: &str,
-        on_output: Arc<OutputCallback>,
+        output_sender: Sender<FrameResult>,
         encoding_details: &Option<VideoEncodingDetails>,
         ffmpeg_path: Option<&std::path::Path>,
         codec: &crate::VideoCodec,
@@ -311,15 +327,15 @@ impl FFmpegProcessAndListener {
         let num_outstanding_frames = Arc::new(AtomicI32::new(0));
         let stdin_shutdown = Arc::new(AtomicBool::new(false));
 
-        // Mutex protect `on_output` so that we can shut down the threads at a defined point in time at which we
+        // Mutex protect `output_sender` so that we can shut down the threads at a defined point in time at which we
         // no longer receive any new frames or errors from this process.
-        let on_output = Arc::new(Mutex::new(Some(on_output)));
+        let output_sender = Arc::new(Mutex::new(Some(output_sender)));
 
         // Reads the output from the ffmpeg process:
         let listen_thread = std::thread::Builder::new()
             .name(format!("ffmpeg-reader for {debug_name}"))
             .spawn({
-                let on_output = on_output.clone();
+                let output_sender = output_sender.clone();
                 let debug_name = debug_name.to_owned();
                 let ffmpeg_path = ffmpeg_path.map(|p| p.to_owned());
                 let outstanding_frames = num_outstanding_frames.clone();
@@ -331,7 +347,7 @@ impl FFmpegProcessAndListener {
                         &frame_info_rx,
                         &pixel_format,
                         &outstanding_frames,
-                        on_output.as_ref(),
+                        &output_sender,
                     );
                 }
             })
@@ -347,7 +363,7 @@ impl FFmpegProcessAndListener {
         let write_thread = std::thread::Builder::new()
             .name(format!("ffmpeg-writer for {debug_name}"))
             .spawn({
-                let on_output = on_output.clone();
+                let output_sender = output_sender.clone();
                 let ffmpeg_stdin = ffmpeg.take_stdin().ok_or(Error::NoStdin)?;
                 let mut ffmpeg_stdin = StdinWithShutdown {
                     stdin: ffmpeg_stdin,
@@ -357,7 +373,7 @@ impl FFmpegProcessAndListener {
                     write_ffmpeg_input(
                         &mut ffmpeg_stdin,
                         &frame_data_rx,
-                        on_output.as_ref(),
+                        &output_sender,
                         &codec_meta,
                     );
                 }
@@ -372,7 +388,7 @@ impl FFmpegProcessAndListener {
             listen_thread: Some(listen_thread),
             write_thread: Some(write_thread),
             stdin_shutdown,
-            on_output,
+            output_sender,
         })
     }
 
@@ -419,7 +435,7 @@ impl Drop for FFmpegProcessAndListener {
         // This way, we ensure all ongoing writes are finished and won't get any more on_output callbacks from this process
         // before we take any other action on the shutdown sequence.
         {
-            self.on_output.lock().take();
+            self.output_sender.lock().take();
         }
 
         // Notify (potentially wake up) the stdin write thread to stop it (it might be sleeping).
@@ -478,7 +494,7 @@ impl Drop for FFmpegProcessAndListener {
 fn write_ffmpeg_input(
     ffmpeg_stdin: &mut dyn std::io::Write,
     frame_data_rx: &Receiver<FFmpegFrameData>,
-    on_output: &Mutex<Option<Arc<OutputCallback>>>,
+    output_sender: &OutputSender,
     codec_meta: &CodecMeta,
 ) {
     let mut state = AnnexBStreamState::default();
@@ -519,17 +535,16 @@ fn write_ffmpeg_input(
         };
 
         if let Err(err) = write_result {
-            let on_output = on_output.lock();
-            if let Some(on_output) = on_output.as_ref() {
-                let write_error = matches!(err, Error::FailedToWriteToFfmpeg(_));
-                on_output(Err(err.into()));
+            let write_error = matches!(err, Error::FailedToWriteToFfmpeg(_));
+            if send_output(output_sender, Err(err.into())).is_err() {
+                // Other side hung up on us, we're done.
+                // This can happen if for some reason the video decoding was aborted, don't treat it as an error.
+                return;
+            }
 
-                if write_error {
-                    // This is unlikely to improve! Ffmpeg process likely died.
-                    // By exiting here we hang up on the channel, making future attempts to push into it fail which should cause a reset eventually.
-                    return;
-                }
-            } else {
+            if write_error {
+                // This is unlikely to improve! Ffmpeg process likely died.
+                // By exiting here we hang up on the channel, making future attempts to push into it fail which should cause a reset eventually.
                 return;
             }
         } else {
@@ -647,13 +662,13 @@ fn read_ffmpeg_output(
     frame_info_rx: &Receiver<FFmpegFrameInfo>,
     pixel_format: &PixelFormat,
     outstanding_frames: &AtomicI32,
-    on_output: &Mutex<Option<Arc<OutputCallback>>>,
+    output_sender: &OutputSender,
 ) -> Option<()> {
     // Before we do anything else - make sure the ffmpeg version is compatible:
     // Ok to block here - we're in a background thread.
     let ffmpeg_version_result = FFmpegVersion::for_executable_blocking(ffmpeg_path);
     if let Err(err) = check_ffmpeg_version(ffmpeg_version_result) {
-        (on_output.lock().as_ref()?)(Err(err.into()));
+        send_output(output_sender, Err(err.into())).ok();
         return None;
     }
 
@@ -687,10 +702,10 @@ fn read_ffmpeg_output(
                             re_log::warn_once!("{debug_name} decoder: {msg}");
                         }
                         LogLevel::Error => {
-                            (on_output.lock().as_ref()?)(Err(Error::Ffmpeg(msg).into()));
+                            send_output(output_sender, Err(Error::Ffmpeg(msg).into())).ok()?;
                         }
                         LogLevel::Fatal => {
-                            (on_output.lock().as_ref()?)(Err(Error::FfmpegFatal(msg).into()));
+                            send_output(output_sender, Err(Error::FfmpegFatal(msg).into())).ok()?;
                         }
                     }
                 }
@@ -703,7 +718,7 @@ fn read_ffmpeg_output(
 
             FfmpegEvent::Error(error) => {
                 // An error in ffmpeg sidecar itself, rather than ffmpeg.
-                (on_output.lock().as_ref()?)(Err(Error::FfmpegSidecar(error).into()));
+                send_output(output_sender, Err(Error::FfmpegSidecar(error).into())).ok()?;
             }
 
             FfmpegEvent::ParsedInput(input) => {
@@ -784,7 +799,7 @@ fn read_ffmpeg_output(
                     );
                 }
 
-                (on_output.lock().as_ref()?)(Ok(frame));
+                send_output(output_sender, Ok(frame)).ok()?;
             }
 
             FfmpegEvent::Done => {
@@ -808,12 +823,16 @@ fn read_ffmpeg_output(
                     re_log::debug_once!("Parsed FFmpeg version: {ffmpeg_version}");
 
                     if !ffmpeg_version.is_compatible() {
-                        (on_output.lock().as_ref()?)(Err(Error::UnsupportedFFmpegVersion {
-                            actual_version: ffmpeg_version,
-                            minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
-                            minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
-                        }
-                        .into()));
+                        send_output(
+                            output_sender,
+                            Err(Error::UnsupportedFFmpegVersion {
+                                actual_version: ffmpeg_version,
+                                minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
+                                minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
+                            }
+                            .into()),
+                        )
+                        .ok()?;
                     }
                 } else {
                     re_log::warn_once!(
@@ -838,7 +857,11 @@ fn read_ffmpeg_output(
             FfmpegEvent::OutputChunk(_) => {
                 // Something went seriously wrong if we end up here.
                 re_log::error!("Unexpected ffmpeg output chunk for {debug_name}");
-                (on_output.lock().as_ref()?)(Err(Error::UnexpectedFfmpegOutputChunk.into()));
+                send_output(
+                    output_sender,
+                    Err(Error::UnexpectedFfmpegOutputChunk.into()),
+                )
+                .ok()?;
                 return None;
             }
         }
@@ -852,7 +875,7 @@ pub struct FFmpegCliDecoder {
     debug_name: String,
     // Restarted on reset
     ffmpeg: FFmpegProcessAndListener,
-    on_output: Arc<OutputCallback>,
+    output_sender: Sender<FrameResult>,
     ffmpeg_path: Option<std::path::PathBuf>,
     codec: crate::VideoCodec,
 }
@@ -861,7 +884,7 @@ impl FFmpegCliDecoder {
     pub fn new(
         debug_name: String,
         encoding_details: &Option<VideoEncodingDetails>,
-        on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
+        output_sender: Sender<FrameResult>,
         ffmpeg_path: Option<std::path::PathBuf>,
         codec: &crate::VideoCodec,
     ) -> Result<Self, Error> {
@@ -876,10 +899,9 @@ impl FFmpegCliDecoder {
             check_ffmpeg_version(ffmpeg_version_result)?;
         }
 
-        let on_output = Arc::new(on_output);
         let ffmpeg = FFmpegProcessAndListener::new(
             &debug_name,
-            on_output.clone(),
+            output_sender.clone(),
             encoding_details,
             ffmpeg_path.as_deref(),
             codec,
@@ -888,7 +910,7 @@ impl FFmpegCliDecoder {
         Ok(Self {
             debug_name,
             ffmpeg,
-            on_output,
+            output_sender,
             ffmpeg_path,
             codec: *codec,
         })
@@ -931,7 +953,7 @@ impl AsyncDecoder for FFmpegCliDecoder {
             let err = DecodeError::from(err);
 
             // Report the error on the decoding stream aswell.
-            (self.on_output)(Err(err.clone()));
+            self.output_sender.send(Err(err.clone())).ok();
 
             Err(err)
         } else {
@@ -950,7 +972,7 @@ impl AsyncDecoder for FFmpegCliDecoder {
         re_log::trace!("Resetting ffmpeg decoder {}", self.debug_name);
         self.ffmpeg = FFmpegProcessAndListener::new(
             &self.debug_name,
-            self.on_output.clone(),
+            self.output_sender.clone(),
             &video_descr.encoding_details,
             self.ffmpeg_path.as_deref(),
             &self.codec,

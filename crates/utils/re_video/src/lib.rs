@@ -11,8 +11,8 @@ mod time;
 
 pub use decode::{
     AsyncDecoder, Chunk, DecodeError, DecodeHardwareAcceleration, DecodeSettings, Frame,
-    FrameContent, FrameInfo, PixelFormat, Result as DecodeResult, YuvMatrixCoefficients,
-    YuvPixelLayout, YuvRange, new_decoder,
+    FrameContent, FrameInfo, FrameResult, PixelFormat, Result as DecodeResult,
+    YuvMatrixCoefficients, YuvPixelLayout, YuvRange, new_decoder,
 };
 pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
 
