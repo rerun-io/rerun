@@ -1,7 +1,6 @@
 use std::iter;
 use std::sync::Arc;
 
-use arrow::array::{AsArray as _, Int64Array, ListArray};
 use arrow::datatypes::Fields;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
@@ -11,24 +10,14 @@ use egui::{
     Widget as _, WidgetText,
 };
 use egui_table::{CellInfo, HeaderCellInfo};
-use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{Chunk, ChunkComponents, TimeColumn};
-use re_dataframe::external::re_chunk;
 use re_format::format_uint;
-use re_log_types::{
-    ArrowMsg, EntityPath, EntryId, LogMsg, SetStoreInfo, StoreId, StoreKind, TimelineName,
-    Timestamp,
-};
-use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch, SorbetSchema};
-use re_types_core::{ChunkId, ComponentDescriptor, RowId};
+use re_log_types::{EntryId, TimelineName, Timestamp};
+use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
-use re_viewer_context::{
-    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, ViewerContext,
-};
+use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
 use crate::display_record_batch::DisplayColumn;
@@ -420,7 +409,10 @@ impl<'a> DataFusionTableWidget<'a> {
                     Self::refresh(ui.ctx(), &session_ctx, table_ref.clone());
                 }
                 BottomBarAction::ConvertToRecording => {
-                    send_sorbet_batches_as_recording(viewer_ctx, sorbet_batches.as_slice());
+                    crate::convert_to_recording::send_sorbet_batches_as_recording(
+                        viewer_ctx,
+                        sorbet_batches.as_slice(),
+                    );
                 }
             }
         }
@@ -746,154 +738,4 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn default_row_height(&self) -> f32 {
         self.row_height
     }
-}
-
-fn send_sorbet_batches_as_recording(ctx: &ViewerContext<'_>, sorbet_batches: &[SorbetBatch]) {
-    let Some(first_batch) = sorbet_batches.first() else {
-        // nothing to send...
-        return;
-    };
-
-    let schema = first_batch.sorbet_schema();
-
-    let mut row_id_column = None;
-    let mut index_columns = vec![];
-    let mut component_columns: IntMap<EntityPath, Vec<(usize, &ComponentColumnDescriptor)>> =
-        Default::default();
-
-    for (col_index, column_descriptor) in schema.columns.iter_ref().enumerate() {
-        match column_descriptor {
-            ColumnDescriptorRef::RowId(row_column_descriptor) => {
-                if row_id_column.is_some() {
-                    re_log::warn_once!("Unexpected multiple row id columns");
-                }
-
-                row_id_column = Some((col_index, row_column_descriptor));
-            }
-
-            ColumnDescriptorRef::Time(index_column_descriptor) => {
-                index_columns.push((col_index, index_column_descriptor));
-            }
-
-            ColumnDescriptorRef::Component(component_column_descriptor) => {
-                let entity_path = component_column_descriptor.entity_path.clone();
-                component_columns
-                    .entry(entity_path)
-                    .or_default()
-                    .push((col_index, component_column_descriptor));
-            }
-        }
-    }
-
-    // TODO: sdk is wrong here, should probably be a new "FromTable" source
-    let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::Sdk,
-        re_smart_channel::SmartChannelSource::Sdk,
-    );
-
-    //
-    // CONVERT TO CHUNK AND SEND THEM
-    //
-
-    let store_id = StoreId::new(
-        StoreKind::Recording,
-        "__converted_tables",
-        re_log_types::RecordingId::random(),
-    );
-
-    if let Err(err) = tx.send(LogMsg::SetStoreInfo(SetStoreInfo {
-        row_id: re_tuid::Tuid::new(),
-        info: re_log_types::StoreInfo {
-            store_id: store_id.clone(),
-            cloned_from: None,
-            store_source: re_log_types::StoreSource::Unknown,
-            store_version: None,
-        },
-    })) {
-        re_log::warn_once!("could not send set store info message: {err}");
-    }
-
-    for sorbet_batch in sorbet_batches {
-        let id = ChunkId::new();
-
-        let row_count = sorbet_batch.num_rows();
-
-        let row_ids = row_id_column
-            .map(|(col_idx, _)| sorbet_batch.column(col_idx))
-            .and_then(|array_ref| array_ref.as_fixed_size_binary_opt())
-            .cloned()
-            .unwrap_or_else(|| {
-                let row_ids = std::iter::from_fn({
-                    let tuid: re_tuid::Tuid = *id;
-                    let mut row_id = RowId::from_tuid(tuid.next());
-                    move || {
-                        let yielded = row_id;
-                        row_id = row_id.next();
-                        Some(yielded)
-                    }
-                })
-                .take(row_count)
-                .collect_vec();
-
-                RowId::arrow_from_slice(&row_ids)
-            });
-
-        let time_columns: IntMap<TimelineName, TimeColumn> = index_columns
-            .iter()
-            .map(|(col_idx, index_column_descriptor)| {
-                let timeline = &index_column_descriptor.timeline;
-
-                let times: &arrow::buffer::ScalarBuffer<i64> = sorbet_batch
-                    .column(*col_idx)
-                    .downcast_array_ref::<Int64Array>()
-                    .expect("bad time column") //TODO
-                    .values();
-
-                let time_column = TimeColumn::new(None, *timeline, times.clone());
-
-                (*timeline.name(), time_column)
-            })
-            .collect();
-
-        #[expect(clippy::iter_over_hash_type)] // we don't really care about chunk order
-        for (entity_path, component_column_descriptors) in &component_columns {
-            let components: IntMap<ComponentDescriptor, ListArray> = component_column_descriptors
-                .iter()
-                .map(|(col_idx, desc)| {
-                    let component_descriptor = desc.component_descriptor();
-
-                    let component_data = sorbet_batch
-                        .column(*col_idx)
-                        .downcast_array_ref::<ListArray>()
-                        .expect("bad component");
-
-                    (component_descriptor, component_data.clone())
-                })
-                .collect();
-
-            let chunk = Chunk::new(
-                re_types_core::ChunkId::new(),
-                entity_path.clone(),
-                None,
-                row_ids.clone(),
-                time_columns.clone(),
-                ChunkComponents(components),
-            )
-            .expect("couldn't create chunk");
-
-            if let Err(err) = tx.send(LogMsg::ArrowMsg(
-                store_id.clone(),
-                ArrowMsg {
-                    chunk_id: chunk.id().as_tuid(),
-                    batch: chunk.to_record_batch().expect("bad record batch"),
-                    on_release: None,
-                },
-            )) {
-                re_log::warn_once!("could not send log message: {err}");
-            }
-        }
-    }
-
-    ctx.command_sender()
-        .send_system(SystemCommand::AddReceiver(rx));
 }
