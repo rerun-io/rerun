@@ -1,5 +1,5 @@
-use std::fmt;
 use std::{
+    fmt,
     path::PathBuf,
     sync::mpsc::{Receiver, Sender, SyncSender},
 };
@@ -7,7 +7,8 @@ use std::{
 use parking_lot::Mutex;
 
 use re_log_types::LogMsg;
-use re_smart_channel::FlushError;
+
+pub use re_smart_channel::FlushError;
 
 /// Errors that can occur when creating a [`FileSink`].
 #[derive(thiserror::Error, Debug)]

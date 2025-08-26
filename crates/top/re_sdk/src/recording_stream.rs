@@ -1933,8 +1933,8 @@ impl RecordingStream {
 
             if let Some(timeout) = timeout {
                 oneshot.recv_timeout(timeout).map_err(|err| match err {
-                    re_smart_channel::RecvTimeoutError::Timeout => FlushError::Timeout,
-                    re_smart_channel::RecvTimeoutError::Disconnected => FlushError::Closed,
+                    crossbeam::channel::RecvTimeoutError::Timeout => FlushError::Timeout,
+                    crossbeam::channel::RecvTimeoutError::Disconnected => FlushError::Closed,
                 })?;
             }
 
