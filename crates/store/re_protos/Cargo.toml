@@ -37,13 +37,13 @@ prost.workspace = true
 pyo3 = { workspace = true, optional = true }
 serde.workspace = true
 thiserror.workspace = true
+tonic-prost = { workspace = true, default-features = false }
 url = { workspace = true, features = ["serde"] }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tonic = { workspace = true, default-features = false, features = [
   "codegen",
-  "prost",
   "transport",
 ] }
 
@@ -51,7 +51,6 @@ tonic = { workspace = true, default-features = false, features = [
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tonic = { workspace = true, default-features = false, features = [
   "codegen",
-  "prost",
 ] }
 
 [lints]
