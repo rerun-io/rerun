@@ -173,6 +173,7 @@ def main() -> int:
         "--base-ref", default="origin/main", help="Base reference to compare against (default: origin/main)"
     )
     parser.add_argument("--dry-run", action="store_true", help="Show what would be checked without running lychee")
+    parser.add_argument("--no-cleanup", action="store_true", help="Don't clean up temporary files")
 
     args = parser.parse_args()
 
@@ -200,7 +201,8 @@ def main() -> int:
         return exit_code
     finally:
         # Clean up
-        cleanup_temp_files(temp_files)
+        if not args.no_cleanup:
+            cleanup_temp_files(temp_files)
 
 
 if __name__ == "__main__":
