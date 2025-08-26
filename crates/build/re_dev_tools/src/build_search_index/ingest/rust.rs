@@ -209,7 +209,6 @@ impl<'a> Visitor<'a> {
         }
     }
 
-    #[expect(clippy::panic)]
     fn visit_item(&mut self, pub_in_priv: bool, id: &ItemId) {
         let Some(item) = self.krate.index.get(id) else {
             panic!("{id:?} not found");
@@ -371,7 +370,6 @@ impl<'a> Visitor<'a> {
             let name = self.krate.index[id].name.as_ref().unwrap().clone();
             self.module_path.with_item(name)
         } else {
-            #[expect(clippy::panic)]
             let Some(summary) = self.krate.paths.get(id) else {
                 panic!(
                     "expected item {id:?} to have a rustdoc-generated path (module_path={:?})",

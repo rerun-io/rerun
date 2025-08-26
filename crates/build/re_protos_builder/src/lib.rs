@@ -3,7 +3,7 @@
 //! definitions in the same file.
 //!
 
-#![allow(clippy::unwrap_used, clippy::exit)]
+#![allow(clippy::unwrap_used, clippy::panic, clippy::exit)]
 
 use std::path::Path;
 
@@ -38,7 +38,7 @@ pub fn generate_rust_code(
                 std::process::exit(1);
             }
             _ => {
-                println!("cargo::error={err}");
+                panic!("{err}");
             }
         }
     }

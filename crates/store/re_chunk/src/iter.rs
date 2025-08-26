@@ -273,7 +273,7 @@ impl Chunk {
         let Some(struct_array) = list_array.values().downcast_array_ref::<ArrowStructArray>()
         else {
             if cfg!(debug_assertions) {
-                panic!("downcast failed for {component_descriptor}, data discarded");
+                panic_downcast_failed(component_descriptor);
             } else {
                 re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
             }
@@ -287,7 +287,7 @@ impl Chunk {
             .find_map(|(i, field)| (field.name() == field_name).then_some(i))
         else {
             if cfg!(debug_assertions) {
-                panic!("field {field_name} not found for {component_descriptor}, data discarded");
+                panic_field_not_found(component_descriptor, field_name);
             } else {
                 re_log::error_once!(
                     "field {field_name} not found for {component_descriptor}, data discarded"
@@ -298,7 +298,7 @@ impl Chunk {
 
         if field_idx >= struct_array.num_columns() {
             if cfg!(debug_assertions) {
-                panic!("field {field_name} not found for {component_descriptor}, data discarded");
+                panic_field_not_found(component_descriptor, field_name);
             } else {
                 re_log::error_once!(
                     "field {field_name} not found for {component_descriptor}, data discarded"
@@ -335,7 +335,6 @@ pub trait ChunkComponentSlicer {
 }
 
 /// The actual implementation of `impl_native_type!`, so that we don't have to work in a macro.
-#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_native<'a, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
@@ -347,7 +346,7 @@ where
 {
     let Some(values) = array.downcast_array_ref::<ArrowPrimitiveArray<P>>() else {
         if cfg!(debug_assertions) {
-            panic!("downcast failed for {component_descriptor}, data discarded");
+            panic_downcast_failed(component_descriptor);
         } else {
             re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
         }
@@ -395,7 +394,6 @@ impl_native_type!(arrow::array::types::Float32Type, f32);
 impl_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_array_native_type!`, so that we don't have to work in a macro.
-#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_array_native<'a, const N: usize, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
@@ -408,7 +406,7 @@ where
 {
     let Some(fixed_size_list_array) = array.downcast_array_ref::<ArrowFixedSizeListArray>() else {
         if cfg!(debug_assertions) {
-            panic!("downcast failed for {component_descriptor}, data discarded");
+            panic_downcast_failed(component_descriptor);
         } else {
             re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
         }
@@ -420,7 +418,7 @@ where
         .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
         if cfg!(debug_assertions) {
-            panic!("downcast failed for {component_descriptor}, data discarded");
+            panic_downcast_failed(component_descriptor);
         } else {
             re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
         }
@@ -475,7 +473,6 @@ impl_array_native_type!(arrow::array::types::Float32Type, f32);
 impl_array_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_buffer_native_type!`, so that we don't have to work in a macro.
-#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_buffer_native<'a, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
@@ -487,10 +484,7 @@ where
 {
     let Some(inner_list_array) = array.downcast_array_ref::<ArrowListArray>() else {
         if cfg!(debug_assertions) {
-            panic!(
-                "DEBUG BUILD: {component_descriptor} had unexpected datatype: {:?}",
-                array.data_type()
-            );
+            panic_unexpected_data_type(component_descriptor, array);
         } else {
             re_log::error_once!(
                 "{component_descriptor} had unexpected datatype: {:?}. Data discarded",
@@ -505,10 +499,7 @@ where
         .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
         if cfg!(debug_assertions) {
-            panic!(
-                "DEBUG BUILD: {component_descriptor} had unexpected datatype: {:?}",
-                array.data_type()
-            );
+            panic_unexpected_data_type(component_descriptor, array);
         } else {
             re_log::error_once!(
                 "{component_descriptor} had unexpected datatype: {:?}. Data discarded",
@@ -618,7 +609,6 @@ impl_buffer_native_type!(arrow::array::types::Float32Type, f32);
 impl_buffer_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_array_list_native_type!`, so that we don't have to work in a macro.
-#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_array_list_native<'a, const N: usize, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
@@ -631,7 +621,7 @@ where
 {
     let Some(inner_list_array) = array.downcast_array_ref::<ArrowListArray>() else {
         if cfg!(debug_assertions) {
-            panic!("downcast failed for {component_descriptor}, data discarded");
+            panic_downcast_failed(component_descriptor);
         } else {
             re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
         }
@@ -646,7 +636,7 @@ where
         .downcast_array_ref::<ArrowFixedSizeListArray>()
     else {
         if cfg!(debug_assertions) {
-            panic!("downcast failed for {component_descriptor}, data discarded");
+            panic_downcast_failed(component_descriptor);
         } else {
             re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
         }
@@ -658,7 +648,7 @@ where
         .downcast_array_ref::<ArrowPrimitiveArray<P>>()
     else {
         if cfg!(debug_assertions) {
-            panic!("downcast failed for {component_descriptor}, data discarded");
+            panic_downcast_failed(component_descriptor);
         } else {
             re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
         }
@@ -729,7 +719,7 @@ impl ChunkComponentSlicer for String {
     ) -> impl Iterator<Item = Vec<ArrowString>> + 'a {
         let Some(utf8_array) = array.downcast_array_ref::<ArrowStringArray>() else {
             if cfg!(debug_assertions) {
-                panic!("downcast failed for {component_descriptor}, data discarded");
+                panic_downcast_failed(component_descriptor);
             } else {
                 re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
             }
@@ -761,7 +751,7 @@ impl ChunkComponentSlicer for bool {
     ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
         let Some(values) = array.downcast_array_ref::<ArrowBooleanArray>() else {
             if cfg!(debug_assertions) {
-                panic!("downcast failed for {component_descriptor}, data discarded");
+                panic_downcast_failed(component_descriptor);
             } else {
                 re_log::error_once!("downcast failed for {component_descriptor}, data discarded");
             }
@@ -950,11 +940,7 @@ impl Chunk {
             Ok(values) => values,
             Err(err) => {
                 if cfg!(debug_assertions) {
-                    panic!(
-                        "[DEBUG-ONLY] deserialization failed for {}, data discarded: {}",
-                        C::name(),
-                        re_error::format_ref(&err),
-                    );
+                    panic_deserialization_failed::<C, _>(err);
                 } else {
                     re_log::error_once!(
                         "deserialization failed for {}, data discarded: {}",
@@ -975,6 +961,36 @@ impl Chunk {
             offsets: Either::Right(self.iter_component_offsets(component_descriptor)),
         }
     }
+}
+
+#[expect(clippy::panic, clippy::needless_pass_by_value)]
+fn panic_downcast_failed(component_descriptor: ComponentDescriptor) -> ! {
+    panic!("downcast failed for {component_descriptor}, data discarded")
+}
+
+#[expect(clippy::panic, clippy::needless_pass_by_value)]
+fn panic_field_not_found(component_descriptor: ComponentDescriptor, field_name: &str) -> ! {
+    panic!("field {field_name} not found for {component_descriptor}, data discarded")
+}
+
+#[expect(clippy::panic, clippy::needless_pass_by_value)]
+fn panic_unexpected_data_type(
+    component_descriptor: ComponentDescriptor,
+    array: &dyn ArrowArray,
+) -> ! {
+    panic!(
+        "DEBUG BUILD: {component_descriptor} had unexpected datatype: {:?}",
+        array.data_type()
+    )
+}
+
+#[expect(clippy::panic)]
+fn panic_deserialization_failed<C: Component, E: std::error::Error>(err: E) -> ! {
+    panic!(
+        "[DEBUG-ONLY] deserialization failed for {}, data discarded: {}",
+        C::name(),
+        re_error::format_ref(&err),
+    )
 }
 
 // ---

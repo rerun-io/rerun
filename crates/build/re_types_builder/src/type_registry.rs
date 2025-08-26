@@ -43,7 +43,6 @@ impl TypeRegistry {
     /// Panics if missing.
     ///
     /// This does type resolution just-in-time.
-    #[expect(clippy::panic)]
     pub fn get(&self, fqname: impl AsRef<str>) -> DataType {
         let fqname = fqname.as_ref();
         self.try_get(fqname)

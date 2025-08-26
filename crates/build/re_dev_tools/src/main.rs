@@ -1,6 +1,10 @@
 //! Crate that combines several development utilities.
 //!
 //! To get an overview over all tools run `pixi run dev-tools --help`.
+
+// Exception for the build crates as it's not production code.
+#![allow(clippy::panic)]
+
 use argh::FromArgs;
 
 mod build_examples;

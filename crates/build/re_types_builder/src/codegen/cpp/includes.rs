@@ -54,7 +54,6 @@ impl Includes {
             .split('.')
             .collect::<Vec<_>>();
 
-        #[expect(clippy::panic)]
         let (path, typname) = match components[..] {
             ["rerun", obj_kind, typname] => (obj_kind.to_owned(), typname),
             ["rerun", scope, obj_kind, typname] => (format!("{scope}/{obj_kind}"), typname),

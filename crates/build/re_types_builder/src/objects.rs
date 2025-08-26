@@ -234,7 +234,6 @@ impl Objects {
 impl std::ops::Index<&str> for Objects {
     type Output = Object;
 
-    #[expect(clippy::panic)]
     fn index(&self, fqname: &str) -> &Self::Output {
         self.objects
             .get(fqname)
@@ -322,7 +321,6 @@ impl ObjectKind {
     pub const ALL: [Self; 4] = [Self::Datatype, Self::Component, Self::Archetype, Self::View];
 
     // TODO(#2364): use an attr instead of the path
-    #[expect(clippy::panic)]
     pub fn from_pkg_name(pkg_name: &str, attrs: &Attributes) -> Self {
         assert!(!pkg_name.is_empty(), "Missing package name");
 
@@ -451,7 +449,6 @@ impl PartialOrd for Object {
 impl Object {
     /// Resolves a raw [`crate::Object`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
-    #[expect(clippy::panic)]
     pub fn from_raw_object(
         reporter: &Reporter,
         include_dir_path: impl AsRef<Utf8Path>,
@@ -584,7 +581,6 @@ impl Object {
 
     /// Resolves a raw [`FbsEnum`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
-    #[expect(clippy::panic)]
     pub fn from_raw_enum(
         reporter: &Reporter,
         include_dir_path: impl AsRef<Utf8Path>,
@@ -1752,7 +1748,6 @@ impl Attributes {
     }
 }
 
-#[expect(clippy::panic)]
 fn filepath_from_declaration_file(
     include_dir_path: impl AsRef<Utf8Path>,
     declaration_file: impl AsRef<str>,

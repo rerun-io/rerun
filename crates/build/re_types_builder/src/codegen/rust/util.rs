@@ -271,7 +271,6 @@ fn unescape_string(input: &str) -> String {
     output
 }
 
-#[expect(clippy::panic)]
 fn unescape_string_into(input: &str, output: &mut String) {
     let mut chars = input.chars();
 

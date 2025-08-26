@@ -1713,7 +1713,6 @@ fn quote_field_type_from_field(
 /// Returns a default converter function for the given field.
 ///
 /// Returns the converter name and, if needed, the converter function itself.
-#[expect(clippy::panic)]
 fn quote_field_converter_from_field(
     obj: &Object,
     objects: &Objects,
@@ -1835,7 +1834,6 @@ fn quote_field_converter_from_field(
     (converter, function)
 }
 
-#[expect(clippy::panic)]
 fn fqname_to_type(fqname: &str) -> String {
     let fqname = fqname.replace(".testing", "");
 
@@ -1854,7 +1852,6 @@ fn fqname_to_type(fqname: &str) -> String {
     }
 }
 
-#[expect(clippy::panic)]
 fn quote_type_from_type(typ: &Type) -> String {
     match typ {
         Type::Unit => {

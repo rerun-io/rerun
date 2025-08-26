@@ -18,7 +18,7 @@ pub mod external {
 // Note: Be careful with `#[path]` attributes: https://github.com/rust-lang/rust/issues/35016
 mod v1alpha1 {
     // Note: `allow(clippy::all)` does NOT allow all lints
-    #![allow(clippy::all, clippy::pedantic, clippy::nursery)]
+    #![allow(clippy::all, clippy::panic, clippy::pedantic, clippy::nursery)]
 
     #[path = "./rerun.catalog.v1alpha1.rs"]
     pub mod rerun_catalog_v1alpha1;
