@@ -156,9 +156,15 @@ impl Client {
                 Ok(()) => {
                     let elapsed = start.elapsed();
                     if has_emitted_slow_warning {
-                        re_log::info!("Flush completed in {:.1} seconds", elapsed.as_secs_f32());
+                        re_log::info!(
+                            "gRPC flush completed in {:.1} seconds",
+                            elapsed.as_secs_f32()
+                        );
                     } else {
-                        re_log::trace!("Flush completed in {:.1} seconds", elapsed.as_secs_f32());
+                        re_log::trace!(
+                            "gRPC flush completed in {:.1} seconds",
+                            elapsed.as_secs_f32()
+                        );
                     }
                     return Ok(());
                 }
@@ -166,12 +172,12 @@ impl Client {
                     let elapsed = start.elapsed();
                     if timeout < elapsed {
                         re_log::warn!(
-                            "Flush timed out after {:.1}s. Not all messages were sent. The timeout can be adjusted when connecting via gRPC.",
+                            "gRPC flush timed out after {:.1}s. Not all messages were sent.",
                             elapsed.as_secs_f32()
                         );
                         return Err(FlushError::Timeout);
                     } else if !has_emitted_slow_warning && very_slow <= start.elapsed() {
-                        re_log::warn!(
+                        re_log::info!(
                             "Flushing the gRPC stream has taken over {:.1}s seconds; will keep waiting…",
                             elapsed.as_secs_f32()
                         );
@@ -180,7 +186,7 @@ impl Client {
                     std::thread::yield_now();
                 }
                 Err(TryRecvError::Closed) => {
-                    re_log::warn!("Flush failed, not all messages were sent");
+                    re_log::warn!("gRPC flush failed, not all messages were sent");
                     return Err(FlushError::Closed);
                 }
             }
