@@ -154,6 +154,7 @@ impl DecodeError {
 }
 
 pub type Result<T = (), E = DecodeError> = std::result::Result<T, E>;
+
 pub type FrameResult = Result<Frame>;
 
 /// Interface for an asynchronous video decoder.
