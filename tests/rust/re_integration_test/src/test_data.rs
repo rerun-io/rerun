@@ -4,7 +4,7 @@ use re_protos::frontend::v1alpha1::EntryFilter;
 use re_protos::frontend::v1alpha1::ext::DataSource;
 use re_sdk::time::TimeType;
 use re_sdk::{RecordingStreamBuilder, TimeCell};
-use std::error::Error;
+use std::{error::Error, time::Duration};
 
 pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn Error>> {
     let path = {
@@ -17,7 +17,7 @@ pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn 
             stream.set_time("test_time", TimeCell::new(TimeType::Sequence, x));
         }
 
-        stream.flush_blocking();
+        stream.flush_blocking(Duration::from_secs(60))?;
 
         path
     };

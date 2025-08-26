@@ -694,7 +694,7 @@ fn rr_recording_stream_set_sinks_impl(
                 } else {
                     None
                 };
-                sinks.push(Box::new(re_sdk::sink::GrpcSink::new(uri, flush_timeout)));
+                sinks.push(Box::new(re_sdk::sink::GrpcSink::new(uri)));
             }
             CLogSink::FileSink { file } => {
                 let path = file.path.as_nonempty_str("path")?;

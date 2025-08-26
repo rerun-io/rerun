@@ -106,7 +106,7 @@ impl crate::sink::LogSink for WebViewerSink {
     }
 
     #[inline]
-    fn flush_blocking(&self, timeout: Option<std::time::Duration>) -> Result<(), FlushError> {
+    fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), FlushError> {
         self.sender
             .flush_blocking(timeout)
             .map_err(|err| match err {

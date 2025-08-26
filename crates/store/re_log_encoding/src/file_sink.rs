@@ -112,25 +112,18 @@ impl FileSink {
         })
     }
 
-    /// A timeout of `None` means "block forever, or until error".
     #[inline]
-    pub fn flush_blocking(&self, timeout: Option<std::time::Duration>) -> Result<(), FlushError> {
+    pub fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), FlushError> {
         let (cmd, oneshot) = Command::flush();
         self.tx
             .lock()
             .send(Some(cmd))
             .map_err(|_ignored| FlushError::Closed)?;
 
-        if let Some(timeout) = timeout {
-            oneshot.recv_timeout(timeout).map_err(|err| match err {
-                std::sync::mpsc::RecvTimeoutError::Timeout => FlushError::Timeout,
-                std::sync::mpsc::RecvTimeoutError::Disconnected => FlushError::Closed,
-            })
-        } else {
-            oneshot
-                .recv()
-                .map_err(|std::sync::mpsc::RecvError| FlushError::Closed)
-        }
+        oneshot.recv_timeout(timeout).map_err(|err| match err {
+            std::sync::mpsc::RecvTimeoutError::Timeout => FlushError::Timeout,
+            std::sync::mpsc::RecvTimeoutError::Disconnected => FlushError::Closed,
+        })
     }
 
     #[inline]

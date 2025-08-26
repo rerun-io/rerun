@@ -47,18 +47,18 @@ impl BinaryStreamStorage {
 
     /// Flush the batcher and log encoder to guarantee that all logged messages
     /// have been written to the stream.
-    ///
-    /// A timeout of `None` means "block forever, or until error".
     #[inline]
-    pub fn flush_blocking(&self, timeout: Option<std::time::Duration>) -> Result<(), FlushError> {
+    pub fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), FlushError> {
         self.rec.flush_blocking(timeout)
     }
 }
 
 impl Drop for BinaryStreamStorage {
     fn drop(&mut self) {
-        let timeout = None;
-        self.flush_blocking(timeout);
+        if let Err(err) = self.flush_blocking(std::time::Duration::MAX) {
+            re_log::error!("Failed to flush BinaryStreamStorage: {err}");
+        }
+
         let bytes = self.read();
 
         if let Some(bytes) = bytes {
@@ -101,7 +101,7 @@ impl LogSink for BinaryStreamSink {
     }
 
     #[inline]
-    fn flush_blocking(&self, _timeout: Option<std::time::Duration>) -> Result<(), FlushError> {
+    fn flush_blocking(&self, _timeout: std::time::Duration) -> Result<(), FlushError> {
         Ok(())
     }
 

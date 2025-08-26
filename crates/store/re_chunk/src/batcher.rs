@@ -497,10 +497,8 @@ impl ChunkBatcher {
     /// Initiates a flush the batching pipeline and waits for it to propagate.
     ///
     /// See [`ChunkBatcher`] docs for ordering semantics and multithreading guarantees.
-    ///
-    /// A timeout of `None` means "block forever, or until error".
     #[inline]
-    pub fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
+    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
         self.inner.flush_blocking(timeout)
     }
 
@@ -538,21 +536,16 @@ impl ChunkBatcherInner {
         self.send_cmd(flush_cmd);
     }
 
-    /// A timeout of `None` means "block forever, or until error".
-    fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
-        use crossbeam::channel::{RecvError, RecvTimeoutError};
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
+        use crossbeam::channel::RecvTimeoutError;
 
         let (flush_cmd, oneshot) = Command::flush();
         self.send_cmd(flush_cmd);
 
-        if let Some(timeout) = timeout {
-            oneshot.recv_timeout(timeout).map_err(|err| match err {
-                RecvTimeoutError::Timeout => FlushError::Timeout,
-                RecvTimeoutError::Disconnected => FlushError::Closed,
-            })
-        } else {
-            oneshot.recv().map_err(|RecvError| FlushError::Closed)
-        }
+        oneshot.recv_timeout(timeout).map_err(|err| match err {
+            RecvTimeoutError::Timeout => FlushError::Timeout,
+            RecvTimeoutError::Disconnected => FlushError::Closed,
+        })
     }
 
     fn update_config(&self, config: ChunkBatcherConfig) {

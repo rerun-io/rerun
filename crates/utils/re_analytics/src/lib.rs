@@ -240,8 +240,7 @@ pub struct Analytics {
 impl Drop for Analytics {
     fn drop(&mut self) {
         if let Some(pipeline) = self.pipeline.as_ref() {
-            let timeout = None;
-            if let Err(err) = pipeline.flush_blocking(timeout) {
+            if let Err(err) = pipeline.flush_blocking(Duration::MAX) {
                 re_log::debug!("Failed to flush analytics events during shutdown: {err}");
             }
         }
@@ -356,9 +355,7 @@ impl Analytics {
     }
 
     /// Tries to flush all pending events to the sink.
-    ///
-    /// A timeout of `None` means "block forever, or until error".
-    pub fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
+    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
         if let Some(pipeline) = self.pipeline.as_ref() {
             pipeline.flush_blocking(timeout)
         } else {

@@ -128,26 +128,18 @@ impl Pipeline {
     }
 
     /// Tries to flush all pending events to the sink.
-    ///
-    /// A timeout of `None` means "block forever, or until error".
-    pub fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
-        use crossbeam::channel::{RecvError, RecvTimeoutError};
+    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
+        use crossbeam::channel::RecvTimeoutError;
 
         re_log::trace!("Flushing analytics events…");
         try_send_event(&self.event_tx, PipelineEvent::Flush);
 
-        if let Some(timeout) = timeout {
-            self.flush_done_rx
-                .recv_timeout(timeout)
-                .map_err(|err| match err {
-                    RecvTimeoutError::Timeout => FlushError::Timeout,
-                    RecvTimeoutError::Disconnected => FlushError::Closed,
-                })
-        } else {
-            self.flush_done_rx
-                .recv()
-                .map_err(|RecvError| FlushError::Closed)
-        }
+        self.flush_done_rx
+            .recv_timeout(timeout)
+            .map_err(|err| match err {
+                RecvTimeoutError::Timeout => FlushError::Timeout,
+                RecvTimeoutError::Disconnected => FlushError::Closed,
+            })
     }
 }
 

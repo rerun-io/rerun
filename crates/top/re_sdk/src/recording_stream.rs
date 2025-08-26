@@ -915,7 +915,7 @@ impl Drop for RecordingStreamInner {
 
         // NOTE: The command channel is private, if we're here, nothing is currently capable of
         // sending data down the pipeline.
-        let timeout = None;
+        let timeout = Duration::MAX;
         if let Err(err) = self.batcher.flush_blocking(timeout) {
             re_log::error!("Failed to flush batcher: {err}");
         }
@@ -1037,20 +1037,20 @@ enum Command {
     RecordMsg(LogMsg),
     SwapSink {
         new_sink: Box<dyn LogSink>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     },
     // TODO(#10444): This should go away with more explicit sinks.
     InspectSink(InspectSinkFn),
     Flush {
         tx: Sender<()>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     },
     PopPendingChunks,
     Shutdown,
 }
 
 impl Command {
-    fn flush(timeout: Option<Duration>) -> (Self, Receiver<()>) {
+    fn flush(timeout: Duration) -> (Self, Receiver<()>) {
         let (tx, rx) = crossbeam::channel::bounded(0); // oneshot
         (Self::Flush { tx, timeout }, rx)
     }
@@ -1525,7 +1525,9 @@ fn forwarding_thread(
 
                     // Flush the underlying sink if possible.
                     sink.drop_if_disconnected();
-                    sink.flush_blocking(timeout);
+                    if let Err(err) = sink.flush_blocking(timeout) {
+                        re_log::error!("Failed to flush previous sink: {err}");
+                    }
 
                     backlog
                 };
@@ -1556,7 +1558,9 @@ fn forwarding_thread(
 
                 // Flush the underlying sink if possible.
                 sink.drop_if_disconnected();
-                sink.flush_blocking(timeout);
+                if let Err(err) = sink.flush_blocking(timeout) {
+                    re_log::error!("Failed to flush sink: {err}");
+                }
 
                 drop(tx); // signals the oneshot
             }
@@ -1821,14 +1825,14 @@ impl RecordingStream {
             return;
         }
 
-        let timeout = None; // The background thread should block forever if necessary
+        let timeout = Duration::MAX; // The background thread should block forever if necessary
 
         let f = move |inner: &RecordingStreamInner| {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
 
             // Flush the batcher down the chunk channel
-            if let Err(err) = inner.batcher.flush_blocking(None) {
+            if let Err(err) = inner.batcher.flush_blocking(timeout) {
                 re_log::warn!("Failed to flush batched in `set_sink`: {err}");
             }
 
@@ -1882,14 +1886,16 @@ impl RecordingStream {
             // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all chunks
             // are ready to be drained by the time this call returns.
             // It cannot block indefinitely and is fairly fast as it only requires compute (no I/O).
-            let timeout = None;
-            inner.batcher.flush_blocking(timeout);
+            let timeout = Duration::MAX;
+            if let Err(err) = inner.batcher.flush_blocking(timeout) {
+                re_log::warn!("Failed so flush batcher: {err}");
+            }
 
             // 2. Drain all pending chunks from the batcher's channel _before_ any other future command
             inner.cmds_tx.send(Command::PopPendingChunks).ok();
 
             // 3. Asynchronously flush everything down the sink
-            let timeout = None; // The background thread should block forever if necessary
+            let timeout = Duration::MAX; // The background thread should block forever if necessary
             let (cmd, _) = Command::flush(timeout);
             inner.cmds_tx.send(cmd).ok();
         };
@@ -1902,9 +1908,7 @@ impl RecordingStream {
     /// Initiates a flush the batching pipeline and waits for it to propagate.
     ///
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
-    ///
-    /// A timeout of `None` means "block forever, or until error".
-    pub fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
+    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
         re_tracing::profile_function!();
 
         if self.is_forked_child() {
@@ -1934,22 +1938,16 @@ impl RecordingStream {
                 .map_err(|_ignored| FlushError::Closed)?;
 
             // 3. Wait for all chunks to have been forwarded down the sink
-            let (cmd, oneshot) = Command::flush(timeout);
+            let (cmd, oneshot) = Command::flush(Duration::MAX); // TODO: we should clarify if the timeout is for _this_ thread of the background thread.
             inner
                 .cmds_tx
                 .send(cmd)
                 .map_err(|_ignored| FlushError::Closed)?;
 
-            if let Some(timeout) = timeout {
-                oneshot.recv_timeout(timeout).map_err(|err| match err {
-                    re_smart_channel::RecvTimeoutError::Timeout => FlushError::Timeout,
-                    re_smart_channel::RecvTimeoutError::Disconnected => FlushError::Closed,
-                })
-            } else {
-                oneshot
-                    .recv()
-                    .map_err(|re_smart_channel::RecvError| FlushError::Closed)
-            }
+            oneshot.recv_timeout(timeout).map_err(|err| match err {
+                re_smart_channel::RecvTimeoutError::Timeout => FlushError::Timeout,
+                re_smart_channel::RecvTimeoutError::Disconnected => FlushError::Closed,
+            })
         };
 
         match self.with(f) {
@@ -3111,7 +3109,7 @@ mod tests {
             // noop
         }
 
-        fn flush_blocking(&self, _timeout: Option<Duration>) -> Result<(), FlushError> {
+        fn flush_blocking(&self, _timeout: Duration) -> Result<(), FlushError> {
             Ok(())
         }
 

@@ -135,9 +135,7 @@ impl Client {
     ///
     /// If a timeout is provided, we will break when that timeout is received,
     /// returning `Err(())`.
-    ///
-    /// A timeout of `None` means "block forever, or until error".
-    pub fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
+    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
         re_tracing::profile_function!();
 
         use tokio::sync::oneshot::error::TryRecvError;
@@ -166,17 +164,15 @@ impl Client {
                 }
                 Err(TryRecvError::Empty) => {
                     let elapsed = start.elapsed();
-                    if let Some(timeout) = timeout {
-                        if timeout <= elapsed {
-                            re_log::warn!(
-                                "Flush timed out after {:.1}s. Not all messages were sent. The timeout can be adjusted when connecting via gRPC.",
-                                elapsed.as_secs_f32()
-                            );
-                            return Err(FlushError::Timeout);
-                        }
+                    if timeout < elapsed {
+                        re_log::warn!(
+                            "Flush timed out after {:.1}s. Not all messages were sent. The timeout can be adjusted when connecting via gRPC.",
+                            elapsed.as_secs_f32()
+                        );
+                        return Err(FlushError::Timeout);
                     } else if !has_emitted_slow_warning && very_slow <= start.elapsed() {
                         re_log::warn!(
-                            "Flushing the gRPC stream has taken over {:.1}s seconds; will keep blocking until it's all flushed.",
+                            "Flushing the gRPC stream has taken over {:.1}s seconds; will keep waiting…",
                             elapsed.as_secs_f32()
                         );
                         has_emitted_slow_warning = true;
@@ -197,8 +193,7 @@ impl Drop for Client {
         re_log::debug!("Shutting down message proxy client");
 
         // Wait for flush, blocking forever if needed.
-        let timeout = None;
-        if let Err(err) = self.flush_blocking(timeout) {
+        if let Err(err) = self.flush_blocking(Duration::MAX) {
             re_log::error!("Failed to flush gRPC messages during shutdown: {err}");
         }
 

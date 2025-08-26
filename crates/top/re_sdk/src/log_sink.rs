@@ -12,10 +12,12 @@ use crate::RecordingStream;
 /// An error that can occur when flushing.
 #[derive(Debug, thiserror::Error)]
 pub enum FlushError {
+    /// Sink closed before flushing completed
     #[error("Sink closed before flushing completed")]
     Closed,
 
-    #[error("Flush timed out - not all log messages were sent.")]
+    /// Flush timed out - not all log messages were sent
+    #[error("Flush timed out - not all log messages were sent")]
     Timeout,
 }
 
@@ -44,9 +46,7 @@ pub trait LogSink: Send + Sync + 'static {
     ///
     /// If applicable, this should flush all data to any underlying OS-managed file descriptors.
     /// See also [`LogSink::drop_if_disconnected`].
-    ///
-    /// A timeout of `None` means "block forever, or until error".
-    fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError>;
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError>;
 
     /// Drops all pending data currently sitting in the sink's send buffers if it is unable to
     /// flush it for any reason.
@@ -122,7 +122,7 @@ impl LogSink for MultiSink {
     }
 
     #[inline]
-    fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
         for sink in self.0.lock().iter() {
             sink.flush_blocking(timeout)?;
         }
@@ -272,7 +272,7 @@ impl LogSink for BufferedSink {
     }
 
     #[inline]
-    fn flush_blocking(&self, _timeout: Option<Duration>) -> Result<(), FlushError> {
+    fn flush_blocking(&self, _timeout: Duration) -> Result<(), FlushError> {
         Ok(())
     }
 
@@ -322,7 +322,7 @@ impl LogSink for MemorySink {
     }
 
     #[inline]
-    fn flush_blocking(&self, _timeout: Option<Duration>) -> Result<(), FlushError> {
+    fn flush_blocking(&self, _timeout: Duration) -> Result<(), FlushError> {
         Ok(())
     }
 
@@ -400,7 +400,7 @@ impl MemorySinkStorage {
     pub fn num_msgs(&self) -> usize {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
-        self.rec.flush_blocking(None).ok();
+        self.rec.flush_blocking(Duration::MAX).ok();
         self.inner.lock().msgs.len()
     }
 
@@ -411,7 +411,7 @@ impl MemorySinkStorage {
     pub fn take(&self) -> Vec<LogMsg> {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
-        self.rec.flush_blocking(None).ok();
+        self.rec.flush_blocking(Duration::MAX).ok();
         std::mem::take(&mut (self.write()))
     }
 
@@ -425,7 +425,7 @@ impl MemorySinkStorage {
         for sink in sinks {
             // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
             // in this flush; it's just a matter of making the table batcher tick early.
-            sink.rec.flush_blocking(None).ok();
+            sink.rec.flush_blocking(Duration::MAX).ok();
             let mut inner = sink.inner.lock();
             inner.has_been_used = true;
 
@@ -446,7 +446,7 @@ impl MemorySinkStorage {
     pub fn drain_as_bytes(&self) -> Result<Vec<u8>, EncodeError> {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
-        self.rec.flush_blocking(None).ok();
+        self.rec.flush_blocking(Duration::MAX).ok();
 
         let mut inner = self.inner.lock();
         inner.has_been_used = true;
@@ -495,7 +495,7 @@ impl LogSink for CallbackSink {
     }
 
     #[inline]
-    fn flush_blocking(&self, _timeout: Option<Duration>) -> Result<(), FlushError> {
+    fn flush_blocking(&self, _timeout: Duration) -> Result<(), FlushError> {
         Ok(())
     }
 
@@ -560,7 +560,7 @@ impl LogSink for GrpcSink {
         self.client.send(msg);
     }
 
-    fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
         self.client
             .flush_blocking(timeout)
             .map_err(|err| match err {

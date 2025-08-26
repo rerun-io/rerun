@@ -78,7 +78,7 @@ impl crate::sink::LogSink for GrpcServerSink {
     }
 
     #[inline]
-    fn flush_blocking(&self, timeout: Option<Duration>) -> Result<(), crate::sink::FlushError> {
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), crate::sink::FlushError> {
         self.sender
             .flush_blocking(timeout)
             .map_err(|err| match err {
@@ -99,8 +99,7 @@ impl crate::sink::LogSink for GrpcServerSink {
 
 impl Drop for GrpcServerSink {
     fn drop(&mut self) {
-        let timeout = None;
-        if let Err(err) = self.sender.flush_blocking(timeout) {
+        if let Err(err) = self.sender.flush_blocking(Duration::MAX) {
             re_log::error!("Failed to flush gRPC queue: {err}");
         }
         self.server_shutdown_signal.stop();

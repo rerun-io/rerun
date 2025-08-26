@@ -1,4 +1,4 @@
-use std::net::IpAddr;
+use std::{net::IpAddr, time::Duration};
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
@@ -962,7 +962,7 @@ fn connect_to_existing_server(
 
     let uri: re_uri::ProxyUri = format!("rerun+http://{server_addr}/proxy").parse()?;
     re_log::info!(%uri, "Another viewer is already running, streaming data to it.");
-    let sink = re_sdk::sink::GrpcSink::new(uri, crate::default_flush_timeout());
+    let sink = re_sdk::sink::GrpcSink::new(uri);
     let receivers = ReceiversFromUrlParams::new(
         url_or_paths,
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
@@ -983,7 +983,7 @@ fn connect_to_existing_server(
             }
         }
     }
-    sink.flush_blocking();
+    sink.flush_blocking(Duration::MAX)?;
 
     Ok(())
 }
