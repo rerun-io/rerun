@@ -136,6 +136,15 @@ pub enum VideoDeliveryMethod {
     },
 }
 
+impl VideoDeliveryMethod {
+    #[inline]
+    pub fn new_stream() -> Self {
+        Self::Stream {
+            last_time_updated_samples: Instant::now(),
+        }
+    }
+}
+
 /// Description of video data.
 ///
 /// Store various metadata about a video.

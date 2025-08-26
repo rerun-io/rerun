@@ -401,7 +401,7 @@ impl VideoPlayer {
         // Signal the end of the video if we reached it.
         // This is important for some decoders to flush out all the frames.
         if !self.signaled_end_of_video
-            && treat_video_as_finite(&self.config, video_description)
+            && !treat_video_as_live_stream(&self.config, video_description)
             && self.enqueued_last_sample_of_video(video_description)
         {
             re_log::debug!("Signaling end of video");
@@ -583,7 +583,7 @@ impl VideoPlayer {
         // * we don't want to show the spinner too eagerly and rather give the impression of a delayed stream
         // * some decoders need a certain amount of samples in the queue to produce a frame.
         //   See AsyncDecoder::min_num_samples_to_enqueue_ahead for more details about decoder peculiarities.
-        if !treat_video_as_finite(&self.config, video_description) {
+        if treat_video_as_live_stream(&self.config, video_description) {
             let min_num_samples_to_enqueue_ahead =
                 self.sample_decoder.min_num_samples_to_enqueue_ahead();
             let allowed_delay =
@@ -627,7 +627,7 @@ impl VideoPlayer {
 ///
 /// Note that we need to be robust against this being wrong and the video getting new samples in the future after all.
 /// The result should be treated as a heuristic.
-fn treat_video_as_finite(
+fn treat_video_as_live_stream(
     config: &PlayerConfiguration,
     video_description: &re_video::VideoDataDescription,
 ) -> bool {
@@ -635,10 +635,10 @@ fn treat_video_as_finite(
     // This helps decoders to flush out any pending frames.
     // (in particular the ffmpeg-executable based decoder profits from this as it tends to not emit the last 5~10 frames otherwise)
     match &video_description.delivery_method {
-        VideoDeliveryMethod::Static { .. } => true,
+        VideoDeliveryMethod::Static { .. } => false,
         VideoDeliveryMethod::Stream {
             last_time_updated_samples,
-        } => last_time_updated_samples.elapsed() > config.time_until_video_assumed_ended,
+        } => last_time_updated_samples.elapsed() < config.time_until_video_assumed_ended,
     }
 }
 

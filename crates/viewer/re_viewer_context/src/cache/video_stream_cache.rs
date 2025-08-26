@@ -7,7 +7,6 @@ use ahash::HashMap;
 use arrow::buffer::Buffer as ArrowBuffer;
 use egui::NumExt as _;
 use parking_lot::RwLock;
-use web_time::Instant;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
@@ -252,9 +251,7 @@ fn load_video_data_from_chunks(
         codec,
         encoding_details: None, // Unknown so far, we'll find out later.
         timescale: timescale_for_timeline(store, timeline),
-        delivery_method: re_video::VideoDeliveryMethod::Stream {
-            last_time_updated_samples: Instant::now(),
-        },
+        delivery_method: re_video::VideoDeliveryMethod::new_stream(),
         gops: StableIndexDeque::new(),
         samples: StableIndexDeque::with_capacity(sample_chunks.len()), // Number of video chunks is minimum number of samples.
         samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(#10090): No b-frames for now.
@@ -580,9 +577,7 @@ impl Cache for VideoStreamCache {
                     video_sample_buffers,
                 } = &mut *video_stream;
                 let video_data = video_renderer.data_descr_mut();
-                video_data.delivery_method = re_video::VideoDeliveryMethod::Stream {
-                    last_time_updated_samples: Instant::now(),
-                };
+                video_data.delivery_method = re_video::VideoDeliveryMethod::new_stream();
 
                 match event.kind {
                     re_chunk_store::ChunkStoreDiffKind::Addition => {
@@ -788,7 +783,7 @@ mod tests {
         assert!(matches!(
             update_type,
             re_video::VideoDeliveryMethod::Stream { .. }
-        )); // Open ended video.
+        ));
         assert_eq!(samples_statistics, re_video::SamplesStatistics::NO_BFRAMES);
         assert!(mp4_tracks.is_empty());
 
