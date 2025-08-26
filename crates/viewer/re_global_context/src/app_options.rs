@@ -16,6 +16,9 @@ pub struct AppOptions {
     /// Show a warning if a software rasterizer is being used (i.e. no GPU).
     pub show_software_rasterizer_warning: bool,
 
+    /// Show an orange dot to warn about multi-pass layout in egui..
+    pub show_multi_pass_warning: bool,
+
     /// Include the "Welcome screen" application in the recordings panel?
     #[serde(alias = "include_welcome_screen_button_in_recordings_panel")]
     pub include_rerun_examples_button_in_recordings_panel: bool,
@@ -74,8 +77,8 @@ impl Default for AppOptions {
             warn_e2e_latency: 1.0,
 
             show_metrics: cfg!(debug_assertions),
-
             show_software_rasterizer_warning: true,
+            show_multi_pass_warning: cfg!(debug_assertions),
 
             include_rerun_examples_button_in_recordings_panel: true,
 

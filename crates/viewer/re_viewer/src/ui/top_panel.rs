@@ -127,7 +127,7 @@ fn top_bar_ui(
             }
         }
 
-        if cfg!(debug_assertions) {
+        if app.app_options().show_multi_pass_warning {
             multi_pass_warning_dot_ui(ui);
         }
 
