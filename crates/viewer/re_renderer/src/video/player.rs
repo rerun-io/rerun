@@ -2,7 +2,9 @@ use std::time::Duration;
 
 use web_time::Instant;
 
-use re_video::{DecodeSettings, FrameInfo, GopIndex, SampleIndex, StableIndexDeque, Time};
+use re_video::{
+    DecodeSettings, FrameInfo, GopIndex, SampleIndex, StableIndexDeque, Time, VideoDeliveryMethod,
+};
 
 use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
 use crate::{
@@ -398,7 +400,7 @@ impl VideoPlayer {
         // Signal the end of the video if we reached it.
         // This is important for some decoders to flush out all the frames.
         if !self.signaled_end_of_video
-            && treat_video_as_finite(&self.config, video_description)
+            && !treat_video_as_live_stream(&self.config, video_description)
             && self.enqueued_last_sample_of_video(video_description)
         {
             re_log::debug!("Signaling end of video");
@@ -580,10 +582,7 @@ impl VideoPlayer {
         // * we don't want to show the spinner too eagerly and rather give the impression of a delayed stream
         // * some decoders need a certain amount of samples in the queue to produce a frame.
         //   See AsyncDecoder::min_num_samples_to_enqueue_ahead for more details about decoder peculiarities.
-        let recently_updated_video = video_description
-            .last_time_updated_samples
-            .is_some_and(|t| t.elapsed() < self.config.time_until_video_assumed_ended);
-        if recently_updated_video {
+        if treat_video_as_live_stream(&self.config, video_description) {
             let min_num_samples_to_enqueue_ahead =
                 self.sample_decoder.min_num_samples_to_enqueue_ahead();
             let allowed_delay =
@@ -627,19 +626,19 @@ impl VideoPlayer {
 ///
 /// Note that we need to be robust against this being wrong and the video getting new samples in the future after all.
 /// The result should be treated as a heuristic.
-fn treat_video_as_finite(
+fn treat_video_as_live_stream(
     config: &PlayerConfiguration,
     video_description: &re_video::VideoDataDescription,
 ) -> bool {
     // If this is a potentially live stream, signal the end of the video after a certain amount of time.
     // This helps decoders to flush out any pending frames.
     // (in particular the ffmpeg-executable based decoder profits from this as it tends to not emit the last 5~10 frames otherwise)
-    video_description.duration.is_some()
-        || video_description
-            .last_time_updated_samples
-            .is_some_and(|last_time_updated_samples| {
-                last_time_updated_samples.elapsed() > config.time_until_video_assumed_ended
-            })
+    match &video_description.delivery_method {
+        VideoDeliveryMethod::Static { .. } => false,
+        VideoDeliveryMethod::Stream {
+            last_time_updated_samples,
+        } => last_time_updated_samples.elapsed() < config.time_until_video_assumed_ended,
+    }
 }
 
 /// Determine whether the decoder is catching up with the requested frame within a certain tolerance.
