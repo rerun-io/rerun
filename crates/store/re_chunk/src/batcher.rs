@@ -20,11 +20,11 @@ use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponen
 
 /// An error that can occur when flushing.
 #[derive(Debug, thiserror::Error)]
-pub enum FlushError {
+pub enum BatcherFlushError {
     #[error("Batcher stopped before flushing completed")]
     Closed,
 
-    #[error("Flush timed out - not all messages were sent.")]
+    #[error("Batcher flush timed out - not all messages were sent.")]
     Timeout,
 }
 
@@ -498,7 +498,7 @@ impl ChunkBatcher {
     ///
     /// See [`ChunkBatcher`] docs for ordering semantics and multithreading guarantees.
     #[inline]
-    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
+    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), BatcherFlushError> {
         self.inner.flush_blocking(timeout)
     }
 
@@ -536,15 +536,15 @@ impl ChunkBatcherInner {
         self.send_cmd(flush_cmd);
     }
 
-    fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), BatcherFlushError> {
         use crossbeam::channel::RecvTimeoutError;
 
         let (flush_cmd, on_done) = Command::flush();
         self.send_cmd(flush_cmd);
 
         on_done.recv_timeout(timeout).map_err(|err| match err {
-            RecvTimeoutError::Timeout => FlushError::Timeout,
-            RecvTimeoutError::Disconnected => FlushError::Closed,
+            RecvTimeoutError::Timeout => BatcherFlushError::Timeout,
+            RecvTimeoutError::Disconnected => BatcherFlushError::Closed,
         })
     }
 

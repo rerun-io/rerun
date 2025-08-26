@@ -2,7 +2,7 @@ use re_chunk::ChunkBatcherConfig;
 use re_log_types::LogMsg;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
-use crate::log_sink::FlushError;
+use crate::log_sink::SinkFlushError;
 
 // ----------------------------------------------------------------------------
 
@@ -106,14 +106,14 @@ impl crate::sink::LogSink for WebViewerSink {
     }
 
     #[inline]
-    fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), FlushError> {
+    fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), SinkFlushError> {
         self.sender
             .flush_blocking(timeout)
             .map_err(|err| match err {
                 re_smart_channel::FlushError::Closed => {
-                    FlushError::failed("The viewer is no longer subscribed")
+                    SinkFlushError::failed("The viewer is no longer subscribed")
                 }
-                re_smart_channel::FlushError::Timeout => FlushError::Timeout,
+                re_smart_channel::FlushError::Timeout => SinkFlushError::Timeout,
             })
     }
 

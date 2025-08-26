@@ -61,10 +61,12 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
     }
 
     #[inline]
-    fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), sink::FlushError> {
+    fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), sink::SinkFlushError> {
+        use re_log_encoding::FileFlushError;
+
         Self::flush_blocking(self, timeout).map_err(|err| match err {
-            re_log_encoding::FlushError::Failed { message } => sink::FlushError::Failed { message },
-            re_log_encoding::FlushError::Timeout => sink::FlushError::Timeout,
+            FileFlushError::Failed { message } => sink::SinkFlushError::Failed { message },
+            FileFlushError::Timeout => sink::SinkFlushError::Timeout,
         })
     }
 
@@ -83,8 +85,8 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 pub mod sink {
     pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
     pub use crate::log_sink::{
-        BufferedSink, CallbackSink, FlushError, IntoMultiSink, LogSink, MemorySink,
-        MemorySinkStorage, MultiSink,
+        BufferedSink, CallbackSink, IntoMultiSink, LogSink, MemorySink, MemorySinkStorage,
+        MultiSink, SinkFlushError,
     };
 
     pub use crate::log_sink::{GrpcSink, GrpcSinkConnectionFailure, GrpcSinkConnectionState};

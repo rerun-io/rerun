@@ -31,8 +31,8 @@ pub use self::range::{RangeQuery, RangeQueryOptions};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::batcher::{
-    BatcherHooks, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkBatcherResult,
-    FlushError, PendingRow,
+    BatcherFlushError, BatcherHooks, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
+    ChunkBatcherResult, PendingRow,
 };
 
 // Re-exports

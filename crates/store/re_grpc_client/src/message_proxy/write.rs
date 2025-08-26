@@ -22,11 +22,11 @@ use crate::TonicStatusError;
 
 /// An error that can occur when flushing.
 #[derive(Debug, thiserror::Error)]
-pub enum FlushError {
+pub enum GrpcFlushError {
     #[error("gRPC connection closed before flushing completed")]
     Closed,
 
-    #[error("Flush timed out - not all messages were sent.")]
+    #[error("gRPC flush timed out - not all messages were sent.")]
     Timeout,
 }
 
@@ -135,7 +135,7 @@ impl Client {
     ///
     /// If a timeout is provided, we will break when that timeout is received,
     /// returning `Err(())`.
-    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
+    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), GrpcFlushError> {
         re_tracing::profile_function!();
 
         use tokio::sync::oneshot::error::TryRecvError;
@@ -143,7 +143,7 @@ impl Client {
         let (tx, mut rx) = oneshot::channel();
         if self.cmd_tx.send(Cmd::Flush { on_done: tx }).is_err() {
             re_log::debug!("Flush failed: already shut down.");
-            return Err(FlushError::Closed);
+            return Err(GrpcFlushError::Closed);
         }
 
         let start = std::time::Instant::now();
@@ -175,7 +175,7 @@ impl Client {
                             "gRPC flush timed out after {:.1}s. Not all messages were sent.",
                             elapsed.as_secs_f32()
                         );
-                        return Err(FlushError::Timeout);
+                        return Err(GrpcFlushError::Timeout);
                     } else if !has_emitted_slow_warning && very_slow <= start.elapsed() {
                         re_log::info!(
                             "Flushing the gRPC stream has taken over {:.1}s seconds; will keep waiting…",
@@ -187,7 +187,7 @@ impl Client {
                 }
                 Err(TryRecvError::Closed) => {
                     re_log::warn!("gRPC flush failed, not all messages were sent");
-                    return Err(FlushError::Closed);
+                    return Err(GrpcFlushError::Closed);
                 }
             }
         }

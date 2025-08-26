@@ -10,15 +10,15 @@ use re_log_types::LogMsg;
 
 /// An error that can occur when flushing.
 #[derive(Debug, thiserror::Error)]
-pub enum FlushError {
+pub enum FileFlushError {
     #[error("Failed to flush file: {message}")]
     Failed { message: String },
 
-    #[error("Flush timed out - not all messages were sent.")]
+    #[error("File flush timed out - not all messages were written.")]
     Timeout,
 }
 
-impl FlushError {
+impl FileFlushError {
     fn failed(message: impl Into<String>) -> Self {
         Self::Failed {
             message: message.into(),
@@ -132,22 +132,21 @@ impl FileSink {
     }
 
     #[inline]
-    pub fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), FlushError> {
+    pub fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), FileFlushError> {
         let (cmd, oneshot) = Command::flush();
-        self.tx
-            .lock()
-            .send(Some(cmd))
-            .map_err(|_ignored| FlushError::failed("File-writer thread shut down prematurely"))?;
+        self.tx.lock().send(Some(cmd)).map_err(|_ignored| {
+            FileFlushError::failed("File-writer thread shut down prematurely")
+        })?;
 
         oneshot
             .recv_timeout(timeout)
             .map_err(|err| match err {
-                RecvTimeoutError::Timeout => FlushError::Timeout,
+                RecvTimeoutError::Timeout => FileFlushError::Timeout,
                 RecvTimeoutError::Disconnected => {
-                    FlushError::failed("File-writer thread shut down prematurely")
+                    FileFlushError::failed("File-writer thread shut down prematurely")
                 }
             })?
-            .map_err(FlushError::failed)
+            .map_err(FileFlushError::failed)
     }
 
     #[inline]

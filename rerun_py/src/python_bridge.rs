@@ -26,7 +26,7 @@ use re_log_types::{LogMsg, RecordingId};
 use re_sdk::{
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell,
     external::re_log_encoding::encoder::encode_ref_as_bytes_local,
-    sink::{BinaryStreamStorage, CallbackSink, FlushError, MemorySinkStorage},
+    sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError},
     time::TimePoint,
 };
 #[cfg(feature = "web_viewer")]
@@ -262,7 +262,7 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
     // a reference to the recording, which prevents it from being dropped.
     set_global_data_recording(py, None);
 
-    py.allow_threads(|| -> Result<(), FlushError> {
+    py.allow_threads(|| -> Result<(), SinkFlushError> {
         // Now flush all recordings to handle weird cases where the data in the queue
         // is actually holding onto the ref to the recording.
         for recording in all_recordings().iter() {
@@ -1597,7 +1597,7 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
     };
 
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
-    py.allow_threads(|| -> Result<(), FlushError> {
+    py.allow_threads(|| -> Result<(), SinkFlushError> {
         if blocking {
             recording.flush_blocking()?;
         } else {
@@ -1606,7 +1606,7 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
         flush_garbage_queue();
         Ok(())
     })
-    .map_err(|err: FlushError| PyRuntimeError::new_err(err.to_string()))
+    .map_err(|err: SinkFlushError| PyRuntimeError::new_err(err.to_string()))
 }
 
 // --- Components ---

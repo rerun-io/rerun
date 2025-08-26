@@ -3,7 +3,7 @@ use std::{fmt, time::Duration};
 
 use parking_lot::Mutex;
 use re_chunk::ChunkBatcherConfig;
-use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, Options};
+use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, GrpcFlushError, Options};
 use re_log_encoding::encoder::{EncodeError, encode_as_bytes_local, local_raw_encoder};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
@@ -11,7 +11,7 @@ use crate::RecordingStream;
 
 /// An error that can occur when flushing.
 #[derive(Debug, thiserror::Error)]
-pub enum FlushError {
+pub enum SinkFlushError {
     /// Flush timed out - not all log messages were sent
     #[error("Flush timed out - not all log messages were sent")]
     Timeout,
@@ -24,7 +24,7 @@ pub enum FlushError {
     },
 }
 
-impl FlushError {
+impl SinkFlushError {
     /// Custom error occurred
     pub fn failed(message: impl Into<String>) -> Self {
         Self::Failed {
@@ -58,7 +58,7 @@ pub trait LogSink: Send + Sync + 'static {
     ///
     /// If applicable, this should flush all data to any underlying OS-managed file descriptors.
     /// See also [`LogSink::drop_if_disconnected`].
-    fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError>;
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError>;
 
     /// Drops all pending data currently sitting in the sink's send buffers if it is unable to
     /// flush it for any reason.
@@ -134,7 +134,7 @@ impl LogSink for MultiSink {
     }
 
     #[inline]
-    fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError> {
         for sink in self.0.lock().iter() {
             sink.flush_blocking(timeout)?;
         }
@@ -284,7 +284,7 @@ impl LogSink for BufferedSink {
     }
 
     #[inline]
-    fn flush_blocking(&self, _timeout: Duration) -> Result<(), FlushError> {
+    fn flush_blocking(&self, _timeout: Duration) -> Result<(), SinkFlushError> {
         Ok(())
     }
 
@@ -334,7 +334,7 @@ impl LogSink for MemorySink {
     }
 
     #[inline]
-    fn flush_blocking(&self, _timeout: Duration) -> Result<(), FlushError> {
+    fn flush_blocking(&self, _timeout: Duration) -> Result<(), SinkFlushError> {
         Ok(())
     }
 
@@ -507,7 +507,7 @@ impl LogSink for CallbackSink {
     }
 
     #[inline]
-    fn flush_blocking(&self, _timeout: Duration) -> Result<(), FlushError> {
+    fn flush_blocking(&self, _timeout: Duration) -> Result<(), SinkFlushError> {
         Ok(())
     }
 
@@ -572,14 +572,12 @@ impl LogSink for GrpcSink {
         self.client.send(msg);
     }
 
-    fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError> {
         self.client
             .flush_blocking(timeout)
             .map_err(|err| match err {
-                re_grpc_client::message_proxy::write::FlushError::Closed => {
-                    FlushError::failed(err.to_string())
-                }
-                re_grpc_client::message_proxy::write::FlushError::Timeout => FlushError::Timeout,
+                GrpcFlushError::Closed => SinkFlushError::failed(err.to_string()),
+                GrpcFlushError::Timeout => SinkFlushError::Timeout,
             })
     }
 

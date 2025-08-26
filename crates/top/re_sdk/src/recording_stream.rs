@@ -5,14 +5,14 @@ use std::sync::{Arc, atomic::AtomicI64};
 use std::time::Duration;
 
 use ahash::HashMap;
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::{Receiver, RecvTimeoutError, Sender};
 use itertools::Either;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
 use re_chunk::{
-    BatcherHooks, Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkComponents,
-    ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
+    BatcherFlushError, BatcherHooks, Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
+    ChunkComponents, ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
@@ -27,7 +27,7 @@ use re_types::{AsComponents, SerializationError, SerializedComponentColumn};
 use re_web_viewer_server::WebViewerServerPort;
 
 use crate::sink::{LogSink, MemorySinkStorage};
-use crate::{binary_stream_sink::BinaryStreamStorage, sink::FlushError};
+use crate::{binary_stream_sink::BinaryStreamStorage, sink::SinkFlushError};
 
 // ---
 
@@ -1033,7 +1033,7 @@ impl RecordingStreamInner {
 
 type InspectSinkFn = Box<dyn FnOnce(&dyn LogSink) + Send + 'static>;
 
-type FlushResult = Result<(), FlushError>;
+type FlushResult = Result<(), SinkFlushError>;
 
 enum Command {
     RecordMsg(LogMsg),
@@ -1878,7 +1878,7 @@ impl RecordingStream {
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     ///
     /// Convenience function for calling [`Self::flush`] with a `timeout` of `None`.
-    pub fn flush_async(&self) -> Result<(), FlushError> {
+    pub fn flush_async(&self) -> Result<(), SinkFlushError> {
         re_tracing::profile_function!();
         self.flush(None)
     }
@@ -1888,7 +1888,7 @@ impl RecordingStream {
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     ///
     /// Convenience function for calling [`Self::flush`] with [`Duration::MAX`].
-    pub fn flush_blocking(&self) -> Result<(), FlushError> {
+    pub fn flush_blocking(&self) -> Result<(), SinkFlushError> {
         re_tracing::profile_function!();
         self.flush(Some(Duration::MAX))
     }
@@ -1901,16 +1901,16 @@ impl RecordingStream {
     /// an error occurs, or the flush is complete.
     ///
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
-    pub fn flush(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
+    pub fn flush(&self, timeout: Option<Duration>) -> Result<(), SinkFlushError> {
         re_tracing::profile_function!();
 
         if self.is_forked_child() {
-            return Err(FlushError::failed(
+            return Err(SinkFlushError::failed(
                 "Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the Rerun SDK.",
             ));
         }
 
-        let f = move |inner: &RecordingStreamInner| -> Result<(), FlushError> {
+        let f = move |inner: &RecordingStreamInner| -> Result<(), SinkFlushError> {
             // 1. Synchronously flush the batcher down the chunk channel
             //
             // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all chunks
@@ -1920,8 +1920,8 @@ impl RecordingStream {
                 .batcher
                 .flush_blocking(Duration::MAX)
                 .map_err(|err| match err {
-                    re_chunk::FlushError::Closed => FlushError::failed(err.to_string()),
-                    re_chunk::FlushError::Timeout => FlushError::Timeout,
+                    BatcherFlushError::Closed => SinkFlushError::failed(err.to_string()),
+                    BatcherFlushError::Timeout => SinkFlushError::Timeout,
                 })?;
 
             // 2. Drain all pending chunks from the batcher's channel _before_ any other future command
@@ -1929,7 +1929,7 @@ impl RecordingStream {
                 .cmds_tx
                 .send(Command::PopPendingChunks)
                 .map_err(|_ignored| {
-                    FlushError::failed(
+                    SinkFlushError::failed(
                         "Sink shut down prematurely. This is likely a bug in the Rerun SDK.",
                     )
                 })?;
@@ -1937,15 +1937,15 @@ impl RecordingStream {
             // 3. Asynchronously flush everything down the sink
             let (cmd, on_done) = Command::flush(Duration::MAX); // The background thread should block forever if necessary
             inner.cmds_tx.send(cmd).map_err(|_ignored| {
-                FlushError::failed(
+                SinkFlushError::failed(
                     "Sink shut down prematurely. This is likely a bug in the Rerun SDK.",
                 )
             })?;
 
             if let Some(timeout) = timeout {
                 on_done.recv_timeout(timeout).map_err(|err| match err {
-                    crossbeam::channel::RecvTimeoutError::Timeout => FlushError::Timeout,
-                    crossbeam::channel::RecvTimeoutError::Disconnected => FlushError::failed(
+                    RecvTimeoutError::Timeout => SinkFlushError::Timeout,
+                    RecvTimeoutError::Disconnected => SinkFlushError::failed(
                         "Flush never finished. This is likely a bug in the Rerun SDK.",
                     ),
                 })??;
@@ -3113,7 +3113,7 @@ mod tests {
             // noop
         }
 
-        fn flush_blocking(&self, _timeout: Duration) -> Result<(), FlushError> {
+        fn flush_blocking(&self, _timeout: Duration) -> Result<(), SinkFlushError> {
             Ok(())
         }
 
