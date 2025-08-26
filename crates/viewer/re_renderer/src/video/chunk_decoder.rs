@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use crossbeam::channel::{Receiver, Sender};
 use re_video::{Chunk, Frame, FrameContent, Time, VideoDataDescription};
 
 use crate::{
@@ -35,6 +36,13 @@ struct DecoderOutput {
     error: Option<TimedDecodingError>,
 }
 
+impl DecoderOutput {
+    fn clear(&mut self) {
+        self.error = None;
+        self.frames_by_pts.clear();
+    }
+}
+
 impl re_byte_size::SizeBytes for DecoderOutput {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
@@ -52,7 +60,7 @@ pub struct VideoSampleDecoder {
     debug_name: String,
     decoder: Box<dyn re_video::AsyncDecoder>,
 
-    decoder_output_receiver: crossbeam::channel::Receiver<re_video::DecodeResult<Frame>>,
+    frame_receiver: Receiver<re_video::FrameResult>,
     decoder_output: DecoderOutput,
 }
 
@@ -61,7 +69,7 @@ impl re_byte_size::SizeBytes for VideoSampleDecoder {
         let Self {
             debug_name,
             decoder: _, // TODO(emilk): maybe we should count this
-            decoder_output_receiver: _,
+            frame_receiver: _,
             decoder_output,
         } = self;
         debug_name.heap_size_bytes() + decoder_output.heap_size_bytes()
@@ -72,26 +80,26 @@ impl VideoSampleDecoder {
     pub fn new(
         debug_name: String,
         make_decoder: impl FnOnce(
-            crossbeam::channel::Sender<re_video::DecodeResult<Frame>>,
+            Sender<re_video::FrameResult>,
         ) -> re_video::DecodeResult<Box<dyn re_video::AsyncDecoder>>,
     ) -> Result<Self, VideoPlayerError> {
         re_tracing::profile_function!();
 
-        let (decoder_output_sender, decoder_output_receiver) = crossbeam::channel::unbounded();
+        let (decoder_output_sender, frame_receiver) = crossbeam::channel::unbounded();
         let decoder = make_decoder(decoder_output_sender)?;
 
         Ok(Self {
             debug_name,
             decoder,
             decoder_output: DecoderOutput::default(),
-            decoder_output_receiver,
+            frame_receiver,
         })
     }
 
     /// Processes all frames received from the asynchronously running decoder.
     fn process_decoder_output(&mut self) {
         loop {
-            match self.decoder_output_receiver.try_recv() {
+            match self.frame_receiver.try_recv() {
                 Ok(frame) => {
                     match frame {
                         Ok(frame) => {
@@ -182,7 +190,7 @@ impl VideoSampleDecoder {
         *frames_by_pts = frames_by_pts.split_off(&latest_at_pts);
     }
 
-    /// Returns the latest decoded frame at the given PTS and drops all earlier frames.
+    /// Returns the latest decoded frame.
     pub fn oldest_available_frame(&self) -> Option<&Frame> {
         self.decoder_output
             .frames_by_pts
@@ -196,9 +204,7 @@ impl VideoSampleDecoder {
 
         // Flush out any pending frames.
         self.process_decoder_output();
-
-        self.decoder_output.error = None;
-        self.decoder_output.frames_by_pts.clear();
+        self.decoder_output.clear();
 
         Ok(())
     }

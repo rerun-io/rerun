@@ -56,7 +56,7 @@ pub struct WebVideoDecoder {
 
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
-    output_sender: crossbeam::channel::Sender<Result<Frame>>,
+    output_sender: crossbeam::channel::Sender<FrameResult>,
 
     output_callback_tx: Sender<OutputCallbackMessage>,
 }
@@ -151,7 +151,7 @@ impl WebVideoDecoder {
     pub fn new(
         video_descr: &VideoDataDescription,
         hw_acceleration: DecodeHardwareAcceleration,
-        output_sender: crossbeam::channel::Sender<Result<Frame>>,
+        output_sender: crossbeam::channel::Sender<FrameResult>,
     ) -> Result<Self, WebError> {
         // Web APIs insist on microsecond timestamps throughout.
         // If we don't have a timescale, assume a 30fps video where time units are frames.
@@ -351,7 +351,7 @@ impl AsyncDecoder for WebVideoDecoder {
 }
 
 fn init_video_decoder(
-    output_sender: crossbeam::channel::Sender<Result<Frame>>,
+    output_sender: crossbeam::channel::Sender<FrameResult>,
 ) -> Result<(web_sys::VideoDecoder, Sender<OutputCallbackMessage>), WebError> {
     let (output_callback_tx, output_callback_rx) = crossbeam::channel::unbounded();
 

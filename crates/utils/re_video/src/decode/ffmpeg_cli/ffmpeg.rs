@@ -9,7 +9,7 @@ use std::{
     },
 };
 
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::{Receiver, SendError, Sender};
 use ffmpeg_sidecar::{
     child::FfmpegChild,
     command::FfmpegCommand,
@@ -21,7 +21,7 @@ use parking_lot::Mutex;
 use crate::{
     PixelFormat, Time, VideoDataDescription, VideoEncodingDetails,
     decode::{
-        AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo,
+        AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, FrameResult,
         ffmpeg_cli::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
     },
     demux::ChromaSubsamplingModes,
@@ -181,21 +181,19 @@ impl std::io::Write for StdinWithShutdown {
     }
 }
 
-/// Output sender is mutex protected so that we can stop sending output frames on shutdown.
-type OutputSender = Mutex<Option<Sender<crate::decode::Result<Frame>>>>;
+/// Output sender is mutex protected `Option` so that we can stop sending output frames on ffmpeg shutdown by setting it to `None`.
+type OutputSender = Mutex<Option<Sender<FrameResult>>>;
 
 /// Send a result to the output sender.
-///
-/// Returns `None` if the channel has hung up.
 fn send_output(
     output_sender: &OutputSender,
-    result: crate::decode::Result<Frame>,
-) -> Result<(), crossbeam::channel::SendError<crate::decode::Result<Frame>>> {
+    result: FrameResult,
+) -> Result<(), SendError<FrameResult>> {
     let output_sender_guard = output_sender.lock();
     if let Some(output_sender) = output_sender_guard.as_ref() {
         output_sender.send(result)
     } else {
-        Err(crossbeam::channel::SendError(result))
+        Err(SendError(result))
     }
 }
 
@@ -229,7 +227,7 @@ struct FFmpegProcessAndListener {
 impl FFmpegProcessAndListener {
     fn new(
         debug_name: &str,
-        output_sender: Sender<crate::decode::Result<Frame>>,
+        output_sender: Sender<FrameResult>,
         encoding_details: &Option<VideoEncodingDetails>,
         ffmpeg_path: Option<&std::path::Path>,
         codec: &crate::VideoCodec,
@@ -540,6 +538,7 @@ fn write_ffmpeg_input(
             let write_error = matches!(err, Error::FailedToWriteToFfmpeg(_));
             if send_output(output_sender, Err(err.into())).is_err() {
                 // Other side hung up on us, we're done.
+                // This can happen if for some reason the video decoding was aborted, don't treat it as an error.
                 return;
             }
 
@@ -876,7 +875,7 @@ pub struct FFmpegCliDecoder {
     debug_name: String,
     // Restarted on reset
     ffmpeg: FFmpegProcessAndListener,
-    output_sender: Sender<crate::decode::Result<Frame>>,
+    output_sender: Sender<FrameResult>,
     ffmpeg_path: Option<std::path::PathBuf>,
     codec: crate::VideoCodec,
 }
@@ -885,7 +884,7 @@ impl FFmpegCliDecoder {
     pub fn new(
         debug_name: String,
         encoding_details: &Option<VideoEncodingDetails>,
-        output_sender: Sender<crate::decode::Result<Frame>>,
+        output_sender: Sender<FrameResult>,
         ffmpeg_path: Option<std::path::PathBuf>,
         codec: &crate::VideoCodec,
     ) -> Result<Self, Error> {

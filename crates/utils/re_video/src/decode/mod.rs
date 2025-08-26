@@ -154,6 +154,7 @@ impl DecodeError {
 }
 
 pub type Result<T = (), E = DecodeError> = std::result::Result<T, E>;
+pub type FrameResult = Result<Frame>;
 
 /// Interface for an asynchronous video decoder.
 ///
@@ -205,7 +206,7 @@ pub fn new_decoder(
     debug_name: &str,
     video: &crate::VideoDataDescription,
     decode_settings: &DecodeSettings,
-    output_sender: crossbeam::channel::Sender<Result<Frame>>,
+    output_sender: crossbeam::channel::Sender<FrameResult>,
 ) -> Result<Box<dyn AsyncDecoder>> {
     #![allow(unused_variables, clippy::needless_return)] // With some feature flags
 

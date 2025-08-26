@@ -6,9 +6,9 @@ use std::sync::{
 use crossbeam::channel::{Receiver, Sender, unbounded};
 
 #[cfg(with_dav1d)]
-use crate::VideoDataDescription;
+use crate::{VideoDataDescription, decode::FrameResult};
 
-use super::{AsyncDecoder, Chunk, Frame, Result};
+use super::{AsyncDecoder, Chunk, Result};
 
 enum Command {
     Chunk(Chunk),
@@ -48,7 +48,7 @@ pub trait SyncDecoder {
         &mut self,
         should_stop: &std::sync::atomic::AtomicBool,
         chunk: Chunk,
-        output_sender: &Sender<Result<Frame>>,
+        output_sender: &Sender<FrameResult>,
     );
 
     /// Clear and reset everything
@@ -71,7 +71,7 @@ impl AsyncDecoderWrapper {
     pub fn new(
         debug_name: String,
         mut sync_decoder: Box<dyn SyncDecoder + Send>,
-        output_sender: Sender<Result<Frame>>,
+        output_sender: Sender<FrameResult>,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -147,7 +147,7 @@ fn decoder_thread(
     decoder: &mut dyn SyncDecoder,
     comms: &Comms,
     command_rx: &Receiver<Command>,
-    output_sender: &Sender<Result<Frame>>,
+    output_sender: &Sender<FrameResult>,
 ) {
     #![allow(clippy::debug_assert_with_mut_call)]
 
