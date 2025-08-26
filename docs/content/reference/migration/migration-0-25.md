@@ -15,6 +15,13 @@ Use `--web-viewer` instead.
 This feature has been defunct for a while. A better replacement can be tracked [in this issue](https://github.com/rerun-io/rerun/issues/11024).
 
 
+## Flush takes an optional timeout, and returns errors
+When flushing a recording stream you can now give it a maximum time for how long it should block.
+The flush will block until either it completes, fails, or the timeout is reached.
+
+Previously this could only be configured for gRPC sinks, and it was configured once then first connecting.
+
+
 ## Changed arrow encoding of blobs
 We used to encode blobs as `List<uint8>`, which was rather unidiomatic.
 Now they are instead encoded as `Binary`.
