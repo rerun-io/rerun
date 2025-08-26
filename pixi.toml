@@ -121,7 +121,7 @@ cpp = ["base", "cpp"]
 # pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
 # ```
 
-#  Just the deps for running roundtrips
+# Just the deps for running snippet comparisons.
 wheel-test-min = [
   "base",
   "wheel-test",
@@ -536,9 +536,6 @@ cpp-build-all-shared-libs = { cmd = "cmake --build build/debug --config Debug --
 ] }
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
 cpp-build-tests = { cmd = "cmake --build build/debug --config Debug --target rerun_sdk_tests", depends-on = [
-  "cpp-prepare",
-] }
-cpp-build-roundtrips = { cmd = "cmake --build build/debug --config Debug --target roundtrips", depends-on = [
   "cpp-prepare",
 ] }
 cpp-build-examples = { cmd = "cmake --build build/debug --config Debug --target examples", depends-on = [
