@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -20,7 +21,7 @@ def get_added_lines_with_links(base_ref: str = "origin/main") -> dict[str, list[
     """
     Get lines added in the current branch that contain URLs.
 
-    Returns a dict mapping file extensions to lists of lines containing links.
+    Returns a dict mapping filenames to lists of lines containing links.
     """
     # Get the diff of added lines (try committed changes first, then staged changes)
     # Disable external diff tools to get standard git diff format
@@ -48,22 +49,19 @@ def get_added_lines_with_links(base_ref: str = "origin/main") -> dict[str, list[
         print(f"Error getting git diff: {e}", file=sys.stderr)
         return {}
 
-    lines_by_ext: dict[str, list[str]] = {}
+    lines_by_file: dict[str, list[str]] = {}
     current_file: str | None = None
-    current_ext: str | None = None
 
     for line in result.stdout.split("\n"):
         if line.startswith("+++"):
             # Extract filename from +++ b/path/to/file
             if line.startswith("+++ b/"):
                 current_file = line[6:]  # Remove '+++ b/'
-                current_ext = Path(current_file).suffix.lstrip(".")
-                if current_ext not in lines_by_ext:
-                    lines_by_ext[current_ext] = []
+                if current_file not in lines_by_file:
+                    lines_by_file[current_file] = []
             else:
                 current_file = None
-                current_ext = None
-        elif line.startswith("+") and not line.startswith("+++") and current_ext:
+        elif line.startswith("+") and not line.startswith("+++") and current_file:
             # This is an added line, check if it contains URLs
             line_content = line[1:]  # Remove the '+' prefix
             if (
@@ -71,14 +69,21 @@ def get_added_lines_with_links(base_ref: str = "origin/main") -> dict[str, list[
                 or "https://" in line_content
                 or "ftp://" in line_content
                 or "file://" in line_content
+                or re.search(r"\[.+\]\(.+\)", line_content)  # Markdown links [text](url)
             ):
-                lines_by_ext[current_ext].append(line_content)
+                lines_by_file[current_file].append(line_content)
 
     # Remove empty entries
-    return {ext: lines for ext, lines in lines_by_ext.items() if lines}
+    return {filename: lines for filename, lines in lines_by_file.items() if lines}
 
 
-def create_temp_files(lines_by_ext: dict[str, list[str]]) -> list[str]:
+class TempLinkFile:
+    def __init__(self, path: str, source_file: str) -> None:
+        self.path = path
+        self.source_file = source_file
+
+
+def create_temp_files(lines_by_file: dict[str, list[str]]) -> list[TempLinkFile]:
     """
     Create temporary files with the lines that contain links.
 
@@ -86,12 +91,13 @@ def create_temp_files(lines_by_ext: dict[str, list[str]]) -> list[str]:
     """
     temp_files = []
 
-    for ext, lines in lines_by_ext.items():
+    for file, lines in lines_by_file.items():
         if not lines:
             continue
 
         # Create temp file with appropriate extension
-        fd, temp_path = tempfile.mkstemp(suffix=f".{ext}", prefix="pr_links_")
+        ext = Path(file).suffix
+        fd, temp_path = tempfile.mkstemp(suffix=f"{ext}", prefix="pr_links_")
 
         try:
             with os.fdopen(fd, "w") as f:
@@ -103,7 +109,7 @@ def create_temp_files(lines_by_ext: dict[str, list[str]]) -> list[str]:
             if sys.platform == "win32":
                 temp_path = "\\\\.\\" + temp_path
 
-            temp_files.append(temp_path)
+            temp_files.append(TempLinkFile(temp_path, file))
         except Exception:
             os.unlink(temp_path)
             raise
@@ -111,7 +117,7 @@ def create_temp_files(lines_by_ext: dict[str, list[str]]) -> list[str]:
     return temp_files
 
 
-def run_lychee(temp_files: list[str]) -> int:
+def run_lychee(temp_files: list[TempLinkFile]) -> int:
     """
     Run lychee on the temporary files.
 
@@ -121,45 +127,44 @@ def run_lychee(temp_files: list[str]) -> int:
         print("No files with links found in added lines.")
         return 0
 
-    # Build lychee command
-    cmd = [
-        "lychee",
-        "--verbose",
-        "--cache",
-        "--max-cache-age",
-        "1d",
-        "--base-url",
-        ".",
-    ]
+    failed = False
 
-    # Add all temp files
-    cmd.extend(temp_files)
+    # Since each temp file may contain relative links, we have to run lychee once per file
+    # and set the right base url for each.
+    for temp_file in temp_files:
+        # Build lychee command
+        cmd = [
+            "lychee",
+            "--verbose",
+            "--cache",
+            "--max-cache-age",
+            "1d",
+            "--base-url",
+            str(Path(temp_file.source_file).parent),
+            temp_file.path,
+        ]
 
-    print(f"Running lychee on {len(temp_files)} temporary files containing added lines with links…")
+        print(f"Running lychee on new links in {temp_file.source_file}: {' '.join(cmd)}")
 
-    try:
-        result = subprocess.run(cmd, check=False)
-
-        if result.returncode != 0:
+        try:
+            result = subprocess.run(cmd, check=False)
+            if result.returncode != 0:
+                failed = True
             print()
-            print("An error occurred while running lychee.")
-            print("Full command:")
-            print(" ".join(cmd))
+        except FileNotFoundError:
+            print("Error: lychee not found. Please install lychee.", file=sys.stderr)
+            return 1
 
-        return result.returncode
-    except FileNotFoundError:
-        print("Error: lychee not found. Please install lychee.", file=sys.stderr)
-        return 1
+    return 1 if failed else 0
 
 
-def cleanup_temp_files(temp_files: list[str]) -> None:
+def cleanup_temp_files(temp_files: list[TempLinkFile]) -> None:
     """Clean up temporary files."""
-    pass
-    # for temp_file in temp_files:
-    #     try:
-    #         os.unlink(temp_file)
-    #     except OSError:
-    #         pass
+    for temp_file in temp_files:
+        try:
+            os.unlink(temp_file.path)
+        except OSError:
+            pass
 
 
 def main() -> int:
@@ -172,22 +177,22 @@ def main() -> int:
     args = parser.parse_args()
 
     # Get lines with links from the diff
-    lines_by_ext = get_added_lines_with_links(args.base_ref)
+    lines_by_file = get_added_lines_with_links(args.base_ref)
 
-    if not lines_by_ext:
+    if not lines_by_file:
         print("No added lines with links found.")
         return 0
 
     if args.dry_run:
         print("Would check the following lines:")
-        for ext, lines in lines_by_ext.items():
-            print(f"\n{ext} files:")
+        for file, lines in lines_by_file.items():
+            print(f"\n{file}:")
             for line in lines:
                 print(f"  {line}")
         return 0
 
     # Create temporary files
-    temp_files = create_temp_files(lines_by_ext)
+    temp_files = create_temp_files(lines_by_file)
 
     try:
         # Run lychee
