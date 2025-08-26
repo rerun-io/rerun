@@ -530,15 +530,15 @@ impl VideoDataDescription {
         Some(match &self.delivery_method {
             VideoDeliveryMethod::Static { duration } => duration.duration(timescale),
 
-            VideoDeliveryMethod::Stream { .. } => {
-                if self.samples.is_empty() {
-                    std::time::Duration::ZERO
-                } else if self.samples.num_elements() == 1 {
+            VideoDeliveryMethod::Stream { .. } => match self.samples.num_elements() {
+                0 => std::time::Duration::ZERO,
+                1 => {
                     let first = self.samples.front()?;
                     first
                         .duration
                         .map_or(std::time::Duration::ZERO, |d| d.duration(timescale))
-                } else {
+                }
+                _ => {
                     // TODO(#10090): This is only correct because there's no b-frames on streams right now.
                     // If there are b-frames determining the last timestamp is a bit more complicated.
                     let first = self.samples.front()?;
@@ -557,7 +557,7 @@ impl VideoDataDescription {
                     (last.presentation_timestamp - first.presentation_timestamp).duration(timescale)
                         + last_sample_duration
                 }
-            }
+            },
         })
     }
 
