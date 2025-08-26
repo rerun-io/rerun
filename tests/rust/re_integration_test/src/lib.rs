@@ -2,7 +2,7 @@
 
 mod test_data;
 
-use re_grpc_client::{ConnectionClient, ConnectionError, ConnectionRegistry};
+use re_grpc_client::{ClientConnectionError, ConnectionClient, ConnectionRegistry};
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
 use std::net::TcpListener;
@@ -42,7 +42,7 @@ impl TestServer {
         self.port
     }
 
-    pub async fn client(&self) -> Result<ConnectionClient, ConnectionError> {
+    pub async fn client(&self) -> Result<ConnectionClient, ClientConnectionError> {
         let origin = re_uri::Origin {
             host: Host::Domain("localhost".to_owned()),
             port: self.port,

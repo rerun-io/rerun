@@ -6,6 +6,7 @@ use tonic::Code;
 
 use re_auth::Jwt;
 
+use crate::TonicStatusError;
 use crate::connection_client::GenericConnectionClient;
 use crate::redap::{ConnectionError, RedapClient, RedapClientInner};
 
@@ -61,13 +62,13 @@ pub enum ClientConnectionError {
     UnencryptedServer,
 
     #[error("the server requires an authentication token, but none was provided: {0}")]
-    UnauthenticatedMissingToken(tonic::Status),
+    UnauthenticatedMissingToken(TonicStatusError),
 
     #[error("the server rejected the provided authentication token: {0}")]
-    UnauthenticatedBadToken(tonic::Status),
+    UnauthenticatedBadToken(TonicStatusError),
 
     #[error("failed to obtain server version: {0}")]
-    VersionError(tonic::Status),
+    VersionError(TonicStatusError),
 }
 
 impl From<ConnectionError> for ClientConnectionError {
@@ -198,17 +199,19 @@ impl ConnectionRegistryHandle {
                 };
 
                 if token.is_none() {
-                    Err(ClientConnectionError::UnauthenticatedMissingToken(err))
+                    Err(ClientConnectionError::UnauthenticatedMissingToken(
+                        err.into(),
+                    ))
                 } else if should_attempt_again {
                     Box::pin(self.client(origin)).await
                 } else {
-                    Err(ClientConnectionError::UnauthenticatedBadToken(err))
+                    Err(ClientConnectionError::UnauthenticatedBadToken(err.into()))
                 }
             }
 
             Ok(_) => Ok(client),
 
-            Err(err) => Err(ClientConnectionError::VersionError(err)),
+            Err(err) => Err(ClientConnectionError::VersionError(err.into())),
         }
     }
 
