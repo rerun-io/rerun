@@ -888,16 +888,6 @@ impl std::hash::Hash for PyGrpcSink {
 #[pymethods]
 impl PyGrpcSink {
     /// Initialize a gRPC sink.
-    ///
-    /// Parameters
-    /// ----------
-    /// url:
-    ///     The URL to connect to
-    ///
-    ///     The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
-    ///     and the pathname must be `/proxy`.
-    ///
-    ///     The default is `rerun+http://127.0.0.1:9876/proxy`.
     #[new]
     #[pyo3(signature = (url=None))]
     #[pyo3(text_signature = "(self, url=None)")]
