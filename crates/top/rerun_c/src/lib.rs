@@ -685,7 +685,7 @@ pub unsafe extern "C" fn rr_recording_stream_flush_blocking(
                 .ok()
                 .unwrap_or(Duration::MAX)
         };
-        if let Err(err) = stream.flush_blocking(timeout) {
+        if let Err(err) = stream.flush(Some(timeout)) {
             if let Some(error) = unsafe { error.as_mut() } {
                 *error = CError::new(CErrorCode::RecordingStreamFlushFailure, &err.to_string());
             }

@@ -117,7 +117,7 @@ impl log::Log for Logger {
 
     #[inline]
     fn flush(&self) {
-        self.rec.flush_blocking(std::time::Duration::MAX).ok();
+        self.rec.flush_blocking().ok();
     }
 }
 

@@ -39,7 +39,7 @@ fn log_images(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Er
         rec.log("image", &Image::from_image(image.clone())?)?;
     }
 
-    rec.flush_blocking();
+    rec.flush_blocking()?;
 
     eprintln!(
         "Logged {n} {w}x{h} RGBA images = {}",

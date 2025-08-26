@@ -400,7 +400,7 @@ impl MemorySinkStorage {
     pub fn num_msgs(&self) -> usize {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
-        self.rec.flush_blocking(Duration::MAX).ok();
+        self.rec.flush_blocking().ok();
         self.inner.lock().msgs.len()
     }
 
@@ -411,7 +411,7 @@ impl MemorySinkStorage {
     pub fn take(&self) -> Vec<LogMsg> {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
-        self.rec.flush_blocking(Duration::MAX).ok();
+        self.rec.flush_blocking().ok();
         std::mem::take(&mut (self.write()))
     }
 
@@ -425,7 +425,7 @@ impl MemorySinkStorage {
         for sink in sinks {
             // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
             // in this flush; it's just a matter of making the table batcher tick early.
-            sink.rec.flush_blocking(Duration::MAX).ok();
+            sink.rec.flush_blocking().ok();
             let mut inner = sink.inner.lock();
             inner.has_been_used = true;
 
@@ -446,7 +446,7 @@ impl MemorySinkStorage {
     pub fn drain_as_bytes(&self) -> Result<Vec<u8>, EncodeError> {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
-        self.rec.flush_blocking(Duration::MAX).ok();
+        self.rec.flush_blocking().ok();
 
         let mut inner = self.inner.lock();
         inner.has_been_used = true;

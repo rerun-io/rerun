@@ -1869,46 +1869,32 @@ impl RecordingStream {
     ///
     /// This does **not** wait for the flush to propagate (see [`Self::flush_blocking`]).
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
-    pub fn flush_async(&self) {
-        if self.is_forked_child() {
-            re_log::error_once!(
-                "Fork detected during flush_async. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
-            );
-            return;
-        }
-
-        let f = move |inner: &RecordingStreamInner| {
-            // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
-            // are safe.
-
-            // 1. Synchronously flush the batcher down the chunk channel
-            //
-            // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all chunks
-            // are ready to be drained by the time this call returns.
-            // It cannot block indefinitely and is fairly fast as it only requires compute (no I/O).
-            let timeout = Duration::MAX;
-            if let Err(err) = inner.batcher.flush_blocking(timeout) {
-                re_log::warn!("Failed so flush batcher: {err}");
-            }
-
-            // 2. Drain all pending chunks from the batcher's channel _before_ any other future command
-            inner.cmds_tx.send(Command::PopPendingChunks).ok();
-
-            // 3. Asynchronously flush everything down the sink
-            let timeout = Duration::MAX; // The background thread should block forever if necessary
-            let (cmd, _) = Command::flush(timeout);
-            inner.cmds_tx.send(cmd).ok();
-        };
-
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to flush_async() ignored");
-        }
+    ///
+    /// Convenience function for calling [`Self::flush`] with a `timeout` of `None`.
+    pub fn flush_async(&self) -> Result<(), FlushError> {
+        re_tracing::profile_function!();
+        self.flush(None)
     }
 
     /// Initiates a flush the batching pipeline and waits for it to propagate.
     ///
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
-    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
+    ///
+    /// Convenience function for calling [`Self::flush`] with [`Duration::MAX`].
+    pub fn flush_blocking(&self) -> Result<(), FlushError> {
+        re_tracing::profile_function!();
+        self.flush(Some(Duration::MAX))
+    }
+
+    /// Flush the batching pipeline and optionally waits for it to propagate.
+    ///
+    /// If `timeout` is `None`, then this function will start the flush, but NOT wait for it to finish.
+    ///
+    /// If a `timeout` is given, then the function will block until that timeout is reached,
+    /// an error occurs, or the flush is complete.
+    ///
+    /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
+    pub fn flush(&self, timeout: Option<Duration>) -> Result<(), FlushError> {
         re_tracing::profile_function!();
 
         if self.is_forked_child() {
@@ -1919,13 +1905,14 @@ impl RecordingStream {
         }
 
         let f = move |inner: &RecordingStreamInner| -> Result<(), FlushError> {
-            // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
-            // are safe.
-
-            // 1. Flush the batcher down the chunk channel
+            // 1. Synchronously flush the batcher down the chunk channel
+            //
+            // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all chunks
+            // are ready to be drained by the time this call returns.
+            // It cannot block indefinitely and is fairly fast as it only requires compute (no I/O).
             inner
                 .batcher
-                .flush_blocking(timeout)
+                .flush_blocking(Duration::MAX)
                 .map_err(|err| match err {
                     re_chunk::FlushError::Closed => FlushError::Closed,
                     re_chunk::FlushError::Timeout => FlushError::Timeout,
@@ -1937,24 +1924,28 @@ impl RecordingStream {
                 .send(Command::PopPendingChunks)
                 .map_err(|_ignored| FlushError::Closed)?;
 
-            // 3. Wait for all chunks to have been forwarded down the sink
-            let (cmd, oneshot) = Command::flush(Duration::MAX); // TODO: we should clarify if the timeout is for _this_ thread of the background thread.
+            // 3. Asynchronously flush everything down the sink
+            let (cmd, oneshot) = Command::flush(Duration::MAX); // The background thread should block forever if necessary
             inner
                 .cmds_tx
                 .send(cmd)
                 .map_err(|_ignored| FlushError::Closed)?;
 
-            oneshot.recv_timeout(timeout).map_err(|err| match err {
-                re_smart_channel::RecvTimeoutError::Timeout => FlushError::Timeout,
-                re_smart_channel::RecvTimeoutError::Disconnected => FlushError::Closed,
-            })
+            if let Some(timeout) = timeout {
+                oneshot.recv_timeout(timeout).map_err(|err| match err {
+                    re_smart_channel::RecvTimeoutError::Timeout => FlushError::Timeout,
+                    re_smart_channel::RecvTimeoutError::Disconnected => FlushError::Closed,
+                })?;
+            }
+
+            Ok(())
         };
 
         match self.with(f) {
             Some(Ok(())) => Ok(()),
             Some(Err(err)) => Err(err),
             None => {
-                re_log::warn_once!("Recording disabled - call to flush_blocking() ignored");
+                re_log::warn_once!("Recording disabled - call to flush ignored");
                 Ok(())
             }
         }
