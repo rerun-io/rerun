@@ -889,7 +889,7 @@ impl std::hash::Hash for PyGrpcSink {
 impl PyGrpcSink {
     #[new]
     #[pyo3(signature = (url=None))]
-    #[pyo3(text_signature = "(self, url=None, flush_timeout_sec=None)")]
+    #[pyo3(text_signature = "(self, url=None)")]
     fn new(url: Option<String>) -> PyResult<Self> {
         let url = url.unwrap_or_else(|| re_sdk::DEFAULT_CONNECT_URL.to_owned());
         let uri = url
