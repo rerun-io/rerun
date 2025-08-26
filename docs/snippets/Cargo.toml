@@ -25,6 +25,7 @@ ndarray.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 rand_distr = { workspace = true, features = ["std"] }
 similar-asserts.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../crates/re_workspace_hack" }
 
 
 [build-dependencies]

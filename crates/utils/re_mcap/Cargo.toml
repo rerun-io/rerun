@@ -32,3 +32,4 @@ prost-reflect.workspace = true
 serde.workspace = true
 serde_bytes.workspace = true
 thiserror.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }

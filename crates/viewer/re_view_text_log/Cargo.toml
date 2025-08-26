@@ -34,6 +34,7 @@ re_viewer_context.workspace = true
 egui_extras.workspace = true
 egui.workspace = true
 itertools.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 [dev-dependencies]
 re_test_context.workspace = true

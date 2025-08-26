@@ -45,6 +45,7 @@ nohash-hasher.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 
 [dev-dependencies]

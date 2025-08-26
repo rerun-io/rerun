@@ -1,4 +1,4 @@
-# https://github.com/tamasfe/taplo
+# https://taplo.tamasfe.dev/configuration/file.html
 
 # As of writing, taplo is really slow to gather files, so we help it out a bit.
 include = [
@@ -10,6 +10,10 @@ include = [
   "rerun_py/*.toml",
   "tests/rust/**/*.toml",
   "docs/snippets/**/*.toml",
+]
+
+exclude = [
+  "crates/re_workspace_hack/Cargo.toml", # Auto-generated
 ]
 
 [formatting]

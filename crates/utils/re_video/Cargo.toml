@@ -63,6 +63,7 @@ web-time.workspace = true
 
 ffmpeg-sidecar = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 # We enable re_rav1d on native, UNLESS we're on Linux Arm64
 # See https://github.com/rerun-io/rerun/issues/7755

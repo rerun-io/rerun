@@ -17,6 +17,7 @@ anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 glam = "0.30"
 prost = "0.13"
+re_workspace_hack = { version = "0.1", path = "../../../crates/re_workspace_hack" }
 
 
 [build-dependencies]

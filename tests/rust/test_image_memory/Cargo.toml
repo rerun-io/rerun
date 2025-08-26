@@ -14,3 +14,4 @@ re_format.workspace = true
 rerun = { workspace = true, features = ["sdk", "image"] }
 
 mimalloc.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../../crates/re_workspace_hack" }

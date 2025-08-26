@@ -27,6 +27,7 @@ jiff.workspace = true
 sha2.workspace = true
 unindent.workspace = true
 walkdir.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 [dev-dependencies]
 regex-lite.workspace = true

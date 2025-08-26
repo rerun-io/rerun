@@ -115,6 +115,7 @@ rerun = { workspace = true, default-features = false, features = [
 
 document-features.workspace = true
 mimalloc = "0.1.43"
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 
 [build-dependencies]

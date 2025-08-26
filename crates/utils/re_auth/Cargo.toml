@@ -52,6 +52,7 @@ serde = { workspace = true, optional = true }
 tiny_http = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
 webbrowser = { workspace = true, optional = true }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 base64.workspace = true

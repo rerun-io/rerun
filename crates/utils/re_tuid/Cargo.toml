@@ -39,6 +39,7 @@ web-time.workspace = true
 # Optional dependencies
 bytemuck = { workspace = true, optional = true, features = ["derive"] }
 serde = { workspace = true, features = ["derive"], optional = true }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 [dev-dependencies]
 criterion.workspace = true

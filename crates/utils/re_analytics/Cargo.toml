@@ -34,6 +34,7 @@ thiserror.workspace = true
 jiff = { workspace = true, features = ["serde"] }
 url.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 directories.workspace = true

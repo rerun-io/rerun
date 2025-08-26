@@ -16,3 +16,4 @@ rerun = { path = "../../../crates/top/rerun", features = ["clap"] }
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 image = { workspace = true, default-features = false }
+re_workspace_hack = { version = "0.1", path = "../../../crates/re_workspace_hack" }

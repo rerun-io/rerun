@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "crates/build/*",
+  "crates/re_workspace_hack",
   "crates/store/*",
   "crates/top/*",
   "crates/utils/*",
@@ -36,18 +37,19 @@ version = "0.25.0-alpha.1+dev"
 
 [workspace.metadata.cargo-shear]
 ignored = [
-  # rerun crates
-  "rerun_c",
+  # rerun crates:
   "re_dev_tools",
-  "rerun-cli",
-  "re_types_builder",
   "re_protos_builder",
   "re_renderer_examples",
+  "re_types_builder",
+  "re_workspace_hack",
+  "rerun_c",
+  "rerun-cli",
 
-  # used for specific targets or features
-  "wayland-sys",
+  # used for specific targets or features:
   "home",
   "profiling",
+  "wayland-sys",
 ]
 
 [workspace.dependencies]
@@ -268,7 +270,7 @@ ndarray = "0.16"
 ndarray-rand = "0.15"
 never = "0.1"
 nohash-hasher = "0.2"
-notify = { version = "6.1.1", features = ["macos_kqueue"] }
+notify = { version = "8.2.0", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
 numpy = "0.24"

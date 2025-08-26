@@ -92,6 +92,7 @@ image = { workspace = true, optional = true, default-features = false, features 
 mint = { workspace = true, optional = true }
 macaw = { workspace = true, optional = true }
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 
 [dev-dependencies]

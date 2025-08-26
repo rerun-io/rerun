@@ -1,0 +1,214 @@
+
+[package]
+name = "re_workspace_hack"
+version = "0.1.0"
+edition = "2021"
+description = "workspace-hack package, managed by hakari"
+publish = false                                           # We do NOT want to publish this!
+
+[lints]
+workspace = true
+
+# Native dependencies:
+# This file was originally created with `cargo hakari generate`, then shortened down to what you see.
+# To update it you can either edit it manually, or run `cargo hakari generate` and then remove most of what you end up with
+# See https://crates.io/crates/hakari and https://crates.io/crates/cargo-hakari for more
+### BEGIN HAKARI SECTION
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+ahash = { version = "0.8", features = ["no-rng", "serde"] }
+anyhow = { version = "1" }
+argh_shared = { version = "0.1", default-features = false, features = ["serde"] }
+arrow = { version = "55", features = ["chrono-tz", "ffi", "prettyprint"] }
+arrow-array = { version = "55", default-features = false, features = ["chrono-tz", "ffi"] }
+arrow-cast = { version = "55", default-features = false, features = ["prettyprint"] }
+arrow-data = { version = "55", default-features = false, features = ["ffi"] }
+arrow-ipc = { version = "55", features = ["lz4"] }
+arrow-schema = { version = "55", default-features = false, features = ["ffi"] }
+bit-vec = { version = "0.8" }
+bitflags = { version = "2", default-features = false, features = ["bytemuck", "serde"] }
+bytemuck = { version = "1", default-features = false, features = ["aarch64_simd", "derive", "extern_crate_alloc", "min_const_generics", "wasm_simd"] }
+byteorder = { version = "1", features = ["i128"] }
+bytes = { version = "1" }
+camino = { version = "1", default-features = false, features = ["serde1"] }
+clap = { version = "4", features = ["derive", "env"] }
+clap_builder = { version = "4", default-features = false, features = ["color", "env", "help", "std", "suggestions", "usage"] }
+console = { version = "0.15", default-features = false, features = ["ansi-parsing", "unicode-width"] }
+datafusion-common = { version = "47", default-features = false, features = ["object_store"] }
+ecolor = { version = "0.32", features = ["bytemuck", "color-hex", "serde"] }
+eframe = { version = "0.32", default-features = false, features = ["accesskit", "default_fonts", "persistence", "wayland", "wgpu", "x11"] }
+egui = { version = "0.32", features = ["accesskit", "bytemuck", "callstack", "color-hex", "log", "persistence", "rayon"] }
+egui-wgpu = { version = "0.32" }
+ehttp = { version = "0.5", features = ["streaming"] }
+either = { version = "1", features = ["use_std"] }
+emath = { version = "0.32", features = ["bytemuck", "serde"] }
+epaint = { version = "0.32", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "log", "rayon", "serde"] }
+fixed = { version = "1", default-features = false, features = ["serde"] }
+flatbuffers = { version = "25" }
+flate2 = { version = "1" }
+float-cmp = { version = "0.9", features = ["std"] }
+futures-core = { version = "0.3" }
+futures-sink = { version = "0.3" }
+futures-util = { version = "0.3", features = ["sink"] }
+getrandom = { version = "0.3", default-features = false, features = ["std"] }
+glam = { version = "0.30", features = ["bytemuck", "debug-glam-assert", "serde"] }
+half = { version = "2", features = ["bytemuck", "num-traits"] }
+hashbrown-3575ec1268b04181 = { package = "hashbrown", version = "0.15" }
+hashbrown-582f2526e08bb6a0 = { package = "hashbrown", version = "0.14", features = ["raw", "serde"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+indexmap = { version = "2", features = ["serde"] }
+itertools = { version = "0.14" }
+jiff = { version = "0.2", features = ["js", "serde"] }
+js-sys = { version = "0.3" }
+lock_api = { version = "0.4", features = ["arc_lock", "serde"] }
+log = { version = "0.4", default-features = false, features = ["std"] }
+lz4_flex = { version = "0.11" }
+macaw = { version = "0.30", features = ["serde"] }
+memchr = { version = "2" }
+mime_guess2 = { version = "2" }
+miniz_oxide = { version = "0.8", features = ["simd"] }
+num-rational = { version = "0.4", features = ["num-bigint-std", "serde"] }
+num-traits = { version = "0.2", features = ["i128", "libm"] }
+object_store = { version = "0.12", default-features = false, features = ["fs"] }
+once_cell = { version = "1" }
+parking_lot = { version = "0.12", features = ["arc_lock", "deadlock_detection", "serde"] }
+parking_lot_core = { version = "0.9", default-features = false, features = ["deadlock_detection"] }
+percent-encoding = { version = "2" }
+petgraph = { version = "0.7" }
+phf = { version = "0.11", features = ["unicase"] }
+phf_shared = { version = "0.11", features = ["unicase"] }
+pico-args = { version = "0.5", features = ["eq-separator"] }
+poll-promise = { version = "0.3", default-features = false, features = ["web"] }
+ppv-lite86 = { version = "0.2", default-features = false, features = ["simd", "std"] }
+proc-macro2 = { version = "1", features = ["span-locations"] }
+profiling = { version = "1", default-features = false, features = ["profile-with-puffin"] }
+prost = { version = "0.13", features = ["prost-derive"] }
+prost-types = { version = "0.13" }
+quote = { version = "1" }
+rand = { version = "0.8", features = ["small_rng"] }
+rand_chacha = { version = "0.3", default-features = false, features = ["std"] }
+rand_core = { version = "0.6", default-features = false, features = ["std"] }
+rand_distr = { version = "0.4" }
+raw-window-handle = { version = "0.6", default-features = false, features = ["std"] }
+regex = { version = "1" }
+regex-automata = { version = "0.4", default-features = false, features = ["dfa-onepass", "hybrid", "meta", "nfa-backtrack", "perf-inline", "perf-literal", "unicode"] }
+regex-syntax = { version = "0.8" }
+semver = { version = "1", features = ["serde"] }
+serde = { version = "1", features = ["alloc", "derive", "rc"] }
+serde_json = { version = "1", features = ["raw_value", "unbounded_depth"] }
+smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["std"] }
+strum = { version = "0.26", features = ["derive"] }
+syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
+thiserror = { version = "2" }
+toml = { version = "0.8", features = ["preserve_order"] }
+toml_edit = { version = "0.22", default-features = false, features = ["display", "parse", "serde"] }
+tower-http = { version = "0.6", features = ["cors", "propagate-header", "trace"] }
+tracing = { version = "0.1", features = ["log"] }
+tracing-core = { version = "0.1" }
+ureq = { version = "2", features = ["json"] }
+url = { version = "2", features = ["serde"] }
+vec1 = { version = "1", features = ["smallvec-v1"] }
+wgpu = { version = "25", features = ["fragile-send-sync-non-atomic-wasm", "webgl"] }
+wgpu-core = { version = "25", features = ["dx12", "fragile-send-sync-non-atomic-wasm", "gles", "metal", "vulkan", "webgl", "wgsl"] }
+wgpu-types = { version = "25", features = ["fragile-send-sync-non-atomic-wasm"] }
+
+[build-dependencies]
+ahash = { version = "0.8", features = ["no-rng", "serde"] }
+anyhow = { version = "1" }
+argh_shared = { version = "0.1", default-features = false, features = ["serde"] }
+arrow = { version = "55", features = ["chrono-tz", "ffi", "prettyprint"] }
+arrow-array = { version = "55", default-features = false, features = ["chrono-tz", "ffi"] }
+arrow-cast = { version = "55", default-features = false, features = ["prettyprint"] }
+arrow-data = { version = "55", default-features = false, features = ["ffi"] }
+arrow-ipc = { version = "55", features = ["lz4"] }
+arrow-schema = { version = "55", default-features = false, features = ["ffi"] }
+bit-vec = { version = "0.8" }
+bitflags = { version = "2", default-features = false, features = ["bytemuck", "serde"] }
+bytemuck = { version = "1", default-features = false, features = ["aarch64_simd", "derive", "extern_crate_alloc", "min_const_generics", "wasm_simd"] }
+byteorder = { version = "1", features = ["i128"] }
+bytes = { version = "1" }
+camino = { version = "1", default-features = false, features = ["serde1"] }
+clap = { version = "4", features = ["derive", "env"] }
+clap_builder = { version = "4", default-features = false, features = ["color", "env", "help", "std", "suggestions", "usage"] }
+console = { version = "0.15", default-features = false, features = ["ansi-parsing", "unicode-width"] }
+datafusion-common = { version = "47", default-features = false, features = ["object_store"] }
+ecolor = { version = "0.32", features = ["bytemuck", "color-hex", "serde"] }
+eframe = { version = "0.32", default-features = false, features = ["accesskit", "default_fonts", "persistence", "wayland", "wgpu", "x11"] }
+egui = { version = "0.32", features = ["accesskit", "bytemuck", "callstack", "color-hex", "log", "persistence", "rayon"] }
+egui-wgpu = { version = "0.32" }
+ehttp = { version = "0.5", features = ["streaming"] }
+either = { version = "1", features = ["use_std"] }
+emath = { version = "0.32", features = ["bytemuck", "serde"] }
+epaint = { version = "0.32", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "log", "rayon", "serde"] }
+fixed = { version = "1", default-features = false, features = ["serde"] }
+flatbuffers = { version = "25" }
+flate2 = { version = "1" }
+float-cmp = { version = "0.9", features = ["std"] }
+futures-core = { version = "0.3" }
+futures-sink = { version = "0.3" }
+futures-util = { version = "0.3", features = ["sink"] }
+getrandom = { version = "0.3", default-features = false, features = ["std"] }
+glam = { version = "0.30", features = ["bytemuck", "debug-glam-assert", "serde"] }
+half = { version = "2", features = ["bytemuck", "num-traits"] }
+hashbrown-3575ec1268b04181 = { package = "hashbrown", version = "0.15" }
+hashbrown-582f2526e08bb6a0 = { package = "hashbrown", version = "0.14", features = ["raw", "serde"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+indexmap = { version = "2", features = ["serde"] }
+itertools = { version = "0.14" }
+jiff = { version = "0.2", features = ["js", "serde"] }
+js-sys = { version = "0.3" }
+lock_api = { version = "0.4", features = ["arc_lock", "serde"] }
+log = { version = "0.4", default-features = false, features = ["std"] }
+lz4_flex = { version = "0.11" }
+macaw = { version = "0.30", features = ["serde"] }
+memchr = { version = "2" }
+mime_guess2 = { version = "2" }
+miniz_oxide = { version = "0.8", features = ["simd"] }
+num-rational = { version = "0.4", features = ["num-bigint-std", "serde"] }
+num-traits = { version = "0.2", features = ["i128", "libm"] }
+object_store = { version = "0.12", default-features = false, features = ["fs"] }
+once_cell = { version = "1" }
+parking_lot = { version = "0.12", features = ["arc_lock", "deadlock_detection", "serde"] }
+parking_lot_core = { version = "0.9", default-features = false, features = ["deadlock_detection"] }
+percent-encoding = { version = "2" }
+petgraph = { version = "0.7" }
+phf = { version = "0.11", features = ["unicase"] }
+phf_shared = { version = "0.11", features = ["unicase"] }
+pico-args = { version = "0.5", features = ["eq-separator"] }
+poll-promise = { version = "0.3", default-features = false, features = ["web"] }
+ppv-lite86 = { version = "0.2", default-features = false, features = ["simd", "std"] }
+proc-macro2 = { version = "1", features = ["span-locations"] }
+profiling = { version = "1", default-features = false, features = ["profile-with-puffin"] }
+prost = { version = "0.13", features = ["prost-derive"] }
+prost-types = { version = "0.13" }
+quote = { version = "1" }
+rand = { version = "0.8", features = ["small_rng"] }
+rand_chacha = { version = "0.3", default-features = false, features = ["std"] }
+rand_core = { version = "0.6", default-features = false, features = ["std"] }
+rand_distr = { version = "0.4" }
+raw-window-handle = { version = "0.6", default-features = false, features = ["std"] }
+regex = { version = "1" }
+regex-automata = { version = "0.4", default-features = false, features = ["dfa-onepass", "hybrid", "meta", "nfa-backtrack", "perf-inline", "perf-literal", "unicode"] }
+regex-syntax = { version = "0.8" }
+semver = { version = "1", features = ["serde"] }
+serde = { version = "1", features = ["alloc", "derive", "rc"] }
+serde_json = { version = "1", features = ["raw_value", "unbounded_depth"] }
+smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["std"] }
+strum = { version = "0.26", features = ["derive"] }
+syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
+thiserror = { version = "2" }
+toml = { version = "0.8", features = ["preserve_order"] }
+toml_edit = { version = "0.22", default-features = false, features = ["display", "parse", "serde"] }
+tower-http = { version = "0.6", features = ["cors", "propagate-header", "trace"] }
+tracing = { version = "0.1", features = ["log"] }
+tracing-core = { version = "0.1" }
+ureq = { version = "2", features = ["json"] }
+url = { version = "2", features = ["serde"] }
+vec1 = { version = "1", features = ["smallvec-v1"] }
+wgpu = { version = "25", features = ["fragile-send-sync-non-atomic-wasm", "webgl"] }
+wgpu-core = { version = "25", features = ["dx12", "fragile-send-sync-non-atomic-wasm", "gles", "metal", "vulkan", "webgl", "wgsl"] }
+wgpu-types = { version = "25", features = ["fragile-send-sync-non-atomic-wasm"] }
+
+### END HAKARI SECTION

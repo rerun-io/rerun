@@ -89,8 +89,9 @@ gltf = { workspace = true, optional = true }
 stl_io = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 tobj = { workspace = true, optional = true }
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
-# native
+# Native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 notify.workspace = true
 

@@ -40,6 +40,7 @@ parking_lot.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
+re_workspace_hack = { version = "0.1", path = "../../re_workspace_hack" }
 
 [dev-dependencies]
 re_test_context.workspace = true
