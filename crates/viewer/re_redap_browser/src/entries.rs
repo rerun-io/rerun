@@ -18,7 +18,7 @@ use re_log_encoding::codec::CodecError;
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
 use re_protos::catalog::v1alpha1::ext::{EntryDetails, TableEntry};
-use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest, ext::DatasetEntry};
+use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
 use re_protos::external::prost;
 use re_protos::external::prost::Name as _;
 use re_sorbet::SorbetError;
@@ -30,11 +30,6 @@ pub type EntryResult<T> = Result<T, EntryError>;
 #[expect(clippy::enum_variant_names)]
 #[derive(Debug, thiserror::Error)]
 pub enum EntryError {
-    /// You usually want to use [`EntryError::tonic_status`] instead
-    /// (there are multiple variants holding [`tonic::Status`]).
-    #[error(transparent)]
-    TonicError(Box<tonic::Status>),
-
     #[error(transparent)]
     ClientConnectionError(#[from] ClientConnectionError),
 
@@ -58,12 +53,6 @@ const _: () = assert!(
     std::mem::size_of::<EntryError>() <= 80,
     "Error type is too large. Try to reduce its size by boxing some of its variants.",
 );
-
-impl From<tonic::Status> for EntryError {
-    fn from(status: tonic::Status) -> Self {
-        Self::TonicError(Box::new(status))
-    }
-}
 
 impl From<DataFusionError> for EntryError {
     fn from(err: DataFusionError) -> Self {
@@ -95,7 +84,6 @@ impl EntryError {
                 | StreamError::MissingData(_)
                 | StreamError::ArrowError(_),
             )
-            | Self::TonicError(_)
             | Self::TypeConversionError(_)
             | Self::CodecError(_)
             | Self::SorbetError(_)
@@ -236,20 +224,12 @@ async fn fetch_entries_and_register_tables(
     let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
-        .inner()
-        .find_entries(FindEntriesRequest {
-            filter: Some(EntryFilter {
-                id: None,
-                name: None,
-                entry_kind: None,
-            }),
+        .find_entries(EntryFilter {
+            id: None,
+            name: None,
+            entry_kind: None,
         })
-        .await?
-        .into_inner()
-        .entries
-        .into_iter()
-        .map(TryInto::try_into)
-        .collect::<Result<Vec<EntryDetails>, _>>()?;
+        .await?;
 
     let origin_ref = &origin;
     let futures_iter = entries
