@@ -771,7 +771,7 @@ mod tests {
             codec,
             encoding_details,
             timescale,
-            delivery_method: update_type,
+            delivery_method,
             gops,
             samples,
             samples_statistics,
@@ -781,7 +781,7 @@ mod tests {
         assert_eq!(codec, re_video::VideoCodec::H264);
         assert_eq!(timescale, None); // Sequence timeline doesn't have a timescale.
         assert!(matches!(
-            update_type,
+            delivery_method,
             re_video::VideoDeliveryMethod::Stream { .. }
         ));
         assert_eq!(samples_statistics, re_video::SamplesStatistics::NO_BFRAMES);
