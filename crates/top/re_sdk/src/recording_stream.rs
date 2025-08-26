@@ -1840,7 +1840,7 @@ impl RecordingStream {
 
             // Flush the batcher down the chunk channel
             if let Err(err) = inner.batcher.flush_blocking(timeout) {
-                re_log::warn!("Failed to flush batched in `set_sink`: {err}");
+                re_log::warn!("Failed to flush batcher in `set_sink`: {err}");
             }
 
             // Receive pending chunks from the batcher's channel
