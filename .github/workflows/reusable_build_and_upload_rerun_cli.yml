@@ -178,6 +178,13 @@ jobs:
             --release \
             --target ${{ needs.set-config.outputs.TARGET }}
 
+      # Now that we already have a CLI binary, we can use it to check whether our man page is up to date.
+      - name: Compare man page to CLI docs
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          pixi run ./scripts/ci/check_cli_docs.py --rerun-exe ./target_pixi/release/rerun
+
       - name: Get sha
         id: get-sha
         run: |
