@@ -321,7 +321,7 @@ void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStre
             );
         }
     }
-    AND_GIVEN("a valid socket url " << url) {
+    AND_GIVEN("a valid socket url  " << url) {
         THEN("connect call returns no error") {
             CHECK(stream.connect_grpc(url).code == rerun::ErrorCode::Ok);
 
@@ -363,7 +363,7 @@ SCENARIO("RecordingStream can construct LogSinks", TEST_TAG) {
     GIVEN("a new RecordingStream") {
         rerun::RecordingStream stream("test-local");
 
-        AND_GIVEN("valid save path" << test_rrd0) {
+        AND_GIVEN("valid save path " << test_rrd0) {
             AND_GIVEN("a directory already existing at this path") {
                 fs::create_directory(test_rrd0);
                 THEN("set_sinks(FileSink) call fails") {
@@ -378,7 +378,7 @@ SCENARIO("RecordingStream can construct LogSinks", TEST_TAG) {
             }
         }
 
-        AND_GIVEN("an invalid url" << invalid_url) {
+        AND_GIVEN("an invalid url " << invalid_url) {
             THEN("set_sinks(GrpcSink) call fails") {
                 CHECK(
                     stream.set_sinks(rerun::GrpcSink{invalid_url}).code ==
@@ -386,18 +386,18 @@ SCENARIO("RecordingStream can construct LogSinks", TEST_TAG) {
                 );
             }
         }
-        AND_GIVEN("a valid url" << url) {
+        AND_GIVEN("a valid url " << url) {
             THEN("set_sinks(GrpcSink) call returns no error") {
                 CHECK(stream.set_sinks(rerun::GrpcSink{url}).code == rerun::ErrorCode::Ok);
             }
         }
 
-        AND_GIVEN("both a url" << url << "and a save path" << test_rrd0) {
-            THEN("set_sinks(GrpcSink, FileSink) call returns no error") {
-                CHECK(
-                    stream.set_sinks(rerun::GrpcSink{url}, rerun::FileSink{test_rrd0}).code ==
-                    rerun::ErrorCode::Ok
-                );
+        AND_GIVEN("both a url " << url << " and a save path " << test_rrd0) {
+            auto error = stream.set_sinks(rerun::GrpcSink{url}, rerun::FileSink{test_rrd0});
+            AND_GIVEN("Error: " << error.description) {
+                THEN("set_sinks(GrpcSink, FileSink) call returns no error") {
+                    CHECK(error.code == rerun::ErrorCode::Ok);
+                }
             }
         }
     }
