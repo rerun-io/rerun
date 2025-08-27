@@ -580,7 +580,8 @@ where
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
 
-    #[cfg(not(all(not(target_arch = "wasm32"), feature = "perf_telemetry")))]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(feature = "perf_telemetry"))]
     re_crash_handler::install_crash_handlers(build_info.clone());
 
     use clap::Parser as _;
