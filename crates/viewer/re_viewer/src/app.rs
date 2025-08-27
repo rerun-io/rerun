@@ -251,7 +251,6 @@ impl App {
         if app_env.is_test() {
             // Disable certain labels/warnings/etc that would be flaky or not CI-runner-agnostic in snapshot tests.
             state.app_options.show_metrics = false;
-            state.app_options.show_software_rasterizer_warning = false;
         }
 
         let view_class_registry = crate::default_views::create_view_class_registry()
@@ -410,6 +409,10 @@ impl App {
 
     pub fn app_options_mut(&mut self) -> &mut AppOptions {
         self.state.app_options_mut()
+    }
+
+    pub fn app_env(&self) -> &crate::AppEnvironment {
+        &self.app_env
     }
 
     /// Open a content URL in the viewer.
@@ -1412,6 +1415,10 @@ impl App {
                 }
             }
 
+            UICommand::CopyEntityHierarchy => {
+                self.copy_entity_hierarchy_to_clipboard(egui_ctx, store_context);
+            }
+
             UICommand::AddRedapServer => {
                 self.state.redap_servers.open_add_server_modal();
             }
@@ -1628,6 +1635,36 @@ impl App {
         self.egui_ctx.copy_text(url.clone());
         self.notifications
             .success(format!("Copied {url:?} to clipboard"));
+    }
+
+    fn copy_entity_hierarchy_to_clipboard(
+        &mut self,
+        egui_ctx: &egui::Context,
+        store_context: Option<&StoreContext<'_>>,
+    ) {
+        let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
+            re_log::warn!("Could not copy entity hierarchy: No active recording");
+            return;
+        };
+
+        let mut hierarchy_text = String::new();
+
+        // Add application ID and recording ID header
+        hierarchy_text.push_str(&format!(
+            "Application ID: {}\nRecording ID: {}\n\n",
+            entity_db.application_id(),
+            entity_db.recording_id()
+        ));
+
+        hierarchy_text.push_str(&entity_db.format_with_components());
+
+        if hierarchy_text.is_empty() {
+            hierarchy_text = "(no entities)".to_owned();
+        }
+
+        egui_ctx.copy_text(hierarchy_text.clone());
+        self.notifications
+            .success("Copied entity hierarchy with schema to clipboard".to_owned());
     }
 
     fn memory_panel_ui(
@@ -2163,7 +2200,7 @@ impl App {
         storage_ctx: &StorageContext<'_>,
         command_sender: &CommandSender,
     ) {
-        #![allow(clippy::needless_continue)] // false positive, depending on target_arche
+        #![allow(clippy::needless_continue)] // false positive, depending on target_arch
 
         preview_files_being_dropped(egui_ctx);
 

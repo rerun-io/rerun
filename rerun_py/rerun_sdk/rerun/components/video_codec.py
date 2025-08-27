@@ -45,6 +45,20 @@ class VideoCodec(Enum):
     Enum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian.
     """
 
+    H265 = 0x68657631
+    """
+    High Efficiency Video Coding (HEVC/H.265)
+
+    See <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>
+
+    [`components.VideoSample`][rerun.components.VideoSample]s using this codec should be formatted according to Annex B specification.
+    (Note that this is different from AVCC format found in MP4 files.
+    To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
+    Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)
+
+    Enum value is the fourcc for 'hev1' (the WebCodec string assigned to this codec) in big endian.
+    """
+
     @classmethod
     def auto(cls, val: str | int | VideoCodec) -> VideoCodec:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -66,7 +80,7 @@ class VideoCodec(Enum):
         return self.name
 
 
-VideoCodecLike = Union[VideoCodec, Literal["H264", "h264"], int]
+VideoCodecLike = Union[VideoCodec, Literal["H264", "H265", "h264", "h265"], int]
 VideoCodecArrayLike = Union[VideoCodecLike, Sequence[VideoCodecLike]]
 
 

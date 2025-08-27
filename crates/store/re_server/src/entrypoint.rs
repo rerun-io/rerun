@@ -7,7 +7,7 @@ use tokio::signal::unix::{SignalKind, signal};
 use tokio::signal::windows::{ctrl_break, ctrl_close};
 use tracing::{info, warn};
 
-use crate::ServerBuilder;
+use crate::{ServerBuilder, ServerHandle};
 
 // ---
 
@@ -16,15 +16,15 @@ use crate::ServerBuilder;
 pub struct Args {
     /// Address to listen on.
     #[clap(long, default_value = "0.0.0.0")]
-    addr: String,
+    pub addr: String,
 
     /// Port to bind to.
     #[clap(long, short = 'p', default_value_t = 51234)]
-    port: u16,
+    pub port: u16,
 
     /// Load a directory of RRD as dataset (can be specified multiple times).
     #[clap(long = "dataset", short = 'd')]
-    datasets: Vec<PathBuf>,
+    pub datasets: Vec<PathBuf>,
 }
 
 impl Args {
@@ -33,7 +33,7 @@ impl Args {
         rt.block_on(self.run_async())
     }
 
-    async fn run_async(self) -> anyhow::Result<()> {
+    pub async fn create_server_handle(self) -> anyhow::Result<ServerHandle> {
         let frontend_server = {
             use re_protos::frontend::v1alpha1::frontend_service_server::FrontendServiceServer;
 
@@ -62,6 +62,12 @@ impl Args {
         let mut server_handle = server.start();
 
         server_handle.wait_for_ready().await?;
+
+        Ok(server_handle)
+    }
+
+    async fn run_async(self) -> anyhow::Result<()> {
+        let mut server_handle = self.create_server_handle().await?;
 
         #[cfg(unix)]
         let mut term_signal = signal(SignalKind::terminate())?;

@@ -97,19 +97,19 @@ jobs:
               bin_name="rerun"
               ;;
             windows-x64)
-              runner="windows-latest-8-cores"
+              runner="windows-latest-16-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
               bin_name="rerun.exe"
               ;;
             macos-arm64)
-              runner="macos-15-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-15-xlarge" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
               bin_name="rerun"
               ;;
             macos-x64)
-              runner="macos-15-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-15-xlarge" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
               container="null"
               bin_name="rerun"
@@ -177,6 +177,13 @@ jobs:
             --features release_full \
             --release \
             --target ${{ needs.set-config.outputs.TARGET }}
+
+      # Now that we already have a CLI binary, we can use it to check whether our man page is up to date.
+      - name: Compare man page to CLI docs
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          pixi run ./scripts/ci/check_cli_docs.py --rerun-exe "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
 
       - name: Get sha
         id: get-sha
