@@ -123,7 +123,8 @@ def test_df_count(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -
 
     count = dataset.dataframe_query_view(index="time_1", contents="/**").df().count()
 
-    assert count == 64
+    # We will need to update this if the underlying files are regenerated
+    assert count == 613
 
 
 def test_df_aggregation(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:
@@ -167,7 +168,10 @@ def test_partition_ordering(server_instance: tuple[subprocess.Popen[str], Datase
                 rb = rb.to_pyarrow()
                 for idx in range(rb.num_rows):
                     partition = rb[0][idx].as_py()
-                    timestamp = rb[1][idx].as_py()
+
+                    # Nanosecond timestamps cannot be converted using `as_py()`
+                    timestamp = rb[1][idx]
+                    timestamp = timestamp.value if hasattr(timestamp, "value") else timestamp.as_py()
 
                     assert partition >= prior_partition
                     if partition == prior_partition and timestamp is not None:
