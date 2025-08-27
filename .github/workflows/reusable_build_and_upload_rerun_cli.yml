@@ -183,7 +183,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          pixi run ./scripts/ci/check_cli_docs.py --rerun-exe ./target_pixi/release/rerun
+          pixi run ./scripts/ci/check_cli_docs.py --rerun-exe "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
 
       - name: Get sha
         id: get-sha
