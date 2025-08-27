@@ -46,7 +46,15 @@ pub struct CStringView {
 impl CStringView {
     #[allow(clippy::result_large_err)]
     pub fn as_str<'a>(&'a self, argument_name: &'a str) -> Result<&'a str, CError> {
-        ptr::try_char_ptr_as_str(self.string, self.length, argument_name)
+        if self.length == 0 {
+            Ok("")
+        } else {
+            debug_assert!(
+                1000 < self.string.addr() && self.length < 1_000_000,
+                "DEBUG ASSERT: Suspected memory corruption when reading argument {argument_name:?}: {self:#?}"
+            );
+            ptr::try_char_ptr_as_str(self.string, self.length, argument_name)
+        }
     }
 
     pub fn is_null(&self) -> bool {
@@ -301,6 +309,7 @@ pub struct CTimeColumn {
 /// The behavior of this sink is the same as the one set by `rr_recording_stream_connect_grpc`.
 ///
 /// See `rr_grpc_sink` in the C header.
+#[derive(Debug)]
 #[repr(C)]
 pub struct CGrpcSink {
     /// A Rerun gRPC URL
@@ -317,6 +326,7 @@ pub struct CGrpcSink {
 /// Log sink which writes messages to a file.
 ///
 /// See `rr_file_sink` in the C header.
+#[derive(Debug)]
 #[repr(C)]
 pub struct CFileSink {
     /// Path to the output file.
@@ -332,6 +342,7 @@ pub struct CFileSink {
 /// See `rr_log_sink` and `RR_LOG_SINK_KIND` enum values in the C header.
 ///
 /// Layout is defined in [the Rust reference](https://doc.rust-lang.org/stable/reference/type-layout.html#reprc-enums-with-fields).
+#[derive(Debug)]
 #[repr(C, u8)]
 pub enum CLogSink {
     GrpcSink { grpc: CGrpcSink } = 0,
