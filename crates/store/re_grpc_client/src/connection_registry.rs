@@ -1,6 +1,7 @@
 use std::collections::{HashMap, hash_map::Entry};
 use std::sync::Arc;
 
+use itertools::Itertools as _;
 use tokio::sync::RwLock;
 use tonic::Code;
 
@@ -15,6 +16,7 @@ use crate::redap::{ConnectionError, RedapClient, RedapClientInner};
 /// `ConnectionRegistry` is used.
 pub type ConnectionClient = GenericConnectionClient<RedapClientInner>;
 
+//TODO(#11016): refactor this to achieve lazy auth retry.
 pub struct ConnectionRegistry {
     /// The saved authentication tokens.
     ///
@@ -69,7 +71,7 @@ pub enum ClientConnectionError {
     UnauthenticatedBadToken(TonicStatusError),
 
     #[error("failed to obtain server version: {0}")]
-    VersionError(TonicStatusError),
+    AuthCheckError(TonicStatusError),
 }
 
 impl From<ConnectionError> for ClientConnectionError {
@@ -80,6 +82,15 @@ impl From<ConnectionError> for ClientConnectionError {
 
             ConnectionError::UnencryptedServer => Self::UnencryptedServer,
         }
+    }
+}
+
+impl ClientConnectionError {
+    pub fn is_token_error(&self) -> bool {
+        matches!(
+            self,
+            Self::UnauthenticatedMissingToken(_) | Self::UnauthenticatedBadToken(_)
+        )
     }
 }
 
@@ -148,37 +159,125 @@ impl ConnectionRegistryHandle {
 
         // Don't hold the lock while creating the client - this may take a while and we may
         // want to read the tokens in the meantime for other purposes.
-        let token = {
+        let (saved_token, fallback_token) = {
             let inner = self.inner.read().await;
-            inner
-                .saved_tokens
-                .get(&origin)
-                .cloned()
-                .or_else(|| inner.fallback_token.clone())
-                .or_else(get_token_from_env)
+            (
+                inner.saved_tokens.get(&origin).cloned(),
+                inner.fallback_token.clone(),
+            )
         };
 
-        let mut client = {
-            // We acquire the lock before creating the client, to avoid a race where two threads
-            // would create a client at the same time.
-            let mut inner = self.inner.write().await;
-            let client = crate::redap::client(origin.clone(), token.clone()).await;
-            match client {
-                Ok(client) => {
-                    inner.clients.insert(origin.clone(), client.clone());
-                    ConnectionClient::new(client)
-                }
+        let token_to_try = [saved_token.clone(), fallback_token, get_token_from_env()]
+            .into_iter()
+            .flatten()
+            .unique();
+
+        let (raw_client, successful_token) =
+            match Self::try_create_raw_client(origin.clone(), token_to_try).await {
+                Ok(res) => res,
                 Err(err) => {
-                    return Err(err.into());
+                    // if we had a saved token, it doesn't work, so we forget about it
+                    if err.is_token_error() {
+                        let mut inner = self.inner.write().await;
+
+                        // make sure that we're not deleting some token that another thread might
+                        // have just set
+                        if inner.saved_tokens.get(&origin) == saved_token.as_ref() {
+                            inner.saved_tokens.remove(&origin);
+                        }
+                    }
+
+                    return Err(err);
                 }
+            };
+        let client = ConnectionClient::new(raw_client.clone());
+
+        // We have a successful client, so we cache it and remember about the successful token.
+        //
+        // Note: because we only acquire the lock now, a race is possible where two threads
+        // concurrently attempt to create the client and would override each-other's results. This
+        // is acceptable since both should reach the same conclusion, and preferable that holding
+        // the lock for the entire time, as the connection process can take a while.
+        {
+            let mut inner = self.inner.write().await;
+            inner.clients.insert(origin.clone(), raw_client.clone());
+
+            if successful_token != saved_token {
+                if let Some(successful_token) = successful_token {
+                    inner.saved_tokens.insert(origin.clone(), successful_token);
+                } else {
+                    inner.saved_tokens.remove(&origin);
+                }
+            }
+        }
+
+        Ok(client)
+    }
+
+    /// Try creating (and validating) a raw client using whatever token we might have available.
+    ///
+    /// If successful, returns both the client and the working token.
+    async fn try_create_raw_client(
+        origin: re_uri::Origin,
+        possible_tokens: impl Iterator<Item = Jwt>,
+    ) -> Result<(RedapClient, Option<Jwt>), ClientConnectionError> {
+        let mut first_failed_token_attempt = None;
+
+        for token in possible_tokens {
+            let result = Self::create_and_validate_raw_client_with_token(
+                origin.clone(),
+                Some(token.clone()),
+            )
+            .await;
+
+            match result {
+                Ok(raw_client) => return Ok((raw_client, Some(token))),
+
+                Err(err) if err.is_token_error() => {
+                    // remember about the first occurrence of this error but continue trying other
+                    // tokens
+                    if first_failed_token_attempt.is_none() {
+                        first_failed_token_attempt = Some(err);
+                    }
+                }
+
+                Err(err) => return Err(err),
+            }
+        }
+
+        // Everything failed, last ditch effort without a token.
+        let result = Self::create_and_validate_raw_client_with_token(origin.clone(), None).await;
+
+        match result {
+            Ok(raw_client) => Ok((raw_client, None)),
+
+            Err(err) => {
+                // If we actually tried tokens, this error is more relevant.
+                if let Some(first_failed_token_attempt) = first_failed_token_attempt {
+                    Err(first_failed_token_attempt)
+                } else {
+                    Err(err)
+                }
+            }
+        }
+    }
+
+    async fn create_and_validate_raw_client_with_token(
+        origin: re_uri::Origin,
+        token: Option<Jwt>,
+    ) -> Result<RedapClient, ClientConnectionError> {
+        let mut raw_client = match crate::redap::client(origin.clone(), token.clone()).await {
+            Ok(raw_client) => raw_client,
+
+            Err(err) => {
+                return Err(err.into());
             }
         };
 
         // Call the version endpoint to check that authentication is successful. It's ok to do this
         // since we're caching the client, so we're not spamming such a request unnecessarily.
         // TODO(rerun-io/dataplatform#1069): use the `whoami` endpoint instead when it exists.
-        let request_result = client
-            .inner()
+        let request_result = raw_client
             .find_entries(FindEntriesRequest {
                 filter: Some(EntryFilter {
                     id: None,
@@ -191,39 +290,18 @@ impl ConnectionRegistryHandle {
         match request_result {
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {
-                let should_attempt_again = {
-                    // We might be recursing here, so we need to make sure we drop the lock on inner.
-                    let mut inner = self.inner.write().await;
-
-                    if token.is_some() && token.as_ref() == inner.saved_tokens.get(&origin) {
-                        re_log::debug!(
-                            "Removing token for origin {origin} as it is no longer valid"
-                        );
-                        inner.saved_tokens.remove(&origin);
-
-                        // Since we forgot the token that we tried, we can do a second attempt.
-                        // We do so regardless of whether we have an alternative fallback token,
-                        // because maybe that server no longer needs a token?
-                        true
-                    } else {
-                        false
-                    }
-                };
-
                 if token.is_none() {
                     Err(ClientConnectionError::UnauthenticatedMissingToken(
                         err.into(),
                     ))
-                } else if should_attempt_again {
-                    Box::pin(self.client(origin)).await
                 } else {
                     Err(ClientConnectionError::UnauthenticatedBadToken(err.into()))
                 }
             }
 
-            Ok(_) => Ok(client),
+            Err(err) => Err(ClientConnectionError::AuthCheckError(err.into())),
 
-            Err(err) => Err(ClientConnectionError::VersionError(err.into())),
+            Ok(_) => Ok(raw_client),
         }
     }
 
