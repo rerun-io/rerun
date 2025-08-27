@@ -333,7 +333,10 @@ void test_logging_to_grpc_connection(const char* url, const rerun::RecordingStre
                     );
                 });
 
-                CHECK(stream.flush_blocking().code == rerun::ErrorCode::Ok);
+                // The flush should fail, because there is no server on the other side:
+                CHECK(
+                    stream.flush_blocking().code == rerun::ErrorCode::RecordingStreamFlushFailure
+                );
 
                 THEN("does not crash") {
                     // No easy way to see if it got sent.
