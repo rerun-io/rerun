@@ -81,7 +81,7 @@ runs:
         done
 
     - name: Set up sccache
-      uses: rerun-io/sccache-action@andreas/fix-config-path
+      uses: rerun-io/sccache-action@v0.8.0
       with:
         version: "v0.10.0"
         use_gcs: true
