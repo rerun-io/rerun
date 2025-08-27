@@ -11,8 +11,8 @@ mod time;
 
 pub use decode::{
     AsyncDecoder, Chunk, DecodeError, DecodeHardwareAcceleration, DecodeSettings, Frame,
-    FrameContent, FrameInfo, PixelFormat, Result as DecodeResult, YuvMatrixCoefficients,
-    YuvPixelLayout, YuvRange, new_decoder,
+    FrameContent, FrameInfo, FrameResult, PixelFormat, Result as DecodeResult,
+    YuvMatrixCoefficients, YuvPixelLayout, YuvRange, new_decoder,
 };
 pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
 
@@ -21,7 +21,8 @@ pub use self::decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmp
 
 pub use demux::{
     ChromaSubsamplingModes, GopIndex, GroupOfPictures, SampleIndex, SampleMetadata,
-    SamplesStatistics, VideoCodec, VideoDataDescription, VideoEncodingDetails, VideoLoadError,
+    SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails,
+    VideoLoadError,
 };
 
 // AnnexB conversions are useful for testing.

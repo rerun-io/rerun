@@ -116,19 +116,19 @@ jobs:
               container="'rerunio/ci_docker:0.16.0'" # Required to be manylinux compatible
               ;;
             windows-x64)
-              runner="windows-latest-8-cores"
+              runner="windows-latest-16-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
               compat="manylinux_2_28"
               ;;
             macos-arm64)
-              runner="macos-15-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-15-xlarge" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
               compat="manylinux_2_28"
               ;;
             macos-x64)
-              runner="macos-15-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-15-xlarge" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
               container="null"
               compat="manylinux_2_28"

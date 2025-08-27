@@ -6,7 +6,7 @@ use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadErro
 
 use crate::{
     StableIndexDeque, Time, Timescale,
-    demux::{ChromaSubsamplingModes, SamplesStatistics, VideoEncodingDetails},
+    demux::{ChromaSubsamplingModes, SamplesStatistics, VideoDeliveryMethod, VideoEncodingDetails},
     h264::encoding_details_from_h264_sps,
     h265::encoding_details_from_h265_sps,
     nalu::ANNEXB_NAL_START_CODE,
@@ -36,7 +36,6 @@ impl VideoDataDescription {
         let stsd = track.trak(&mp4).mdia.minf.stbl.stsd.clone();
 
         let timescale = Timescale::new(track.timescale);
-        let duration = Time::new(track.duration as i64);
         let mut samples = StableIndexDeque::<SampleMetadata>::with_capacity(track.samples.len());
         let mut gops = StableIndexDeque::<GroupOfPictures>::new();
         let mut gop_sample_start_index = 0;
@@ -145,9 +144,10 @@ impl VideoDataDescription {
             codec,
             encoding_details: Some(codec_details_from_stds(track, stsd)?),
             timescale: Some(timescale),
-            duration: Some(duration),
+            delivery_method: VideoDeliveryMethod::Static {
+                duration: Time::new(track.duration as i64),
+            },
             samples_statistics,
-            last_time_updated_samples: None,
             gops,
             samples,
             mp4_tracks,
