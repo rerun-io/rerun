@@ -1,6 +1,7 @@
 use vec1::{Vec1, vec1};
 
 use re_data_source::LogDataSource;
+use re_redap_browser::EXAMPLES_ORIGIN;
 use re_smart_channel::SmartChannelSource;
 use re_ui::CommandPaletteUrl;
 use re_viewer_context::{
@@ -276,21 +277,40 @@ impl ViewerImportUrl {
                 })?;
                 vec1![format!("{INTRA_RECORDING_URL_SCHEME}{data_path}")]
             }
+
             Self::RrdHttpUrl(url) => {
                 vec1![url.to_string()]
             }
+
+            #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path_buf) => {
                 vec1![(*path_buf.to_string_lossy()).to_owned()]
             }
+
             Self::RedapDatasetPartition(dataset_partition_uri) => {
                 vec1![dataset_partition_uri.to_string()]
             }
+
             Self::RedapProxy(proxy_uri) => {
                 vec1![proxy_uri.to_string()]
             }
-            Self::RedapCatalog(catalog_uri) => vec1![catalog_uri.to_string()],
+
+            Self::RedapCatalog(catalog_uri) => {
+                // The welcome page is a fake catalog right now.
+                // If we dont'have a base url we'll just roll with it. It looks ugly but it's sharable.
+                if catalog_uri.origin == *EXAMPLES_ORIGIN
+                    && let Some(base_url) = web_viewer_base_url
+                {
+                    return Ok(base_url.to_string());
+                }
+
+                vec1![catalog_uri.to_string()]
+            }
+
             Self::RedapEntry(entry_uri) => vec1![entry_uri.to_string()],
+
             Self::WebEventListener => vec1![WEB_EVENT_LISTENER_SCHEME.to_owned()],
+
             Self::WebViewerUrl {
                 base_url: _,
                 url_parameters,

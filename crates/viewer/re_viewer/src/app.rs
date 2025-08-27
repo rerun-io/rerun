@@ -648,6 +648,9 @@ impl App {
             }
 
             SystemCommand::AddRedapServer(origin) => {
+                if origin == *re_redap_browser::EXAMPLES_ORIGIN {
+                    return;
+                }
                 if self.state.redap_servers.has_server(&origin) {
                     return;
                 }
