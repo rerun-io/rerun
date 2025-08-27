@@ -495,6 +495,7 @@ fn rr_recording_stream_new_impl(
         static INIT: Once = Once::new();
         INIT.call_once(|| {
             re_log::setup_logging();
+            re_crash_handler::install_crash_handlers(re_build_info::build_info!());
             if cfg!(debug_assertions) {
                 re_log::info!("Using a DEBUG BUILD of the Rerun SDK!");
             }
