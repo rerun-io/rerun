@@ -19,6 +19,7 @@ use re_protos::{
         TaskId,
         ext::{IfDuplicateBehavior, ScanParameters},
     },
+    frontend::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
     frontend::v1alpha1::{
         EntryFilter,
         ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
@@ -26,7 +27,6 @@ use re_protos::{
     frontend::v1alpha1::{
         GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest, QueryTasksResponse,
     },
-    manifest_registry::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
 };
 
 use crate::catalog::to_py_err;

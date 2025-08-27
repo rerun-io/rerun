@@ -10,11 +10,11 @@ use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
+    frontend::v1alpha1::ScanPartitionTableResponse,
     frontend::v1alpha1::{
         EntryKind,
         ext::{DatasetEntry, EntryDetails},
     },
-    manifest_registry::v1alpha1::ScanPartitionTableResponse,
 };
 
 #[derive(thiserror::Error, Debug)]

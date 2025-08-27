@@ -6,8 +6,8 @@ use re_log_types::{
 };
 use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::ReadDatasetEntryRequest;
+use re_protos::frontend::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
-use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::{
     frontend::v1alpha1::GetChunksRequest, frontend::v1alpha1::ext::ReadDatasetEntryResponse,
 };
@@ -245,7 +245,7 @@ pub(crate) async fn client(
 // in practice.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn get_chunks_response_to_chunk_and_partition_id(
-    response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
+    response: tonic::Streaming<re_protos::frontend::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
     response
         .then(|resp| {
@@ -284,7 +284,7 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
 // This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
 #[cfg(target_arch = "wasm32")]
 pub fn get_chunks_response_to_chunk_and_partition_id(
-    response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
+    response: tonic::Streaming<re_protos::frontend::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
     response.map(|resp| {
         let resp = resp?;

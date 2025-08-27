@@ -22,12 +22,12 @@ use re_protos::{
         },
     },
     frontend::v1alpha1::{
-        ext::{RegisterWithDatasetRequest, ScanPartitionTableRequest},
-        frontend_service_client::FrontendServiceClient,
-    },
-    manifest_registry::v1alpha1::{
         RegisterWithDatasetResponse, ScanPartitionTableResponse,
         ext::{DataSource, DataSourceKind, RegisterWithDatasetTaskDescriptor},
+    },
+    frontend::v1alpha1::{
+        ext::{RegisterWithDatasetRequest, ScanPartitionTableRequest},
+        frontend_service_client::FrontendServiceClient,
     },
     missing_field,
 };

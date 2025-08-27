@@ -6,24 +6,13 @@ import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "rerun/v1alpha1/common.proto";
-import "rerun/v1alpha1/manifest_registry.proto";
+import "rerun/v1alpha1/log_msg.proto";
 
-// TODO: what becomes of this comment?
-// TODO(cmc): I've decided to re-use the underlying response types for now, in the name of expediency.
-// This is bad in the long term (breaking changes to the internal APIs should not result in breaking
-// changes to the public API and, in general, the two being coupled doesn't make much sense).
-// It's the very early days though, and we're doing major breaking changes on a daily basis, so wasting
-// time on patching `From` implementations on a regular basis doesn't sound like a great use of time
-// at the moment.
-// We can revisit this as we start getting out of `v1alpha1`.
-
-// TODO: this is a horrible name for our product's API
-// Redap's public API.
+// The Rerun Cloud public API.
 service FrontendService {
   rpc Version(VersionRequest) returns (VersionResponse) {}
 
   // --- Catalog ---
-  // Mostly a 1:1 proxy at the moment.
 
   rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
 
@@ -32,25 +21,26 @@ service FrontendService {
   rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {}
 
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
+
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
+
   rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
 
   rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {}
 
   // --- Manifest Registry ---
-  // Automatically handles entry/dataset resolution.
 
   /* Write data */
 
   // Register new partitions with the Dataset
-  rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (rerun.manifest_registry.v1alpha1.RegisterWithDatasetResponse) {}
+  rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
   // Write chunks to one or more partitions.
   //
   // The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
   //
   // The destination dataset must be provided in the `x-rerun-dataset-id` header.
-  rpc WriteChunks(stream rerun.manifest_registry.v1alpha1.WriteChunksRequest) returns (rerun.manifest_registry.v1alpha1.WriteChunksResponse) {}
+  rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
   /* Query schemas */
 
@@ -58,31 +48,31 @@ service FrontendService {
   //
   // * To inspect the data of the partition table, use `ScanPartitionTable`.
   // * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
-  rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (rerun.manifest_registry.v1alpha1.GetPartitionTableSchemaResponse) {}
+  rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (GetPartitionTableSchemaResponse) {}
 
   // Inspect the contents of the partition table (i.e. the dataset manifest).
   //
   // The returned data will follow the schema specified by `GetPartitionTableSchema`.
-  rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream rerun.manifest_registry.v1alpha1.ScanPartitionTableResponse) {}
+  rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
 
   // Returns the schema of the dataset.
   //
   // This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
   // entities and components present in the dataset.
-  rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (rerun.manifest_registry.v1alpha1.GetDatasetSchemaResponse) {}
+  rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (GetDatasetSchemaResponse) {}
 
   /* Indexing */
 
   // Creates a custom index for a specific column (vector search, full-text search, etc).
-  rpc CreateIndex(CreateIndexRequest) returns (rerun.manifest_registry.v1alpha1.CreateIndexResponse) {}
+  rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
 
   // Recreate an index with the same configuration but (potentially) new data.
-  rpc ReIndex(ReIndexRequest) returns (rerun.manifest_registry.v1alpha1.ReIndexResponse) {}
+  rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
 
   /* Queries */
 
   // Search a previously created index.
-  rpc SearchDataset(SearchDatasetRequest) returns (stream rerun.manifest_registry.v1alpha1.SearchDatasetResponse) {}
+  rpc SearchDataset(SearchDatasetRequest) returns (stream SearchDatasetResponse) {}
 
   // Perform Rerun-native queries on a dataset, returning the matching chunk IDs.
   //
@@ -94,7 +84,7 @@ service FrontendService {
   // To fetch the actual chunks themselves, see `GetChunks`.
   //
   // Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
-  rpc QueryDataset(QueryDatasetRequest) returns (stream rerun.manifest_registry.v1alpha1.QueryDatasetResponse) {}
+  rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
 
   // Perform Rerun-native queries on a dataset, returning the underlying chunks.
   //
@@ -104,18 +94,19 @@ service FrontendService {
   // * Arbitrary Lance filters.
   //
   // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
-  rpc GetChunks(GetChunksRequest) returns (stream rerun.manifest_registry.v1alpha1.GetChunksResponse) {}
+  rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
-  // --- Table Apis ---
+  // --- Tables ---
   // TODO(jleibs): This will be replaced / extended by Arrow Flight
 
   // Register a foreign table as a new table entry in the catalog.
   rpc RegisterTable(RegisterTableRequest) returns (RegisterTableResponse) {}
 
   rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse) {}
+
   rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
 
-  // --- Tasks service ---
+  // --- Tasks ---
 
   // Query the status of submitted tasks
   rpc QueryTasks(QueryTasksRequest) returns (QueryTasksResponse) {}
@@ -126,11 +117,13 @@ service FrontendService {
   // Query the status of submitted tasks as soon as they are no longer pending
   rpc QueryTasksOnCompletion(QueryTasksOnCompletionRequest) returns (stream QueryTasksOnCompletionResponse) {}
 
-  // -- Utilities --
+  // --- Utilities ---
 
   // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
-  rpc DoMaintenance(DoMaintenanceRequest) returns (rerun.manifest_registry.v1alpha1.DoMaintenanceResponse) {}
+  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
 }
+
+// ---
 
 message VersionRequest {}
 
@@ -142,11 +135,39 @@ message VersionResponse {
 
 /* Write data */
 
+message DataSource {
+  // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
+  optional string storage_url = 1;
+
+  /// Which Partition Layer should this data source be registered to?
+  ///
+  /// Defaults to `base` if unspecified.
+  optional string layer = 3;
+
+  // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
+  DataSourceKind typ = 2;
+}
+
+enum DataSourceKind {
+  DATA_SOURCE_KIND_UNSPECIFIED = 0;
+  DATA_SOURCE_KIND_RRD = 1;
+}
+
 message RegisterWithDatasetRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
-  repeated rerun.manifest_registry.v1alpha1.DataSource data_sources = 2;
+  repeated DataSource data_sources = 2;
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
 }
+
+message RegisterWithDatasetResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message WriteChunksRequest {
+  rerun.common.v1alpha1.RerunChunk chunk = 1;
+}
+
+message WriteChunksResponse {}
 
 /* Query schemas */
 
@@ -154,13 +175,26 @@ message GetPartitionTableSchemaRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
 }
 
+message GetPartitionTableSchemaResponse {
+  rerun.common.v1alpha1.Schema schema = 1;
+}
+
 message ScanPartitionTableRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
   rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
 }
 
+message ScanPartitionTableResponse {
+  // Partitions metadata as arrow RecordBatch
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
 message GetDatasetSchemaRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
+}
+
+message GetDatasetSchemaResponse {
+  rerun.common.v1alpha1.Schema schema = 1;
 }
 
 /* Indexing */
@@ -176,14 +210,76 @@ message CreateIndexRequest {
   // If non-empty, this must match the length of `partition_ids`.
   repeated string partition_layers = 5;
 
-  rerun.manifest_registry.v1alpha1.IndexConfig config = 3;
+  IndexConfig config = 3;
 
   // Specify behavior when index for a partition was already created.
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
 }
 
+message CreateIndexResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
 message ReIndexRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
+}
+
+message ReIndexResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message IndexConfig {
+  // what kind of index do we want to create and what are its index specific properties.
+  IndexProperties properties = 1;
+
+  // Component / column we want to index.
+  IndexColumn column = 2;
+
+  // What is the filter index i.e. timeline for which we will query the timepoints.
+  //
+  // TODO(zehiko) this might go away and we might just index across all the timelines
+  rerun.common.v1alpha1.IndexColumnSelector time_index = 3;
+}
+
+// used to define which column we want to index
+message IndexColumn {
+  // The path of the entity.
+  rerun.common.v1alpha1.EntityPath entity_path = 1;
+
+  // Component details
+  rerun.common.v1alpha1.ComponentDescriptor component = 2;
+}
+
+message IndexProperties {
+  oneof props {
+    InvertedIndex inverted = 1;
+    VectorIvfPqIndex vector = 2;
+    BTreeIndex btree = 3;
+  }
+}
+
+message InvertedIndex {
+  optional bool store_position = 1;
+  optional string base_tokenizer = 2;
+  // TODO(zehiko) add other properties as needed
+}
+
+message VectorIvfPqIndex {
+  optional uint32 num_partitions = 1;
+  optional uint32 num_sub_vectors = 2;
+  VectorDistanceMetric distance_metrics = 3;
+}
+
+enum VectorDistanceMetric {
+  VECTOR_DISTANCE_METRIC_UNSPECIFIED = 0;
+  VECTOR_DISTANCE_METRIC_L2 = 1;
+  VECTOR_DISTANCE_METRIC_COSINE = 2;
+  VECTOR_DISTANCE_METRIC_DOT = 3;
+  VECTOR_DISTANCE_METRIC_HAMMING = 4;
+}
+
+message BTreeIndex {
+  // TODO(zehiko) add properties as needed
 }
 
 /* Queries */
@@ -192,7 +288,7 @@ message SearchDatasetRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
 
   // Index column that is queried
-  rerun.manifest_registry.v1alpha1.IndexColumn column = 2;
+  IndexColumn column = 2;
 
   // Query data - type of data is index specific. Caller must ensure
   // to provide the right type. For vector search this should
@@ -201,10 +297,36 @@ message SearchDatasetRequest {
   rerun.common.v1alpha1.DataframePart query = 3;
 
   // Index type specific properties
-  rerun.manifest_registry.v1alpha1.IndexQueryProperties properties = 4;
+  IndexQueryProperties properties = 4;
 
   // Scan parameters
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
+}
+
+message SearchDatasetResponse {
+  // Chunks as arrow RecordBatch
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message IndexQueryProperties {
+  // specific index query properties based on the index type
+  oneof props {
+    InvertedIndexQuery inverted = 1;
+    VectorIndexQuery vector = 2;
+    BTreeIndexQuery btree = 3;
+  }
+}
+
+message InvertedIndexQuery {
+  // TODO(zehiko) add properties as needed
+}
+
+message VectorIndexQuery {
+  optional uint32 top_k = 1;
+}
+
+message BTreeIndexQuery {
+  // TODO(zehiko) add properties as needed
 }
 
 message QueryDatasetRequest {
@@ -256,7 +378,78 @@ message QueryDatasetRequest {
   // Generic parameters that will influence the behavior of the Lance scanner.
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
 
-  rerun.manifest_registry.v1alpha1.Query query = 6;
+  Query query = 6;
+}
+
+message QueryDatasetResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message Query {
+  // If specified, will perform a latest-at query with the given parameters.
+  //
+  // You can combine this with a `QueryRange` in order to gather all the relevant chunks for
+  // a full-fledged dataframe query (i.e. they get OR'd together).
+  QueryLatestAt latest_at = 1;
+
+  // If specified, will perform a range query with the given parameters.
+  //
+  // You can combine this with a `QueryLatestAt` in order to gather all the relevant chunks for
+  // a full-fledged dataframe query (i.e. they get OR'd together).
+  QueryRange range = 2;
+
+  // If true, `columns` will contain the entire schema.
+  bool columns_always_include_everything = 3;
+
+  // If true, `columns` always includes `chunk_id`,
+  bool columns_always_include_chunk_ids = 4;
+
+  // If true, `columns` always includes `byte_offset` and `byte_size`.
+  bool columns_always_include_byte_offsets = 5;
+
+  // If true, `columns` always includes `entity_path`.
+  bool columns_always_include_entity_paths = 6;
+
+  // If true, `columns` always includes all static component-level indexes.
+  bool columns_always_include_static_indexes = 7;
+
+  // If true, `columns` always includes all temporal chunk-level indexes.
+  bool columns_always_include_global_indexes = 8;
+
+  // If true, `columns` always includes all component-level indexes.
+  bool columns_always_include_component_indexes = 9;
+}
+
+// A chunk-level latest-at query, aka `LatestAtRelevantChunks`.
+//
+// This has the exact same semantics as the query of the same name on our `ChunkStore`.
+message QueryLatestAt {
+  // Which index column should we perform the query on? E.g. `log_time`.
+  //
+  // Leave this empty to query for static data.
+  rerun.common.v1alpha1.IndexColumnSelector index = 1;
+
+  // What index value are we looking for?
+  //
+  // Leave this empty to query for static data.
+  optional int64 at = 2;
+
+  reserved 3;
+  reserved "fuzzy_descriptors";
+}
+
+/// A chunk-level range query, aka `RangeRelevantChunks`.
+//
+// This has the exact same semantics as the query of the same name on our `ChunkStore`.
+message QueryRange {
+  // Which index column should we perform the query on? E.g. `log_time`.
+  rerun.common.v1alpha1.IndexColumnSelector index = 1;
+
+  // What index range are we looking for?
+  rerun.common.v1alpha1.TimeRange index_range = 2;
+
+  reserved 3;
+  reserved "fuzzy_descriptors";
 }
 
 message GetChunksRequest {
@@ -306,7 +499,13 @@ message GetChunksRequest {
   bool exclude_temporal_data = 8;
 
   // Query details
-  rerun.manifest_registry.v1alpha1.Query query = 5;
+  Query query = 5;
+}
+
+message GetChunksResponse {
+  // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
+  // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
+  repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
 }
 
 // --- Table Apis ---
@@ -357,6 +556,10 @@ message DoMaintenanceRequest {
   // the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
   // ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
   bool unsafe_allow_recent_cleanup = 5;
+}
+
+message DoMaintenanceResponse {
+  string report = 1;
 }
 
 // --- Tasks ---

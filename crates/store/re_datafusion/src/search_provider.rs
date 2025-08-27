@@ -13,7 +13,7 @@ use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
     common::v1alpha1::ScanParameters, frontend::v1alpha1::SearchDatasetRequest,
-    manifest_registry::v1alpha1::SearchDatasetResponse,
+    frontend::v1alpha1::SearchDatasetResponse,
 };
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};

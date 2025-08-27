@@ -18,7 +18,7 @@ use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::frontend::v1alpha1::ext::{GetChunksRequest, ScanPartitionTableRequest};
-use re_protos::manifest_registry::v1alpha1::{
+use re_protos::frontend::v1alpha1::{
     GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
     QueryDatasetResponse, ScanPartitionTableResponse,
 };
@@ -29,11 +29,11 @@ use re_protos::{
     },
 };
 use re_protos::{
-    common::v1alpha1::ext::PartitionId, manifest_registry::v1alpha1::RegisterWithDatasetResponse,
+    common::v1alpha1::ext::PartitionId, frontend::v1alpha1::RegisterWithDatasetResponse,
 };
 use re_protos::{
+    frontend::v1alpha1::ext,
     frontend::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse},
-    manifest_registry::v1alpha1::ext,
 };
 use re_protos::{
     frontend::v1alpha1::frontend_service_server::FrontendService,
@@ -140,7 +140,7 @@ macro_rules! decl_stream {
         pub type $stream = std::pin::Pin<
             Box<
                 dyn futures::Stream<
-                        Item = Result<re_protos::manifest_registry::v1alpha1::$resp, tonic::Status>,
+                        Item = Result<re_protos::frontend::v1alpha1::$resp, tonic::Status>,
                     > + Send,
             >,
         >;
@@ -361,7 +361,7 @@ impl FrontendService for FrontendHandler {
         &self,
         request: tonic::Request<re_protos::frontend::v1alpha1::RegisterWithDatasetRequest>,
     ) -> Result<
-        tonic::Response<re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse>,
+        tonic::Response<re_protos::frontend::v1alpha1::RegisterWithDatasetResponse>,
         tonic::Status,
     > {
         let re_protos::frontend::v1alpha1::ext::RegisterWithDatasetRequest {
@@ -422,7 +422,7 @@ impl FrontendService for FrontendHandler {
         )
         .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;
         Ok(tonic::Response::new(
-            re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse {
+            re_protos::frontend::v1alpha1::RegisterWithDatasetResponse {
                 data: Some(record_batch.encode().map_err(|err| {
                     tonic::Status::internal(format!("Failed to encode dataframe: {err:#}"))
                 })?),
@@ -433,12 +433,10 @@ impl FrontendService for FrontendHandler {
     async fn write_chunks(
         &self,
         request: tonic::Request<
-            tonic::Streaming<re_protos::manifest_registry::v1alpha1::WriteChunksRequest>,
+            tonic::Streaming<re_protos::frontend::v1alpha1::WriteChunksRequest>,
         >,
-    ) -> Result<
-        tonic::Response<re_protos::manifest_registry::v1alpha1::WriteChunksResponse>,
-        tonic::Status,
-    > {
+    ) -> Result<tonic::Response<re_protos::frontend::v1alpha1::WriteChunksResponse>, tonic::Status>
+    {
         // TODO(ab): add a helper somewhere for this conversion
         let dataset_id = request
             .metadata()
@@ -517,7 +515,7 @@ impl FrontendService for FrontendHandler {
         }
 
         Ok(tonic::Response::new(
-            re_protos::manifest_registry::v1alpha1::WriteChunksResponse {},
+            re_protos::frontend::v1alpha1::WriteChunksResponse {},
         ))
     }
 
@@ -527,7 +525,7 @@ impl FrontendService for FrontendHandler {
         &self,
         request: tonic::Request<re_protos::frontend::v1alpha1::GetPartitionTableSchemaRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::manifest_registry::v1alpha1::GetPartitionTableSchemaResponse>,
+        tonic::Response<re_protos::frontend::v1alpha1::GetPartitionTableSchemaResponse>,
         tonic::Status,
     > {
         let entry_id = request.into_inner().try_into()?;
@@ -593,7 +591,7 @@ impl FrontendService for FrontendHandler {
         &self,
         request: tonic::Request<re_protos::frontend::v1alpha1::GetDatasetSchemaRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::manifest_registry::v1alpha1::GetDatasetSchemaResponse>,
+        tonic::Response<re_protos::frontend::v1alpha1::GetDatasetSchemaResponse>,
         tonic::Status,
     > {
         let entry_id = request.into_inner().try_into()?;
@@ -620,7 +618,7 @@ impl FrontendService for FrontendHandler {
         &self,
         _request: tonic::Request<re_protos::frontend::v1alpha1::CreateIndexRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::manifest_registry::v1alpha1::CreateIndexResponse>,
+        tonic::Response<re_protos::frontend::v1alpha1::CreateIndexResponse>,
         tonic::Status,
     > {
         Err(tonic::Status::unimplemented("create_index not implemented"))
@@ -630,7 +628,7 @@ impl FrontendService for FrontendHandler {
         &self,
         _request: tonic::Request<re_protos::frontend::v1alpha1::ReIndexRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::manifest_registry::v1alpha1::ReIndexResponse>,
+        tonic::Response<re_protos::frontend::v1alpha1::ReIndexResponse>,
         tonic::Status,
     > {
         Err(tonic::Status::unimplemented("re_index not implemented"))
@@ -978,10 +976,8 @@ impl FrontendService for FrontendHandler {
     async fn do_maintenance(
         &self,
         _request: tonic::Request<re_protos::frontend::v1alpha1::DoMaintenanceRequest>,
-    ) -> Result<
-        tonic::Response<re_protos::manifest_registry::v1alpha1::DoMaintenanceResponse>,
-        tonic::Status,
-    > {
+    ) -> Result<tonic::Response<re_protos::frontend::v1alpha1::DoMaintenanceResponse>, tonic::Status>
+    {
         Err(tonic::Status::unimplemented(
             "do_maintenance not implemented",
         ))

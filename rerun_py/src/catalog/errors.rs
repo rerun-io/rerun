@@ -19,7 +19,7 @@ use pyo3::PyErr;
 use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
 
 use re_grpc_client::{ClientConnectionError, ConnectionError};
-use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
+use re_protos::frontend::v1alpha1::ext::GetDatasetSchemaResponseError;
 
 // ---
 
@@ -99,9 +99,7 @@ impl_from_boxed!(tonic::Status, TonicStatusError);
 impl_from_boxed!(datafusion::error::DataFusionError, DatafusionError);
 impl_from_boxed!(re_protos::TypeConversionError, TypeConversionError);
 
-impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
-    for ExternalError
-{
+impl From<re_protos::frontend::v1alpha1::ext::GetDatasetSchemaResponseError> for ExternalError {
     fn from(value: GetDatasetSchemaResponseError) -> Self {
         match value {
             GetDatasetSchemaResponseError::ArrowError(err) => err.into(),
