@@ -2200,7 +2200,7 @@ impl App {
         storage_ctx: &StorageContext<'_>,
         command_sender: &CommandSender,
     ) {
-        #![allow(clippy::needless_continue)] // false positive, depending on target_arche
+        #![allow(clippy::needless_continue)] // false positive, depending on target_arch
 
         preview_files_being_dropped(egui_ctx);
 
