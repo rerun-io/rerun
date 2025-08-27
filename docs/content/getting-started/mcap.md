@@ -13,17 +13,17 @@ Rerun uses a _layered architecture_ to process MCAP files at different levels of
 
 Each layer extracts different types of information from the same MCAP data:
 
-- **Raw Layer** (`raw`) - Logs the unprocessed message bytes as Rerun blobs without any interpretation. Useful when you need access to the original data for custom processing.
+- `raw`: Logs the unprocessed message bytes as Rerun blobs without any interpretation. Useful when you need access to the original data for custom processing.
 
-- **Schema Layer** (`schema`) - Extracts metadata about channels, topics, and schemas to provide an overview of the MCAP file contents. Helps you understand what data is available before processing.
+- `schema`: Extracts metadata about channels, topics, and schemas to provide an overview of the MCAP file contents. Helps you understand what data is available before processing.
 
-- **Statistics Layer** (`stats`) - Extracts file-level metrics like message counts, time ranges, and channel statistics. Useful for understanding the characteristics and scale of your data.
+- `stats`: Extracts file-level metrics like message counts, time ranges, and channel statistics. Useful for understanding the characteristics and scale of your data.
 
-- **Protobuf Layer** (`protobuf`) - Automatically decodes protobuf-encoded messages using reflection. Creates structured data that's queryable but doesn't provide semantic meaning for visualization.
+- `protobuf`: Automatically decodes protobuf-encoded messages using reflection. Creates structured data that's queryable but doesn't provide semantic meaning for visualization.
 
-- **ROS2 Layer** (`ros2msg`) - Provides semantic conversion of common ROS2 message types (sensor messages, geometry messages, diagnostic messages) into Rerun's visualization components. Converts things like sensor data, images, point clouds, poses, transforms, and paths into formats the viewer can display meaningfully.
+- `ros2msg`: Provides semantic conversion of common ROS2 message types (sensor messages, geometry messages, diagnostic messages) into Rerun's visualization components. Converts things like sensor data, images, point clouds, poses, transforms, and paths into formats the viewer can display meaningfully.
 
-- **Recording Info Layer** (`recording_info`) - Extracts recording metadata and session information to provide context about when and how the data was captured.
+- `recording_info`: Extracts recording metadata and session information to provide context about when and how the data was captured.
 
 By default, Rerun processes MCAP files with all layers active to provide the most comprehensive view of your data. However, you can also choose to activate only specific layers that are relevant to your use case. For example, you might only want the raw data and statistics, or just the ROS2 semantic layer for visualization.
 
