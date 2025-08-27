@@ -377,8 +377,18 @@ pub struct DoMaintenanceRequest {
     #[prost(bool, tag = "3")]
     pub compact_fragments: bool,
     /// If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+    /// In case requested date is more recent than 1 hour, it will be ignored and 1 hour ago
+    /// timestamp will be used. This is to prevent still used files (like recent transaction files)
+    /// to be removed and cause Lance Dataset update issues.
+    /// See <https://docs.rs/lance/latest/lance/dataset/cleanup/index.html>
+    /// and <https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html>
     #[prost(message, optional, tag = "4")]
     pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
+    /// Override default platform behavior and allow cleanup of recent files. This will respect
+    /// the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
+    /// Warning - trying to cleanup more recent Lance artifacts may cause Dataset update issues.
+    #[prost(bool, tag = "5")]
+    pub allow_recent_cleanup: bool,
 }
 impl ::prost::Name for DoMaintenanceRequest {
     const NAME: &'static str = "DoMaintenanceRequest";

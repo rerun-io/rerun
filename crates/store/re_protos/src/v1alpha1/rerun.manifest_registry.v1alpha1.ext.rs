@@ -712,6 +712,7 @@ pub struct DoMaintenanceRequest {
     pub build_scalar_indexes: bool,
     pub compact_fragments: bool,
     pub cleanup_before: Option<jiff::Timestamp>,
+    pub allow_recent_cleanup: bool,
 }
 
 impl TryFrom<crate::manifest_registry::v1alpha1::DoMaintenanceRequest> for DoMaintenanceRequest {
@@ -737,6 +738,7 @@ impl TryFrom<crate::manifest_registry::v1alpha1::DoMaintenanceRequest> for DoMai
             build_scalar_indexes: value.build_scalar_indexes,
             compact_fragments: value.compact_fragments,
             cleanup_before,
+            allow_recent_cleanup: value.allow_recent_cleanup,
         })
     }
 }
@@ -751,6 +753,7 @@ impl From<DoMaintenanceRequest> for crate::manifest_registry::v1alpha1::DoMainte
                 seconds: ts.as_second(),
                 nanos: ts.subsec_nanosecond(),
             }),
+            allow_recent_cleanup: value.allow_recent_cleanup,
         }
     }
 }
