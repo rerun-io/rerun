@@ -400,6 +400,169 @@ impl ::prost::Name for DoMaintenanceRequest {
         "/rerun.frontend.v1alpha1.DoMaintenanceRequest".into()
     }
 }
+/// A task is a unit of work that can be submitted to the system
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Task {
+    /// Unique identifier for the task
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
+    /// Type of the task
+    #[prost(string, tag = "2")]
+    pub task_type: ::prost::alloc::string::String,
+    /// Task-type dependant data necessary to de-serialize the task
+    #[prost(bytes = "bytes", tag = "3")]
+    pub task_data: ::prost::bytes::Bytes,
+}
+impl ::prost::Name for Task {
+    const NAME: &'static str = "Task";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.Task".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.Task".into()
+    }
+}
+/// `SubmitTasksRequest` is the request message for submitting tasks
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SubmitTasksRequest {
+    #[prost(message, repeated, tag = "1")]
+    pub tasks: ::prost::alloc::vec::Vec<Task>,
+}
+impl ::prost::Name for SubmitTasksRequest {
+    const NAME: &'static str = "SubmitTasksRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.SubmitTasksRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.SubmitTasksRequest".into()
+    }
+}
+/// `SubmitTaskResponse` contains, for each submitted task
+/// its submission outcome, encoded as a `RecordBatch`
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SubmitTasksResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for SubmitTasksResponse {
+    const NAME: &'static str = "SubmitTasksResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.SubmitTasksResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.SubmitTasksResponse".into()
+    }
+}
+/// `QueryTasksRequest` is the request message for querying tasks status
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryTasksRequest {
+    /// Empty queries for all tasks if the server allows it.
+    #[prost(message, repeated, tag = "1")]
+    pub ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::TaskId>,
+}
+impl ::prost::Name for QueryTasksRequest {
+    const NAME: &'static str = "QueryTasksRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.QueryTasksRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.QueryTasksRequest".into()
+    }
+}
+/// `QueryTasksResponse` is the response message for querying tasks status
+/// encoded as a record batch
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryTasksResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for QueryTasksResponse {
+    const NAME: &'static str = "QueryTasksResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.QueryTasksResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.QueryTasksResponse".into()
+    }
+}
+/// `QueryTasksOnCompletionRequest` is the request message for querying tasks status.
+/// This is close-to-a-copy of `QueryTasksRequest`, with the addition of a timeout.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryTasksOnCompletionRequest {
+    /// Empty queries for all tasks if the server allows it.
+    #[prost(message, repeated, tag = "1")]
+    pub ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::TaskId>,
+    /// Time limit for the server to wait for task completion.
+    /// The actual maximum time may be arbitrarily capped by the server.
+    #[prost(message, optional, tag = "2")]
+    pub timeout: ::core::option::Option<::prost_types::Duration>,
+}
+impl ::prost::Name for QueryTasksOnCompletionRequest {
+    const NAME: &'static str = "QueryTasksOnCompletionRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.QueryTasksOnCompletionRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.QueryTasksOnCompletionRequest".into()
+    }
+}
+/// `QueryTaskOnCompletionResponse` is the response message for querying tasks status
+/// encoded as a record batch. This is a copy of `QueryTasksResponse`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryTasksOnCompletionResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for QueryTasksOnCompletionResponse {
+    const NAME: &'static str = "QueryTasksOnCompletionResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.QueryTasksOnCompletionResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.QueryTasksOnCompletionResponse".into()
+    }
+}
+/// `FetchTaskOutputRequest` is the request message for fetching task output
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchTaskOutputRequest {
+    /// Unique identifier for the task
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
+}
+impl ::prost::Name for FetchTaskOutputRequest {
+    const NAME: &'static str = "FetchTaskOutputRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.FetchTaskOutputRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.FetchTaskOutputRequest".into()
+    }
+}
+/// / `FetchTaskOutputResponse` is the response message for fetching task output
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchTaskOutputResponse {
+    /// The output of the task, encoded as a record batch
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for FetchTaskOutputResponse {
+    const NAME: &'static str = "FetchTaskOutputResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.FetchTaskOutputResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.FetchTaskOutputResponse".into()
+    }
+}
 /// Generated client implementations.
 pub mod frontend_service_client {
     #![allow(
@@ -411,6 +574,7 @@ pub mod frontend_service_client {
     )]
     use tonic::codegen::http::Uri;
     use tonic::codegen::*;
+    /// TODO: this is a horrible name for our product's API
     /// Redap's public API.
     #[derive(Debug, Clone)]
     pub struct FrontendServiceClient<T> {
@@ -989,17 +1153,12 @@ pub mod frontend_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// --- Tasks service ---
         /// Query the status of submitted tasks
         pub async fn query_tasks(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::redap_tasks::v1alpha1::QueryTasksRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::QueryTasksResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::QueryTasksRequest>,
+        ) -> std::result::Result<tonic::Response<super::QueryTasksResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -1017,13 +1176,9 @@ pub mod frontend_service_client {
         /// Fetch the output of a completed task
         pub async fn fetch_task_output(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::FetchTaskOutputResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::FetchTaskOutputRequest>,
+        ) -> std::result::Result<tonic::Response<super::FetchTaskOutputResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -1041,15 +1196,9 @@ pub mod frontend_service_client {
         /// Query the status of submitted tasks as soon as they are no longer pending
         pub async fn query_tasks_on_completion(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
-            >,
+            request: impl tonic::IntoRequest<super::QueryTasksOnCompletionRequest>,
         ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<
-                    super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionResponse,
-                >,
-            >,
+            tonic::Response<tonic::codec::Streaming<super::QueryTasksOnCompletionResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1323,39 +1472,25 @@ pub mod frontend_service_server {
             &self,
             request: tonic::Request<super::ScanTableRequest>,
         ) -> std::result::Result<tonic::Response<Self::ScanTableStream>, tonic::Status>;
-        /// --- Tasks service ---
         /// Query the status of submitted tasks
         async fn query_tasks(
             &self,
-            request: tonic::Request<super::super::super::redap_tasks::v1alpha1::QueryTasksRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::QueryTasksResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::QueryTasksRequest>,
+        ) -> std::result::Result<tonic::Response<super::QueryTasksResponse>, tonic::Status>;
         /// Fetch the output of a completed task
         async fn fetch_task_output(
             &self,
-            request: tonic::Request<
-                super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::FetchTaskOutputResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::FetchTaskOutputRequest>,
+        ) -> std::result::Result<tonic::Response<super::FetchTaskOutputResponse>, tonic::Status>;
         /// Server streaming response type for the QueryTasksOnCompletion method.
         type QueryTasksOnCompletionStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<
-                    super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionResponse,
-                    tonic::Status,
-                >,
+                Item = std::result::Result<super::QueryTasksOnCompletionResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         /// Query the status of submitted tasks as soon as they are no longer pending
         async fn query_tasks_on_completion(
             &self,
-            request: tonic::Request<
-                super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
-            >,
+            request: tonic::Request<super::QueryTasksOnCompletionRequest>,
         ) -> std::result::Result<tonic::Response<Self::QueryTasksOnCompletionStream>, tonic::Status>;
         /// Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
         async fn do_maintenance(
@@ -1368,6 +1503,7 @@ pub mod frontend_service_server {
             tonic::Status,
         >;
     }
+    /// TODO: this is a horrible name for our product's API
     /// Redap's public API.
     #[derive(Debug)]
     pub struct FrontendServiceServer<T> {
@@ -2371,19 +2507,14 @@ pub mod frontend_service_server {
                 "/rerun.frontend.v1alpha1.FrontendService/QueryTasks" => {
                     #[allow(non_camel_case_types)]
                     struct QueryTasksSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::redap_tasks::v1alpha1::QueryTasksRequest,
-                        > for QueryTasksSvc<T>
+                    impl<T: FrontendService> tonic::server::UnaryService<super::QueryTasksRequest>
+                        for QueryTasksSvc<T>
                     {
-                        type Response =
-                            super::super::super::redap_tasks::v1alpha1::QueryTasksResponse;
+                        type Response = super::QueryTasksResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::redap_tasks::v1alpha1::QueryTasksRequest,
-                            >,
+                            request: tonic::Request<super::QueryTasksRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2418,18 +2549,14 @@ pub mod frontend_service_server {
                     #[allow(non_camel_case_types)]
                     struct FetchTaskOutputSvc<T: FrontendService>(pub Arc<T>);
                     impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
-                        > for FetchTaskOutputSvc<T>
+                        tonic::server::UnaryService<super::FetchTaskOutputRequest>
+                        for FetchTaskOutputSvc<T>
                     {
-                        type Response =
-                            super::super::super::redap_tasks::v1alpha1::FetchTaskOutputResponse;
+                        type Response = super::FetchTaskOutputResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
-                            >,
+                            request: tonic::Request<super::FetchTaskOutputRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2463,29 +2590,21 @@ pub mod frontend_service_server {
                 "/rerun.frontend.v1alpha1.FrontendService/QueryTasksOnCompletion" => {
                     #[allow(non_camel_case_types)]
                     struct QueryTasksOnCompletionSvc<T: FrontendService>(pub Arc<T>);
-                    impl<
-                        T: FrontendService,
-                    > tonic::server::ServerStreamingService<
-                        super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
-                    > for QueryTasksOnCompletionSvc<T> {
-                        type Response = super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionResponse;
+                    impl<T: FrontendService>
+                        tonic::server::ServerStreamingService<super::QueryTasksOnCompletionRequest>
+                        for QueryTasksOnCompletionSvc<T>
+                    {
+                        type Response = super::QueryTasksOnCompletionResponse;
                         type ResponseStream = T::QueryTasksOnCompletionStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
-                            >,
+                            request: tonic::Request<super::QueryTasksOnCompletionRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::query_tasks_on_completion(
-                                        &inner,
-                                        request,
-                                    )
+                                <T as FrontendService>::query_tasks_on_completion(&inner, request)
                                     .await
                             };
                             Box::pin(fut)

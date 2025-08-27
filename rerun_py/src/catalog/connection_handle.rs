@@ -23,9 +23,10 @@ use re_protos::{
         TaskId,
         ext::{IfDuplicateBehavior, ScanParameters},
     },
-    frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest},
+    frontend::v1alpha1::{
+        GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest, QueryTasksResponse,
+    },
     manifest_registry::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
-    redap_tasks::v1alpha1::QueryTasksResponse,
 };
 
 use crate::catalog::to_py_err;
@@ -331,7 +332,7 @@ impl ConnectionHandle {
         wait_for_future(
             py,
             async {
-                let request = re_protos::redap_tasks::v1alpha1::QueryTasksRequest {
+                let request = re_protos::frontend::v1alpha1::QueryTasksRequest {
                     ids: task_ids.to_vec(),
                 };
 
@@ -373,7 +374,7 @@ impl ConnectionHandle {
                         "failed to convert timeout to serialized duration: {err}"
                     ))
                 })?;
-                let request = re_protos::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest {
+                let request = re_protos::frontend::v1alpha1::QueryTasksOnCompletionRequest {
                     ids: task_ids,
                     timeout: Some(timeout),
                 };

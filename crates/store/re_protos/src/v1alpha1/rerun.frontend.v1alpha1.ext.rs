@@ -1,8 +1,11 @@
+use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+
 use re_log_types::{EntityPath, EntryId};
 
-use crate::v1alpha1::rerun_common_v1alpha1;
-use crate::v1alpha1::rerun_common_v1alpha1_ext::{IfDuplicateBehavior, ScanParameters};
-use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::{DataSource, Query};
+use crate::common::v1alpha1::DataframePart;
+use crate::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters};
+use crate::frontend::v1alpha1::QueryTasksResponse;
+use crate::manifest_registry::v1alpha1::ext::{DataSource, Query};
 use crate::{TypeConversionError, missing_field};
 
 // --- GetPartitionTableSchemaRequest ---
@@ -176,7 +179,7 @@ impl TryFrom<crate::frontend::v1alpha1::GetChunksRequest> for GetChunksRequest {
 
 #[derive(Debug, Clone)]
 pub struct DoMaintenanceRequest {
-    pub dataset_id: Option<rerun_common_v1alpha1::EntryId>,
+    pub dataset_id: Option<crate::common::v1alpha1::EntryId>,
     pub build_scalar_indexes: bool,
     pub compact_fragments: bool,
     pub cleanup_before: Option<jiff::Timestamp>,
@@ -195,5 +198,56 @@ impl From<DoMaintenanceRequest> for crate::frontend::v1alpha1::DoMaintenanceRequ
             }),
             unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
         }
+    }
+}
+
+// --- Tasks ---
+
+impl QueryTasksResponse {
+    pub const TASK_ID: &str = "task_id";
+    pub const KIND: &str = "kind";
+    pub const DATA: &str = "data";
+    pub const EXEC_STATUS: &str = "exec_status";
+    pub const MSGS: &str = "msgs";
+    pub const BLOB_LEN: &str = "blob_len";
+    pub const LEASE_OWNER: &str = "lease_owner";
+    pub const LEASE_EXPIRATION: &str = "lease_expiration";
+    pub const ATTEMPTS: &str = "attempts";
+    pub const CREATION_TIME: &str = "creation_time";
+    pub const LAST_UPDATE_TIME: &str = "last_update_time";
+
+    pub fn dataframe_part(&self) -> Result<&DataframePart, TypeConversionError> {
+        Ok(self
+            .data
+            .as_ref()
+            .ok_or_else(|| missing_field!(QueryTasksResponse, "data"))?)
+    }
+
+    pub fn schema() -> arrow::datatypes::Schema {
+        Schema::new(vec![
+            Field::new(Self::TASK_ID, DataType::Utf8, false),
+            Field::new(Self::KIND, DataType::Utf8, true),
+            Field::new(Self::DATA, DataType::Utf8, true),
+            Field::new(Self::EXEC_STATUS, DataType::Utf8, false),
+            Field::new(Self::MSGS, DataType::Utf8, true),
+            Field::new(Self::BLOB_LEN, DataType::UInt64, true),
+            Field::new(Self::LEASE_OWNER, DataType::Utf8, true),
+            Field::new(
+                Self::LEASE_EXPIRATION,
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                true,
+            ),
+            Field::new(Self::ATTEMPTS, DataType::UInt8, false),
+            Field::new(
+                Self::CREATION_TIME,
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                true,
+            ),
+            Field::new(
+                Self::LAST_UPDATE_TIME,
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                true,
+            ),
+        ])
     }
 }

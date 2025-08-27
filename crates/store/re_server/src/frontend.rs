@@ -1,3 +1,6 @@
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::sync::Arc;
+
 use arrow::array::{
     ArrayRef, BooleanArray, DurationNanosecondArray, Int64Array, RecordBatch, RecordBatchOptions,
     StringArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
@@ -5,11 +8,8 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use nohash_hasher::IntSet;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::sync::Arc;
 use tokio_stream::StreamExt as _;
 
-use crate::store::{Dataset, InMemoryStore};
 use re_chunk_store::Chunk;
 use re_chunk_store::external::re_chunk::external::re_byte_size::SizeBytes as _;
 use re_entity_db::EntityDb;
@@ -37,11 +37,13 @@ use re_protos::{
 };
 use re_protos::{
     frontend::v1alpha1::frontend_service_server::FrontendService,
-    redap_tasks::v1alpha1::{
+    frontend::v1alpha1::{
         FetchTaskOutputRequest, FetchTaskOutputResponse, QueryTasksOnCompletionRequest,
         QueryTasksRequest, QueryTasksResponse,
     },
 };
+
+use crate::store::{Dataset, InMemoryStore};
 
 #[derive(Debug, Default)]
 pub struct FrontendHandlerSettings {}
@@ -158,7 +160,7 @@ macro_rules! decl_stream {
         pub type $stream = std::pin::Pin<
             Box<
                 dyn futures::Stream<
-                        Item = Result<re_protos::redap_tasks::v1alpha1::$resp, tonic::Status>,
+                        Item = Result<re_protos::frontend::v1alpha1::$resp, tonic::Status>,
                     > + Send,
             >,
         >;

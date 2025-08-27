@@ -52,12 +52,6 @@ mod v1alpha1 {
 
     #[path = "./rerun.frontend.v1alpha1.ext.rs"]
     pub mod rerun_frontend_v1alpha1_ext;
-
-    #[path = "./rerun.redap_tasks.v1alpha1.rs"]
-    pub mod rerun_redap_tasks_v1alpha1;
-
-    #[path = "./rerun.redap_tasks.v1alpha1.ext.rs"]
-    pub mod rerun_redap_tasks_v1alpha1_ext;
 }
 
 pub mod common {
@@ -118,12 +112,6 @@ pub mod frontend {
 pub mod sdk_comms {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_sdk_comms_v1alpha1::*;
-    }
-}
-
-pub mod redap_tasks {
-    pub mod v1alpha1 {
-        pub use crate::v1alpha1::rerun_redap_tasks_v1alpha1::*;
     }
 }
 
