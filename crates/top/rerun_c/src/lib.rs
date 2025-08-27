@@ -490,7 +490,16 @@ fn rr_recording_stream_new_impl(
     store_info: *const CStoreInfo,
     default_enabled: bool,
 ) -> Result<CRecordingStream, CError> {
-    re_log::setup_logging();
+    {
+        use std::sync::Once;
+        static INIT: Once = Once::new();
+        INIT.call_once(|| {
+            re_log::setup_logging();
+            if cfg!(debug_assertions) {
+                re_log::info!("Using a DEBUG BUILD of the Rerun SDK!");
+            }
+        });
+    }
 
     let store_info = ptr::try_ptr_as_ref(store_info, "store_info")?;
 
