@@ -325,11 +325,6 @@ typedef struct rr_grpc_sink {
     ///
     /// The default is `rerun+http://127.0.0.1:9876/proxy`.
     rr_string url;
-
-    /// The minimum time the SDK will wait during a flush before potentially
-    /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
-    /// and can cause a call to `flush` to block indefinitely.
-    float flush_timeout_sec;
 } rr_grpc_sink;
 
 /// Log sink which writes messages to a file.
@@ -498,11 +493,6 @@ extern void rr_recording_stream_set_sinks(
 ///
 /// The default is `rerun+http://127.0.0.1:9876/proxy`.
 ///
-/// flush_timeout_sec:
-/// The minimum time the SDK will wait during a flush before potentially
-/// dropping data if progress is not being made. Passing a negative value indicates no timeout,
-/// and can cause a call to `flush` to block indefinitely.
-///
 /// This function returns immediately and will only raise an error for argument parsing errors,
 /// not for connection errors as these happen asynchronously.
 extern void rr_recording_stream_connect_grpc(
@@ -534,11 +524,6 @@ extern void rr_recording_stream_serve_grpc(
 /// Configuration of the spawned process.
 /// Refer to `rr_spawn_options` documentation for details.
 /// Passing null is valid and will result in the recommended defaults.
-///
-/// flush_timeout_sec:
-/// The minimum time the SDK will wait during a flush before potentially
-/// dropping data if progress is not being made. Passing a negative value indicates no timeout,
-/// and can cause a call to `flush` to block indefinitely.
 extern void rr_recording_stream_spawn(
     rr_recording_stream stream, const rr_spawn_options* spawn_opts, rr_error* error
 );
