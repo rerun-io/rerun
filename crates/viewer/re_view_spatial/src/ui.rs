@@ -88,6 +88,9 @@ impl SpatialViewState {
 
         let view_systems = &system_output.view_systems;
 
+        // Reset the counts and start over.
+        self.image_counts_last_frame = Default::default();
+
         for data in view_systems.iter_visualizer_data::<SpatialViewVisualizerData>() {
             for pickable_rect in &data.pickable_rects {
                 let PickableRectSourceData::Image {
