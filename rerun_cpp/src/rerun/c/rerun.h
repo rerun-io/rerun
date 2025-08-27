@@ -360,8 +360,12 @@ typedef struct rr_log_sink {
 /// Category codes are used to group errors together, but are never returned directly.
 typedef uint32_t rr_error_code;
 
+// ⚠️ Remember to also update `enum CErrorCode` AND `enum class ErrorCode` !
 enum {
     RR_ERROR_CODE_OK = 0,
+    RR_ERROR_CODE_OUT_OF_MEMORY,
+    RR_ERROR_CODE_NOT_IMPLEMENTED,
+    RR_ERROR_CODE_SDK_VERSION_MISMATCH,
 
     // Invalid argument errors.
     _RR_ERROR_CODE_CATEGORY_ARGUMENT = 0x00000010,
@@ -372,7 +376,10 @@ enum {
     RR_ERROR_CODE_INVALID_SOCKET_ADDRESS,
     RR_ERROR_CODE_INVALID_COMPONENT_TYPE_HANDLE,
     RR_ERROR_CODE_INVALID_TIME_ARGUMENT,
+    RR_ERROR_CODE_INVALID_TENSOR_DIMENSION,
+    RR_ERROR_CODE_INVALID_COMPONENT,
     RR_ERROR_CODE_INVALID_SERVER_URL = 0x00000001a,
+    RR_ERROR_CODE_FILE_READ,
     RR_ERROR_CODE_INVALID_MEMORY_LIMIT,
 
     // Recording stream errors
@@ -394,6 +401,13 @@ enum {
     // Utility errors.
     _RR_ERROR_CODE_CATEGORY_UTILITIES = 0x00010000,
     RR_ERROR_CODE_VIDEO_LOAD_ERROR,
+
+    // Errors relating to file IO.
+    _RR_ERROR_CODE_CATEGORY_FILE_IO = 0x00100000,
+    RR_ERROR_CODE_FILE_OPEN_FAILURE,
+
+    // Errors directly translated from arrow::StatusCode.
+    _RR_ERROR_CODE_CATEGORY_ARROW_CPP_STATUS = 0x10000000,
 
     // Generic errors.
     RR_ERROR_CODE_UNKNOWN,

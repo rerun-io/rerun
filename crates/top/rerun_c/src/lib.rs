@@ -375,12 +375,16 @@ pub enum CLogSink {
     FileSink { file: CFileSink } = 1,
 }
 
-// ⚠️ Remember to also update `rerun.h` !
+// ⚠️ Remember to also update `uint32_t rr_error_code` AND `enum class ErrorCode` !
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CErrorCode {
     Ok = 0,
+    OutOfMemory,
+    NotImplemented,
+    SdkVersionMismatch,
 
+    // Invalid argument errors.
     _CategoryArgument = 0x0000_00010,
     UnexpectedNullArgument,
     InvalidStringArgument,
@@ -389,9 +393,13 @@ pub enum CErrorCode {
     InvalidSocketAddress,
     InvalidComponentTypeHandle,
     InvalidTimeArgument,
+    InvalidTensorDimension,
+    InvalidComponent,
     InvalidServerUrl = 0x0000_0001a,
+    FileRead,
     InvalidMemoryLimit,
 
+    // Recording stream errors
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamRuntimeFailure,
     RecordingStreamCreationFailure,
@@ -402,12 +410,21 @@ pub enum CErrorCode {
     RecordingStreamServeGrpcFailure,
     RecordingStreamFlushFailure,
 
+    // Arrow data processing errors.
     _CategoryArrow = 0x0000_1000,
     ArrowFfiSchemaImportError,
     ArrowFfiArrayImportError,
 
+    // Utility errors.
     _CategoryUtilities = 0x0001_0000,
     VideoLoadError,
+
+    // Errors relating to file IO.
+    _CategoryFileIO = 0x0010_0000,
+    FileOpenFailure,
+
+    // Errors directly translated from arrow::StatusCode.
+    _CategoryArrowCppStatus = 0x1000_0000,
 
     Unknown = 0xFFFF_FFFF,
 }
