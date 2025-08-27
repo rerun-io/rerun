@@ -5,7 +5,7 @@ use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UiExt as _};
-use re_viewer_context::{AppOptions, StoreContext};
+use re_viewer_context::StoreContext;
 
 use crate::{App, app_blueprint::AppBlueprint};
 
@@ -127,11 +127,11 @@ fn top_bar_ui(
             }
         }
 
-        if cfg!(debug_assertions) {
+        if cfg!(debug_assertions) && !app.app_env().is_test() {
             multi_pass_warning_dot_ui(ui);
         }
 
-        show_warnings(frame, ui, app.app_options());
+        show_warnings(frame, ui, app.app_env());
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -155,7 +155,7 @@ fn top_bar_ui(
     });
 }
 
-fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_options: &AppOptions) {
+fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppEnvironment) {
     // We could log these as warning instead and relying on the notification panel to show it.
     // However, there are a few benefits of instead showing it like this:
     // * it's more visible
@@ -172,7 +172,7 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_options: &AppOpti
         .on_hover_text("egui was compiled with debug assertions enabled.");
     }
 
-    if app_options.show_software_rasterizer_warning {
+    if !app_env.is_test() {
         show_software_rasterizer_warning(frame, ui);
     }
 
