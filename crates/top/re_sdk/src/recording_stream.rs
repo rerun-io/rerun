@@ -1526,7 +1526,6 @@ fn forwarding_thread(
                     let backlog = sink.drain_backlog();
 
                     // Flush the underlying sink if possible.
-                    sink.drop_if_disconnected();
                     if let Err(err) = sink.flush_blocking(timeout) {
                         re_log::error!("Failed to flush previous sink: {err}");
                     }
