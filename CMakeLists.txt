@@ -136,6 +136,21 @@ endif()
 # Signal to all our build scripts that we're inside the Rerun repository.
 set(RERUN_REPOSITORY YES)
 
+# Set up sccache if it's available.
+find_program(SCCACHE sccache)
+
+if(SCCACHE)
+    message(STATUS "sccache found: ${SCCACHE} - overwriting compiler launcher")
+
+    # See https://github.com/mozilla/sccache#usage
+    set(CMAKE_C_COMPILER_LAUNCHER ${SCCACHE})
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${SCCACHE})
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT Embedded)
+    cmake_policy(SET CMP0141 NEW)
+else()
+    message(STATUS "sccache not found - proceeding without overwriting compiler launcher")
+endif()
+
 # ------------------------------------------------------------------------------
 # Loguru logging library (https://github.com/emilk/loguru):
 set(CMAKE_DL_LIBS "dl") # Required by Loguru for backtraces
