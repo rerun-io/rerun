@@ -5,6 +5,7 @@ use tokio::sync::RwLock;
 use tonic::Code;
 
 use re_auth::Jwt;
+use re_protos::catalog::v1alpha1::{EntryFilter, FindEntriesRequest};
 
 use crate::TonicStatusError;
 use crate::connection_client::GenericConnectionClient;
@@ -170,10 +171,17 @@ impl ConnectionRegistryHandle {
         };
 
         // Call the version endpoint to check that authentication is successful. It's ok to do this
-        // since we're caching the client, so we're not spamming such request unnecessarily.
+        // since we're caching the client, so we're not spamming such a request unnecessarily.
+        // TODO(rerun-io/dataplatform#1069): use the `whoami` endpoint instead when it exists.
         let request_result = client
             .inner()
-            .version(re_protos::frontend::v1alpha1::VersionRequest {})
+            .find_entries(FindEntriesRequest {
+                filter: Some(EntryFilter {
+                    id: None,
+                    name: Some("__entries".to_owned()),
+                    entry_kind: None,
+                }),
+            })
             .await;
 
         match request_result {
