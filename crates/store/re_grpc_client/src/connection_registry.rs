@@ -158,15 +158,19 @@ impl ConnectionRegistryHandle {
                 .or_else(get_token_from_env)
         };
 
-        let client = crate::redap::client(origin.clone(), token.clone()).await;
-        let mut client = match client {
-            Ok(client) => {
-                let mut inner = self.inner.write().await;
-                inner.clients.insert(origin.clone(), client.clone());
-                ConnectionClient::new(client)
-            }
-            Err(err) => {
-                return Err(err.into());
+        let mut client = {
+            // We acquire the lock before creating the client, to avoid a race where two threads
+            // would create a client at the same time.
+            let mut inner = self.inner.write().await;
+            let client = crate::redap::client(origin.clone(), token.clone()).await;
+            match client {
+                Ok(client) => {
+                    inner.clients.insert(origin.clone(), client.clone());
+                    ConnectionClient::new(client)
+                }
+                Err(err) => {
+                    return Err(err.into());
+                }
             }
         };
 
