@@ -457,7 +457,6 @@ pub extern "C" fn rr_spawn(spawn_opts: *const CSpawnOptions, error: *mut CError)
 }
 
 #[expect(clippy::result_large_err)]
-#[expect(unsafe_code)]
 fn rr_register_component_type_impl(
     component_type: &CComponentType,
 ) -> Result<CComponentTypeHandle, CError> {
@@ -921,7 +920,6 @@ pub extern "C" fn rr_recording_stream_set_time(
     }
 }
 
-#[expect(unsafe_code)]
 #[expect(clippy::result_large_err)]
 fn rr_recording_stream_disable_timeline_impl(
     stream: CRecordingStream,
