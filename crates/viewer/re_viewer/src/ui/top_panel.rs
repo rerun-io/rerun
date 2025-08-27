@@ -5,7 +5,7 @@ use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UiExt as _};
-use re_viewer_context::{AppOptions, StoreContext};
+use re_viewer_context::StoreContext;
 
 use crate::{App, app_blueprint::AppBlueprint};
 
@@ -107,29 +107,31 @@ fn top_bar_ui(
             if let Some(latency_snapshot) = latency_snapshot {
                 // Should we show the e2e latency?
 
-                // High enough to be consering; low enough to be believable (and almost realtime).
+                // High enough to be concerning; low enough to be believable (and almost realtime).
                 let is_latency_interesting = latency_snapshot
                     .e2e
                     .is_some_and(|e2e| app.app_options().warn_e2e_latency < e2e && e2e < 60.0);
 
-                // Avoid flicker by showing the latency for 1 seconds ince it was last deemned interesting:
-
+                // Avoid flicker by showing the latency for 1 second since it was last deemed interesting:
                 if is_latency_interesting {
-                    app.latest_latency_interest = web_time::Instant::now();
+                    app.latest_latency_interest = Some(web_time::Instant::now());
                 }
 
-                if app.latest_latency_interest.elapsed().as_secs_f32() < 1.0 {
+                if app
+                    .latest_latency_interest
+                    .is_some_and(|instant| instant.elapsed().as_secs_f32() < 1.0)
+                {
                     ui.separator();
                     latency_snapshot_button_ui(ui, latency_snapshot);
                 }
             }
         }
 
-        if cfg!(debug_assertions) {
+        if cfg!(debug_assertions) && !app.app_env().is_test() {
             multi_pass_warning_dot_ui(ui);
         }
 
-        show_warnings(frame, ui, app.app_options());
+        show_warnings(frame, ui, app.app_env());
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -153,7 +155,7 @@ fn top_bar_ui(
     });
 }
 
-fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_options: &AppOptions) {
+fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppEnvironment) {
     // We could log these as warning instead and relying on the notification panel to show it.
     // However, there are a few benefits of instead showing it like this:
     // * it's more visible
@@ -170,7 +172,7 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_options: &AppOpti
         .on_hover_text("egui was compiled with debug assertions enabled.");
     }
 
-    if app_options.show_software_rasterizer_warning {
+    if !app_env.is_test() {
         show_software_rasterizer_warning(frame, ui);
     }
 

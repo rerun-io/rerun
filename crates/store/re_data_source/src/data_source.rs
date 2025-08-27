@@ -8,7 +8,7 @@ use crate::FileContents;
 use anyhow::Context as _;
 
 /// Somewhere we can get Rerun logging data from.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LogDataSource {
     /// A remote RRD file, served over http.
     ///

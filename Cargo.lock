@@ -1996,6 +1996,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cros-codecs"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80f7441b4f31c17b6b6b7f57f6c202944aad11d0ab23739a9ff88d8d34dec621"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "crossbeam"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7638,6 +7647,7 @@ dependencies = [
  "itertools 0.14.0",
  "nohash-hasher",
  "parking_lot",
+ "re_arrow_util",
  "re_build_info",
  "re_byte_size",
  "re_chunk",
@@ -7798,10 +7808,14 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_kittest",
- "insta",
+ "re_grpc_client",
+ "re_protos",
+ "re_sdk",
+ "re_server",
+ "re_uri",
  "re_viewer",
+ "tempfile",
  "tokio",
- "ureq",
 ]
 
 [[package]]
@@ -8588,6 +8602,7 @@ dependencies = [
  "bit-vec",
  "cfg_aliases",
  "criterion",
+ "cros-codecs",
  "crossbeam",
  "econtext",
  "ffmpeg-sidecar",
@@ -8768,6 +8783,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_mp4",
  "re_query",
  "re_renderer",
  "re_test_context",
@@ -8958,6 +8974,8 @@ dependencies = [
  "tap",
  "thiserror 1.0.69",
  "tokio",
+ "url",
+ "vec1",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -9018,7 +9036,6 @@ dependencies = [
  "tokio",
  "wasm-bindgen-futures",
  "web-sys",
- "web-time",
  "wgpu",
 ]
 
@@ -9505,202 +9522,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "unicode-ident",
-]
-
-[[package]]
-name = "roundtrip_annotation_context"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_arrows2d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_arrows3d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_boxes2d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_boxes3d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_depth_image"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "image",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_image"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "half",
- "image",
- "ndarray",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_line_strips2d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_line_strips3d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_pinhole"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_points2d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_points3d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_segmentation_image"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "image",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_tensor"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "ndarray",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_text_document"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_text_log"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_transform3d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_view_coordinates"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_visible_time_ranges"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
 ]
 
 [[package]]

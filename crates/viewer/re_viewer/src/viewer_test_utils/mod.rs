@@ -33,6 +33,7 @@ pub fn viewer_harness() -> Harness<'static, App> {
 
 /// Steps through the harness until the `predicate` closure returns `true`.
 pub async fn step_until<'app, 'harness, Predicate>(
+    test_description: &'static str,
     harness: &'harness mut egui_kittest::Harness<'app, App>,
     mut predicate: Predicate,
     step_duration: tokio::time::Duration,
@@ -48,5 +49,20 @@ pub async fn step_until<'app, 'harness, Predicate>(
         harness.step();
         success = predicate(harness);
     }
-    assert!(success, "Timed out waiting for predicate to be true.");
+
+    if !success {
+        // Take a screenshot of the state of the harness if we failed the test.
+        // This is invaluable for debugging test failures.
+        let snapshot_path = "tests/failures";
+        harness
+            .try_snapshot_options(
+                test_description,
+                &egui_kittest::SnapshotOptions::default().output_path(snapshot_path),
+            )
+            .ok();
+
+        panic!(
+            "Timed out waiting for predicate to be true for {test_description:?}. A screenshot of the harness has been saved to `{snapshot_path}/{test_description}.new.png`."
+        );
+    }
 }

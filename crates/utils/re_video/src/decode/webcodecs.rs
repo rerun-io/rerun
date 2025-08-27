@@ -1,7 +1,4 @@
-use std::{
-    collections::hash_map::Entry,
-    sync::{Arc, LazyLock},
-};
+use std::{collections::hash_map::Entry, sync::LazyLock};
 
 use ahash::HashMap;
 use crossbeam::channel::Sender;
@@ -14,10 +11,11 @@ use web_sys::{
     VideoDecoderInit,
 };
 
-use super::{
-    AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, OutputCallback, Result,
+use super::{AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, Result};
+use crate::{
+    DecodeError, FrameResult, Time, Timescale, VideoCodec, VideoDataDescription,
+    VideoEncodingDetails,
 };
-use crate::{DecodeError, Time, Timescale, VideoCodec, VideoDataDescription, VideoEncodingDetails};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -61,7 +59,7 @@ pub struct WebVideoDecoder {
 
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
-    on_output: Arc<OutputCallback>,
+    output_sender: crossbeam::channel::Sender<FrameResult>,
 
     output_callback_tx: Sender<OutputCallbackMessage>,
 }
@@ -156,17 +154,15 @@ impl WebVideoDecoder {
     pub fn new(
         video_descr: &VideoDataDescription,
         hw_acceleration: DecodeHardwareAcceleration,
-        on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
+        output_sender: crossbeam::channel::Sender<FrameResult>,
     ) -> Result<Self, WebError> {
-        let on_output = Arc::new(on_output);
-
         // Web APIs insist on microsecond timestamps throughout.
         // If we don't have a timescale, assume a 30fps video where time units are frames.
         // Higher fps should be still just fine, the web just needs _something_.
         // For details on how we treat timestamps, see submit_chunk.
         let timescale = video_descr.timescale.unwrap_or(Timescale::new(30));
 
-        let (decoder, output_callback_tx) = init_video_decoder(on_output.clone())?;
+        let (decoder, output_callback_tx) = init_video_decoder(output_sender.clone())?;
 
         let first_frame_pts = video_descr
             .samples
@@ -181,7 +177,7 @@ impl WebVideoDecoder {
 
             decoder,
             hw_acceleration,
-            on_output,
+            output_sender,
             output_callback_tx,
         })
     }
@@ -270,14 +266,14 @@ impl AsyncDecoder for WebVideoDecoder {
         if *IS_FIREFOX {
             // As of Firefox 140.0.4 we observe frequent tab crashes when calling `reset` on a video decoder.
             // See https://bugzilla.mozilla.org/show_bug.cgi?id=1976929 for more details.
-            let (decoder, output_callback_tx) = init_video_decoder(self.on_output.clone())?;
+            let (decoder, output_callback_tx) = init_video_decoder(self.output_sender.clone())?;
             self.decoder = decoder;
             self.output_callback_tx = output_callback_tx;
         } else if let Err(_err) = self.decoder.reset() {
             // It can happen that reset fails after a previously encountered error.
             // In that case, start over completely and try again!
             re_log::debug!("Video decoder reset failed, recreating decoder.");
-            let (decoder, output_callback_tx) = init_video_decoder(self.on_output.clone())?;
+            let (decoder, output_callback_tx) = init_video_decoder(self.output_sender.clone())?;
             self.decoder = decoder;
             self.output_callback_tx = output_callback_tx;
         }
@@ -358,12 +354,12 @@ impl AsyncDecoder for WebVideoDecoder {
 }
 
 fn init_video_decoder(
-    on_output_callback: Arc<OutputCallback>,
+    output_sender: crossbeam::channel::Sender<FrameResult>,
 ) -> Result<(web_sys::VideoDecoder, Sender<OutputCallbackMessage>), WebError> {
     let (output_callback_tx, output_callback_rx) = crossbeam::channel::unbounded();
 
     let on_output = {
-        let on_output = on_output_callback.clone();
+        let output_sender = output_sender.clone();
 
         // Timestamps _should_ be unique.
         // But a user may supply multiple frame on the same timestamp or timestamps so close to each other that we can't distinguish them here
@@ -376,6 +372,8 @@ fn init_video_decoder(
         // See https://github.com/rerun-io/rerun/pull/10405
         let mut pending_frame_infos: HashMap<u64, SmallVec<[FrameInfo; 1]>> = HashMap::default();
 
+        // This closure has been observed to be called truly asynchronously on Firefox.
+        // -> Do *NOT* use any locks in here, since parking lot isn't supported on web.
         Closure::wrap(Box::new(move |frame: web_sys::VideoFrame| {
             // First thing we wrap the frame to it gets closed on drop (i.e even if something goes wrong).
             let frame = WebVideoFrame(frame);
@@ -433,10 +431,12 @@ fn init_video_decoder(
                         entry.remove();
                     }
 
-                    on_output(Ok(Frame {
-                        content: frame,
-                        info,
-                    }));
+                    output_sender
+                        .send(Ok(Frame {
+                            content: frame,
+                            info,
+                        }))
+                        .ok();
                 }
 
                 Entry::Vacant(_) => {
@@ -449,9 +449,11 @@ fn init_video_decoder(
     };
 
     let on_error = Closure::wrap(Box::new(move |err: js_sys::Error| {
-        on_output_callback(Err(super::DecodeError::WebDecoder(WebError::Decoding(
-            js_error_to_string(&err),
-        ))));
+        output_sender
+            .send(Err(super::DecodeError::WebDecoder(WebError::Decoding(
+                js_error_to_string(&err),
+            ))))
+            .ok();
     }) as Box<dyn FnMut(js_sys::Error)>);
 
     let Ok(on_output) = on_output.into_js_value().dyn_into::<Function>() else {

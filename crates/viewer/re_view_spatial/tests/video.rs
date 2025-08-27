@@ -110,68 +110,11 @@ impl std::fmt::Display for VideoType {
     }
 }
 
-fn convert_avcc_sample_to_annexb(
-    video_data_description: &VideoDataDescription,
-    sample: &re_video::SampleMetadata,
-    mut raw_sample_bytes: &[u8],
-) -> Vec<u8> {
-    // Have to convert AVCC to AnnexB.
-    let mut sample_bytes = Vec::new();
-
-    const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
-
-    let avcc = video_data_description
-        .encoding_details
-        .as_ref()
-        .and_then(|d| d.avcc())
-        .expect("AVCC box should be present for H264 mp4");
-
-    if sample.is_sync {
-        for nal_unit in &avcc.avcc.contents.sequence_parameter_sets {
-            sample_bytes.extend_from_slice(ANNEXB_NAL_START_CODE);
-            sample_bytes.extend_from_slice(&nal_unit.bytes);
-        }
-        for nal_unit in &avcc.avcc.contents.picture_parameter_sets {
-            sample_bytes.extend_from_slice(ANNEXB_NAL_START_CODE);
-            sample_bytes.extend_from_slice(&nal_unit.bytes);
-        }
-    }
-
-    // There can (and will be!) be several NAL units in a single sample.
-    // Need to extract the length prefix one by one and use start codes instead.
-    let length_prefix_size = avcc.avcc.length_size_minus_one as usize + 1;
-    while !raw_sample_bytes.is_empty() {
-        sample_bytes.extend_from_slice(ANNEXB_NAL_START_CODE);
-        let sample_size = match length_prefix_size {
-            1 => raw_sample_bytes[0] as usize,
-            2 => u16::from_be_bytes(
-                #[expect(clippy::unwrap_used)] // can't fail
-                raw_sample_bytes[..2].try_into().unwrap(),
-            ) as usize,
-            4 => u32::from_be_bytes(
-                #[expect(clippy::unwrap_used)] // can't fail
-                raw_sample_bytes[..4].try_into().unwrap(),
-            ) as usize,
-            _ => {
-                panic!("Bad length prefix size: {length_prefix_size}")
-            }
-        };
-
-        let data_start = length_prefix_size; // Skip the size.
-        let data_end = sample_size + length_prefix_size;
-
-        sample_bytes.extend_from_slice(&raw_sample_bytes[data_start..data_end]);
-        raw_sample_bytes = &raw_sample_bytes[data_end..];
-    }
-
-    sample_bytes
-}
-
 fn image_diff_threshold(codec: VideoCodec) -> f32 {
     match codec {
         // Despite version pinning, ffmpeg's results are quite different depending on the platform
         // and seemingly even between runs!
-        VideoCodec::H264 => 2.2,
+        VideoCodec::H264 | VideoCodec::H265 => 2.2,
         // AV1 has this problem as well but to a lesser extent.
         VideoCodec::AV1 => 1.2,
 
@@ -183,9 +126,10 @@ fn image_failed_pixel_count_threshold(codec: VideoCodec) -> usize {
     match codec {
         // Despite version pinning, ffmpeg's results are quite different depending on the platform
         // and seemingly even between runs!
-        VideoCodec::H264 => 300,
+        VideoCodec::H264 | VideoCodec::H265 => 300,
         // AV1 has this problem as well but to a lesser extent.
         VideoCodec::AV1 => 100,
+
         _ => SnapshotOptions::default().failed_pixel_count_threshold,
     }
 }
@@ -249,18 +193,56 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
                 "TODO(#10090): Video stream doesn't support bframes"
             );
 
-            for sample in video_data_description.samples.iter() {
+            let mut annexb_stream_state = re_video::AnnexBStreamState::default();
+            let samples_buffers = std::iter::once(blob_bytes).collect();
+
+            for (sample_idx, sample) in video_data_description.samples.iter().enumerate() {
                 let (codec, sample_bytes) = match video_data_description.codec {
                     VideoCodec::H264 => {
-                        let sample_bytes = convert_avcc_sample_to_annexb(
-                            &video_data_description,
-                            sample,
-                            &blob_bytes[sample.byte_span.range_usize()],
-                        );
+                        let avcc = video_data_description
+                            .encoding_details
+                            .as_ref()
+                            .and_then(|e| e.stsd.as_ref())
+                            .and_then(|stsd| match &stsd.contents {
+                                re_mp4::StsdBoxContent::Avc1(avc1) => Some(avc1),
+                                _ => None,
+                            })
+                            .expect("AVCC box should be present for H264 mp4");
+
+                        let mut sample_bytes = Vec::new();
+                        re_video::write_avc_chunk_to_nalu_stream(
+                            avcc,
+                            &mut sample_bytes,
+                            &sample.get(&samples_buffers, sample_idx).unwrap(),
+                            &mut annexb_stream_state,
+                        )
+                        .unwrap();
 
                         (components::VideoCodec::H264, sample_bytes)
                     }
-                    VideoCodec::H265 => panic!("H265 is not supported for video streams"),
+                    VideoCodec::H265 => {
+                        let hvcc = video_data_description
+                            .encoding_details
+                            .as_ref()
+                            .and_then(|e| e.stsd.as_ref())
+                            .and_then(|stsd| match &stsd.contents {
+                                re_mp4::StsdBoxContent::Hev1(hvcc)
+                                | re_mp4::StsdBoxContent::Hvc1(hvcc) => Some(hvcc),
+                                _ => None,
+                            })
+                            .expect("HVCC box should be present for H264 mp4");
+
+                        let mut sample_bytes = Vec::new();
+                        re_video::write_hevc_chunk_to_nalu_stream(
+                            hvcc,
+                            &mut sample_bytes,
+                            &sample.get(&samples_buffers, sample_idx).unwrap(),
+                            &mut annexb_stream_state,
+                        )
+                        .unwrap();
+
+                        (components::VideoCodec::H265, sample_bytes)
+                    }
                     VideoCodec::VP9 => panic!("VP9 is not supported for video streams"),
                     VideoCodec::VP8 => panic!("VP8 is not supported for video streams"),
                     VideoCodec::AV1 => panic!("AV1 is not supported for video streams"),
@@ -353,11 +335,10 @@ fn test_video_stream_codec_h264() {
     test_video(VideoType::VideoStream, VideoCodec::H264);
 }
 
-// TODO(#10185): Unsupported codec for VideoStream
-// #[test]
-// fn test_video_stream_codec_h265() {
-//     test_video(VideoType::VideoStream, VideoCodec::H265);
-// }
+#[test]
+fn test_video_stream_codec_h265() {
+    test_video(VideoType::VideoStream, VideoCodec::H265);
+}
 
 // TODO(#10186): Unsupported codec for VideoStream
 // #[test]
