@@ -100,7 +100,7 @@ def partition_url_with_timeref_udf(dataset: DatasetEntry, timeline_name: str) ->
         raise RerunOptionalDependencyError("datafusion", "datafusion")
 
     def inner_udf(partition_id_arr: pa.Array, timestamp_arr: pa.Array) -> pa.Array:
-        timestamp_us = pa.compute.cast(timestamp_arr, pa.timestamp("us"))
+        timestamp_us = pa.compute.ceil_temporal(timestamp_arr, unit="microsecond")
 
         timestamp_us = pa.compute.strftime(
             timestamp_us,
