@@ -5,8 +5,8 @@ use arrow::record_batch::{RecordBatch, RecordBatchOptions};
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
-use re_log_types::{ArrowMsg, EntityPath, LogMsg, SetStoreInfo, StoreId, StoreKind};
-use re_sorbet::{ColumnDescriptorRef, RowIdColumnDescriptor, SorbetBatch};
+use re_log_types::{ArrowMsg, EntityPath, LogMsg, SetStoreInfo, StoreId, StoreKind, Timeline};
+use re_sorbet::{ColumnDescriptorRef, IndexColumnDescriptor, RowIdColumnDescriptor, SorbetBatch};
 use re_types_core::{ChunkId, RowId};
 use re_viewer_context::{SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -97,7 +97,12 @@ pub fn sorbet_batch_to_chunk_recording_batch(
     }
 
     let record_batch_option = RecordBatchOptions::new();
+    let row_index_field = Arc::new(
+        IndexColumnDescriptor::from_timeline(Timeline::new_sequence("row_index"), true)
+            .to_arrow_field(),
+    );
 
+    let mut start_row_index = 0i64;
     for sorbet_batch in sorbet_batches {
         let orig_schema = sorbet_batch.schema();
         let orig_fields: &[FieldRef] = orig_schema.fields();
@@ -125,14 +130,22 @@ pub fn sorbet_batch_to_chunk_recording_batch(
                 .take(row_count)
                 .collect_vec();
 
-                std::sync::Arc::new(RowId::arrow_from_slice(&row_ids))
+                Arc::new(RowId::arrow_from_slice(&row_ids))
             });
+
+        let row_count = sorbet_batch.num_rows() as i64;
+        let row_index_column: arrow::array::ArrayRef =
+            Arc::new(arrow::array::Int64Array::from_iter_values(
+                start_row_index..(start_row_index + row_count),
+            ));
+        start_row_index += row_count;
 
         #[expect(clippy::iter_over_hash_type)] // we don't really care about chunk order
         for (entity_path, component_column_indices) in &component_columns {
             let chunk_id = ChunkId::new();
 
             let fields = std::iter::once(Arc::clone(&row_id_field))
+                .chain(std::iter::once(Arc::clone(&row_index_field)))
                 .chain(
                     index_columns
                         .iter()
@@ -148,6 +161,7 @@ pub fn sorbet_batch_to_chunk_recording_batch(
             let schema = Schema::new_with_metadata(fields, metadata);
 
             let column_arrays = std::iter::once(Arc::clone(&row_id_column_data))
+                .chain(std::iter::once(Arc::clone(&row_index_column)))
                 .chain(
                     index_columns
                         .iter()
