@@ -3150,7 +3150,13 @@ fn update_web_address_bar(
     if !enable_history {
         return None;
     }
-    let url = crate::open_url::display_mode_to_content_url(store_hub, display_mode)?;
+    let Ok(url) =
+        crate::open_url::ViewerImportUrl::from_display_mode(Some(store_hub), display_mode)
+            // History entries expect the url parameter, not the full url, therefore don't pass a base url.
+            .and_then(|url| url.to_sharable_url(&None))
+    else {
+        return None;
+    };
 
     re_log::debug!("Updating navigation bar");
 

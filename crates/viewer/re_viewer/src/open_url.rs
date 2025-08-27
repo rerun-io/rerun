@@ -1,3 +1,5 @@
+use vec1::{Vec1, vec1};
+
 use re_data_source::LogDataSource;
 use re_smart_channel::SmartChannelSource;
 use re_ui::CommandPaletteUrl;
@@ -19,6 +21,8 @@ pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 #[derive(Debug, Clone, PartialEq)]
 pub enum ViewerImportUrl {
     /// A URL that points to a selection (typically an entity) within the currently active recording.
+    // TODO(andreas): Not all item types are suported right now. Many of them aren't intra recording, so we probably want a new schema for this
+    // that we can re-use in any fragment.
     IntraRecordingSelection(Item),
 
     /// A remote RRD file, served over http.
@@ -52,7 +56,7 @@ pub enum ViewerImportUrl {
     /// A URL that points to a web event listener.
     ///
     /// This is used only for legacy notebooks.
-    WebEventListener(String),
+    WebEventListener,
 
     /// A web viewer URL with one or more url parameters which all individually can be imported.
     WebViewerUrl {
@@ -97,8 +101,8 @@ impl std::str::FromStr for ViewerImportUrl {
             }
         }
         // Web event listener (legacy notebooks).
-        else if let Some(url) = url.strip_prefix(WEB_EVENT_LISTENER_SCHEME) {
-            Ok(Self::WebEventListener(url.to_owned()))
+        else if url.starts_with(WEB_EVENT_LISTENER_SCHEME) {
+            Ok(Self::WebEventListener)
         }
         // Log data source.
         else if let Some(data_source) =
@@ -154,7 +158,7 @@ fn parse_webviewer_url(url: &str) -> anyhow::Result<ViewerImportUrl> {
 }
 
 /// URL stripped of query and fragment.
-fn base_url(url: &url::Url) -> url::Url {
+pub fn base_url(url: &url::Url) -> url::Url {
     let mut base_url = url.clone();
     base_url.set_query(None);
     base_url.set_fragment(None);
@@ -162,6 +166,166 @@ fn base_url(url: &url::Url) -> url::Url {
 }
 
 impl ViewerImportUrl {
+    /// Tries to create a viewer import URL for the current display mode (typically for sharing purposes).
+    ///
+    /// Conceptually, this is the inverse of [`Self::open`]. However, some import URLs like
+    /// intra-recording links aren't stand-alone enough to be returned by this function.
+    ///
+    /// To produce a sharable url, from this result, call [`Self::to_sharable_url`].
+    ///
+    /// Returns Err(reason) if the current state can't be shared with a url.
+    // TODO(#10866): Should have anchors for selection etc. when supported. Need to figure out how this works together with the "share editor".
+    // Does this method merely provide the starting point?
+    pub fn from_display_mode(
+        store_hub: &StoreHub,
+        display_mode: &DisplayMode,
+    ) -> anyhow::Result<Self> {
+        match display_mode {
+            DisplayMode::Settings => {
+                // Not much point in updating address for the settings screen.
+                Err(anyhow::anyhow!("Can't share links to the settings screen."))
+            }
+            DisplayMode::LocalRecordings => {
+                // Local recordings includes those downloaded from rrd urls
+                // (as of writing this includes the sample recordings!)
+                // If it's one of those we want to update the address bar accordingly.
+
+                let active_recording = store_hub
+                    .active_recording()
+                    .ok_or(anyhow::anyhow!("No active recording"))?;
+                let data_source = active_recording
+                    .data_source
+                    .as_ref()
+                    .ok_or(anyhow::anyhow!("No data source"))?;
+
+                // Note that some of these data sources aren't actually sharable URLs.
+                // But since we have to handles this for `open_url` and `to_sharable_url` anyways,
+                // we just preserve as much as possible here.
+                match data_source {
+                    SmartChannelSource::RrdHttpStream { url, follow: _ } => {
+                        Ok(Self::RrdHttpUrl(url.parse::<url::Url>()?))
+                    }
+
+                    SmartChannelSource::File(path_buf) => Ok(Self::FilePath(path_buf.clone())),
+
+                    SmartChannelSource::RrdWebEventListener => Ok(Self::WebEventListener),
+
+                    SmartChannelSource::JsChannel { .. } => Err(anyhow::anyhow!(
+                        "Can't share links to recordings streamed from the web."
+                    )),
+
+                    SmartChannelSource::Sdk => Err(anyhow::anyhow!(
+                        "Can't share links to recordings streamed from the SDKs."
+                    )),
+
+                    SmartChannelSource::Stdin => Err(anyhow::anyhow!(
+                        "Can't share links to recordings streamed from stdin."
+                    )),
+
+                    SmartChannelSource::RedapGrpcStream {
+                        uri,
+                        select_when_loaded: _,
+                    } => Ok(Self::RedapDatasetPartition(uri.clone())),
+
+                    SmartChannelSource::MessageProxy(proxy_uri) => {
+                        Ok(Self::RedapProxy(proxy_uri.clone()))
+                    }
+                }
+            }
+
+            DisplayMode::LocalTable(_table_id) => {
+                // We can't share links to local tables, so can't update the url.
+                Err(anyhow::anyhow!("Can't share links to local tables."))
+            }
+
+            DisplayMode::RedapEntry(_entry_id) => {
+                // TODO(#10866): Implement this.
+                Err(anyhow::anyhow!("Can't share links to redap entries."))
+            }
+
+            DisplayMode::RedapServer(origin) => {
+                // `as_url` on the origin gives us an http link.
+                // We want a rerun link here instead.
+                Ok(Self::RedapCatalog(re_uri::CatalogUri::new(origin.clone())))
+            }
+
+            DisplayMode::ChunkStoreBrowser => {
+                // As of writing the store browser is more of a debugging feature.
+                Err(anyhow::anyhow!(
+                    "Can't share links to the chunk store browser."
+                ))
+            }
+        }
+    }
+
+    /// Returns a URL for sharing purposes.
+    ///
+    /// Whenever possible you should provide a web viewer base URL so that the URL can be opened
+    /// in the browser (this does *not* exclude native, web viewer URLs can still be opened there as well!)
+    ///
+    /// This is roughly the inverse of [`Self::from_str`].
+    pub fn to_sharable_url(
+        &self,
+        web_viewer_base_url: &Option<url::Url>,
+    ) -> anyhow::Result<String> {
+        let urls: Vec1<String> = match self {
+            Self::IntraRecordingSelection(item) => {
+                let data_path = item.to_data_path().ok_or_else(|| {
+                    // See also `Item::from_str`
+                    anyhow::anyhow!("Can only share links to entities & components")
+                })?;
+                vec1![format!("{INTRA_RECORDING_URL_SCHEME}{data_path}")]
+            }
+            Self::RrdHttpUrl(url) => {
+                vec1![url.to_string()]
+            }
+            Self::FilePath(path_buf) => {
+                vec1![(*path_buf.to_string_lossy()).to_owned()]
+            }
+            Self::RedapDatasetPartition(dataset_partition_uri) => {
+                vec1![dataset_partition_uri.to_string()]
+            }
+            Self::RedapProxy(proxy_uri) => {
+                vec1![proxy_uri.to_string()]
+            }
+            Self::RedapCatalog(catalog_uri) => vec1![catalog_uri.to_string()],
+            Self::RedapEntry(entry_uri) => vec1![entry_uri.to_string()],
+            Self::WebEventListener => vec1![WEB_EVENT_LISTENER_SCHEME.to_owned()],
+            Self::WebViewerUrl {
+                base_url: _,
+                url_parameters,
+            } => {
+                // Already a sharable URL to a web viewer.
+                // Typically we don't end up here, but if we do and have a mismatching web viewer base URL
+                // things might get weird. We could warn about it, but if we intentionally overwrote it
+                // that's not helping either!
+                //
+                // Either way we definitely want to use the web viewer base URL that got passed in, since
+                // this one defines the user's intention
+                Vec1::try_from_vec(
+                    url_parameters
+                        .iter()
+                        .map(|url| url.to_sharable_url(web_viewer_base_url))
+                        .collect::<anyhow::Result<Vec<_>>>()?,
+                )
+                .expect("converted from a vec1")
+            }
+        };
+
+        // Combine the URL(s) with the web viewer base URL if provided.
+        if let Some(web_viewer_base_url) = web_viewer_base_url {
+            let mut share_url = web_viewer_base_url.clone();
+            share_url.set_query(Some(&urls.join("&")));
+            Ok(share_url.to_string())
+        } else if urls.len() == 1 {
+            Ok(urls.split_off_first().0)
+        } else {
+            Err(anyhow::anyhow!(
+                "Can't share more than one URL without a web viewer base URL"
+            ))
+        }
+    }
+
     /// Opens a content URL or file inside the viewer.
     ///
     /// This is for handling opening arbitrary URLs inside the viewer
@@ -227,8 +391,8 @@ impl ViewerImportUrl {
                 command_sender
                     .send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
             }
-            Self::WebEventListener(url) => {
-                handle_web_event_listener(egui_ctx, &url, command_sender);
+            Self::WebEventListener => {
+                handle_web_event_listener(egui_ctx, command_sender);
             }
             Self::WebViewerUrl {
                 base_url: _base_url,
@@ -300,7 +464,7 @@ impl ViewerImportUrl {
                 format!("Open redap entry {}", uri.entry_id)
             }
 
-            Self::WebEventListener(_) => "Connect to web event listener".to_owned(),
+            Self::WebEventListener => "Connect to web event listener".to_owned(),
 
             Self::WebViewerUrl { url_parameters, .. } => {
                 if url_parameters.len() == 1 {
@@ -314,18 +478,12 @@ impl ViewerImportUrl {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn handle_web_event_listener(
-    _egui_ctx: &egui::Context,
-    url: &str,
-    _command_sender: &CommandSender,
-) {
-    re_log::warn!(
-        "Can't open {url}: {WEB_EVENT_LISTENER_SCHEME:?} urls are only available on the web viewer."
-    );
+fn handle_web_event_listener(_egui_ctx: &egui::Context, _command_sender: &CommandSender) {
+    re_log::warn!("{WEB_EVENT_LISTENER_SCHEME:?} urls are only available on the web viewer.");
 }
 
 #[cfg(target_arch = "wasm32")]
-fn handle_web_event_listener(egui_ctx: &egui::Context, url: &str, command_sender: &CommandSender) {
+fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandSender) {
     use re_log::ResultExt as _;
     use re_log_encoding::stream_rrd_from_http::HttpMessage;
     use std::{ops::ControlFlow, sync::Arc};
@@ -336,7 +494,6 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, url: &str, command_sender
         re_smart_channel::SmartChannelSource::RrdWebEventListener,
     );
     let egui_ctx = egui_ctx.clone();
-    let url = url.to_owned();
     re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(Arc::new({
         move |msg| {
             egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
@@ -347,7 +504,7 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, url: &str, command_sender
                         ControlFlow::Continue(())
                     } else {
                         re_log::info_once!(
-                            "Failed to send log message to viewer - closing connection to {url}"
+                            "Failed to send log message to viewer - closing connection"
                         );
                         ControlFlow::Break(())
                     }
@@ -366,83 +523,6 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, url: &str, command_sender
     }));
 
     command_sender.send_system(SystemCommand::AddReceiver(rx));
-}
-
-/// Tries to create a content URL for the current display mode that can be shared.
-///
-/// Note that the returned URL does not contain the "web viewer hosting" part.
-/// I.e. you can import this URL in a Rerun viewer but you can't necessarily put it in your browser address bar.
-///
-/// Returns `None` if the current state can't be shared with a url.
-// TODO(andreas): We'll need this for our "share link" editor again, but with lots more knobs. Probably need to split this.
-//                We can likely have a more structured one for redap urls and have this higher level function use that (share editor is only planned for redap urls)
-// TODO(#10866): Should have anchors for selection etc. when supported.
-#[allow(unused)] // only used in web viewer as of writing
-pub fn display_mode_to_content_url(
-    store_hub: &StoreHub,
-    display_mode: &DisplayMode,
-) -> Option<String> {
-    re_log::debug!("Updating navigation bar");
-
-    match display_mode {
-        DisplayMode::Settings => {
-            // Not much point in updating address for the settings screen.
-            None
-        }
-        DisplayMode::LocalRecordings => {
-            // Local recordings includes those downloaded from rrd urls
-            // (as of writing this includes the sample recordings!)
-            // If it's one of those we want to update the address bar accordingly.
-
-            let active_recording = store_hub.active_recording()?;
-            let data_source = active_recording.data_source.as_ref()?;
-
-            match data_source {
-                SmartChannelSource::RrdHttpStream { url, follow: _ } => Some(url.clone()),
-
-                SmartChannelSource::File(_path_buf) => {
-                    // Can't share links to local files.
-                    None
-                }
-
-                SmartChannelSource::RrdWebEventListener
-                | SmartChannelSource::JsChannel { .. }
-                | SmartChannelSource::Sdk
-                | SmartChannelSource::Stdin => {
-                    // Can't share links to live streams / local events.
-                    None
-                }
-
-                SmartChannelSource::RedapGrpcStream {
-                    uri,
-                    select_when_loaded: _,
-                } => Some(uri.to_string()),
-
-                SmartChannelSource::MessageProxy(proxy_uri) => Some(proxy_uri.to_string()),
-            }
-        }
-
-        DisplayMode::LocalTable(_table_id) => {
-            // We can't share links to local tables, so can't update the url.
-            None
-        }
-
-        DisplayMode::RedapEntry(_entry_id) => {
-            // TODO(#10866): Implement this.
-            None
-        }
-
-        DisplayMode::RedapServer(origin) => {
-            // `as_url` on the origin gives us an http link.
-            // We want a rerun link here instead.
-            Some(re_uri::RedapUri::Catalog(re_uri::CatalogUri::new(origin.clone())).to_string())
-        }
-
-        DisplayMode::ChunkStoreBrowser => {
-            // As of writing the store browser is more of a debugging feature.
-            None
-        }
-    }
 }
 
 #[cfg(test)]
@@ -490,7 +570,7 @@ mod tests {
             let url = "web_event:test_listener";
             assert_eq!(
                 ViewerImportUrl::from_str(url).unwrap(),
-                ViewerImportUrl::WebEventListener("test_listener".to_owned())
+                ViewerImportUrl::WebEventListener
             );
         }
         // LogDataSource
@@ -568,3 +648,6 @@ mod tests {
         }
     }
 }
+
+// TODO: add tests for `from_display_mode`
+// TODO: add tests for `to_sharable_url`
