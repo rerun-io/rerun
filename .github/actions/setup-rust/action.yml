@@ -83,7 +83,7 @@ runs:
     - name: Set up sccache
       uses: rerun-io/sccache-action@andreas/fix-config-path
       with:
-        version: "v0.7.7"
+        version: "v0.10.0"
         use_gcs: true
         gcs_bucket: rerun-sccache
         gcs_read_only: false
