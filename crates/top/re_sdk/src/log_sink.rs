@@ -130,12 +130,18 @@ impl LogSink for MultiSink {
         }
     }
 
+    // Flushes ALL sinks, and returns the most severe error, if any.
     #[inline]
     fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError> {
+        let mut result = Ok(());
         for sink in self.0.lock().iter() {
-            sink.flush_blocking(timeout)?;
+            if let Err(err) = sink.flush_blocking(timeout) {
+                if matches!(result, Ok(()) | Err(SinkFlushError::Timeout)) {
+                    result = Err(err);
+                }
+            }
         }
-        Ok(())
+        result
     }
 
     // NOTE: this is only really used for BufferedSink,
