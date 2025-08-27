@@ -67,6 +67,11 @@ pub fn sorbet_batch_to_chunk_recording_batch(
     };
 
     let schema = first_batch.sorbet_schema();
+    let orig_schema = first_batch.schema();
+
+    // The original metadata might have `rerun:sorted` values, but we can't trust it since our
+    // sorbet batch might be arbitrarily reordered by the table widget. So we strip that metadata.
+    let orig_fields = strip_is_sorted_metadata(orig_schema.fields());
 
     let mut row_id_column = None;
     let mut index_columns = vec![];
@@ -104,33 +109,12 @@ pub fn sorbet_batch_to_chunk_recording_batch(
 
     let mut start_row_index = 0i64;
     for sorbet_batch in sorbet_batches {
-        let orig_schema = sorbet_batch.schema();
-        let orig_fields: &[FieldRef] = orig_schema.fields();
+        debug_assert_eq!(sorbet_batch.schema(), orig_schema);
 
         let row_id_field = row_id_column
             .map(|col_idx| Arc::clone(&orig_fields[col_idx]))
             .unwrap_or_else(|| {
                 Arc::new(RowIdColumnDescriptor { is_sorted: true }.to_arrow_field())
-            });
-
-        let id = ChunkId::new();
-        let row_count = sorbet_batch.num_rows();
-        let row_id_column_data = row_id_column
-            .map(|col_idx| Arc::clone(sorbet_batch.column(col_idx)))
-            .unwrap_or_else(|| {
-                let row_ids = std::iter::from_fn({
-                    let tuid: re_tuid::Tuid = *id;
-                    let mut row_id = RowId::from_tuid(tuid.next());
-                    move || {
-                        let yielded = row_id;
-                        row_id = row_id.next();
-                        Some(yielded)
-                    }
-                })
-                .take(row_count)
-                .collect_vec();
-
-                Arc::new(RowId::arrow_from_slice(&row_ids))
             });
 
         let row_count = sorbet_batch.num_rows() as i64;
@@ -143,6 +127,24 @@ pub fn sorbet_batch_to_chunk_recording_batch(
         #[expect(clippy::iter_over_hash_type)] // we don't really care about chunk order
         for (entity_path, component_column_indices) in &component_columns {
             let chunk_id = ChunkId::new();
+
+            let row_id_column_data = row_id_column
+                .map(|col_idx| Arc::clone(sorbet_batch.column(col_idx)))
+                .unwrap_or_else(|| {
+                    let row_ids = std::iter::from_fn({
+                        let tuid: re_tuid::Tuid = *chunk_id;
+                        let mut row_id = RowId::from_tuid(tuid.next());
+                        move || {
+                            let yielded = row_id;
+                            row_id = row_id.next();
+                            Some(yielded)
+                        }
+                    })
+                    .take(sorbet_batch.num_rows())
+                    .collect_vec();
+
+                    Arc::new(RowId::arrow_from_slice(&row_ids))
+                });
 
             let fields = std::iter::once(Arc::clone(&row_id_field))
                 .chain(std::iter::once(Arc::clone(&row_index_field)))
@@ -187,4 +189,19 @@ pub fn sorbet_batch_to_chunk_recording_batch(
             on_chunk_record_batch(chunk_id, record_batch);
         }
     }
+}
+
+fn strip_is_sorted_metadata(fields: &[FieldRef]) -> Vec<FieldRef> {
+    fields
+        .iter()
+        .map(|field| {
+            if field.metadata().contains_key("rerun:is_sorted") {
+                let mut field = (**field).clone();
+                field.metadata_mut().remove("rerun:is_sorted");
+                Arc::new(field)
+            } else {
+                Arc::clone(field)
+            }
+        })
+        .collect()
 }
