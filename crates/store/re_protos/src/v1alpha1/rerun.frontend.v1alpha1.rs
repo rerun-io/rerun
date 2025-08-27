@@ -563,6 +563,497 @@ impl ::prost::Name for FetchTaskOutputResponse {
         "/rerun.frontend.v1alpha1.FetchTaskOutputResponse".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FindEntriesRequest {
+    #[prost(message, optional, tag = "1")]
+    pub filter: ::core::option::Option<EntryFilter>,
+}
+impl ::prost::Name for FindEntriesRequest {
+    const NAME: &'static str = "FindEntriesRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.FindEntriesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.FindEntriesRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FindEntriesResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub entries: ::prost::alloc::vec::Vec<EntryDetails>,
+}
+impl ::prost::Name for FindEntriesResponse {
+    const NAME: &'static str = "FindEntriesResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.FindEntriesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.FindEntriesResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DeleteEntryRequest {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for DeleteEntryRequest {
+    const NAME: &'static str = "DeleteEntryRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.DeleteEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.DeleteEntryRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DeleteEntryResponse {}
+impl ::prost::Name for DeleteEntryResponse {
+    const NAME: &'static str = "DeleteEntryResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.DeleteEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.DeleteEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateEntryRequest {
+    /// The entry to modify.
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The new values for updatable fields.
+    #[prost(message, optional, tag = "2")]
+    pub entry_details_update: ::core::option::Option<EntryDetailsUpdate>,
+}
+impl ::prost::Name for UpdateEntryRequest {
+    const NAME: &'static str = "UpdateEntryRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.UpdateEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.UpdateEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateEntryResponse {
+    /// The updated entry details
+    #[prost(message, optional, tag = "1")]
+    pub entry_details: ::core::option::Option<EntryDetails>,
+}
+impl ::prost::Name for UpdateEntryResponse {
+    const NAME: &'static str = "UpdateEntryResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.UpdateEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.UpdateEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateDatasetEntryRequest {
+    /// Name of the dataset entry to create.
+    ///
+    /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+    /// with the same name already exists, the request will fail.
+    #[prost(string, optional, tag = "1")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
+    /// If specified, create the entry using this specific ID. Use at your own risk.
+    #[prost(message, optional, tag = "2")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for CreateDatasetEntryRequest {
+    const NAME: &'static str = "CreateDatasetEntryRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.CreateDatasetEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.CreateDatasetEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateDatasetEntryResponse {
+    #[prost(message, optional, tag = "1")]
+    pub dataset: ::core::option::Option<DatasetEntry>,
+}
+impl ::prost::Name for CreateDatasetEntryResponse {
+    const NAME: &'static str = "CreateDatasetEntryResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.CreateDatasetEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.CreateDatasetEntryResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ReadDatasetEntryRequest {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for ReadDatasetEntryRequest {
+    const NAME: &'static str = "ReadDatasetEntryRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.ReadDatasetEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.ReadDatasetEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReadDatasetEntryResponse {
+    #[prost(message, optional, tag = "1")]
+    pub dataset: ::core::option::Option<DatasetEntry>,
+}
+impl ::prost::Name for ReadDatasetEntryResponse {
+    const NAME: &'static str = "ReadDatasetEntryResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.ReadDatasetEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.ReadDatasetEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateDatasetEntryRequest {
+    /// The dataset to modify.
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The new values.
+    #[prost(message, optional, tag = "2")]
+    pub dataset_details: ::core::option::Option<DatasetDetails>,
+}
+impl ::prost::Name for UpdateDatasetEntryRequest {
+    const NAME: &'static str = "UpdateDatasetEntryRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.UpdateDatasetEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.UpdateDatasetEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateDatasetEntryResponse {
+    /// The updated dataset entry
+    #[prost(message, optional, tag = "1")]
+    pub dataset: ::core::option::Option<DatasetEntry>,
+}
+impl ::prost::Name for UpdateDatasetEntryResponse {
+    const NAME: &'static str = "UpdateDatasetEntryResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.UpdateDatasetEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.UpdateDatasetEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterTableRequest {
+    /// Name of the table entry to create.
+    ///
+    /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+    /// with the same name already exists, the request will fail.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// Information about the table to register.
+    ///
+    /// This must be encoded message of one one of the following supported types:
+    /// - LanceTable
+    #[prost(message, optional, tag = "2")]
+    pub provider_details: ::core::option::Option<::prost_types::Any>,
+}
+impl ::prost::Name for RegisterTableRequest {
+    const NAME: &'static str = "RegisterTableRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.RegisterTableRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.RegisterTableRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterTableResponse {
+    /// Details about the table that was created and registered.
+    #[prost(message, optional, tag = "1")]
+    pub table_entry: ::core::option::Option<TableEntry>,
+}
+impl ::prost::Name for RegisterTableResponse {
+    const NAME: &'static str = "RegisterTableResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.RegisterTableResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.RegisterTableResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ReadTableEntryRequest {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for ReadTableEntryRequest {
+    const NAME: &'static str = "ReadTableEntryRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.ReadTableEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.ReadTableEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReadTableEntryResponse {
+    #[prost(message, optional, tag = "1")]
+    pub table: ::core::option::Option<TableEntry>,
+}
+impl ::prost::Name for ReadTableEntryResponse {
+    const NAME: &'static str = "ReadTableEntryResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.ReadTableEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.ReadTableEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EntryFilter {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    #[prost(string, optional, tag = "2")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(enumeration = "EntryKind", optional, tag = "3")]
+    pub entry_kind: ::core::option::Option<i32>,
+}
+impl ::prost::Name for EntryFilter {
+    const NAME: &'static str = "EntryFilter";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.EntryFilter".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.EntryFilter".into()
+    }
+}
+/// Minimal info about an Entry for high-level catalog summary
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EntryDetails {
+    /// The EntryId is immutable
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The name of this entry.
+    #[prost(string, optional, tag = "2")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
+    /// The kind of entry
+    #[prost(enumeration = "EntryKind", tag = "3")]
+    pub entry_kind: i32,
+    #[prost(message, optional, tag = "4")]
+    pub created_at: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "5")]
+    pub updated_at: ::core::option::Option<::prost_types::Timestamp>,
+}
+impl ::prost::Name for EntryDetails {
+    const NAME: &'static str = "EntryDetails";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.EntryDetails".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.EntryDetails".into()
+    }
+}
+/// Updatable fields of an Entry
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EntryDetailsUpdate {
+    /// The name of this entry.
+    #[prost(string, optional, tag = "2")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for EntryDetailsUpdate {
+    const NAME: &'static str = "EntryDetailsUpdate";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.EntryDetailsUpdate".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.EntryDetailsUpdate".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatasetDetails {
+    /// The blueprint dataset associated with this dataset (if any).
+    #[prost(message, optional, tag = "3")]
+    pub blueprint_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The partition of the blueprint dataset corresponding to the default blueprint (if any).
+    #[prost(message, optional, tag = "4")]
+    pub default_blueprint: ::core::option::Option<super::super::common::v1alpha1::PartitionId>,
+}
+impl ::prost::Name for DatasetDetails {
+    const NAME: &'static str = "DatasetDetails";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.DatasetDetails".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.DatasetDetails".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatasetEntry {
+    #[prost(message, optional, tag = "1")]
+    pub details: ::core::option::Option<EntryDetails>,
+    /// Dataset-specific information, may be update with `UpdateDatasetEntry`
+    #[prost(message, optional, tag = "4")]
+    pub dataset_details: ::core::option::Option<DatasetDetails>,
+    /// Read-only
+    #[prost(message, optional, tag = "2")]
+    pub dataset_handle: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
+}
+impl ::prost::Name for DatasetEntry {
+    const NAME: &'static str = "DatasetEntry";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.DatasetEntry".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.DatasetEntry".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TableEntry {
+    #[prost(message, optional, tag = "1")]
+    pub details: ::core::option::Option<EntryDetails>,
+    /// Details specific to the table-provider
+    #[prost(message, optional, tag = "3")]
+    pub provider_details: ::core::option::Option<::prost_types::Any>,
+}
+impl ::prost::Name for TableEntry {
+    const NAME: &'static str = "TableEntry";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.TableEntry".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.TableEntry".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct SystemTable {
+    #[prost(enumeration = "SystemTableKind", tag = "1")]
+    pub kind: i32,
+}
+impl ::prost::Name for SystemTable {
+    const NAME: &'static str = "SystemTable";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.SystemTable".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.SystemTable".into()
+    }
+}
+/// A foreign table stored as a Lance table.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LanceTable {
+    /// The URL of the Lance table.
+    #[prost(string, tag = "1")]
+    pub table_url: ::prost::alloc::string::String,
+}
+impl ::prost::Name for LanceTable {
+    const NAME: &'static str = "LanceTable";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.LanceTable".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.LanceTable".into()
+    }
+}
+/// What type of entry. This has strong implication on which APIs are available for this entry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum EntryKind {
+    /// Always reserve unspecified as default value
+    Unspecified = 0,
+    /// Order as TYPE, TYPE_VIEW so things stay consistent as we introduce new types.
+    Dataset = 1,
+    DatasetView = 2,
+    Table = 3,
+    TableView = 4,
+    BlueprintDataset = 5,
+}
+impl EntryKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "ENTRY_KIND_UNSPECIFIED",
+            Self::Dataset => "ENTRY_KIND_DATASET",
+            Self::DatasetView => "ENTRY_KIND_DATASET_VIEW",
+            Self::Table => "ENTRY_KIND_TABLE",
+            Self::TableView => "ENTRY_KIND_TABLE_VIEW",
+            Self::BlueprintDataset => "ENTRY_KIND_BLUEPRINT_DATASET",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "ENTRY_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "ENTRY_KIND_DATASET" => Some(Self::Dataset),
+            "ENTRY_KIND_DATASET_VIEW" => Some(Self::DatasetView),
+            "ENTRY_KIND_TABLE" => Some(Self::Table),
+            "ENTRY_KIND_TABLE_VIEW" => Some(Self::TableView),
+            "ENTRY_KIND_BLUEPRINT_DATASET" => Some(Self::BlueprintDataset),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum SystemTableKind {
+    /// Always reserve unspecified as default value
+    Unspecified = 0,
+    /// Not used yet
+    Namespaces = 1,
+    /// All of the entries in the associated namespace
+    Entries = 2,
+}
+impl SystemTableKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "SYSTEM_TABLE_KIND_UNSPECIFIED",
+            Self::Namespaces => "SYSTEM_TABLE_KIND_NAMESPACES",
+            Self::Entries => "SYSTEM_TABLE_KIND_ENTRIES",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "SYSTEM_TABLE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "SYSTEM_TABLE_KIND_NAMESPACES" => Some(Self::Namespaces),
+            "SYSTEM_TABLE_KIND_ENTRIES" => Some(Self::Entries),
+            _ => None,
+        }
+    }
+}
 /// Generated client implementations.
 pub mod frontend_service_client {
     #![allow(
@@ -664,11 +1155,9 @@ pub mod frontend_service_client {
         }
         pub async fn find_entries(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::catalog::v1alpha1::FindEntriesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::FindEntriesResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::FindEntriesRequest>,
+        ) -> std::result::Result<tonic::Response<super::FindEntriesResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -685,11 +1174,9 @@ pub mod frontend_service_client {
         }
         pub async fn delete_entry(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::catalog::v1alpha1::DeleteEntryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::DeleteEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::DeleteEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::DeleteEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -706,11 +1193,9 @@ pub mod frontend_service_client {
         }
         pub async fn update_entry(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::catalog::v1alpha1::UpdateEntryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::UpdateEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::UpdateEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -727,13 +1212,9 @@ pub mod frontend_service_client {
         }
         pub async fn create_dataset_entry(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::catalog::v1alpha1::CreateDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::CreateDatasetEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::CreateDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateDatasetEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -750,13 +1231,9 @@ pub mod frontend_service_client {
         }
         pub async fn read_dataset_entry(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::catalog::v1alpha1::ReadDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::ReadDatasetEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::ReadDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReadDatasetEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -773,13 +1250,9 @@ pub mod frontend_service_client {
         }
         pub async fn update_dataset_entry(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::catalog::v1alpha1::UpdateDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::UpdateDatasetEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::UpdateDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateDatasetEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -796,13 +1269,9 @@ pub mod frontend_service_client {
         }
         pub async fn read_table_entry(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::catalog::v1alpha1::ReadTableEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::ReadTableEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::ReadTableEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReadTableEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -1092,13 +1561,9 @@ pub mod frontend_service_client {
         /// Register a foreign table as a new table entry in the catalog.
         pub async fn register_table(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::catalog::v1alpha1::RegisterTableRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::RegisterTableResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::RegisterTableRequest>,
+        ) -> std::result::Result<tonic::Response<super::RegisterTableResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -1260,59 +1725,32 @@ pub mod frontend_service_server {
         ) -> std::result::Result<tonic::Response<super::VersionResponse>, tonic::Status>;
         async fn find_entries(
             &self,
-            request: tonic::Request<super::super::super::catalog::v1alpha1::FindEntriesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::FindEntriesResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::FindEntriesRequest>,
+        ) -> std::result::Result<tonic::Response<super::FindEntriesResponse>, tonic::Status>;
         async fn delete_entry(
             &self,
-            request: tonic::Request<super::super::super::catalog::v1alpha1::DeleteEntryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::DeleteEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::DeleteEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::DeleteEntryResponse>, tonic::Status>;
         async fn update_entry(
             &self,
-            request: tonic::Request<super::super::super::catalog::v1alpha1::UpdateEntryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::UpdateEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::UpdateEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateEntryResponse>, tonic::Status>;
         async fn create_dataset_entry(
             &self,
-            request: tonic::Request<
-                super::super::super::catalog::v1alpha1::CreateDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::CreateDatasetEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::CreateDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateDatasetEntryResponse>, tonic::Status>;
         async fn read_dataset_entry(
             &self,
-            request: tonic::Request<
-                super::super::super::catalog::v1alpha1::ReadDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::ReadDatasetEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::ReadDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReadDatasetEntryResponse>, tonic::Status>;
         async fn update_dataset_entry(
             &self,
-            request: tonic::Request<
-                super::super::super::catalog::v1alpha1::UpdateDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::UpdateDatasetEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::UpdateDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateDatasetEntryResponse>, tonic::Status>;
         async fn read_table_entry(
             &self,
-            request: tonic::Request<super::super::super::catalog::v1alpha1::ReadTableEntryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::ReadTableEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::ReadTableEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReadTableEntryResponse>, tonic::Status>;
         /// Register new partitions with the Dataset
         async fn register_with_dataset(
             &self,
@@ -1454,11 +1892,8 @@ pub mod frontend_service_server {
         /// Register a foreign table as a new table entry in the catalog.
         async fn register_table(
             &self,
-            request: tonic::Request<super::super::super::catalog::v1alpha1::RegisterTableRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::RegisterTableResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::RegisterTableRequest>,
+        ) -> std::result::Result<tonic::Response<super::RegisterTableResponse>, tonic::Status>;
         async fn get_table_schema(
             &self,
             request: tonic::Request<super::GetTableSchemaRequest>,
@@ -1620,18 +2055,14 @@ pub mod frontend_service_server {
                 "/rerun.frontend.v1alpha1.FrontendService/FindEntries" => {
                     #[allow(non_camel_case_types)]
                     struct FindEntriesSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::FindEntriesRequest,
-                        > for FindEntriesSvc<T>
+                    impl<T: FrontendService> tonic::server::UnaryService<super::FindEntriesRequest>
+                        for FindEntriesSvc<T>
                     {
-                        type Response = super::super::super::catalog::v1alpha1::FindEntriesResponse;
+                        type Response = super::FindEntriesResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::FindEntriesRequest,
-                            >,
+                            request: tonic::Request<super::FindEntriesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1665,18 +2096,14 @@ pub mod frontend_service_server {
                 "/rerun.frontend.v1alpha1.FrontendService/DeleteEntry" => {
                     #[allow(non_camel_case_types)]
                     struct DeleteEntrySvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::DeleteEntryRequest,
-                        > for DeleteEntrySvc<T>
+                    impl<T: FrontendService> tonic::server::UnaryService<super::DeleteEntryRequest>
+                        for DeleteEntrySvc<T>
                     {
-                        type Response = super::super::super::catalog::v1alpha1::DeleteEntryResponse;
+                        type Response = super::DeleteEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::DeleteEntryRequest,
-                            >,
+                            request: tonic::Request<super::DeleteEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1710,18 +2137,14 @@ pub mod frontend_service_server {
                 "/rerun.frontend.v1alpha1.FrontendService/UpdateEntry" => {
                     #[allow(non_camel_case_types)]
                     struct UpdateEntrySvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::UpdateEntryRequest,
-                        > for UpdateEntrySvc<T>
+                    impl<T: FrontendService> tonic::server::UnaryService<super::UpdateEntryRequest>
+                        for UpdateEntrySvc<T>
                     {
-                        type Response = super::super::super::catalog::v1alpha1::UpdateEntryResponse;
+                        type Response = super::UpdateEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::UpdateEntryRequest,
-                            >,
+                            request: tonic::Request<super::UpdateEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1756,18 +2179,14 @@ pub mod frontend_service_server {
                     #[allow(non_camel_case_types)]
                     struct CreateDatasetEntrySvc<T: FrontendService>(pub Arc<T>);
                     impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::CreateDatasetEntryRequest,
-                        > for CreateDatasetEntrySvc<T>
+                        tonic::server::UnaryService<super::CreateDatasetEntryRequest>
+                        for CreateDatasetEntrySvc<T>
                     {
-                        type Response =
-                            super::super::super::catalog::v1alpha1::CreateDatasetEntryResponse;
+                        type Response = super::CreateDatasetEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::CreateDatasetEntryRequest,
-                            >,
+                            request: tonic::Request<super::CreateDatasetEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1802,18 +2221,14 @@ pub mod frontend_service_server {
                     #[allow(non_camel_case_types)]
                     struct ReadDatasetEntrySvc<T: FrontendService>(pub Arc<T>);
                     impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::ReadDatasetEntryRequest,
-                        > for ReadDatasetEntrySvc<T>
+                        tonic::server::UnaryService<super::ReadDatasetEntryRequest>
+                        for ReadDatasetEntrySvc<T>
                     {
-                        type Response =
-                            super::super::super::catalog::v1alpha1::ReadDatasetEntryResponse;
+                        type Response = super::ReadDatasetEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::ReadDatasetEntryRequest,
-                            >,
+                            request: tonic::Request<super::ReadDatasetEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1848,18 +2263,14 @@ pub mod frontend_service_server {
                     #[allow(non_camel_case_types)]
                     struct UpdateDatasetEntrySvc<T: FrontendService>(pub Arc<T>);
                     impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::UpdateDatasetEntryRequest,
-                        > for UpdateDatasetEntrySvc<T>
+                        tonic::server::UnaryService<super::UpdateDatasetEntryRequest>
+                        for UpdateDatasetEntrySvc<T>
                     {
-                        type Response =
-                            super::super::super::catalog::v1alpha1::UpdateDatasetEntryResponse;
+                        type Response = super::UpdateDatasetEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::UpdateDatasetEntryRequest,
-                            >,
+                            request: tonic::Request<super::UpdateDatasetEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1894,18 +2305,14 @@ pub mod frontend_service_server {
                     #[allow(non_camel_case_types)]
                     struct ReadTableEntrySvc<T: FrontendService>(pub Arc<T>);
                     impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::ReadTableEntryRequest,
-                        > for ReadTableEntrySvc<T>
+                        tonic::server::UnaryService<super::ReadTableEntryRequest>
+                        for ReadTableEntrySvc<T>
                     {
-                        type Response =
-                            super::super::super::catalog::v1alpha1::ReadTableEntryResponse;
+                        type Response = super::ReadTableEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::ReadTableEntryRequest,
-                            >,
+                            request: tonic::Request<super::ReadTableEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -2376,18 +2783,14 @@ pub mod frontend_service_server {
                     #[allow(non_camel_case_types)]
                     struct RegisterTableSvc<T: FrontendService>(pub Arc<T>);
                     impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::RegisterTableRequest,
-                        > for RegisterTableSvc<T>
+                        tonic::server::UnaryService<super::RegisterTableRequest>
+                        for RegisterTableSvc<T>
                     {
-                        type Response =
-                            super::super::super::catalog::v1alpha1::RegisterTableResponse;
+                        type Response = super::RegisterTableResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::RegisterTableRequest,
-                            >,
+                            request: tonic::Request<super::RegisterTableRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {

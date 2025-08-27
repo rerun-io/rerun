@@ -3,7 +3,7 @@ use std::str::FromStr as _;
 use pyo3::{Py, PyErr, PyResult, Python, exceptions::PyTypeError, pyclass, pymethods};
 
 use re_log_types::EntryId;
-use re_protos::catalog::v1alpha1::{EntryKind, ext::EntryDetails};
+use re_protos::frontend::v1alpha1::{EntryKind, ext::EntryDetails};
 
 use crate::catalog::PyCatalogClientInternal;
 
@@ -181,7 +181,7 @@ impl PyEntry {
         let connection = self.client.borrow_mut(py).connection().clone();
 
         let entry_details_update =
-            re_protos::catalog::v1alpha1::ext::EntryDetailsUpdate { name: name.clone() };
+            re_protos::frontend::v1alpha1::ext::EntryDetailsUpdate { name: name.clone() };
 
         let updated_entry_details = connection.update_entry(py, entry_id, entry_details_update)?;
         self.details = updated_entry_details;

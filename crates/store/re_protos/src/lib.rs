@@ -20,12 +20,6 @@ mod v1alpha1 {
     // Note: `allow(clippy::all)` does NOT allow all lints
     #![allow(clippy::all, clippy::pedantic, clippy::nursery)]
 
-    #[path = "./rerun.catalog.v1alpha1.rs"]
-    pub mod rerun_catalog_v1alpha1;
-
-    #[path = "./rerun.catalog.v1alpha1.ext.rs"]
-    pub mod rerun_catalog_v1alpha1_ext;
-
     #[path = "./rerun.common.v1alpha1.rs"]
     pub mod rerun_common_v1alpha1;
 
@@ -88,15 +82,6 @@ pub mod manifest_registry {
         pub const DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME: &str = "rerun_registration_time";
         pub const DATASET_MANIFEST_START_TIME_FIELD_NAME: &str = "rerun_start_time";
         pub const DATASET_MANIFEST_STORAGE_URL_FIELD_NAME: &str = "rerun_storage_url";
-    }
-}
-
-pub mod catalog {
-    pub mod v1alpha1 {
-        pub use crate::v1alpha1::rerun_catalog_v1alpha1::*;
-        pub mod ext {
-            pub use crate::v1alpha1::rerun_catalog_v1alpha1_ext::*;
-        }
     }
 }
 

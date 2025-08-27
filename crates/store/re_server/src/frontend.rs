@@ -23,17 +23,17 @@ use re_protos::manifest_registry::v1alpha1::{
     QueryDatasetResponse, ScanPartitionTableResponse,
 };
 use re_protos::{
-    catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse},
-    manifest_registry::v1alpha1::ext,
-};
-use re_protos::{
-    catalog::v1alpha1::{
+    common::v1alpha1::ext::IfDuplicateBehavior,
+    frontend::v1alpha1::{
         DeleteEntryResponse, EntryKind, RegisterTableRequest, RegisterTableResponse,
     },
-    common::v1alpha1::ext::IfDuplicateBehavior,
 };
 use re_protos::{
     common::v1alpha1::ext::PartitionId, manifest_registry::v1alpha1::RegisterWithDatasetResponse,
+};
+use re_protos::{
+    frontend::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse},
+    manifest_registry::v1alpha1::ext,
 };
 use re_protos::{
     frontend::v1alpha1::frontend_service_server::FrontendService,
@@ -199,8 +199,8 @@ impl FrontendService for FrontendHandler {
 
     async fn find_entries(
         &self,
-        request: tonic::Request<re_protos::catalog::v1alpha1::FindEntriesRequest>,
-    ) -> Result<tonic::Response<re_protos::catalog::v1alpha1::FindEntriesResponse>, tonic::Status>
+        request: tonic::Request<re_protos::frontend::v1alpha1::FindEntriesRequest>,
+    ) -> Result<tonic::Response<re_protos::frontend::v1alpha1::FindEntriesResponse>, tonic::Status>
     {
         let filter = request.into_inner().filter;
         let entry_id = filter
@@ -261,7 +261,7 @@ impl FrontendService for FrontendHandler {
             itertools::Either::Right(store.iter_datasets())
         };
 
-        let response = re_protos::catalog::v1alpha1::FindEntriesResponse {
+        let response = re_protos::frontend::v1alpha1::FindEntriesResponse {
             entries: dataset_iter
                 .map(Dataset::as_entry_details)
                 .map(Into::into)
@@ -273,9 +273,9 @@ impl FrontendService for FrontendHandler {
 
     async fn create_dataset_entry(
         &self,
-        request: tonic::Request<re_protos::catalog::v1alpha1::CreateDatasetEntryRequest>,
+        request: tonic::Request<re_protos::frontend::v1alpha1::CreateDatasetEntryRequest>,
     ) -> Result<
-        tonic::Response<re_protos::catalog::v1alpha1::CreateDatasetEntryResponse>,
+        tonic::Response<re_protos::frontend::v1alpha1::CreateDatasetEntryResponse>,
         tonic::Status,
     > {
         let dataset_name: String = request.into_inner().try_into()?;
@@ -297,9 +297,9 @@ impl FrontendService for FrontendHandler {
 
     async fn read_dataset_entry(
         &self,
-        request: tonic::Request<re_protos::catalog::v1alpha1::ReadDatasetEntryRequest>,
+        request: tonic::Request<re_protos::frontend::v1alpha1::ReadDatasetEntryRequest>,
     ) -> Result<
-        tonic::Response<re_protos::catalog::v1alpha1::ReadDatasetEntryResponse>,
+        tonic::Response<re_protos::frontend::v1alpha1::ReadDatasetEntryResponse>,
         tonic::Status,
     > {
         let entry_id = request.into_inner().try_into()?;
@@ -319,9 +319,9 @@ impl FrontendService for FrontendHandler {
 
     async fn update_dataset_entry(
         &self,
-        _request: tonic::Request<re_protos::catalog::v1alpha1::UpdateDatasetEntryRequest>,
+        _request: tonic::Request<re_protos::frontend::v1alpha1::UpdateDatasetEntryRequest>,
     ) -> Result<
-        tonic::Response<re_protos::catalog::v1alpha1::UpdateDatasetEntryResponse>,
+        tonic::Response<re_protos::frontend::v1alpha1::UpdateDatasetEntryResponse>,
         tonic::Status,
     > {
         Err(tonic::Status::unimplemented(
@@ -331,9 +331,9 @@ impl FrontendService for FrontendHandler {
 
     async fn read_table_entry(
         &self,
-        _request: tonic::Request<re_protos::catalog::v1alpha1::ReadTableEntryRequest>,
+        _request: tonic::Request<re_protos::frontend::v1alpha1::ReadTableEntryRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::catalog::v1alpha1::ReadTableEntryResponse>,
+        tonic::Response<re_protos::frontend::v1alpha1::ReadTableEntryResponse>,
         tonic::Status,
     > {
         Err(tonic::Status::unimplemented(
@@ -343,8 +343,8 @@ impl FrontendService for FrontendHandler {
 
     async fn delete_entry(
         &self,
-        request: tonic::Request<re_protos::catalog::v1alpha1::DeleteEntryRequest>,
-    ) -> Result<tonic::Response<re_protos::catalog::v1alpha1::DeleteEntryResponse>, tonic::Status>
+        request: tonic::Request<re_protos::frontend::v1alpha1::DeleteEntryRequest>,
+    ) -> Result<tonic::Response<re_protos::frontend::v1alpha1::DeleteEntryResponse>, tonic::Status>
     {
         let entry_id = request.into_inner().try_into()?;
 
@@ -969,8 +969,8 @@ impl FrontendService for FrontendHandler {
 
     async fn update_entry(
         &self,
-        _request: tonic::Request<re_protos::catalog::v1alpha1::UpdateEntryRequest>,
-    ) -> Result<tonic::Response<re_protos::catalog::v1alpha1::UpdateEntryResponse>, tonic::Status>
+        _request: tonic::Request<re_protos::frontend::v1alpha1::UpdateEntryRequest>,
+    ) -> Result<tonic::Response<re_protos::frontend::v1alpha1::UpdateEntryResponse>, tonic::Status>
     {
         Err(tonic::Status::unimplemented("update_entry not implemented"))
     }

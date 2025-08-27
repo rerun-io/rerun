@@ -4,12 +4,12 @@ use re_log_types::{
     BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
     StoreSource,
 };
-use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::common::v1alpha1::ext::PartitionId;
+use re_protos::frontend::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::{
-    catalog::v1alpha1::ext::ReadDatasetEntryResponse, frontend::v1alpha1::GetChunksRequest,
+    frontend::v1alpha1::GetChunksRequest, frontend::v1alpha1::ext::ReadDatasetEntryResponse,
 };
 use re_uri::{DatasetPartitionUri, Origin, TimeSelection};
 

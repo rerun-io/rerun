@@ -1,6 +1,6 @@
 use re_grpc_client::ConnectionClient;
-use re_protos::catalog::v1alpha1::EntryFilter;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
+use re_protos::frontend::v1alpha1::EntryFilter;
 use re_protos::manifest_registry::v1alpha1::ext::DataSource;
 use re_sdk::time::TimeType;
 use re_sdk::{RecordingStreamBuilder, TimeCell};

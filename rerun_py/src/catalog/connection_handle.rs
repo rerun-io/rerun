@@ -15,13 +15,13 @@ use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
-    catalog::v1alpha1::{
-        EntryFilter,
-        ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
-    },
     common::v1alpha1::{
         TaskId,
         ext::{IfDuplicateBehavior, ScanParameters},
+    },
+    frontend::v1alpha1::{
+        EntryFilter,
+        ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
     },
     frontend::v1alpha1::{
         GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest, QueryTasksResponse,
@@ -102,8 +102,8 @@ impl ConnectionHandle {
         &self,
         py: Python<'_>,
         entry_id: EntryId,
-        entry_details_update: re_protos::catalog::v1alpha1::ext::EntryDetailsUpdate,
-    ) -> PyResult<re_protos::catalog::v1alpha1::ext::EntryDetails> {
+        entry_details_update: re_protos::frontend::v1alpha1::ext::EntryDetailsUpdate,
+    ) -> PyResult<re_protos::frontend::v1alpha1::ext::EntryDetails> {
         wait_for_future(
             py,
             async {

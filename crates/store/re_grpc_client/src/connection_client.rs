@@ -7,7 +7,11 @@ use re_log_types::EntryId;
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::{
     TypeConversionError,
-    catalog::v1alpha1::{
+    common::v1alpha1::{
+        TaskId,
+        ext::{IfDuplicateBehavior, IfMissingBehavior, PartitionId, ScanParameters},
+    },
+    frontend::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
         ReadDatasetEntryRequest, ReadTableEntryRequest,
         ext::{
@@ -16,10 +20,6 @@ use re_protos::{
             ReadTableEntryResponse, RegisterTableResponse, TableEntry, UpdateDatasetEntryRequest,
             UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
         },
-    },
-    common::v1alpha1::{
-        TaskId,
-        ext::{IfDuplicateBehavior, IfMissingBehavior, PartitionId, ScanParameters},
     },
     frontend::v1alpha1::{
         ext::{RegisterWithDatasetRequest, ScanPartitionTableRequest},
@@ -343,7 +343,7 @@ where
         name: String,
         url: url::Url,
     ) -> Result<TableEntry, StreamError> {
-        let request = re_protos::catalog::v1alpha1::ext::RegisterTableRequest {
+        let request = re_protos::frontend::v1alpha1::ext::RegisterTableRequest {
             name,
             provider_details: LanceTable { table_url: url }.try_as_any()?,
         };

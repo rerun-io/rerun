@@ -9,11 +9,11 @@ use arrow::{array::RecordBatch, datatypes::Schema};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
-    catalog::v1alpha1::{
+    common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
+    frontend::v1alpha1::{
         EntryKind,
         ext::{DatasetEntry, EntryDetails},
     },
-    common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
     manifest_registry::v1alpha1::ScanPartitionTableResponse,
 };
 

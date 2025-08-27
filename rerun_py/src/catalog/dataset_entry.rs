@@ -17,9 +17,9 @@ use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
 use re_grpc_client::get_chunks_response_to_chunk_and_partition_id;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::catalog::v1alpha1::ext::DatasetDetails;
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
 use re_protos::common::v1alpha1::ext::DatasetHandle;
+use re_protos::frontend::v1alpha1::ext::DatasetDetails;
 use re_protos::frontend::v1alpha1::{CreateIndexRequest, GetChunksRequest, SearchDatasetRequest};
 use re_protos::manifest_registry::v1alpha1::ext::IndexProperties;
 use re_protos::manifest_registry::v1alpha1::{
