@@ -8113,7 +8113,6 @@ dependencies = [
  "re_viewer_context",
  "serde",
  "thiserror 1.0.69",
- "tonic",
  "url",
 ]
 
