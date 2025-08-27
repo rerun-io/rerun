@@ -71,8 +71,12 @@ enum Cmd {
 pub struct Options {
     pub compression: Compression,
 
-    // Do not block a flush for longer than this
-    // if we're still trying to connect to the server
+    /// If we have not yet connected to the client, then
+    /// do not block [`Client::flush_blocking`] for longer than this.
+    ///
+    /// We will still retry connecting for however long it takes.
+    /// But blocking [`Client::flush_blocking`] forever when the
+    /// server just isn't there is not a good idea.
     pub connection_timeout: Duration,
 }
 
@@ -80,7 +84,7 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             compression: Compression::LZ4,
-            connection_timeout: Duration::from_secs(10),
+            connection_timeout: Duration::from_secs(5),
         }
     }
 }
@@ -172,10 +176,12 @@ impl Client {
         self.status.load()
     }
 
-    /// Block until all messages are sent.
+    /// Block until all messages are sent, or there is a failure.
     ///
     /// If the gRPC connection has not yet been established,
     /// this call will block for _at most_ [`Options::connection_timeout`].
+    /// This means this function will only block all the way to the given `timeout` argument
+    /// IF there is some hope of progress being made - i.e. the connection open.
     ///
     /// If the gRPC connection was severed before all messages were sent,
     /// this function will return an error.
