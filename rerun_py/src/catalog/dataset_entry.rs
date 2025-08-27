@@ -728,7 +728,7 @@ impl PyDatasetEntry {
             build_scalar_index = false,
             compact_fragments = false,
             cleanup_before = None,
-            allow_recent_cleanup = false,
+            unsafe_allow_recent_cleanup = false,
     ))]
     #[instrument(skip_all, err)]
     #[allow(clippy::fn_params_excessive_bools)]
@@ -738,7 +738,7 @@ impl PyDatasetEntry {
         build_scalar_index: bool,
         compact_fragments: bool,
         cleanup_before: Option<Bound<'_, PyAny>>,
-        allow_recent_cleanup: bool,
+        unsafe_allow_recent_cleanup: bool,
     ) -> PyResult<()> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
@@ -765,7 +765,7 @@ impl PyDatasetEntry {
             build_scalar_index,
             compact_fragments,
             cleanup_before,
-            allow_recent_cleanup,
+            unsafe_allow_recent_cleanup,
         )
     }
 }

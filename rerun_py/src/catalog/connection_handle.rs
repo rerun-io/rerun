@@ -304,7 +304,7 @@ impl ConnectionHandle {
         build_scalar_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
-        allow_recent_cleanup: bool,
+        unsafe_allow_recent_cleanup: bool,
     ) -> PyResult<()> {
         wait_for_future(
             py,
@@ -316,7 +316,7 @@ impl ConnectionHandle {
                         build_scalar_indexes,
                         compact_fragments,
                         cleanup_before,
-                        allow_recent_cleanup,
+                        unsafe_allow_recent_cleanup,
                     )
                     .await
                     .map_err(to_py_err)

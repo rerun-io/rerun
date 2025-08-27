@@ -560,8 +560,8 @@ message DoMaintenanceRequest {
 
   // Override default platform behavior and allow cleanup of recent files. This will respect
   // the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
-  // Warning - trying to cleanup more recent Lance artifacts may cause Dataset update issues.
-  bool allow_recent_cleanup = 5;
+  // ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
+  bool unsafe_allow_recent_cleanup = 5;
 }
 
 message DoMaintenanceResponse {

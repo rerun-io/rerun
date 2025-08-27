@@ -883,9 +883,9 @@ pub struct DoMaintenanceRequest {
     pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
     /// Override default platform behavior and allow cleanup of recent files. This will respect
     /// the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
-    /// Warning - trying to cleanup more recent Lance artifacts may cause Dataset update issues.
+    /// ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
     #[prost(bool, tag = "5")]
-    pub allow_recent_cleanup: bool,
+    pub unsafe_allow_recent_cleanup: bool,
 }
 impl ::prost::Name for DoMaintenanceRequest {
     const NAME: &'static str = "DoMaintenanceRequest";

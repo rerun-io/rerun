@@ -1500,7 +1500,7 @@ class DatasetEntry(Entry):
         build_scalar_index: bool = False,
         compact_fragments: bool = False,
         cleanup_before: Optional[datetime] = None,
-        allow_recent_cleanup: bool = False,
+        unsafe_allow_recent_cleanup: bool = False,
     ) -> None:
         """Perform maintenance tasks on the datasets."""
 
