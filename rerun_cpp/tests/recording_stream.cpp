@@ -358,7 +358,7 @@ SCENARIO("RecordingStream can construct LogSinks", TEST_TAG) {
 
     std::string test_rrd0 = std::string(test_path) + "test-file-log-sink-0.rrd";
 
-    fs::remove(test_rrd0);
+    fs::remove_all(test_rrd0);
 
     GIVEN("a new RecordingStream") {
         rerun::RecordingStream stream("test-local");
@@ -372,6 +372,7 @@ SCENARIO("RecordingStream can construct LogSinks", TEST_TAG) {
                         rerun::ErrorCode::RecordingStreamSaveFailure
                     );
                 }
+                fs::remove_all(test_rrd0);
             }
             THEN("set_sinks(FileSink) call returns no error") {
                 CHECK(stream.set_sinks(rerun::FileSink{test_rrd0}).code == rerun::ErrorCode::Ok);
