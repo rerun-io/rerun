@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 use tonic::Code;
 
 use re_auth::Jwt;
-use re_protos::catalog::v1alpha1::{EntryFilter, FindEntriesRequest};
+use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
 
 use crate::TonicStatusError;
 use crate::connection_client::GenericConnectionClient;
@@ -281,7 +281,7 @@ impl ConnectionRegistryHandle {
             .find_entries(FindEntriesRequest {
                 filter: Some(EntryFilter {
                     id: None,
-                    name: Some("__entries".to_owned()),
+                    name: None,
                     entry_kind: None,
                 }),
             })
