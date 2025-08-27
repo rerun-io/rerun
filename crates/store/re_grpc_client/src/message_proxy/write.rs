@@ -1,22 +1,26 @@
-use std::sync::Arc;
-use std::thread;
-use std::thread::JoinHandle;
-use std::time::Duration;
+use std::{
+    sync::Arc,
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
 use re_chunk::external::crossbeam::atomic::AtomicCell;
 use re_log_encoding::Compression;
 use re_log_types::LogMsg;
-use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
-use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
+use re_protos::sdk_comms::v1alpha1::{
+    WriteMessagesRequest, message_proxy_service_client::MessageProxyServiceClient,
+};
 use re_uri::ProxyUri;
-use tokio::runtime;
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::Receiver;
-use tokio::sync::mpsc::Sender;
-use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::oneshot;
+
+use tokio::{
+    runtime,
+    sync::{
+        mpsc::{self, Receiver, Sender, UnboundedReceiver, UnboundedSender},
+        oneshot,
+    },
+};
 use tonic::transport::Endpoint;
+use web_time::Instant;
 
 use crate::TonicStatusError;
 
@@ -172,15 +176,23 @@ impl Client {
                     let elapsed = start.elapsed();
                     if timeout < elapsed {
                         re_log::warn!(
-                            "gRPC flush timed out after {:.1}s. Not all messages were sent.",
+                            "gRPC flush timed out after {:.0}s. Not all messages were sent.",
                             elapsed.as_secs_f32()
                         );
                         return Err(GrpcFlushError::Timeout);
                     } else if !has_emitted_slow_warning && very_slow <= start.elapsed() {
-                        re_log::info!(
-                            "Flushing the gRPC stream has taken over {:.1}s seconds; will keep waiting…",
-                            elapsed.as_secs_f32()
-                        );
+                        if timeout < Duration::from_secs(10_000) {
+                            re_log::info!(
+                                "Flushing the gRPC stream has taken over {:.1}s seconds (timeout: {:.0}s); will keep waiting…",
+                                elapsed.as_secs_f32(),
+                                timeout.as_secs_f32(),
+                            );
+                        } else {
+                            re_log::info!(
+                                "Flushing the gRPC stream has taken over {:.1}s seconds; will keep waiting…",
+                                elapsed.as_secs_f32()
+                            );
+                        }
                         has_emitted_slow_warning = true;
                     }
                     std::thread::yield_now();
@@ -236,11 +248,18 @@ async fn message_proxy_client(
         }
     };
 
+    let mut last_log_time: Option<Instant> = None;
     let channel = loop {
         match endpoint.connect().await {
             Ok(channel) => break channel,
             Err(err) => {
-                re_log::debug!("failed to connect to message proxy server: {err}");
+                let log_interval = Duration::from_secs(5);
+                if last_log_time.is_none_or(|last_log_time| log_interval < last_log_time.elapsed())
+                {
+                    re_log::debug!("Failed to connect to {uri}: {err}, retrying…");
+                    last_log_time = Some(Instant::now());
+                }
+
                 tokio::select! {
                     _ = shutdown_rx.recv() => {
                         status.store(ClientConnectionState::Disconnected(Ok(())));
@@ -254,6 +273,7 @@ async fn message_proxy_client(
         }
     };
 
+    re_log::debug!("Connected to {uri}");
     status.store(ClientConnectionState::Connected);
 
     let mut client = MessageProxyServiceClient::new(channel)

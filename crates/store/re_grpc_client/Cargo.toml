@@ -52,9 +52,10 @@ serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
-tracing.workspace = true
 tower.workspace = true
+tracing.workspace = true
 url.workspace = true
+web-time.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
