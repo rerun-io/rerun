@@ -21,12 +21,27 @@ pub enum ViewerImportUrl {
     /// A URL that points to a selection (typically an entity) within the currently active recording.
     IntraRecordingSelection(Item),
 
-    /// A URL that points to a data source.
+    /// A remote RRD file, served over http.
     ///
-    /// Not all [`LogDataSource`]s can be opened from a URL.
-    /// For example, [`LogDataSource::FileContents`] can't be opened from a URL.
-    /// For details see [`LogDataSource::from_uri`].
-    LogDataSource(LogDataSource),
+    /// Could be either an `.rrd` recording or a `.rbl` blueprint.
+    /// See also [`LogDataSource::RrdHttpUrl`].
+    RrdHttpUrl(url::Url),
+
+    /// A path to a local file.
+    ///
+    /// See also [`LogDataSource::FilePath`].
+    #[cfg(not(target_arch = "wasm32"))]
+    FilePath(std::path::PathBuf),
+
+    /// A `rerun://` URI pointing to a recording.
+    ///
+    /// See also [`LogDataSource::RedapDatasetPartition`].
+    RedapDatasetPartition(re_uri::DatasetPartitionUri),
+
+    /// A `rerun+http://` URI pointing to a proxy.
+    ///
+    /// See also [`LogDataSource::RedapProxy`].
+    RedapProxy(re_uri::ProxyUri),
 
     /// A URL that points to a redap server.
     RedapCatalog(re_uri::CatalogUri),
@@ -89,7 +104,25 @@ impl std::str::FromStr for ViewerImportUrl {
         else if let Some(data_source) =
             LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
         {
-            Ok(Self::LogDataSource(data_source))
+            match data_source {
+                LogDataSource::RrdHttpUrl { url, follow: _ } => Ok(Self::RrdHttpUrl(url)),
+
+                #[cfg(not(target_arch = "wasm32"))]
+                LogDataSource::FilePath(_file_source, path_buf) => Ok(Self::FilePath(path_buf)),
+
+                LogDataSource::FileContents(..) => {
+                    unreachable!("FileContents can not be shared as a URL");
+                }
+
+                LogDataSource::Stdin => Err(anyhow::anyhow!("`-` is not a valid URL.")),
+
+                LogDataSource::RedapDatasetPartition {
+                    uri,
+                    select_when_loaded: _,
+                } => Ok(Self::RedapDatasetPartition(uri)),
+
+                LogDataSource::RedapProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri)),
+            }
         }
         // Web viewer URL with `url` parameters.
         else if let Ok(url) = parse_webviewer_url(url) {
@@ -154,41 +187,49 @@ impl ViewerImportUrl {
             Self::IntraRecordingSelection(item) => {
                 command_sender.send_system(SystemCommand::SetSelection(item));
             }
-
-            Self::LogDataSource(mut data_source) => {
-                if let LogDataSource::RedapDatasetPartition {
-                    select_when_loaded, ..
-                } = &mut data_source
-                {
-                    // `select_when_loaded` is not encoded in the url itself. As of writing, `DataSource::from_uri` will just always set `select_when_loaded` to `true`.
-                    // We overwrite this with the passed in value.
-                    *select_when_loaded = select_redap_source_when_loaded;
-                } else if let LogDataSource::RrdHttpUrl { follow, .. } = &mut data_source {
-                    // `follow` is not encoded in the url itself. As of writing, `DataSource::from_uri` will just always set `follow` to `false`.
-                    // We overwrite this with the passed in value.
-                    *follow = follow_if_http;
-                }
-
-                command_sender.send_system(SystemCommand::LoadDataSource(data_source));
+            Self::RrdHttpUrl(url) => {
+                command_sender.send_system(SystemCommand::LoadDataSource(
+                    LogDataSource::RrdHttpUrl {
+                        url,
+                        // `follow` is not encoded in the url itself right now.
+                        follow: follow_if_http,
+                    },
+                ));
             }
-
+            Self::FilePath(path_buf) => {
+                command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
+                    re_log_types::FileSource::Uri,
+                    path_buf,
+                )));
+            }
+            Self::RedapDatasetPartition(uri) => {
+                command_sender.send_system(SystemCommand::LoadDataSource(
+                    LogDataSource::RedapDatasetPartition {
+                        uri,
+                        // `select_when_loaded` is not encoded in the url itself right now.
+                        select_when_loaded: select_redap_source_when_loaded,
+                    },
+                ));
+            }
+            Self::RedapProxy(proxy_uri) => {
+                command_sender.send_system(SystemCommand::LoadDataSource(
+                    LogDataSource::RedapProxy(proxy_uri),
+                ));
+            }
             Self::RedapCatalog(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
                 command_sender.send_system(SystemCommand::ChangeDisplayMode(
                     DisplayMode::RedapServer(uri.origin),
                 ));
             }
-
             Self::RedapEntry(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin));
                 command_sender
                     .send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
             }
-
             Self::WebEventListener(url) => {
                 handle_web_event_listener(egui_ctx, &url, command_sender);
             }
-
             Self::WebViewerUrl {
                 base_url: _base_url,
                 url_parameters,
@@ -242,31 +283,14 @@ impl ViewerImportUrl {
         match self {
             Self::IntraRecordingSelection(_) => "Go to selection".to_owned(),
 
-            Self::LogDataSource(LogDataSource::RrdHttpUrl { .. }) => {
-                "Open rrd from link".to_owned()
-            }
+            Self::RrdHttpUrl(_) => "Open rrd from link".to_owned(),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::LogDataSource(LogDataSource::FilePath(_, path)) => {
-                format!("Open file {}", path.display())
-            }
+            Self::FilePath(path) => format!("Open file {}", path.display()),
 
-            Self::LogDataSource(LogDataSource::FileContents(_, _)) => {
-                // Getting here should be impossible, you can't get file contents from a url.
-                "Open file contents".to_owned()
-            }
+            Self::RedapDatasetPartition(uri) => format!("Open partition {}", uri.partition_id),
 
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::LogDataSource(LogDataSource::Stdin) => {
-                // Getting here should be impossible, you can't get stdin from a url.
-                "Connect to stdin".to_owned()
-            }
-
-            Self::LogDataSource(LogDataSource::RedapDatasetPartition { uri, .. }) => {
-                format!("Open partition {}", uri.partition_id)
-            }
-
-            Self::LogDataSource(LogDataSource::RedapProxy(_)) => "Connect to GRPC proxy".to_owned(),
+            Self::RedapProxy(_) => "Connect to GRPC proxy".to_owned(),
 
             Self::RedapCatalog(uri) => {
                 format!("Open redap catalog at {}", uri.origin)
@@ -425,9 +449,8 @@ pub fn display_mode_to_content_url(
 mod tests {
     use std::str::FromStr as _;
 
-    use re_data_source::LogDataSource;
     use re_entity_db::{EntityPath, InstancePath};
-    use re_log_types::{EntryId, FileSource};
+    use re_log_types::EntryId;
     use re_viewer_context::Item;
 
     use super::ViewerImportUrl;
@@ -476,10 +499,9 @@ mod tests {
             let url = "https://example.com/data.rrd";
             assert_eq!(
                 ViewerImportUrl::from_str(url).unwrap(),
-                ViewerImportUrl::LogDataSource(LogDataSource::RrdHttpUrl {
-                    url: "https://example.com/data.rrd".to_owned(),
-                    follow: false,
-                })
+                ViewerImportUrl::RrdHttpUrl(
+                    url::Url::parse("https://example.com/data.rrd").unwrap()
+                )
             );
 
             // Test file path (native only)
@@ -488,10 +510,7 @@ mod tests {
                 let url = "/path/to/file.rrd";
                 assert_eq!(
                     ViewerImportUrl::from_str(url).unwrap(),
-                    ViewerImportUrl::LogDataSource(LogDataSource::FilePath(
-                        FileSource::Uri,
-                        std::path::PathBuf::from("/path/to/file.rrd")
-                    ))
+                    ViewerImportUrl::FilePath(std::path::PathBuf::from("/path/to/file.rrd"))
                 );
             }
 
@@ -503,11 +522,8 @@ mod tests {
             let url = "https://foo.com/test?url=https://example.com/data.rrd";
             let expected = ViewerImportUrl::WebViewerUrl {
                 base_url: url::Url::parse("https://foo.com/test").unwrap(),
-                url_parameters: vec1::vec1![ViewerImportUrl::LogDataSource(
-                    LogDataSource::RrdHttpUrl {
-                        url: "https://example.com/data.rrd".to_owned(),
-                        follow: false,
-                    }
+                url_parameters: vec1::vec1![ViewerImportUrl::RrdHttpUrl(
+                    url::Url::parse("https://example.com/data.rrd").unwrap()
                 )],
             };
             assert_eq!(ViewerImportUrl::from_str(url).unwrap(), expected);
@@ -523,10 +539,9 @@ mod tests {
                     ViewerImportUrl::IntraRecordingSelection(Item::InstancePath(
                         InstancePath::entity_all(EntityPath::from("camera"))
                     )),
-                    ViewerImportUrl::LogDataSource(LogDataSource::RrdHttpUrl {
-                        url: "https://example.com/data.rrd".to_owned(),
-                        follow: false,
-                    })
+                    ViewerImportUrl::RrdHttpUrl(
+                        url::Url::parse("https://example.com/data.rrd").unwrap()
+                    )
                 ],
             };
             assert_eq!(ViewerImportUrl::from_str(url).unwrap(), expected);

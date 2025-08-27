@@ -865,7 +865,7 @@ impl App {
         match data_source {
             LogDataSource::RrdHttpUrl { url, follow } => {
                 let new_source = SmartChannelSource::RrdHttpStream {
-                    url: url.clone(),
+                    url: url.to_string(),
                     follow: *follow,
                 };
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
