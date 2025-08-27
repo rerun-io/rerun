@@ -24,11 +24,11 @@ use crate::TonicStatusError;
 /// An error that can occur when flushing.
 #[derive(Debug, thiserror::Error)]
 pub enum GrpcFlushError {
-    #[error("gRPC flush timed out - not all messages were sent")]
-    Timeout,
+    #[error("gRPC flush timed out after {num_sec:.0}s - not all messages were sent")]
+    Timeout { num_sec: f32 },
 
-    #[error("gRPC hasn't been able to connect to {uri} yet")]
-    FailedToConnect { uri: ProxyUri },
+    #[error("gRPC has been unable to connect to {uri} for {duration_sec:.0}s")]
+    FailedToConnect { uri: ProxyUri, duration_sec: f32 },
 
     #[error("gRPC connection to {uri} gracefully disconnected")]
     GracefulDisconnect { uri: ProxyUri },
@@ -46,7 +46,10 @@ pub enum GrpcFlushError {
 impl GrpcFlushError {
     pub fn from_status(uri: ProxyUri, status: ClientConnectionState) -> Self {
         match status {
-            ClientConnectionState::Connecting { .. } => Self::FailedToConnect { uri },
+            ClientConnectionState::Connecting { started } => Self::FailedToConnect {
+                uri,
+                duration_sec: started.elapsed().as_secs_f32(),
+            },
             ClientConnectionState::Connected => Self::InternalError(
                 "gRPC connection is open, but flush still failed. Probably a bug in the Rerun SDK"
                     .to_owned(),
@@ -190,7 +193,6 @@ impl Client {
             })
             .is_err()
         {
-            re_log::debug!("gRPC flush failed: already shut down.");
             return Err(GrpcFlushError::from_status(self.uri.clone(), self.status()));
         }
 
@@ -221,11 +223,9 @@ impl Client {
                     let elapsed = start.elapsed();
 
                     if timeout < elapsed {
-                        re_log::warn!(
-                            "gRPC flush timed out after {:.0}s. Not all messages were sent.",
-                            elapsed.as_secs_f32()
-                        );
-                        return Err(GrpcFlushError::Timeout);
+                        return Err(GrpcFlushError::Timeout {
+                            num_sec: elapsed.as_secs_f32(),
+                        });
                     }
 
                     if !has_emitted_slow_warning && very_slow <= start.elapsed() {
@@ -247,13 +247,9 @@ impl Client {
                     match self.status() {
                         ClientConnectionState::Connecting { started } => {
                             if self.options.connection_timeout < started.elapsed() {
-                                re_log::warn!(
-                                    "Still haven't established connected to {} in {:.0}s - aborting flush.",
-                                    self.uri,
-                                    started.elapsed().as_secs_f32()
-                                );
                                 return Err(GrpcFlushError::FailedToConnect {
                                     uri: self.uri.clone(),
+                                    duration_sec: started.elapsed().as_secs_f32(),
                                 });
                             }
                         }
@@ -261,7 +257,6 @@ impl Client {
                             // Keep waiting
                         }
                         ClientConnectionState::Disconnected(_) => {
-                            re_log::warn!("gRPC connection is severed - aborting flush.");
                             return Err(GrpcFlushError::from_status(
                                 self.uri.clone(),
                                 self.status(),
@@ -270,7 +265,6 @@ impl Client {
                     }
                 }
                 Err(crossbeam::channel::RecvTimeoutError::Disconnected) => {
-                    re_log::warn!("gRPC flush failed, not all messages were sent");
                     return Err(GrpcFlushError::from_status(self.uri.clone(), self.status()));
                 }
             }

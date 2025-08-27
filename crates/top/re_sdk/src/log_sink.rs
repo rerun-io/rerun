@@ -573,7 +573,7 @@ impl LogSink for GrpcSink {
         self.client
             .flush_blocking(timeout)
             .map_err(|err| match err {
-                GrpcFlushError::Timeout => SinkFlushError::Timeout,
+                GrpcFlushError::Timeout { .. } => SinkFlushError::Timeout,
                 err => SinkFlushError::failed(err.to_string()),
             })
     }
