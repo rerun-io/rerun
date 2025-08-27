@@ -364,6 +364,7 @@ where
         build_scalar_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
+        allow_recent_cleanup: bool,
     ) -> Result<(), StreamError> {
         self.inner()
             .do_maintenance(tonic::Request::new(
@@ -372,6 +373,7 @@ where
                     build_scalar_indexes,
                     compact_fragments,
                     cleanup_before,
+                    allow_recent_cleanup,
                 }
                 .into(),
             ))
