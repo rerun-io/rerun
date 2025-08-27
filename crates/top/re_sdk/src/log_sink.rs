@@ -56,14 +56,11 @@ pub trait LogSink: Send + Sync + 'static {
 
     /// Blocks until all pending data in the sink's send buffers has been fully flushed.
     ///
+    /// Returns an error if the underlying sink is in a bad state,
+    /// e.g. if a network connection has been severed, or never connected.
+    ///
     /// If applicable, this should flush all data to any underlying OS-managed file descriptors.
-    /// See also [`LogSink::drop_if_disconnected`].
     fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError>;
-
-    /// Drops all pending data currently sitting in the sink's send buffers if it is unable to
-    /// flush it for any reason.
-    #[inline]
-    fn drop_if_disconnected(&self) {}
 
     /// Send a blueprint directly to the log-sink.
     ///

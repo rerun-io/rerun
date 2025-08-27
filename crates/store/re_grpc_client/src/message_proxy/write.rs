@@ -14,10 +14,7 @@ use re_uri::ProxyUri;
 
 use tokio::{
     runtime,
-    sync::{
-        mpsc::{self, Receiver, Sender, UnboundedReceiver, UnboundedSender},
-        oneshot,
-    },
+    sync::mpsc::{self, Receiver, Sender, UnboundedReceiver, UnboundedSender},
 };
 use tonic::transport::Endpoint;
 use web_time::Instant;
@@ -36,18 +33,25 @@ pub enum GrpcFlushError {
 
 enum Cmd {
     LogMsg(LogMsg),
-    Flush { on_done: oneshot::Sender<()> },
+    Flush {
+        on_done: crossbeam::channel::Sender<()>,
+    },
 }
 
 #[derive(Clone)]
 pub struct Options {
     pub compression: Compression,
+
+    // Do not block a flush for longer than this
+    // if we're still trying to connect to the server
+    pub connection_timeout: Duration,
 }
 
 impl Default for Options {
     fn default() -> Self {
         Self {
             compression: Compression::LZ4,
+            connection_timeout: Duration::from_secs(10),
         }
     }
 }
@@ -69,7 +73,7 @@ pub enum ClientConnectionFailure {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClientConnectionState {
     /// The client is connecting to the remote server.
-    Connecting,
+    Connecting { started: Instant },
 
     /// The client is connected to the remote server.
     Connected,
@@ -82,6 +86,8 @@ pub enum ClientConnectionState {
 
 /// This is the gRPC client used for the SDK-side log-sink.
 pub struct Client {
+    uri: ProxyUri,
+    options: Options,
     thread: Option<JoinHandle<()>>,
     cmd_tx: UnboundedSender<Cmd>,
     shutdown_tx: Sender<()>,
@@ -91,13 +97,14 @@ pub struct Client {
 impl Client {
     #[expect(clippy::needless_pass_by_value)]
     pub fn new(uri: ProxyUri, options: Options) -> Self {
-        let Options { compression } = options;
-
         let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
-        let status = Arc::new(AtomicCell::new(ClientConnectionState::Connecting));
+        let status = Arc::new(AtomicCell::new(ClientConnectionState::Connecting {
+            started: Instant::now(),
+        }));
         let thread = {
+            let uri = uri.clone();
             let status = status.clone();
             thread::Builder::new()
                 .name("message_proxy_client".to_owned())
@@ -108,10 +115,10 @@ impl Client {
                         .build()
                         .expect("Failed to build tokio runtime")
                         .block_on(message_proxy_client(
-                            uri,
+                            uri.clone(),
                             cmd_rx,
                             shutdown_rx,
-                            compression,
+                            options.compression,
                             status,
                         ));
                 })
@@ -119,6 +126,8 @@ impl Client {
         };
 
         Self {
+            uri,
+            options,
             thread: Some(thread),
             cmd_tx,
             shutdown_tx,
@@ -137,16 +146,26 @@ impl Client {
 
     /// Block until all messages are sent.
     ///
+    /// If the gRPC connection has not yet been established,
+    /// this call will block for _at most_ [`Options::connection_timeout`].
+    ///
+    /// If the gRPC connection was severed before all messages were sent,
+    /// this function will return an error.
+    ///
     /// If a timeout is provided, we will break when that timeout is received,
-    /// returning `Err(())`.
+    /// returning an error.
     pub fn flush_blocking(&self, timeout: Duration) -> Result<(), GrpcFlushError> {
         re_tracing::profile_function!();
 
-        use tokio::sync::oneshot::error::TryRecvError;
-
-        let (tx, mut rx) = oneshot::channel();
-        if self.cmd_tx.send(Cmd::Flush { on_done: tx }).is_err() {
-            re_log::debug!("Flush failed: already shut down.");
+        let (flush_done_tx, flush_done_rx) = crossbeam::channel::bounded(0); // oneshot
+        if self
+            .cmd_tx
+            .send(Cmd::Flush {
+                on_done: flush_done_tx,
+            })
+            .is_err()
+        {
+            re_log::debug!("gRPC flush failed: already shut down.");
             return Err(GrpcFlushError::Closed);
         }
 
@@ -156,7 +175,8 @@ impl Client {
         let mut has_emitted_slow_warning = false;
 
         loop {
-            match rx.try_recv() {
+            let interval = Duration::from_secs(1); // Check in if the connection status has changed every now and then.
+            match flush_done_rx.recv_timeout(interval) {
                 Ok(()) => {
                     let elapsed = start.elapsed();
                     if has_emitted_slow_warning {
@@ -172,15 +192,18 @@ impl Client {
                     }
                     return Ok(());
                 }
-                Err(TryRecvError::Empty) => {
+                Err(crossbeam::channel::RecvTimeoutError::Timeout) => {
                     let elapsed = start.elapsed();
+
                     if timeout < elapsed {
                         re_log::warn!(
                             "gRPC flush timed out after {:.0}s. Not all messages were sent.",
                             elapsed.as_secs_f32()
                         );
                         return Err(GrpcFlushError::Timeout);
-                    } else if !has_emitted_slow_warning && very_slow <= start.elapsed() {
+                    }
+
+                    if !has_emitted_slow_warning && very_slow <= start.elapsed() {
                         if timeout < Duration::from_secs(10_000) {
                             re_log::info!(
                                 "Flushing the gRPC stream has taken over {:.1}s seconds (timeout: {:.0}s); will keep waiting…",
@@ -195,9 +218,28 @@ impl Client {
                         }
                         has_emitted_slow_warning = true;
                     }
-                    std::thread::yield_now();
+
+                    match self.status() {
+                        ClientConnectionState::Connecting { started } => {
+                            if self.options.connection_timeout < started.elapsed() {
+                                re_log::warn!(
+                                    "Still haven't established connected to {} in {:.0}s - aborting flush.",
+                                    self.uri,
+                                    started.elapsed().as_secs_f32()
+                                );
+                                return Err(GrpcFlushError::Closed);
+                            }
+                        }
+                        ClientConnectionState::Connected => {
+                            // Keep waiting
+                        }
+                        ClientConnectionState::Disconnected(result) => {
+                            re_log::warn!("gRPC connection is severed - aborting flush.");
+                            return Err(GrpcFlushError::Closed);
+                        }
+                    }
                 }
-                Err(TryRecvError::Closed) => {
+                Err(crossbeam::channel::RecvTimeoutError::Disconnected) => {
                     re_log::warn!("gRPC flush failed, not all messages were sent");
                     return Err(GrpcFlushError::Closed);
                 }

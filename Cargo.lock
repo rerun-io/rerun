@@ -7735,6 +7735,7 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "async-stream",
+ "crossbeam",
  "itertools 0.14.0",
  "jiff",
  "re_arrow_util",

@@ -1558,9 +1558,6 @@ fn forwarding_thread(
             Command::Flush { on_done, timeout } => {
                 re_log::trace!("Flushing…");
 
-                // Flush the underlying sink if possible.
-                sink.drop_if_disconnected();
-
                 let result = sink.flush_blocking(timeout);
 
                 // Send back the result:
