@@ -199,17 +199,6 @@ More details in the [README.md](./docs/snippets/README.md).
 
 Makes sure all of the snippets in the [snippets/](./docs/snippets/) folder are working and yield the same output in all of the supported languages, unless configured otherwise in the [snippets.toml](./docs/snippets/snippets.toml) file.
 
-### "Roundtrip" tests
-
-```sh
-pixi run -e py ./tests/roundtrips.py
-```
-
-A set of cross SDK language tests that makes sure that the same logging commands for a select group of archetypes
-yields the same output in all of the supported languages.
-
-Nowadays largely redundant with the snippet comparison tests.
-
 ### Release checklists
 
 ```sh

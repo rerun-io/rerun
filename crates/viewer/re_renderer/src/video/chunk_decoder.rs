@@ -1,10 +1,9 @@
-#![allow(dead_code, unused_variables, clippy::unnecessary_wraps)]
+#![allow(dead_code, unused_variables)]
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
+use crossbeam::channel::{Receiver, Sender};
 use re_video::{Chunk, Frame, FrameContent, Time, VideoDataDescription};
-
-use parking_lot::Mutex;
 
 use crate::{
     RenderContext,
@@ -37,6 +36,13 @@ struct DecoderOutput {
     error: Option<TimedDecodingError>,
 }
 
+impl DecoderOutput {
+    fn clear(&mut self) {
+        self.error = None;
+        self.frames_by_pts.clear();
+    }
+}
+
 impl re_byte_size::SizeBytes for DecoderOutput {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
@@ -53,7 +59,9 @@ impl re_byte_size::SizeBytes for DecoderOutput {
 pub struct VideoSampleDecoder {
     debug_name: String,
     decoder: Box<dyn re_video::AsyncDecoder>,
-    decoder_output: Arc<Mutex<DecoderOutput>>,
+
+    frame_receiver: Receiver<re_video::FrameResult>,
+    decoder_output: DecoderOutput,
 }
 
 impl re_byte_size::SizeBytes for VideoSampleDecoder {
@@ -61,9 +69,10 @@ impl re_byte_size::SizeBytes for VideoSampleDecoder {
         let Self {
             debug_name,
             decoder: _, // TODO(emilk): maybe we should count this
+            frame_receiver: _,
             decoder_output,
         } = self;
-        debug_name.heap_size_bytes() + decoder_output.lock().heap_size_bytes()
+        debug_name.heap_size_bytes() + decoder_output.heap_size_bytes()
     }
 }
 
@@ -71,52 +80,65 @@ impl VideoSampleDecoder {
     pub fn new(
         debug_name: String,
         make_decoder: impl FnOnce(
-            Box<dyn Fn(re_video::DecodeResult<Frame>) + Send + Sync>,
+            Sender<re_video::FrameResult>,
         ) -> re_video::DecodeResult<Box<dyn re_video::AsyncDecoder>>,
     ) -> Result<Self, VideoPlayerError> {
         re_tracing::profile_function!();
 
-        let decoder_output = Arc::new(Mutex::new(DecoderOutput::default()));
-
-        let on_output = {
-            let debug_name = debug_name.clone();
-            let decoder_output = decoder_output.clone();
-            move |frame: re_video::DecodeResult<Frame>| match frame {
-                Ok(frame) => {
-                    re_log::trace!(
-                        "Decoded frame at PTS {:?}",
-                        frame.info.presentation_timestamp
-                    );
-                    let mut output = decoder_output.lock();
-
-                    output
-                        .frames_by_pts
-                        .insert(frame.info.presentation_timestamp, frame);
-                    output.error = None; // We successfully decoded a frame, reset the error state.
-                }
-                Err(err) => {
-                    // Many of the errors we get from a decoder are recoverable.
-                    // They may be very frequent, but it's still useful to see them in the debug log for troubleshooting.
-                    re_log::debug_once!("Error during decoding of {debug_name}: {err}");
-
-                    let err = VideoPlayerError::Decoding(err);
-                    let mut output = decoder_output.lock();
-                    if let Some(error) = &mut output.error {
-                        error.latest_error = err;
-                    } else {
-                        output.error = Some(TimedDecodingError::new(err));
-                    }
-                }
-            }
-        };
-
-        let decoder = make_decoder(Box::new(on_output))?;
+        let (decoder_output_sender, frame_receiver) = crossbeam::channel::unbounded();
+        let decoder = make_decoder(decoder_output_sender)?;
 
         Ok(Self {
             debug_name,
             decoder,
-            decoder_output,
+            decoder_output: DecoderOutput::default(),
+            frame_receiver,
         })
+    }
+
+    /// Processes all frames received from the asynchronously running decoder.
+    fn process_decoder_output(&mut self) {
+        loop {
+            match self.frame_receiver.try_recv() {
+                Ok(frame) => {
+                    match frame {
+                        Ok(frame) => {
+                            re_log::trace!(
+                                "Decoded frame at PTS {:?}",
+                                frame.info.presentation_timestamp
+                            );
+                            self.decoder_output
+                                .frames_by_pts
+                                .insert(frame.info.presentation_timestamp, frame);
+                            self.decoder_output.error = None; // We successfully decoded a frame, reset the error state.
+                        }
+                        Err(err) => {
+                            // Many of the errors we get from a decoder are recoverable.
+                            // They may be very frequent, but it's still useful to see them in the debug log for troubleshooting.
+                            re_log::debug!("Error during decoding of {}: {err}", self.debug_name);
+
+                            let err = VideoPlayerError::Decoding(err);
+                            if let Some(error) = &mut self.decoder_output.error {
+                                error.latest_error = err;
+                            } else {
+                                self.decoder_output.error = Some(TimedDecodingError::new(err));
+                            }
+                        }
+                    }
+                }
+
+                Err(crossbeam::channel::TryRecvError::Empty) => {
+                    break;
+                }
+
+                Err(crossbeam::channel::TryRecvError::Disconnected) => {
+                    self.decoder_output.error = Some(TimedDecodingError::new(
+                        VideoPlayerError::DecoderUnexpectedlyExited,
+                    ));
+                    break;
+                }
+            }
+        }
     }
 
     pub fn debug_name(&self) -> &str {
@@ -149,54 +171,47 @@ impl VideoSampleDecoder {
         self.decoder.min_num_samples_to_enqueue_ahead()
     }
 
-    /// Returns the latest decoded frame at the given PTS and drops all earlier frames.
-    pub fn latest_decoded_frame_at_and_drop_earlier_frames(
-        &self,
-        pts: Time,
-    ) -> Option<parking_lot::MappedMutexGuard<'_, Frame>> {
-        let mut decoder_output = self.decoder_output.lock();
+    /// Returns the latest decoded frame at the given PTS and drops all earlier frames than the given PTS.
+    ///
+    /// Afterwards, you can retrieve the frame that is at or after the PTS using [`Self::oldest_available_frame`]
+    /// (without a mutable reference to the decoder).
+    pub fn process_incoming_frames_and_drop_earlier_than(&mut self, pts: Time) {
+        self.process_decoder_output();
 
         // Latest-at semantics means that if `pts` doesn't land on the exact PTS of a decode frame we have,
         // we provide the next *older* frame.
-        let latest_at_pts = decoder_output
-            .frames_by_pts
+        let frames_by_pts = &mut self.decoder_output.frames_by_pts;
+        let latest_at_pts = frames_by_pts
             .range(..=pts)
             .next_back()
             .map_or(pts, |(k, v)| *k);
 
         // Keep everything at or after the given PTS.
-        decoder_output.frames_by_pts = decoder_output.frames_by_pts.split_off(&latest_at_pts);
+        *frames_by_pts = frames_by_pts.split_off(&latest_at_pts);
+    }
 
-        if !decoder_output.frames_by_pts.is_empty() {
-            Some(parking_lot::MutexGuard::map(
-                decoder_output,
-                |decoder_output| {
-                    decoder_output
-                        .frames_by_pts
-                        .first_entry()
-                        .expect("We just checked that the map is not empty")
-                        .into_mut()
-                },
-            ))
-        } else {
-            None
-        }
+    /// Returns the latest decoded frame.
+    pub fn oldest_available_frame(&self) -> Option<&Frame> {
+        self.decoder_output
+            .frames_by_pts
+            .first_key_value()
+            .map(|(_, v)| v)
     }
 
     /// Reset the video decoder and discard all frames.
     pub fn reset(&mut self, video_descr: &VideoDataDescription) -> Result<(), VideoPlayerError> {
         self.decoder.reset(video_descr)?;
 
-        let mut decoder_output = self.decoder_output.lock();
-        decoder_output.error = None;
-        decoder_output.frames_by_pts.clear();
+        // Flush out any pending frames.
+        self.process_decoder_output();
+        self.decoder_output.clear();
 
         Ok(())
     }
 
     /// Return and clear the latest error that happened during decoding.
-    pub fn take_error(&self) -> Option<TimedDecodingError> {
-        self.decoder_output.lock().error.take()
+    pub fn take_error(&mut self) -> Option<TimedDecodingError> {
+        self.decoder_output.error.take()
     }
 }
 
@@ -278,6 +293,7 @@ pub fn copy_frame_to_texture(
 }
 
 #[cfg(target_arch = "wasm32")]
+#[expect(clippy::unnecessary_wraps)]
 fn copy_web_video_frame_to_texture(
     ctx: &RenderContext,
     frame: &FrameContent,

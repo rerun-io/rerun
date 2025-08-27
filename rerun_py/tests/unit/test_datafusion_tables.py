@@ -113,6 +113,19 @@ def server_instance() -> Generator[tuple[subprocess.Popen[str], DatasetEntry], N
     shutdown_process(server_process)
 
 
+def test_df_count(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:
+    """
+    Tests count() on a dataframe which ensures we collect empty batches properly.
+
+    See issue https://github.com/rerun-io/rerun/issues/10894 for additional context.
+    """
+    (_process, dataset) = server_instance
+
+    count = dataset.dataframe_query_view(index="time_1", contents="/**").df().count()
+
+    assert count == 64
+
+
 def test_df_aggregation(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:
     (_process, dataset) = server_instance
 

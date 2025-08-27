@@ -13,7 +13,6 @@ members = [
   "tests/rust/log_benchmark",
   "tests/rust/plot_dashboard_stress",
   "tests/rust/re_integration_test",
-  "tests/rust/roundtrips/*",
   "tests/rust/test_*",
 ]
 exclude = ["examples/rust/revy", "examples/rust/chess_robby_fischer"]

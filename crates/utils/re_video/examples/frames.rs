@@ -43,25 +43,39 @@ fn main() {
             .map_or(0, |c| c.coded_dimensions[1])
     );
 
-    let progress =
-        ProgressBar::new(video.samples.num_elements() as u64).with_message("Decoding video");
+    let progress = Arc::new(
+        ProgressBar::new(video.samples.num_elements() as u64).with_message("Decoding video"),
+    );
     progress.enable_steady_tick(Duration::from_millis(100));
 
     let frames = Arc::new(Mutex::new(Vec::new()));
-    let on_output = {
-        let frames = frames.clone();
-        let progress = progress.clone();
-        move |frame| {
-            progress.inc(1);
-            frames.lock().push(frame);
-        }
-    };
+    let (output_sender, output_receiver) = crossbeam::channel::unbounded();
+
+    let output_thread = std::thread::Builder::new()
+        .name("output".to_owned())
+        .spawn({
+            let progress = progress.clone();
+            let frames = frames.clone();
+            let num_frames_expected = video.samples.num_elements() as u64;
+            move || {
+                while let Ok(frame) = output_receiver.recv() {
+                    progress.inc(1);
+                    frames.lock().push(frame);
+
+                    if progress.position() == num_frames_expected {
+                        progress.finish();
+                        break;
+                    }
+                }
+            }
+        })
+        .expect("Failed to start output thread.");
 
     let mut decoder = re_video::new_decoder(
         video_path,
         &video,
         &re_video::DecodeSettings::default(),
-        on_output,
+        output_sender,
     )
     .expect("Failed to create decoder");
 
@@ -71,10 +85,11 @@ fn main() {
         let chunk = sample.get(&video_buffers, sample_idx).unwrap();
         decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
+    decoder.end_of_video().expect("Failed to end of video");
+
+    output_thread.join().expect("Failed to join output thread");
 
     let end = Instant::now();
-    progress.finish();
-
     let frames = frames.lock();
 
     println!(
@@ -94,7 +109,7 @@ fn main() {
                 .create(true)
                 .truncate(true)
                 .open(output_dir.join(format!("{i:0width$}.ppm")))
-                .expect("failed to oformatpen file");
+                .expect("failed to open file");
 
             let frame = &frame.content;
             match frame.format {
