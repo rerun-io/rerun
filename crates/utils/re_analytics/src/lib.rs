@@ -354,7 +354,7 @@ impl Analytics {
         self.record_raw(e);
     }
 
-    /// Tries to flush all pending events to the sink.
+    #[cfg(not(target_arch = "wasm32"))] // NOTE: can't block on web
     pub fn flush_blocking(&self, timeout: Duration) -> Result<(), FlushError> {
         if let Some(pipeline) = self.pipeline.as_ref() {
             pipeline.flush_blocking(timeout)
