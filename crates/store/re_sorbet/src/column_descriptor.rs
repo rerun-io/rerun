@@ -186,7 +186,7 @@ fn test_schema_over_ipc() {
     ));
     let ipc_bytes = crate::ipc_from_schema(&original_schema).unwrap();
 
-    let recovered_schema = crate::schema_from_ipc(&ipc_bytes).unwrap();
+    let recovered_schema = crate::raw_schema_from_ipc(&ipc_bytes).unwrap();
     assert_eq!(recovered_schema.as_ref(), &original_schema);
 
     let recovered_columns =

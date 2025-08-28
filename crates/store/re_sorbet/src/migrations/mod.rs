@@ -8,7 +8,7 @@
 
 use std::cmp::Ordering;
 
-use arrow::array::RecordBatch;
+use arrow::{array::RecordBatch, datatypes::SchemaRef};
 
 use crate::SorbetSchema;
 
@@ -105,6 +105,7 @@ fn maybe_apply<M: Migration>(
 /// Migrate a sorbet record batch of unknown version to the latest version.
 #[tracing::instrument(level = "debug", skip_all)]
 pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
+    // TODO(emilk): early-out if the schema has the latest version already.
     use self::make_list_arrays::make_all_data_columns_list_arrays;
 
     re_tracing::profile_function!();
@@ -156,4 +157,12 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
     batch = make_all_data_columns_list_arrays(&batch);
 
     batch
+}
+
+/// Migrate a sorbet schema of unknown version to the latest version.
+#[tracing::instrument(level = "debug", skip_all)]
+pub fn migrate_schema_ref(schema: SchemaRef) -> SchemaRef {
+    re_tracing::profile_function!();
+    // TODO(emilk): early-out if the schema has the latest version already.
+    migrate_record_batch(RecordBatch::new_empty(schema)).schema()
 }
