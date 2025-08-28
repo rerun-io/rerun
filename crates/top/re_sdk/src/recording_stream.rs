@@ -1053,7 +1053,7 @@ enum Command {
 
 impl Command {
     fn flush(timeout: Duration) -> (Self, Receiver<FlushResult>) {
-        let (on_done, rx) = crossbeam::channel::bounded(0); // oneshot
+        let (on_done, rx) = crossbeam::channel::bounded(1); // oneshot
         (Self::Flush { on_done, timeout }, rx)
     }
 }

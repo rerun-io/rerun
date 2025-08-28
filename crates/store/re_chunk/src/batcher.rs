@@ -419,7 +419,7 @@ enum Command {
 
 impl Command {
     fn flush() -> (Self, Receiver<()>) {
-        let (tx, rx) = crossbeam::channel::bounded(0); // oneshot
+        let (tx, rx) = crossbeam::channel::bounded(1); // oneshot
         (Self::Flush { on_done: tx }, rx)
     }
 }

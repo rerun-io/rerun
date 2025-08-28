@@ -191,7 +191,7 @@ impl Client {
     pub fn flush_blocking(&self, timeout: Duration) -> Result<(), GrpcFlushError> {
         re_tracing::profile_function!();
 
-        let (flush_done_tx, flush_done_rx) = crossbeam::channel::bounded(0); // oneshot
+        let (flush_done_tx, flush_done_rx) = crossbeam::channel::bounded(1); // oneshot
         if self
             .cmd_tx
             .send(Cmd::Flush {
