@@ -237,6 +237,7 @@ pub struct Analytics {
     event_id: AtomicU64,
 }
 
+#[cfg(not(target_arch = "wasm32"))] // NOTE: can't block on web
 impl Drop for Analytics {
     fn drop(&mut self) {
         if let Some(pipeline) = self.pipeline.as_ref() {
