@@ -7,22 +7,21 @@ MCAP processing in Rerun uses a layer-based architecture where each layer repres
 
 When multiple layers are enabled, they each filter and process only the messages they're designed to handle based on encoding and schema compatibility, creating different components and archetypes on the same entity paths (derived from MCAP channel topics). This can result in data duplication when layers have overlapping interests—for example, enabling both `raw` and `protobuf` layers will store protobuf messages in two forms: once as structured field data and once as raw binary blobs.
 
-Each of these layers contributes their own [chunks](../../concepts/chunks.md) to the Rerun-native data. The table below shows how MCAP data is mapped to Rerun's chunk structure:
+Each of these layers contributes their own [chunks](../../concepts/chunks.md) to the Rerun-native data.
+Below is a table showing the mapping between MCAP data and Rerun components:
 
-| MCAP Data          | Rerun Storage                                   | Description                                                                                                                                                      |
-| ------------------ | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Raw message data   | `mcap.Message:data`                             | Unprocessed message bytes stored as binary blobs                                                                                                                 |
-| Channel topic      | `mcap.Channel:topic`                            | Topic name from MCAP channel                                                                                                                                     |
-| Schema name        | `mcap.Schema:name`                              | Message type name from schema definition                                                                                                                         |
-| Schema data        | `mcap.Schema:data`                              | Raw schema definition (protobuf, ROS2 msg, etc.)                                                                                                                 |
-| Channel ID         | `mcap.Channel:id`                               | Numeric channel identifier                                                                                                                                       |
-| Message encoding   | `mcap.Channel:message_encoding`                 | Encoding format (e.g., `protobuf`, `cdr`)                                                                                                                        |
-| Channel metadata   | `mcap.Channel:metadata`                         | Key-value pairs from channel metadata                                                                                                                            |
-| Schema encoding    | `mcap.Schema:encoding`                          | Schema format type                                                                                                                                               |
-| Message timestamps | [Timeline](../../concepts/timelines.md) columns | `log_time` and `publish_time` timelines                                                                                                                          |
-| Statistics         | `mcap.Statistics`                               | File-level metrics like message counts and time ranges                                                                                                           |
-| Protobuf fields    | Dynamic component columns                       | Decoded protobuf message fields as typed components                                                                                                              |
-| ROS2 messages      | Visualization components                        | Semantic conversion to Rerun's native types ([Points3D](../../reference/types/archetypes/points3d.md), [Image](../../reference/types/archetypes/image.md), etc.) |
+| MCAP Data        | Rerun component                 | Description                                                                   |
+| ---------------- | ------------------------------- | ----------------------------------------------------------------------------- |
+| Schema name      | `mcap.Schema:name`              | Message type name from schema definition                                      |
+| Schema data      | `mcap.Schema:data`              | Raw schema definition (protobuf, ROS2 msg, etc.)                              |
+| Schema encoding  | `mcap.Schema:encoding`          | Schema format type                                                            |
+|                  |                                 |                                                                               |
+| Channel topic    | `mcap.Channel:topic`            | Topic name from MCAP channel                                                  |
+| Channel ID       | `mcap.Channel:id`               | Numeric channel identifier                                                    |
+| Message encoding | `mcap.Channel:message_encoding` | Encoding format (e.g., `protobuf`, `cdr`)                                     |
+|                  |                                 |                                                                               |
+| Statistics       | `mcap.Statistics`               | File-level metrics like message counts and time ranges                        |
+| Raw message data | `mcap.Message:data`             | Unprocessed message bytes stored as binary blobs, handled by the `raw` layer. |
 
 ## Schema and statistics layers
 
