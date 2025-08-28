@@ -25,8 +25,8 @@ use re_dataframe::{
 use re_grpc_client::ConnectionClient;
 use re_log_types::{ApplicationId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::common::v1alpha1::PartitionId;
-use re_protos::frontend::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::frontend::v1alpha1::GetChunksRequest;
+use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_protos::cloud::v1alpha1::GetChunksRequest;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 use std::any::Any;
 use std::collections::BTreeMap;

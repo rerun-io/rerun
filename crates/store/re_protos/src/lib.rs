@@ -35,11 +35,11 @@ mod v1alpha1 {
     #[path = "./rerun.sdk_comms.v1alpha1.rs"]
     pub mod rerun_sdk_comms_v1alpha1;
 
-    #[path = "./rerun.frontend.v1alpha1.rs"]
-    pub mod rerun_frontend_v1alpha1;
+    #[path = "./rerun.cloud.v1alpha1.rs"]
+    pub mod rerun_cloud_v1alpha1;
 
-    #[path = "./rerun.frontend.v1alpha1.ext.rs"]
-    pub mod rerun_frontend_v1alpha1_ext;
+    #[path = "./rerun.cloud.v1alpha1.ext.rs"]
+    pub mod rerun_cloud_v1alpha1_ext;
 }
 
 pub mod common {
@@ -60,12 +60,12 @@ pub mod log_msg {
     }
 }
 
-pub mod frontend {
+pub mod cloud {
     #[rustfmt::skip] // keep these constants single line for easy sorting
     pub mod v1alpha1 {
-        pub use crate::v1alpha1::rerun_frontend_v1alpha1::*;
+        pub use crate::v1alpha1::rerun_cloud_v1alpha1::*;
         pub mod ext {
-            pub use crate::v1alpha1::rerun_frontend_v1alpha1_ext::*;
+            pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext::*;
         }
 
         /// `DatasetManifest` mandatory field names. All mandatory metadata fields are prefixed

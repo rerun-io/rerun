@@ -20,7 +20,7 @@ pub fn generate_rust_code(
     prost_config.enable_type_names(); // tonic doesn't expose this option
     prost_config.bytes([
         ".rerun.common.v1alpha1",
-        ".rerun.frontend.v1alpha1",
+        ".rerun.cloud.v1alpha1",
         ".rerun.log_msg.v1alpha1",
         ".rerun.manifest_registry.v1alpha1",
     ]);
