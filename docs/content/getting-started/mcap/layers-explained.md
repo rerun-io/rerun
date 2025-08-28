@@ -50,3 +50,14 @@ rerun mcap convert input.mcap -l protobuf -l stats -o output.rrd
 # Use multiple layers for different perspectives
 rerun mcap convert input.mcap -l ros2msg -l raw -l recording_info -o output.rrd
 ```
+
+## Accessing Layer Data
+
+Each layer creates different types of components on entity paths (derived from MCAP channel topics) that can be accessed through Rerun's SDK:
+
+- Data from the `protobuf` layer appears as structured components that can be queried by field name
+- Data from the `ros2msg` layer appears as native Rerun visualization components ([Image](../../reference/types/archetypes/image.md), [Points3D](../../reference/types/archetypes/points3d.md.md), etc.)
+- Data from the `raw` layer appears as blob components containing the original message bytes
+- Metadata from `schema`, `stats`, and `recording_info` layers appears as dedicated metadata entities
+
+For more information on querying data and working with archetypes, see the [Data Queries documentation](../../howto/get-data-out.md).
