@@ -15,10 +15,6 @@ use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
-    common::v1alpha1::{
-        TaskId,
-        ext::{IfDuplicateBehavior, ScanParameters},
-    },
     cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
     cloud::v1alpha1::{
         EntryFilter,
@@ -26,6 +22,10 @@ use re_protos::{
     },
     cloud::v1alpha1::{
         GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest, QueryTasksResponse,
+    },
+    common::v1alpha1::{
+        TaskId,
+        ext::{IfDuplicateBehavior, ScanParameters},
     },
 };
 

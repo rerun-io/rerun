@@ -22,9 +22,9 @@ use re_dataframe::{
 };
 use re_grpc_client::ConnectionClient;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::common::v1alpha1::PartitionId;
 use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::cloud::v1alpha1::GetChunksRequest;
+use re_protos::common::v1alpha1::PartitionId;
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::fmt::Debug;

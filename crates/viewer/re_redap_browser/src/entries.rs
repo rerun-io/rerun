@@ -17,10 +17,10 @@ use re_grpc_client::{
 use re_log_encoding::codec::CodecError;
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
-use re_protos::external::prost;
-use re_protos::external::prost::Name as _;
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
+use re_protos::external::prost;
+use re_protos::external::prost::Name as _;
 use re_sorbet::SorbetError;
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;
