@@ -658,8 +658,8 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
 
 #[derive(Debug, Clone)]
 pub struct ChunkKey {
-    pub location_url: url::Url,
-    pub location_details: prost_types::Any,
+    pub chunk_id: re_chunk::ChunkId,
+    pub location: prost_types::Any,
 }
 
 impl ChunkKey {
@@ -675,23 +675,19 @@ impl TryFrom<crate::common::v1alpha1::ChunkKey> for ChunkKey {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::ChunkKey) -> Result<Self, Self::Error> {
-        let location_url = value
-            .location_url
-            .ok_or(missing_field!(
-                crate::common::v1alpha1::ChunkKey,
-                "location_url"
-            ))?
-            .parse()?;
+        let tuid = value.chunk_id.ok_or(missing_field!(
+            crate::common::v1alpha1::RrdChunkLocationDetails,
+            "chunk_id"
+        ))?;
+        let id: re_tuid::Tuid = tuid.try_into()?;
+        let chunk_id = re_chunk::ChunkId::from_u128(id.as_u128());
 
-        let location_details = value.location_details.ok_or(missing_field!(
+        let location = value.location.ok_or(missing_field!(
             crate::common::v1alpha1::ChunkKey,
-            "location_details"
+            "location"
         ))?;
 
-        Ok(Self {
-            location_url,
-            location_details,
-        })
+        Ok(Self { chunk_id, location })
     }
 }
 
@@ -710,16 +706,18 @@ impl TryFrom<&[u8]> for ChunkKey {
 
 impl From<ChunkKey> for crate::common::v1alpha1::ChunkKey {
     fn from(value: ChunkKey) -> Self {
+        let tuid =
+            crate::common::v1alpha1::Tuid::from(re_tuid::Tuid::from_u128(value.chunk_id.as_u128()));
         Self {
-            location_url: Some(value.location_url.to_string()),
-            location_details: Some(value.location_details),
+            chunk_id: Some(tuid),
+            location: Some(value.location),
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct RrdChunkLocationDetails {
-    pub chunk_id: re_chunk::ChunkId,
+    pub url: url::Url,
     pub offset: u64,
     pub length: u64,
 }
@@ -730,12 +728,20 @@ impl TryFrom<crate::common::v1alpha1::RrdChunkLocationDetails> for RrdChunkLocat
     fn try_from(
         value: crate::common::v1alpha1::RrdChunkLocationDetails,
     ) -> Result<Self, Self::Error> {
-        let tuid = value.chunk_id.ok_or(missing_field!(
-            crate::common::v1alpha1::RrdChunkLocationDetails,
-            "chunk_id"
-        ))?;
-        let id: re_tuid::Tuid = tuid.try_into()?;
-        let chunk_id = re_chunk::ChunkId::from_u128(id.as_u128());
+        let url = value
+            .url
+            .ok_or(missing_field!(
+                crate::common::v1alpha1::RrdChunkLocationDetails,
+                "location_url"
+            ))?
+            .parse()
+            .map_err(|err| {
+                invalid_field!(
+                    crate::common::v1alpha1::RrdChunkLocationDetails,
+                    "location_url",
+                    err
+                )
+            })?;
 
         let offset = value.offset.ok_or(missing_field!(
             crate::common::v1alpha1::RrdChunkLocationDetails,
@@ -748,7 +754,7 @@ impl TryFrom<crate::common::v1alpha1::RrdChunkLocationDetails> for RrdChunkLocat
         ))?;
 
         Ok(RrdChunkLocationDetails {
-            chunk_id,
+            url,
             offset,
             length,
         })
@@ -757,10 +763,8 @@ impl TryFrom<crate::common::v1alpha1::RrdChunkLocationDetails> for RrdChunkLocat
 
 impl From<RrdChunkLocationDetails> for crate::common::v1alpha1::RrdChunkLocationDetails {
     fn from(value: RrdChunkLocationDetails) -> Self {
-        let tuid =
-            crate::common::v1alpha1::Tuid::from(re_tuid::Tuid::from_u128(value.chunk_id.as_u128()));
         Self {
-            chunk_id: Some(tuid),
+            url: Some(value.url.to_string()),
             offset: Some(value.offset),
             length: Some(value.length),
         }

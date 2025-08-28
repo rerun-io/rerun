@@ -389,12 +389,12 @@ impl ::prost::Name for TaskId {
 /// `ChunkKey` provides chunk location details in the data store.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChunkKey {
-    /// where is the chunk stored (S3, local file, etc)
-    #[prost(string, optional, tag = "2")]
-    pub location_url: ::core::option::Option<::prost::alloc::string::String>,
-    /// additional details about the chunk's location that are specific to the underlying data source (partition type)
+    /// Chunk unique identifier
+    #[prost(message, optional, tag = "1")]
+    pub chunk_id: ::core::option::Option<Tuid>,
+    /// details about the chunk's location that are specific to the underlying data source (partition type)
     #[prost(message, optional, tag = "3")]
-    pub location_details: ::core::option::Option<::prost_types::Any>,
+    pub location: ::core::option::Option<::prost_types::Any>,
 }
 impl ::prost::Name for ChunkKey {
     const NAME: &'static str = "ChunkKey";
@@ -406,11 +406,11 @@ impl ::prost::Name for ChunkKey {
         "/rerun.common.v1alpha1.ChunkKey".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RrdChunkLocationDetails {
-    /// Chunk unique identifier
-    #[prost(message, optional, tag = "1")]
-    pub chunk_id: ::core::option::Option<Tuid>,
+    /// where is the chunk stored (S3, local file, etc)
+    #[prost(string, optional, tag = "1")]
+    pub url: ::core::option::Option<::prost::alloc::string::String>,
     /// byte offset of the chunk within the data source
     #[prost(uint64, optional, tag = "2")]
     pub offset: ::core::option::Option<u64>,
