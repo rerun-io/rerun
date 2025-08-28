@@ -171,7 +171,8 @@ jobs:
 
       - name: Set timezone database path (Windows)
         if: ${{ inputs.PLATFORM == 'windows-x64' }}
-        run: echo "ARROW_TIMEZONE_DATABASE=tzdata" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        shell: cmd
+        run: echo ARROW_TIMEZONE_DATABASE=tzdata >> %GITHUB_ENV%
 
       - name: Run unit tests (with linux arm64 opencv workaround)
         if: ${{ inputs.PLATFORM == 'linux-arm64' }}
