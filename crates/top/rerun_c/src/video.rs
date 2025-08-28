@@ -26,7 +26,7 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
     };
 
     let video_bytes = unsafe { std::slice::from_raw_parts(video_bytes, video_bytes_len as usize) };
-    let media_type_str = media_type.as_str("media_type").ok();
+    let media_type_str = media_type.as_maybe_empty_str("media_type").ok();
 
     let Some(media_type_str) =
         media_type_str.or_else(|| infer::Infer::new().get(video_bytes).map(|v| v.mime_type()))

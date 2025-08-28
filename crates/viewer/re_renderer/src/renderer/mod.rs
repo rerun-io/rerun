@@ -1,43 +1,38 @@
+mod compositor;
+mod debug_overlay;
+mod depth_cloud;
 mod generic_skybox;
-pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};
-
 mod lines;
-pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
-
+mod mesh_renderer;
 mod point_cloud;
+mod rectangles;
+mod test_triangle;
+mod world_grid;
+
+pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds};
+pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
+pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};
+pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
+pub use mesh_renderer::{GpuMeshInstance, MeshDrawData};
 pub use point_cloud::{
     PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
 };
-
-mod depth_cloud;
-pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds};
-
-mod test_triangle;
-pub use test_triangle::TestTriangleDrawData;
-
-mod rectangles;
 pub use rectangles::{
     ColorMapper, ColormappedTexture, RectangleDrawData, RectangleOptions, ShaderDecoding,
     TextureFilterMag, TextureFilterMin, TexturedRect,
 };
-
-mod mesh_renderer;
-pub(crate) use mesh_renderer::MeshRenderer;
-pub use mesh_renderer::{GpuMeshInstance, MeshDrawData};
-
-mod compositor;
-pub(crate) use compositor::CompositorDrawData;
-
-mod debug_overlay;
-pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
-
-mod world_grid;
+pub use test_triangle::TestTriangleDrawData;
 pub use world_grid::{WorldGridConfiguration, WorldGridDrawData, WorldGridRenderer};
 
 pub mod gpu_data {
     pub use super::lines::gpu_data::{LineStripInfo, LineVertex};
     pub use super::point_cloud::gpu_data::PositionRadius;
 }
+
+pub(crate) use compositor::CompositorDrawData;
+pub(crate) use mesh_renderer::MeshRenderer;
+
+// ------------
 
 use crate::{
     context::RenderContext,

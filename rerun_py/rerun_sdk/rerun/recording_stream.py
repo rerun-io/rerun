@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextvars
 import functools
 import inspect
+import math
 import uuid
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
@@ -548,7 +549,6 @@ class RecordingStream:
         self,
         url: str | None = None,
         *,
-        flush_timeout_sec: float | None = 2.0,
         default_blueprint: BlueprintLike | None = None,
     ) -> None:
         """
@@ -565,10 +565,6 @@ class RecordingStream:
             and the pathname must be `/proxy`.
 
             The default is `rerun+http://127.0.0.1:9876/proxy`.
-        flush_timeout_sec:
-            The minimum time the SDK will wait during a flush before potentially
-            dropping data if progress is not being made. Passing `None` indicates no timeout,
-            and can cause a call to `flush` to block indefinitely.
         default_blueprint
             Optionally set a default blueprint to use for this application. If the application
             already has an active blueprint, the new blueprint won't become active until the user
@@ -579,7 +575,7 @@ class RecordingStream:
 
         from .sinks import connect_grpc
 
-        connect_grpc(url, flush_timeout_sec=flush_timeout_sec, default_blueprint=default_blueprint, recording=self)
+        connect_grpc(url, default_blueprint=default_blueprint, recording=self)
 
     def save(self, path: str | Path, default_blueprint: BlueprintLike | None = None) -> None:
         """
@@ -1404,27 +1400,42 @@ class BinaryStream:
     def __init__(self, storage: bindings.PyBinarySinkStorage) -> None:
         self.storage = storage
 
-    def read(self, *, flush: bool = True) -> bytes | None:
+    def read(self, *, flush: bool = True, flush_timeout_sec: float = math.inf) -> bytes | None:
         """
         Reads the available bytes from the stream.
 
         If using `flush`, the read call will first block until the flush is complete.
+        If all the data was not successfully flushed within the given timeout,
+        an exception will be raised.
 
         Parameters
         ----------
         flush:
             If true (default), the stream will be flushed before reading.
+        flush_timeout_sec:
+            If `flush` is `True`, wait at most this many seconds.
+            If the timeout is reached, an error is raised.
 
         """
-        return self.storage.read(flush=flush)  # type: ignore[no-any-return]
+        return self.storage.read(flush=flush, flush_timeout_sec=flush_timeout_sec)  # type: ignore[no-any-return]
 
-    def flush(self) -> None:
+    def flush(self, timeout_sec: float = math.inf) -> None:
         """
         Flushes the recording stream and ensures that all logged messages have been encoded into the stream.
 
         This will block until the flush is complete.
+
+        If all the data was not successfully flushed within the given timeout,
+        an exception will be raised.
+
+        Parameters
+        ----------
+        timeout_sec:
+            Wait at most this many seconds.
+            If the timeout is reached, an error is raised.
+
         """
-        self.storage.flush()
+        self.storage.flush(timeout_sec=timeout_sec)
 
 
 # ---

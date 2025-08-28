@@ -3,12 +3,12 @@
 pub struct VersionRequest {}
 impl ::prost::Name for VersionRequest {
     const NAME: &'static str = "VersionRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.VersionRequest".into()
+        "rerun.cloud.v1alpha1.VersionRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.VersionRequest".into()
+        "/rerun.cloud.v1alpha1.VersionRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -18,12 +18,59 @@ pub struct VersionResponse {
 }
 impl ::prost::Name for VersionResponse {
     const NAME: &'static str = "VersionResponse";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.VersionResponse".into()
+        "rerun.cloud.v1alpha1.VersionResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.VersionResponse".into()
+        "/rerun.cloud.v1alpha1.VersionResponse".into()
+    }
+}
+/// Application level error - used as `details` in the `google.rpc.Status` message
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Error {
+    /// error code
+    #[prost(enumeration = "ErrorCode", tag = "1")]
+    pub code: i32,
+    /// unique identifier associated with the request (e.g. recording id, recording storage url)
+    #[prost(string, tag = "2")]
+    pub id: ::prost::alloc::string::String,
+    /// human readable details about the error
+    #[prost(string, tag = "3")]
+    pub message: ::prost::alloc::string::String,
+}
+impl ::prost::Name for Error {
+    const NAME: &'static str = "Error";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.Error".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.Error".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DataSource {
+    /// Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
+    #[prost(string, optional, tag = "1")]
+    pub storage_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// / Which Partition Layer should this data source be registered to?
+    /// /
+    /// / Defaults to `base` if unspecified.
+    #[prost(string, optional, tag = "3")]
+    pub layer: ::core::option::Option<::prost::alloc::string::String>,
+    /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
+    #[prost(enumeration = "DataSourceKind", tag = "2")]
+    pub typ: i32,
+}
+impl ::prost::Name for DataSource {
+    const NAME: &'static str = "DataSource";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DataSource".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DataSource".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -31,8 +78,7 @@ pub struct RegisterWithDatasetRequest {
     #[prost(message, optional, tag = "1")]
     pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(message, repeated, tag = "2")]
-    pub data_sources:
-        ::prost::alloc::vec::Vec<super::super::manifest_registry::v1alpha1::DataSource>,
+    pub data_sources: ::prost::alloc::vec::Vec<DataSource>,
     #[prost(
         enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
         tag = "3"
@@ -41,12 +87,54 @@ pub struct RegisterWithDatasetRequest {
 }
 impl ::prost::Name for RegisterWithDatasetRequest {
     const NAME: &'static str = "RegisterWithDatasetRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.RegisterWithDatasetRequest".into()
+        "rerun.cloud.v1alpha1.RegisterWithDatasetRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.RegisterWithDatasetRequest".into()
+        "/rerun.cloud.v1alpha1.RegisterWithDatasetRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterWithDatasetResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for RegisterWithDatasetResponse {
+    const NAME: &'static str = "RegisterWithDatasetResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.RegisterWithDatasetResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.RegisterWithDatasetResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WriteChunksRequest {
+    #[prost(message, optional, tag = "1")]
+    pub chunk: ::core::option::Option<super::super::common::v1alpha1::RerunChunk>,
+}
+impl ::prost::Name for WriteChunksRequest {
+    const NAME: &'static str = "WriteChunksRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WriteChunksRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WriteChunksRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct WriteChunksResponse {}
+impl ::prost::Name for WriteChunksResponse {
+    const NAME: &'static str = "WriteChunksResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WriteChunksResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WriteChunksResponse".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -56,12 +144,27 @@ pub struct GetPartitionTableSchemaRequest {
 }
 impl ::prost::Name for GetPartitionTableSchemaRequest {
     const NAME: &'static str = "GetPartitionTableSchemaRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.GetPartitionTableSchemaRequest".into()
+        "rerun.cloud.v1alpha1.GetPartitionTableSchemaRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.GetPartitionTableSchemaRequest".into()
+        "/rerun.cloud.v1alpha1.GetPartitionTableSchemaRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetPartitionTableSchemaResponse {
+    #[prost(message, optional, tag = "1")]
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+}
+impl ::prost::Name for GetPartitionTableSchemaResponse {
+    const NAME: &'static str = "GetPartitionTableSchemaResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetPartitionTableSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetPartitionTableSchemaResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -73,12 +176,28 @@ pub struct ScanPartitionTableRequest {
 }
 impl ::prost::Name for ScanPartitionTableRequest {
     const NAME: &'static str = "ScanPartitionTableRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.ScanPartitionTableRequest".into()
+        "rerun.cloud.v1alpha1.ScanPartitionTableRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.ScanPartitionTableRequest".into()
+        "/rerun.cloud.v1alpha1.ScanPartitionTableRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanPartitionTableResponse {
+    /// Partitions metadata as arrow RecordBatch
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for ScanPartitionTableResponse {
+    const NAME: &'static str = "ScanPartitionTableResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ScanPartitionTableResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ScanPartitionTableResponse".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -88,12 +207,27 @@ pub struct GetDatasetSchemaRequest {
 }
 impl ::prost::Name for GetDatasetSchemaRequest {
     const NAME: &'static str = "GetDatasetSchemaRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.GetDatasetSchemaRequest".into()
+        "rerun.cloud.v1alpha1.GetDatasetSchemaRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.GetDatasetSchemaRequest".into()
+        "/rerun.cloud.v1alpha1.GetDatasetSchemaRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetDatasetSchemaResponse {
+    #[prost(message, optional, tag = "1")]
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+}
+impl ::prost::Name for GetDatasetSchemaResponse {
+    const NAME: &'static str = "GetDatasetSchemaResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetDatasetSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetDatasetSchemaResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -109,7 +243,7 @@ pub struct CreateIndexRequest {
     #[prost(string, repeated, tag = "5")]
     pub partition_layers: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(message, optional, tag = "3")]
-    pub config: ::core::option::Option<super::super::manifest_registry::v1alpha1::IndexConfig>,
+    pub config: ::core::option::Option<IndexConfig>,
     /// Specify behavior when index for a partition was already created.
     #[prost(
         enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
@@ -119,12 +253,27 @@ pub struct CreateIndexRequest {
 }
 impl ::prost::Name for CreateIndexRequest {
     const NAME: &'static str = "CreateIndexRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.CreateIndexRequest".into()
+        "rerun.cloud.v1alpha1.CreateIndexRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.CreateIndexRequest".into()
+        "/rerun.cloud.v1alpha1.CreateIndexRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateIndexResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for CreateIndexResponse {
+    const NAME: &'static str = "CreateIndexResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.CreateIndexResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.CreateIndexResponse".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -134,12 +283,148 @@ pub struct ReIndexRequest {
 }
 impl ::prost::Name for ReIndexRequest {
     const NAME: &'static str = "ReIndexRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.ReIndexRequest".into()
+        "rerun.cloud.v1alpha1.ReIndexRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.ReIndexRequest".into()
+        "/rerun.cloud.v1alpha1.ReIndexRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReIndexResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for ReIndexResponse {
+    const NAME: &'static str = "ReIndexResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ReIndexResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ReIndexResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexConfig {
+    /// what kind of index do we want to create and what are its index specific properties.
+    #[prost(message, optional, tag = "1")]
+    pub properties: ::core::option::Option<IndexProperties>,
+    /// Component / column we want to index.
+    #[prost(message, optional, tag = "2")]
+    pub column: ::core::option::Option<IndexColumn>,
+    /// What is the filter index i.e. timeline for which we will query the timepoints.
+    ///
+    /// TODO(zehiko) this might go away and we might just index across all the timelines
+    #[prost(message, optional, tag = "3")]
+    pub time_index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
+}
+impl ::prost::Name for IndexConfig {
+    const NAME: &'static str = "IndexConfig";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.IndexConfig".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.IndexConfig".into()
+    }
+}
+/// used to define which column we want to index
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexColumn {
+    /// The path of the entity.
+    #[prost(message, optional, tag = "1")]
+    pub entity_path: ::core::option::Option<super::super::common::v1alpha1::EntityPath>,
+    /// Component details
+    #[prost(message, optional, tag = "2")]
+    pub component: ::core::option::Option<super::super::common::v1alpha1::ComponentDescriptor>,
+}
+impl ::prost::Name for IndexColumn {
+    const NAME: &'static str = "IndexColumn";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.IndexColumn".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.IndexColumn".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexProperties {
+    #[prost(oneof = "index_properties::Props", tags = "1, 2, 3")]
+    pub props: ::core::option::Option<index_properties::Props>,
+}
+/// Nested message and enum types in `IndexProperties`.
+pub mod index_properties {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Props {
+        #[prost(message, tag = "1")]
+        Inverted(super::InvertedIndex),
+        #[prost(message, tag = "2")]
+        Vector(super::VectorIvfPqIndex),
+        #[prost(message, tag = "3")]
+        Btree(super::BTreeIndex),
+    }
+}
+impl ::prost::Name for IndexProperties {
+    const NAME: &'static str = "IndexProperties";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.IndexProperties".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.IndexProperties".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InvertedIndex {
+    #[prost(bool, optional, tag = "1")]
+    pub store_position: ::core::option::Option<bool>,
+    /// TODO(zehiko) add other properties as needed
+    #[prost(string, optional, tag = "2")]
+    pub base_tokenizer: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for InvertedIndex {
+    const NAME: &'static str = "InvertedIndex";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.InvertedIndex".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.InvertedIndex".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct VectorIvfPqIndex {
+    #[prost(uint32, optional, tag = "1")]
+    pub num_partitions: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag = "2")]
+    pub num_sub_vectors: ::core::option::Option<u32>,
+    #[prost(enumeration = "VectorDistanceMetric", tag = "3")]
+    pub distance_metrics: i32,
+}
+impl ::prost::Name for VectorIvfPqIndex {
+    const NAME: &'static str = "VectorIvfPqIndex";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.VectorIvfPqIndex".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.VectorIvfPqIndex".into()
+    }
+}
+/// TODO(zehiko) add properties as needed
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct BTreeIndex {}
+impl ::prost::Name for BTreeIndex {
+    const NAME: &'static str = "BTreeIndex";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.BTreeIndex".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.BTreeIndex".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -148,7 +433,7 @@ pub struct SearchDatasetRequest {
     pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Index column that is queried
     #[prost(message, optional, tag = "2")]
-    pub column: ::core::option::Option<super::super::manifest_registry::v1alpha1::IndexColumn>,
+    pub column: ::core::option::Option<IndexColumn>,
     /// Query data - type of data is index specific. Caller must ensure
     /// to provide the right type. For vector search this should
     /// be a vector of appropriate size, for inverted index this should be a string.
@@ -157,20 +442,105 @@ pub struct SearchDatasetRequest {
     pub query: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
     /// Index type specific properties
     #[prost(message, optional, tag = "4")]
-    pub properties:
-        ::core::option::Option<super::super::manifest_registry::v1alpha1::IndexQueryProperties>,
+    pub properties: ::core::option::Option<IndexQueryProperties>,
     /// Scan parameters
     #[prost(message, optional, tag = "5")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
 }
 impl ::prost::Name for SearchDatasetRequest {
     const NAME: &'static str = "SearchDatasetRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.SearchDatasetRequest".into()
+        "rerun.cloud.v1alpha1.SearchDatasetRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.SearchDatasetRequest".into()
+        "/rerun.cloud.v1alpha1.SearchDatasetRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SearchDatasetResponse {
+    /// Chunks as arrow RecordBatch
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for SearchDatasetResponse {
+    const NAME: &'static str = "SearchDatasetResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SearchDatasetResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SearchDatasetResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct IndexQueryProperties {
+    /// specific index query properties based on the index type
+    #[prost(oneof = "index_query_properties::Props", tags = "1, 2, 3")]
+    pub props: ::core::option::Option<index_query_properties::Props>,
+}
+/// Nested message and enum types in `IndexQueryProperties`.
+pub mod index_query_properties {
+    /// specific index query properties based on the index type
+    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+    pub enum Props {
+        #[prost(message, tag = "1")]
+        Inverted(super::InvertedIndexQuery),
+        #[prost(message, tag = "2")]
+        Vector(super::VectorIndexQuery),
+        #[prost(message, tag = "3")]
+        Btree(super::BTreeIndexQuery),
+    }
+}
+impl ::prost::Name for IndexQueryProperties {
+    const NAME: &'static str = "IndexQueryProperties";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.IndexQueryProperties".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.IndexQueryProperties".into()
+    }
+}
+/// TODO(zehiko) add properties as needed
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct InvertedIndexQuery {}
+impl ::prost::Name for InvertedIndexQuery {
+    const NAME: &'static str = "InvertedIndexQuery";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.InvertedIndexQuery".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.InvertedIndexQuery".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct VectorIndexQuery {
+    #[prost(uint32, optional, tag = "1")]
+    pub top_k: ::core::option::Option<u32>,
+}
+impl ::prost::Name for VectorIndexQuery {
+    const NAME: &'static str = "VectorIndexQuery";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.VectorIndexQuery".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.VectorIndexQuery".into()
+    }
+}
+/// TODO(zehiko) add properties as needed
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct BTreeIndexQuery {}
+impl ::prost::Name for BTreeIndexQuery {
+    const NAME: &'static str = "BTreeIndexQuery";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.BTreeIndexQuery".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.BTreeIndexQuery".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -224,16 +594,125 @@ pub struct QueryDatasetRequest {
     #[prost(message, optional, tag = "5")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
     #[prost(message, optional, tag = "6")]
-    pub query: ::core::option::Option<super::super::manifest_registry::v1alpha1::Query>,
+    pub query: ::core::option::Option<Query>,
 }
 impl ::prost::Name for QueryDatasetRequest {
     const NAME: &'static str = "QueryDatasetRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.QueryDatasetRequest".into()
+        "rerun.cloud.v1alpha1.QueryDatasetRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.QueryDatasetRequest".into()
+        "/rerun.cloud.v1alpha1.QueryDatasetRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryDatasetResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for QueryDatasetResponse {
+    const NAME: &'static str = "QueryDatasetResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.QueryDatasetResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.QueryDatasetResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Query {
+    /// If specified, will perform a latest-at query with the given parameters.
+    ///
+    /// You can combine this with a `QueryRange` in order to gather all the relevant chunks for
+    /// a full-fledged dataframe query (i.e. they get OR'd together).
+    #[prost(message, optional, tag = "1")]
+    pub latest_at: ::core::option::Option<QueryLatestAt>,
+    /// If specified, will perform a range query with the given parameters.
+    ///
+    /// You can combine this with a `QueryLatestAt` in order to gather all the relevant chunks for
+    /// a full-fledged dataframe query (i.e. they get OR'd together).
+    #[prost(message, optional, tag = "2")]
+    pub range: ::core::option::Option<QueryRange>,
+    /// If true, `columns` will contain the entire schema.
+    #[prost(bool, tag = "3")]
+    pub columns_always_include_everything: bool,
+    /// If true, `columns` always includes `chunk_id`,
+    #[prost(bool, tag = "4")]
+    pub columns_always_include_chunk_ids: bool,
+    /// If true, `columns` always includes `byte_offset` and `byte_size`.
+    #[prost(bool, tag = "5")]
+    pub columns_always_include_byte_offsets: bool,
+    /// If true, `columns` always includes `entity_path`.
+    #[prost(bool, tag = "6")]
+    pub columns_always_include_entity_paths: bool,
+    /// If true, `columns` always includes all static component-level indexes.
+    #[prost(bool, tag = "7")]
+    pub columns_always_include_static_indexes: bool,
+    /// If true, `columns` always includes all temporal chunk-level indexes.
+    #[prost(bool, tag = "8")]
+    pub columns_always_include_global_indexes: bool,
+    /// If true, `columns` always includes all component-level indexes.
+    #[prost(bool, tag = "9")]
+    pub columns_always_include_component_indexes: bool,
+}
+impl ::prost::Name for Query {
+    const NAME: &'static str = "Query";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.Query".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.Query".into()
+    }
+}
+/// A chunk-level latest-at query, aka `LatestAtRelevantChunks`.
+///
+/// This has the exact same semantics as the query of the same name on our `ChunkStore`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryLatestAt {
+    /// Which index column should we perform the query on? E.g. `log_time`.
+    ///
+    /// Leave this empty to query for static data.
+    #[prost(message, optional, tag = "1")]
+    pub index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
+    /// What index value are we looking for?
+    ///
+    /// Leave this empty to query for static data.
+    #[prost(int64, optional, tag = "2")]
+    pub at: ::core::option::Option<i64>,
+}
+impl ::prost::Name for QueryLatestAt {
+    const NAME: &'static str = "QueryLatestAt";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.QueryLatestAt".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.QueryLatestAt".into()
+    }
+}
+/// / A chunk-level range query, aka `RangeRelevantChunks`.
+///
+/// This has the exact same semantics as the query of the same name on our `ChunkStore`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryRange {
+    /// Which index column should we perform the query on? E.g. `log_time`.
+    #[prost(message, optional, tag = "1")]
+    pub index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
+    /// What index range are we looking for?
+    #[prost(message, optional, tag = "2")]
+    pub index_range: ::core::option::Option<super::super::common::v1alpha1::TimeRange>,
+}
+impl ::prost::Name for QueryRange {
+    const NAME: &'static str = "QueryRange";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.QueryRange".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.QueryRange".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -285,16 +764,33 @@ pub struct GetChunksRequest {
     pub exclude_temporal_data: bool,
     /// Query details
     #[prost(message, optional, tag = "5")]
-    pub query: ::core::option::Option<super::super::manifest_registry::v1alpha1::Query>,
+    pub query: ::core::option::Option<Query>,
 }
 impl ::prost::Name for GetChunksRequest {
     const NAME: &'static str = "GetChunksRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.GetChunksRequest".into()
+        "rerun.cloud.v1alpha1.GetChunksRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.GetChunksRequest".into()
+        "/rerun.cloud.v1alpha1.GetChunksRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetChunksResponse {
+    /// Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
+    /// cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
+    #[prost(message, repeated, tag = "1")]
+    pub chunks: ::prost::alloc::vec::Vec<super::super::log_msg::v1alpha1::ArrowMsg>,
+}
+impl ::prost::Name for GetChunksResponse {
+    const NAME: &'static str = "GetChunksResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetChunksResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetChunksResponse".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -304,12 +800,12 @@ pub struct GetTableSchemaRequest {
 }
 impl ::prost::Name for GetTableSchemaRequest {
     const NAME: &'static str = "GetTableSchemaRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.GetTableSchemaRequest".into()
+        "rerun.cloud.v1alpha1.GetTableSchemaRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.GetTableSchemaRequest".into()
+        "/rerun.cloud.v1alpha1.GetTableSchemaRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -319,12 +815,12 @@ pub struct GetTableSchemaResponse {
 }
 impl ::prost::Name for GetTableSchemaResponse {
     const NAME: &'static str = "GetTableSchemaResponse";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.GetTableSchemaResponse".into()
+        "rerun.cloud.v1alpha1.GetTableSchemaResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.GetTableSchemaResponse".into()
+        "/rerun.cloud.v1alpha1.GetTableSchemaResponse".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -337,12 +833,12 @@ pub struct ScanTableRequest {
 }
 impl ::prost::Name for ScanTableRequest {
     const NAME: &'static str = "ScanTableRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.ScanTableRequest".into()
+        "rerun.cloud.v1alpha1.ScanTableRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.ScanTableRequest".into()
+        "/rerun.cloud.v1alpha1.ScanTableRequest".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -352,12 +848,12 @@ pub struct ScanTableResponse {
 }
 impl ::prost::Name for ScanTableResponse {
     const NAME: &'static str = "ScanTableResponse";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.ScanTableResponse".into()
+        "rerun.cloud.v1alpha1.ScanTableResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.ScanTableResponse".into()
+        "/rerun.cloud.v1alpha1.ScanTableResponse".into()
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -377,21 +873,798 @@ pub struct DoMaintenanceRequest {
     #[prost(bool, tag = "3")]
     pub compact_fragments: bool,
     /// If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+    /// In case requested date is more recent than 1 hour, it will be ignored and 1 hour ago
+    /// timestamp will be used. This is to prevent still used files (like recent transaction files)
+    /// to be removed and cause Lance Dataset update issues.
+    /// See <https://docs.rs/lance/latest/lance/dataset/cleanup/index.html>
+    /// and <https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html>
     #[prost(message, optional, tag = "4")]
     pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
+    /// Override default platform behavior and allow cleanup of recent files. This will respect
+    /// the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
+    /// ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
+    #[prost(bool, tag = "5")]
+    pub unsafe_allow_recent_cleanup: bool,
 }
 impl ::prost::Name for DoMaintenanceRequest {
     const NAME: &'static str = "DoMaintenanceRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.DoMaintenanceRequest".into()
+        "rerun.cloud.v1alpha1.DoMaintenanceRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.DoMaintenanceRequest".into()
+        "/rerun.cloud.v1alpha1.DoMaintenanceRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DoMaintenanceResponse {
+    #[prost(string, tag = "1")]
+    pub report: ::prost::alloc::string::String,
+}
+impl ::prost::Name for DoMaintenanceResponse {
+    const NAME: &'static str = "DoMaintenanceResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DoMaintenanceResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DoMaintenanceResponse".into()
+    }
+}
+/// A task is a unit of work that can be submitted to the system
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Task {
+    /// Unique identifier for the task
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
+    /// Type of the task
+    #[prost(string, tag = "2")]
+    pub task_type: ::prost::alloc::string::String,
+    /// Task-type dependant data necessary to de-serialize the task
+    #[prost(bytes = "bytes", tag = "3")]
+    pub task_data: ::prost::bytes::Bytes,
+}
+impl ::prost::Name for Task {
+    const NAME: &'static str = "Task";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.Task".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.Task".into()
+    }
+}
+/// `SubmitTasksRequest` is the request message for submitting tasks
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SubmitTasksRequest {
+    #[prost(message, repeated, tag = "1")]
+    pub tasks: ::prost::alloc::vec::Vec<Task>,
+}
+impl ::prost::Name for SubmitTasksRequest {
+    const NAME: &'static str = "SubmitTasksRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SubmitTasksRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SubmitTasksRequest".into()
+    }
+}
+/// `SubmitTaskResponse` contains, for each submitted task
+/// its submission outcome, encoded as a `RecordBatch`
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SubmitTasksResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for SubmitTasksResponse {
+    const NAME: &'static str = "SubmitTasksResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SubmitTasksResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SubmitTasksResponse".into()
+    }
+}
+/// `QueryTasksRequest` is the request message for querying tasks status
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryTasksRequest {
+    /// Empty queries for all tasks if the server allows it.
+    #[prost(message, repeated, tag = "1")]
+    pub ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::TaskId>,
+}
+impl ::prost::Name for QueryTasksRequest {
+    const NAME: &'static str = "QueryTasksRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.QueryTasksRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.QueryTasksRequest".into()
+    }
+}
+/// `QueryTasksResponse` is the response message for querying tasks status
+/// encoded as a record batch
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryTasksResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for QueryTasksResponse {
+    const NAME: &'static str = "QueryTasksResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.QueryTasksResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.QueryTasksResponse".into()
+    }
+}
+/// `QueryTasksOnCompletionRequest` is the request message for querying tasks status.
+/// This is close-to-a-copy of `QueryTasksRequest`, with the addition of a timeout.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryTasksOnCompletionRequest {
+    /// Empty queries for all tasks if the server allows it.
+    #[prost(message, repeated, tag = "1")]
+    pub ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::TaskId>,
+    /// Time limit for the server to wait for task completion.
+    /// The actual maximum time may be arbitrarily capped by the server.
+    #[prost(message, optional, tag = "2")]
+    pub timeout: ::core::option::Option<::prost_types::Duration>,
+}
+impl ::prost::Name for QueryTasksOnCompletionRequest {
+    const NAME: &'static str = "QueryTasksOnCompletionRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.QueryTasksOnCompletionRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.QueryTasksOnCompletionRequest".into()
+    }
+}
+/// `QueryTaskOnCompletionResponse` is the response message for querying tasks status
+/// encoded as a record batch. This is a copy of `QueryTasksResponse`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryTasksOnCompletionResponse {
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for QueryTasksOnCompletionResponse {
+    const NAME: &'static str = "QueryTasksOnCompletionResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.QueryTasksOnCompletionResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.QueryTasksOnCompletionResponse".into()
+    }
+}
+/// `FetchTaskOutputRequest` is the request message for fetching task output
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchTaskOutputRequest {
+    /// Unique identifier for the task
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
+}
+impl ::prost::Name for FetchTaskOutputRequest {
+    const NAME: &'static str = "FetchTaskOutputRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.FetchTaskOutputRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.FetchTaskOutputRequest".into()
+    }
+}
+/// / `FetchTaskOutputResponse` is the response message for fetching task output
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchTaskOutputResponse {
+    /// The output of the task, encoded as a record batch
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for FetchTaskOutputResponse {
+    const NAME: &'static str = "FetchTaskOutputResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.FetchTaskOutputResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.FetchTaskOutputResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FindEntriesRequest {
+    #[prost(message, optional, tag = "1")]
+    pub filter: ::core::option::Option<EntryFilter>,
+}
+impl ::prost::Name for FindEntriesRequest {
+    const NAME: &'static str = "FindEntriesRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.FindEntriesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.FindEntriesRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FindEntriesResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub entries: ::prost::alloc::vec::Vec<EntryDetails>,
+}
+impl ::prost::Name for FindEntriesResponse {
+    const NAME: &'static str = "FindEntriesResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.FindEntriesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.FindEntriesResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DeleteEntryRequest {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for DeleteEntryRequest {
+    const NAME: &'static str = "DeleteEntryRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DeleteEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DeleteEntryRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DeleteEntryResponse {}
+impl ::prost::Name for DeleteEntryResponse {
+    const NAME: &'static str = "DeleteEntryResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DeleteEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DeleteEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateEntryRequest {
+    /// The entry to modify.
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The new values for updatable fields.
+    #[prost(message, optional, tag = "2")]
+    pub entry_details_update: ::core::option::Option<EntryDetailsUpdate>,
+}
+impl ::prost::Name for UpdateEntryRequest {
+    const NAME: &'static str = "UpdateEntryRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UpdateEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UpdateEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateEntryResponse {
+    /// The updated entry details
+    #[prost(message, optional, tag = "1")]
+    pub entry_details: ::core::option::Option<EntryDetails>,
+}
+impl ::prost::Name for UpdateEntryResponse {
+    const NAME: &'static str = "UpdateEntryResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UpdateEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UpdateEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateDatasetEntryRequest {
+    /// Name of the dataset entry to create.
+    ///
+    /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+    /// with the same name already exists, the request will fail.
+    #[prost(string, optional, tag = "1")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
+    /// If specified, create the entry using this specific ID. Use at your own risk.
+    #[prost(message, optional, tag = "2")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for CreateDatasetEntryRequest {
+    const NAME: &'static str = "CreateDatasetEntryRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.CreateDatasetEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.CreateDatasetEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateDatasetEntryResponse {
+    #[prost(message, optional, tag = "1")]
+    pub dataset: ::core::option::Option<DatasetEntry>,
+}
+impl ::prost::Name for CreateDatasetEntryResponse {
+    const NAME: &'static str = "CreateDatasetEntryResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.CreateDatasetEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.CreateDatasetEntryResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ReadDatasetEntryRequest {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for ReadDatasetEntryRequest {
+    const NAME: &'static str = "ReadDatasetEntryRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ReadDatasetEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ReadDatasetEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReadDatasetEntryResponse {
+    #[prost(message, optional, tag = "1")]
+    pub dataset: ::core::option::Option<DatasetEntry>,
+}
+impl ::prost::Name for ReadDatasetEntryResponse {
+    const NAME: &'static str = "ReadDatasetEntryResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ReadDatasetEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ReadDatasetEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateDatasetEntryRequest {
+    /// The dataset to modify.
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The new values.
+    #[prost(message, optional, tag = "2")]
+    pub dataset_details: ::core::option::Option<DatasetDetails>,
+}
+impl ::prost::Name for UpdateDatasetEntryRequest {
+    const NAME: &'static str = "UpdateDatasetEntryRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UpdateDatasetEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UpdateDatasetEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UpdateDatasetEntryResponse {
+    /// The updated dataset entry
+    #[prost(message, optional, tag = "1")]
+    pub dataset: ::core::option::Option<DatasetEntry>,
+}
+impl ::prost::Name for UpdateDatasetEntryResponse {
+    const NAME: &'static str = "UpdateDatasetEntryResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UpdateDatasetEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UpdateDatasetEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterTableRequest {
+    /// Name of the table entry to create.
+    ///
+    /// The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+    /// with the same name already exists, the request will fail.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// Information about the table to register.
+    ///
+    /// This must be encoded message of one one of the following supported types:
+    /// - LanceTable
+    #[prost(message, optional, tag = "2")]
+    pub provider_details: ::core::option::Option<::prost_types::Any>,
+}
+impl ::prost::Name for RegisterTableRequest {
+    const NAME: &'static str = "RegisterTableRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.RegisterTableRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.RegisterTableRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterTableResponse {
+    /// Details about the table that was created and registered.
+    #[prost(message, optional, tag = "1")]
+    pub table_entry: ::core::option::Option<TableEntry>,
+}
+impl ::prost::Name for RegisterTableResponse {
+    const NAME: &'static str = "RegisterTableResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.RegisterTableResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.RegisterTableResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ReadTableEntryRequest {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for ReadTableEntryRequest {
+    const NAME: &'static str = "ReadTableEntryRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ReadTableEntryRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ReadTableEntryRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReadTableEntryResponse {
+    #[prost(message, optional, tag = "1")]
+    pub table: ::core::option::Option<TableEntry>,
+}
+impl ::prost::Name for ReadTableEntryResponse {
+    const NAME: &'static str = "ReadTableEntryResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ReadTableEntryResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ReadTableEntryResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EntryFilter {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    #[prost(string, optional, tag = "2")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(enumeration = "EntryKind", optional, tag = "3")]
+    pub entry_kind: ::core::option::Option<i32>,
+}
+impl ::prost::Name for EntryFilter {
+    const NAME: &'static str = "EntryFilter";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryFilter".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryFilter".into()
+    }
+}
+/// Minimal info about an Entry for high-level catalog summary
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EntryDetails {
+    /// The EntryId is immutable
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The name of this entry.
+    #[prost(string, optional, tag = "2")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
+    /// The kind of entry
+    #[prost(enumeration = "EntryKind", tag = "3")]
+    pub entry_kind: i32,
+    #[prost(message, optional, tag = "4")]
+    pub created_at: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(message, optional, tag = "5")]
+    pub updated_at: ::core::option::Option<::prost_types::Timestamp>,
+}
+impl ::prost::Name for EntryDetails {
+    const NAME: &'static str = "EntryDetails";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryDetails".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryDetails".into()
+    }
+}
+/// Updatable fields of an Entry
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EntryDetailsUpdate {
+    /// The name of this entry.
+    #[prost(string, optional, tag = "2")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for EntryDetailsUpdate {
+    const NAME: &'static str = "EntryDetailsUpdate";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryDetailsUpdate".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryDetailsUpdate".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatasetDetails {
+    /// The blueprint dataset associated with this dataset (if any).
+    #[prost(message, optional, tag = "3")]
+    pub blueprint_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The partition of the blueprint dataset corresponding to the default blueprint (if any).
+    #[prost(message, optional, tag = "4")]
+    pub default_blueprint: ::core::option::Option<super::super::common::v1alpha1::PartitionId>,
+}
+impl ::prost::Name for DatasetDetails {
+    const NAME: &'static str = "DatasetDetails";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DatasetDetails".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DatasetDetails".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatasetEntry {
+    #[prost(message, optional, tag = "1")]
+    pub details: ::core::option::Option<EntryDetails>,
+    /// Dataset-specific information, may be update with `UpdateDatasetEntry`
+    #[prost(message, optional, tag = "4")]
+    pub dataset_details: ::core::option::Option<DatasetDetails>,
+    /// Read-only
+    #[prost(message, optional, tag = "2")]
+    pub dataset_handle: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
+}
+impl ::prost::Name for DatasetEntry {
+    const NAME: &'static str = "DatasetEntry";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DatasetEntry".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DatasetEntry".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TableEntry {
+    #[prost(message, optional, tag = "1")]
+    pub details: ::core::option::Option<EntryDetails>,
+    /// Details specific to the table-provider
+    #[prost(message, optional, tag = "3")]
+    pub provider_details: ::core::option::Option<::prost_types::Any>,
+}
+impl ::prost::Name for TableEntry {
+    const NAME: &'static str = "TableEntry";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.TableEntry".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.TableEntry".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct SystemTable {
+    #[prost(enumeration = "SystemTableKind", tag = "1")]
+    pub kind: i32,
+}
+impl ::prost::Name for SystemTable {
+    const NAME: &'static str = "SystemTable";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SystemTable".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SystemTable".into()
+    }
+}
+/// A foreign table stored as a Lance table.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LanceTable {
+    /// The URL of the Lance table.
+    #[prost(string, tag = "1")]
+    pub table_url: ::prost::alloc::string::String,
+}
+impl ::prost::Name for LanceTable {
+    const NAME: &'static str = "LanceTable";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.LanceTable".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.LanceTable".into()
+    }
+}
+/// Error codes for application level errors
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ErrorCode {
+    /// unused
+    Unspecified = 0,
+    /// object store access error
+    ObjectStoreError = 1,
+    /// metadata database access error
+    MetadataDbError = 2,
+    /// Encoding / decoding error
+    CodecError = 3,
+}
+impl ErrorCode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "ERROR_CODE_UNSPECIFIED",
+            Self::ObjectStoreError => "ERROR_CODE_OBJECT_STORE_ERROR",
+            Self::MetadataDbError => "ERROR_CODE_METADATA_DB_ERROR",
+            Self::CodecError => "ERROR_CODE_CODEC_ERROR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "ERROR_CODE_UNSPECIFIED" => Some(Self::Unspecified),
+            "ERROR_CODE_OBJECT_STORE_ERROR" => Some(Self::ObjectStoreError),
+            "ERROR_CODE_METADATA_DB_ERROR" => Some(Self::MetadataDbError),
+            "ERROR_CODE_CODEC_ERROR" => Some(Self::CodecError),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum DataSourceKind {
+    Unspecified = 0,
+    Rrd = 1,
+}
+impl DataSourceKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "DATA_SOURCE_KIND_UNSPECIFIED",
+            Self::Rrd => "DATA_SOURCE_KIND_RRD",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "DATA_SOURCE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "DATA_SOURCE_KIND_RRD" => Some(Self::Rrd),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum VectorDistanceMetric {
+    Unspecified = 0,
+    L2 = 1,
+    Cosine = 2,
+    Dot = 3,
+    Hamming = 4,
+}
+impl VectorDistanceMetric {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "VECTOR_DISTANCE_METRIC_UNSPECIFIED",
+            Self::L2 => "VECTOR_DISTANCE_METRIC_L2",
+            Self::Cosine => "VECTOR_DISTANCE_METRIC_COSINE",
+            Self::Dot => "VECTOR_DISTANCE_METRIC_DOT",
+            Self::Hamming => "VECTOR_DISTANCE_METRIC_HAMMING",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "VECTOR_DISTANCE_METRIC_UNSPECIFIED" => Some(Self::Unspecified),
+            "VECTOR_DISTANCE_METRIC_L2" => Some(Self::L2),
+            "VECTOR_DISTANCE_METRIC_COSINE" => Some(Self::Cosine),
+            "VECTOR_DISTANCE_METRIC_DOT" => Some(Self::Dot),
+            "VECTOR_DISTANCE_METRIC_HAMMING" => Some(Self::Hamming),
+            _ => None,
+        }
+    }
+}
+/// What type of entry. This has strong implication on which APIs are available for this entry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum EntryKind {
+    /// Always reserve unspecified as default value
+    Unspecified = 0,
+    /// Order as TYPE, TYPE_VIEW so things stay consistent as we introduce new types.
+    Dataset = 1,
+    DatasetView = 2,
+    Table = 3,
+    TableView = 4,
+    BlueprintDataset = 5,
+}
+impl EntryKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "ENTRY_KIND_UNSPECIFIED",
+            Self::Dataset => "ENTRY_KIND_DATASET",
+            Self::DatasetView => "ENTRY_KIND_DATASET_VIEW",
+            Self::Table => "ENTRY_KIND_TABLE",
+            Self::TableView => "ENTRY_KIND_TABLE_VIEW",
+            Self::BlueprintDataset => "ENTRY_KIND_BLUEPRINT_DATASET",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "ENTRY_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "ENTRY_KIND_DATASET" => Some(Self::Dataset),
+            "ENTRY_KIND_DATASET_VIEW" => Some(Self::DatasetView),
+            "ENTRY_KIND_TABLE" => Some(Self::Table),
+            "ENTRY_KIND_TABLE_VIEW" => Some(Self::TableView),
+            "ENTRY_KIND_BLUEPRINT_DATASET" => Some(Self::BlueprintDataset),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum SystemTableKind {
+    /// Always reserve unspecified as default value
+    Unspecified = 0,
+    /// Not used yet
+    Namespaces = 1,
+    /// All of the entries in the associated namespace
+    Entries = 2,
+}
+impl SystemTableKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "SYSTEM_TABLE_KIND_UNSPECIFIED",
+            Self::Namespaces => "SYSTEM_TABLE_KIND_NAMESPACES",
+            Self::Entries => "SYSTEM_TABLE_KIND_ENTRIES",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "SYSTEM_TABLE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "SYSTEM_TABLE_KIND_NAMESPACES" => Some(Self::Namespaces),
+            "SYSTEM_TABLE_KIND_ENTRIES" => Some(Self::Entries),
+            _ => None,
+        }
     }
 }
 /// Generated client implementations.
-pub mod frontend_service_client {
+pub mod rerun_cloud_service_client {
     #![allow(
         unused_variables,
         dead_code,
@@ -401,12 +1674,12 @@ pub mod frontend_service_client {
     )]
     use tonic::codegen::http::Uri;
     use tonic::codegen::*;
-    /// Redap's public API.
+    /// The Rerun Cloud public API.
     #[derive(Debug, Clone)]
-    pub struct FrontendServiceClient<T> {
+    pub struct RerunCloudServiceClient<T> {
         inner: tonic::client::Grpc<T>,
     }
-    impl<T> FrontendServiceClient<T>
+    impl<T> RerunCloudServiceClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
@@ -424,7 +1697,7 @@ pub mod frontend_service_client {
         pub fn with_interceptor<F>(
             inner: T,
             interceptor: F,
-        ) -> FrontendServiceClient<InterceptedService<T, F>>
+        ) -> RerunCloudServiceClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
@@ -437,7 +1710,7 @@ pub mod frontend_service_client {
             <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
-            FrontendServiceClient::new(InterceptedService::new(inner, interceptor))
+            RerunCloudServiceClient::new(InterceptedService::new(inner, interceptor))
         }
         /// Compress requests with the given encoding.
         ///
@@ -479,166 +1752,144 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/Version",
+                "/rerun.cloud.v1alpha1.RerunCloudService/Version",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "Version",
             ));
             self.inner.unary(req, path, codec).await
         }
         pub async fn find_entries(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::catalog::v1alpha1::FindEntriesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::FindEntriesResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::FindEntriesRequest>,
+        ) -> std::result::Result<tonic::Response<super::FindEntriesResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/FindEntries",
+                "/rerun.cloud.v1alpha1.RerunCloudService/FindEntries",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "FindEntries",
             ));
             self.inner.unary(req, path, codec).await
         }
         pub async fn delete_entry(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::catalog::v1alpha1::DeleteEntryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::DeleteEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::DeleteEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::DeleteEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/DeleteEntry",
+                "/rerun.cloud.v1alpha1.RerunCloudService/DeleteEntry",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "DeleteEntry",
             ));
             self.inner.unary(req, path, codec).await
         }
         pub async fn update_entry(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::catalog::v1alpha1::UpdateEntryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::UpdateEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::UpdateEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/UpdateEntry",
+                "/rerun.cloud.v1alpha1.RerunCloudService/UpdateEntry",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "UpdateEntry",
             ));
             self.inner.unary(req, path, codec).await
         }
         pub async fn create_dataset_entry(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::catalog::v1alpha1::CreateDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::CreateDatasetEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::CreateDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateDatasetEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/CreateDatasetEntry",
+                "/rerun.cloud.v1alpha1.RerunCloudService/CreateDatasetEntry",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "CreateDatasetEntry",
             ));
             self.inner.unary(req, path, codec).await
         }
         pub async fn read_dataset_entry(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::catalog::v1alpha1::ReadDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::ReadDatasetEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::ReadDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReadDatasetEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/ReadDatasetEntry",
+                "/rerun.cloud.v1alpha1.RerunCloudService/ReadDatasetEntry",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "ReadDatasetEntry",
             ));
             self.inner.unary(req, path, codec).await
         }
         pub async fn update_dataset_entry(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::catalog::v1alpha1::UpdateDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::UpdateDatasetEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::UpdateDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateDatasetEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/UpdateDatasetEntry",
+                "/rerun.cloud.v1alpha1.RerunCloudService/UpdateDatasetEntry",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "UpdateDatasetEntry",
             ));
             self.inner.unary(req, path, codec).await
         }
         pub async fn read_table_entry(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::catalog::v1alpha1::ReadTableEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::ReadTableEntryResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::ReadTableEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReadTableEntryResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/ReadTableEntry",
+                "/rerun.cloud.v1alpha1.RerunCloudService/ReadTableEntry",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "ReadTableEntry",
             ));
             self.inner.unary(req, path, codec).await
@@ -647,22 +1898,18 @@ pub mod frontend_service_client {
         pub async fn register_with_dataset(
             &mut self,
             request: impl tonic::IntoRequest<super::RegisterWithDatasetRequest>,
-        ) -> std::result::Result<
-            tonic::Response<
-                super::super::super::manifest_registry::v1alpha1::RegisterWithDatasetResponse,
-            >,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::RegisterWithDatasetResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/RegisterWithDataset",
+                "/rerun.cloud.v1alpha1.RerunCloudService/RegisterWithDataset",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "RegisterWithDataset",
             ));
             self.inner.unary(req, path, codec).await
@@ -674,23 +1921,19 @@ pub mod frontend_service_client {
         /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
         pub async fn write_chunks(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<
-                Message = super::super::super::manifest_registry::v1alpha1::WriteChunksRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::manifest_registry::v1alpha1::WriteChunksResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoStreamingRequest<Message = super::WriteChunksRequest>,
+        ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/WriteChunks",
+                "/rerun.cloud.v1alpha1.RerunCloudService/WriteChunks",
             );
             let mut req = request.into_streaming_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "WriteChunks",
             ));
             self.inner.client_streaming(req, path, codec).await
@@ -703,9 +1946,7 @@ pub mod frontend_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetPartitionTableSchemaRequest>,
         ) -> std::result::Result<
-            tonic::Response<
-                super::super::super::manifest_registry::v1alpha1::GetPartitionTableSchemaResponse,
-            >,
+            tonic::Response<super::GetPartitionTableSchemaResponse>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -713,11 +1954,11 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/GetPartitionTableSchema",
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetPartitionTableSchema",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "GetPartitionTableSchema",
             ));
             self.inner.unary(req, path, codec).await
@@ -729,11 +1970,7 @@ pub mod frontend_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ScanPartitionTableRequest>,
         ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<
-                    super::super::super::manifest_registry::v1alpha1::ScanPartitionTableResponse,
-                >,
-            >,
+            tonic::Response<tonic::codec::Streaming<super::ScanPartitionTableResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -741,11 +1978,11 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/ScanPartitionTable",
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanPartitionTable",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "ScanPartitionTable",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -757,22 +1994,18 @@ pub mod frontend_service_client {
         pub async fn get_dataset_schema(
             &mut self,
             request: impl tonic::IntoRequest<super::GetDatasetSchemaRequest>,
-        ) -> std::result::Result<
-            tonic::Response<
-                super::super::super::manifest_registry::v1alpha1::GetDatasetSchemaResponse,
-            >,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::GetDatasetSchemaResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/GetDatasetSchema",
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetDatasetSchema",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "GetDatasetSchema",
             ));
             self.inner.unary(req, path, codec).await
@@ -781,20 +2014,18 @@ pub mod frontend_service_client {
         pub async fn create_index(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateIndexRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::manifest_registry::v1alpha1::CreateIndexResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/CreateIndex",
+                "/rerun.cloud.v1alpha1.RerunCloudService/CreateIndex",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "CreateIndex",
             ));
             self.inner.unary(req, path, codec).await
@@ -803,20 +2034,17 @@ pub mod frontend_service_client {
         pub async fn re_index(
             &mut self,
             request: impl tonic::IntoRequest<super::ReIndexRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::manifest_registry::v1alpha1::ReIndexResponse>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/ReIndex",
+                "/rerun.cloud.v1alpha1.RerunCloudService/ReIndex",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "ReIndex",
             ));
             self.inner.unary(req, path, codec).await
@@ -826,11 +2054,7 @@ pub mod frontend_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::SearchDatasetRequest>,
         ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<
-                    super::super::super::manifest_registry::v1alpha1::SearchDatasetResponse,
-                >,
-            >,
+            tonic::Response<tonic::codec::Streaming<super::SearchDatasetResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -838,11 +2062,11 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/SearchDataset",
+                "/rerun.cloud.v1alpha1.RerunCloudService/SearchDataset",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "SearchDataset",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -861,11 +2085,7 @@ pub mod frontend_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::QueryDatasetRequest>,
         ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<
-                    super::super::super::manifest_registry::v1alpha1::QueryDatasetResponse,
-                >,
-            >,
+            tonic::Response<tonic::codec::Streaming<super::QueryDatasetResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -873,11 +2093,11 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/QueryDataset",
+                "/rerun.cloud.v1alpha1.RerunCloudService/QueryDataset",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "QueryDataset",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -894,11 +2114,7 @@ pub mod frontend_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetChunksRequest>,
         ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<
-                    super::super::super::manifest_registry::v1alpha1::GetChunksResponse,
-                >,
-            >,
+            tonic::Response<tonic::codec::Streaming<super::GetChunksResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -906,11 +2122,11 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/GetChunks",
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetChunks",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "GetChunks",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -918,23 +2134,19 @@ pub mod frontend_service_client {
         /// Register a foreign table as a new table entry in the catalog.
         pub async fn register_table(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::catalog::v1alpha1::RegisterTableRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::RegisterTableResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::RegisterTableRequest>,
+        ) -> std::result::Result<tonic::Response<super::RegisterTableResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/RegisterTable",
+                "/rerun.cloud.v1alpha1.RerunCloudService/RegisterTable",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "RegisterTable",
             ));
             self.inner.unary(req, path, codec).await
@@ -949,11 +2161,11 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/GetTableSchema",
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetTableSchema",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "GetTableSchema",
             ));
             self.inner.unary(req, path, codec).await
@@ -970,36 +2182,31 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/ScanTable",
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanTable",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "ScanTable",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// --- Tasks service ---
         /// Query the status of submitted tasks
         pub async fn query_tasks(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::redap_tasks::v1alpha1::QueryTasksRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::QueryTasksResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::QueryTasksRequest>,
+        ) -> std::result::Result<tonic::Response<super::QueryTasksResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/QueryTasks",
+                "/rerun.cloud.v1alpha1.RerunCloudService/QueryTasks",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "QueryTasks",
             ));
             self.inner.unary(req, path, codec).await
@@ -1007,23 +2214,19 @@ pub mod frontend_service_client {
         /// Fetch the output of a completed task
         pub async fn fetch_task_output(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::FetchTaskOutputResponse>,
-            tonic::Status,
-        > {
+            request: impl tonic::IntoRequest<super::FetchTaskOutputRequest>,
+        ) -> std::result::Result<tonic::Response<super::FetchTaskOutputResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/FetchTaskOutput",
+                "/rerun.cloud.v1alpha1.RerunCloudService/FetchTaskOutput",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "FetchTaskOutput",
             ));
             self.inner.unary(req, path, codec).await
@@ -1031,15 +2234,9 @@ pub mod frontend_service_client {
         /// Query the status of submitted tasks as soon as they are no longer pending
         pub async fn query_tasks_on_completion(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
-            >,
+            request: impl tonic::IntoRequest<super::QueryTasksOnCompletionRequest>,
         ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<
-                    super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionResponse,
-                >,
-            >,
+            tonic::Response<tonic::codec::Streaming<super::QueryTasksOnCompletionResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -1047,11 +2244,11 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/QueryTasksOnCompletion",
+                "/rerun.cloud.v1alpha1.RerunCloudService/QueryTasksOnCompletion",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "QueryTasksOnCompletion",
             ));
             self.inner.server_streaming(req, path, codec).await
@@ -1060,22 +2257,18 @@ pub mod frontend_service_client {
         pub async fn do_maintenance(
             &mut self,
             request: impl tonic::IntoRequest<super::DoMaintenanceRequest>,
-        ) -> std::result::Result<
-            tonic::Response<
-                super::super::super::manifest_registry::v1alpha1::DoMaintenanceResponse,
-            >,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/DoMaintenance",
+                "/rerun.cloud.v1alpha1.RerunCloudService/DoMaintenance",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.frontend.v1alpha1.FrontendService",
+                "rerun.cloud.v1alpha1.RerunCloudService",
                 "DoMaintenance",
             ));
             self.inner.unary(req, path, codec).await
@@ -1083,7 +2276,7 @@ pub mod frontend_service_client {
     }
 }
 /// Generated server implementations.
-pub mod frontend_service_server {
+pub mod rerun_cloud_service_server {
     #![allow(
         unused_variables,
         dead_code,
@@ -1092,78 +2285,46 @@ pub mod frontend_service_server {
         clippy::let_unit_value
     )]
     use tonic::codegen::*;
-    /// Generated trait containing gRPC methods that should be implemented for use with FrontendServiceServer.
+    /// Generated trait containing gRPC methods that should be implemented for use with RerunCloudServiceServer.
     #[async_trait]
-    pub trait FrontendService: std::marker::Send + std::marker::Sync + 'static {
+    pub trait RerunCloudService: std::marker::Send + std::marker::Sync + 'static {
         async fn version(
             &self,
             request: tonic::Request<super::VersionRequest>,
         ) -> std::result::Result<tonic::Response<super::VersionResponse>, tonic::Status>;
         async fn find_entries(
             &self,
-            request: tonic::Request<super::super::super::catalog::v1alpha1::FindEntriesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::FindEntriesResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::FindEntriesRequest>,
+        ) -> std::result::Result<tonic::Response<super::FindEntriesResponse>, tonic::Status>;
         async fn delete_entry(
             &self,
-            request: tonic::Request<super::super::super::catalog::v1alpha1::DeleteEntryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::DeleteEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::DeleteEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::DeleteEntryResponse>, tonic::Status>;
         async fn update_entry(
             &self,
-            request: tonic::Request<super::super::super::catalog::v1alpha1::UpdateEntryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::UpdateEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::UpdateEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateEntryResponse>, tonic::Status>;
         async fn create_dataset_entry(
             &self,
-            request: tonic::Request<
-                super::super::super::catalog::v1alpha1::CreateDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::CreateDatasetEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::CreateDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::CreateDatasetEntryResponse>, tonic::Status>;
         async fn read_dataset_entry(
             &self,
-            request: tonic::Request<
-                super::super::super::catalog::v1alpha1::ReadDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::ReadDatasetEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::ReadDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReadDatasetEntryResponse>, tonic::Status>;
         async fn update_dataset_entry(
             &self,
-            request: tonic::Request<
-                super::super::super::catalog::v1alpha1::UpdateDatasetEntryRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::UpdateDatasetEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::UpdateDatasetEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::UpdateDatasetEntryResponse>, tonic::Status>;
         async fn read_table_entry(
             &self,
-            request: tonic::Request<super::super::super::catalog::v1alpha1::ReadTableEntryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::ReadTableEntryResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::ReadTableEntryRequest>,
+        ) -> std::result::Result<tonic::Response<super::ReadTableEntryResponse>, tonic::Status>;
         /// Register new partitions with the Dataset
         async fn register_with_dataset(
             &self,
             request: tonic::Request<super::RegisterWithDatasetRequest>,
-        ) -> std::result::Result<
-            tonic::Response<
-                super::super::super::manifest_registry::v1alpha1::RegisterWithDatasetResponse,
-            >,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::RegisterWithDatasetResponse>, tonic::Status>;
         /// Write chunks to one or more partitions.
         ///
         /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
@@ -1171,15 +2332,8 @@ pub mod frontend_service_server {
         /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
         async fn write_chunks(
             &self,
-            request: tonic::Request<
-                tonic::Streaming<
-                    super::super::super::manifest_registry::v1alpha1::WriteChunksRequest,
-                >,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::manifest_registry::v1alpha1::WriteChunksResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
+        ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>;
         /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
         ///
         /// * To inspect the data of the partition table, use `ScanPartitionTable`.
@@ -1188,17 +2342,12 @@ pub mod frontend_service_server {
             &self,
             request: tonic::Request<super::GetPartitionTableSchemaRequest>,
         ) -> std::result::Result<
-            tonic::Response<
-                super::super::super::manifest_registry::v1alpha1::GetPartitionTableSchemaResponse,
-            >,
+            tonic::Response<super::GetPartitionTableSchemaResponse>,
             tonic::Status,
         >;
         /// Server streaming response type for the ScanPartitionTable method.
         type ScanPartitionTableStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<
-                    super::super::super::manifest_registry::v1alpha1::ScanPartitionTableResponse,
-                    tonic::Status,
-                >,
+                Item = std::result::Result<super::ScanPartitionTableResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         /// Inspect the contents of the partition table (i.e. the dataset manifest).
@@ -1215,34 +2364,20 @@ pub mod frontend_service_server {
         async fn get_dataset_schema(
             &self,
             request: tonic::Request<super::GetDatasetSchemaRequest>,
-        ) -> std::result::Result<
-            tonic::Response<
-                super::super::super::manifest_registry::v1alpha1::GetDatasetSchemaResponse,
-            >,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::GetDatasetSchemaResponse>, tonic::Status>;
         /// Creates a custom index for a specific column (vector search, full-text search, etc).
         async fn create_index(
             &self,
             request: tonic::Request<super::CreateIndexRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::manifest_registry::v1alpha1::CreateIndexResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>;
         /// Recreate an index with the same configuration but (potentially) new data.
         async fn re_index(
             &self,
             request: tonic::Request<super::ReIndexRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::manifest_registry::v1alpha1::ReIndexResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status>;
         /// Server streaming response type for the SearchDataset method.
         type SearchDatasetStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<
-                    super::super::super::manifest_registry::v1alpha1::SearchDatasetResponse,
-                    tonic::Status,
-                >,
+                Item = std::result::Result<super::SearchDatasetResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         /// Search a previously created index.
@@ -1252,10 +2387,7 @@ pub mod frontend_service_server {
         ) -> std::result::Result<tonic::Response<Self::SearchDatasetStream>, tonic::Status>;
         /// Server streaming response type for the QueryDataset method.
         type QueryDatasetStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<
-                    super::super::super::manifest_registry::v1alpha1::QueryDatasetResponse,
-                    tonic::Status,
-                >,
+                Item = std::result::Result<super::QueryDatasetResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs.
@@ -1274,10 +2406,7 @@ pub mod frontend_service_server {
         ) -> std::result::Result<tonic::Response<Self::QueryDatasetStream>, tonic::Status>;
         /// Server streaming response type for the GetChunks method.
         type GetChunksStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<
-                    super::super::super::manifest_registry::v1alpha1::GetChunksResponse,
-                    tonic::Status,
-                >,
+                Item = std::result::Result<super::GetChunksResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         /// Perform Rerun-native queries on a dataset, returning the underlying chunks.
@@ -1295,11 +2424,8 @@ pub mod frontend_service_server {
         /// Register a foreign table as a new table entry in the catalog.
         async fn register_table(
             &self,
-            request: tonic::Request<super::super::super::catalog::v1alpha1::RegisterTableRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::catalog::v1alpha1::RegisterTableResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::RegisterTableRequest>,
+        ) -> std::result::Result<tonic::Response<super::RegisterTableResponse>, tonic::Status>;
         async fn get_table_schema(
             &self,
             request: tonic::Request<super::GetTableSchemaRequest>,
@@ -1313,61 +2439,42 @@ pub mod frontend_service_server {
             &self,
             request: tonic::Request<super::ScanTableRequest>,
         ) -> std::result::Result<tonic::Response<Self::ScanTableStream>, tonic::Status>;
-        /// --- Tasks service ---
         /// Query the status of submitted tasks
         async fn query_tasks(
             &self,
-            request: tonic::Request<super::super::super::redap_tasks::v1alpha1::QueryTasksRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::QueryTasksResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::QueryTasksRequest>,
+        ) -> std::result::Result<tonic::Response<super::QueryTasksResponse>, tonic::Status>;
         /// Fetch the output of a completed task
         async fn fetch_task_output(
             &self,
-            request: tonic::Request<
-                super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::FetchTaskOutputResponse>,
-            tonic::Status,
-        >;
+            request: tonic::Request<super::FetchTaskOutputRequest>,
+        ) -> std::result::Result<tonic::Response<super::FetchTaskOutputResponse>, tonic::Status>;
         /// Server streaming response type for the QueryTasksOnCompletion method.
         type QueryTasksOnCompletionStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<
-                    super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionResponse,
-                    tonic::Status,
-                >,
+                Item = std::result::Result<super::QueryTasksOnCompletionResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         /// Query the status of submitted tasks as soon as they are no longer pending
         async fn query_tasks_on_completion(
             &self,
-            request: tonic::Request<
-                super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
-            >,
+            request: tonic::Request<super::QueryTasksOnCompletionRequest>,
         ) -> std::result::Result<tonic::Response<Self::QueryTasksOnCompletionStream>, tonic::Status>;
         /// Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
         async fn do_maintenance(
             &self,
             request: tonic::Request<super::DoMaintenanceRequest>,
-        ) -> std::result::Result<
-            tonic::Response<
-                super::super::super::manifest_registry::v1alpha1::DoMaintenanceResponse,
-            >,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>;
     }
-    /// Redap's public API.
+    /// The Rerun Cloud public API.
     #[derive(Debug)]
-    pub struct FrontendServiceServer<T> {
+    pub struct RerunCloudServiceServer<T> {
         inner: Arc<T>,
         accept_compression_encodings: EnabledCompressionEncodings,
         send_compression_encodings: EnabledCompressionEncodings,
         max_decoding_message_size: Option<usize>,
         max_encoding_message_size: Option<usize>,
     }
-    impl<T> FrontendServiceServer<T> {
+    impl<T> RerunCloudServiceServer<T> {
         pub fn new(inner: T) -> Self {
             Self::from_arc(Arc::new(inner))
         }
@@ -1415,9 +2522,9 @@ pub mod frontend_service_server {
             self
         }
     }
-    impl<T, B> tonic::codegen::Service<http::Request<B>> for FrontendServiceServer<T>
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for RerunCloudServiceServer<T>
     where
-        T: FrontendService,
+        T: RerunCloudService,
         B: Body + std::marker::Send + 'static,
         B::Error: Into<StdError> + std::marker::Send + 'static,
     {
@@ -1432,10 +2539,10 @@ pub mod frontend_service_server {
         }
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             match req.uri().path() {
-                "/rerun.frontend.v1alpha1.FrontendService/Version" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/Version" => {
                     #[allow(non_camel_case_types)]
-                    struct VersionSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService> tonic::server::UnaryService<super::VersionRequest> for VersionSvc<T> {
+                    struct VersionSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService> tonic::server::UnaryService<super::VersionRequest> for VersionSvc<T> {
                         type Response = super::VersionResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
@@ -1444,7 +2551,7 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::version(&inner, request).await
+                                <T as RerunCloudService>::version(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1471,25 +2578,22 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/FindEntries" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/FindEntries" => {
                     #[allow(non_camel_case_types)]
-                    struct FindEntriesSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::FindEntriesRequest,
-                        > for FindEntriesSvc<T>
+                    struct FindEntriesSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::FindEntriesRequest>
+                        for FindEntriesSvc<T>
                     {
-                        type Response = super::super::super::catalog::v1alpha1::FindEntriesResponse;
+                        type Response = super::FindEntriesResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::FindEntriesRequest,
-                            >,
+                            request: tonic::Request<super::FindEntriesRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::find_entries(&inner, request).await
+                                <T as RerunCloudService>::find_entries(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1516,25 +2620,22 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/DeleteEntry" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/DeleteEntry" => {
                     #[allow(non_camel_case_types)]
-                    struct DeleteEntrySvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::DeleteEntryRequest,
-                        > for DeleteEntrySvc<T>
+                    struct DeleteEntrySvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::DeleteEntryRequest>
+                        for DeleteEntrySvc<T>
                     {
-                        type Response = super::super::super::catalog::v1alpha1::DeleteEntryResponse;
+                        type Response = super::DeleteEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::DeleteEntryRequest,
-                            >,
+                            request: tonic::Request<super::DeleteEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::delete_entry(&inner, request).await
+                                <T as RerunCloudService>::delete_entry(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1561,25 +2662,22 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/UpdateEntry" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/UpdateEntry" => {
                     #[allow(non_camel_case_types)]
-                    struct UpdateEntrySvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::UpdateEntryRequest,
-                        > for UpdateEntrySvc<T>
+                    struct UpdateEntrySvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::UpdateEntryRequest>
+                        for UpdateEntrySvc<T>
                     {
-                        type Response = super::super::super::catalog::v1alpha1::UpdateEntryResponse;
+                        type Response = super::UpdateEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::UpdateEntryRequest,
-                            >,
+                            request: tonic::Request<super::UpdateEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::update_entry(&inner, request).await
+                                <T as RerunCloudService>::update_entry(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1606,26 +2704,23 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/CreateDatasetEntry" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/CreateDatasetEntry" => {
                     #[allow(non_camel_case_types)]
-                    struct CreateDatasetEntrySvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::CreateDatasetEntryRequest,
-                        > for CreateDatasetEntrySvc<T>
+                    struct CreateDatasetEntrySvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::CreateDatasetEntryRequest>
+                        for CreateDatasetEntrySvc<T>
                     {
-                        type Response =
-                            super::super::super::catalog::v1alpha1::CreateDatasetEntryResponse;
+                        type Response = super::CreateDatasetEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::CreateDatasetEntryRequest,
-                            >,
+                            request: tonic::Request<super::CreateDatasetEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::create_dataset_entry(&inner, request).await
+                                <T as RerunCloudService>::create_dataset_entry(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -1652,26 +2747,22 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/ReadDatasetEntry" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/ReadDatasetEntry" => {
                     #[allow(non_camel_case_types)]
-                    struct ReadDatasetEntrySvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::ReadDatasetEntryRequest,
-                        > for ReadDatasetEntrySvc<T>
+                    struct ReadDatasetEntrySvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::ReadDatasetEntryRequest>
+                        for ReadDatasetEntrySvc<T>
                     {
-                        type Response =
-                            super::super::super::catalog::v1alpha1::ReadDatasetEntryResponse;
+                        type Response = super::ReadDatasetEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::ReadDatasetEntryRequest,
-                            >,
+                            request: tonic::Request<super::ReadDatasetEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::read_dataset_entry(&inner, request).await
+                                <T as RerunCloudService>::read_dataset_entry(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1698,26 +2789,23 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/UpdateDatasetEntry" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/UpdateDatasetEntry" => {
                     #[allow(non_camel_case_types)]
-                    struct UpdateDatasetEntrySvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::UpdateDatasetEntryRequest,
-                        > for UpdateDatasetEntrySvc<T>
+                    struct UpdateDatasetEntrySvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::UpdateDatasetEntryRequest>
+                        for UpdateDatasetEntrySvc<T>
                     {
-                        type Response =
-                            super::super::super::catalog::v1alpha1::UpdateDatasetEntryResponse;
+                        type Response = super::UpdateDatasetEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::UpdateDatasetEntryRequest,
-                            >,
+                            request: tonic::Request<super::UpdateDatasetEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::update_dataset_entry(&inner, request).await
+                                <T as RerunCloudService>::update_dataset_entry(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -1744,26 +2832,22 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/ReadTableEntry" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/ReadTableEntry" => {
                     #[allow(non_camel_case_types)]
-                    struct ReadTableEntrySvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::ReadTableEntryRequest,
-                        > for ReadTableEntrySvc<T>
+                    struct ReadTableEntrySvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::ReadTableEntryRequest>
+                        for ReadTableEntrySvc<T>
                     {
-                        type Response =
-                            super::super::super::catalog::v1alpha1::ReadTableEntryResponse;
+                        type Response = super::ReadTableEntryResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::ReadTableEntryRequest,
-                            >,
+                            request: tonic::Request<super::ReadTableEntryRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::read_table_entry(&inner, request).await
+                                <T as RerunCloudService>::read_table_entry(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1790,14 +2874,14 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/RegisterWithDataset" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/RegisterWithDataset" => {
                     #[allow(non_camel_case_types)]
-                    struct RegisterWithDatasetSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
+                    struct RegisterWithDatasetSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
                         tonic::server::UnaryService<super::RegisterWithDatasetRequest>
                         for RegisterWithDatasetSvc<T>
                     {
-                        type Response = super::super::super::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
+                        type Response = super::RegisterWithDatasetResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
@@ -1805,7 +2889,8 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::register_with_dataset(&inner, request).await
+                                <T as RerunCloudService>::register_with_dataset(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -1832,28 +2917,22 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/WriteChunks" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/WriteChunks" => {
                     #[allow(non_camel_case_types)]
-                    struct WriteChunksSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::ClientStreamingService<
-                            super::super::super::manifest_registry::v1alpha1::WriteChunksRequest,
-                        > for WriteChunksSvc<T>
+                    struct WriteChunksSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ClientStreamingService<super::WriteChunksRequest>
+                        for WriteChunksSvc<T>
                     {
-                        type Response =
-                            super::super::super::manifest_registry::v1alpha1::WriteChunksResponse;
+                        type Response = super::WriteChunksResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                tonic::Streaming<
-                                    super::super::super::manifest_registry::v1alpha1::WriteChunksRequest,
-                                >,
-                            >,
+                            request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::write_chunks(&inner, request).await
+                                <T as RerunCloudService>::write_chunks(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1880,14 +2959,14 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/GetPartitionTableSchema" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetPartitionTableSchema" => {
                     #[allow(non_camel_case_types)]
-                    struct GetPartitionTableSchemaSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
+                    struct GetPartitionTableSchemaSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
                         tonic::server::UnaryService<super::GetPartitionTableSchemaRequest>
                         for GetPartitionTableSchemaSvc<T>
                     {
-                        type Response = super::super::super::manifest_registry::v1alpha1::GetPartitionTableSchemaResponse;
+                        type Response = super::GetPartitionTableSchemaResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
@@ -1895,8 +2974,10 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::get_partition_table_schema(&inner, request)
-                                    .await
+                                <T as RerunCloudService>::get_partition_table_schema(
+                                    &inner, request,
+                                )
+                                .await
                             };
                             Box::pin(fut)
                         }
@@ -1923,14 +3004,14 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/ScanPartitionTable" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanPartitionTable" => {
                     #[allow(non_camel_case_types)]
-                    struct ScanPartitionTableSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
+                    struct ScanPartitionTableSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
                         tonic::server::ServerStreamingService<super::ScanPartitionTableRequest>
                         for ScanPartitionTableSvc<T>
                     {
-                        type Response = super::super::super::manifest_registry::v1alpha1::ScanPartitionTableResponse;
+                        type Response = super::ScanPartitionTableResponse;
                         type ResponseStream = T::ScanPartitionTableStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -1940,7 +3021,8 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::scan_partition_table(&inner, request).await
+                                <T as RerunCloudService>::scan_partition_table(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -1967,14 +3049,14 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/GetDatasetSchema" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetDatasetSchema" => {
                     #[allow(non_camel_case_types)]
-                    struct GetDatasetSchemaSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
+                    struct GetDatasetSchemaSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
                         tonic::server::UnaryService<super::GetDatasetSchemaRequest>
                         for GetDatasetSchemaSvc<T>
                     {
-                        type Response = super::super::super::manifest_registry::v1alpha1::GetDatasetSchemaResponse;
+                        type Response = super::GetDatasetSchemaResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
@@ -1982,7 +3064,7 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::get_dataset_schema(&inner, request).await
+                                <T as RerunCloudService>::get_dataset_schema(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2009,14 +3091,14 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/CreateIndex" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/CreateIndex" => {
                     #[allow(non_camel_case_types)]
-                    struct CreateIndexSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService> tonic::server::UnaryService<super::CreateIndexRequest>
+                    struct CreateIndexSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::CreateIndexRequest>
                         for CreateIndexSvc<T>
                     {
-                        type Response =
-                            super::super::super::manifest_registry::v1alpha1::CreateIndexResponse;
+                        type Response = super::CreateIndexResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
@@ -2024,7 +3106,7 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::create_index(&inner, request).await
+                                <T as RerunCloudService>::create_index(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2051,12 +3133,11 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/ReIndex" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/ReIndex" => {
                     #[allow(non_camel_case_types)]
-                    struct ReIndexSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService> tonic::server::UnaryService<super::ReIndexRequest> for ReIndexSvc<T> {
-                        type Response =
-                            super::super::super::manifest_registry::v1alpha1::ReIndexResponse;
+                    struct ReIndexSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService> tonic::server::UnaryService<super::ReIndexRequest> for ReIndexSvc<T> {
+                        type Response = super::ReIndexResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
@@ -2064,7 +3145,7 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::re_index(&inner, request).await
+                                <T as RerunCloudService>::re_index(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2091,15 +3172,14 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/SearchDataset" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/SearchDataset" => {
                     #[allow(non_camel_case_types)]
-                    struct SearchDatasetSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
+                    struct SearchDatasetSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
                         tonic::server::ServerStreamingService<super::SearchDatasetRequest>
                         for SearchDatasetSvc<T>
                     {
-                        type Response =
-                            super::super::super::manifest_registry::v1alpha1::SearchDatasetResponse;
+                        type Response = super::SearchDatasetResponse;
                         type ResponseStream = T::SearchDatasetStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -2109,7 +3189,7 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::search_dataset(&inner, request).await
+                                <T as RerunCloudService>::search_dataset(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2136,15 +3216,14 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/QueryDataset" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/QueryDataset" => {
                     #[allow(non_camel_case_types)]
-                    struct QueryDatasetSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
+                    struct QueryDatasetSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
                         tonic::server::ServerStreamingService<super::QueryDatasetRequest>
                         for QueryDatasetSvc<T>
                     {
-                        type Response =
-                            super::super::super::manifest_registry::v1alpha1::QueryDatasetResponse;
+                        type Response = super::QueryDatasetResponse;
                         type ResponseStream = T::QueryDatasetStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -2154,7 +3233,7 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::query_dataset(&inner, request).await
+                                <T as RerunCloudService>::query_dataset(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2181,15 +3260,14 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/GetChunks" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetChunks" => {
                     #[allow(non_camel_case_types)]
-                    struct GetChunksSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
+                    struct GetChunksSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
                         tonic::server::ServerStreamingService<super::GetChunksRequest>
                         for GetChunksSvc<T>
                     {
-                        type Response =
-                            super::super::super::manifest_registry::v1alpha1::GetChunksResponse;
+                        type Response = super::GetChunksResponse;
                         type ResponseStream = T::GetChunksStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
@@ -2199,7 +3277,7 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::get_chunks(&inner, request).await
+                                <T as RerunCloudService>::get_chunks(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2226,26 +3304,22 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/RegisterTable" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/RegisterTable" => {
                     #[allow(non_camel_case_types)]
-                    struct RegisterTableSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::catalog::v1alpha1::RegisterTableRequest,
-                        > for RegisterTableSvc<T>
+                    struct RegisterTableSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::RegisterTableRequest>
+                        for RegisterTableSvc<T>
                     {
-                        type Response =
-                            super::super::super::catalog::v1alpha1::RegisterTableResponse;
+                        type Response = super::RegisterTableResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::catalog::v1alpha1::RegisterTableRequest,
-                            >,
+                            request: tonic::Request<super::RegisterTableRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::register_table(&inner, request).await
+                                <T as RerunCloudService>::register_table(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2272,10 +3346,10 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/GetTableSchema" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetTableSchema" => {
                     #[allow(non_camel_case_types)]
-                    struct GetTableSchemaSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
+                    struct GetTableSchemaSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
                         tonic::server::UnaryService<super::GetTableSchemaRequest>
                         for GetTableSchemaSvc<T>
                     {
@@ -2287,7 +3361,7 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::get_table_schema(&inner, request).await
+                                <T as RerunCloudService>::get_table_schema(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2314,10 +3388,10 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/ScanTable" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanTable" => {
                     #[allow(non_camel_case_types)]
-                    struct ScanTableSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
+                    struct ScanTableSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
                         tonic::server::ServerStreamingService<super::ScanTableRequest>
                         for ScanTableSvc<T>
                     {
@@ -2331,7 +3405,7 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::scan_table(&inner, request).await
+                                <T as RerunCloudService>::scan_table(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2358,26 +3432,21 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/QueryTasks" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/QueryTasks" => {
                     #[allow(non_camel_case_types)]
-                    struct QueryTasksSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::redap_tasks::v1alpha1::QueryTasksRequest,
-                        > for QueryTasksSvc<T>
+                    struct QueryTasksSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService> tonic::server::UnaryService<super::QueryTasksRequest>
+                        for QueryTasksSvc<T>
                     {
-                        type Response =
-                            super::super::super::redap_tasks::v1alpha1::QueryTasksResponse;
+                        type Response = super::QueryTasksResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::redap_tasks::v1alpha1::QueryTasksRequest,
-                            >,
+                            request: tonic::Request<super::QueryTasksRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::query_tasks(&inner, request).await
+                                <T as RerunCloudService>::query_tasks(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2404,26 +3473,22 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/FetchTaskOutput" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/FetchTaskOutput" => {
                     #[allow(non_camel_case_types)]
-                    struct FetchTaskOutputSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::UnaryService<
-                            super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
-                        > for FetchTaskOutputSvc<T>
+                    struct FetchTaskOutputSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::FetchTaskOutputRequest>
+                        for FetchTaskOutputSvc<T>
                     {
-                        type Response =
-                            super::super::super::redap_tasks::v1alpha1::FetchTaskOutputResponse;
+                        type Response = super::FetchTaskOutputResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
-                            >,
+                            request: tonic::Request<super::FetchTaskOutputRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::fetch_task_output(&inner, request).await
+                                <T as RerunCloudService>::fetch_task_output(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2450,32 +3515,24 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/QueryTasksOnCompletion" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/QueryTasksOnCompletion" => {
                     #[allow(non_camel_case_types)]
-                    struct QueryTasksOnCompletionSvc<T: FrontendService>(pub Arc<T>);
-                    impl<
-                        T: FrontendService,
-                    > tonic::server::ServerStreamingService<
-                        super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
-                    > for QueryTasksOnCompletionSvc<T> {
-                        type Response = super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionResponse;
+                    struct QueryTasksOnCompletionSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::QueryTasksOnCompletionRequest>
+                        for QueryTasksOnCompletionSvc<T>
+                    {
+                        type Response = super::QueryTasksOnCompletionResponse;
                         type ResponseStream = T::QueryTasksOnCompletionStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
-                            >,
+                            request: tonic::Request<super::QueryTasksOnCompletionRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::query_tasks_on_completion(
-                                        &inner,
-                                        request,
-                                    )
+                                <T as RerunCloudService>::query_tasks_on_completion(&inner, request)
                                     .await
                             };
                             Box::pin(fut)
@@ -2503,15 +3560,14 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/DoMaintenance" => {
+                "/rerun.cloud.v1alpha1.RerunCloudService/DoMaintenance" => {
                     #[allow(non_camel_case_types)]
-                    struct DoMaintenanceSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
+                    struct DoMaintenanceSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
                         tonic::server::UnaryService<super::DoMaintenanceRequest>
                         for DoMaintenanceSvc<T>
                     {
-                        type Response =
-                            super::super::super::manifest_registry::v1alpha1::DoMaintenanceResponse;
+                        type Response = super::DoMaintenanceResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
@@ -2519,7 +3575,7 @@ pub mod frontend_service_server {
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::do_maintenance(&inner, request).await
+                                <T as RerunCloudService>::do_maintenance(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2562,7 +3618,7 @@ pub mod frontend_service_server {
             }
         }
     }
-    impl<T> Clone for FrontendServiceServer<T> {
+    impl<T> Clone for RerunCloudServiceServer<T> {
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self {
@@ -2575,8 +3631,8 @@ pub mod frontend_service_server {
         }
     }
     /// Generated gRPC service name
-    pub const SERVICE_NAME: &str = "rerun.frontend.v1alpha1.FrontendService";
-    impl<T> tonic::server::NamedService for FrontendServiceServer<T> {
+    pub const SERVICE_NAME: &str = "rerun.cloud.v1alpha1.RerunCloudService";
+    impl<T> tonic::server::NamedService for RerunCloudServiceServer<T> {
         const NAME: &'static str = SERVICE_NAME;
     }
 }

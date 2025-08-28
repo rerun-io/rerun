@@ -10,8 +10,23 @@ from pathlib import Path
 
 
 def main() -> None:
-    command = ["cargo", "run", "--package", "rerun-cli", "--all-features", "--", "man"]
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Check if CLI documentation is up-to-date.")
+    parser.add_argument(
+        "--rerun-exe",
+        type=str,
+        default=None,
+        help="Path to rerun executable to use instead of building with cargo.",
+    )
+    args = parser.parse_args()
+
     expected_file: Path = Path("docs/content/reference/cli.md")
+
+    if args.rerun_exe:
+        command = [args.rerun_exe, "man"]
+    else:
+        command = ["cargo", "run", "--package", "rerun-cli", "--all-features", "--", "man"]
 
     # Generate current output
     try:

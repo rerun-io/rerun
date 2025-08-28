@@ -5,7 +5,7 @@ use pyo3::{
     pyclass, pymethods,
     types::PyAnyMethods as _,
 };
-use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind};
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::{
     ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyRerunHtmlTable, PyTableEntry, to_py_err,
