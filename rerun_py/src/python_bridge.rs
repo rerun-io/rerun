@@ -1348,6 +1348,8 @@ impl PyBinarySinkStorage {
     /// Read the bytes from the binary sink.
     ///
     /// If `flush` is `True`, the sink will be flushed before reading.
+    /// If all the data was not successfully flushed within the given timeout,
+    /// an exception will be raised.
     ///
     /// Parameters
     /// ----------
@@ -1384,6 +1386,9 @@ impl PyBinarySinkStorage {
     /// Flushes the binary sink and ensures that all logged messages have been encoded into the stream.
     ///
     /// This will block until the flush is complete, or the timeout is reached, or an error occurs.
+    ///
+    /// If all the data was not successfully flushed within the given timeout,
+    /// an exception will be raised.
     ///
     /// Parameters
     /// ----------
