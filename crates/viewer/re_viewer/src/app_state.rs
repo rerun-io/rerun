@@ -627,7 +627,7 @@ impl AppState {
                             }
 
                             DisplayMode::RedapEntry(entry) => {
-                                redap_servers.entry_ui(&ctx, ui, *entry);
+                                redap_servers.entry_ui(&ctx, ui, entry.entry_id);
                             }
 
                             DisplayMode::RedapServer(origin) => {

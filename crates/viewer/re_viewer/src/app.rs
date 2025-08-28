@@ -745,10 +745,10 @@ impl App {
 
             SystemCommand::SetSelection(item) => {
                 match &item {
-                    Item::RedapEntry(entry_id) => {
+                    Item::RedapEntry(entry_uri) => {
                         self.state
                             .navigation
-                            .replace(DisplayMode::RedapEntry(*entry_id));
+                            .replace(DisplayMode::RedapEntry(entry_uri.clone()));
                     }
 
                     Item::RedapServer(origin) => {
