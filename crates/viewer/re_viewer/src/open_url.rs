@@ -278,7 +278,7 @@ impl ViewerImportUrl {
     /// Whenever possible you should provide a web viewer base URL so that the URL can be opened
     /// in the browser (this does *not* exclude native, web viewer URLs can still be opened there as well!)
     ///
-    /// This is roughly the inverse of [`Self::from_str`].
+    /// This is roughly the inverse of `Self::from_str`.
     #[allow(unused)] // TODO(rerun/dataplatform#1336): Only used on the web. About to change!
     pub fn sharable_url(&self, web_viewer_base_url: Option<&url::Url>) -> anyhow::Result<String> {
         let urls: Vec1<String> = match self {
