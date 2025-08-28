@@ -178,6 +178,7 @@ impl ViewerImportUrl {
     /// Returns Err(reason) if the current state can't be shared with a url.
     // TODO(#10866): Should have anchors for selection etc. when supported. Need to figure out how this works together with the "share editor".
     // Does this method merely provide the starting point?
+    #[allow(unused)] // TODO(rerun/dataplatform#1336): Only used on the web. About to change!
     pub fn from_display_mode(
         store_hub: &StoreHub,
         display_mode: DisplayMode,
@@ -266,6 +267,7 @@ impl ViewerImportUrl {
     /// in the browser (this does *not* exclude native, web viewer URLs can still be opened there as well!)
     ///
     /// This is roughly the inverse of [`Self::from_str`].
+    #[allow(unused)] // TODO(rerun/dataplatform#1336): Only used on the web. About to change!
     pub fn to_sharable_url(
         &self,
         web_viewer_base_url: Option<&url::Url>,
