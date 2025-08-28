@@ -20,11 +20,11 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::Loggable as _;
 use re_protos::common::v1alpha1::ext::ScanParameters;
+use re_protos::frontend::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_protos::frontend::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::frontend::v1alpha1::{
     GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest,
 };
-use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_tuid::Tuid;
 use re_uri::Origin;

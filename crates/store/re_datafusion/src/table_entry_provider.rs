@@ -12,8 +12,8 @@ use tracing::instrument;
 use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, EntryIdOrName};
-use re_protos::catalog::v1alpha1::ext::EntryDetails;
-use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
+use re_protos::frontend::v1alpha1::ext::EntryDetails;
+use re_protos::frontend::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
 use re_protos::frontend::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};

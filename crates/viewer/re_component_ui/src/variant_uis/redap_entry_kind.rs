@@ -1,7 +1,8 @@
-use re_protos::catalog::v1alpha1::EntryKind;
+use std::error::Error;
+
+use re_protos::frontend::v1alpha1::EntryKind;
 use re_types_core::{ComponentDescriptor, RowId};
 use re_viewer_context::ViewerContext;
-use std::error::Error;
 
 /// Parse an `Int32Array` as an `EntryKind` and display it.
 pub fn redap_entry_kind(

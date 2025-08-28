@@ -17,12 +17,12 @@ use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
 use re_grpc_client::get_chunks_response_to_chunk_and_partition_id;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::catalog::v1alpha1::ext::DatasetDetails;
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
 use re_protos::common::v1alpha1::ext::DatasetHandle;
+use re_protos::frontend::v1alpha1::ext::DatasetDetails;
+use re_protos::frontend::v1alpha1::ext::IndexProperties;
 use re_protos::frontend::v1alpha1::{CreateIndexRequest, GetChunksRequest, SearchDatasetRequest};
-use re_protos::manifest_registry::v1alpha1::ext::IndexProperties;
-use re_protos::manifest_registry::v1alpha1::{
+use re_protos::frontend::v1alpha1::{
     IndexConfig, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery, index_query_properties,
 };
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
@@ -573,7 +573,7 @@ impl PyDatasetEntry {
         let schema = Self::fetch_schema(&self_)?;
         let component_descriptor = schema.column_for_selector(column)?;
 
-        let distance_metric: re_protos::manifest_registry::v1alpha1::VectorDistanceMetric =
+        let distance_metric: re_protos::frontend::v1alpha1::VectorDistanceMetric =
             distance_metric.try_into()?;
 
         let properties = IndexProperties::VectorIvfPq {
@@ -641,7 +641,7 @@ impl PyDatasetEntry {
             column: Some(component_descriptor.0.into()),
             properties: Some(IndexQueryProperties {
                 props: Some(
-                    re_protos::manifest_registry::v1alpha1::index_query_properties::Props::Inverted(
+                    re_protos::frontend::v1alpha1::index_query_properties::Props::Inverted(
                         InvertedIndexQuery {},
                     ),
                 ),

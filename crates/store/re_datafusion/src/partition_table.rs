@@ -13,8 +13,7 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::frontend::v1alpha1::GetPartitionTableSchemaRequest;
 use re_protos::{
-    frontend::v1alpha1::ScanPartitionTableRequest,
-    manifest_registry::v1alpha1::ScanPartitionTableResponse,
+    frontend::v1alpha1::ScanPartitionTableRequest, frontend::v1alpha1::ScanPartitionTableResponse,
 };
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};

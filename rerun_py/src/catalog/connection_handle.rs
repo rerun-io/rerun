@@ -15,17 +15,18 @@ use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
-    catalog::v1alpha1::{
-        EntryFilter,
-        ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
-    },
     common::v1alpha1::{
         TaskId,
         ext::{IfDuplicateBehavior, ScanParameters},
     },
-    frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest},
-    manifest_registry::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
-    redap_tasks::v1alpha1::QueryTasksResponse,
+    frontend::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
+    frontend::v1alpha1::{
+        EntryFilter,
+        ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
+    },
+    frontend::v1alpha1::{
+        GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest, QueryTasksResponse,
+    },
 };
 
 use crate::catalog::to_py_err;
@@ -101,8 +102,8 @@ impl ConnectionHandle {
         &self,
         py: Python<'_>,
         entry_id: EntryId,
-        entry_details_update: re_protos::catalog::v1alpha1::ext::EntryDetailsUpdate,
-    ) -> PyResult<re_protos::catalog::v1alpha1::ext::EntryDetails> {
+        entry_details_update: re_protos::frontend::v1alpha1::ext::EntryDetailsUpdate,
+    ) -> PyResult<re_protos::frontend::v1alpha1::ext::EntryDetails> {
         wait_for_future(
             py,
             async {
@@ -331,7 +332,7 @@ impl ConnectionHandle {
         wait_for_future(
             py,
             async {
-                let request = re_protos::redap_tasks::v1alpha1::QueryTasksRequest {
+                let request = re_protos::frontend::v1alpha1::QueryTasksRequest {
                     ids: task_ids.to_vec(),
                 };
 
@@ -373,7 +374,7 @@ impl ConnectionHandle {
                         "failed to convert timeout to serialized duration: {err}"
                     ))
                 })?;
-                let request = re_protos::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest {
+                let request = re_protos::frontend::v1alpha1::QueryTasksOnCompletionRequest {
                     ids: task_ids,
                     timeout: Some(timeout),
                 };
