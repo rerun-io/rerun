@@ -21,7 +21,7 @@ The flush will block until either it completes, fails (e.g. because of connectio
 
 Previously this could only be configured for gRPC sinks, and it was configured once upon setting up the connection.
 
-In the C and Python APIs, negative timeouts used to have special meaning. Now they are no longer permitted.
+In the C++ and Python APIs, negative timeouts used to have special meaning. Now they are no longer permitted.
 
 The Python flush calls now raises an error if the flushing did not complete successfully.
 
