@@ -11,29 +11,29 @@ use re_chunk::TimelineName;
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
+use crate::cloud::v1alpha1::{EntryKind, QueryTasksResponse};
+use crate::cloud::v1alpha1::{
+    GetDatasetSchemaResponse, RegisterWithDatasetResponse, ScanPartitionTableResponse,
+    VectorDistanceMetric,
+};
 use crate::common::v1alpha1::ext::{
     DatasetHandle, IfDuplicateBehavior, PartitionId, ScanParameters,
 };
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
-use crate::frontend::v1alpha1::{EntryKind, QueryTasksResponse};
-use crate::frontend::v1alpha1::{
-    GetDatasetSchemaResponse, RegisterWithDatasetResponse, ScanPartitionTableResponse,
-    VectorDistanceMetric,
-};
 use crate::{TypeConversionError, missing_field};
 
 // --- GetPartitionTableSchemaRequest ---
 
-impl TryFrom<crate::frontend::v1alpha1::GetPartitionTableSchemaRequest> for re_log_types::EntryId {
+impl TryFrom<crate::cloud::v1alpha1::GetPartitionTableSchemaRequest> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
     fn try_from(
-        value: crate::frontend::v1alpha1::GetPartitionTableSchemaRequest,
+        value: crate::cloud::v1alpha1::GetPartitionTableSchemaRequest,
     ) -> Result<Self, Self::Error> {
         Ok(value
             .dataset_id
             .ok_or(missing_field!(
-                crate::frontend::v1alpha1::GetPartitionTableSchemaRequest,
+                crate::cloud::v1alpha1::GetPartitionTableSchemaRequest,
                 "dataset_id"
             ))?
             .try_into()?)
@@ -47,17 +47,17 @@ pub struct ScanPartitionTableRequest {
     pub scan_parameters: Option<ScanParameters>,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::ScanPartitionTableRequest> for ScanPartitionTableRequest {
+impl TryFrom<crate::cloud::v1alpha1::ScanPartitionTableRequest> for ScanPartitionTableRequest {
     type Error = TypeConversionError;
 
     fn try_from(
-        value: crate::frontend::v1alpha1::ScanPartitionTableRequest,
+        value: crate::cloud::v1alpha1::ScanPartitionTableRequest,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             dataset_id: value
                 .dataset_id
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::ScanPartitionTableRequest,
+                    crate::cloud::v1alpha1::ScanPartitionTableRequest,
                     "dataset_id"
                 ))?
                 .try_into()?,
@@ -66,7 +66,7 @@ impl TryFrom<crate::frontend::v1alpha1::ScanPartitionTableRequest> for ScanParti
     }
 }
 
-impl From<ScanPartitionTableRequest> for crate::frontend::v1alpha1::ScanPartitionTableRequest {
+impl From<ScanPartitionTableRequest> for crate::cloud::v1alpha1::ScanPartitionTableRequest {
     fn from(value: ScanPartitionTableRequest) -> Self {
         Self {
             dataset_id: Some(value.dataset_id.into()),
@@ -77,16 +77,16 @@ impl From<ScanPartitionTableRequest> for crate::frontend::v1alpha1::ScanPartitio
 
 // --- GetDatasetSchemaRequest ---
 
-impl TryFrom<crate::frontend::v1alpha1::GetDatasetSchemaRequest> for re_log_types::EntryId {
+impl TryFrom<crate::cloud::v1alpha1::GetDatasetSchemaRequest> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
     fn try_from(
-        value: crate::frontend::v1alpha1::GetDatasetSchemaRequest,
+        value: crate::cloud::v1alpha1::GetDatasetSchemaRequest,
     ) -> Result<Self, Self::Error> {
         Ok(value
             .dataset_id
             .ok_or(missing_field!(
-                crate::frontend::v1alpha1::GetDatasetSchemaRequest,
+                crate::cloud::v1alpha1::GetDatasetSchemaRequest,
                 "dataset_id"
             ))?
             .try_into()?)
@@ -102,13 +102,13 @@ pub struct RegisterWithDatasetRequest {
     pub on_duplicate: IfDuplicateBehavior,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::RegisterWithDatasetRequest> for RegisterWithDatasetRequest {
+impl TryFrom<crate::cloud::v1alpha1::RegisterWithDatasetRequest> for RegisterWithDatasetRequest {
     type Error = TypeConversionError;
 
     fn try_from(
-        value: crate::frontend::v1alpha1::RegisterWithDatasetRequest,
+        value: crate::cloud::v1alpha1::RegisterWithDatasetRequest,
     ) -> Result<Self, Self::Error> {
-        let crate::frontend::v1alpha1::RegisterWithDatasetRequest {
+        let crate::cloud::v1alpha1::RegisterWithDatasetRequest {
             dataset_id,
             data_sources,
             on_duplicate,
@@ -116,7 +116,7 @@ impl TryFrom<crate::frontend::v1alpha1::RegisterWithDatasetRequest> for Register
         Ok(Self {
             dataset_id: dataset_id
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::RegisterWithDatasetRequest,
+                    crate::cloud::v1alpha1::RegisterWithDatasetRequest,
                     "dataset_id"
                 ))?
                 .try_into()?,
@@ -129,7 +129,7 @@ impl TryFrom<crate::frontend::v1alpha1::RegisterWithDatasetRequest> for Register
     }
 }
 
-impl From<RegisterWithDatasetRequest> for crate::frontend::v1alpha1::RegisterWithDatasetRequest {
+impl From<RegisterWithDatasetRequest> for crate::cloud::v1alpha1::RegisterWithDatasetRequest {
     fn from(value: RegisterWithDatasetRequest) -> Self {
         Self {
             dataset_id: Some(value.dataset_id.into()),
@@ -151,10 +151,10 @@ pub struct GetChunksRequest {
     pub query: Option<Query>,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::GetChunksRequest> for GetChunksRequest {
+impl TryFrom<crate::cloud::v1alpha1::GetChunksRequest> for GetChunksRequest {
     type Error = tonic::Status;
 
-    fn try_from(value: crate::frontend::v1alpha1::GetChunksRequest) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::GetChunksRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             dataset_id: value
                 .dataset_id
@@ -200,7 +200,7 @@ pub struct DoMaintenanceRequest {
     pub unsafe_allow_recent_cleanup: bool,
 }
 
-impl From<DoMaintenanceRequest> for crate::frontend::v1alpha1::DoMaintenanceRequest {
+impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest {
     fn from(value: DoMaintenanceRequest) -> Self {
         Self {
             dataset_id: value.dataset_id,
@@ -270,7 +270,7 @@ impl QueryTasksResponse {
 
 // --- EntryFilter ---
 
-impl crate::frontend::v1alpha1::EntryFilter {
+impl crate::cloud::v1alpha1::EntryFilter {
     pub fn new() -> Self {
         Self::default()
     }
@@ -297,38 +297,34 @@ impl crate::frontend::v1alpha1::EntryFilter {
 pub struct EntryDetails {
     pub id: re_log_types::EntryId,
     pub name: String,
-    pub kind: crate::frontend::v1alpha1::EntryKind,
+    pub kind: crate::cloud::v1alpha1::EntryKind,
     pub created_at: jiff::Timestamp,
     pub updated_at: jiff::Timestamp,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::EntryDetails> for EntryDetails {
+impl TryFrom<crate::cloud::v1alpha1::EntryDetails> for EntryDetails {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::frontend::v1alpha1::EntryDetails) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::EntryDetails) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value
                 .id
-                .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::EntryDetails,
-                    "id"
-                ))?
+                .ok_or(missing_field!(crate::cloud::v1alpha1::EntryDetails, "id"))?
                 .try_into()?,
-            name: value.name.ok_or(missing_field!(
-                crate::frontend::v1alpha1::EntryDetails,
-                "name"
-            ))?,
+            name: value
+                .name
+                .ok_or(missing_field!(crate::cloud::v1alpha1::EntryDetails, "name"))?,
             kind: value.entry_kind.try_into()?,
             created_at: {
                 let ts = value.created_at.ok_or(missing_field!(
-                    crate::frontend::v1alpha1::EntryDetails,
+                    crate::cloud::v1alpha1::EntryDetails,
                     "created_at"
                 ))?;
                 jiff::Timestamp::new(ts.seconds, ts.nanos)?
             },
             updated_at: {
                 let ts = value.updated_at.ok_or(missing_field!(
-                    crate::frontend::v1alpha1::EntryDetails,
+                    crate::cloud::v1alpha1::EntryDetails,
                     "updated_at"
                 ))?;
                 jiff::Timestamp::new(ts.seconds, ts.nanos)?
@@ -337,7 +333,7 @@ impl TryFrom<crate::frontend::v1alpha1::EntryDetails> for EntryDetails {
     }
 }
 
-impl From<EntryDetails> for crate::frontend::v1alpha1::EntryDetails {
+impl From<EntryDetails> for crate::cloud::v1alpha1::EntryDetails {
     fn from(value: EntryDetails) -> Self {
         Self {
             id: Some(value.id.into()),
@@ -381,10 +377,10 @@ impl DatasetDetails {
     }
 }
 
-impl TryFrom<crate::frontend::v1alpha1::DatasetDetails> for DatasetDetails {
+impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::frontend::v1alpha1::DatasetDetails) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::DatasetDetails) -> Result<Self, Self::Error> {
         Ok(Self {
             blueprint_dataset: value.blueprint_dataset.map(TryInto::try_into).transpose()?,
             default_blueprint: value.default_blueprint.map(TryInto::try_into).transpose()?,
@@ -392,7 +388,7 @@ impl TryFrom<crate::frontend::v1alpha1::DatasetDetails> for DatasetDetails {
     }
 }
 
-impl From<DatasetDetails> for crate::frontend::v1alpha1::DatasetDetails {
+impl From<DatasetDetails> for crate::cloud::v1alpha1::DatasetDetails {
     fn from(value: DatasetDetails) -> Self {
         Self {
             blueprint_dataset: value.blueprint_dataset.map(Into::into),
@@ -410,29 +406,29 @@ pub struct DatasetEntry {
     pub handle: DatasetHandle,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::DatasetEntry> for DatasetEntry {
+impl TryFrom<crate::cloud::v1alpha1::DatasetEntry> for DatasetEntry {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::frontend::v1alpha1::DatasetEntry) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::DatasetEntry) -> Result<Self, Self::Error> {
         Ok(Self {
             details: value
                 .details
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::DatasetEntry,
+                    crate::cloud::v1alpha1::DatasetEntry,
                     "details"
                 ))?
                 .try_into()?,
             dataset_details: value
                 .dataset_details
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::DatasetDetails,
+                    crate::cloud::v1alpha1::DatasetDetails,
                     "dataset_details"
                 ))?
                 .try_into()?,
             handle: value
                 .dataset_handle
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::DatasetEntry,
+                    crate::cloud::v1alpha1::DatasetEntry,
                     "handle"
                 ))?
                 .try_into()?,
@@ -440,7 +436,7 @@ impl TryFrom<crate::frontend::v1alpha1::DatasetEntry> for DatasetEntry {
     }
 }
 
-impl From<DatasetEntry> for crate::frontend::v1alpha1::DatasetEntry {
+impl From<DatasetEntry> for crate::cloud::v1alpha1::DatasetEntry {
     fn from(value: DatasetEntry) -> Self {
         Self {
             details: Some(value.details.into()),
@@ -452,14 +448,14 @@ impl From<DatasetEntry> for crate::frontend::v1alpha1::DatasetEntry {
 
 // --- CreateDatasetEntryRequest ---
 
-impl TryFrom<crate::frontend::v1alpha1::CreateDatasetEntryRequest> for String {
+impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryRequest> for String {
     type Error = TypeConversionError;
 
     fn try_from(
-        value: crate::frontend::v1alpha1::CreateDatasetEntryRequest,
+        value: crate::cloud::v1alpha1::CreateDatasetEntryRequest,
     ) -> Result<Self, Self::Error> {
         Ok(value.name.ok_or(missing_field!(
-            crate::frontend::v1alpha1::CreateDatasetEntryRequest,
+            crate::cloud::v1alpha1::CreateDatasetEntryRequest,
             "name"
         ))?)
     }
@@ -472,7 +468,7 @@ pub struct CreateDatasetEntryResponse {
     pub dataset: DatasetEntry,
 }
 
-impl From<CreateDatasetEntryResponse> for crate::frontend::v1alpha1::CreateDatasetEntryResponse {
+impl From<CreateDatasetEntryResponse> for crate::cloud::v1alpha1::CreateDatasetEntryResponse {
     fn from(value: CreateDatasetEntryResponse) -> Self {
         Self {
             dataset: Some(value.dataset.into()),
@@ -480,17 +476,17 @@ impl From<CreateDatasetEntryResponse> for crate::frontend::v1alpha1::CreateDatas
     }
 }
 
-impl TryFrom<crate::frontend::v1alpha1::CreateDatasetEntryResponse> for CreateDatasetEntryResponse {
+impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatasetEntryResponse {
     type Error = TypeConversionError;
 
     fn try_from(
-        value: crate::frontend::v1alpha1::CreateDatasetEntryResponse,
+        value: crate::cloud::v1alpha1::CreateDatasetEntryResponse,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             dataset: value
                 .dataset
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::CreateDatasetEntryResponse,
+                    crate::cloud::v1alpha1::CreateDatasetEntryResponse,
                     "dataset"
                 ))?
                 .try_into()?,
@@ -500,16 +496,16 @@ impl TryFrom<crate::frontend::v1alpha1::CreateDatasetEntryResponse> for CreateDa
 
 // --- ReadDatasetEntryRequest ---
 
-impl TryFrom<crate::frontend::v1alpha1::ReadDatasetEntryRequest> for re_log_types::EntryId {
+impl TryFrom<crate::cloud::v1alpha1::ReadDatasetEntryRequest> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
     fn try_from(
-        value: crate::frontend::v1alpha1::ReadDatasetEntryRequest,
+        value: crate::cloud::v1alpha1::ReadDatasetEntryRequest,
     ) -> Result<Self, Self::Error> {
         Ok(value
             .id
             .ok_or(missing_field!(
-                crate::frontend::v1alpha1::ReadDatasetEntryRequest,
+                crate::cloud::v1alpha1::ReadDatasetEntryRequest,
                 "id"
             ))?
             .try_into()?)
@@ -523,7 +519,7 @@ pub struct ReadDatasetEntryResponse {
     pub dataset_entry: DatasetEntry,
 }
 
-impl From<ReadDatasetEntryResponse> for crate::frontend::v1alpha1::ReadDatasetEntryResponse {
+impl From<ReadDatasetEntryResponse> for crate::cloud::v1alpha1::ReadDatasetEntryResponse {
     fn from(value: ReadDatasetEntryResponse) -> Self {
         Self {
             dataset: Some(value.dataset_entry.into()),
@@ -531,17 +527,17 @@ impl From<ReadDatasetEntryResponse> for crate::frontend::v1alpha1::ReadDatasetEn
     }
 }
 
-impl TryFrom<crate::frontend::v1alpha1::ReadDatasetEntryResponse> for ReadDatasetEntryResponse {
+impl TryFrom<crate::cloud::v1alpha1::ReadDatasetEntryResponse> for ReadDatasetEntryResponse {
     type Error = TypeConversionError;
 
     fn try_from(
-        value: crate::frontend::v1alpha1::ReadDatasetEntryResponse,
+        value: crate::cloud::v1alpha1::ReadDatasetEntryResponse,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             dataset_entry: value
                 .dataset
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::ReadDatasetEntryResponse,
+                    crate::cloud::v1alpha1::ReadDatasetEntryResponse,
                     "dataset"
                 ))?
                 .try_into()?,
@@ -557,24 +553,24 @@ pub struct UpdateDatasetEntryRequest {
     pub dataset_details: DatasetDetails,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::UpdateDatasetEntryRequest> for UpdateDatasetEntryRequest {
+impl TryFrom<crate::cloud::v1alpha1::UpdateDatasetEntryRequest> for UpdateDatasetEntryRequest {
     type Error = TypeConversionError;
 
     fn try_from(
-        value: crate::frontend::v1alpha1::UpdateDatasetEntryRequest,
+        value: crate::cloud::v1alpha1::UpdateDatasetEntryRequest,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value
                 .id
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::UpdateDatasetEntryRequest,
+                    crate::cloud::v1alpha1::UpdateDatasetEntryRequest,
                     "id"
                 ))?
                 .try_into()?,
             dataset_details: value
                 .dataset_details
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::UpdateDatasetEntryRequest,
+                    crate::cloud::v1alpha1::UpdateDatasetEntryRequest,
                     "dataset_details"
                 ))?
                 .try_into()?,
@@ -582,7 +578,7 @@ impl TryFrom<crate::frontend::v1alpha1::UpdateDatasetEntryRequest> for UpdateDat
     }
 }
 
-impl From<UpdateDatasetEntryRequest> for crate::frontend::v1alpha1::UpdateDatasetEntryRequest {
+impl From<UpdateDatasetEntryRequest> for crate::cloud::v1alpha1::UpdateDatasetEntryRequest {
     fn from(value: UpdateDatasetEntryRequest) -> Self {
         Self {
             id: Some(value.id.into()),
@@ -598,7 +594,7 @@ pub struct UpdateDatasetEntryResponse {
     pub dataset_entry: DatasetEntry,
 }
 
-impl From<UpdateDatasetEntryResponse> for crate::frontend::v1alpha1::UpdateDatasetEntryResponse {
+impl From<UpdateDatasetEntryResponse> for crate::cloud::v1alpha1::UpdateDatasetEntryResponse {
     fn from(value: UpdateDatasetEntryResponse) -> Self {
         Self {
             dataset: Some(value.dataset_entry.into()),
@@ -606,17 +602,17 @@ impl From<UpdateDatasetEntryResponse> for crate::frontend::v1alpha1::UpdateDatas
     }
 }
 
-impl TryFrom<crate::frontend::v1alpha1::UpdateDatasetEntryResponse> for UpdateDatasetEntryResponse {
+impl TryFrom<crate::cloud::v1alpha1::UpdateDatasetEntryResponse> for UpdateDatasetEntryResponse {
     type Error = TypeConversionError;
 
     fn try_from(
-        value: crate::frontend::v1alpha1::UpdateDatasetEntryResponse,
+        value: crate::cloud::v1alpha1::UpdateDatasetEntryResponse,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             dataset_entry: value
                 .dataset
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::UpdateDatasetEntryResponse,
+                    crate::cloud::v1alpha1::UpdateDatasetEntryResponse,
                     "dataset"
                 ))?
                 .try_into()?,
@@ -626,14 +622,14 @@ impl TryFrom<crate::frontend::v1alpha1::UpdateDatasetEntryResponse> for UpdateDa
 
 // --- DeleteEntryRequest ---
 
-impl TryFrom<crate::frontend::v1alpha1::DeleteEntryRequest> for re_log_types::EntryId {
+impl TryFrom<crate::cloud::v1alpha1::DeleteEntryRequest> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::frontend::v1alpha1::DeleteEntryRequest) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::DeleteEntryRequest) -> Result<Self, Self::Error> {
         Ok(value
             .id
             .ok_or(missing_field!(
-                crate::frontend::v1alpha1::DeleteEntryRequest,
+                crate::cloud::v1alpha1::DeleteEntryRequest,
                 "id"
             ))?
             .try_into()?)
@@ -647,15 +643,15 @@ pub struct EntryDetailsUpdate {
     pub name: Option<String>,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::EntryDetailsUpdate> for EntryDetailsUpdate {
+impl TryFrom<crate::cloud::v1alpha1::EntryDetailsUpdate> for EntryDetailsUpdate {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::frontend::v1alpha1::EntryDetailsUpdate) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::EntryDetailsUpdate) -> Result<Self, Self::Error> {
         Ok(Self { name: value.name })
     }
 }
 
-impl From<EntryDetailsUpdate> for crate::frontend::v1alpha1::EntryDetailsUpdate {
+impl From<EntryDetailsUpdate> for crate::cloud::v1alpha1::EntryDetailsUpdate {
     fn from(value: EntryDetailsUpdate) -> Self {
         Self { name: value.name }
     }
@@ -669,22 +665,22 @@ pub struct UpdateEntryRequest {
     pub entry_details_update: EntryDetailsUpdate,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::UpdateEntryRequest> for UpdateEntryRequest {
+impl TryFrom<crate::cloud::v1alpha1::UpdateEntryRequest> for UpdateEntryRequest {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::frontend::v1alpha1::UpdateEntryRequest) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::UpdateEntryRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value
                 .id
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::UpdateEntryRequest,
+                    crate::cloud::v1alpha1::UpdateEntryRequest,
                     "id"
                 ))?
                 .try_into()?,
             entry_details_update: value
                 .entry_details_update
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::UpdateEntryRequest,
+                    crate::cloud::v1alpha1::UpdateEntryRequest,
                     "entry_details_update"
                 ))?
                 .try_into()?,
@@ -692,7 +688,7 @@ impl TryFrom<crate::frontend::v1alpha1::UpdateEntryRequest> for UpdateEntryReque
     }
 }
 
-impl From<UpdateEntryRequest> for crate::frontend::v1alpha1::UpdateEntryRequest {
+impl From<UpdateEntryRequest> for crate::cloud::v1alpha1::UpdateEntryRequest {
     fn from(value: UpdateEntryRequest) -> Self {
         Self {
             id: Some(value.id.into()),
@@ -708,17 +704,15 @@ pub struct UpdateEntryResponse {
     pub entry_details: EntryDetails,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::UpdateEntryResponse> for UpdateEntryResponse {
+impl TryFrom<crate::cloud::v1alpha1::UpdateEntryResponse> for UpdateEntryResponse {
     type Error = TypeConversionError;
 
-    fn try_from(
-        value: crate::frontend::v1alpha1::UpdateEntryResponse,
-    ) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::UpdateEntryResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             entry_details: value
                 .entry_details
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::UpdateEntryResponse,
+                    crate::cloud::v1alpha1::UpdateEntryResponse,
                     "entry_details"
                 ))?
                 .try_into()?,
@@ -726,7 +720,7 @@ impl TryFrom<crate::frontend::v1alpha1::UpdateEntryResponse> for UpdateEntryResp
     }
 }
 
-impl From<UpdateEntryResponse> for crate::frontend::v1alpha1::UpdateEntryResponse {
+impl From<UpdateEntryResponse> for crate::cloud::v1alpha1::UpdateEntryResponse {
     fn from(value: UpdateEntryResponse) -> Self {
         Self {
             entry_details: Some(value.entry_details.into()),
@@ -736,16 +730,14 @@ impl From<UpdateEntryResponse> for crate::frontend::v1alpha1::UpdateEntryRespons
 
 // --- ReadTableEntryRequest ---
 
-impl TryFrom<crate::frontend::v1alpha1::ReadTableEntryRequest> for re_log_types::EntryId {
+impl TryFrom<crate::cloud::v1alpha1::ReadTableEntryRequest> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
-    fn try_from(
-        value: crate::frontend::v1alpha1::ReadTableEntryRequest,
-    ) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::ReadTableEntryRequest) -> Result<Self, Self::Error> {
         Ok(value
             .id
             .ok_or(missing_field!(
-                crate::frontend::v1alpha1::ReadTableEntryRequest,
+                crate::cloud::v1alpha1::ReadTableEntryRequest,
                 "id"
             ))?
             .try_into()?)
@@ -759,7 +751,7 @@ pub struct ReadTableEntryResponse {
     pub table_entry: TableEntry,
 }
 
-impl From<ReadTableEntryResponse> for crate::frontend::v1alpha1::ReadTableEntryResponse {
+impl From<ReadTableEntryResponse> for crate::cloud::v1alpha1::ReadTableEntryResponse {
     fn from(value: ReadTableEntryResponse) -> Self {
         Self {
             table: Some(value.table_entry.into()),
@@ -767,17 +759,17 @@ impl From<ReadTableEntryResponse> for crate::frontend::v1alpha1::ReadTableEntryR
     }
 }
 
-impl TryFrom<crate::frontend::v1alpha1::ReadTableEntryResponse> for ReadTableEntryResponse {
+impl TryFrom<crate::cloud::v1alpha1::ReadTableEntryResponse> for ReadTableEntryResponse {
     type Error = TypeConversionError;
 
     fn try_from(
-        value: crate::frontend::v1alpha1::ReadTableEntryResponse,
+        value: crate::cloud::v1alpha1::ReadTableEntryResponse,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             table_entry: value
                 .table
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::ReadTableEntryResponse,
+                    crate::cloud::v1alpha1::ReadTableEntryResponse,
                     "table_entry"
                 ))?
                 .try_into()?,
@@ -793,7 +785,7 @@ pub struct RegisterTableRequest {
     pub provider_details: prost_types::Any,
 }
 
-impl From<RegisterTableRequest> for crate::frontend::v1alpha1::RegisterTableRequest {
+impl From<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequest {
     fn from(value: RegisterTableRequest) -> Self {
         Self {
             name: value.name,
@@ -802,16 +794,14 @@ impl From<RegisterTableRequest> for crate::frontend::v1alpha1::RegisterTableRequ
     }
 }
 
-impl TryFrom<crate::frontend::v1alpha1::RegisterTableRequest> for RegisterTableRequest {
+impl TryFrom<crate::cloud::v1alpha1::RegisterTableRequest> for RegisterTableRequest {
     type Error = TypeConversionError;
 
-    fn try_from(
-        value: crate::frontend::v1alpha1::RegisterTableRequest,
-    ) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name,
             provider_details: value.provider_details.ok_or(missing_field!(
-                crate::frontend::v1alpha1::RegisterTableRequest,
+                crate::cloud::v1alpha1::RegisterTableRequest,
                 "provider_details"
             ))?,
         })
@@ -825,17 +815,15 @@ pub struct RegisterTableResponse {
     pub table_entry: TableEntry,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::RegisterTableResponse> for RegisterTableResponse {
+impl TryFrom<crate::cloud::v1alpha1::RegisterTableResponse> for RegisterTableResponse {
     type Error = TypeConversionError;
 
-    fn try_from(
-        value: crate::frontend::v1alpha1::RegisterTableResponse,
-    ) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::RegisterTableResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             table_entry: value
                 .table_entry
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::RegisterTableResponse,
+                    crate::cloud::v1alpha1::RegisterTableResponse,
                     "table_entry"
                 ))?
                 .try_into()?,
@@ -851,7 +839,7 @@ pub struct TableEntry {
     pub provider_details: prost_types::Any,
 }
 
-impl From<TableEntry> for crate::frontend::v1alpha1::TableEntry {
+impl From<TableEntry> for crate::cloud::v1alpha1::TableEntry {
     fn from(value: TableEntry) -> Self {
         Self {
             details: Some(value.details.into()),
@@ -860,22 +848,21 @@ impl From<TableEntry> for crate::frontend::v1alpha1::TableEntry {
     }
 }
 
-impl TryFrom<crate::frontend::v1alpha1::TableEntry> for TableEntry {
+impl TryFrom<crate::cloud::v1alpha1::TableEntry> for TableEntry {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::frontend::v1alpha1::TableEntry) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::TableEntry) -> Result<Self, Self::Error> {
         Ok(Self {
             details: value
                 .details
                 .ok_or(missing_field!(
-                    crate::frontend::v1alpha1::TableEntry,
+                    crate::cloud::v1alpha1::TableEntry,
                     "details"
                 ))?
                 .try_into()?,
-            provider_details: value.provider_details.ok_or(missing_field!(
-                crate::frontend::v1alpha1::TableEntry,
-                "handle"
-            ))?,
+            provider_details: value
+                .provider_details
+                .ok_or(missing_field!(crate::cloud::v1alpha1::TableEntry, "handle"))?,
         })
     }
 }
@@ -894,20 +881,20 @@ pub trait ProviderDetails {
 
 #[derive(Debug, Clone)]
 pub struct SystemTable {
-    pub kind: crate::frontend::v1alpha1::SystemTableKind,
+    pub kind: crate::cloud::v1alpha1::SystemTableKind,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::SystemTable> for SystemTable {
+impl TryFrom<crate::cloud::v1alpha1::SystemTable> for SystemTable {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::frontend::v1alpha1::SystemTable) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::SystemTable) -> Result<Self, Self::Error> {
         Ok(Self {
             kind: value.kind.try_into()?,
         })
     }
 }
 
-impl From<SystemTable> for crate::frontend::v1alpha1::SystemTable {
+impl From<SystemTable> for crate::cloud::v1alpha1::SystemTable {
     fn from(value: SystemTable) -> Self {
         Self {
             kind: value.kind as _,
@@ -917,12 +904,12 @@ impl From<SystemTable> for crate::frontend::v1alpha1::SystemTable {
 
 impl ProviderDetails for SystemTable {
     fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
-        let as_proto: crate::frontend::v1alpha1::SystemTable = self.clone().into();
+        let as_proto: crate::cloud::v1alpha1::SystemTable = self.clone().into();
         Ok(prost_types::Any::from_msg(&as_proto)?)
     }
 
     fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
-        let as_proto = any.to_msg::<crate::frontend::v1alpha1::SystemTable>()?;
+        let as_proto = any.to_msg::<crate::cloud::v1alpha1::SystemTable>()?;
         Ok(as_proto.try_into()?)
     }
 }
@@ -934,17 +921,17 @@ pub struct LanceTable {
     pub table_url: url::Url,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::LanceTable> for LanceTable {
+impl TryFrom<crate::cloud::v1alpha1::LanceTable> for LanceTable {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::frontend::v1alpha1::LanceTable) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::LanceTable) -> Result<Self, Self::Error> {
         Ok(Self {
             table_url: url::Url::parse(&value.table_url)?,
         })
     }
 }
 
-impl From<LanceTable> for crate::frontend::v1alpha1::LanceTable {
+impl From<LanceTable> for crate::cloud::v1alpha1::LanceTable {
     fn from(value: LanceTable) -> Self {
         Self {
             table_url: value.table_url.to_string(),
@@ -954,12 +941,12 @@ impl From<LanceTable> for crate::frontend::v1alpha1::LanceTable {
 
 impl ProviderDetails for LanceTable {
     fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
-        let as_proto: crate::frontend::v1alpha1::LanceTable = self.clone().into();
+        let as_proto: crate::cloud::v1alpha1::LanceTable = self.clone().into();
         Ok(prost_types::Any::from_msg(&as_proto)?)
     }
 
     fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
-        let as_proto = any.to_msg::<crate::frontend::v1alpha1::LanceTable>()?;
+        let as_proto = any.to_msg::<crate::cloud::v1alpha1::LanceTable>()?;
         Ok(as_proto.try_into()?)
     }
 }
@@ -1000,10 +987,10 @@ pub struct Query {
     pub columns_always_include_component_indexes: bool,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::Query> for Query {
+impl TryFrom<crate::cloud::v1alpha1::Query> for Query {
     type Error = tonic::Status;
 
-    fn try_from(value: crate::frontend::v1alpha1::Query) -> Result<Self, Self::Error> {
+    fn try_from(value: crate::cloud::v1alpha1::Query) -> Result<Self, Self::Error> {
         let latest_at = value
             .latest_at
             .map(|latest_at| {
@@ -1056,19 +1043,17 @@ impl TryFrom<crate::frontend::v1alpha1::Query> for Query {
     }
 }
 
-impl From<Query> for crate::frontend::v1alpha1::Query {
+impl From<Query> for crate::cloud::v1alpha1::Query {
     fn from(value: Query) -> Self {
-        crate::frontend::v1alpha1::Query {
+        crate::cloud::v1alpha1::Query {
             latest_at: value.latest_at.map(Into::into),
-            range: value
-                .range
-                .map(|range| crate::frontend::v1alpha1::QueryRange {
-                    index: Some({
-                        let timeline: TimelineName = range.index.into();
-                        timeline.into()
-                    }),
-                    index_range: Some(range.index_range.into()),
+            range: value.range.map(|range| crate::cloud::v1alpha1::QueryRange {
+                index: Some({
+                    let timeline: TimelineName = range.index.into();
+                    timeline.into()
                 }),
+                index_range: Some(range.index_range.into()),
+            }),
             columns_always_include_byte_offsets: value.columns_always_include_byte_offsets,
             columns_always_include_chunk_ids: value.columns_always_include_chunk_ids,
             columns_always_include_component_indexes: value
@@ -1107,9 +1092,9 @@ impl QueryLatestAt {
     }
 }
 
-impl From<QueryLatestAt> for crate::frontend::v1alpha1::QueryLatestAt {
+impl From<QueryLatestAt> for crate::cloud::v1alpha1::QueryLatestAt {
     fn from(value: QueryLatestAt) -> Self {
-        crate::frontend::v1alpha1::QueryLatestAt {
+        crate::cloud::v1alpha1::QueryLatestAt {
             index: value.index.map(|index| {
                 let timeline: TimelineName = index.into();
                 timeline.into()
@@ -1262,10 +1247,7 @@ impl ScanPartitionTableResponse {
 
     pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
         Ok(self.data.as_ref().ok_or_else(|| {
-            missing_field!(
-                crate::frontend::v1alpha1::ScanPartitionTableResponse,
-                "data"
-            )
+            missing_field!(crate::cloud::v1alpha1::ScanPartitionTableResponse, "data")
         })?)
     }
 }
@@ -1278,14 +1260,14 @@ pub enum DataSourceKind {
     Rrd = 1,
 }
 
-impl TryFrom<crate::frontend::v1alpha1::DataSourceKind> for DataSourceKind {
+impl TryFrom<crate::cloud::v1alpha1::DataSourceKind> for DataSourceKind {
     type Error = TypeConversionError;
 
-    fn try_from(kind: crate::frontend::v1alpha1::DataSourceKind) -> Result<Self, Self::Error> {
+    fn try_from(kind: crate::cloud::v1alpha1::DataSourceKind) -> Result<Self, Self::Error> {
         match kind {
-            crate::frontend::v1alpha1::DataSourceKind::Rrd => Ok(Self::Rrd),
+            crate::cloud::v1alpha1::DataSourceKind::Rrd => Ok(Self::Rrd),
 
-            crate::frontend::v1alpha1::DataSourceKind::Unspecified => {
+            crate::cloud::v1alpha1::DataSourceKind::Unspecified => {
                 return Err(TypeConversionError::InvalidField {
                     package_name: "rerun.manifest_registry.v1alpha1",
                     type_name: "DataSourceKind",
@@ -1301,12 +1283,12 @@ impl TryFrom<i32> for DataSourceKind {
     type Error = TypeConversionError;
 
     fn try_from(kind: i32) -> Result<Self, Self::Error> {
-        let kind = crate::frontend::v1alpha1::DataSourceKind::try_from(kind)?;
+        let kind = crate::cloud::v1alpha1::DataSourceKind::try_from(kind)?;
         kind.try_into()
     }
 }
 
-impl From<DataSourceKind> for crate::frontend::v1alpha1::DataSourceKind {
+impl From<DataSourceKind> for crate::cloud::v1alpha1::DataSourceKind {
     fn from(value: DataSourceKind) -> Self {
         match value {
             DataSourceKind::Rrd => Self::Rrd,
@@ -1367,7 +1349,7 @@ impl DataSourceKind {
 #[test]
 fn datasourcekind_roundtrip() {
     let kind = DataSourceKind::Rrd;
-    let kind: crate::frontend::v1alpha1::DataSourceKind = kind.into();
+    let kind: crate::cloud::v1alpha1::DataSourceKind = kind.into();
     let kind = DataSourceKind::try_from(kind).unwrap();
     assert_eq!(DataSourceKind::Rrd, kind);
 }
@@ -1402,9 +1384,9 @@ impl DataSource {
     }
 }
 
-impl From<DataSource> for crate::frontend::v1alpha1::DataSource {
+impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
     fn from(value: DataSource) -> Self {
-        crate::frontend::v1alpha1::DataSource {
+        crate::cloud::v1alpha1::DataSource {
             storage_url: Some(value.storage_url.to_string()),
             layer: Some(value.layer),
             typ: value.kind as i32,
@@ -1412,13 +1394,13 @@ impl From<DataSource> for crate::frontend::v1alpha1::DataSource {
     }
 }
 
-impl TryFrom<crate::frontend::v1alpha1::DataSource> for DataSource {
+impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
     type Error = TypeConversionError;
 
-    fn try_from(data_source: crate::frontend::v1alpha1::DataSource) -> Result<Self, Self::Error> {
+    fn try_from(data_source: crate::cloud::v1alpha1::DataSource) -> Result<Self, Self::Error> {
         let storage_url = data_source
             .storage_url
-            .ok_or_else(|| missing_field!(crate::frontend::v1alpha1::DataSource, "storage_url"))?
+            .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::DataSource, "storage_url"))?
             .parse()?;
 
         let layer = data_source
@@ -1475,34 +1457,32 @@ impl std::fmt::Display for IndexProperties {
 }
 
 /// Convert `IndexProperties` into its equivalent storage model
-impl From<IndexProperties> for crate::frontend::v1alpha1::IndexProperties {
+impl From<IndexProperties> for crate::cloud::v1alpha1::IndexProperties {
     fn from(other: IndexProperties) -> Self {
         match other {
             IndexProperties::Btree => Self {
-                props: Some(crate::frontend::v1alpha1::index_properties::Props::Btree(
-                    crate::frontend::v1alpha1::BTreeIndex {},
+                props: Some(crate::cloud::v1alpha1::index_properties::Props::Btree(
+                    crate::cloud::v1alpha1::BTreeIndex {},
                 )),
             },
             IndexProperties::Inverted {
                 store_position,
                 base_tokenizer,
             } => Self {
-                props: Some(
-                    crate::frontend::v1alpha1::index_properties::Props::Inverted(
-                        crate::frontend::v1alpha1::InvertedIndex {
-                            store_position: Some(store_position),
-                            base_tokenizer: Some(base_tokenizer),
-                        },
-                    ),
-                ),
+                props: Some(crate::cloud::v1alpha1::index_properties::Props::Inverted(
+                    crate::cloud::v1alpha1::InvertedIndex {
+                        store_position: Some(store_position),
+                        base_tokenizer: Some(base_tokenizer),
+                    },
+                )),
             },
             IndexProperties::VectorIvfPq {
                 num_partitions,
                 num_sub_vectors,
                 metric,
             } => Self {
-                props: Some(crate::frontend::v1alpha1::index_properties::Props::Vector(
-                    crate::frontend::v1alpha1::VectorIvfPqIndex {
+                props: Some(crate::cloud::v1alpha1::index_properties::Props::Vector(
+                    crate::cloud::v1alpha1::VectorIvfPqIndex {
                         num_partitions: Some(num_partitions as u32),
                         num_sub_vectors: Some(num_sub_vectors as u32),
                         distance_metrics: metric.into(),
@@ -1515,7 +1495,7 @@ impl From<IndexProperties> for crate::frontend::v1alpha1::IndexProperties {
 
 // ---
 
-impl From<ComponentColumnDescriptor> for crate::frontend::v1alpha1::IndexColumn {
+impl From<ComponentColumnDescriptor> for crate::cloud::v1alpha1::IndexColumn {
     fn from(value: ComponentColumnDescriptor) -> Self {
         Self {
             entity_path: Some(value.entity_path.into()),

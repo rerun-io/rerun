@@ -9,12 +9,12 @@ use arrow::{array::RecordBatch, datatypes::Schema};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
-    common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
-    frontend::v1alpha1::ScanPartitionTableResponse,
-    frontend::v1alpha1::{
+    cloud::v1alpha1::ScanPartitionTableResponse,
+    cloud::v1alpha1::{
         EntryKind,
         ext::{DatasetEntry, EntryDetails},
     },
+    common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
 
 #[derive(thiserror::Error, Debug)]
