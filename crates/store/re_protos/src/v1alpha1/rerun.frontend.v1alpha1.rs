@@ -26,6 +26,29 @@ impl ::prost::Name for VersionResponse {
         "/rerun.frontend.v1alpha1.VersionResponse".into()
     }
 }
+/// Application level error - used as `details` in the `google.rpc.Status` message
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Error {
+    /// error code
+    #[prost(enumeration = "ErrorCode", tag = "1")]
+    pub code: i32,
+    /// unique identifier associated with the request (e.g. recording id, recording storage url)
+    #[prost(string, tag = "2")]
+    pub id: ::prost::alloc::string::String,
+    /// human readable details about the error
+    #[prost(string, tag = "3")]
+    pub message: ::prost::alloc::string::String,
+}
+impl ::prost::Name for Error {
+    const NAME: &'static str = "Error";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.Error".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.Error".into()
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DataSource {
     /// Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
@@ -1467,6 +1490,43 @@ impl ::prost::Name for LanceTable {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.frontend.v1alpha1.LanceTable".into()
+    }
+}
+/// Error codes for application level errors
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ErrorCode {
+    /// unused
+    Unspecified = 0,
+    /// object store access error
+    ObjectStoreError = 1,
+    /// metadata database access error
+    MetadataDbError = 2,
+    /// Encoding / decoding error
+    CodecError = 3,
+}
+impl ErrorCode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "ERROR_CODE_UNSPECIFIED",
+            Self::ObjectStoreError => "ERROR_CODE_OBJECT_STORE_ERROR",
+            Self::MetadataDbError => "ERROR_CODE_METADATA_DB_ERROR",
+            Self::CodecError => "ERROR_CODE_CODEC_ERROR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "ERROR_CODE_UNSPECIFIED" => Some(Self::Unspecified),
+            "ERROR_CODE_OBJECT_STORE_ERROR" => Some(Self::ObjectStoreError),
+            "ERROR_CODE_METADATA_DB_ERROR" => Some(Self::MetadataDbError),
+            "ERROR_CODE_CODEC_ERROR" => Some(Self::CodecError),
+            _ => None,
+        }
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
