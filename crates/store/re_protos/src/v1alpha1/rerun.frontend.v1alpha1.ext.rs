@@ -85,6 +85,33 @@ pub struct RegisterWithDatasetRequest {
     pub on_duplicate: IfDuplicateBehavior,
 }
 
+impl TryFrom<crate::frontend::v1alpha1::RegisterWithDatasetRequest> for RegisterWithDatasetRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::frontend::v1alpha1::RegisterWithDatasetRequest,
+    ) -> Result<Self, Self::Error> {
+        let crate::frontend::v1alpha1::RegisterWithDatasetRequest {
+            dataset_id,
+            data_sources,
+            on_duplicate,
+        } = value;
+        Ok(Self {
+            dataset_id: dataset_id
+                .ok_or(missing_field!(
+                    crate::frontend::v1alpha1::RegisterWithDatasetRequest,
+                    "dataset_id"
+                ))?
+                .try_into()?,
+            data_sources: data_sources
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
+            on_duplicate: on_duplicate.try_into()?,
+        })
+    }
+}
+
 impl From<RegisterWithDatasetRequest> for crate::frontend::v1alpha1::RegisterWithDatasetRequest {
     fn from(value: RegisterWithDatasetRequest) -> Self {
         Self {
@@ -153,6 +180,7 @@ pub struct DoMaintenanceRequest {
     pub build_scalar_indexes: bool,
     pub compact_fragments: bool,
     pub cleanup_before: Option<jiff::Timestamp>,
+    pub unsafe_allow_recent_cleanup: bool,
 }
 
 impl From<DoMaintenanceRequest> for crate::frontend::v1alpha1::DoMaintenanceRequest {
@@ -165,6 +193,7 @@ impl From<DoMaintenanceRequest> for crate::frontend::v1alpha1::DoMaintenanceRequ
                 seconds: ts.as_second(),
                 nanos: ts.subsec_nanosecond(),
             }),
+            unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
         }
     }
 }

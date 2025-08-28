@@ -200,13 +200,16 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    fn loading_ui(ui: &mut egui::Ui) {
-        Frame::new().inner_margin(16.0).show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.spinner();
-                ui.label("Loading table…");
-            });
-        });
+    fn loading_ui(ui: &mut egui::Ui) -> egui::Response {
+        Frame::new()
+            .inner_margin(16.0)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label("Loading table…");
+                });
+            })
+            .response
     }
 
     pub fn show(
@@ -227,12 +230,18 @@ impl<'a> DataFusionTableWidget<'a> {
             initial_blueprint,
         } = self;
 
-        if !session_ctx
-            .table_exist(table_ref.clone())
-            .unwrap_or_default()
-        {
-            Self::loading_ui(ui);
-            return;
+        match session_ctx.table_exist(table_ref.clone()) {
+            Ok(true) => {}
+            Ok(false) => {
+                Self::loading_ui(ui).on_hover_text("Waiting…");
+                return;
+            }
+            Err(err) => {
+                Self::loading_ui(ui).on_hover_ui(|ui| {
+                    ui.label(err.to_string());
+                });
+                return;
+            }
         }
 
         // The TableConfig should be persisted across sessions, so we also need a static id.
@@ -289,7 +298,16 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let (sorbet_schema, migrated_fields) = {
             let Some(sorbet_batch) = sorbet_batches.first() else {
-                ui.label(egui::RichText::new("This dataset is empty").italics());
+                if let Some(title) = title {
+                    title_ui(ui, None, &title, url.as_ref());
+                }
+
+                Frame::new()
+                    .inner_margin(egui::vec2(16.0, 0.0))
+                    .show(ui, |ui| {
+                        ui.label(egui::RichText::new("Empty table").italics());
+                    });
+
                 return;
             };
 
@@ -339,7 +357,7 @@ impl<'a> DataFusionTableWidget<'a> {
         );
 
         if let Some(title) = title {
-            title_ui(ui, &mut table_config, &title, url.as_ref());
+            title_ui(ui, Some(&mut table_config), &title, url.as_ref());
         }
 
         apply_table_style_fixes(ui.style_mut());
@@ -511,7 +529,12 @@ fn id_from_session_context_and_table(
     egui::Id::new((session_ctx.session_id(), table_ref))
 }
 
-fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str, url: Option<&String>) {
+fn title_ui(
+    ui: &mut egui::Ui,
+    table_config: Option<&mut TableConfig>,
+    title: &str,
+    url: Option<&String>,
+) {
     Frame::new()
         .inner_margin(Margin {
             top: 16,
@@ -534,7 +557,9 @@ fn title_ui(ui: &mut egui::Ui, table_config: &mut TableConfig, title: &str, url:
                     }
                 },
                 |ui| {
-                    table_config.button_ui(ui);
+                    if let Some(table_config) = table_config {
+                        table_config.button_ui(ui);
+                    }
                 },
             );
         });

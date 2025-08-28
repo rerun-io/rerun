@@ -192,7 +192,7 @@ impl ::re_types_core::Loggable for TensorData {
                                 std::sync::Arc::new(Field::new("item", DataType::Utf8, false)),
                                 offsets,
                                 {
-                                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                                         names_inner_data.iter().map(|datum| datum.len()),
                                     );
                                     #[allow(clippy::unwrap_used)]
@@ -203,6 +203,7 @@ impl ::re_types_core::Loggable for TensorData {
                                         buffer_builder.append_slice(data.as_bytes());
                                     }
                                     let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
+
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     as_array_ref(unsafe {
                                         StringArray::new_unchecked(

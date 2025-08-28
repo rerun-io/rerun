@@ -358,12 +358,14 @@ where
         Ok(response.table_entry)
     }
 
+    #[allow(clippy::fn_params_excessive_bools)]
     pub async fn do_maintenance(
         &mut self,
         dataset_id: EntryId,
         build_scalar_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
+        unsafe_allow_recent_cleanup: bool,
     ) -> Result<(), StreamError> {
         self.inner()
             .do_maintenance(tonic::Request::new(
@@ -372,6 +374,7 @@ where
                     build_scalar_indexes,
                     compact_fragments,
                     cleanup_before,
+                    unsafe_allow_recent_cleanup,
                 }
                 .into(),
             ))

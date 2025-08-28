@@ -56,14 +56,10 @@ pub enum PathParseError {
     InvalidUnicodeEscape(String),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<PathParseError>() <= 48,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<PathParseError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<PathParseError>() <= 48,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 type Result<T, E = PathParseError> = std::result::Result<T, E>;
 

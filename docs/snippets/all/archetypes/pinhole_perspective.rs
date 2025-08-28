@@ -9,7 +9,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "world/cam",
         &rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)
             .with_camera_xyz(rerun::components::ViewCoordinates::RUB)
-            .with_image_plane_distance(0.1),
+            .with_image_plane_distance(0.1)
+            .with_color(rerun::Color::from_rgb(255, 128, 0))
+            .with_line_width(0.003),
     )?;
 
     rec.log(

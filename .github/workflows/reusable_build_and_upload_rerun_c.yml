@@ -148,6 +148,10 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
+      - uses: prefix-dev/setup-pixi@v0.8.8
+        with:
+          pixi-version: v0.41.4
+
       - name: Set up Rust and Authenticate to GCS
         uses: ./.github/actions/setup-rust
         with:
@@ -158,7 +162,7 @@ jobs:
           targets: ${{ needs.set-config.outputs.TARGET }}
 
       - name: Build rerun_c (release)
-        run: cargo build --locked -p rerun_c --release --target ${{ needs.set-config.outputs.TARGET }}
+        run: pixi run cargo build --locked -p rerun_c --release --target ${{ needs.set-config.outputs.TARGET }}
 
       - name: Get sha
         id: get-sha
@@ -169,7 +173,7 @@ jobs:
       - name: "Upload rerun_c (commit)"
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
+          path: "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false
@@ -178,7 +182,7 @@ jobs:
         if: ${{ inputs.ADHOC_NAME != '' }}
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
+          path: "./target_pixi/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false

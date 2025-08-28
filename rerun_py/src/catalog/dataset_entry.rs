@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use arrow::array::{RecordBatch, StringArray};
+use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
 use pyo3::Bound;
@@ -235,7 +235,7 @@ impl PyDatasetEntry {
                         .unwrap_or(re_log_types::NonMinI64::MAX),
                 ),
             });
-        Ok(re_uri::DatasetDataUri {
+        Ok(re_uri::DatasetPartitionUri {
             origin: connection.origin().clone(),
             dataset_id: super_.details.id.id,
             partition_id,
@@ -629,9 +629,10 @@ impl PyDatasetEntry {
             Default::default(),
         );
 
-        let query = RecordBatch::try_new(
+        let query = RecordBatch::try_new_with_options(
             Arc::new(schema),
             vec![Arc::new(StringArray::from_iter_values([query]))],
+            &RecordBatchOptions::default().with_row_count(Some(1)),
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -727,14 +728,17 @@ impl PyDatasetEntry {
             build_scalar_index = false,
             compact_fragments = false,
             cleanup_before = None,
+            unsafe_allow_recent_cleanup = false,
     ))]
     #[instrument(skip_all, err)]
+    #[allow(clippy::fn_params_excessive_bools)]
     fn do_maintenance(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
         build_scalar_index: bool,
         compact_fragments: bool,
         cleanup_before: Option<Bound<'_, PyAny>>,
+        unsafe_allow_recent_cleanup: bool,
     ) -> PyResult<()> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
@@ -761,6 +765,7 @@ impl PyDatasetEntry {
             build_scalar_index,
             compact_fragments,
             cleanup_before,
+            unsafe_allow_recent_cleanup,
         )
     }
 }

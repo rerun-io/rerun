@@ -83,19 +83,18 @@ mod async_decoder_wrapper;
 mod av1;
 
 #[cfg(with_ffmpeg)]
-mod ffmpeg_h264;
+mod ffmpeg_cli;
 
 #[cfg(with_ffmpeg)]
-pub use ffmpeg_h264::{
+pub use ffmpeg_cli::FFmpegCliDecoder;
+
+#[cfg(with_ffmpeg)]
+pub use ffmpeg_cli::{
     Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,
 };
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
-
-mod gop_detection;
-
-pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
 
 use crate::{SampleIndex, Time, VideoDataDescription};
 
@@ -156,9 +155,7 @@ impl DecodeError {
 
 pub type Result<T = (), E = DecodeError> = std::result::Result<T, E>;
 
-/// Callback for decoding a single frame, called by decoders upon decoding a frame or hitting an error.
-#[allow(dead_code)] // May be unused in some configurations where we don't have any decoder.
-pub type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
+pub type FrameResult = Result<Frame>;
 
 /// Interface for an asynchronous video decoder.
 ///
@@ -210,7 +207,7 @@ pub fn new_decoder(
     debug_name: &str,
     video: &crate::VideoDataDescription,
     decode_settings: &DecodeSettings,
-    on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
+    output_sender: crossbeam::channel::Sender<FrameResult>,
 ) -> Result<Box<dyn AsyncDecoder>> {
     #![allow(unused_variables, clippy::needless_return)] // With some feature flags
 
@@ -225,7 +222,7 @@ pub fn new_decoder(
     return Ok(Box::new(webcodecs::WebVideoDecoder::new(
         video,
         decode_settings.hw_acceleration,
-        on_output,
+        output_sender,
     )?));
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -243,21 +240,19 @@ pub fn new_decoder(
                 return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
                     debug_name.to_owned(),
                     Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
-                    on_output,
+                    output_sender,
                 )));
             }
         }
 
         #[cfg(with_ffmpeg)]
-        crate::VideoCodec::H264 => {
-            re_log::trace!("Decoding H.264…");
-            Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
-                debug_name.to_owned(),
-                &video.encoding_details,
-                on_output,
-                decode_settings.ffmpeg_path.clone(),
-            )?))
-        }
+        crate::VideoCodec::H264 | crate::VideoCodec::H265 => Ok(Box::new(FFmpegCliDecoder::new(
+            debug_name.to_owned(),
+            &video.encoding_details,
+            output_sender,
+            decode_settings.ffmpeg_path.clone(),
+            &video.codec,
+        )?)),
 
         _ => Err(DecodeError::UnsupportedCodec(
             video.human_readable_codec_string(),

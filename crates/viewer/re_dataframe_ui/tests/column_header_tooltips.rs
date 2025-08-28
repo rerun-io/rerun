@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, RecordBatch};
+use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions};
 use arrow::datatypes::{DataType, Field, Fields, Schema};
 use egui::vec2;
 use egui_kittest::{Harness, SnapshotOptions};
@@ -29,12 +29,13 @@ fn test_column_header_tooltips() {
         .map(|(field, _)| Arc::new(generic_placeholder_for_datatype(field.data_type())) as ArrayRef)
         .collect::<Vec<_>>();
 
-    let record_batch = RecordBatch::try_new(
+    let record_batch = RecordBatch::try_new_with_options(
         Arc::new(Schema::new_with_metadata(
             fields.clone(),
             Default::default(),
         )),
         data,
+        &RecordBatchOptions::default(),
     )
     .expect("Failed to create test RecordBatch");
 

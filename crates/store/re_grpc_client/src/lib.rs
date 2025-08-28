@@ -7,9 +7,11 @@ mod redap;
 
 pub use self::{
     connection_client::GenericConnectionClient,
-    connection_registry::{ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle},
+    connection_registry::{
+        ClientConnectionError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
+    },
     redap::{
-        Command, ConnectionError, RedapClient, channel,
+        ConnectionError, RedapClient, UiCommand, channel,
         get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
         stream_dataset_from_redap,
     },
@@ -21,14 +23,10 @@ const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 #[derive(Debug)]
 pub struct TonicStatusError(Box<tonic::Status>);
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<TonicStatusError>() <= 32,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<TonicStatusError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<TonicStatusError>() <= 32,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 impl AsRef<tonic::Status> for TonicStatusError {
     #[inline]
@@ -88,7 +86,7 @@ pub enum StreamError {
     Transport(#[from] tonic::transport::Error),
 
     #[error(transparent)]
-    ConnectionError(#[from] redap::ConnectionError),
+    ClientConnectionError(#[from] ClientConnectionError),
 
     #[error(transparent)]
     TonicStatus(#[from] TonicStatusError),
@@ -127,14 +125,10 @@ pub enum StreamError {
     ArrowError(#[from] arrow::error::ArrowError),
 }
 
-#[test]
-fn test_stream_error_size() {
-    assert!(
-        std::mem::size_of::<StreamError>() <= 80,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<StreamError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<StreamError>() <= 80,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 impl From<tonic::Status> for StreamError {
     fn from(value: tonic::Status) -> Self {

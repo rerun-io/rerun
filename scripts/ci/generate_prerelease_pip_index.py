@@ -32,7 +32,7 @@ def generate_pip_index(title: str, dir: str, upload: bool, check: bool) -> None:
     found_builds = []
     wheels_bucket = gcs_client.bucket("rerun-builds")
 
-    print(f'Checking path: "gs://rerun-builds/{dir}"...')
+    print(f'Checking path: "gs://rerun-builds/{dir}"…')
 
     found: dict[str, Any] = {}
 

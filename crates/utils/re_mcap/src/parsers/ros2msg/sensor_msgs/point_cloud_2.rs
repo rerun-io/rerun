@@ -3,8 +3,8 @@ use std::io::Cursor;
 use super::super::definitions::sensor_msgs::{self, PointField, PointFieldDatatype};
 use arrow::{
     array::{
-        BooleanBuilder, FixedSizeListBuilder, ListBuilder, StringBuilder, StructBuilder,
-        UInt8Builder, UInt32Builder,
+        BooleanBuilder, FixedSizeListBuilder, LargeBinaryBuilder, ListBuilder, StringBuilder,
+        StructBuilder, UInt8Builder, UInt32Builder,
     },
     datatypes::{DataType, Field, Fields},
 };
@@ -13,7 +13,7 @@ use re_chunk::{Chunk, ChunkComponents, ChunkId, TimePoint};
 use re_log_types::TimeCell;
 use re_types::{
     AsComponents as _, Component as _, ComponentDescriptor, SerializedComponentColumn, archetypes,
-    components,
+    components, reflection::ComponentDescriptorExt as _,
 };
 use std::collections::HashMap;
 
@@ -22,7 +22,7 @@ use crate::{
     parsers::{
         cdr,
         decode::{MessageParser, ParserContext},
-        util::{blob_list_builder, fixed_size_list_builder},
+        util::fixed_size_list_builder,
     },
 };
 
@@ -35,7 +35,7 @@ pub struct PointCloud2MessageParser {
     is_bigendian: FixedSizeListBuilder<BooleanBuilder>,
     point_step: FixedSizeListBuilder<UInt32Builder>,
     row_step: FixedSizeListBuilder<UInt32Builder>,
-    data: FixedSizeListBuilder<ListBuilder<UInt8Builder>>,
+    data: FixedSizeListBuilder<LargeBinaryBuilder>,
     is_dense: FixedSizeListBuilder<BooleanBuilder>,
 
     // We lazily create this, only if we can interpret the point cloud semantically.
@@ -75,7 +75,7 @@ impl PointCloud2MessageParser {
             is_bigendian: fixed_size_list_builder(1, num_rows),
             point_step: fixed_size_list_builder(1, num_rows),
             row_step: fixed_size_list_builder(1, num_rows),
-            data: blob_list_builder(num_rows),
+            data: fixed_size_list_builder(1, num_rows),
             is_dense: fixed_size_list_builder(1, num_rows),
 
             points_3ds: None,
@@ -257,7 +257,7 @@ impl MessageParser for PointCloud2MessageParser {
         point_step.values().append_slice(&[point_cloud.point_step]);
         row_step.values().append_slice(&[point_cloud.row_step]);
 
-        data.values().values().append_slice(&point_cloud.data);
+        data.values().append_value(&point_cloud.data);
         is_dense.values().append_slice(&[point_cloud.is_dense]);
 
         height.append(true);
@@ -267,7 +267,6 @@ impl MessageParser for PointCloud2MessageParser {
         row_step.append(true);
         is_dense.append(true);
 
-        data.values().append(true);
         data.append(true);
 
         Ok(())
@@ -323,45 +322,43 @@ impl MessageParser for PointCloud2MessageParser {
             [
                 (
                     ComponentDescriptor::partial("height")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     height.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("width")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     width.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("fields")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     fields.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("is_bigendian")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     is_bigendian.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("point_step")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     point_step.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("row_step")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     row_step.finish().into(),
                 ),
                 (
-                    ComponentDescriptor {
-                        archetype: Some(Self::ARCHETYPE_NAME.into()),
-                        component: "data".into(),
-                        component_type: Some(components::Blob::name()),
-                    },
+                    ComponentDescriptor::partial("data")
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME)
+                        .with_component_type(components::Blob::name()),
                     data.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("is_dense")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     is_dense.finish().into(),
                 ),
             ]

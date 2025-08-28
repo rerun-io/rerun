@@ -54,7 +54,7 @@ pub enum SmartChannelSource {
 
     /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
     RedapGrpcStream {
-        uri: re_uri::DatasetDataUri,
+        uri: re_uri::DatasetPartitionUri,
 
         /// Switch to this recording once it has been loaded?
         select_when_loaded: bool,
@@ -136,7 +136,7 @@ impl SmartChannelSource {
             | Self::MessageProxy { .. }
             | Self::Sdk
             | Self::Stdin => {
-                // For all of these esources we're not actively loading data, but rather waiting for data to be sent.
+                // For all of these sources we're not actively loading data, but rather waiting for data to be sent.
                 // These show up in the top panel - see `top_panel.rs`.
                 None
             }
@@ -224,7 +224,7 @@ pub enum SmartMessageSource {
 
     /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
     RedapGrpcStream {
-        uri: re_uri::DatasetDataUri,
+        uri: re_uri::DatasetPartitionUri,
 
         /// Switch to this recording once it has been loaded?
         select_when_loaded: bool,

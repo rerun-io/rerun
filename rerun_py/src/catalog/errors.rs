@@ -18,7 +18,7 @@ use std::error::Error as _;
 use pyo3::PyErr;
 use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
 
-use re_grpc_client::ConnectionError;
+use re_grpc_client::{ClientConnectionError, ConnectionError};
 use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
 
 // ---
@@ -28,6 +28,9 @@ use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
 #[derive(Debug, thiserror::Error)]
 #[expect(clippy::enum_variant_names)] // this is by design
 enum ExternalError {
+    #[error("{0}")]
+    ClientConnectionError(#[from] ClientConnectionError),
+
     #[error("{0}")]
     ConnectionError(#[from] ConnectionError),
 
@@ -74,14 +77,10 @@ enum ExternalError {
     TokenError(#[from] re_auth::TokenError),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<ExternalError>() <= 64,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<ExternalError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<ExternalError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 macro_rules! impl_from_boxed {
     ($external_type:ty, $variant:ident) => {
@@ -116,6 +115,10 @@ impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseE
 impl From<ExternalError> for PyErr {
     fn from(err: ExternalError) -> Self {
         match err {
+            ExternalError::ClientConnectionError(err) => {
+                PyConnectionError::new_err(err.to_string())
+            }
+
             ExternalError::ConnectionError(err) => PyConnectionError::new_err(err.to_string()),
 
             ExternalError::TonicStatusError(status) => {

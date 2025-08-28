@@ -296,6 +296,7 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
+    #[allow(clippy::fn_params_excessive_bools)]
     pub fn do_maintenance(
         &self,
         py: Python<'_>,
@@ -303,6 +304,7 @@ impl ConnectionHandle {
         build_scalar_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
+        unsafe_allow_recent_cleanup: bool,
     ) -> PyResult<()> {
         wait_for_future(
             py,
@@ -314,6 +316,7 @@ impl ConnectionHandle {
                         build_scalar_indexes,
                         compact_fragments,
                         cleanup_before,
+                        unsafe_allow_recent_cleanup,
                     )
                     .await
                     .map_err(to_py_err)

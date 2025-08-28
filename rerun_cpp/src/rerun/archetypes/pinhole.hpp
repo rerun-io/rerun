@@ -6,8 +6,10 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
+#include "../components/color.hpp"
 #include "../components/image_plane_distance.hpp"
 #include "../components/pinhole_projection.hpp"
+#include "../components/radius.hpp"
 #include "../components/resolution.hpp"
 #include "../components/view_coordinates.hpp"
 #include "../result.hpp"
@@ -66,6 +68,8 @@ namespace rerun::archetypes {
     ///         rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)
     ///             .with_camera_xyz(rerun::components::ViewCoordinates::RUB)
     ///             .with_image_plane_distance(0.1f)
+    ///             .with_color(rerun::Color(255, 128, 0))
+    ///             .with_line_width(0.003f)
     ///     );
     ///
     ///     rec.log(
@@ -126,6 +130,12 @@ namespace rerun::archetypes {
         /// This is only used for visualization purposes, and does not affect the projection itself.
         std::optional<ComponentBatch> image_plane_distance;
 
+        /// Color of the camera wireframe.
+        std::optional<ComponentBatch> color;
+
+        /// Width of the camera wireframe lines.
+        std::optional<ComponentBatch> line_width;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Pinhole";
@@ -149,6 +159,14 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_image_plane_distance = ComponentDescriptor(
             ArchetypeName, "Pinhole:image_plane_distance",
             Loggable<rerun::components::ImagePlaneDistance>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `color` field.
+        static constexpr auto Descriptor_color = ComponentDescriptor(
+            ArchetypeName, "Pinhole:color", Loggable<rerun::components::Color>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `line_width` field.
+        static constexpr auto Descriptor_line_width = ComponentDescriptor(
+            ArchetypeName, "Pinhole:line_width", Loggable<rerun::components::Radius>::ComponentType
         );
 
       public: // START of extensions from pinhole_ext.cpp:
@@ -344,6 +362,38 @@ namespace rerun::archetypes {
                                        Descriptor_image_plane_distance
             )
                                        .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Color of the camera wireframe.
+        Pinhole with_color(const rerun::components::Color& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `color` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_color` should
+        /// be used when logging a single row's worth of data.
+        Pinhole with_many_color(const Collection<rerun::components::Color>& _color) && {
+            color = ComponentBatch::from_loggable(_color, Descriptor_color).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Width of the camera wireframe lines.
+        Pinhole with_line_width(const rerun::components::Radius& _line_width) && {
+            line_width =
+                ComponentBatch::from_loggable(_line_width, Descriptor_line_width).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `line_width` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_line_width` should
+        /// be used when logging a single row's worth of data.
+        Pinhole with_many_line_width(const Collection<rerun::components::Radius>& _line_width) && {
+            line_width =
+                ComponentBatch::from_loggable(_line_width, Descriptor_line_width).value_or_throw();
             return std::move(*this);
         }
 

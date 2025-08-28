@@ -1,0 +1,18 @@
+---
+source: crates/viewer/re_recording_panel/tests/snapshot_tests.rs
+expression: data
+---
+local_apps:
+  - app_id: test_app
+    is_active: false
+    is_selected: false
+    loaded_recordings:
+      - entity_db:
+          kind: Recording
+          application_id: test_app
+          recording_id: "00000000000000000000000000000000"
+local_tables: []
+example_apps: []
+show_example_section: true
+servers: []
+loading_receivers: []
