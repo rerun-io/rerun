@@ -120,6 +120,7 @@ impl std::str::FromStr for ViewerImportUrl {
                     unreachable!("FileContents can not be shared as a URL");
                 }
 
+                #[cfg(not(target_arch = "wasm32"))]
                 LogDataSource::Stdin => Err(anyhow::anyhow!("`-` is not a valid URL.")),
 
                 LogDataSource::RedapDatasetPartition {
@@ -209,7 +210,18 @@ impl ViewerImportUrl {
                         Ok(Self::RrdHttpUrl(url.parse::<url::Url>()?))
                     }
 
-                    SmartChannelSource::File(path_buf) => Ok(Self::FilePath(path_buf.clone())),
+                    SmartChannelSource::File(path_buf) => {
+                        #[cfg(not(target_arch = "wasm32"))]
+                        {
+                            Ok(Self::FilePath(path_buf.clone()))
+                        }
+                        #[cfg(target_arch = "wasm32")]
+                        {
+                            Err(anyhow::anyhow!(
+                                "Can't share links to local files on the web."
+                            ))
+                        }
+                    }
 
                     SmartChannelSource::RrdWebEventListener => Ok(Self::WebEventListener),
 
@@ -391,6 +403,7 @@ impl ViewerImportUrl {
                     },
                 ));
             }
+            #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path_buf) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
                     re_log_types::FileSource::Uri,

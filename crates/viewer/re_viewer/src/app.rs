@@ -3154,9 +3154,9 @@ fn update_web_address_bar(
         return None;
     }
     let Ok(url) =
-        crate::open_url::ViewerImportUrl::from_display_mode(Some(store_hub), display_mode)
+        crate::open_url::ViewerImportUrl::from_display_mode(store_hub, display_mode.clone())
             // History entries expect the url parameter, not the full url, therefore don't pass a base url.
-            .and_then(|url| url.sharable_url(&None))
+            .and_then(|url| url.sharable_url(None))
     else {
         return None;
     };
