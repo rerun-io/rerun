@@ -5,9 +5,9 @@ order: 500
 
 This reference guide covers all command-line options and workflows for working with MCAP files in Rerun.
 
-## Basic Commands
+## Basic commands
 
-### Direct Viewing
+### Direct viewing
 
 Open MCAP files directly in the Rerun Viewer:
 
@@ -25,7 +25,7 @@ rerun recordings/*.mcap
 rerun mcap_data/
 ```
 
-### File Conversion
+### File conversion
 
 Convert MCAP files to Rerun's native RRD format:
 
@@ -37,9 +37,9 @@ rerun mcap convert input.mcap -o output.rrd
 rerun mcap convert data.mcap -o /path/to/output.rrd
 ```
 
-## Layer Selection
+## Layer selection
 
-### Using Specific Layers
+### Using specific layers
 
 Control which processing layers are applied during conversion:
 
@@ -54,7 +54,7 @@ rerun mcap convert input.mcap -l ros2msg -o output.rrd
 rerun mcap convert input.mcap -l ros2msg -l raw -l recording_info -o output.rrd
 ```
 
-### Available Layer Options
+### Available layer options
 
 - **`raw`**: Preserve original message bytes
 - **`schema`**: Extract metadata and schema information
@@ -63,7 +63,7 @@ rerun mcap convert input.mcap -l ros2msg -l raw -l recording_info -o output.rrd
 - **`ros2msg`**: Semantic interpretation of ROS2 messages
 - **`recording_info`**: Extract recording session metadata
 
-### Default Behavior
+### Default behavior
 
 When no `-l` flags are specified, all available layers are used:
 

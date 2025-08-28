@@ -7,9 +7,9 @@ The Rerun Viewer has built-in support for opening [MCAP](https://mcap.dev/) file
 
 ⚠️ **This is an early version of MCAP support** that will continue to evolve and expand over time. We are actively seeking feedback from the community to guide development priorities. Reinterpretation of custom messages and enhanced query capabilities are planned for following releases.
 
-## Quick Start
+## Quick start
 
-### Loading MCAP Files
+### Loading MCAP files
 
 The simplest way to get started is to load an MCAP file directly:
 
@@ -20,7 +20,7 @@ rerun your_data.mcap
 
 You can also drag and drop MCAP files into the Rerun Viewer
 
-### Basic Conversion
+### Basic conversion
 
 Convert MCAP files to Rerun's native format for faster loading:
 
@@ -32,7 +32,7 @@ rerun mcap convert input.mcap -o output.rrd
 rerun output.rrd
 ```
 
-## Layered Architecture
+## Layered architecture
 
 Rerun uses a _layered architecture_ to process MCAP files at different levels of abstraction. This design allows the same MCAP file to be processed in multiple ways simultaneously, from raw bytes to semantically meaningful visualizations.
 
@@ -49,7 +49,7 @@ By default, Rerun processes MCAP files with all layers active to provide the mos
 
 For a detailed explanation of how each layer works and when to use them, see [Layers Explained](mcap/layers-explained.md).
 
-## Supported Message Formats
+## Supported message formats
 
 Rerun provides automatic visualization for common ROS2 message types, ROS1 message types are not currently supported for semantic interpretation through any layer.
 
@@ -57,6 +57,6 @@ Protobuf messages are automatically decoded for structured access, while unsuppo
 
 For more details about all supported message types, see [Message Formats](mcap/message-formats.md).
 
-## Advanced Usage
+## Advanced usage
 
 For advanced command-line options and automation workflows, see the [CLI Reference](mcap/cli-reference.md) for complete documentation of all available commands and flags.
