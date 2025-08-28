@@ -1405,6 +1405,8 @@ class BinaryStream:
         Reads the available bytes from the stream.
 
         If using `flush`, the read call will first block until the flush is complete.
+        If all the data was not successfully flushed within the given timeout,
+        an exception will be raised.
 
         Parameters
         ----------
@@ -1422,6 +1424,9 @@ class BinaryStream:
         Flushes the recording stream and ensures that all logged messages have been encoded into the stream.
 
         This will block until the flush is complete.
+
+        If all the data was not successfully flushed within the given timeout,
+        an exception will be raised.
 
         Parameters
         ----------

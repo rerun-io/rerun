@@ -57,7 +57,7 @@ pub trait LogSink: Send + Sync + 'static {
     /// Blocks until all pending data in the sink's send buffers has been fully flushed.
     ///
     /// Returns an error if the underlying sink is in a bad state,
-    /// e.g. if a network connection has been severed, or never connected.
+    /// e.g. if a network connection has been severed, or failed to connect within a certain timeout.
     ///
     /// If applicable, this should flush all data to any underlying OS-managed file descriptors.
     fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError>;
