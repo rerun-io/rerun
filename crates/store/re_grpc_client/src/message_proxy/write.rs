@@ -204,11 +204,12 @@ impl Client {
 
         let start = std::time::Instant::now();
 
-        let very_slow = std::time::Duration::from_secs(20);
+        let very_slow = std::time::Duration::from_secs(10);
         let mut has_emitted_slow_warning = false;
 
         loop {
-            let interval = Duration::from_secs(1); // Check in if the connection status has changed every now and then.
+            // Check in if the connection status has changed every now and then.
+            let interval = Duration::from_secs(1).min(timeout); // This could be better, but is good enough.
             match flush_done_rx.recv_timeout(interval) {
                 Ok(()) => {
                     let elapsed = start.elapsed();
@@ -252,6 +253,10 @@ impl Client {
 
                     match self.status() {
                         ClientConnectionState::Connecting { started } => {
+                            // We check the time from when the connection initially started.
+                            // This means the flush can return a failure quicker than its timeout.
+                            // Otherwise a bad URL would always lead to a flush call blocking for `connect_timeout_on_flush`.
+                            // That would also be fine 🤷
                             if self.options.connect_timeout_on_flush < started.elapsed() {
                                 return Err(GrpcFlushError::FailedToConnect {
                                     uri: self.uri.clone(),
