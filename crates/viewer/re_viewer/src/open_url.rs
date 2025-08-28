@@ -1,3 +1,4 @@
+use url::Url;
 use vec1::{Vec1, vec1};
 
 use re_data_source::LogDataSource;
@@ -143,7 +144,7 @@ impl std::str::FromStr for ViewerImportUrl {
 fn parse_webviewer_url(url: &str) -> anyhow::Result<ViewerImportUrl> {
     use std::str::FromStr as _;
 
-    let url = url::Url::parse(url)?;
+    let url = Url::parse(url)?;
 
     // It's rare, but there might be *several* `url` parameters.
     let url_params = vec1::Vec1::try_from_vec(
@@ -267,7 +268,7 @@ impl ViewerImportUrl {
     /// This is roughly the inverse of [`Self::from_str`].
     pub fn to_sharable_url(
         &self,
-        web_viewer_base_url: &Option<url::Url>,
+        web_viewer_base_url: Option<&url::Url>,
     ) -> anyhow::Result<String> {
         let urls: Vec1<String> = match self {
             Self::IntraRecordingSelection(item) => {
@@ -275,7 +276,11 @@ impl ViewerImportUrl {
                     // See also `Item::from_str`
                     anyhow::anyhow!("Can only share links to entities & components")
                 })?;
-                vec1![format!("{INTRA_RECORDING_URL_SCHEME}{data_path}")]
+                let data_path_str = data_path.to_string();
+                vec1![format!(
+                    "{INTRA_RECORDING_URL_SCHEME}{}",
+                    data_path_str.trim_start_matches('/')
+                )]
             }
 
             Self::RrdHttpUrl(url) => {
@@ -325,7 +330,7 @@ impl ViewerImportUrl {
                 Vec1::try_from_vec(
                     url_parameters
                         .iter()
-                        .map(|url| url.to_sharable_url(web_viewer_base_url))
+                        .map(|url| url.to_sharable_url(None))
                         .collect::<anyhow::Result<Vec<_>>>()?,
                 )
                 .expect("converted from a vec1")
@@ -335,7 +340,14 @@ impl ViewerImportUrl {
         // Combine the URL(s) with the web viewer base URL if provided.
         if let Some(web_viewer_base_url) = web_viewer_base_url {
             let mut share_url = web_viewer_base_url.clone();
-            share_url.set_query(Some(&urls.join("&")));
+            share_url.set_query(Some(
+                &urls
+                    .into_iter()
+                    .map(|url| format!("url={url}"))
+                    .collect::<Vec<_>>()
+                    .join("&"),
+            ));
+
             Ok(share_url.to_string())
         } else if urls.len() == 1 {
             Ok(urls.split_off_first().0)
@@ -425,7 +437,7 @@ impl ViewerImportUrl {
                     // because this URL was probably meant to be opened in a different Rerun version.
                     if let Some(window) = web_sys::window()
                         && let Ok(location) = window.location().href()
-                        && let Ok(location) = url::Url::parse(&location)
+                        && let Ok(location) = Url::parse(&location)
                     {
                         let current_webpage_base_url = base_url(&location);
 
@@ -552,58 +564,59 @@ mod tests {
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
     use re_smart_channel::SmartChannelSource;
-    use re_uri::{DatasetPartitionUri, ProxyUri};
     use re_viewer_context::{DisplayMode, Item, StoreHub};
+    use url::Url;
 
     use super::ViewerImportUrl;
 
     #[test]
     fn test_viewer_import_url_from_str() {
         // RedapCatalog
-        {
-            let url = "rerun://localhost:51234/catalog";
-            assert_eq!(
-                ViewerImportUrl::from_str(url).unwrap(),
-                ViewerImportUrl::RedapCatalog(re_uri::CatalogUri::from_str(url).unwrap())
-            );
-        }
+        let url = "rerun://localhost:51234/catalog";
+        assert_eq!(
+            ViewerImportUrl::from_str(url).unwrap(),
+            ViewerImportUrl::RedapCatalog(re_uri::CatalogUri::from_str(url).unwrap())
+        );
+
         // RedapEntry
-        {
-            let entry_id = EntryId::new();
-            let url = format!("rerun://localhost:51234/entry/{entry_id}");
-            assert_eq!(
-                ViewerImportUrl::from_str(&url).unwrap(),
-                ViewerImportUrl::RedapEntry(re_uri::EntryUri::from_str(&url).unwrap())
-            );
-        }
+        let entry_id = EntryId::new();
+        let url = format!("rerun://localhost:51234/entry/{entry_id}");
+        assert_eq!(
+            ViewerImportUrl::from_str(&url).unwrap(),
+            ViewerImportUrl::RedapEntry(re_uri::EntryUri::from_str(&url).unwrap())
+        );
+
+        // DatasetPartitionUri
+        let url = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
+        assert_eq!(
+            ViewerImportUrl::from_str(&url).unwrap(),
+            ViewerImportUrl::RedapDatasetPartition(url.parse().unwrap())
+        );
+
         // IntraRecordingSelection
-        {
-            let entity_path = EntityPath::from("camera");
-            let url = format!("recording://{entity_path}");
-            assert_eq!(
-                ViewerImportUrl::from_str(&url).unwrap(),
-                ViewerImportUrl::IntraRecordingSelection(Item::InstancePath(
-                    InstancePath::entity_all(entity_path)
-                ))
-            );
-        }
+        let entity_path = EntityPath::from("camera");
+        let url = format!("recording://{entity_path}");
+        assert_eq!(
+            ViewerImportUrl::from_str(&url).unwrap(),
+            ViewerImportUrl::IntraRecordingSelection(Item::InstancePath(InstancePath::entity_all(
+                entity_path
+            )))
+        );
+
         // WebEventListener
-        {
-            let url = "web_event:test_listener";
-            assert_eq!(
-                ViewerImportUrl::from_str(url).unwrap(),
-                ViewerImportUrl::WebEventListener
-            );
-        }
+        let url = "web_event:test_listener";
+        assert_eq!(
+            ViewerImportUrl::from_str(url).unwrap(),
+            ViewerImportUrl::WebEventListener
+        );
+
         // LogDataSource
         {
             // HTTP URL
             let url = "https://example.com/data.rrd";
             assert_eq!(
                 ViewerImportUrl::from_str(url).unwrap(),
-                ViewerImportUrl::RrdHttpUrl(
-                    url::Url::parse("https://example.com/data.rrd").unwrap()
-                )
+                ViewerImportUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
             );
 
             // Test file path (native only)
@@ -623,9 +636,9 @@ mod tests {
             // Simple - single URL parameter.
             let url = "https://foo.com/test?url=https://example.com/data.rrd";
             let expected = ViewerImportUrl::WebViewerUrl {
-                base_url: url::Url::parse("https://foo.com/test").unwrap(),
+                base_url: Url::parse("https://foo.com/test").unwrap(),
                 url_parameters: vec1::vec1![ViewerImportUrl::RrdHttpUrl(
-                    url::Url::parse("https://example.com/data.rrd").unwrap()
+                    Url::parse("https://example.com/data.rrd").unwrap()
                 )],
             };
             assert_eq!(ViewerImportUrl::from_str(url).unwrap(), expected);
@@ -633,7 +646,7 @@ mod tests {
             // Complex - multiple URL parameters of different typesl
             let url = "https://foo.com/?url=rerun://localhost:51234/catalog&url=recording://camera&url=https://example.com/data.rrd";
             let expected = ViewerImportUrl::WebViewerUrl {
-                base_url: url::Url::parse("https://foo.com/").unwrap(),
+                base_url: Url::parse("https://foo.com/").unwrap(),
                 url_parameters: vec1::vec1![
                     ViewerImportUrl::RedapCatalog(
                         re_uri::CatalogUri::from_str("rerun://localhost:51234/catalog").unwrap()
@@ -642,30 +655,29 @@ mod tests {
                         InstancePath::entity_all(EntityPath::from("camera"))
                     )),
                     ViewerImportUrl::RrdHttpUrl(
-                        url::Url::parse("https://example.com/data.rrd").unwrap()
+                        Url::parse("https://example.com/data.rrd").unwrap()
                     )
                 ],
             };
             assert_eq!(ViewerImportUrl::from_str(url).unwrap(), expected);
         }
-        // Invalid URLs.
-        {
-            let invalid_urls = vec![
-                "invalid://url",
-                "recording://camera%20with%20spaces",
-                "https://foo.com/?url=invalid_url",
-                "https://foo.com/test?url=invalid_url",
-                "",
-                "   ",
-                "aaaaaaaaaaa",
-            ];
 
-            for url in invalid_urls {
-                assert!(
-                    url.parse::<ViewerImportUrl>().is_err(),
-                    "Expected error for {url}"
-                );
-            }
+        // Invalid URLs.
+        let invalid_urls = vec![
+            "invalid://url",
+            "recording://camera%20with%20spaces",
+            "https://foo.com/?url=invalid_url",
+            "https://foo.com/test?url=invalid_url",
+            "",
+            "   ",
+            "aaaaaaaaaaa",
+        ];
+
+        for url in invalid_urls {
+            assert!(
+                url.parse::<ViewerImportUrl>().is_err(),
+                "Expected error for {url}"
+            );
         }
     }
 
@@ -680,14 +692,10 @@ mod tests {
         assert_eq!(
             ViewerImportUrl::from_display_mode(
                 &store_hub,
-                DisplayMode::RedapServer(
-                    re_uri::Origin::from_str("rerun://localhost:51234").unwrap(),
-                )
+                DisplayMode::RedapServer("rerun://localhost:51234".parse().unwrap(),)
             )
             .unwrap(),
-            ViewerImportUrl::RedapCatalog(
-                re_uri::CatalogUri::from_str("rerun://localhost:51234").unwrap()
-            )
+            ViewerImportUrl::RedapCatalog("rerun://localhost:51234".parse().unwrap())
         );
 
         // LocalTable
@@ -749,9 +757,7 @@ mod tests {
         );
         assert_eq!(
             ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
-            ViewerImportUrl::RrdHttpUrl(
-                url::Url::parse("https://example.com/recording.rrd").unwrap()
-            )
+            ViewerImportUrl::RrdHttpUrl("https://example.com/recording.rrd".parse().unwrap())
         );
 
         // originating from SDK (not possible).
@@ -788,31 +794,29 @@ mod tests {
         );
 
         // originating from Redap gRPC stream.
-        let uri =
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid";
+        let entry_id = EntryId::new();
+        let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
         add_store(
             &mut store_hub,
             Some(SmartChannelSource::RedapGrpcStream {
-                uri: DatasetPartitionUri::from_str(uri).unwrap(),
+                uri: uri.parse().unwrap(),
                 select_when_loaded: false,
             }),
         );
         assert_eq!(
             ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
-            ViewerImportUrl::RedapDatasetPartition(DatasetPartitionUri::from_str(uri).unwrap())
+            ViewerImportUrl::RedapDatasetPartition(uri.parse().unwrap())
         );
 
         // originating from message proxy.
         let uri = "rerun://localhost:51234/proxy";
         add_store(
             &mut store_hub,
-            Some(SmartChannelSource::MessageProxy(
-                ProxyUri::from_str(uri).unwrap(),
-            )),
+            Some(SmartChannelSource::MessageProxy(uri.parse().unwrap())),
         );
         assert_eq!(
             ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
-            ViewerImportUrl::RedapProxy(ProxyUri::from_str(uri).unwrap())
+            ViewerImportUrl::RedapProxy(uri.parse().unwrap())
         );
 
         // with no data source (not possible).
@@ -821,6 +825,179 @@ mod tests {
             ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).is_err(),
         );
     }
-}
 
-// TODO: add tests for `to_sharable_url`
+    #[test]
+    fn test_viewer_import_url_to_sharable_url_without_base_url() {
+        assert_eq!(
+            ViewerImportUrl::IntraRecordingSelection("my/path".parse().unwrap())
+                .to_sharable_url(None)
+                .unwrap(),
+            "recording://my/path"
+        );
+
+        assert_eq!(
+            ViewerImportUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
+                .to_sharable_url(None)
+                .unwrap(),
+            "https://example.com/data.rrd"
+        );
+
+        assert_eq!(
+            ViewerImportUrl::FilePath("/path/to/file.rrd".into())
+                .to_sharable_url(None)
+                .unwrap(),
+            "/path/to/file.rrd"
+        );
+
+        let entry_id = EntryId::new();
+        let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
+        assert_eq!(
+            ViewerImportUrl::RedapDatasetPartition(uri.parse().unwrap())
+                .to_sharable_url(None)
+                .unwrap(),
+            uri
+        );
+
+        assert_eq!(
+            ViewerImportUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
+                .to_sharable_url(None)
+                .unwrap(),
+            "rerun://localhost:51234/proxy"
+        );
+
+        assert_eq!(
+            ViewerImportUrl::RedapCatalog("rerun://localhost:51234/catalog".parse().unwrap())
+                .to_sharable_url(None)
+                .unwrap(),
+            "rerun://localhost:51234/catalog"
+        );
+
+        let url = format!("rerun://localhost:51234/entry/{entry_id}");
+        assert_eq!(
+            ViewerImportUrl::RedapEntry(url.parse().unwrap())
+                .to_sharable_url(None)
+                .unwrap(),
+            url
+        );
+
+        assert_eq!(
+            ViewerImportUrl::WebEventListener
+                .to_sharable_url(None)
+                .unwrap(),
+            "web_event:"
+        );
+
+        assert_eq!(
+            ViewerImportUrl::WebViewerUrl {
+                base_url: Url::parse("https://foo.com/test").unwrap(),
+                url_parameters: vec1::vec1![ViewerImportUrl::RrdHttpUrl(
+                    Url::parse("https://example.com/data.rrd").unwrap()
+                )],
+            }
+            .to_sharable_url(None)
+            .unwrap(),
+            "https://example.com/data.rrd",
+        );
+        assert!(
+            ViewerImportUrl::WebViewerUrl {
+                base_url: Url::parse("https://foo.com/test").unwrap(),
+                url_parameters: vec1::vec1![
+                    ViewerImportUrl::RrdHttpUrl(Url::parse("https://example.com/bar.rrd").unwrap()),
+                    ViewerImportUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
+                ],
+            }
+            .to_sharable_url(None)
+            .is_err() // We don't know how to share several URLs at once without a web viewer URL.
+        );
+    }
+
+    #[test]
+    fn test_viewer_import_url_to_sharable_url_with_base_url() {
+        let base_url = Url::parse("https://foo.com/test").unwrap();
+        let base_url_param = Some(&base_url);
+
+        assert_eq!(
+            ViewerImportUrl::IntraRecordingSelection("my/path".parse().unwrap())
+                .to_sharable_url(base_url_param)
+                .unwrap(),
+            "https://foo.com/test?url=recording://my/path"
+        );
+
+        assert_eq!(
+            ViewerImportUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
+                .to_sharable_url(base_url_param)
+                .unwrap(),
+            "https://foo.com/test?url=https://example.com/data.rrd"
+        );
+
+        assert_eq!(
+            ViewerImportUrl::FilePath("/path/to/file.rrd".into())
+                .to_sharable_url(base_url_param)
+                .unwrap(),
+            "https://foo.com/test?url=/path/to/file.rrd"
+        );
+
+        let uri =
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae?partition_id=pid";
+        assert_eq!(
+            ViewerImportUrl::RedapDatasetPartition(uri.parse().unwrap())
+                .to_sharable_url(base_url_param)
+                .unwrap(),
+            format!("https://foo.com/test?url={uri}")
+        );
+
+        assert_eq!(
+            ViewerImportUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
+                .to_sharable_url(base_url_param)
+                .unwrap(),
+            "https://foo.com/test?url=rerun://localhost:51234/proxy"
+        );
+
+        assert_eq!(
+            ViewerImportUrl::RedapCatalog("rerun://localhost:51234/catalog".parse().unwrap())
+                .to_sharable_url(base_url_param)
+                .unwrap(),
+            "https://foo.com/test?url=rerun://localhost:51234/catalog"
+        );
+
+        let entry_id = EntryId::new();
+        let url = format!("rerun://localhost:51234/entry/{entry_id}");
+        assert_eq!(
+            ViewerImportUrl::RedapEntry(url.parse().unwrap())
+                .to_sharable_url(base_url_param)
+                .unwrap(),
+            format!("https://foo.com/test?url={url}")
+        );
+
+        assert_eq!(
+            ViewerImportUrl::WebEventListener
+                .to_sharable_url(base_url_param)
+                .unwrap(),
+            "https://foo.com/test?url=web_event:"
+        );
+
+        assert_eq!(
+            ViewerImportUrl::WebViewerUrl {
+                base_url: Url::parse("http://foo.com/doesn't-matter").unwrap(),
+                url_parameters: vec1::vec1![ViewerImportUrl::RrdHttpUrl(
+                    Url::parse("https://example.com/data.rrd").unwrap()
+                )],
+            }
+            .to_sharable_url(base_url_param)
+            .unwrap(),
+            "https://foo.com/test?url=https://example.com/data.rrd",
+        );
+        assert_eq!(
+            ViewerImportUrl::WebViewerUrl {
+                base_url: Url::parse("http://foo.com/doesn't-matter").unwrap(),
+                url_parameters: vec1::vec1![
+                    ViewerImportUrl::RrdHttpUrl(Url::parse("https://example.com/bar.rrd").unwrap()),
+                    ViewerImportUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
+                ],
+            }
+            .to_sharable_url(base_url_param)
+            .unwrap(),
+            "https://foo.com/test?url=https://example.com/bar.rrd&url=rerun://localhost:51234/proxy",
+        );
+    }
+}
