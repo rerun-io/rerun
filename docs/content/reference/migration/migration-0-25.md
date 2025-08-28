@@ -19,7 +19,7 @@ This feature has been defunct for a while. A better replacement can be tracked [
 When flushing a recording stream you can now give it a maximum time for how long it should block.
 The flush will block until either it completes, fails (e.g. because of connection loss), or the timeout is reached.
 
-Previously this could only be configured for gRPC sinks, and it was configured once then first connecting.
+Previously this could only be configured for gRPC sinks, and it was configured once upon setting up the connection.
 
 In the C and Python APIs, negative timeouts used to have special meaning. Now they are no longer permitted.
 
