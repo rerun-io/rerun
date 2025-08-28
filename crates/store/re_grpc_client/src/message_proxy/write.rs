@@ -77,14 +77,14 @@ pub struct Options {
     /// We will still retry connecting for however long it takes.
     /// But blocking [`Client::flush_blocking`] forever when the
     /// server just isn't there is not a good idea.
-    pub connection_timeout: Duration,
+    pub connect_timeout_on_flush: Duration,
 }
 
 impl Default for Options {
     fn default() -> Self {
         Self {
             compression: Compression::LZ4,
-            connection_timeout: Duration::from_secs(5),
+            connect_timeout_on_flush: Duration::from_secs(5),
         }
     }
 }
@@ -179,7 +179,7 @@ impl Client {
     /// Block until all messages are sent, or there is a failure.
     ///
     /// If the gRPC connection has not yet been established,
-    /// this call will block for _at most_ [`Options::connection_timeout`].
+    /// this call will block for _at most_ [`Options::connect_timeout_on_flush`].
     /// This means this function will only block all the way to the given `timeout` argument
     /// IF there is some hope of progress being made - i.e. the connection open.
     ///
@@ -252,7 +252,7 @@ impl Client {
 
                     match self.status() {
                         ClientConnectionState::Connecting { started } => {
-                            if self.options.connection_timeout < started.elapsed() {
+                            if self.options.connect_timeout_on_flush < started.elapsed() {
                                 return Err(GrpcFlushError::FailedToConnect {
                                     uri: self.uri.clone(),
                                     duration_sec: started.elapsed().as_secs_f32(),
