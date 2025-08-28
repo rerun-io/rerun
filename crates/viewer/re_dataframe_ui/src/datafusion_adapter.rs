@@ -45,7 +45,7 @@ impl From<&TableBlueprint> for DataFusionQueryData {
             sort_by,
             partition_links,
             entry_links,
-            filter,
+            prefilter: filter,
         } = value;
 
         Self {

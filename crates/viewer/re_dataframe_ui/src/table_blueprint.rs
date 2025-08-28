@@ -81,7 +81,11 @@ pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
     pub partition_links: Option<PartitionLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
-    pub filter: Option<datafusion::prelude::Expr>,
+
+    /// Always-on filter specified by calling code.
+    ///
+    /// For example, exclude blueprint dataset from the entries table.
+    pub prefilter: Option<datafusion::logical_expr::Expr>,
 }
 
 /// The blueprint for a specific column.

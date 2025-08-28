@@ -195,8 +195,8 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    pub fn filter(mut self, filter: datafusion::prelude::Expr) -> Self {
-        self.initial_blueprint.filter = Some(filter);
+    pub fn prefilter(mut self, expression: datafusion::prelude::Expr) -> Self {
+        self.initial_blueprint.prefilter = Some(expression);
         self
     }
 
