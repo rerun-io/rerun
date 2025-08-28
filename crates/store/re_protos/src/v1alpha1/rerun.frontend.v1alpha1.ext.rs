@@ -180,6 +180,7 @@ pub struct DoMaintenanceRequest {
     pub build_scalar_indexes: bool,
     pub compact_fragments: bool,
     pub cleanup_before: Option<jiff::Timestamp>,
+    pub unsafe_allow_recent_cleanup: bool,
 }
 
 impl From<DoMaintenanceRequest> for crate::frontend::v1alpha1::DoMaintenanceRequest {
@@ -192,6 +193,7 @@ impl From<DoMaintenanceRequest> for crate::frontend::v1alpha1::DoMaintenanceRequ
                 seconds: ts.as_second(),
                 nanos: ts.subsec_nanosecond(),
             }),
+            unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
         }
     }
 }
