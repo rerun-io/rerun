@@ -750,14 +750,39 @@ class PyMemorySinkStorage:
         """
 
 class PyBinarySinkStorage:
-    def read(self, *, flush: bool = True) -> bytes | None:
+    def read(self, *, flush: bool = True, flush_timeout_sec: float = 1e38) -> bytes | None:
         """
         Read the bytes from the binary sink.
 
-        If `flush` is `true`, the sink will be flushed before reading.
+        If `flush` is `True`, the sink will be flushed before reading.
+        If all the data was not successfully flushed within the given timeout,
+        an exception will be raised.
+
+        Parameters
+        ----------
+        flush:
+            If true (default), the stream will be flushed before reading.
+        flush_timeout_sec:
+            If `flush` is `True`, wait at most this many seconds.
+            If the timeout is reached, an error is raised.
+
         """
-    def flush(self) -> None:
-        """Flush the binary sink manually."""
+    def flush(self, *, timeout_sec: float = 1e38) -> None:
+        """
+        Flushes the binary sink and ensures that all logged messages have been encoded into the stream.
+
+        This will block until the flush is complete, or the timeout is reached, or an error occurs.
+
+        If all the data was not successfully flushed within the given timeout,
+        an exception will be raised.
+
+        Parameters
+        ----------
+        timeout_sec:
+            Wait at most this many seconds.
+            If the timeout is reached, an error is raised.
+
+        """
 
 #
 # init
@@ -929,7 +954,7 @@ class GrpcSink:
     Connect the recording stream to a remote Rerun Viewer on the given URL.
     """
 
-    def __init__(self, url: str | None = None, flush_timeout_sec: float | None = None) -> None:
+    def __init__(self, url: str | None = None) -> None:
         """
         Initialize a gRPC sink.
 
@@ -942,10 +967,6 @@ class GrpcSink:
             and the pathname must be `/proxy`.
 
             The default is `rerun+http://127.0.0.1:9876/proxy`.
-        flush_timeout_sec:
-            The minimum time the SDK will wait during a flush before potentially
-            dropping data if progress is not being made. Passing `None` indicates no timeout,
-            and can cause a call to `flush` to block indefinitely.
 
         """
 
@@ -976,7 +997,6 @@ def set_sinks(
 
 def connect_grpc(
     url: Optional[str],
-    flush_timeout_sec: Optional[float] = ...,
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:

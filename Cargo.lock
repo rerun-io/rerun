@@ -7735,6 +7735,7 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "async-stream",
+ "crossbeam",
  "itertools 0.14.0",
  "jiff",
  "re_arrow_util",
@@ -7748,6 +7749,7 @@ dependencies = [
  "re_protos",
  "re_smart_channel",
  "re_sorbet",
+ "re_tracing",
  "re_uri",
  "serde",
  "thiserror 1.0.69",
@@ -7759,6 +7761,7 @@ dependencies = [
  "tracing",
  "url",
  "wasm-bindgen-futures",
+ "web-time",
 ]
 
 [[package]]
@@ -8301,6 +8304,7 @@ dependencies = [
  "re_tracing",
  "re_uri",
  "serde",
+ "thiserror 1.0.69",
  "web-time",
 ]
 
@@ -10388,6 +10392,7 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_format",
+ "re_memory",
  "rerun",
 ]
 
