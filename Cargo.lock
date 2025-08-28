@@ -10392,6 +10392,7 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_format",
+ "re_memory",
  "rerun",
 ]
 

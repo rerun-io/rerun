@@ -6,10 +6,7 @@
 use mimalloc::MiMalloc;
 
 use re_memory::AccountingAllocator;
-use rerun::{
-    archetypes::Image,
-    external::{image, re_memory},
-};
+use rerun::{archetypes::Image, external::image};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<MiMalloc> = AccountingAllocator::new(MiMalloc);
