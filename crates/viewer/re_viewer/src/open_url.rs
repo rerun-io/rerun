@@ -173,7 +173,7 @@ impl ViewerImportUrl {
     /// Conceptually, this is the inverse of [`Self::open`]. However, some import URLs like
     /// intra-recording links aren't stand-alone enough to be returned by this function.
     ///
-    /// To produce a sharable url, from this result, call [`Self::to_sharable_url`].
+    /// To produce a sharable url, from this result, call [`Self::sharable_url`].
     ///
     /// Returns Err(reason) if the current state can't be shared with a url.
     // TODO(#10866): Should have anchors for selection etc. when supported. Need to figure out how this works together with the "share editor".
@@ -202,7 +202,7 @@ impl ViewerImportUrl {
                     .ok_or(anyhow::anyhow!("No data source"))?;
 
                 // Note that some of these data sources aren't actually sharable URLs.
-                // But since we have to handles this for `open_url` and `to_sharable_url` anyways,
+                // But since we have to handles this for `open_url` and `sharable_url` anyways,
                 // we just preserve as much as possible here.
                 match data_source {
                     SmartChannelSource::RrdHttpStream { url, follow: _ } => {
@@ -268,10 +268,7 @@ impl ViewerImportUrl {
     ///
     /// This is roughly the inverse of [`Self::from_str`].
     #[allow(unused)] // TODO(rerun/dataplatform#1336): Only used on the web. About to change!
-    pub fn to_sharable_url(
-        &self,
-        web_viewer_base_url: Option<&url::Url>,
-    ) -> anyhow::Result<String> {
+    pub fn sharable_url(&self, web_viewer_base_url: Option<&url::Url>) -> anyhow::Result<String> {
         let urls: Vec1<String> = match self {
             Self::IntraRecordingSelection(item) => {
                 let data_path = item.to_data_path().ok_or_else(|| {
@@ -332,7 +329,7 @@ impl ViewerImportUrl {
                 Vec1::try_from_vec(
                     url_parameters
                         .iter()
-                        .map(|url| url.to_sharable_url(None))
+                        .map(|url| url.sharable_url(None))
                         .collect::<anyhow::Result<Vec<_>>>()?,
                 )
                 .expect("converted from a vec1")
@@ -829,24 +826,24 @@ mod tests {
     }
 
     #[test]
-    fn test_viewer_import_url_to_sharable_url_without_base_url() {
+    fn test_viewer_import_url_sharable_url_without_base_url() {
         assert_eq!(
             ViewerImportUrl::IntraRecordingSelection("my/path".parse().unwrap())
-                .to_sharable_url(None)
+                .sharable_url(None)
                 .unwrap(),
             "recording://my/path"
         );
 
         assert_eq!(
             ViewerImportUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
-                .to_sharable_url(None)
+                .sharable_url(None)
                 .unwrap(),
             "https://example.com/data.rrd"
         );
 
         assert_eq!(
             ViewerImportUrl::FilePath("/path/to/file.rrd".into())
-                .to_sharable_url(None)
+                .sharable_url(None)
                 .unwrap(),
             "/path/to/file.rrd"
         );
@@ -855,21 +852,21 @@ mod tests {
         let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
         assert_eq!(
             ViewerImportUrl::RedapDatasetPartition(uri.parse().unwrap())
-                .to_sharable_url(None)
+                .sharable_url(None)
                 .unwrap(),
             uri
         );
 
         assert_eq!(
             ViewerImportUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
-                .to_sharable_url(None)
+                .sharable_url(None)
                 .unwrap(),
             "rerun://localhost:51234/proxy"
         );
 
         assert_eq!(
             ViewerImportUrl::RedapCatalog("rerun://localhost:51234/catalog".parse().unwrap())
-                .to_sharable_url(None)
+                .sharable_url(None)
                 .unwrap(),
             "rerun://localhost:51234/catalog"
         );
@@ -877,14 +874,14 @@ mod tests {
         let url = format!("rerun://localhost:51234/entry/{entry_id}");
         assert_eq!(
             ViewerImportUrl::RedapEntry(url.parse().unwrap())
-                .to_sharable_url(None)
+                .sharable_url(None)
                 .unwrap(),
             url
         );
 
         assert_eq!(
             ViewerImportUrl::WebEventListener
-                .to_sharable_url(None)
+                .sharable_url(None)
                 .unwrap(),
             "web_event:"
         );
@@ -896,7 +893,7 @@ mod tests {
                     Url::parse("https://example.com/data.rrd").unwrap()
                 )],
             }
-            .to_sharable_url(None)
+            .sharable_url(None)
             .unwrap(),
             "https://example.com/data.rrd",
         );
@@ -908,33 +905,33 @@ mod tests {
                     ViewerImportUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
                 ],
             }
-            .to_sharable_url(None)
+            .sharable_url(None)
             .is_err() // We don't know how to share several URLs at once without a web viewer URL.
         );
     }
 
     #[test]
-    fn test_viewer_import_url_to_sharable_url_with_base_url() {
+    fn test_viewer_import_url_sharable_url_with_base_url() {
         let base_url = Url::parse("https://foo.com/test").unwrap();
         let base_url_param = Some(&base_url);
 
         assert_eq!(
             ViewerImportUrl::IntraRecordingSelection("my/path".parse().unwrap())
-                .to_sharable_url(base_url_param)
+                .sharable_url(base_url_param)
                 .unwrap(),
             "https://foo.com/test?url=recording://my/path"
         );
 
         assert_eq!(
             ViewerImportUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
-                .to_sharable_url(base_url_param)
+                .sharable_url(base_url_param)
                 .unwrap(),
             "https://foo.com/test?url=https://example.com/data.rrd"
         );
 
         assert_eq!(
             ViewerImportUrl::FilePath("/path/to/file.rrd".into())
-                .to_sharable_url(base_url_param)
+                .sharable_url(base_url_param)
                 .unwrap(),
             "https://foo.com/test?url=/path/to/file.rrd"
         );
@@ -943,21 +940,21 @@ mod tests {
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae?partition_id=pid";
         assert_eq!(
             ViewerImportUrl::RedapDatasetPartition(uri.parse().unwrap())
-                .to_sharable_url(base_url_param)
+                .sharable_url(base_url_param)
                 .unwrap(),
             format!("https://foo.com/test?url={uri}")
         );
 
         assert_eq!(
             ViewerImportUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
-                .to_sharable_url(base_url_param)
+                .sharable_url(base_url_param)
                 .unwrap(),
             "https://foo.com/test?url=rerun://localhost:51234/proxy"
         );
 
         assert_eq!(
             ViewerImportUrl::RedapCatalog("rerun://localhost:51234/catalog".parse().unwrap())
-                .to_sharable_url(base_url_param)
+                .sharable_url(base_url_param)
                 .unwrap(),
             "https://foo.com/test?url=rerun://localhost:51234/catalog"
         );
@@ -966,14 +963,14 @@ mod tests {
         let url = format!("rerun://localhost:51234/entry/{entry_id}");
         assert_eq!(
             ViewerImportUrl::RedapEntry(url.parse().unwrap())
-                .to_sharable_url(base_url_param)
+                .sharable_url(base_url_param)
                 .unwrap(),
             format!("https://foo.com/test?url={url}")
         );
 
         assert_eq!(
             ViewerImportUrl::WebEventListener
-                .to_sharable_url(base_url_param)
+                .sharable_url(base_url_param)
                 .unwrap(),
             "https://foo.com/test?url=web_event:"
         );
@@ -985,7 +982,7 @@ mod tests {
                     Url::parse("https://example.com/data.rrd").unwrap()
                 )],
             }
-            .to_sharable_url(base_url_param)
+            .sharable_url(base_url_param)
             .unwrap(),
             "https://foo.com/test?url=https://example.com/data.rrd",
         );
@@ -997,7 +994,7 @@ mod tests {
                     ViewerImportUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
                 ],
             }
-            .to_sharable_url(base_url_param)
+            .sharable_url(base_url_param)
             .unwrap(),
             "https://foo.com/test?url=https://example.com/bar.rrd&url=rerun://localhost:51234/proxy",
         );
