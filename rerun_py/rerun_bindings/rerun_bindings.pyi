@@ -754,14 +754,14 @@ class PyBinarySinkStorage:
         """
         Read the bytes from the binary sink.
 
-        If `flush` is `true`, the sink will be flushed before reading.
+        If `flush` is `True`, the sink will be flushed before reading.
 
         Parameters
         ----------
         flush:
             If true (default), the stream will be flushed before reading.
         flush_timeout_sec:
-            If flush is set, wait at most this many seconds.
+            If `flush` is `True`, wait at most this many seconds.
             If the timeout is reached, an error is raised.
 
         """
