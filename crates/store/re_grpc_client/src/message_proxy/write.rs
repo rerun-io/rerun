@@ -320,16 +320,17 @@ async fn message_proxy_client(
         }
     };
 
-    let mut last_log_time: Option<Instant> = None;
+    let mut last_connect_failure_log_time: Option<Instant> = None;
     let channel = loop {
         match endpoint.connect().await {
             Ok(channel) => break channel,
             Err(err) => {
                 let log_interval = Duration::from_secs(5);
-                if last_log_time.is_none_or(|last_log_time| log_interval < last_log_time.elapsed())
+                if last_connect_failure_log_time
+                    .is_none_or(|last_log_time| log_interval < last_log_time.elapsed())
                 {
                     re_log::debug!("Failed to connect to {uri}: {err}, retrying…");
-                    last_log_time = Some(Instant::now());
+                    last_connect_failure_log_time = Some(Instant::now());
                 }
 
                 tokio::select! {
