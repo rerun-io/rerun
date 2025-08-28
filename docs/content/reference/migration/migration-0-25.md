@@ -10,6 +10,11 @@ order: 985
 Use `--web-viewer` instead.
 
 
+## Removed the `--drop-at-latency` CLI argument
+
+This feature has been defunct for a while. A better replacement can be tracked [in this issue](https://github.com/rerun-io/rerun/issues/11024).
+
+
 ## Changed arrow encoding of blobs
 We used to encode blobs as `List<uint8>`, which was rather unidiomatic.
 Now they are instead encoded as `Binary`.
