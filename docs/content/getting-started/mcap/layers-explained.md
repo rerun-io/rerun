@@ -19,7 +19,9 @@ The `stats` layer computes file-level metrics and statistics, creating entities 
 
 The `ros2msg` layer provides semantic interpretation and visualization of standard ROS2 message types, creating meaningful Rerun visualization components from robotics data. Unlike the protobuf layer, this layer understands the semantics of ROS2 messages and creates appropriate visualizations: images become Image components, point clouds become Point3D components, IMU data becomes Transform3D components, and so on.
 
-This layer supports standard ROS2 packages including `sensor_msgs`, `geometry_msgs`, `std_msgs`, and `builtin_interfaces`. For robotics datasets, this layer provides visualization of sensor data like cameras and LiDAR with minimal setup required. See [Message Formats](message-formats.md) for the complete list of supported message types.
+This layer supports standard ROS2 packages including `sensor_msgs`, `geometry_msgs`, `std_msgs`, and `builtin_interfaces`. This layer provides visualization of sensor data like cameras and LiDAR with minimal setup required.
+
+See [Message Formats](message-formats.md) for the complete list of supported message types.
 
 ### Protobuf Decoding
 
@@ -31,7 +33,7 @@ However, this layer provides structured access without semantic visualization me
 
 The `raw` layer preserves the original message bytes without any interpretation, creating blob entities containing the unprocessed message data. Each message appears as a binary blob that can be accessed programmatically for custom analysis tools.
 
-## Recording Context
+## Recording Info
 
 The `recording_info` layer extracts metadata about the recording session and capture context, creating metadata entities with information about recording timestamps, source system details, and capture software versions.
 

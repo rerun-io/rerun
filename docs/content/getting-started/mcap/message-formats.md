@@ -26,5 +26,5 @@ The `raw` and `schema` layers are able to preserve the original bytes and struct
 To request support for additional message types:
 
 - [File a GitHub issue](https://github.com/rerun-io/rerun/issues) requesting the specific message type
-- Join the Rerun community on [Discord](https://discord.gg/PXtCgFBSmH)to discuss and collaborate with others
+- Join the Rerun community on [Discord](https://discord.gg/PXtCgFBSmH) to discuss and collaborate with others
 - Consider contributing a parser implementation

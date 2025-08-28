@@ -69,7 +69,15 @@ When no `-l` flags are specified, all available layers are used:
 
 ```bash
 # These commands are equivalent (default uses all layers):
+
 rerun mcap convert input.mcap -o output.rrd
 
-rerun mcap convert input.mcap -l raw -l schema -l stats -l protobuf -l ros2msg -l recording_info -o output.rrd
+rerun mcap convert input.mcap \
+    -l raw \
+    -l schema \
+    -l stats \
+    -l protobuf \
+    -l ros2msg \
+    -l recording_info \
+    -o output.rrd
 ```

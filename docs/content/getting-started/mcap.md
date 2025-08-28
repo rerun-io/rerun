@@ -18,10 +18,7 @@ The simplest way to get started is to load an MCAP file directly:
 rerun your_data.mcap
 ```
 
-You can also:
-
-- **Drag and drop** MCAP files into the Rerun Viewer
-- Use **File > Open** in the viewer to browse for MCAP files
+You can also drag and drop MCAP files into the Rerun Viewer
 
 ### Basic Conversion
 
