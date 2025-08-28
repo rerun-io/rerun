@@ -386,6 +386,48 @@ impl ::prost::Name for TaskId {
         "/rerun.common.v1alpha1.TaskId".into()
     }
 }
+/// `ChunkKey` provides chunk location details in the data store.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ChunkKey {
+    /// Chunk unique identifier
+    #[prost(message, optional, tag = "1")]
+    pub chunk_id: ::core::option::Option<Tuid>,
+    /// details about the chunk's location that are specific to the underlying data source (partition type)
+    #[prost(message, optional, tag = "3")]
+    pub location: ::core::option::Option<::prost_types::Any>,
+}
+impl ::prost::Name for ChunkKey {
+    const NAME: &'static str = "ChunkKey";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.ChunkKey".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.ChunkKey".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RrdChunkLocationDetails {
+    /// where is the chunk stored (S3, local file, etc)
+    #[prost(string, optional, tag = "1")]
+    pub url: ::core::option::Option<::prost::alloc::string::String>,
+    /// byte offset of the chunk within the data source
+    #[prost(uint64, optional, tag = "2")]
+    pub offset: ::core::option::Option<u64>,
+    /// Chunk's length in bytes
+    #[prost(uint64, optional, tag = "3")]
+    pub length: ::core::option::Option<u64>,
+}
+impl ::prost::Name for RrdChunkLocationDetails {
+    const NAME: &'static str = "RrdChunkLocationDetails";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.RrdChunkLocationDetails".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.RrdChunkLocationDetails".into()
+    }
+}
 /// Mirrors `re_build_info::BuildInfo`.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BuildInfo {

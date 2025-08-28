@@ -654,6 +654,145 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
     }
 }
 
+// --- ChunkKey ---
+
+#[derive(Debug, Clone)]
+pub struct ChunkKey {
+    pub chunk_id: re_chunk::ChunkId,
+    pub location: prost_types::Any,
+}
+
+impl ChunkKey {
+    pub fn as_bytes(&self) -> Vec<u8> {
+        use prost::Message as _;
+
+        let chunk_key: crate::common::v1alpha1::ChunkKey = self.clone().into();
+        chunk_key.encode_to_vec()
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::ChunkKey> for ChunkKey {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::ChunkKey) -> Result<Self, Self::Error> {
+        let tuid = value.chunk_id.ok_or(missing_field!(
+            crate::common::v1alpha1::RrdChunkLocationDetails,
+            "chunk_id"
+        ))?;
+        let id: re_tuid::Tuid = tuid.try_into()?;
+        let chunk_id = re_chunk::ChunkId::from_u128(id.as_u128());
+
+        let location = value.location.ok_or(missing_field!(
+            crate::common::v1alpha1::ChunkKey,
+            "location"
+        ))?;
+
+        Ok(Self { chunk_id, location })
+    }
+}
+
+impl TryFrom<&[u8]> for ChunkKey {
+    type Error = TypeConversionError;
+
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        use prost::Message as _;
+
+        let proto_chunk_key = crate::common::v1alpha1::ChunkKey::decode(bytes)
+            .map_err(|err| TypeConversionError::DecodeError(err))?;
+
+        proto_chunk_key.try_into()
+    }
+}
+
+impl From<ChunkKey> for crate::common::v1alpha1::ChunkKey {
+    fn from(value: ChunkKey) -> Self {
+        let tuid =
+            crate::common::v1alpha1::Tuid::from(re_tuid::Tuid::from_u128(value.chunk_id.as_u128()));
+        Self {
+            chunk_id: Some(tuid),
+            location: Some(value.location),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RrdChunkLocationDetails {
+    pub url: url::Url,
+    pub offset: u64,
+    pub length: u64,
+}
+
+impl TryFrom<crate::common::v1alpha1::RrdChunkLocationDetails> for RrdChunkLocationDetails {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::common::v1alpha1::RrdChunkLocationDetails,
+    ) -> Result<Self, Self::Error> {
+        let url = value
+            .url
+            .ok_or(missing_field!(
+                crate::common::v1alpha1::RrdChunkLocationDetails,
+                "location_url"
+            ))?
+            .parse()
+            .map_err(|err| {
+                invalid_field!(
+                    crate::common::v1alpha1::RrdChunkLocationDetails,
+                    "location_url",
+                    err
+                )
+            })?;
+
+        let offset = value.offset.ok_or(missing_field!(
+            crate::common::v1alpha1::RrdChunkLocationDetails,
+            "offset"
+        ))?;
+
+        let length = value.length.ok_or(missing_field!(
+            crate::common::v1alpha1::RrdChunkLocationDetails,
+            "length"
+        ))?;
+
+        Ok(RrdChunkLocationDetails {
+            url,
+            offset,
+            length,
+        })
+    }
+}
+
+impl From<RrdChunkLocationDetails> for crate::common::v1alpha1::RrdChunkLocationDetails {
+    fn from(value: RrdChunkLocationDetails) -> Self {
+        Self {
+            url: Some(value.url.to_string()),
+            offset: Some(value.offset),
+            length: Some(value.length),
+        }
+    }
+}
+
+// --- ChunkLocationDetails ---
+
+pub trait ChunkLocationDetails {
+    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError>;
+
+    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError>
+    where
+        Self: Sized;
+}
+
+impl ChunkLocationDetails for RrdChunkLocationDetails {
+    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
+        let as_proto: crate::common::v1alpha1::RrdChunkLocationDetails = self.clone().into();
+        Ok(prost_types::Any::from_msg(&as_proto)?)
+    }
+
+    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
+        let as_proto = any.to_msg::<crate::common::v1alpha1::RrdChunkLocationDetails>()?;
+        Ok(as_proto.try_into()?)
+    }
+}
+
 // ---
 
 impl Eq for TaskId {}

@@ -99,6 +99,9 @@ service ManifestRegistryService {
   // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
   rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
+  // Fetch chunks given the chunks location.
+  rpc FetchChunks(FetchChunksRequest) returns (stream FetchChunksResponse) {}
+
   // --- Developer/Debug APIs ---
   // Unstable APIs that are not exposed by the Frontend.
 
@@ -490,6 +493,27 @@ message GetChunksRequest {
 }
 
 message GetChunksResponse {
+  // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
+  // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
+  repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
+}
+
+message FetchChunksRequest {
+  // We currently need to know to which partition chunk belongs to in order to include that
+  // in the response metadata
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 1;
+
+  // Same as with partition ids, we need to know layer for each chunk
+  repeated string partition_layers = 2;
+
+  // The location of the chunks to fetch. Note that we don't support client side streaming of chunks
+  // as there's no plan to support it on grpc-web at the moment.
+  //
+  // Chunks to fetch (described by their `ChunkKey`)
+  repeated rerun.common.v1alpha1.ChunkKey chunk_keys = 3;
+}
+
+message FetchChunksResponse {
   // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
   // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
   repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
