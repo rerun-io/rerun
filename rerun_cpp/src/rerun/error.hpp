@@ -57,6 +57,7 @@ namespace rerun {
         RecordingStreamSpawnFailure,
         RecordingStreamChunkValidationFailure,
         RecordingStreamServeGrpcFailure,
+        RecordingStreamFlushTimeout,
         RecordingStreamFlushFailure,
 
         // Arrow data processing errors.

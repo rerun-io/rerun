@@ -16,7 +16,7 @@ pub enum SinkFlushError {
     #[error("Flush timed out - not all log messages were sent")]
     Timeout,
 
-    /// Custom error occurred
+    /// An error occurred before reaching the timeout.
     #[error("{message}")]
     Failed {
         /// Details

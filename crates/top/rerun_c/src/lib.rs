@@ -408,6 +408,7 @@ pub enum CErrorCode {
     RecordingStreamSpawnFailure,
     RecordingStreamChunkValidationFailure,
     RecordingStreamServeGrpcFailure,
+    RecordingStreamFlushTimeout,
     RecordingStreamFlushFailure,
 
     // Arrow data processing errors.
@@ -704,7 +705,15 @@ pub unsafe extern "C" fn rr_recording_stream_flush_blocking(
         };
         if let Err(err) = stream.flush(Some(timeout)) {
             if let Some(error) = unsafe { error.as_mut() } {
-                *error = CError::new(CErrorCode::RecordingStreamFlushFailure, &err.to_string());
+                let code = match &err {
+                    re_sdk::sink::SinkFlushError::Timeout => {
+                        CErrorCode::RecordingStreamFlushTimeout
+                    }
+                    re_sdk::sink::SinkFlushError::Failed { .. } => {
+                        CErrorCode::RecordingStreamFlushFailure
+                    }
+                };
+                *error = CError::new(code, &err.to_string());
             }
         }
     }
