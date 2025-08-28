@@ -703,7 +703,7 @@ pub unsafe extern "C" fn rr_recording_stream_flush_blocking(
                 .ok()
                 .unwrap_or(Duration::MAX)
         };
-        if let Err(err) = stream.flush(Some(timeout)) {
+        if let Err(err) = stream.flush_with_timeout(timeout) {
             if let Some(error) = unsafe { error.as_mut() } {
                 let code = match &err {
                     re_sdk::sink::SinkFlushError::Timeout => {

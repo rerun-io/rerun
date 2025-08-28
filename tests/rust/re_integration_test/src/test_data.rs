@@ -17,7 +17,7 @@ pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn 
             stream.set_time("test_time", TimeCell::new(TimeType::Sequence, x));
         }
 
-        stream.flush(Some(Duration::from_secs(60)))?;
+        stream.flush_with_timeout(Duration::from_secs(60))?;
 
         path
     };

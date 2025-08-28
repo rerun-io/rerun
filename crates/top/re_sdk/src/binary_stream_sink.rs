@@ -49,7 +49,7 @@ impl BinaryStreamStorage {
     /// have been written to the stream.
     #[inline]
     pub fn flush(&self, timeout: std::time::Duration) -> Result<(), SinkFlushError> {
-        self.rec.flush(Some(timeout))
+        self.rec.flush_with_timeout(timeout)
     }
 }
 

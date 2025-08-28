@@ -16,7 +16,7 @@ fn test_drop_grpc_sink() {
         .unwrap();
 
     re_log::info!("Flushing with timeout…");
-    assert!(rec.flush(Some(Duration::from_secs(2))).is_err());
+    assert!(rec.flush_with_timeout(Duration::from_secs(2)).is_err());
 
     re_log::info!("Dropping recording…");
     drop(rec); // If the test hangs here, we have a bug!

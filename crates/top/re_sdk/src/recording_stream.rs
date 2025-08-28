@@ -1873,8 +1873,6 @@ impl RecordingStream {
     /// This does **not** wait for the flush to propagate (see [`Self::flush_blocking`]).
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     ///
-    /// Convenience function for calling [`Self::flush`] with a `timeout` of `None`.
-    ///
     /// This will never return [`SinkFlushError::Timeout`].
     pub fn flush_async(&self) -> Result<(), SinkFlushError> {
         re_tracing::profile_function!();
@@ -1884,14 +1882,30 @@ impl RecordingStream {
         }
     }
 
-    /// Initiates a flush the batching pipeline and waits for it to finish.
+    /// Flush the batching pipeline and waits for it to propagate.
     ///
-    /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
+    /// The function will block until either the flush has completed successfully (`Ok`),
+    /// an error has occurred (`SinkFlushError::Failed`), or the timeout is reached (`SinkFlushError::Timeout`).
     ///
-    /// Convenience function for calling [`Self::flush`] with [`Duration::MAX`].
+    /// Convenience for calling [`Self::flush_with_timeout`] with a timeout of [`Duration::MAX`]
     pub fn flush_blocking(&self) -> Result<(), SinkFlushError> {
         re_tracing::profile_function!();
-        self.flush(Some(Duration::MAX))
+        self.flush_with_timeout(Duration::MAX)
+    }
+
+    /// Flush the batching pipeline and optionally waits for it to propagate.
+    /// If you don't want a timeout you can pass in [`Duration::MAX`].
+    ///
+    /// The function will block until that timeout is reached,
+    /// an error occurs, or the flush is complete.
+    /// The function will only block while there is some hope of progress.
+    /// For instance: if the underlying gRPC connection is disconnected (or never connected at all),
+    /// then [`SinkFlushError::Failed`] is returned.
+    ///
+    /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
+    pub fn flush_with_timeout(&self, timeout: Duration) -> Result<(), SinkFlushError> {
+        re_tracing::profile_function!();
+        self.flush(Some(timeout))
     }
 
     /// Flush the batching pipeline and optionally waits for it to propagate.
@@ -1902,9 +1916,7 @@ impl RecordingStream {
     /// an error occurs, or the flush is complete.
     ///
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
-    pub fn flush(&self, timeout: Option<Duration>) -> Result<(), SinkFlushError> {
-        re_tracing::profile_function!();
-
+    fn flush(&self, timeout: Option<Duration>) -> Result<(), SinkFlushError> {
         if self.is_forked_child() {
             return Err(SinkFlushError::failed(
                 "Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the Rerun SDK.",
