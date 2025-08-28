@@ -7,22 +7,6 @@ MCAP processing in Rerun uses a layer-based architecture where each layer repres
 
 When multiple layers are enabled, they each filter and process only the messages they're designed to handle based on encoding and schema compatibility, creating different components and archetypes on the same entity paths (derived from MCAP channel topics). This can result in data duplication when layers have overlapping interests—for example, enabling both `raw` and `protobuf` layers will store protobuf messages in two forms: once as structured field data and once as raw binary blobs.
 
-Each of these layers contributes their own [chunks](../../concepts/chunks.md) to the Rerun-native data.
-Below is a table showing the mapping between MCAP data and Rerun components:
-
-| MCAP Data        | Rerun component                 | Description                                                                   |
-| ---------------- | ------------------------------- | ----------------------------------------------------------------------------- |
-| Schema name      | `mcap.Schema:name`              | Message type name from schema definition                                      |
-| Schema data      | `mcap.Schema:data`              | Raw schema definition (protobuf, ROS2 msg, etc.)                              |
-| Schema encoding  | `mcap.Schema:encoding`          | Schema format type                                                            |
-|                  |                                 |                                                                               |
-| Channel topic    | `mcap.Channel:topic`            | Topic name from MCAP channel                                                  |
-| Channel ID       | `mcap.Channel:id`               | Numeric channel identifier                                                    |
-| Message encoding | `mcap.Channel:message_encoding` | Encoding format (e.g., `protobuf`, `cdr`)                                     |
-|                  |                                 |                                                                               |
-| Statistics       | `mcap.Statistics`               | File-level metrics like message counts and time ranges                        |
-| Raw message data | `mcap.Message:data`             | Unprocessed message bytes stored as binary blobs, handled by the `raw` layer. |
-
 ## Schema and statistics layers
 
 The `schema` layer extracts structural information about the MCAP file's organization, creating metadata entities that describe channel definitions, topic names with their message types, and schema definitions. This layer is particularly useful for understanding unfamiliar MCAP files or getting an overview of available topics and channels before deeper processing.
@@ -77,3 +61,19 @@ Each layer creates different types of components on entity paths (derived from M
 - Metadata from `schema`, `stats`, and `recording_info` layers appears as dedicated metadata entities
 
 For more information on querying data and working with archetypes, see the [Data Queries documentation](../../howto/get-data-out.md).
+
+Each of these layers contributes their own [chunks](../../concepts/chunks.md) to the Rerun-native data.
+Below is a table showing the mapping between MCAP data and Rerun components:
+
+| MCAP Data        | Rerun component                 | Description                                                                   |
+| ---------------- | ------------------------------- | ----------------------------------------------------------------------------- |
+| Schema name      | `mcap.Schema:name`              | Message type name from schema definition                                      |
+| Schema data      | `mcap.Schema:data`              | Raw schema definition (protobuf, ROS2 msg, etc.)                              |
+| Schema encoding  | `mcap.Schema:encoding`          | Schema format type                                                            |
+|                  |                                 |                                                                               |
+| Channel topic    | `mcap.Channel:topic`            | Topic name from MCAP channel                                                  |
+| Channel ID       | `mcap.Channel:id`               | Numeric channel identifier                                                    |
+| Message encoding | `mcap.Channel:message_encoding` | Encoding format (e.g., `protobuf`, `cdr`)                                     |
+|                  |                                 |                                                                               |
+| Statistics       | `mcap.Statistics`               | File-level metrics like message counts and time ranges                        |
+| Raw message data | `mcap.Message:data`             | Unprocessed message bytes stored as binary blobs, handled by the `raw` layer. |
