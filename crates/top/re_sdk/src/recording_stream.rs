@@ -1879,7 +1879,7 @@ impl RecordingStream {
         self.flush(None)
     }
 
-    /// Initiates a flush the batching pipeline and waits for it to propagate.
+    /// Initiates a flush the batching pipeline and waits for it to finish.
     ///
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     ///
