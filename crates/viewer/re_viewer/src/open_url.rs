@@ -22,7 +22,7 @@ pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 #[derive(Debug, Clone, PartialEq)]
 pub enum ViewerImportUrl {
     /// A URL that points to a selection (typically an entity) within the currently active recording.
-    // TODO(andreas): Not all item types are suported right now. Many of them aren't intra recording, so we probably want a new schema for this
+    // TODO(andreas): Not all item types are supported right now. Many of them aren't intra recording, so we probably want a new schema for this
     // that we can re-use in any fragment.
     IntraRecordingSelection(Item),
 
@@ -179,7 +179,7 @@ impl ViewerImportUrl {
     // Does this method merely provide the starting point?
     pub fn from_display_mode(
         store_hub: &StoreHub,
-        display_mode: &DisplayMode,
+        display_mode: DisplayMode,
     ) -> anyhow::Result<Self> {
         match display_mode {
             DisplayMode::Settings => {
@@ -549,9 +549,11 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
 mod tests {
     use std::str::FromStr as _;
 
-    use re_entity_db::{EntityPath, InstancePath};
-    use re_log_types::EntryId;
-    use re_viewer_context::Item;
+    use re_entity_db::{EntityDb, EntityPath, InstancePath};
+    use re_log_types::{EntryId, StoreId, StoreKind, TableId};
+    use re_smart_channel::SmartChannelSource;
+    use re_uri::{DatasetPartitionUri, ProxyUri};
+    use re_viewer_context::{DisplayMode, Item, StoreHub};
 
     use super::ViewerImportUrl;
 
@@ -595,7 +597,7 @@ mod tests {
         }
         // LogDataSource
         {
-            // Test HTTP URL
+            // HTTP URL
             let url = "https://example.com/data.rrd";
             assert_eq!(
                 ViewerImportUrl::from_str(url).unwrap(),
@@ -646,28 +648,179 @@ mod tests {
             };
             assert_eq!(ViewerImportUrl::from_str(url).unwrap(), expected);
         }
+        // Invalid URLs.
+        {
+            let invalid_urls = vec![
+                "invalid://url",
+                "recording://camera%20with%20spaces",
+                "https://foo.com/?url=invalid_url",
+                "https://foo.com/test?url=invalid_url",
+                "",
+                "   ",
+                "aaaaaaaaaaa",
+            ];
+
+            for url in invalid_urls {
+                assert!(
+                    url.parse::<ViewerImportUrl>().is_err(),
+                    "Expected error for {url}"
+                );
+            }
+        }
     }
 
     #[test]
-    fn test_invalid_urls() {
-        let invalid_urls = vec![
-            "invalid://url",
-            "recording://camera%20with%20spaces",
-            "https://foo.com/?url=invalid_url",
-            "https://foo.com/test?url=invalid_url",
-            "",
-            "   ",
-            "aaaaaaaaaaa",
-        ];
+    fn test_viewer_import_url_from_display_mode() {
+        let store_hub = StoreHub::test_hub();
 
-        for url in invalid_urls {
-            assert!(
-                url.parse::<ViewerImportUrl>().is_err(),
-                "Expected error for {url}"
-            );
+        // Settings
+        assert!(ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::Settings).is_err());
+
+        // RedapServer
+        assert_eq!(
+            ViewerImportUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::RedapServer(
+                    re_uri::Origin::from_str("rerun://localhost:51234").unwrap(),
+                )
+            )
+            .unwrap(),
+            ViewerImportUrl::RedapCatalog(
+                re_uri::CatalogUri::from_str("rerun://localhost:51234").unwrap()
+            )
+        );
+
+        // LocalTable
+        assert!(
+            ViewerImportUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::LocalTable(TableId::new("test_table".to_owned()))
+            )
+            .is_err()
+        );
+
+        // RedapEntry
+        // TODO(#10866): Implement this. Antoine and I figured that display mode (and item) should just contain the entry uri. We should have this knowledge on all creation sites!
+        assert!(
+            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::RedapEntry(EntryId::new()))
+                .is_err()
+        );
+
+        // ChunkStoreBrowser
+        assert!(
+            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::ChunkStoreBrowser).is_err(),
+            "ChunkStoreBrowser should not be convertible to ViewerImportUrl"
+        );
+
+        // Local recordings is handled in `test_viewer_import_url_from_local_recordings_display_mode`
+    }
+
+    #[test]
+    fn test_viewer_import_url_from_local_recordings_display_mode() {
+        let mut store_hub = StoreHub::test_hub();
+
+        fn add_store(store_hub: &mut StoreHub, data_source: Option<SmartChannelSource>) {
+            let store_id = StoreId::random(StoreKind::Recording, "test");
+            let mut entity_db = EntityDb::new(store_id.clone());
+            entity_db.data_source = data_source;
+            store_hub.insert_entity_db(entity_db);
+            store_hub.set_active_recording(store_id);
         }
+
+        // originating from a file.
+        add_store(
+            &mut store_hub,
+            Some(SmartChannelSource::File(std::path::PathBuf::from(
+                "/path/to/test.rrd",
+            ))),
+        );
+        assert_eq!(
+            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
+            ViewerImportUrl::FilePath(std::path::PathBuf::from("/path/to/test.rrd"))
+        );
+
+        // originating from HTTP stream.
+        add_store(
+            &mut store_hub,
+            Some(SmartChannelSource::RrdHttpStream {
+                url: "https://example.com/recording.rrd".to_owned(),
+                follow: false,
+            }),
+        );
+        assert_eq!(
+            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
+            ViewerImportUrl::RrdHttpUrl(
+                url::Url::parse("https://example.com/recording.rrd").unwrap()
+            )
+        );
+
+        // originating from SDK (not possible).
+        add_store(&mut store_hub, Some(SmartChannelSource::Sdk));
+        assert!(
+            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).is_err(),
+        );
+
+        // originating from stdin (not possible).
+        add_store(&mut store_hub, Some(SmartChannelSource::Stdin));
+        assert!(
+            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).is_err(),
+        );
+
+        // originating from web event listener.
+        add_store(
+            &mut store_hub,
+            Some(SmartChannelSource::RrdWebEventListener),
+        );
+        assert_eq!(
+            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
+            ViewerImportUrl::WebEventListener
+        );
+
+        // originating from JS channel (not possible).
+        add_store(
+            &mut store_hub,
+            Some(SmartChannelSource::JsChannel {
+                channel_name: "test_channel".to_owned(),
+            }),
+        );
+        assert!(
+            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).is_err(),
+        );
+
+        // originating from Redap gRPC stream.
+        let uri =
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid";
+        add_store(
+            &mut store_hub,
+            Some(SmartChannelSource::RedapGrpcStream {
+                uri: DatasetPartitionUri::from_str(uri).unwrap(),
+                select_when_loaded: false,
+            }),
+        );
+        assert_eq!(
+            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
+            ViewerImportUrl::RedapDatasetPartition(DatasetPartitionUri::from_str(uri).unwrap())
+        );
+
+        // originating from message proxy.
+        let uri = "rerun://localhost:51234/proxy";
+        add_store(
+            &mut store_hub,
+            Some(SmartChannelSource::MessageProxy(
+                ProxyUri::from_str(uri).unwrap(),
+            )),
+        );
+        assert_eq!(
+            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
+            ViewerImportUrl::RedapProxy(ProxyUri::from_str(uri).unwrap())
+        );
+
+        // with no data source (not possible).
+        add_store(&mut store_hub, None);
+        assert!(
+            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).is_err(),
+        );
     }
 }
 
-// TODO: add tests for `from_display_mode`
 // TODO: add tests for `to_sharable_url`
