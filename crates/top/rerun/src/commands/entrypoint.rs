@@ -97,16 +97,6 @@ struct Args {
     #[clap(long, default_value = "0.0.0.0")]
     bind: IpAddr,
 
-    /// Set a maximum input latency, e.g. "200ms" or "10s".
-    ///
-    /// If we go over this, we start dropping packets.
-    ///
-    /// The default is no limit, which means Rerun might eat more and more memory
-    /// and have longer and longer latency, if you are logging data faster
-    /// than Rerun can index it.
-    #[clap(long)]
-    drop_at_latency: Option<String>,
-
     #[clap(
         long,
         default_value = "75%",
@@ -487,13 +477,6 @@ impl Args {
             // > What bind address IP to use.
             // >
             // > [default: 0.0.0.0]
-            //
-            // `--drop-at-latency <DROP_AT_LATENCY>`
-            // > Set a maximum input latency, e.g. "200ms" or "10s".
-            // >
-            // > If we go over this, we start dropping packets.
-            // >
-            // > The default is no limit, which means Rerun might eat more and more memory and have longer and longer latency, if you are logging data faster than Rerun can index it.
             // """
             let floatings = any_floating_args.then(|| {
                 let options = cmd
