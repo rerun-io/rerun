@@ -1874,9 +1874,14 @@ impl RecordingStream {
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     ///
     /// Convenience function for calling [`Self::flush`] with a `timeout` of `None`.
+    ///
+    /// This will never return [`SinkFlushError::Timeout`].
     pub fn flush_async(&self) -> Result<(), SinkFlushError> {
         re_tracing::profile_function!();
-        self.flush(None)
+        match self.flush(None) {
+            Err(SinkFlushError::Timeout) => Ok(()),
+            result => result,
+        }
     }
 
     /// Initiates a flush the batching pipeline and waits for it to finish.
