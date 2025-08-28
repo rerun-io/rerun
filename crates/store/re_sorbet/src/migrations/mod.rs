@@ -40,9 +40,6 @@ trait Migration {
 pub enum Error {
     #[error("could not parse 'sorbet:version: {value}': {err}")]
     InvalidSemVer { value: String, err: semver::Error },
-
-    #[error("could not determine Sorbet version")]
-    MissingVersion,
 }
 
 /// The Sorbet version that corresponds to this record batch.
@@ -78,7 +75,11 @@ fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
             // The migration code from `v0.0.2` to `v0.1.0` should be able handle this.
             Ok(semver::Version::new(0, 0, 2))
         } else {
-            Err(Error::MissingVersion)
+            // Rerun cloud schemas currently come without metadata,
+            // so we need to run the full migration just in case.
+            // TODO(emilk): Fix this: https://linear.app/rerun/issue/DPF-2097/send-sorbetversion-metdata-in-schema-requests
+            re_log::debug!("No version found - assuming very old");
+            Ok(semver::Version::new(0, 0, 1))
         }
     }
 }
@@ -144,7 +145,8 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
             // TODO(#10421): We need to handle arbitrary record batches and
             // we don't want to spam the viewer with useless warnings.
             re_log::debug_once!(
-                "Encountered record batch without 'sorbet:version' metadata. Data will not be migrated."
+                "Encountered record batch without 'sorbet:version' metadata. Data will not be migrated. Batch schema metadata: {:#?}",
+                batch.schema().metadata()
             );
             batch
         }
