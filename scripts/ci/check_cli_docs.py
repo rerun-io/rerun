@@ -45,7 +45,7 @@ def main() -> None:
 
     # Read expected
     try:
-        expected: str = expected_file.read_text()
+        expected: str = expected_file.read_text("utf-8")
     except FileNotFoundError:
         print(f"Expected file not found: {expected_file}", file=sys.stderr)
         sys.exit(2)

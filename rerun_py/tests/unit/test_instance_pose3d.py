@@ -53,11 +53,11 @@ def test_instance_poses3d() -> None:
         scale,
         mat3x3,
     ) in all_arrays:
-        translations = cast(Optional[rr.datatypes.Vec3DArrayLike], translation)
-        rotation_axis_angles = cast(Optional[rr.datatypes.RotationAxisAngleArrayLike], rotation_axis_angle)
-        quaternions = cast(Optional[rr.datatypes.QuaternionArrayLike], quaternion)
-        scales = cast(Optional[rr.datatypes.Vec3DArrayLike | rr.datatypes.Float32Like], scale)
-        mat3x3 = cast(Optional[rr.datatypes.Mat3x3ArrayLike], mat3x3)
+        translations = cast("Optional[rr.datatypes.Vec3DArrayLike]", translation)
+        rotation_axis_angles = cast("Optional[rr.datatypes.RotationAxisAngleArrayLike]", rotation_axis_angle)
+        quaternions = cast("Optional[rr.datatypes.QuaternionArrayLike]", quaternion)
+        scales = cast("Optional[rr.datatypes.Vec3DArrayLike | rr.datatypes.Float32Like]", scale)
+        mat3x3 = cast("Optional[rr.datatypes.Mat3x3ArrayLike]", mat3x3)
 
         print(
             f"rr.InstancePoses3D(\n"
