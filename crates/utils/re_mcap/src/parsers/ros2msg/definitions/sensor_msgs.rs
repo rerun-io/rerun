@@ -355,17 +355,17 @@ pub struct NavSatFix {
     /// Satellite fix status information.
     pub status: NavSatStatus,
 
-    /// Latitude [degrees]. Positive is north of equator; negative is south.
+    /// Latitude (degrees). Positive is north of equator; negative is south.
     pub latitude: f64,
 
-    /// Longitude [degrees]. Positive is east of prime meridian; negative is west.
+    /// Longitude (degrees). Positive is east of prime meridian; negative is west.
     pub longitude: f64,
 
-    /// Altitude [m]. Positive is above the WGS 84 ellipsoid
+    /// Altitude (m). Positive is above the WGS 84 ellipsoid
     /// (quiet NaN if no altitude is available).
     pub altitude: f64,
 
-    /// Position covariance [m^2] defined relative to a tangential plane
+    /// Position covariance (m^2) defined relative to a tangential plane
     /// through the reported position. The components are East, North, and
     /// Up (ENU), in row-major order.
     ///
