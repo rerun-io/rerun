@@ -175,7 +175,7 @@ impl ViewerContext<'_> {
     /// The current active Redap entry id, if any.
     pub fn active_redap_entry(&self) -> Option<EntryId> {
         match self.display_mode() {
-            DisplayMode::RedapEntry(entry_uri) => Some(entry_uri.entry_id),
+            DisplayMode::RedapEntry(entry) => Some(entry.entry_id),
             _ => None,
         }
     }

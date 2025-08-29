@@ -750,10 +750,10 @@ impl App {
 
             SystemCommand::SetSelection(item) => {
                 match &item {
-                    Item::RedapEntry(entry_uri) => {
+                    Item::RedapEntry(entry) => {
                         self.state
                             .navigation
-                            .replace(DisplayMode::RedapEntry(entry_uri.clone()));
+                            .replace(DisplayMode::RedapEntry(entry.clone()));
                     }
 
                     Item::RedapServer(origin) => {

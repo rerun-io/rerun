@@ -254,7 +254,7 @@ impl ViewerImportUrl {
                 Err(anyhow::anyhow!("Can't share links to local tables."))
             }
 
-            DisplayMode::RedapEntry(entry_id) => Ok(Self::RedapEntry(entry_id.clone())),
+            DisplayMode::RedapEntry(entry) => Ok(Self::RedapEntry(entry.clone())),
 
             DisplayMode::RedapServer(origin) => {
                 // `as_url` on the origin gives us an http link.
@@ -321,7 +321,7 @@ impl ViewerImportUrl {
                 vec1![catalog_uri.to_string()]
             }
 
-            Self::RedapEntry(entry_uri) => vec1![entry_uri.to_string()],
+            Self::RedapEntry(entry) => vec1![entry.to_string()],
 
             Self::WebEventListener => vec1![WEB_EVENT_LISTENER_SCHEME.to_owned()],
 

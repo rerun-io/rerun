@@ -173,8 +173,8 @@ impl std::fmt::Debug for Item {
                 write!(f, "({view_id:?}, {instance_path}")
             }
             Self::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
-            Self::RedapEntry(entry_id) => {
-                write!(f, "{entry_id}")
+            Self::RedapEntry(entry) => {
+                write!(f, "{entry}")
             }
             Self::RedapServer(server) => write!(f, "{server}"),
         }
