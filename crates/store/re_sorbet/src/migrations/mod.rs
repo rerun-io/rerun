@@ -77,7 +77,7 @@ fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
         } else {
             // Rerun cloud schemas currently come without metadata,
             // so we need to run the full migration just in case.
-            // TODO(emilk): Fix this: https://linear.app/rerun/issue/DPF-2097/send-sorbetversion-metdata-in-schema-requests
+            // TODO(rerun-io/dataplatform#1605): Always include version
             re_log::debug!("No version found - assuming very old");
             Ok(semver::Version::new(0, 0, 1))
         }
