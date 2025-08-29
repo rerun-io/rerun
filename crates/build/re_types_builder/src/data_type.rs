@@ -112,7 +112,6 @@ impl std::fmt::Display for AtomicDataType {
 pub enum DataType {
     Atomic(AtomicDataType),
 
-    // 32-bit or 64-bit
     Binary,
 
     Utf8,
@@ -154,12 +153,8 @@ impl DataType {
 pub enum LazyDatatype {
     Atomic(AtomicDataType),
 
-    /// A list of bytes of arbitrary length.
-    ///
-    /// 32-bit or 64-bit
     Binary,
 
-    /// Utf8
     Utf8,
 
     /// Elements are non-nullable

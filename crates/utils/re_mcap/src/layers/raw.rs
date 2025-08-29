@@ -1,4 +1,4 @@
-use arrow::array::LargeBinaryBuilder;
+use arrow::array::{ListBuilder, UInt8Builder};
 use re_chunk::{ChunkId, external::arrow::array::FixedSizeListBuilder};
 use re_types::{
     Component as _, ComponentDescriptor, components, reflection::ComponentDescriptorExt as _,
@@ -6,11 +6,11 @@ use re_types::{
 
 use crate::{
     Error, LayerIdentifier, MessageLayer,
-    parsers::{MessageParser, ParserContext, util::fixed_size_list_builder},
+    parsers::{MessageParser, ParserContext, util::blob_list_builder},
 };
 
 struct RawMcapMessageParser {
-    data: FixedSizeListBuilder<LargeBinaryBuilder>,
+    data: FixedSizeListBuilder<ListBuilder<UInt8Builder>>,
 }
 
 impl RawMcapMessageParser {
@@ -18,7 +18,7 @@ impl RawMcapMessageParser {
 
     fn new(num_rows: usize) -> Self {
         Self {
-            data: fixed_size_list_builder(1, num_rows),
+            data: blob_list_builder(num_rows),
         }
     }
 }
@@ -30,7 +30,8 @@ impl MessageParser for RawMcapMessageParser {
         msg: &::mcap::Message<'_>,
     ) -> anyhow::Result<()> {
         re_tracing::profile_function!();
-        self.data.values().append_value(&msg.data);
+        self.data.values().values().append_slice(&msg.data);
+        self.data.values().append(true);
         self.data.append(true);
         Ok(())
     }

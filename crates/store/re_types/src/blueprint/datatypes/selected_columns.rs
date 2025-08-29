@@ -135,10 +135,9 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                 )),
                                 offsets,
                                 {
-                                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
+                                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                         time_columns_inner_data.iter().map(|datum| datum.0.len()),
                                     );
-
                                     #[allow(clippy::unwrap_used)]
                                     let capacity = offsets.last().copied().unwrap() as usize;
                                     let mut buffer_builder =
