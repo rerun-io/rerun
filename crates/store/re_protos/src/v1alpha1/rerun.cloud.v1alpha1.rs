@@ -2109,7 +2109,11 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs.
+        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
+        /// as information that can be sent back to Rerun Cloud to fetch the actual chunks as part
+        /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
+        /// from the server about the chunks that contain relevant information. 2nd step is fetching
+        /// those chunks (the actual data).
         ///
         /// These Rerun-native queries include:
         /// * Filtering by specific partition and chunk IDs.
@@ -2169,7 +2173,9 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Fetch chunks
+        /// Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
+        /// that is, the result of `QueryDataset` should include all the necessary information to send
+        /// the actual chunk requests, which is the 2nd step of the query process.
         ///
         /// See `FetchChunksRequest` for details on the fields that describe each individual chunk.
         pub async fn fetch_chunks(
@@ -2452,7 +2458,11 @@ pub mod rerun_cloud_service_server {
                 Item = std::result::Result<super::QueryDatasetResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs.
+        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
+        /// as information that can be sent back to Rerun Cloud to fetch the actual chunks as part
+        /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
+        /// from the server about the chunks that contain relevant information. 2nd step is fetching
+        /// those chunks (the actual data).
         ///
         /// These Rerun-native queries include:
         /// * Filtering by specific partition and chunk IDs.
@@ -2488,7 +2498,9 @@ pub mod rerun_cloud_service_server {
                 Item = std::result::Result<super::FetchChunksResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Fetch chunks
+        /// Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
+        /// that is, the result of `QueryDataset` should include all the necessary information to send
+        /// the actual chunk requests, which is the 2nd step of the query process.
         ///
         /// See `FetchChunksRequest` for details on the fields that describe each individual chunk.
         async fn fetch_chunks(
