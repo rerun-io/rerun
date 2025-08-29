@@ -59,6 +59,9 @@ pub struct AppState {
     /// Redap server catalogs and browser UI
     pub(crate) redap_servers: RedapServers,
 
+    #[serde(skip)]
+    pub(crate) import_url_modal: crate::ui::ImportUrlModal,
+
     /// A stack of display modes that represents tab-like navigation of the user.
     #[serde(skip)]
     pub(crate) navigation: Navigation,
@@ -102,6 +105,7 @@ impl Default for AppState {
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
             redap_servers: Default::default(),
+            import_url_modal: Default::default(),
             navigation: Default::default(),
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -649,6 +653,7 @@ impl AppState {
                 viewport_ui.save_to_blueprint_store(&ctx);
 
                 self.redap_servers.modals_ui(&ctx.global_context, ui);
+                self.import_url_modal.ui(ui);
             }
         }
 
