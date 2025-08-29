@@ -206,7 +206,7 @@ impl WebHandle {
         let follow_if_http = follow_if_http.unwrap_or(false);
         let select_redap_source_when_loaded = true;
 
-        match url.parse::<open_url::ViewerImportUrl>() {
+        match url.parse::<open_url::ViewerOpenUrl>() {
             Ok(url) => {
                 url.open(
                     &app.egui_ctx,
@@ -808,7 +808,7 @@ fn create_app(
         let select_redap_source_when_loaded = true;
 
         for url in urls.into_inner() {
-            match url.parse::<open_url::ViewerImportUrl>() {
+            match url.parse::<open_url::ViewerOpenUrl>() {
                 Ok(url) => {
                     url.open(
                         &app.egui_ctx,

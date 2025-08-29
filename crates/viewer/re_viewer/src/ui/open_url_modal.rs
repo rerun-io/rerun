@@ -4,16 +4,16 @@ use std::str::FromStr as _;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 
-use crate::open_url::ViewerImportUrl;
+use crate::open_url::ViewerOpenUrl;
 
 #[derive(Default)]
-pub struct ImportUrlModal {
+pub struct OpenUrlModal {
     modal: ModalHandler,
     url: String,
     just_opened: bool,
 }
 
-impl ImportUrlModal {
+impl OpenUrlModal {
     pub fn open(&mut self) {
         self.modal.open();
         self.just_opened = true;
@@ -22,7 +22,7 @@ impl ImportUrlModal {
     pub fn ui(&mut self, ui: &egui::Ui) {
         self.modal.ui(
             ui.ctx(),
-            || ModalWrapper::new("Import URL"),
+            || ModalWrapper::new("Open from URL"),
             |ui| {
                 ui.label("Enter URL to import.");
 
@@ -40,8 +40,8 @@ impl ImportUrlModal {
                     // ui.ctx().send_viewport_cmd(egui::ViewportCommand::RequestPaste);
                 }
 
-                let import_url = ViewerImportUrl::from_str(&self.url);
-                let can_import = match &import_url {
+                let open_url = ViewerOpenUrl::from_str(&self.url);
+                let can_import = match &open_url {
                     Ok(url) => {
                         ui.info_label(url.open_description());
                         true
