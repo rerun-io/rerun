@@ -1585,7 +1585,7 @@ impl App {
                     .success("Copied link to clipboard".to_owned());
             }
             Err(err) => {
-                re_log::error!("Can't produce a sharable link for the current screen: {err}");
+                re_log::error!("{err}");
             }
         }
     }
