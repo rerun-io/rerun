@@ -17,45 +17,43 @@ use re_entity_db::external::re_query::StorageEngine;
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::frontend::v1alpha1::ext::{GetChunksRequest, ScanPartitionTableRequest};
-use re_protos::frontend::v1alpha1::{
+use re_protos::cloud::v1alpha1::ext::{GetChunksRequest, ScanPartitionTableRequest};
+use re_protos::cloud::v1alpha1::{
     GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
     QueryDatasetResponse, ScanPartitionTableResponse,
 };
+use re_protos::{cloud::v1alpha1::RegisterWithDatasetResponse, common::v1alpha1::ext::PartitionId};
 use re_protos::{
-    common::v1alpha1::ext::IfDuplicateBehavior,
-    frontend::v1alpha1::{
-        DeleteEntryResponse, EntryKind, RegisterTableRequest, RegisterTableResponse,
-    },
+    cloud::v1alpha1::ext,
+    cloud::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse},
 };
 use re_protos::{
-    common::v1alpha1::ext::PartitionId, frontend::v1alpha1::RegisterWithDatasetResponse,
-};
-use re_protos::{
-    frontend::v1alpha1::ext,
-    frontend::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse},
-};
-use re_protos::{
-    frontend::v1alpha1::frontend_service_server::FrontendService,
-    frontend::v1alpha1::{
+    cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
+    cloud::v1alpha1::{
         FetchTaskOutputRequest, FetchTaskOutputResponse, QueryTasksOnCompletionRequest,
         QueryTasksRequest, QueryTasksResponse,
     },
+};
+use re_protos::{
+    cloud::v1alpha1::{
+        DeleteEntryResponse, EntryKind, RegisterTableRequest, RegisterTableResponse,
+    },
+    common::v1alpha1::ext::IfDuplicateBehavior,
 };
 
 use crate::store::{Dataset, InMemoryStore};
 
 #[derive(Debug, Default)]
-pub struct FrontendHandlerSettings {}
+pub struct RerunCloudHandlerSettings {}
 
 #[derive(Default)]
-pub struct FrontendHandlerBuilder {
-    settings: FrontendHandlerSettings,
+pub struct RerunCloudHandlerBuilder {
+    settings: RerunCloudHandlerSettings,
 
     store: InMemoryStore,
 }
 
-impl FrontendHandlerBuilder {
+impl RerunCloudHandlerBuilder {
     pub fn new() -> Self {
         Self::default()
     }
@@ -71,22 +69,22 @@ impl FrontendHandlerBuilder {
         Ok(self)
     }
 
-    pub fn build(self) -> FrontendHandler {
-        FrontendHandler::new(self.settings, self.store)
+    pub fn build(self) -> RerunCloudHandler {
+        RerunCloudHandler::new(self.settings, self.store)
     }
 }
 
 // ---
 
-pub struct FrontendHandler {
+pub struct RerunCloudHandler {
     #[expect(dead_code)]
-    settings: FrontendHandlerSettings,
+    settings: RerunCloudHandlerSettings,
 
     store: tokio::sync::RwLock<InMemoryStore>,
 }
 
-impl FrontendHandler {
-    pub fn new(settings: FrontendHandlerSettings, store: InMemoryStore) -> Self {
+impl RerunCloudHandler {
+    pub fn new(settings: RerunCloudHandlerSettings, store: InMemoryStore) -> Self {
         Self {
             settings,
             store: tokio::sync::RwLock::new(store),
@@ -129,9 +127,9 @@ impl FrontendHandler {
     }
 }
 
-impl std::fmt::Debug for FrontendHandler {
+impl std::fmt::Debug for RerunCloudHandler {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FrontendHandler").finish()
+        f.debug_struct("RerunCloudHandler").finish()
     }
 }
 
@@ -139,19 +137,17 @@ macro_rules! decl_stream {
     ($stream:ident<manifest:$resp:ident>) => {
         pub type $stream = std::pin::Pin<
             Box<
-                dyn futures::Stream<
-                        Item = Result<re_protos::frontend::v1alpha1::$resp, tonic::Status>,
-                    > + Send,
+                dyn futures::Stream<Item = Result<re_protos::cloud::v1alpha1::$resp, tonic::Status>>
+                    + Send,
             >,
         >;
     };
 
-    ($stream:ident<frontend:$resp:ident>) => {
+    ($stream:ident<rerun_cloud:$resp:ident>) => {
         pub type $stream = std::pin::Pin<
             Box<
-                dyn futures::Stream<
-                        Item = Result<re_protos::frontend::v1alpha1::$resp, tonic::Status>,
-                    > + Send,
+                dyn futures::Stream<Item = Result<re_protos::cloud::v1alpha1::$resp, tonic::Status>>
+                    + Send,
             >,
         >;
     };
@@ -159,9 +155,8 @@ macro_rules! decl_stream {
     ($stream:ident<tasks:$resp:ident>) => {
         pub type $stream = std::pin::Pin<
             Box<
-                dyn futures::Stream<
-                        Item = Result<re_protos::frontend::v1alpha1::$resp, tonic::Status>,
-                    > + Send,
+                dyn futures::Stream<Item = Result<re_protos::cloud::v1alpha1::$resp, tonic::Status>>
+                    + Send,
             >,
         >;
     };
@@ -171,25 +166,25 @@ decl_stream!(GetChunksResponseStream<manifest:GetChunksResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(ScanPartitionTableResponseStream<manifest:ScanPartitionTableResponse>);
 decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
-decl_stream!(ScanTableResponseStream<frontend:ScanTableResponse>);
+decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
 
 #[tonic::async_trait]
-impl FrontendService for FrontendHandler {
+impl RerunCloudService for RerunCloudHandler {
     async fn version(
         &self,
-        request: tonic::Request<re_protos::frontend::v1alpha1::VersionRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::VersionRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::frontend::v1alpha1::VersionResponse>,
+        tonic::Response<re_protos::cloud::v1alpha1::VersionResponse>,
         tonic::Status,
     > {
-        let re_protos::frontend::v1alpha1::VersionRequest {} = request.into_inner();
+        let re_protos::cloud::v1alpha1::VersionRequest {} = request.into_inner();
 
         // NOTE: Reminder that this is only fully filled iff CI=1.
         let build_info = re_build_info::build_info!();
 
         Ok(tonic::Response::new(
-            re_protos::frontend::v1alpha1::VersionResponse {
+            re_protos::cloud::v1alpha1::VersionResponse {
                 build_info: Some(build_info.into()),
             },
         ))
@@ -199,8 +194,8 @@ impl FrontendService for FrontendHandler {
 
     async fn find_entries(
         &self,
-        request: tonic::Request<re_protos::frontend::v1alpha1::FindEntriesRequest>,
-    ) -> Result<tonic::Response<re_protos::frontend::v1alpha1::FindEntriesResponse>, tonic::Status>
+        request: tonic::Request<re_protos::cloud::v1alpha1::FindEntriesRequest>,
+    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::FindEntriesResponse>, tonic::Status>
     {
         let filter = request.into_inner().filter;
         let entry_id = filter
@@ -261,7 +256,7 @@ impl FrontendService for FrontendHandler {
             itertools::Either::Right(store.iter_datasets())
         };
 
-        let response = re_protos::frontend::v1alpha1::FindEntriesResponse {
+        let response = re_protos::cloud::v1alpha1::FindEntriesResponse {
             entries: dataset_iter
                 .map(Dataset::as_entry_details)
                 .map(Into::into)
@@ -273,9 +268,9 @@ impl FrontendService for FrontendHandler {
 
     async fn create_dataset_entry(
         &self,
-        request: tonic::Request<re_protos::frontend::v1alpha1::CreateDatasetEntryRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::CreateDatasetEntryRequest>,
     ) -> Result<
-        tonic::Response<re_protos::frontend::v1alpha1::CreateDatasetEntryResponse>,
+        tonic::Response<re_protos::cloud::v1alpha1::CreateDatasetEntryResponse>,
         tonic::Status,
     > {
         let dataset_name: String = request.into_inner().try_into()?;
@@ -297,11 +292,9 @@ impl FrontendService for FrontendHandler {
 
     async fn read_dataset_entry(
         &self,
-        request: tonic::Request<re_protos::frontend::v1alpha1::ReadDatasetEntryRequest>,
-    ) -> Result<
-        tonic::Response<re_protos::frontend::v1alpha1::ReadDatasetEntryResponse>,
-        tonic::Status,
-    > {
+        request: tonic::Request<re_protos::cloud::v1alpha1::ReadDatasetEntryRequest>,
+    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::ReadDatasetEntryResponse>, tonic::Status>
+    {
         let entry_id = request.into_inner().try_into()?;
 
         let store = self.store.read().await;
@@ -319,9 +312,9 @@ impl FrontendService for FrontendHandler {
 
     async fn update_dataset_entry(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::UpdateDatasetEntryRequest>,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::UpdateDatasetEntryRequest>,
     ) -> Result<
-        tonic::Response<re_protos::frontend::v1alpha1::UpdateDatasetEntryResponse>,
+        tonic::Response<re_protos::cloud::v1alpha1::UpdateDatasetEntryResponse>,
         tonic::Status,
     > {
         Err(tonic::Status::unimplemented(
@@ -331,9 +324,9 @@ impl FrontendService for FrontendHandler {
 
     async fn read_table_entry(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::ReadTableEntryRequest>,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::ReadTableEntryRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::frontend::v1alpha1::ReadTableEntryResponse>,
+        tonic::Response<re_protos::cloud::v1alpha1::ReadTableEntryResponse>,
         tonic::Status,
     > {
         Err(tonic::Status::unimplemented(
@@ -343,8 +336,8 @@ impl FrontendService for FrontendHandler {
 
     async fn delete_entry(
         &self,
-        request: tonic::Request<re_protos::frontend::v1alpha1::DeleteEntryRequest>,
-    ) -> Result<tonic::Response<re_protos::frontend::v1alpha1::DeleteEntryResponse>, tonic::Status>
+        request: tonic::Request<re_protos::cloud::v1alpha1::DeleteEntryRequest>,
+    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteEntryResponse>, tonic::Status>
     {
         let entry_id = request.into_inner().try_into()?;
 
@@ -359,12 +352,12 @@ impl FrontendService for FrontendHandler {
 
     async fn register_with_dataset(
         &self,
-        request: tonic::Request<re_protos::frontend::v1alpha1::RegisterWithDatasetRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::RegisterWithDatasetRequest>,
     ) -> Result<
-        tonic::Response<re_protos::frontend::v1alpha1::RegisterWithDatasetResponse>,
+        tonic::Response<re_protos::cloud::v1alpha1::RegisterWithDatasetResponse>,
         tonic::Status,
     > {
-        let re_protos::frontend::v1alpha1::ext::RegisterWithDatasetRequest {
+        let re_protos::cloud::v1alpha1::ext::RegisterWithDatasetRequest {
             dataset_id,
             data_sources,
             on_duplicate,
@@ -422,7 +415,7 @@ impl FrontendService for FrontendHandler {
         )
         .map_err(|err| tonic::Status::internal(format!("Failed to create dataframe: {err:#}")))?;
         Ok(tonic::Response::new(
-            re_protos::frontend::v1alpha1::RegisterWithDatasetResponse {
+            re_protos::cloud::v1alpha1::RegisterWithDatasetResponse {
                 data: Some(record_batch.encode().map_err(|err| {
                     tonic::Status::internal(format!("Failed to encode dataframe: {err:#}"))
                 })?),
@@ -432,10 +425,8 @@ impl FrontendService for FrontendHandler {
 
     async fn write_chunks(
         &self,
-        request: tonic::Request<
-            tonic::Streaming<re_protos::frontend::v1alpha1::WriteChunksRequest>,
-        >,
-    ) -> Result<tonic::Response<re_protos::frontend::v1alpha1::WriteChunksResponse>, tonic::Status>
+        request: tonic::Request<tonic::Streaming<re_protos::cloud::v1alpha1::WriteChunksRequest>>,
+    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::WriteChunksResponse>, tonic::Status>
     {
         // TODO(ab): add a helper somewhere for this conversion
         let dataset_id = request
@@ -515,7 +506,7 @@ impl FrontendService for FrontendHandler {
         }
 
         Ok(tonic::Response::new(
-            re_protos::frontend::v1alpha1::WriteChunksResponse {},
+            re_protos::cloud::v1alpha1::WriteChunksResponse {},
         ))
     }
 
@@ -523,9 +514,9 @@ impl FrontendService for FrontendHandler {
 
     async fn get_partition_table_schema(
         &self,
-        request: tonic::Request<re_protos::frontend::v1alpha1::GetPartitionTableSchemaRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::GetPartitionTableSchemaRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::frontend::v1alpha1::GetPartitionTableSchemaResponse>,
+        tonic::Response<re_protos::cloud::v1alpha1::GetPartitionTableSchemaResponse>,
         tonic::Status,
     > {
         let entry_id = request.into_inner().try_into()?;
@@ -554,7 +545,7 @@ impl FrontendService for FrontendHandler {
 
     async fn scan_partition_table(
         &self,
-        request: tonic::Request<re_protos::frontend::v1alpha1::ScanPartitionTableRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::ScanPartitionTableRequest>,
     ) -> Result<tonic::Response<Self::ScanPartitionTableStream>, tonic::Status> {
         let request: ScanPartitionTableRequest = request.into_inner().try_into()?;
         if request.scan_parameters.is_some() {
@@ -589,9 +580,9 @@ impl FrontendService for FrontendHandler {
 
     async fn get_dataset_schema(
         &self,
-        request: tonic::Request<re_protos::frontend::v1alpha1::GetDatasetSchemaRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::GetDatasetSchemaRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::frontend::v1alpha1::GetDatasetSchemaResponse>,
+        tonic::Response<re_protos::cloud::v1alpha1::GetDatasetSchemaResponse>,
         tonic::Status,
     > {
         let entry_id = request.into_inner().try_into()?;
@@ -616,9 +607,9 @@ impl FrontendService for FrontendHandler {
 
     async fn create_index(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::CreateIndexRequest>,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::CreateIndexRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::frontend::v1alpha1::CreateIndexResponse>,
+        tonic::Response<re_protos::cloud::v1alpha1::CreateIndexResponse>,
         tonic::Status,
     > {
         Err(tonic::Status::unimplemented("create_index not implemented"))
@@ -626,9 +617,9 @@ impl FrontendService for FrontendHandler {
 
     async fn re_index(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::ReIndexRequest>,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::ReIndexRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::frontend::v1alpha1::ReIndexResponse>,
+        tonic::Response<re_protos::cloud::v1alpha1::ReIndexResponse>,
         tonic::Status,
     > {
         Err(tonic::Status::unimplemented("re_index not implemented"))
@@ -640,7 +631,7 @@ impl FrontendService for FrontendHandler {
 
     async fn search_dataset(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::SearchDatasetRequest>,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::SearchDatasetRequest>,
     ) -> std::result::Result<tonic::Response<Self::SearchDatasetStream>, tonic::Status> {
         Err(tonic::Status::unimplemented(
             "search_dataset not implemented",
@@ -651,9 +642,9 @@ impl FrontendService for FrontendHandler {
 
     async fn query_dataset(
         &self,
-        request: tonic::Request<re_protos::frontend::v1alpha1::QueryDatasetRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
     ) -> std::result::Result<tonic::Response<Self::QueryDatasetStream>, tonic::Status> {
-        let re_protos::frontend::v1alpha1::QueryDatasetRequest {
+        let re_protos::cloud::v1alpha1::QueryDatasetRequest {
             dataset_id,
             partition_ids,
             chunk_ids,
@@ -833,7 +824,7 @@ impl FrontendService for FrontendHandler {
 
     async fn get_chunks(
         &self,
-        request: tonic::Request<re_protos::frontend::v1alpha1::GetChunksRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::GetChunksRequest>,
     ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status> {
         let GetChunksRequest {
             dataset_id,
@@ -916,9 +907,9 @@ impl FrontendService for FrontendHandler {
 
     async fn get_table_schema(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::GetTableSchemaRequest>,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::GetTableSchemaRequest>,
     ) -> std::result::Result<
-        tonic::Response<re_protos::frontend::v1alpha1::GetTableSchemaResponse>,
+        tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>,
         tonic::Status,
     > {
         Err(tonic::Status::unimplemented(
@@ -930,7 +921,7 @@ impl FrontendService for FrontendHandler {
 
     async fn scan_table(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::ScanTableRequest>,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::ScanTableRequest>,
     ) -> std::result::Result<tonic::Response<Self::ScanTableStream>, tonic::Status> {
         Err(tonic::Status::unimplemented("scan_table not implemented"))
     }
@@ -967,16 +958,16 @@ impl FrontendService for FrontendHandler {
 
     async fn update_entry(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::UpdateEntryRequest>,
-    ) -> Result<tonic::Response<re_protos::frontend::v1alpha1::UpdateEntryResponse>, tonic::Status>
+        _request: tonic::Request<re_protos::cloud::v1alpha1::UpdateEntryRequest>,
+    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateEntryResponse>, tonic::Status>
     {
         Err(tonic::Status::unimplemented("update_entry not implemented"))
     }
 
     async fn do_maintenance(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::DoMaintenanceRequest>,
-    ) -> Result<tonic::Response<re_protos::frontend::v1alpha1::DoMaintenanceResponse>, tonic::Status>
+        _request: tonic::Request<re_protos::cloud::v1alpha1::DoMaintenanceRequest>,
+    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::DoMaintenanceResponse>, tonic::Status>
     {
         Err(tonic::Status::unimplemented(
             "do_maintenance not implemented",

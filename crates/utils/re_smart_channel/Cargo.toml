@@ -25,4 +25,5 @@ re_uri.workspace = true
 crossbeam.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
+thiserror.workspace = true
 web-time.workspace = true

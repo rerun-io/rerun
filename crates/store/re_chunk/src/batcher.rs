@@ -18,6 +18,16 @@ use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponen
 
 // ---
 
+/// An error that can occur when flushing.
+#[derive(Debug, thiserror::Error)]
+pub enum BatcherFlushError {
+    #[error("Batcher stopped before flushing completed")]
+    Closed,
+
+    #[error("Batcher flush timed out - not all messages were sent.")]
+    Timeout,
+}
+
 /// Errors that can occur when creating/manipulating a [`ChunkBatcher`].
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkBatcherError {
@@ -402,15 +412,15 @@ impl Drop for ChunkBatcherInner {
 enum Command {
     AppendChunk(Chunk),
     AppendRow(EntityPath, PendingRow),
-    Flush(Sender<()>),
+    Flush { on_done: Sender<()> },
     UpdateConfig(ChunkBatcherConfig),
     Shutdown,
 }
 
 impl Command {
     fn flush() -> (Self, Receiver<()>) {
-        let (tx, rx) = crossbeam::channel::bounded(0); // oneshot
-        (Self::Flush(tx), rx)
+        let (tx, rx) = crossbeam::channel::bounded(1); // oneshot
+        (Self::Flush { on_done: tx }, rx)
     }
 }
 
@@ -488,8 +498,8 @@ impl ChunkBatcher {
     ///
     /// See [`ChunkBatcher`] docs for ordering semantics and multithreading guarantees.
     #[inline]
-    pub fn flush_blocking(&self) {
-        self.inner.flush_blocking();
+    pub fn flush_blocking(&self, timeout: Duration) -> Result<(), BatcherFlushError> {
+        self.inner.flush_blocking(timeout)
     }
 
     /// Updates the batcher's configuration as far as possible.
@@ -526,10 +536,16 @@ impl ChunkBatcherInner {
         self.send_cmd(flush_cmd);
     }
 
-    fn flush_blocking(&self) {
-        let (flush_cmd, oneshot) = Command::flush();
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), BatcherFlushError> {
+        use crossbeam::channel::RecvTimeoutError;
+
+        let (flush_cmd, on_done) = Command::flush();
         self.send_cmd(flush_cmd);
-        oneshot.recv().ok();
+
+        on_done.recv_timeout(timeout).map_err(|err| match err {
+            RecvTimeoutError::Timeout => BatcherFlushError::Timeout,
+            RecvTimeoutError::Disconnected => BatcherFlushError::Closed,
+        })
     }
 
     fn update_config(&self, config: ChunkBatcherConfig) {
@@ -687,12 +703,12 @@ fn batching_thread(
                         }
                     },
 
-                    Command::Flush(oneshot) => {
+                    Command::Flush{ on_done } => {
                         skip_next_tick = true;
                         for acc in accs.values_mut() {
                             do_flush_all(acc, &tx_chunk, "manual", config.chunk_max_rows_if_unsorted);
                         }
-                        drop(oneshot); // signals the oneshot
+                        on_done.send(()).ok();
                     },
 
                     Command::UpdateConfig(new_config) => {

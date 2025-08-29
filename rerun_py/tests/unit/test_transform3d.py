@@ -97,12 +97,12 @@ def test_transform3d() -> None:
         relation,
         axis_length,
     ) in all_arrays:
-        translation = cast(Optional[rr.datatypes.Vec3DLike], translation)
-        quaternion = cast(Optional[rr.datatypes.QuaternionLike], quaternion)
-        scale = cast(Optional[rr.datatypes.Vec3DLike], scale)
-        mat3x3 = cast(Optional[rr.datatypes.Mat3x3Like], mat3x3)
-        relation = cast(Optional[rr.components.TransformRelationLike], relations)
-        axis_length = cast(Optional[rr.datatypes.Float32Like], axis_length)
+        translation = cast("Optional[rr.datatypes.Vec3DLike]", translation)
+        quaternion = cast("Optional[rr.datatypes.QuaternionLike]", quaternion)
+        scale = cast("Optional[rr.datatypes.Vec3DLike]", scale)
+        mat3x3 = cast("Optional[rr.datatypes.Mat3x3Like]", mat3x3)
+        relation = cast("Optional[rr.components.TransformRelationLike]", relations)
+        axis_length = cast("Optional[rr.datatypes.Float32Like]", axis_length)
 
         print(
             f"rr.Transform3D(\n"

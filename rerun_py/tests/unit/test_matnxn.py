@@ -86,7 +86,7 @@ def test_mat3x3(data: Mat3x3Like) -> None:
 
 
 def test_mat3x3array() -> None:
-    assert Mat3x3Batch(cast(Mat3x3ArrayLike, MAT_3X3_INPUT)) == Mat3x3Batch(
+    assert Mat3x3Batch(cast("Mat3x3ArrayLike", MAT_3X3_INPUT)) == Mat3x3Batch(
         [[1, 2, 3, 4, 5, 6, 7, 8, 9]] * len(MAT_3X3_INPUT),
     )
 
@@ -119,7 +119,7 @@ def test_mat4x4(data: Mat4x4Like) -> None:
 
 
 def test_mat4x4array() -> None:
-    assert Mat4x4Batch(cast(Mat4x4ArrayLike, MAT_4X4_INPUT)) == Mat4x4Batch(
+    assert Mat4x4Batch(cast("Mat4x4ArrayLike", MAT_4X4_INPUT)) == Mat4x4Batch(
         [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]] * len(MAT_4X4_INPUT),
     )
 

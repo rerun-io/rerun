@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from rerun_bindings import (
@@ -76,7 +76,7 @@ class RawComponentBatchLike(ComponentColumn):
         return self.col
 
 
-def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = None) -> None:
+def send_record_batch(batch: pa.RecordBatch, rec: RecordingStream | None = None) -> None:
     """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
 
     indexes = []
@@ -108,7 +108,7 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
         )
 
 
-def send_dataframe(df: pa.RecordBatchReader | pa.Table, rec: Optional[RecordingStream] = None) -> None:
+def send_dataframe(df: pa.RecordBatchReader | pa.Table, rec: RecordingStream | None = None) -> None:
     """Coerce a pyarrow `RecordBatchReader` or `Table` to Rerun structure."""
     if isinstance(df, pa.Table):
         df = df.to_reader()

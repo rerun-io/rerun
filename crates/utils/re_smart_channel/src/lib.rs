@@ -17,6 +17,16 @@ pub use sender::Sender;
 
 // --- Source ---
 
+/// An error that can occur when flushing.
+#[derive(Debug, thiserror::Error)]
+pub enum FlushError {
+    #[error("Received closed before flushing completed")]
+    Closed,
+
+    #[error("Flush timed out - not all messages were sent.")]
+    Timeout,
+}
+
 /// Identifies in what context this smart channel was created, and who/what is holding its
 /// receiving end.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]

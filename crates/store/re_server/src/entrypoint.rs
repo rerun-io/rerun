@@ -34,10 +34,10 @@ impl Args {
     }
 
     pub async fn create_server_handle(self) -> anyhow::Result<ServerHandle> {
-        let frontend_server = {
-            use re_protos::frontend::v1alpha1::frontend_service_server::FrontendServiceServer;
+        let rerun_cloud_server = {
+            use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer;
 
-            let mut builder = crate::FrontendHandlerBuilder::new();
+            let mut builder = crate::RerunCloudHandlerBuilder::new();
 
             for dataset in &self.datasets {
                 builder = builder.with_directory_as_dataset(
@@ -46,7 +46,7 @@ impl Args {
                 )?;
             }
 
-            FrontendServiceServer::new(builder.build())
+            RerunCloudServiceServer::new(builder.build())
                 .max_decoding_message_size(re_grpc_server::MAX_DECODING_MESSAGE_SIZE)
                 .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE)
         };
@@ -55,7 +55,7 @@ impl Args {
 
         let server_builder = ServerBuilder::default()
             .with_address(addr)
-            .with_service(frontend_server);
+            .with_service(rerun_cloud_server);
 
         let server = server_builder.build();
 

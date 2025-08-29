@@ -71,13 +71,13 @@ def test_mesh3d() -> None:
         vertex_positions = vertex_positions if vertex_positions is not None else vertex_positions_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        vertex_positions = cast(Vec3DArrayLike, vertex_positions)
-        vertex_normals = cast(Optional[Vec3DArrayLike], vertex_normals)
-        vertex_colors = cast(Optional[Rgba32ArrayLike], vertex_colors)
-        vertex_texcoords = cast(Optional[Vec2DArrayLike], vertex_texcoords)
-        triangle_indices = cast(Optional[UVec3DArrayLike], triangle_indices)
-        albedo_factor = cast(Optional[Rgba32Like], albedo_factor)
-        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
+        vertex_positions = cast("Vec3DArrayLike", vertex_positions)
+        vertex_normals = cast("Optional[Vec3DArrayLike]", vertex_normals)
+        vertex_colors = cast("Optional[Rgba32ArrayLike]", vertex_colors)
+        vertex_texcoords = cast("Optional[Vec2DArrayLike]", vertex_texcoords)
+        triangle_indices = cast("Optional[UVec3DArrayLike]", triangle_indices)
+        albedo_factor = cast("Optional[Rgba32Like]", albedo_factor)
+        class_ids = cast("Optional[ClassIdArrayLike]", class_ids)
 
         print(
             f"E: rr.Mesh3D(\n"

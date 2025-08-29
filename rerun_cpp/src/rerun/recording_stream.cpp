@@ -120,14 +120,9 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::connect_grpc(std::string_view url, float flush_timeout_sec) const {
+    Error RecordingStream::connect_grpc(std::string_view url) const {
         rr_error status = {};
-        rr_recording_stream_connect_grpc(
-            _id,
-            detail::to_rr_string(url),
-            flush_timeout_sec,
-            &status
-        );
+        rr_recording_stream_connect_grpc(_id, detail::to_rr_string(url), &status);
         return status;
     }
 
@@ -150,11 +145,11 @@ namespace rerun {
         return ss.str();
     }
 
-    Error RecordingStream::spawn(const SpawnOptions& options, float flush_timeout_sec) const {
+    Error RecordingStream::spawn(const SpawnOptions& options) const {
         rr_spawn_options rerun_c_options = {};
         options.fill_rerun_c_struct(rerun_c_options);
         rr_error status = {};
-        rr_recording_stream_spawn(_id, &rerun_c_options, flush_timeout_sec, &status);
+        rr_recording_stream_spawn(_id, &rerun_c_options, &status);
         return status;
     }
 
@@ -170,8 +165,10 @@ namespace rerun {
         return status;
     }
 
-    void RecordingStream::flush_blocking() const {
-        rr_recording_stream_flush_blocking(_id);
+    Error RecordingStream::flush_blocking(float timeout_sec) const {
+        rr_error status = {};
+        rr_recording_stream_flush_blocking(_id, timeout_sec, &status);
+        return status;
     }
 
     void RecordingStream::set_time_sequence(std::string_view timeline_name, int64_t sequence_nr)

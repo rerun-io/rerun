@@ -32,7 +32,7 @@ The full source code for this example is available [on GitHub](https://github.co
 def load_scene(path: Path) -> trimesh.Scene:
     print(f"loading scene {path}…")
     mesh = trimesh.load(path, force="scene")
-    return cast(trimesh.Scene, mesh)
+    return cast("trimesh.Scene", mesh)
 
 
 # NOTE: The scene hierarchy will look different compared to the Rust example, as this is using the
@@ -58,7 +58,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
             )
 
         # Log this node's mesh, if it has one.
-        mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))
+        mesh = cast("trimesh.Trimesh", scene.geometry.get(node_data[1]))
         if mesh is not None:
             vertex_colors = None
             vertex_texcoords = None

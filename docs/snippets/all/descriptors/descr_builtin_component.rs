@@ -43,7 +43,7 @@ fn check_tags(rec: &rerun::RecordingStream) {
     //
     // Python and C++ are indirectly checked by the snippet comparison tool itself.
     if let Ok(path_to_rrd) = std::env::var("_RERUN_TEST_FORCE_SAVE") {
-        rec.flush_blocking();
+        rec.flush_blocking().unwrap();
 
         let stores =
             ChunkStore::from_rrd_filepath(&ChunkStoreConfig::ALL_DISABLED, path_to_rrd).unwrap();

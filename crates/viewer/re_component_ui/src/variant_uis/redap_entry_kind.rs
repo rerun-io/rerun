@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use re_protos::frontend::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::EntryKind;
 use re_types_core::{ComponentDescriptor, RowId};
 use re_viewer_context::ViewerContext;
 

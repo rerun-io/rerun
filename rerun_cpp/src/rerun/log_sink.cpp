@@ -11,10 +11,7 @@ namespace rerun {
                 case LogSink::Kind::Grpc: {
                     rr_log_sink out;
                     out.kind = RR_LOG_SINK_KIND_GRPC;
-                    out.grpc = rr_grpc_sink{
-                        detail::to_rr_string(sink.grpc.url),
-                        sink.grpc.flush_timeout_sec,
-                    };
+                    out.grpc = rr_grpc_sink{detail::to_rr_string(sink.grpc.url)};
                     return out;
                 }
                 case LogSink::Kind::File: {

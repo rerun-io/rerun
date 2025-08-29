@@ -608,7 +608,7 @@ pyarrow = "18.0.0.*"              # Whenever upgrading here, also make sure to u
 pytest = ">=8.4.1"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
-ruff = "0.9.6.*"
+ruff = "0.12.10.*"
 semver = ">=3.0,<3.1"
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"

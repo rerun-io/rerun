@@ -112,8 +112,8 @@ class PinholeExt:
 
                 if resolution is not None:
                     res_vec = Vec2D(resolution)
-                    width = cast(float, res_vec.xy[0])
-                    height = cast(float, res_vec.xy[1])
+                    width = cast("float", res_vec.xy[0])
+                    height = cast("float", res_vec.xy[1])
                 else:
                     width = None
                     height = None

@@ -2,6 +2,8 @@ use re_chunk::ChunkBatcherConfig;
 use re_log_types::LogMsg;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
+use crate::log_sink::SinkFlushError;
+
 // ----------------------------------------------------------------------------
 
 /// Failure to host a web viewer and/or Rerun server.
@@ -104,10 +106,15 @@ impl crate::sink::LogSink for WebViewerSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {
-        if let Err(err) = self.sender.flush_blocking() {
-            re_log::error_once!("Failed to flush: {err}");
-        }
+    fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), SinkFlushError> {
+        self.sender
+            .flush_blocking(timeout)
+            .map_err(|err| match err {
+                re_smart_channel::FlushError::Closed => {
+                    SinkFlushError::failed("The viewer is no longer subscribed")
+                }
+                re_smart_channel::FlushError::Timeout => SinkFlushError::Timeout,
+            })
     }
 
     fn default_batcher_config(&self) -> ChunkBatcherConfig {

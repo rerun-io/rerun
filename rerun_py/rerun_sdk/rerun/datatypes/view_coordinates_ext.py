@@ -23,7 +23,7 @@ class ViewCoordinatesExt:
             # [ViewCoordinates]
             data = [d.coordinates for d in data]  # type: ignore[union-attr]
         else:
-            data = cast(ViewCoordinatesLike, data)
+            data = cast("ViewCoordinatesLike", data)
             try:
                 # [x, y, z]
                 data = [ViewCoordinates(data).coordinates]

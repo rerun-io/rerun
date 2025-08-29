@@ -17,10 +17,10 @@ use re_grpc_client::{
 use re_log_encoding::codec::CodecError;
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
+use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableEntry};
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
 use re_protos::external::prost;
 use re_protos::external::prost::Name as _;
-use re_protos::frontend::v1alpha1::ext::{EntryDetails, TableEntry};
-use re_protos::frontend::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
 use re_sorbet::SorbetError;
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;
@@ -249,7 +249,7 @@ async fn fetch_entries_and_register_tables(
         let is_system_table = match &inner_result {
             Ok(EntryInner::Table(table)) => {
                 table.table_entry.provider_details.type_url
-                    == re_protos::frontend::v1alpha1::SystemTable::type_url()
+                    == re_protos::cloud::v1alpha1::SystemTable::type_url()
             }
             Err(_) | Ok(EntryInner::Dataset(_)) => false,
         };

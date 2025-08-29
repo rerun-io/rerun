@@ -122,7 +122,7 @@ fn main() -> anyhow::Result<()> {
         Benchmark::Image(cmd) => cmd.run(&rec)?,
     }
 
-    rec.flush_blocking();
+    rec.flush_blocking()?;
 
     Ok(())
 }

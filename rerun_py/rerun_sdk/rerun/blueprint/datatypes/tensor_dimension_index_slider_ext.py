@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pyarrow as pa
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from .tensor_dimension_index_slider import TensorDimensionIndexSliderArrayLike
 
 
@@ -19,7 +20,7 @@ class TensorDimensionIndexSliderExt:
 
         if isinstance(data, TensorDimensionIndexSlider):
             data = [data]
-        data = cast(Sequence[TensorDimensionIndexSlider | int], data)
+        data = cast("Sequence[TensorDimensionIndexSlider | int]", data)
 
         return pa.StructArray.from_arrays(
             [
