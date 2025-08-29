@@ -5,7 +5,7 @@ use arrow::{
     error::ArrowError,
 };
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
-use re_types::{AnyValues, components};
+use re_types::{ArchetypeBuilder, components};
 
 use crate::Error;
 
@@ -45,7 +45,7 @@ impl Layer for McapStatisticLayer {
     }
 }
 
-fn from_statistics(stats: &::mcap::records::Statistics) -> Result<AnyValues, ArrowError> {
+fn from_statistics(stats: &::mcap::records::Statistics) -> Result<ArchetypeBuilder, ArrowError> {
     let ::mcap::records::Statistics {
         message_count,
         schema_count,
@@ -71,7 +71,7 @@ fn from_statistics(stats: &::mcap::records::Statistics) -> Result<AnyValues, Arr
 
     let channel_message_counts = builder.finish();
 
-    Ok(AnyValues::new("rerun.mcap.Statistics")
+    Ok(ArchetypeBuilder::new("rerun.mcap.Statistics")
         .with_field(
             "message_count",
             Arc::new(UInt64Array::from_value(*message_count, 1)),
