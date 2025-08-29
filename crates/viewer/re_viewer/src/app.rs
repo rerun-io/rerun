@@ -1202,6 +1202,10 @@ impl App {
                 });
             }
 
+            UICommand::ImportUrl => {
+                self.state.import_url_modal.open();
+            }
+
             UICommand::CloseCurrentRecording => {
                 let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
