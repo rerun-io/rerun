@@ -424,9 +424,8 @@ impl ViewerImportUrl {
             }
             Self::RedapCatalog(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender.send_system(SystemCommand::ChangeDisplayMode(
-                    DisplayMode::RedapServer(uri.origin),
-                ));
+                command_sender
+                    .send_system(SystemCommand::SetSelection(Item::RedapServer(uri.origin)));
             }
             Self::RedapEntry(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
