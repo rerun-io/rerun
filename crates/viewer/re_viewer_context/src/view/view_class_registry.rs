@@ -31,12 +31,15 @@ pub enum ViewClassRegistryError {
     UnknownClassIdentifier(ViewClassIdentifier),
 }
 
-/// Utility for registering view systems, passed on to [`crate::ViewClass::on_register`].
+/// Utility for registering view systems to a given class, passed on to [`crate::ViewClass::on_register`].
 pub struct ViewSystemRegistrator<'a> {
-    registry: &'a mut ViewClassRegistry,
     identifier: ViewClassIdentifier,
-    context_systems: HashSet<ViewSystemIdentifier>,
-    visualizers: HashSet<ViewSystemIdentifier>,
+
+    all_context_systems: &'a mut HashMap<ViewSystemIdentifier, ContextSystemTypeRegistryEntry>,
+    all_visualizers: &'a mut HashMap<ViewSystemIdentifier, VisualizerTypeRegistryEntry>,
+
+    class_context_system: &'a mut HashSet<ViewSystemIdentifier>,
+    class_visualizer_system: &'a mut HashSet<ViewSystemIdentifier>,
 }
 
 impl ViewSystemRegistrator<'_> {
@@ -50,15 +53,14 @@ impl ViewSystemRegistrator<'_> {
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
         // Name should not overlap with context systems.
-        if self.registry.visualizers.contains_key(&T::identifier()) {
+        if self.all_visualizers.contains_key(&T::identifier()) {
             return Err(ViewClassRegistryError::IdentifierAlreadyInUseForVisualizer(
                 T::identifier().as_str(),
             ));
         }
 
-        if self.context_systems.insert(T::identifier()) {
-            self.registry
-                .context_systems
+        if self.class_context_system.insert(T::identifier()) {
+            self.all_context_systems
                 .entry(T::identifier())
                 .or_insert_with(|| ContextSystemTypeRegistryEntry {
                     factory_method: Box::new(|| Box::<T>::default()),
@@ -85,7 +87,7 @@ impl ViewSystemRegistrator<'_> {
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
         // Name should not overlap with context systems.
-        if self.registry.context_systems.contains_key(&T::identifier()) {
+        if self.all_context_systems.contains_key(&T::identifier()) {
             return Err(
                 ViewClassRegistryError::IdentifierAlreadyInUseForContextSystem(
                     T::identifier().as_str(),
@@ -93,9 +95,8 @@ impl ViewSystemRegistrator<'_> {
             );
         }
 
-        if self.visualizers.insert(T::identifier()) {
-            self.registry
-                .visualizers
+        if self.class_visualizer_system.insert(T::identifier()) {
+            self.all_visualizers
                 .entry(T::identifier())
                 .or_insert_with(|| {
                     let entity_subscriber_handle = ChunkStore::register_subscriber(Box::new(
@@ -180,41 +181,84 @@ impl ViewClassRegistry {
     pub fn add_class<T: ViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
-        let class = Box::<T>::default();
-
-        let mut registrator = ViewSystemRegistrator {
-            registry: self,
+        let mut class_entry = ViewClassRegistryEntry {
+            class: Box::<T>::default(),
             identifier: T::identifier(),
-            context_systems: Default::default(),
-            visualizers: Default::default(),
+            context_system_ids: Default::default(),
+            visualizer_system_ids: Default::default(),
         };
 
-        class.on_register(&mut registrator)?;
+        let mut registrator = ViewSystemRegistrator {
+            identifier: T::identifier(),
+            all_visualizers: &mut self.visualizers,
+            all_context_systems: &mut self.context_systems,
+            class_context_system: &mut class_entry.context_system_ids,
+            class_visualizer_system: &mut class_entry.visualizer_system_ids,
+        };
 
-        let ViewSystemRegistrator {
-            registry: _,
-            identifier,
-            context_systems,
-            visualizers,
-        } = registrator;
+        class_entry.class.on_register(&mut registrator)?;
 
         if self
             .view_classes
-            .insert(
-                identifier,
-                ViewClassRegistryEntry {
-                    class,
-                    identifier,
-                    context_system_ids: context_systems,
-                    visualizer_system_ids: visualizers,
-                },
-            )
+            .insert(T::identifier(), class_entry)
             .is_some()
         {
-            return Err(ViewClassRegistryError::DuplicateClassIdentifier(identifier));
+            Err(ViewClassRegistryError::DuplicateClassIdentifier(
+                T::identifier(),
+            ))
+        } else {
+            Ok(())
         }
+    }
 
-        Ok(())
+    /// Registers an additional [`VisualizerSystem`] for a view class.
+    ///
+    /// Usually, visualizers are registered in [`ViewClass::on_register`] which is called when
+    /// the class is first registered.
+    /// This method allows to extend an existing class with new visualizers.
+    pub fn register_visualizer<T: VisualizerSystem + IdentifiedViewSystem + Default + 'static>(
+        &mut self,
+        view_class: ViewClassIdentifier,
+    ) -> Result<(), ViewClassRegistryError> {
+        let Some(class_entry) = self.view_classes.get_mut(&view_class) else {
+            return Err(ViewClassRegistryError::UnknownClassIdentifier(view_class));
+        };
+
+        let mut registrator = ViewSystemRegistrator {
+            identifier: class_entry.identifier,
+            all_visualizers: &mut self.visualizers,
+            all_context_systems: &mut self.context_systems,
+            class_context_system: &mut class_entry.context_system_ids,
+            class_visualizer_system: &mut class_entry.visualizer_system_ids,
+        };
+
+        registrator.register_visualizer::<T>()
+    }
+
+    /// Registers an additional [`ViewContextSystem`] for a view class.
+    ///
+    /// Usually, context systems are registered in [`ViewClass::on_register`] which is called when
+    /// the class is first registered.
+    /// This method allows to extend an existing class with new context systems.
+    pub fn register_context_system<
+        T: ViewContextSystem + IdentifiedViewSystem + Default + 'static,
+    >(
+        &mut self,
+        view_class: ViewClassIdentifier,
+    ) -> Result<(), ViewClassRegistryError> {
+        let Some(class_entry) = self.view_classes.get_mut(&view_class) else {
+            return Err(ViewClassRegistryError::UnknownClassIdentifier(view_class));
+        };
+
+        let mut registrator = ViewSystemRegistrator {
+            identifier: class_entry.identifier,
+            all_visualizers: &mut self.visualizers,
+            all_context_systems: &mut self.context_systems,
+            class_context_system: &mut class_entry.context_system_ids,
+            class_visualizer_system: &mut class_entry.visualizer_system_ids,
+        };
+
+        registrator.register_context_system::<T>()
     }
 
     /// Removes a view class from the registry.
