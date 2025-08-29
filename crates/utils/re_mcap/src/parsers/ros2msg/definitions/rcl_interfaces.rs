@@ -9,40 +9,27 @@ use super::builtin_interfaces::Time;
 /// Log levels for ROS2 logging.
 ///
 /// These correspond to the enum in rcutils/logger.h and follow the Python Standard logging levels.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[repr(u8)]
+#[serde(from = "u8", into = "u8")]
 pub enum LogLevel {
     /// Unknown log level
     Unknown = 0,
+
     /// Debug is for pedantic information, which is useful when debugging issues
     Debug = 10,
+
     /// Info is the standard informational level and is used to report expected information
     Info = 20,
+
     /// Warning is for information that may potentially cause issues or possibly unexpected behavior
     Warn = 30,
+
     /// Error is for information that this node cannot resolve
     Error = 40,
+
     /// Information about an impending node shutdown
     Fatal = 50,
-}
-
-impl serde::Serialize for LogLevel {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_u8(*self as u8)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for LogLevel {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let value = u8::deserialize(deserializer)?;
-        Ok(LogLevel::from(value))
-    }
 }
 
 impl From<u8> for LogLevel {
@@ -55,6 +42,12 @@ impl From<u8> for LogLevel {
             50 => Self::Fatal,
             _ => Self::Unknown,
         }
+    }
+}
+
+impl From<LogLevel> for u8 {
+    fn from(val: LogLevel) -> Self {
+        val as Self
     }
 }
 
