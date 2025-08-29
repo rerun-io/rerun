@@ -169,6 +169,11 @@ jobs:
           pixi run -e wheel-test-min which rerun
           pixi run -e wheel-test-min rerun-from-path  --version
 
+      - name: Set timezone database path (Windows)
+        if: ${{ inputs.PLATFORM == 'windows-x64' }}
+        shell: cmd
+        run: echo ARROW_TIMEZONE_DATABASE=tzdata >> %GITHUB_ENV%
+
       - name: Run unit tests (with linux arm64 opencv workaround)
         if: ${{ inputs.PLATFORM == 'linux-arm64' }}
         # Workaround for OpenCV TLS issue, see https://github.com/opencv/opencv/issues/14884#issuecomment-815632861

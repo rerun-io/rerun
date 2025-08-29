@@ -20,6 +20,7 @@ dependencies = [
   "pillow>=8.0.0",          # Used for JPEG encoding. 8.0.0 added the `format` arguments to `Image.open`
   "pyarrow>=18.0.0",
   "typing_extensions>=4.5",
+  "tzdata>=2025b",
 ]
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
