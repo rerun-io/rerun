@@ -20,7 +20,7 @@ impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
                 "missing schema bytes".to_owned(),
             ))?;
         Ok(Self::clone(
-            re_sorbet::schema_from_ipc(schema_bytes)?.as_ref(),
+            re_sorbet::migrated_schema_from_ipc(schema_bytes)?.as_ref(),
         ))
     }
 }

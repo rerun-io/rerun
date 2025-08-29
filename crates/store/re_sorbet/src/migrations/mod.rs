@@ -8,7 +8,7 @@
 
 use std::cmp::Ordering;
 
-use arrow::array::RecordBatch;
+use arrow::{array::RecordBatch, datatypes::SchemaRef};
 
 use crate::SorbetSchema;
 
@@ -41,9 +41,6 @@ trait Migration {
 pub enum Error {
     #[error("could not parse 'sorbet:version: {value}': {err}")]
     InvalidSemVer { value: String, err: semver::Error },
-
-    #[error("could not determine Sorbet version")]
-    MissingVersion,
 }
 
 /// The Sorbet version that corresponds to this record batch.
@@ -79,7 +76,11 @@ fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
             // The migration code from `v0.0.2` to `v0.1.0` should be able handle this.
             Ok(semver::Version::new(0, 0, 2))
         } else {
-            Err(Error::MissingVersion)
+            // Rerun cloud schemas currently come without metadata,
+            // so we need to run the full migration just in case.
+            // TODO(rerun-io/dataplatform#1605): Always include version
+            re_log::debug!("No version found - assuming very old");
+            Ok(semver::Version::new(0, 0, 1))
         }
     }
 }
@@ -106,6 +107,7 @@ fn maybe_apply<M: Migration>(
 /// Migrate a sorbet record batch of unknown version to the latest version.
 #[tracing::instrument(level = "debug", skip_all)]
 pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
+    // TODO(emilk): early-out if the schema has the latest version already.
     use self::make_list_arrays::make_all_data_columns_list_arrays;
 
     re_tracing::profile_function!();
@@ -141,14 +143,6 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
                 batch
             }
         },
-        Err(Error::MissingVersion) => {
-            // TODO(#10421): We need to handle arbitrary record batches and
-            // we don't want to spam the viewer with useless warnings.
-            re_log::debug_once!(
-                "Encountered record batch without 'sorbet:version' metadata. Data will not be migrated."
-            );
-            batch
-        }
         Err(err) => {
             re_log::error_once!("Skipping migrations due to error: {err}");
             batch
@@ -158,4 +152,12 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
     batch = make_all_data_columns_list_arrays(&batch);
 
     batch
+}
+
+/// Migrate a sorbet schema of unknown version to the latest version.
+#[tracing::instrument(level = "debug", skip_all)]
+pub fn migrate_schema_ref(schema: SchemaRef) -> SchemaRef {
+    re_tracing::profile_function!();
+    // TODO(emilk): early-out if the schema has the latest version already.
+    migrate_record_batch(RecordBatch::new_empty(schema)).schema()
 }
