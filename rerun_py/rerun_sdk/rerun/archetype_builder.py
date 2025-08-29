@@ -302,7 +302,7 @@ class ArchetypeBuilder(AsComponents):
     def _optional_archetype(
         self, archetype: str | None, drop_untyped_nones: bool = True, components: Mapping[str, Any] | None = None
     ) -> None:
-        """Support more flexibile initialization."""
+        """Support more flexible initialization."""
         self._archetype = archetype
 
         with catch_and_log_exceptions(self._name):
