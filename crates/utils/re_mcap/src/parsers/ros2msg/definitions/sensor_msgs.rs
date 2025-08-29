@@ -307,10 +307,13 @@ pub struct NavSatStatus {
 pub enum NavSatFixStatus {
     /// Unable to fix position.
     NoFix = -1,
+
     /// Unaugmented fix.
     Fix = 0,
+
     /// Satellite-based augmentation.
     SbasFix = 1,
+
     /// Ground-based augmentation.
     GbasFix = 2,
 }
