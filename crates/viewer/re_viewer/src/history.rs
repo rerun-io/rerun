@@ -160,7 +160,7 @@ fn handle_popstate(
 
     let follow_if_http = false;
     let select_redap_source_when_loaded = true;
-    match entry.url.parse::<open_url::ViewerImportUrl>() {
+    match entry.url.parse::<open_url::ViewerOpenUrl>() {
         Ok(url) => {
             url.open(
                 egui_ctx,

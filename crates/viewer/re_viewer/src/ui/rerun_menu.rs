@@ -69,6 +69,7 @@ impl App {
 
         UICommand::Open.menu_button_ui(ui, &self.command_sender);
         UICommand::Import.menu_button_ui(ui, &self.command_sender);
+        UICommand::ImportUrl.menu_button_ui(ui, &self.command_sender);
 
         self.save_buttons_ui(ui, _store_context);
 
