@@ -153,6 +153,7 @@ impl VideoDataDescription {
             mp4_tracks,
         };
 
+        #[expect(clippy::panic)]
         if cfg!(debug_assertions)
             && let Err(err) = video_data_description.sanity_check()
         {

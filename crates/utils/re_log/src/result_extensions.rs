@@ -59,6 +59,7 @@ where
     #[track_caller]
     fn unwrap_debug_or_log_error(self) -> Option<T> {
         if cfg!(debug_assertions) {
+            #[expect(clippy::panic)]
             match self {
                 Ok(value) => Some(value),
                 Err(err) => {
