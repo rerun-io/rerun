@@ -105,7 +105,7 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 entity_path.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
@@ -142,7 +142,7 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 component.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),

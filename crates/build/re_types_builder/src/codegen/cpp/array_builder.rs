@@ -66,11 +66,6 @@ fn arrow_array_builder_type_and_declaration(
             );
             ident
         }
-        Type::Binary => {
-            let ident = format_ident!("LargeBinaryBuilder");
-            declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
-            ident
-        }
         Type::String => {
             let ident = format_ident!("StringBuilder");
             declarations.insert("arrow", ForwardDecl::Class(ident.clone()));

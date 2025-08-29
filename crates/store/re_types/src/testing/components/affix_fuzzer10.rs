@@ -63,7 +63,7 @@ impl ::re_types_core::Loggable for AffixFuzzer10 {
                 any_nones.then(|| somes.into())
             };
             {
-                let offsets = arrow::buffer::OffsetBuffer::from_lengths(
+                let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                     data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),

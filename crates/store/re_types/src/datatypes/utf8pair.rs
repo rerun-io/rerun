@@ -84,7 +84,7 @@ impl ::re_types_core::Loggable for Utf8Pair {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 first.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
@@ -117,11 +117,12 @@ impl ::re_types_core::Loggable for Utf8Pair {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 second.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             );
+
                             #[allow(clippy::unwrap_used)]
                             let capacity = offsets.last().copied().unwrap() as usize;
                             let mut buffer_builder =

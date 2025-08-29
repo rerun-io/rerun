@@ -16,6 +16,9 @@ from attrs import define, field
 from .._baseclasses import (
     BaseBatch,
 )
+from .._converters import (
+    to_np_uint8,
+)
 from .blob_ext import BlobExt
 
 __all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike"]
@@ -31,7 +34,15 @@ class Blob(BlobExt):
         # You can define your own __init__ function as a member of BlobExt in blob_ext.py
         self.__attrs_init__(data=data)
 
-    data: bytes = field(converter=bytes)
+    data: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+
+    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
+        # You can define your own __array__ function as a member of BlobExt in blob_ext.py
+        return np.asarray(self.data, dtype=dtype, copy=copy)
+
+    def __len__(self) -> int:
+        # You can define your own __len__ function as a member of BlobExt in blob_ext.py
+        return len(self.data)
 
 
 if TYPE_CHECKING:
@@ -43,7 +54,7 @@ BlobArrayLike = Union[Blob, Sequence[BlobLike], bytes, npt.NDArray[np.uint8]]
 
 
 class BlobBatch(BaseBatch[BlobArrayLike]):
-    _ARROW_DATATYPE = pa.large_binary()
+    _ARROW_DATATYPE = pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}))
 
     @staticmethod
     def _native_to_pa_array(data: BlobArrayLike, data_type: pa.DataType) -> pa.Array:

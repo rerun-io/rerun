@@ -41,9 +41,6 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             return;
         }
 
-        // Special-case binary data (e.g. blobs).
-        // We don't want to show their contents (too slow, since they are usually huge),
-        // so we only show their size:
         if let Some(binaries) = array.downcast_array_ref::<BinaryArray>()
             && binaries.len() == 1
         {
@@ -96,7 +93,9 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
         } else {
             let instance_count_str = re_format::format_uint(instance_count);
 
-            let string = if let Some(dtype) = simple_datatype_string(array.data_type()) {
+            let string = if array.data_type() == &DataType::UInt8 {
+                re_format::format_bytes(instance_count as _)
+            } else if let Some(dtype) = simple_datatype_string(array.data_type()) {
                 format!("{instance_count_str} items of {dtype}")
             } else if let DataType::Struct(fields) = array.data_type() {
                 format!(
