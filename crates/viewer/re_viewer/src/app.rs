@@ -28,6 +28,7 @@ use crate::{
     event::ViewerEventDispatcher,
     open_url::ViewerOpenUrl,
     startup_options::StartupOptions,
+    ui::ShareDialog,
 };
 
 // ----------------------------------------------------------------------------
@@ -106,7 +107,9 @@ pub struct App {
     pub(crate) store_hub: Option<StoreHub>,
 
     /// Notification panel.
+    // TODO: make this part of the top panel.
     pub(crate) notifications: notifications::NotificationUi,
+    pub(crate) share_dialog: ShareDialog,
 
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
@@ -357,6 +360,7 @@ impl App {
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
             notifications: notifications::NotificationUi::new(),
+            share_dialog: Default::default(),
 
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -1590,9 +1594,9 @@ impl App {
         .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
         {
             Ok(url) => {
-                self.egui_ctx.copy_text(url);
+                self.egui_ctx.copy_text(url.clone());
                 self.notifications
-                    .success("Copied link to clipboard".to_owned());
+                    .success(format!("Copied {url:?} to clipboard"));
             }
             Err(err) => {
                 re_log::error!("{err}");
@@ -1600,6 +1604,7 @@ impl App {
         }
     }
 
+    // TODO: this method is a mess. reconciliate it with the new link unification.
     fn run_copy_time_range_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
             re_log::warn!("Could not copy time range link: No active recording");
@@ -1784,6 +1789,7 @@ impl App {
                     self,
                     app_blueprint,
                     store_context,
+                    storage_context.hub,
                     gpu_resource_stats,
                     ui,
                 );
