@@ -648,6 +648,9 @@ impl App {
             }
 
             SystemCommand::AddRedapServer(origin) => {
+                if origin == *re_redap_browser::EXAMPLES_ORIGIN {
+                    return;
+                }
                 if self.state.redap_servers.has_server(&origin) {
                     return;
                 }
@@ -865,7 +868,7 @@ impl App {
         match data_source {
             LogDataSource::RrdHttpUrl { url, follow } => {
                 let new_source = SmartChannelSource::RrdHttpStream {
-                    url: url.clone(),
+                    url: url.to_string(),
                     follow: *follow,
                 };
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
@@ -3150,7 +3153,13 @@ fn update_web_address_bar(
     if !enable_history {
         return None;
     }
-    let url = crate::open_url::display_mode_to_content_url(store_hub, display_mode)?;
+    let Ok(url) =
+        crate::open_url::ViewerImportUrl::from_display_mode(store_hub, display_mode.clone())
+            // History entries expect the url parameter, not the full url, therefore don't pass a base url.
+            .and_then(|url| url.sharable_url(None))
+    else {
+        return None;
+    };
 
     re_log::debug!("Updating navigation bar");
 

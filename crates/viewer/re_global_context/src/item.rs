@@ -63,6 +63,34 @@ impl Item {
             }
         }
     }
+
+    /// Converts this item to a data path if possible.
+    pub fn to_data_path(&self) -> Option<DataPath> {
+        match self {
+            Self::AppId(_)
+            | Self::TableId(_)
+            | Self::DataSource(_)
+            | Self::View(_)
+            | Self::Container(_)
+            | Self::StoreId(_)
+            | Self::RedapServer(_)
+            | Self::RedapEntry(_) => None,
+
+            Self::ComponentPath(component_path) => Some(DataPath {
+                entity_path: component_path.entity_path.clone(),
+                instance: None,
+                component_descriptor: Some(component_path.component_descriptor.clone()),
+            }),
+
+            Self::InstancePath(instance_path) | Self::DataResult(_, instance_path) => {
+                Some(DataPath {
+                    entity_path: instance_path.entity_path.clone(),
+                    instance: Some(instance_path.instance),
+                    component_descriptor: None,
+                })
+            }
+        }
+    }
 }
 
 impl From<ViewId> for Item {
