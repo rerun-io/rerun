@@ -71,7 +71,7 @@ pub enum DisplayMode {
     LocalTable(TableId),
 
     /// The Redap server/catalog/collection browser.
-    RedapEntry(re_log_types::EntryId),
+    RedapEntry(re_uri::EntryUri),
     RedapServer(re_uri::Origin),
 
     /// The current recording's data store browser.

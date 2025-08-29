@@ -1,5 +1,5 @@
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{ComponentPath, DataPath, EntityPath, EntryId, TableId};
+use re_log_types::{ComponentPath, DataPath, EntityPath, TableId};
 
 use crate::{ContainerId, Contents, ViewId};
 
@@ -38,7 +38,7 @@ pub enum Item {
     /// A table or dataset entry stored in a Redap server.
     // TODO(ab): this should probably be split into separate variant, and made more consistent with
     // `AppId` and `TableId`.
-    RedapEntry(EntryId),
+    RedapEntry(re_uri::EntryUri),
 
     /// A Redap server.
     RedapServer(re_uri::Origin),
@@ -173,8 +173,8 @@ impl std::fmt::Debug for Item {
                 write!(f, "({view_id:?}, {instance_path}")
             }
             Self::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
-            Self::RedapEntry(entry_id) => {
-                write!(f, "{entry_id}")
+            Self::RedapEntry(entry) => {
+                write!(f, "{entry}")
             }
             Self::RedapServer(server) => write!(f, "{server}"),
         }

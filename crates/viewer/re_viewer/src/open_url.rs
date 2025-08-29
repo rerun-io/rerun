@@ -254,10 +254,7 @@ impl ViewerImportUrl {
                 Err(anyhow::anyhow!("Can't share links to local tables."))
             }
 
-            DisplayMode::RedapEntry(_entry_id) => {
-                // TODO(#10866): Implement this.
-                Err(anyhow::anyhow!("Can't share links to redap entries."))
-            }
+            DisplayMode::RedapEntry(entry) => Ok(Self::RedapEntry(entry.clone())),
 
             DisplayMode::RedapServer(origin) => {
                 // `as_url` on the origin gives us an http link.
@@ -324,7 +321,7 @@ impl ViewerImportUrl {
                 vec1![catalog_uri.to_string()]
             }
 
-            Self::RedapEntry(entry_uri) => vec1![entry_uri.to_string()],
+            Self::RedapEntry(entry) => vec1![entry.to_string()],
 
             Self::WebEventListener => vec1![WEB_EVENT_LISTENER_SCHEME.to_owned()],
 
@@ -427,14 +424,12 @@ impl ViewerImportUrl {
             }
             Self::RedapCatalog(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender.send_system(SystemCommand::ChangeDisplayMode(
-                    DisplayMode::RedapServer(uri.origin),
-                ));
+                command_sender
+                    .send_system(SystemCommand::SetSelection(Item::RedapServer(uri.origin)));
             }
             Self::RedapEntry(uri) => {
-                command_sender.send_system(SystemCommand::AddRedapServer(uri.origin));
-                command_sender
-                    .send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
+                command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri)));
             }
             Self::WebEventListener => {
                 handle_web_event_listener(egui_ctx, command_sender);
@@ -721,10 +716,15 @@ mod tests {
         );
 
         // RedapEntry
-        // TODO(#10866): Implement this. Antoine and I figured that display mode (and item) should just contain the entry uri. We should have this knowledge on all creation sites!
-        assert!(
-            ViewerImportUrl::from_display_mode(&store_hub, DisplayMode::RedapEntry(EntryId::new()))
-                .is_err()
+        let origin = "rerun://localhost:51234".parse().unwrap();
+        let entry_uri = re_uri::EntryUri::new(origin, EntryId::new());
+        assert_eq!(
+            ViewerImportUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::RedapEntry(entry_uri.clone())
+            )
+            .unwrap(),
+            ViewerImportUrl::RedapEntry(entry_uri)
         );
 
         // ChunkStoreBrowser

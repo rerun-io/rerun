@@ -384,8 +384,8 @@ trait ContextMenuAction {
                 }
                 Item::Container(container_id) => self.process_container(ctx, container_id),
                 Item::RedapServer(origin) => self.process_redap_server(ctx, origin),
-                Item::RedapEntry(entry_id) => {
-                    self.process_redap_entry(ctx, entry_id);
+                Item::RedapEntry(entry) => {
+                    self.process_redap_entry(ctx, &entry.entry_id);
                 }
             }
         }

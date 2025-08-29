@@ -638,6 +638,10 @@ impl App {
             }
 
             SystemCommand::ChangeDisplayMode(display_mode) => {
+                if &display_mode == self.state.navigation.peek() {
+                    return;
+                }
+
                 // Update web-navigation bar if this isn't about local recordings.
                 //
                 // Recordings are on selection since recording change always comes with a selection change.
@@ -653,6 +657,7 @@ impl App {
                 }
 
                 self.state.navigation.replace(display_mode);
+                egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
 
             SystemCommand::AddRedapServer(origin) => {
@@ -753,10 +758,10 @@ impl App {
 
             SystemCommand::SetSelection(item) => {
                 match &item {
-                    Item::RedapEntry(entry_id) => {
+                    Item::RedapEntry(entry) => {
                         self.state
                             .navigation
-                            .replace(DisplayMode::RedapEntry(*entry_id));
+                            .replace(DisplayMode::RedapEntry(entry.clone()));
                     }
 
                     Item::RedapServer(origin) => {
@@ -793,6 +798,7 @@ impl App {
                     store_hub,
                     self.state.navigation.peek(),
                 );
+                egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
             SystemCommand::SetActiveTime {
