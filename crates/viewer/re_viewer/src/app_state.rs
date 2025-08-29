@@ -543,9 +543,7 @@ impl AppState {
                             | DisplayMode::RedapEntry(..)
                             | DisplayMode::RedapServer(..) => {
                                 let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
-                                let resizable = ctx.storage_context.bundle.recordings().count() > 3
-                                    && show_blueprints;
-
+                                let resizable = show_blueprints;
                                 if resizable {
                                     // Don't shrink either recordings panel or blueprint panel below this height
                                     let min_height_each =
