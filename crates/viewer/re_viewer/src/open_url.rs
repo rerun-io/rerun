@@ -189,6 +189,7 @@ impl ViewerImportUrl {
                 // Not much point in updating address for the settings screen.
                 Err(anyhow::anyhow!("Can't share links to the settings screen."))
             }
+
             DisplayMode::LocalRecordings => {
                 // Local recordings includes those downloaded from rrd urls
                 // (as of writing this includes the sample recordings!)
