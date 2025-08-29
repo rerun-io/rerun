@@ -130,6 +130,7 @@ pub const ARROW_RIGHT: Icon = icon_from_path!("../data/icons/arrow_right.svg");
 pub const ARROW_UP: Icon = icon_from_path!("../data/icons/arrow_up.svg");
 pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.svg");
 pub const LOOP: Icon = icon_from_path!("../data/icons/loop.svg");
+pub const FILTER: Icon = icon_from_path!("../data/icons/filter.svg");
 
 pub const NOTIFICATION: Icon = icon_from_path!("../data/icons/notification.svg");
 pub const RIGHT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/right_panel_toggle.svg");

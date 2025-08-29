@@ -1255,6 +1255,22 @@ pub trait UiExt {
         ui.scope_builder(builder, |ui| content(ui, show_extras))
             .inner
     }
+
+    /// Menu item with an icon and text.
+    fn icon_and_text_menu_item(
+        &mut self,
+        icon: &Icon,
+        text: impl Into<WidgetText>,
+    ) -> egui::Response {
+        let ui = self.ui_mut();
+        let tokens = ui.tokens();
+        ui.add(egui::Button::image_and_text(
+            icon.as_image()
+                .tint(tokens.label_button_icon_color)
+                .fit_to_exact_size(tokens.small_icon_size),
+            text,
+        ))
+    }
 }
 
 impl UiExt for egui::Ui {

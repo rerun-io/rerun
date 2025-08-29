@@ -670,7 +670,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
                                         if ui
                                             .add_enabled_ui(!already_sorted, |ui| {
-                                                sort_direction.menu_button(ui)
+                                                sort_direction.menu_item_ui(ui)
                                             })
                                             .inner
                                             .clicked()
@@ -687,7 +687,13 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                     if let Some(filter_op) = FilterOperation::default_for_datatype(
                                         column_field.data_type(),
                                     ) {
-                                        if ui.button("Filter").clicked() {
+                                        if ui
+                                            .icon_and_text_menu_item(
+                                                &re_ui::icons::FILTER,
+                                                "Filter",
+                                            )
+                                            .clicked()
+                                        {
                                             self.filter_state.push_new_filter(Filter::new(
                                                 column_physical_name.clone(),
                                                 filter_op,

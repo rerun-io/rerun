@@ -27,18 +27,14 @@ impl SortDirection {
         }
     }
 
-    pub fn menu_button(&self, ui: &mut egui::Ui) -> egui::Response {
-        let tokens = ui.tokens();
-        ui.add(egui::Button::image_and_text(
-            self.icon()
-                .as_image()
-                .tint(tokens.label_button_icon_color)
-                .fit_to_exact_size(tokens.small_icon_size),
+    pub fn menu_item_ui(&self, ui: &mut egui::Ui) -> egui::Response {
+        ui.icon_and_text_menu_item(
+            self.icon(),
             match self {
                 Self::Ascending => "Ascending",
                 Self::Descending => "Descending",
             },
-        ))
+        )
     }
 }
 
