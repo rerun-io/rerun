@@ -20,7 +20,7 @@ impl Default for AnyValues {
 }
 
 impl AnyValues {
-    //TODO(#10879): Prune this method in 0.26.0
+    //TODO(#10908): Prune this method in 0.26.0
     /// Assigns an (archetype) name to this set of any values.
     #[deprecated(
         since = "0.25.0",
