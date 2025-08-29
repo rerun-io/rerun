@@ -793,6 +793,44 @@ impl ::prost::Name for GetChunksResponse {
         "/rerun.cloud.v1alpha1.GetChunksResponse".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchChunksRequest {
+    /// Information about the chunks to fetch. This dataframe has to include the following columns:
+    /// * `chunk_id` - Chunk unique identifier
+    /// * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
+    /// * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
+    /// * `data_source_kind` - what kind of partition is this (rrd, mcap, etc)
+    /// * `chunk_key` - chunk location details
+    #[prost(message, optional, tag = "1")]
+    pub chunk_infos: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for FetchChunksRequest {
+    const NAME: &'static str = "FetchChunksRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.FetchChunksRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.FetchChunksRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchChunksResponse {
+    /// Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
+    /// cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
+    #[prost(message, repeated, tag = "1")]
+    pub chunks: ::prost::alloc::vec::Vec<super::super::log_msg::v1alpha1::ArrowMsg>,
+}
+impl ::prost::Name for FetchChunksResponse {
+    const NAME: &'static str = "FetchChunksResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.FetchChunksResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.FetchChunksResponse".into()
+    }
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct GetTableSchemaRequest {
     #[prost(message, optional, tag = "1")]
@@ -2131,6 +2169,30 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        /// Fetch chunks
+        ///
+        /// See `FetchChunksRequest` for details on the fields that describe each individual chunk.
+        pub async fn fetch_chunks(
+            &mut self,
+            request: impl tonic::IntoRequest<super::FetchChunksRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::FetchChunksResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/FetchChunks",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "FetchChunks",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
         /// Register a foreign table as a new table entry in the catalog.
         pub async fn register_table(
             &mut self,
@@ -2421,6 +2483,18 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::GetChunksRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
+        /// Server streaming response type for the FetchChunks method.
+        type FetchChunksStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::FetchChunksResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Fetch chunks
+        ///
+        /// See `FetchChunksRequest` for details on the fields that describe each individual chunk.
+        async fn fetch_chunks(
+            &self,
+            request: tonic::Request<super::FetchChunksRequest>,
+        ) -> std::result::Result<tonic::Response<Self::FetchChunksStream>, tonic::Status>;
         /// Register a foreign table as a new table entry in the catalog.
         async fn register_table(
             &self,
@@ -3289,6 +3363,50 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetChunksSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/FetchChunks" => {
+                    #[allow(non_camel_case_types)]
+                    struct FetchChunksSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::FetchChunksRequest>
+                        for FetchChunksSvc<T>
+                    {
+                        type Response = super::FetchChunksResponse;
+                        type ResponseStream = T::FetchChunksStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::FetchChunksRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::fetch_chunks(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = FetchChunksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

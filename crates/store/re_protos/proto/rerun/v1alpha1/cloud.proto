@@ -96,6 +96,11 @@ service RerunCloudService {
   // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
   rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
+  // Fetch chunks
+  //
+  // See `FetchChunksRequest` for details on the fields that describe each individual chunk.
+  rpc FetchChunks(FetchChunksRequest) returns (stream FetchChunksResponse) {}
+
   // --- Tables ---
   // TODO(jleibs): This will be replaced / extended by Arrow Flight
 
@@ -528,6 +533,22 @@ message GetChunksRequest {
 }
 
 message GetChunksResponse {
+  // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
+  // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
+  repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
+}
+
+message FetchChunksRequest {
+  // Information about the chunks to fetch. This dataframe has to include the following columns:
+  // * `chunk_id` - Chunk unique identifier
+  // * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
+  // * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
+  // * `data_source_kind` - what kind of partition is this (rrd, mcap, etc)
+  // * `chunk_key` - chunk location details
+  rerun.common.v1alpha1.DataframePart chunk_infos = 1;
+}
+
+message FetchChunksResponse {
   // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
   // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
   repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
