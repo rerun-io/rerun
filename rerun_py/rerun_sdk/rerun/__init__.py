@@ -64,6 +64,9 @@ from .any_value import (
     AnyBatchValue as AnyBatchValue,
     AnyValues as AnyValues,
 )
+from .archetype_builder import (
+    ArchetypeBuilder as ArchetypeBuilder,
+)
 from .archetypes import (
     AnnotationContext as AnnotationContext,
     Arrows2D as Arrows2D,
