@@ -85,7 +85,7 @@ impl<'a> Columns<'a> {
 }
 
 impl Columns<'_> {
-    fn iter(&self) -> impl Iterator<Item = &Column<'_>> {
+    fn iter(&self) -> impl Iterator<Item = &Column<'_>> + use<'_> {
         self.columns.iter()
     }
 
@@ -258,6 +258,7 @@ impl<'a> DataFusionTableWidget<'a> {
             session_id,
             initial_blueprint,
         );
+        let mut new_blueprint = table_state.blueprint().clone();
 
         let mut filter_state =
             FilterState::get_from_blueprint(ui.ctx(), session_id, table_state.blueprint());
@@ -303,10 +304,22 @@ impl<'a> DataFusionTableWidget<'a> {
         };
 
         let (sorbet_schema, migrated_fields) = {
+            // TODO(ab): We need to deal better with empty vec of sorbet batches. In that case, we
+            // do have a schema, so we should be able to display an empty table.
             let Some(sorbet_batch) = sorbet_batches.first() else {
                 if let Some(title) = title {
-                    title_ui(ui, None, &title, url.as_ref(), false);
+                    title_ui(ui, None, &title, url.as_ref(), should_show_spinner);
                 }
+
+                drop(requested_sorbet_batches);
+                //TODO: address code duplication?
+                if filter_state.filter_bar_ui(ui) {
+                    new_blueprint.filters = filter_state.filters.clone();
+                    if table_state.blueprint() != &new_blueprint {
+                        table_state.update_query(runtime, ui, new_blueprint);
+                    }
+                }
+                filter_state.store(ui.ctx(), session_id);
 
                 Frame::new()
                     .inner_margin(egui::vec2(16.0, 0.0))
@@ -362,8 +375,6 @@ impl<'a> DataFusionTableWidget<'a> {
             }),
         );
 
-        let mut new_blueprint = table_state.blueprint().clone();
-
         if let Some(title) = title {
             title_ui(
                 ui,
@@ -374,9 +385,7 @@ impl<'a> DataFusionTableWidget<'a> {
             );
         }
 
-        let should_commit_filter = filter_state.filter_bar_ui(ui);
-
-        if should_commit_filter {
+        if filter_state.filter_bar_ui(ui) {
             new_blueprint.filters = filter_state.filters.clone();
         }
 

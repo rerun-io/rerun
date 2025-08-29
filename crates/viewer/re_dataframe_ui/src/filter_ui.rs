@@ -1,3 +1,4 @@
+use egui::{Frame, Margin};
 use re_ui::UiExt as _;
 
 use crate::TableBlueprint;
@@ -43,26 +44,35 @@ impl FilterState {
 
         let mut should_commit = false;
 
-        ui.horizontal(|ui| {
-            let active_index = self.active_filter.take();
+        Frame::new()
+            .inner_margin(Margin {
+                top: 16,
+                bottom: 12,
+                left: 16,
+                right: 16,
+            })
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    let active_index = self.active_filter.take();
 
-            let mut remove_idx = None;
-            for (index, filter) in self.filters.iter_mut().enumerate() {
-                should_commit |= filter.ui(ui, Some(index) == active_index);
-                if ui
-                    .small_icon_button(&re_ui::icons::CLOSE, "Remove filter")
-                    .clicked()
-                {
-                    remove_idx = Some(index);
-                }
-            }
+                    let mut remove_idx = None;
+                    for (index, filter) in self.filters.iter_mut().enumerate() {
+                        should_commit |= filter.ui(ui, Some(index) == active_index);
+                        if ui
+                            .small_icon_button(&re_ui::icons::CLOSE, "Remove filter")
+                            .clicked()
+                        {
+                            remove_idx = Some(index);
+                        }
+                    }
 
-            if let Some(remove_idx) = remove_idx {
-                self.active_filter = None;
-                self.filters.remove(remove_idx);
-                should_commit = true;
-            }
-        });
+                    if let Some(remove_idx) = remove_idx {
+                        self.active_filter = None;
+                        self.filters.remove(remove_idx);
+                        should_commit = true;
+                    }
+                });
+            });
 
         should_commit
     }
