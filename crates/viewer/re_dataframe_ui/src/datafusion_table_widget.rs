@@ -264,6 +264,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let requested_sorbet_batches = table_state.requested_sorbet_batches.lock();
 
+        let mut should_show_spinner = false;
         let (sorbet_batches, fields) = match (
             requested_sorbet_batches.try_as_ref(),
             &table_state.last_sorbet_batches,
@@ -290,7 +291,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
             (None, Some(last_dataframe)) => {
                 // The new dataframe is still processing, but we have the previous one to display for now.
-                //TODO(ab): add a progress indicator
+                should_show_spinner = true;
                 last_dataframe
             }
 
@@ -304,7 +305,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let (sorbet_schema, migrated_fields) = {
             let Some(sorbet_batch) = sorbet_batches.first() else {
                 if let Some(title) = title {
-                    title_ui(ui, None, &title, url.as_ref());
+                    title_ui(ui, None, &title, url.as_ref(), false);
                 }
 
                 Frame::new()
@@ -364,7 +365,13 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut new_blueprint = table_state.blueprint().clone();
 
         if let Some(title) = title {
-            title_ui(ui, Some(&mut table_config), &title, url.as_ref());
+            title_ui(
+                ui,
+                Some(&mut table_config),
+                &title,
+                url.as_ref(),
+                should_show_spinner,
+            );
         }
 
         let should_commit_filter = filter_state.filter_bar_ui(ui);
@@ -547,6 +554,7 @@ fn title_ui(
     table_config: Option<&mut TableConfig>,
     title: &str,
     url: Option<&String>,
+    should_show_spinner: bool,
 ) {
     Frame::new()
         .inner_margin(Margin {
@@ -567,6 +575,10 @@ fn title_ui(
                             .clicked()
                     {
                         ui.ctx().copy_text(url.clone());
+                    }
+
+                    if should_show_spinner {
+                        ui.spinner();
                     }
                 },
                 |ui| {
