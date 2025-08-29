@@ -1425,11 +1425,9 @@ impl ReceiversFromUrlParams {
                         data_sources.push(data_source);
                     }
                 }
-            } else if url.parse::<re_uri::RedapUri>().is_ok() {
-                // Readp URLs always have to be passed on.
-                urls_to_pass_on_to_viewer.push(url);
             } else {
-                re_log::warn!("{url:?} is not a valid data source or redap uri.");
+                // We don't have the full url parsing logic here. Just pass it on to the viewer!
+                urls_to_pass_on_to_viewer.push(url);
             }
         }
 
