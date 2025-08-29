@@ -216,6 +216,7 @@ convert_case = "0.6"
 criterion = "0.5"
 cros-codecs = "0.0.6"
 crossbeam = "0.8"
+dae-parser = "0.11.0"
 datafusion = { version = "47", default-features = false }
 datafusion-ffi = "47"
 directories = "5"
