@@ -507,9 +507,17 @@ impl App {
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
+        display_mode: &DisplayMode,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(egui_ctx, app_blueprint, storage_context, store_context, cmd);
+            self.run_ui_command(
+                egui_ctx,
+                app_blueprint,
+                storage_context,
+                store_context,
+                display_mode,
+                cmd,
+            );
         }
     }
 
@@ -1030,8 +1038,9 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
-        _storage_context: &StorageContext<'_>,
+        storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
+        display_mode: &DisplayMode,
         cmd: UICommand,
     ) {
         let mut force_store_info = false;
@@ -1070,7 +1079,7 @@ impl App {
                     for item in self.state.selection_state.selected_items().iter_items() {
                         match item {
                             Item::AppId(selected_app_id) => {
-                                for recording in _storage_context.bundle.recordings() {
+                                for recording in storage_context.bundle.recordings() {
                                     if recording.application_id() == selected_app_id {
                                         selected_stores.push(recording.store_id().clone());
                                     }
@@ -1085,7 +1094,7 @@ impl App {
 
                     let selected_stores = selected_stores
                         .iter()
-                        .filter_map(|store_id| _storage_context.bundle.get(store_id))
+                        .filter_map(|store_id| storage_context.bundle.get(store_id))
                         .collect_vec();
 
                     if selected_stores.is_empty() {
@@ -1391,13 +1400,8 @@ impl App {
                 re_ui::apply_style_and_install_loaders(egui_ctx);
             }
 
-            #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
-                if self.run_copy_direct_link_command(store_context).is_none() {
-                    re_log::error!(
-                        "Failed to copy direct link to clipboard. Is this not running in a browser?"
-                    );
-                }
+                self.run_copy_direct_link_command(storage_context, display_mode);
             }
 
             UICommand::CopyTimeRangeLink => {
@@ -1552,27 +1556,38 @@ impl App {
         Ok(url)
     }
 
-    #[cfg(target_arch = "wasm32")]
     fn run_copy_direct_link_command(
         &mut self,
-        store_context: Option<&StoreContext<'_>>,
-    ) -> Option<()> {
-        use crate::web_tools::JsResultExt as _;
-        let href = self.get_viewer_url().ok_or_log_js_error()?;
-
-        let direct_link = match store_context
-            .map(|ctx| ctx.recording)
-            .and_then(|rec| rec.data_source.as_ref())
+        storage_context: &StorageContext<'_>,
+        display_mode: &DisplayMode,
+    ) {
+        // TODO(rerun-io/dataplatform#2663): Should take into account dataplatform URLs if any are provided.
+        let base_url;
+        #[cfg(target_arch = "wasm32")]
         {
-            Some(SmartChannelSource::RrdHttpStream { url, .. }) => format!("{href}?url={url}"),
-            _ => href,
+            use crate::web_tools::JsResultExt as _;
+            base_url = crate::web_tools::current_base_url().ok_or_log_js_error();
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            base_url = None;
         };
 
-        self.egui_ctx.copy_text(direct_link.clone());
-        self.notifications
-            .success(format!("Copied {direct_link:?} to clipboard"));
-
-        Some(())
+        match crate::open_url::ViewerImportUrl::from_display_mode(
+            storage_context.hub,
+            display_mode.clone(),
+        )
+        .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
+        {
+            Ok(url) => {
+                self.egui_ctx.copy_text(url);
+                self.notifications
+                    .success("Copied link to clipboard".to_owned());
+            }
+            Err(err) => {
+                re_log::error!("{err}");
+            }
+        }
     }
 
     fn run_copy_time_range_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
@@ -2767,11 +2782,13 @@ impl eframe::App for App {
             Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
+            let display_mode = self.state.navigation.peek().clone();
             self.run_pending_ui_commands(
                 egui_ctx,
                 &app_blueprint,
                 &storage_context,
                 store_context.as_ref(),
+                &display_mode,
             );
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
