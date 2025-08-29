@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -242,12 +243,12 @@ class ArchetypeBuilder(AsComponents):
     """
 
     def __init__(
-        self, archetype: str, drop_untyped_nones: bool = True, values: Mapping[str, Any] | None = None
+        self, archetype: str, drop_untyped_nones: bool = True, components: Mapping[str, Any] | None = None
     ) -> None:
         """
         Construct a new ArchetypeBuilder.
 
-        Each kwarg will be logged as a separate component batch with the same archetype using the provided data.
+        Each of the provided components will be logged as a separate component batch with the same archetype using the provided data.
          - The key will be used as the name of the component
          - The value must be able to be converted to an array of arrow types. In
            general, if you can pass it to [pyarrow.array][] you can log it as a
@@ -286,61 +287,90 @@ class ArchetypeBuilder(AsComponents):
         drop_untyped_nones:
             If True, any components that are None will be dropped unless they
             have been previously logged with a type.
-        values:
+        components:
             The components to be logged.
 
         """
         global ANY_VALUE_TYPE_REGISTRY
 
-        self.component_batches = []
+        self._component_batches: list[DescribedComponentBatch] = []
+        self._archetype: str | None = None
+        self._name = self.__class__.__name__
+
+        self._optional_archetype(archetype, drop_untyped_nones, components)
+
+    def _optional_archetype(
+        self, archetype: str | None, drop_untyped_nones: bool = True, components: Mapping[str, Any] | None = None
+    ) -> None:
+        """Support more flexibile initialization."""
         self._archetype = archetype
 
-        with catch_and_log_exceptions(self.__class__.__name__):
+        with catch_and_log_exceptions(self._name):
             if not isinstance(drop_untyped_nones, bool) and drop_untyped_nones is not None:
                 raise ValueError(
-                    "AnyValues components must be set using keyword arguments, "
+                    f"{self._name} components must be set using the components argument, "
                     "you've provided a positional argument of type {type(drop_untyped_nones)} "
                     "to our boolean flag."
                 )
 
-            if values is not None:
-                for name, value in values.items():
+            if components is not None:
+                for name, value in components.items():
                     descriptor = ComponentDescriptor(
                         component=name,
                         archetype=self._archetype,
                     )
                     batch = AnyBatchValue(descriptor, value, drop_untyped_nones=drop_untyped_nones)
                     if batch.is_valid():
-                        self.component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
+                        self._component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
 
-    def with_field(self, field: str, value: Any, drop_untyped_nones: bool = True) -> ArchetypeBuilder:
-        """Adds an `AnyValueBatch` to this `AnyValues` bundle."""
-        # TODO(#10908): Prune this type in 0.25
-        descriptor = ComponentDescriptor(component=field, archetype=self._archetype)
+    @classmethod
+    def _default_without_archetype(cls, drop_untyped_nones: bool = True, **kwargs: Any) -> ArchetypeBuilder:
+        """Directly construct an ArchetypeBuilder without the Archetype."""
+        # Create an empty archetype
+        archetype = cls(archetype="placeholder", drop_untyped_nones=drop_untyped_nones, components={})
+        # Clear the archetype name
+        archetype._archetype = None
+        # populate
+        archetype._optional_archetype(None, drop_untyped_nones, components=kwargs)
+        return archetype
+
+    def _with_name(self, name: str) -> None:
+        """Override the name in errors if contained elsewhere."""
+        self._name = name
+
+    def _with_field_internal(
+        self, descriptor: ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
+    ) -> ArchetypeBuilder:
+        """Adds an `Batch` to this `ArchetypeBuilder` bundle."""
         batch = AnyBatchValue(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         if batch.is_valid():
-            self.component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
+            self._component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
         return self
 
+    def with_field(self, field: str, value: Any, drop_untyped_nones: bool = True) -> ArchetypeBuilder:
+        """Adds an `Batch` to this `ArchetypeBuilder` bundle."""
+        descriptor = ComponentDescriptor(component=field, archetype=self._archetype)
+        return self._with_field_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
+
     def as_component_batches(self) -> list[DescribedComponentBatch]:
-        with catch_and_log_exceptions(self.__class__.__name__):
-            if len(self.component_batches) == 0:
+        with catch_and_log_exceptions(self._name):
+            if len(self._component_batches) == 0:
                 raise ValueError("No valid component batches to return.")
-        return self.component_batches
+        return self._component_batches
 
     @classmethod
     def columns(
-        cls, archetype: str, drop_untyped_nones: bool = True, values: Mapping[str, Any] | None = None
+        cls, archetype: str, drop_untyped_nones: bool = True, components: Mapping[str, Any] | None = None
     ) -> ComponentColumnList:
         """
-        Construct a new column-oriented AnyValues bundle.
+        Construct a new column-oriented ArchetypeBuilder bundle.
 
         This makes it possible to use `rr.send_columns` to send columnar data directly into Rerun.
 
         The returned columns will be partitioned into unit-length sub-batches by default.
         Use `ComponentColumnList.partition` to repartition the data as needed.
 
-        Each kwarg will be logged as a separate component column using the provided data.
+        Each of the components will be logged as a separate component column using the provided data.
          - The key will be used as the name of the component
          - The value must be able to be converted to an array of arrow types. In
            general, if you can pass it to [pyarrow.array][] you can log it as a
@@ -379,11 +409,21 @@ class ArchetypeBuilder(AsComponents):
         drop_untyped_nones:
             If True, any components that are None will be dropped unless they
             have been previously logged with a type.
-        values:
+        components:
             The components to be logged.
 
         """
-        inst = cls(archetype, drop_untyped_nones, values)
+        inst = cls(archetype, drop_untyped_nones, components)
         return ComponentColumnList([
-            ComponentColumn(batch.component_descriptor(), batch) for batch in inst.component_batches
+            ComponentColumn(batch.component_descriptor(), batch) for batch in inst._component_batches
         ])
+
+    @property
+    def component_batches(self) -> list[DescribedComponentBatch]:
+        # TODO(#10908): Prune this type in 0.26
+        warnings.warn(
+            "Accessing `component_batches` directly is deprecated, access via `as_component_batches` instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        return self._component_batches

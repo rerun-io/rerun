@@ -64,7 +64,7 @@ def test_bad_any_value() -> None:
 
         assert "Converting data for 'good_data':" in str(warnings[0].message)
 
-    with pytest.warns(RerunWarning, match="using keyword arguments"):
+    with pytest.warns(RerunWarning, match="using the components argument"):
         non_keyword_arg = 1
         rr.AnyValues(non_keyword_arg)  # type: ignore[arg-type]
 
@@ -169,5 +169,5 @@ def test_any_values_with_field() -> None:
             descriptor=rr.ComponentDescriptor("value"),
             value=np.array([5], dtype=np.int64),
         )
-    assert values.component_batches[0].component_descriptor() == rr.ComponentDescriptor("value")
-    assert values.component_batches[0].as_arrow_array().to_numpy() == np.array([5], dtype=np.int64)
+    assert values.as_component_batches()[0].component_descriptor() == rr.ComponentDescriptor("value")
+    assert values.as_component_batches()[0].as_arrow_array().to_numpy() == np.array([5], dtype=np.int64)

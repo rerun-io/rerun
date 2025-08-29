@@ -7,10 +7,7 @@ from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentColumn, ComponentColumnList, DescribedComponentBatch
 from ._log import AsComponents
-from .archetype_builder import AnyBatchValue
-from .error_utils import catch_and_log_exceptions
-
-ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any] = {}
+from .archetype_builder import AnyBatchValue as AnyBatchValue, ArchetypeBuilder
 
 
 class AnyValues(AsComponents):
@@ -78,22 +75,8 @@ class AnyValues(AsComponents):
             The components to be logged.
 
         """
-        global ANY_VALUE_TYPE_REGISTRY
-
-        self.component_batches = []
-
-        with catch_and_log_exceptions(self.__class__.__name__):
-            if not isinstance(drop_untyped_nones, bool) and drop_untyped_nones is not None:
-                raise ValueError(
-                    "AnyValues components must be set using keyword arguments, "
-                    "you've provided a positional argument of type {type(drop_untyped_nones)} "
-                    "to our boolean flag."
-                )
-
-            for name, value in kwargs.items():
-                batch = AnyBatchValue(name, value, drop_untyped_nones=drop_untyped_nones)
-                if batch.is_valid():
-                    self.component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
+        self._builder = ArchetypeBuilder._default_without_archetype(drop_untyped_nones, **kwargs)
+        self._builder._with_name(self.__class__.__name__)
 
     def with_field(
         self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
@@ -107,16 +90,13 @@ class AnyValues(AsComponents):
                 DeprecationWarning,
                 stacklevel=2,
             )
-        batch = AnyBatchValue(descriptor, value, drop_untyped_nones=drop_untyped_nones)
-        if batch.is_valid():
-            self.component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
+            self._builder._with_field_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
+        else:
+            self._builder.with_field(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         return self
 
     def as_component_batches(self) -> list[DescribedComponentBatch]:
-        with catch_and_log_exceptions(self.__class__.__name__):
-            if len(self.component_batches) == 0:
-                raise ValueError("No valid component batches to return.")
-        return self.component_batches
+        return self._builder.as_component_batches()
 
     @classmethod
     def columns(cls, drop_untyped_nones: bool = True, **kwargs: Any) -> ComponentColumnList:
@@ -171,5 +151,9 @@ class AnyValues(AsComponents):
         """
         inst = cls(drop_untyped_nones, **kwargs)
         return ComponentColumnList([
-            ComponentColumn(batch.component_descriptor(), batch) for batch in inst.component_batches
+            ComponentColumn(batch.component_descriptor(), batch) for batch in inst._builder.component_batches
         ])
+
+    @property
+    def component_batches(self) -> list[DescribedComponentBatch]:
+        return self._builder.component_batches
