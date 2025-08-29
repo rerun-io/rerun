@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arrow::datatypes::{DataType, Fields};
 use datafusion::common::{DataFusionError, TableReference};
 use datafusion::functions::expr_fn::concat;
-use datafusion::logical_expr::{col as datafusion_col, lit};
+use datafusion::logical_expr::{binary_expr, col as datafusion_col, lit};
 use datafusion::prelude::{SessionContext, cast, encode};
 use parking_lot::Mutex;
 
@@ -12,6 +12,7 @@ use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::RequestedObject;
+use crate::filters::Filter;
 use crate::table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint};
 
 /// Make sure we escape column names correctly for datafusion.
@@ -36,7 +37,8 @@ struct DataFusionQueryData {
     pub sort_by: Option<SortBy>,
     pub partition_links: Option<PartitionLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
-    pub filter: Option<datafusion::prelude::Expr>,
+    pub prefilter: Option<datafusion::prelude::Expr>,
+    pub filters: Vec<Filter>,
 }
 
 impl From<&TableBlueprint> for DataFusionQueryData {
@@ -45,14 +47,16 @@ impl From<&TableBlueprint> for DataFusionQueryData {
             sort_by,
             partition_links,
             entry_links,
-            prefilter: filter,
+            prefilter,
+            filters,
         } = value;
 
         Self {
             sort_by: sort_by.clone(),
             partition_links: partition_links.clone(),
             entry_links: entry_links.clone(),
-            filter: filter.clone(),
+            prefilter: prefilter.clone(),
+            filters: filters.clone(),
         }
     }
 }
@@ -91,7 +95,8 @@ impl DataFusionQuery {
             sort_by,
             partition_links,
             entry_links,
-            filter,
+            prefilter,
+            filters,
         } = &self.query_data;
 
         // Important: the needs to happen first, in case we sort/filter/etc. based on that
@@ -125,8 +130,28 @@ impl DataFusionQuery {
             dataframe = dataframe.with_column(&entry_links.column_name, column)?;
         }
 
-        if let Some(filter) = filter {
-            dataframe = dataframe.filter(filter.clone())?;
+        if let Some(prefilter) = prefilter {
+            dataframe = dataframe.filter(prefilter.clone())?;
+        }
+
+        let schema = dataframe.schema();
+
+        let filter_exprs = filters
+            .iter()
+            .filter_map(|filter| {
+                filter
+                    .as_filter_expression(schema)
+                    .inspect_err(|err| {
+                        //TODO: better error handling?
+                        re_log::warn_once!("invalid filter: {err}");
+                    })
+                    .ok()
+            })
+            .collect();
+        let filter_expr =
+            balanced_binary_exprs(filter_exprs, datafusion::logical_expr::Operator::And);
+        if let Some(filter_expr) = filter_expr {
+            dataframe = dataframe.filter(filter_expr)?;
         }
 
         if let Some(sort_by) = sort_by {
@@ -282,4 +307,27 @@ impl DataFusionAdapter {
             data.insert_temp(self.id, self);
         });
     }
+}
+
+/// Creates a _balanced_ chain of binary expressions.
+fn balanced_binary_exprs(
+    mut exprs: Vec<datafusion::logical_expr::Expr>,
+    op: datafusion::logical_expr::Operator,
+) -> Option<datafusion::logical_expr::Expr> {
+    while exprs.len() > 1 {
+        let mut exprs_next = Vec::with_capacity(exprs.len() / 2 + 1);
+        let mut exprs_prev = exprs.into_iter();
+
+        while let Some(left) = exprs_prev.next() {
+            if let Some(right) = exprs_prev.next() {
+                exprs_next.push(binary_expr(left, op, right));
+            } else {
+                exprs_next.push(left);
+            }
+        }
+
+        exprs = exprs_next;
+    }
+
+    exprs.into_iter().next()
 }

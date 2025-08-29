@@ -216,7 +216,9 @@ convert_case = "0.6"
 criterion = "0.5"
 cros-codecs = "0.0.6"
 crossbeam = "0.8"
-datafusion = { version = "47", default-features = false }
+datafusion = { version = "47", default-features = false, features = [
+  "nested_expressions",
+] }
 datafusion-ffi = "47"
 directories = "5"
 document-features = "0.2.8"

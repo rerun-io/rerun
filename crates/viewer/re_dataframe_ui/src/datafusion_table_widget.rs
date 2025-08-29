@@ -21,6 +21,8 @@ use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
 use crate::display_record_batch::DisplayColumn;
+use crate::filter_ui::FilterState;
+use crate::filters::{Filter, FilterOperation};
 use crate::header_tooltip::column_header_tooltip_ui;
 use crate::table_blueprint::{
     ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
@@ -257,6 +259,9 @@ impl<'a> DataFusionTableWidget<'a> {
             initial_blueprint,
         );
 
+        let mut filter_state =
+            FilterState::get_from_blueprint(ui.ctx(), session_id, table_state.blueprint());
+
         let requested_sorbet_batches = table_state.requested_sorbet_batches.lock();
 
         let (sorbet_batches, fields) = match (
@@ -356,13 +361,19 @@ impl<'a> DataFusionTableWidget<'a> {
             }),
         );
 
+        let mut new_blueprint = table_state.blueprint().clone();
+
         if let Some(title) = title {
             title_ui(ui, Some(&mut table_config), &title, url.as_ref());
         }
 
-        apply_table_style_fixes(ui.style_mut());
+        let should_commit_filter = filter_state.filter_bar_ui(ui);
 
-        let mut new_blueprint = table_state.blueprint().clone();
+        if should_commit_filter {
+            new_blueprint.filters = filter_state.filters.clone();
+        }
+
+        apply_table_style_fixes(ui.style_mut());
 
         let mut row_height = viewer_ctx.tokens().table_row_height(table_style);
 
@@ -387,6 +398,7 @@ impl<'a> DataFusionTableWidget<'a> {
             blueprint: table_state.blueprint(),
             new_blueprint: &mut new_blueprint,
             table_config,
+            filter_state,
             row_height,
         };
 
@@ -449,6 +461,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .show(ui, &mut table_delegate);
 
         table_delegate.table_config.store(ui.ctx());
+        table_delegate.filter_state.store(ui.ctx(), session_id);
         drop(requested_sorbet_batches);
         if table_state.blueprint() != &new_blueprint {
             table_state.update_query(runtime, ui, new_blueprint);
@@ -579,6 +592,7 @@ struct DataFusionTableDelegate<'a> {
     blueprint: &'a TableBlueprint,
     new_blueprint: &'a mut TableBlueprint,
     table_config: TableConfig,
+    filter_state: FilterState,
     row_height: f32,
 }
 
@@ -655,6 +669,17 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                                 direction: sort_direction,
                                             });
                                             ui.close();
+                                        }
+                                    }
+
+                                    if let Some(filter_op) = FilterOperation::default_for_datatype(
+                                        column_field.data_type(),
+                                    ) {
+                                        if ui.button("Filter").clicked() {
+                                            self.filter_state.push_new_filter(Filter::new(
+                                                column_physical_name.clone(),
+                                                filter_op,
+                                            ));
                                         }
                                     }
                                 });
