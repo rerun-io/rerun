@@ -1,6 +1,7 @@
-use crate::parsers::{
-    MessageParser,
-    ros2msg::{
+use crate::{
+    parsers::MessageParser,
+    parsers::ros2msg::{
+        rcl_interfaces::LogMessageParser,
         sensor_msgs::{
             CameraInfoMessageParser, CompressedImageMessageParser, ImageMessageParser,
             ImuMessageParser, JointStateMessageParser, NavSatFixMessageParser,
@@ -52,6 +53,7 @@ impl MessageLayer for McapRos2Layer {
             }
             "sensor_msgs/msg/PointCloud2" => Box::new(PointCloud2MessageParser::new(num_rows)),
             "sensor_msgs/msg/NavSatFix" => Box::new(NavSatFixMessageParser::new(num_rows)),
+            "rcl_interfaces/msg/Log" => Box::new(LogMessageParser::new(num_rows)),
             _ => {
                 re_log::warn_once!(
                     "Message schema {:?} is currently not supported",
