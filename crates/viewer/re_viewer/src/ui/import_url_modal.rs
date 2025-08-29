@@ -59,9 +59,7 @@ impl ImportUrlModal {
                         .clicked()
                         || can_import && ui.input(|i| i.key_pressed(egui::Key::Enter))
                     {
-                        // We already made sure that this is a valid import URL, so we we'll not _actually_ open it into a new tab.
-                        // Using `new_tab` for these means that we'll switch to it which is what we want.
-                        ui.ctx().open_url(egui::OpenUrl::new_tab(self.url.clone()));
+                        ui.ctx().open_url(egui::OpenUrl::same_tab(self.url.clone()));
                         ui.close();
                     }
 
