@@ -192,6 +192,8 @@ pub struct ViewEye {
     eye_up: Vec3,
 
     velocity: Vec3,
+
+    track_ignore_input: bool,
 }
 
 impl ViewEye {
@@ -212,6 +214,7 @@ impl ViewEye {
             fov_y: Eye::DEFAULT_FOV_Y,
             eye_up,
             velocity: Vec3::ZERO,
+            track_ignore_input: false,
         }
     }
 
@@ -239,6 +242,10 @@ impl ViewEye {
             Eye3DKind::FirstPerson => None,
             Eye3DKind::Orbital => Some(self.center),
         }
+    }
+
+    pub fn get_track_ignore_input_pressed(&self) -> bool {
+        self.track_ignore_input
     }
 
     /// If in orbit mode, how far from the orbit center are we?
@@ -326,6 +333,7 @@ impl ViewEye {
                 // and even then it's not a big deal.
                 eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
                 velocity: self.velocity.lerp(other.velocity, t),
+                track_ignore_input: false,
             }
         }
     }
@@ -391,6 +399,8 @@ impl ViewEye {
         // Otherwise we flicker in and out of "has interacted" too quickly.
         let mut did_interact = response.drag_delta().length() > 0.0;
 
+        self.track_ignore_input = false;
+
         if response.drag_delta().length() > drag_threshold {
             let roll = response.dragged_by(ROLL_MOUSE)
                 || (response.dragged_by(ROLL_MOUSE_ALT)
@@ -401,8 +411,10 @@ impl ViewEye {
                 if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
                     self.roll(&response.rect, pointer_pos, response.drag_delta());
                 }
+                self.track_ignore_input = true
             } else if response.dragged_by(ROTATE3D_BUTTON) {
                 self.rotate(response.drag_delta());
+                self.track_ignore_input = true
             } else if response.dragged_by(DRAG_PAN3D_BUTTON) {
                 // The pan speed is selected to make the panning feel natural for orbit mode,
                 // but it should probably take FOV and screen size into account
@@ -494,6 +506,7 @@ impl ViewEye {
                 if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
                     self.orbit_radius = new_radius;
                     did_interact = true;
+                    self.track_ignore_input = true;
                 }
             }
             Eye3DKind::FirstPerson => {
@@ -501,6 +514,7 @@ impl ViewEye {
                 let delta = (zoom_factor - 1.0) * speed;
                 self.center += delta * self.fwd();
                 did_interact = true;
+                self.track_ignore_input = true;
             }
         }
 

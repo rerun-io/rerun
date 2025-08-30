@@ -153,6 +153,12 @@ impl SpatialViewState {
                 self.state_3d.set_spin(spin);
             }
         }
+
+        let mut tracked_entity_path = String::from("None");
+        if let Some(tracked_entity) = self.state_3d.tracked_entity.clone() {
+            tracked_entity_path = tracked_entity.to_string();
+        }
+        ui.label(format!("Tracked entity: {tracked_entity_path}"));
     }
 
     pub fn fallback_opacity_for_image_kind(&self, kind: ImageKind) -> f32 {
