@@ -158,7 +158,7 @@ impl PickingLayerProcessor {
     };
 
     pub const PICKING_LAYER_DEPTH_STATE: Option<wgpu::DepthStencilState> =
-        ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE;
+        Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE);
 
     /// New picking layer for a given screen.
     ///

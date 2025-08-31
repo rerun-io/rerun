@@ -360,25 +360,31 @@ impl ViewBuilder {
     pub const DEFAULT_DEPTH_CLEAR: wgpu::LoadOp<f32> = wgpu::LoadOp::Clear(0.0);
 
     /// Default depth state for enabled depth write & read.
-    pub const MAIN_TARGET_DEFAULT_DEPTH_STATE: Option<wgpu::DepthStencilState> =
-        Some(wgpu::DepthStencilState {
-            format: Self::MAIN_TARGET_DEPTH_FORMAT,
-            // It's important to set the depth test to GreaterEqual, not to Greater.
-            // This way, we ensure that objects that are drawn later with the exact same depth value, can overwrite earlier ones!
-            depth_compare: wgpu::CompareFunction::GreaterEqual,
-            depth_write_enabled: true,
-            stencil: wgpu::StencilState {
-                front: wgpu::StencilFaceState::IGNORE,
-                back: wgpu::StencilFaceState::IGNORE,
-                read_mask: 0,
-                write_mask: 0,
-            },
-            bias: wgpu::DepthBiasState {
-                constant: 0,
-                slope_scale: 0.0,
-                clamp: 0.0,
-            },
-        });
+    pub const MAIN_TARGET_DEFAULT_DEPTH_STATE: wgpu::DepthStencilState = wgpu::DepthStencilState {
+        format: Self::MAIN_TARGET_DEPTH_FORMAT,
+        // It's important to set the depth test to GreaterEqual, not to Greater.
+        // This way, we ensure that objects that are drawn later with the exact same depth value, can overwrite earlier ones!
+        depth_compare: wgpu::CompareFunction::GreaterEqual,
+        depth_write_enabled: true,
+        stencil: wgpu::StencilState {
+            front: wgpu::StencilFaceState::IGNORE,
+            back: wgpu::StencilFaceState::IGNORE,
+            read_mask: 0,
+            write_mask: 0,
+        },
+        bias: wgpu::DepthBiasState {
+            constant: 0,
+            slope_scale: 0.0,
+            clamp: 0.0,
+        },
+    };
+
+    /// Default depth state for disabled depth write & read.
+    pub const MAIN_TARGET_DEFAULT_DEPTH_STATE_NO_WRITE: wgpu::DepthStencilState =
+        wgpu::DepthStencilState {
+            depth_write_enabled: false,
+            ..Self::MAIN_TARGET_DEFAULT_DEPTH_STATE
+        };
 
     pub fn new(ctx: &RenderContext, config: TargetConfiguration) -> Result<Self, ViewBuilderError> {
         re_tracing::profile_function!();

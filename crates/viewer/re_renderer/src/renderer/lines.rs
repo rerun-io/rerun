@@ -685,7 +685,7 @@ impl Renderer for LineRenderer {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 ..Default::default()
             },
-            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE),
             multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), true),
         };
         let render_pipeline_color =

@@ -213,6 +213,9 @@ pub struct GpuMaterial {
     pub index_range: Range<u32>,
 
     pub bind_group: GpuBindGroup,
+
+    /// Whether there's any transparency in this material.
+    pub has_transparency: bool,
 }
 
 pub(crate) mod gpu_data {
@@ -342,9 +345,13 @@ impl GpuMesh {
                     },
                 );
 
+                // TODO(andreas): handle texture transparency
+                let is_transparent = material.albedo_factor.a() < 1.0;
+
                 materials.push(GpuMaterial {
                     index_range: material.index_range.clone(),
                     bind_group,
+                    has_transparency: is_transparent,
                 });
             }
             materials

@@ -19,9 +19,8 @@ fn edit_rgba32_impl(ui: &mut egui::Ui, color: &mut MaybeMutRef<'_, Rgba32>) -> e
         let response = egui::color_picker::color_edit_button_srgba(
             ui,
             &mut edit_color,
-            // TODO(#1611): No transparency supported right now.
-            // Once we do we probably need to be more explicit about the component semantics.
-            egui::color_picker::Alpha::Opaque,
+            // TODO(andreas): It would be nice to be explicit about the semantics here and enable alpha only when it has an effect.
+            egui::color_picker::Alpha::OnlyBlend,
         );
         *color = edit_color.into();
         response
