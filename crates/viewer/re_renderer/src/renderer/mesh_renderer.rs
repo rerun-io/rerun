@@ -13,7 +13,7 @@ use crate::{
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
     mesh::{GpuMesh, gpu_data::MaterialUniformBuffer, mesh_vertices},
-    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
+    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
@@ -115,16 +115,18 @@ impl DrawData for MeshDrawData {
         _view_info: &DrawableCollectionViewInfo,
         collector: &mut DrawableCollector<'_>,
     ) {
-        // TODO: transparency, distance sorting etc.
+        // TODO(andreas): transparency, distance sorting etc.
         let phases = DrawPhase::Opaque | DrawPhase::PickingLayer | DrawPhase::OutlineMask;
 
-        collector.add_drawable(
-            phases,
-            DrawDataDrawable {
-                distance_sort_key: f32::MAX,
-                intra_draw_data_key: 0,
-            },
-        );
+        for (batch_idx, _batch) in self.batches.iter().enumerate() {
+            collector.add_drawable(
+                phases, // TODO(andreas): even if count with outlines is 0, we have to submit the drawable right now.
+                DrawDataDrawable {
+                    distance_sort_key: f32::MAX,
+                    draw_data_payload: batch_idx as _,
+                },
+            );
+        }
     }
 }
 
@@ -170,8 +172,6 @@ impl MeshDrawData {
         instances: &[GpuMeshInstance],
     ) -> Result<Self, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
-
-        let _mesh_renderer = ctx.renderer::<MeshRenderer>();
 
         if instances.is_empty() {
             return Ok(Self {
@@ -421,13 +421,9 @@ impl Renderer for MeshRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
-
-        let Some(instance_buffer) = &draw_data.instance_buffer else {
-            return Ok(()); // Instance buffer was empty.
-        };
 
         let pipeline_handle = match phase {
             DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
@@ -439,55 +435,72 @@ impl Renderer for MeshRenderer {
 
         pass.set_pipeline(pipeline);
 
-        pass.set_vertex_buffer(0, instance_buffer.slice(..));
-        let mut instance_start_index = 0;
-
-        for mesh_batch in &draw_data.batches {
-            if phase == DrawPhase::OutlineMask && mesh_batch.count_with_outlines == 0 {
-                instance_start_index += mesh_batch.count;
-                continue;
-            }
-
-            let vertex_buffer_combined = &mesh_batch.mesh.vertex_buffer_combined;
-            let index_buffer = &mesh_batch.mesh.index_buffer;
-
-            pass.set_vertex_buffer(
-                1,
-                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_positions_range.clone()),
-            );
-            pass.set_vertex_buffer(
-                2,
-                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_colors_range.clone()),
-            );
-            pass.set_vertex_buffer(
-                3,
-                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_normals_range.clone()),
-            );
-            pass.set_vertex_buffer(
-                4,
-                vertex_buffer_combined.slice(mesh_batch.mesh.vertex_buffer_texcoord_range.clone()),
-            );
-            pass.set_index_buffer(
-                index_buffer.slice(mesh_batch.mesh.index_buffer_range.clone()),
-                wgpu::IndexFormat::Uint32,
-            );
-
-            let num_meshes_to_draw = if phase == DrawPhase::OutlineMask {
-                mesh_batch.count_with_outlines
-            } else {
-                mesh_batch.count
+        // TODO(andreas): use drawables to orchestrate drawing.
+        for DrawInstruction {
+            draw_data,
+            drawables,
+        } in draw_instructions
+        {
+            let Some(instance_buffer) = &draw_data.instance_buffer else {
+                continue; // Instance buffer was empty.
             };
-            let instance_range = instance_start_index..(instance_start_index + num_meshes_to_draw);
+            pass.set_vertex_buffer(0, instance_buffer.slice(..));
+            let mut instance_start_index = 0;
 
-            for material in &mesh_batch.mesh.materials {
-                debug_assert!(num_meshes_to_draw > 0);
+            for drawable in *drawables {
+                let mesh_batch = &draw_data.batches[drawable.draw_data_payload as usize];
 
-                pass.set_bind_group(1, &material.bind_group, &[]);
-                pass.draw_indexed(material.index_range.clone(), 0, instance_range.clone());
+                if phase == DrawPhase::OutlineMask && mesh_batch.count_with_outlines == 0 {
+                    instance_start_index += mesh_batch.count;
+                    continue;
+                }
+
+                let vertex_buffer_combined = &mesh_batch.mesh.vertex_buffer_combined;
+                let index_buffer = &mesh_batch.mesh.index_buffer;
+
+                pass.set_vertex_buffer(
+                    1,
+                    vertex_buffer_combined
+                        .slice(mesh_batch.mesh.vertex_buffer_positions_range.clone()),
+                );
+                pass.set_vertex_buffer(
+                    2,
+                    vertex_buffer_combined
+                        .slice(mesh_batch.mesh.vertex_buffer_colors_range.clone()),
+                );
+                pass.set_vertex_buffer(
+                    3,
+                    vertex_buffer_combined
+                        .slice(mesh_batch.mesh.vertex_buffer_normals_range.clone()),
+                );
+                pass.set_vertex_buffer(
+                    4,
+                    vertex_buffer_combined
+                        .slice(mesh_batch.mesh.vertex_buffer_texcoord_range.clone()),
+                );
+                pass.set_index_buffer(
+                    index_buffer.slice(mesh_batch.mesh.index_buffer_range.clone()),
+                    wgpu::IndexFormat::Uint32,
+                );
+
+                let num_meshes_to_draw = if phase == DrawPhase::OutlineMask {
+                    mesh_batch.count_with_outlines
+                } else {
+                    mesh_batch.count
+                };
+                let instance_range =
+                    instance_start_index..(instance_start_index + num_meshes_to_draw);
+
+                for material in &mesh_batch.mesh.materials {
+                    debug_assert!(num_meshes_to_draw > 0);
+
+                    pass.set_bind_group(1, &material.bind_group, &[]);
+                    pass.draw_indexed(material.index_range.clone(), 0, instance_range.clone());
+                }
+
+                // Advance instance start index with *total* number of instances in this batch.
+                instance_start_index += mesh_batch.count;
             }
-
-            // Advance instance start index with *total* number of instances in this batch.
-            instance_start_index += mesh_batch.count;
         }
 
         Ok(())

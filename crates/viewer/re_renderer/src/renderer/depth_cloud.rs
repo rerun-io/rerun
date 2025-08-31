@@ -20,7 +20,7 @@ use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
+    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
     resource_managers::GpuTexture2D,
     view_builder::ViewBuilder,
     wgpu_resources::{
@@ -230,21 +230,18 @@ impl DrawData for DepthCloudDrawData {
         view_info: &DrawableCollectionViewInfo,
         collector: &mut DrawableCollector<'_>,
     ) {
-        let phases = DrawPhase::Opaque | DrawPhase::PickingLayer | DrawPhase::OutlineMask;
-        let drawables = self
-            .instances
-            .iter()
-            .enumerate()
-            .map(|(index, instance)| {
-                DrawDataDrawable::from_world_position(
-                    view_info,
-                    instance.sorting_world_position,
-                    index as u32,
-                )
-            })
-            .collect::<Vec<_>>();
+        for (index, instance) in self.instances.iter().enumerate() {
+            let drawable = DrawDataDrawable::from_world_position(
+                view_info,
+                instance.sorting_world_position,
+                index as u32,
+            );
 
-        collector.add_drawables(phases, &drawables);
+            collector.add_drawable(DrawPhase::Opaque | DrawPhase::PickingLayer, drawable);
+            if instance.render_outline_mask {
+                collector.add_drawable(DrawPhase::OutlineMask, drawable);
+            }
+        }
     }
 }
 
@@ -492,12 +489,9 @@ impl Renderer for DepthCloudRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
-        if draw_data.instances.is_empty() {
-            return Ok(());
-        }
 
         let pipeline_handle = match phase {
             DrawPhase::Opaque => self.render_pipeline_color,
@@ -509,19 +503,23 @@ impl Renderer for DepthCloudRenderer {
 
         pass.set_pipeline(pipeline);
 
-        for instance in &draw_data.instances {
-            if phase == DrawPhase::OutlineMask && !instance.render_outline_mask {
-                continue;
+        for DrawInstruction {
+            draw_data,
+            drawables,
+        } in draw_instructions
+        {
+            for drawable in *drawables {
+                let instance = &draw_data.instances[drawable.draw_data_payload as usize];
+
+                let bind_group = match phase {
+                    DrawPhase::OutlineMask => &instance.bind_group_outline,
+                    DrawPhase::PickingLayer | DrawPhase::Opaque => &instance.bind_group_opaque,
+                    _ => unreachable!(),
+                };
+
+                pass.set_bind_group(1, bind_group, &[]);
+                pass.draw(0..instance.num_points * 6, 0..1);
             }
-
-            let bind_group = match phase {
-                DrawPhase::OutlineMask => &instance.bind_group_outline,
-                DrawPhase::PickingLayer | DrawPhase::Opaque => &instance.bind_group_opaque,
-                _ => unreachable!(),
-            };
-
-            pass.set_bind_group(1, bind_group, &[]);
-            pass.draw(0..instance.num_points * 6, 0..1);
         }
 
         Ok(())

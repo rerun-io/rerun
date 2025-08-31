@@ -178,7 +178,7 @@ impl GeoLineStringsVisualizer {
             }
         }
 
-        view_builder.queue_draw(lines.into_draw_data()?);
+        view_builder.queue_draw(render_ctx, lines.into_draw_data()?);
 
         Ok(())
     }

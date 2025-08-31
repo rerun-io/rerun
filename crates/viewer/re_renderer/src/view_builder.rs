@@ -588,7 +588,8 @@ impl ViewBuilder {
             if picking_processor.is_some() {
                 active_draw_phases |= DrawPhase::PickingLayer;
             }
-            // TODO: should not always be active.
+            // TODO(andreas): should not always be active.
+            // TODO(andreas): The fact that this is a draw phase is actually a bit dubious.
             //if screenshot_processor.is_some() {
             active_draw_phases |= DrawPhase::CompositingScreenshot;
             //}
@@ -620,19 +621,22 @@ impl ViewBuilder {
             picking_processor,
         };
 
-        view_builder.queue_draw(CompositorDrawData::new(
+        view_builder.queue_draw(
             ctx,
-            &view_builder.setup.main_target_resolved,
-            view_builder
-                .outline_mask_processor
-                .as_ref()
-                .map(|p| p.final_voronoi_texture()),
-            &config.outline_config,
-            config.blend_with_background,
-        ));
+            CompositorDrawData::new(
+                ctx,
+                &view_builder.setup.main_target_resolved,
+                view_builder
+                    .outline_mask_processor
+                    .as_ref()
+                    .map(|p| p.final_voronoi_texture()),
+                &config.outline_config,
+                config.blend_with_background,
+            ),
+        );
 
         for debug_overlay in debug_overlays {
-            view_builder.queue_draw(debug_overlay);
+            view_builder.queue_draw(ctx, debug_overlay);
         }
 
         Ok(view_builder)
@@ -643,12 +647,16 @@ impl ViewBuilder {
         self.setup.resolution_in_pixel
     }
 
-    pub fn queue_draw(&mut self, draw_data: impl Into<QueueableDrawData>) -> &mut Self {
+    pub fn queue_draw(
+        &mut self,
+        ctx: &RenderContext,
+        draw_data: impl Into<QueueableDrawData>,
+    ) -> &mut Self {
         let view_info = DrawableCollectionViewInfo {
             camera_world_position: self.setup.camera_position,
         };
         self.draw_phase_manager
-            .add_draw_data(draw_data.into(), &view_info);
+            .add_draw_data(ctx, draw_data.into(), &view_info);
         self
     }
 

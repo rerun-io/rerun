@@ -4,18 +4,28 @@ use enumset::__internal::EnumSetTypePrivate as _; // TODO: sounds fishy
 use enumset::EnumSet;
 
 use crate::{
-    GpuRenderPipelinePoolAccessor, QueueableDrawData,
+    GpuRenderPipelinePoolAccessor, QueueableDrawData, RenderContext,
     context::Renderers,
-    renderer::{DrawDataDrawable, DrawDataDrawableKey, DrawableCollectionViewInfo},
+    renderer::{
+        DrawDataDrawable, DrawDataPayload, DrawInstruction, DrawableCollectionViewInfo,
+        RendererTypeId,
+    },
 };
 
-// TODO: better mod name.
+/// Darw data id within the [`DrawPhaseManager`].
+type DrawDataIndex = u32;
 
 #[derive(Debug, Clone, Copy)]
 
 pub struct Drawable {
-    info: DrawDataDrawable,
-    draw_data_key: DrawDataDrawableKey,
+    pub distance_sort_key: f32,
+
+    pub draw_data_payload: DrawDataPayload,
+
+    draw_data_index: DrawDataIndex,
+
+    /// Key for identifying the renderer type.
+    renderer_key: RendererTypeId,
 }
 
 /// Manages the drawables for all active phases.
@@ -47,13 +57,18 @@ impl DrawPhaseManager {
 
     pub fn add_draw_data(
         &mut self,
+        ctx: &RenderContext,
         draw_data: QueueableDrawData,
         view_info: &DrawableCollectionViewInfo,
     ) {
+        re_tracing::profile_function!();
+
         let draw_data_index = self.draw_data.len() as _;
+        let renderer_key = draw_data.renderer_key(ctx);
 
         {
-            let mut collector = DrawableCollector::new(self, draw_data_index);
+            let mut collector = DrawableCollector::new(self, draw_data_index, renderer_key);
+            re_tracing::profile_scope!("collect_drawables");
             draw_data.collect_drawables(view_info, &mut collector);
         }
 
@@ -75,12 +90,40 @@ impl DrawPhaseManager {
         );
 
         // TODO: sort drawables according to the phases's requirements.
-        // TODO: Batch multiple draw data into a single renderer invocation.
-        for draw_data in &self.draw_data {
-            let res = draw_data.draw(renderers, gpu_resources, phase, pass);
-            if let Err(err) = res {
-                re_log::error!(renderer=%draw_data.renderer_name(), %err,
-                    "renderer failed to draw");
+
+        let renderer_chunked_drawables =
+            self.drawables[phase as usize].chunk_by(|a, b| a.renderer_key == b.renderer_key);
+
+        // Re-use draw instruction array so we don't have to allocate all the time.
+        let mut draw_instructions = Vec::with_capacity(64.min(self.draw_data.len()));
+
+        for drawable_run_with_same_renderer in renderer_chunked_drawables {
+            let first = &drawable_run_with_same_renderer[0]; // `std::slice::chunk_by` should always have at least one element per chunk.
+            let renderer_key = first.renderer_key;
+
+            // One instruction per draw data.
+            draw_instructions.clear();
+            draw_instructions.extend(
+                drawable_run_with_same_renderer
+                    .chunk_by(|a, b| a.draw_data_index == b.draw_data_index)
+                    .map(|drawables| DrawInstruction {
+                        draw_data: &self.draw_data[drawables[0].draw_data_index as usize],
+                        drawables,
+                    }),
+            );
+
+            let Some(renderer) = renderers.get_by_key(renderer_key) else {
+                // TODO: better error message.
+                re_log::error!("Renderer not found: {renderer_key}");
+                continue;
+            };
+
+            let draw_result =
+                renderer.run_draw_instructions(gpu_resources, phase, pass, &draw_instructions);
+
+            if let Err(err) = draw_result {
+                // TODO: better error message
+                re_log::error!("Failed to draw: {err}");
             }
         }
     }
@@ -89,16 +132,20 @@ impl DrawPhaseManager {
 // TODO: docs
 pub struct DrawableCollector<'a> {
     per_phase_drawables: &'a mut DrawPhaseManager,
-    draw_data_index: u32,
-    // TODO: do we need this as well?
-    //renderer_key: u8,
+    draw_data_index: DrawDataIndex,
+    renderer_key: RendererTypeId,
 }
 
 impl<'a> DrawableCollector<'a> {
-    fn new(per_phase_drawables: &'a mut DrawPhaseManager, draw_data_index: u32) -> Self {
+    fn new(
+        per_phase_drawables: &'a mut DrawPhaseManager,
+        draw_data_index: DrawDataIndex,
+        renderer_key: RendererTypeId,
+    ) -> Self {
         Self {
             per_phase_drawables,
             draw_data_index,
+            renderer_key,
         }
     }
 
@@ -114,6 +161,7 @@ impl<'a> DrawableCollector<'a> {
         let Self {
             per_phase_drawables,
             draw_data_index,
+            renderer_key,
         } = self;
 
         let phases = per_phase_drawables
@@ -123,8 +171,10 @@ impl<'a> DrawableCollector<'a> {
         for phase in phases {
             per_phase_drawables.drawables[phase.enum_into_u32() as usize].extend(
                 drawables.iter().map(|info| Drawable {
-                    info: *info,
-                    draw_data_key: *draw_data_index,
+                    distance_sort_key: info.distance_sort_key,
+                    draw_data_payload: info.draw_data_payload,
+                    draw_data_index: *draw_data_index,
+                    renderer_key: *renderer_key,
                 }),
             );
         }

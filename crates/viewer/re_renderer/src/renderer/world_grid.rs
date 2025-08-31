@@ -3,7 +3,7 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     draw_phases::DrawPhase,
     include_shader_module,
-    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
+    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
     wgpu_resources::{
         BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
@@ -80,7 +80,7 @@ impl DrawData for WorldGridDrawData {
                 // We could use distance from the plane, but we rather use a stable sorting here to avoid flickering,
                 // therefore we want to draw it before any other "real" transparentobjects.
                 distance_sort_key: -1.0,
-                intra_draw_data_key: 0,
+                draw_data_payload: 0,
             },
         );
     }
@@ -198,12 +198,15 @@ impl Renderer for WorldGridRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &WorldGridDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         let pipeline = render_pipelines.get(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, &draw_data.bind_group, &[]);
+        for DrawInstruction { draw_data, .. } in draw_instructions {
+            pass.set_bind_group(1, &draw_data.bind_group, &[]);
+            pass.draw(0..4, 0..1);
+        }
         pass.draw(0..4, 0..1);
 
         Ok(())

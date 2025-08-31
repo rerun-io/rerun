@@ -19,7 +19,7 @@ use crate::{
     depth_offset::DepthOffset,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
+    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
     resource_managers::GpuTexture2D,
     view_builder::ViewBuilder,
     wgpu_resources::{
@@ -412,17 +412,22 @@ impl DrawData for RectangleDrawData {
         // TODO(#1025, #4787): Better handling of 2D objects, use per-2d layer sorting instead of depth offsets.
         // This is extra hacky here since we actually have transparent objects, but putting them on that layer messes with the
         // 2D setup we have so far.
-        let phases = DrawPhase::Opaque | DrawPhase::PickingLayer | DrawPhase::OutlineMask;
 
-        let drawables = self
-            .instances
-            .iter()
-            .enumerate()
-            .map(|(i, instance)| {
-                DrawDataDrawable::from_world_position(view_info, instance.center_position, i as u32)
-            })
-            .collect::<Vec<_>>();
-        collector.add_drawables(phases, &drawables);
+        for (index, instance) in self.instances.iter().enumerate() {
+            let mut phases = DrawPhase::Opaque | DrawPhase::PickingLayer;
+            if instance.draw_outline_mask {
+                phases.insert(DrawPhase::OutlineMask);
+            }
+
+            collector.add_drawable(
+                phases,
+                DrawDataDrawable::from_world_position(
+                    view_info,
+                    instance.center_position,
+                    index as u32,
+                ),
+            );
+        }
     }
 }
 
@@ -680,12 +685,9 @@ impl Renderer for RectangleRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
-        if draw_data.instances.is_empty() {
-            return Ok(());
-        }
 
         let pipeline_handle = match phase {
             DrawPhase::Opaque => self.render_pipeline_color,
@@ -697,12 +699,16 @@ impl Renderer for RectangleRenderer {
 
         pass.set_pipeline(pipeline);
 
-        for rectangles in &draw_data.instances {
-            if phase == DrawPhase::OutlineMask && !rectangles.draw_outline_mask {
-                continue;
+        for DrawInstruction {
+            draw_data,
+            drawables,
+        } in draw_instructions
+        {
+            for drawable in *drawables {
+                let rectangles = &draw_data.instances[drawable.draw_data_payload as usize];
+                pass.set_bind_group(1, &rectangles.bind_group, &[]);
+                pass.draw(0..4, 0..1);
             }
-            pass.set_bind_group(1, &rectangles.bind_group, &[]);
-            pass.draw(0..4, 0..1);
         }
 
         Ok(())

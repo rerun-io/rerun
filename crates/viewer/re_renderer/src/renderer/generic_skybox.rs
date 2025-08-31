@@ -5,7 +5,10 @@ use crate::{
     allocator::create_and_fill_uniform_buffer,
     draw_phases::DrawPhase,
     include_shader_module,
-    renderer::{DrawDataDrawable, DrawableCollectionViewInfo, screen_triangle_vertex_shader},
+    renderer::{
+        DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo,
+        screen_triangle_vertex_shader,
+    },
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
@@ -63,7 +66,7 @@ impl DrawData for GenericSkyboxDrawData {
             DrawPhase::Background,
             DrawDataDrawable {
                 distance_sort_key: 0.0,
-                intra_draw_data_key: 0,
+                draw_data_payload: 0,
             },
         );
     }
@@ -169,15 +172,17 @@ impl Renderer for GenericSkybox {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
 
         let pipeline = render_pipelines.get(self.render_pipeline)?;
-
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, &draw_data.bind_group, &[]);
-        pass.draw(0..3, 0..1);
+
+        for DrawInstruction { draw_data, .. } in draw_instructions {
+            pass.set_bind_group(1, &draw_data.bind_group, &[]);
+            pass.draw(0..3, 0..1);
+        }
 
         Ok(())
     }

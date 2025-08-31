@@ -31,7 +31,7 @@ pub enum DrawPhase {
     /// Opaque objects, performing reads/writes to the depth buffer.
     ///
     /// Typically they are order independent, so everything uses this same index.
-    Opaque,
+    Opaque = 0,
 
     /// Background, rendering where depth wasn't written.
     Background,

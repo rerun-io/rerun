@@ -2,7 +2,7 @@ use smallvec::smallvec;
 
 use crate::{
     DrawableCollector, include_shader_module,
-    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
+    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
     view_builder::ViewBuilder,
     wgpu_resources::{GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc},
 };
@@ -30,15 +30,14 @@ impl DrawData for TestTriangleDrawData {
             DrawPhase::Opaque,
             DrawDataDrawable {
                 distance_sort_key: 0.0,
-                intra_draw_data_key: 0,
+                draw_data_payload: 0,
             },
         );
     }
 }
 
 impl TestTriangleDrawData {
-    pub fn new(ctx: &RenderContext) -> Self {
-        std::mem::drop(ctx.renderer::<TestTriangle>()); // TODO(andreas): This line ensures that the renderer exists. Currently this needs to be done ahead of time, but should be fully automatic!
+    pub fn new(_ctx: &RenderContext) -> Self {
         Self {}
     }
 }
@@ -94,11 +93,14 @@ impl Renderer for TestTriangle {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        _draw_data: &TestTriangleDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         let pipeline = render_pipelines.get(self.render_pipeline)?;
         pass.set_pipeline(pipeline);
-        pass.draw(0..3, 0..1);
+        for DrawInstruction { .. } in draw_instructions {
+            pass.draw(0..3, 0..1);
+        }
+
         Ok(())
     }
 }

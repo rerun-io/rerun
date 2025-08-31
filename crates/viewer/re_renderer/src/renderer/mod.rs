@@ -35,14 +35,21 @@ pub(crate) use mesh_renderer::MeshRenderer;
 // ------------
 
 use crate::{
-    DrawableCollector,
+    Drawable, DrawableCollector, QueueableDrawData,
     context::RenderContext,
     draw_phases::DrawPhase,
     include_shader_module,
     wgpu_resources::{GpuRenderPipelinePoolAccessor, PoolError},
 };
 
-pub type DrawDataDrawableKey = u32;
+pub type DrawDataPayload = u32;
+
+/// Unique identifier for a [`Renderer`] type.
+///
+/// The way the system is set up we don't expect many different distinct types of renderers,
+/// therefore 255 should be more than enough.
+/// Keeping this down makes drawable sorting more efficient.
+pub type RendererTypeId = u8;
 
 /// A single drawable item within a given [`DrawData`].
 ///
@@ -61,8 +68,9 @@ pub struct DrawDataDrawable {
 
     /// Key for identifying the drawable within a given draw data.
     ///
-    /// The meaning of this is dependent on the draw phase type.
-    pub intra_draw_data_key: DrawDataDrawableKey,
+    /// This is effectively an arbitrary payload whose meaning is dependent on the drawable type
+    /// but typically refers to instances or instance ranges within the draw data.
+    pub draw_data_payload: DrawDataPayload,
 }
 
 impl DrawDataDrawable {
@@ -70,20 +78,20 @@ impl DrawDataDrawable {
     pub fn from_affine(
         view_info: &DrawableCollectionViewInfo,
         world_from_rdf: &glam::Affine3A,
-        intra_draw_data_key: DrawDataDrawableKey,
+        draw_data_payload: DrawDataPayload,
     ) -> Self {
-        Self::from_world_position(view_info, world_from_rdf.translation, intra_draw_data_key)
+        Self::from_world_position(view_info, world_from_rdf.translation, draw_data_payload)
     }
 
     #[inline]
     pub fn from_world_position(
         view_info: &DrawableCollectionViewInfo,
         world_position: glam::Vec3A,
-        intra_draw_data_key: DrawDataDrawableKey,
+        draw_data_payload: DrawDataPayload,
     ) -> Self {
         Self {
             distance_sort_key: world_position.distance_squared(view_info.camera_world_position),
-            intra_draw_data_key,
+            draw_data_payload,
         }
     }
 }
@@ -127,26 +135,64 @@ pub enum DrawError {
     Pool(#[from] PoolError),
 }
 
+/// A draw instruction specifies which drawables of a given [`DrawData`] should be rendered.
+pub struct DrawInstruction<'a, D> {
+    pub draw_data: &'a D,
+    pub drawables: &'a [Drawable],
+}
+
 /// A Renderer encapsulate the knowledge of how to render a certain kind of primitives.
 ///
 /// It is an immutable, long-lived datastructure that only holds onto resources that will be needed
 /// for each of its [`Renderer::draw`] invocations.
 /// Any data that might be different over multiple [`Renderer::draw`] invocations is stored in [`DrawData`].
 pub trait Renderer {
-    type RendererDrawData: DrawData;
+    type RendererDrawData: DrawData + 'static;
 
     fn create_renderer(ctx: &RenderContext) -> Self;
 
-    // TODO(andreas): Some Renderers need to create their own passes, need something like this for that.
-
     /// Called once per phase given by [`Renderer::participated_phases`].
+    ///
+    /// For each draw data reference, there's at most one [`DrawInstruction`].
     fn draw(
         &self,
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError>;
+}
+
+/// Extension trait for [`Renderer`] that allows running draw instructions with type erased draw data.
+pub trait RendererExt: Send + Sync {
+    fn run_draw_instructions(
+        &self,
+        gpu_resources: &GpuRenderPipelinePoolAccessor<'_>,
+        phase: DrawPhase,
+        pass: &mut wgpu::RenderPass<'_>,
+        type_erased_draw_instructions: &[DrawInstruction<'_, QueueableDrawData>],
+    ) -> Result<(), DrawError>;
+}
+
+impl<R: Renderer + Send + Sync> RendererExt for R {
+    fn run_draw_instructions(
+        &self,
+        gpu_resources: &GpuRenderPipelinePoolAccessor<'_>,
+        phase: DrawPhase,
+        pass: &mut wgpu::RenderPass<'_>,
+        type_erased_draw_instructions: &[DrawInstruction<'_, QueueableDrawData>],
+    ) -> Result<(), DrawError> {
+        let draw_instructions: Vec<DrawInstruction<'_, R::RendererDrawData>> =
+            type_erased_draw_instructions
+                .iter()
+                .map(|type_erased_draw_instruction| DrawInstruction {
+                    draw_data: type_erased_draw_instruction.draw_data.expect_downcast(),
+                    drawables: type_erased_draw_instruction.drawables,
+                })
+                .collect();
+
+        self.draw(gpu_resources, phase, pass, &draw_instructions)
+    }
 }
 
 /// Gets or creates a vertex shader module for drawing a screen filling triangle.

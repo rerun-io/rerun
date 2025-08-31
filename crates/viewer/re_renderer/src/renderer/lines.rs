@@ -88,7 +88,7 @@ use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    renderer::{DrawDataDrawable, DrawableCollectionViewInfo},
+    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
@@ -201,16 +201,17 @@ impl DrawData for LineDrawData {
     ) {
         // TODO(#1611): transparency, split drawables for some semblence of transparency ordering.
         // TODO(#1025, #4787): Better handling of 2D objects.
-        let phases = DrawPhase::Opaque | DrawPhase::PickingLayer | DrawPhase::OutlineMask;
 
-        collector.add_drawable(
-            phases,
-            DrawDataDrawable {
-                // TODO(andreas): Don't have distance information yet. For now just always draw lines last since they're quite expensive.
-                distance_sort_key: f32::MAX,
-                intra_draw_data_key: 0,
-            },
-        );
+        for (batch_idx, batch) in self.batches.iter().enumerate() {
+            collector.add_drawable(
+                batch.active_phases,
+                DrawDataDrawable {
+                    // TODO(andreas): Don't have distance information yet. For now just always draw lines last since they're quite expensive.
+                    distance_sort_key: f32::MAX,
+                    draw_data_payload: batch_idx as _,
+                },
+            );
+        }
     }
 }
 
@@ -735,31 +736,39 @@ impl Renderer for LineRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
-        let (pipeline_handle, bind_group_all_lines) = match phase {
-            DrawPhase::OutlineMask => (
-                self.render_pipeline_outline_mask,
-                &draw_data.bind_group_all_lines_outline_mask,
-            ),
-            DrawPhase::Opaque => (self.render_pipeline_color, &draw_data.bind_group_all_lines),
-            DrawPhase::PickingLayer => (
-                self.render_pipeline_picking_layer,
-                &draw_data.bind_group_all_lines,
-            ),
+        let pipeline_handle = match phase {
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
+            DrawPhase::Opaque => self.render_pipeline_color,
+            DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
-        };
-        let Some(bind_group_all_lines) = bind_group_all_lines else {
-            return Ok(()); // No lines submitted.
         };
 
         let pipeline = render_pipelines.get(pipeline_handle)?;
-
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, bind_group_all_lines, &[]);
 
-        for batch in &draw_data.batches {
-            if batch.active_phases.contains(phase) {
+        for DrawInstruction {
+            draw_data,
+            drawables,
+        } in draw_instructions
+        {
+            let bind_group_draw_data = match phase {
+                DrawPhase::OutlineMask => &draw_data.bind_group_all_lines_outline_mask,
+                DrawPhase::Opaque | DrawPhase::PickingLayer => &draw_data.bind_group_all_lines,
+                _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+            };
+            let Some(bind_group_draw_data) = bind_group_draw_data else {
+                debug_assert!(
+                    false,
+                    "Line data bind group for draw phase {phase:?} was not set despite being submitted for drawing."
+                );
+                continue;
+            };
+            pass.set_bind_group(1, bind_group_draw_data, &[]);
+
+            for drawable in *drawables {
+                let batch = &draw_data.batches[drawable.draw_data_payload as usize];
                 pass.set_bind_group(2, &batch.bind_group, &[]);
                 pass.draw(batch.vertex_range.clone(), 0..1);
             }
@@ -785,7 +794,7 @@ mod tests {
             let mut view = ViewBuilder::new(ctx, TargetConfiguration::default()).unwrap();
 
             let empty = LineDrawableBuilder::new(ctx);
-            view.queue_draw(empty.into_draw_data().unwrap());
+            view.queue_draw(ctx, empty.into_draw_data().unwrap());
 
             // This is the case that triggered
             // https://github.com/rerun-io/rerun/issues/8639
@@ -794,7 +803,7 @@ mod tests {
             empty_batch
                 .batch("empty batch")
                 .add_strip(std::iter::empty());
-            view.queue_draw(empty_batch.into_draw_data().unwrap());
+            view.queue_draw(ctx, empty_batch.into_draw_data().unwrap());
 
             let mut empty_batch_between_non_empty = LineDrawableBuilder::new(ctx);
             empty_batch_between_non_empty
@@ -806,7 +815,7 @@ mod tests {
             empty_batch_between_non_empty
                 .batch("non-empty batch")
                 .add_strip([glam::Vec3::ZERO, glam::Vec3::ZERO].into_iter());
-            view.queue_draw(empty_batch_between_non_empty.into_draw_data().unwrap());
+            view.queue_draw(ctx, empty_batch_between_non_empty.into_draw_data().unwrap());
 
             [view.draw(ctx, Rgba::BLACK).unwrap()]
         });
