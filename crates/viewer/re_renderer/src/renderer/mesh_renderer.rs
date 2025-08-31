@@ -91,11 +91,15 @@ mod gpu_data {
 struct MeshBatch {
     mesh: Arc<GpuMesh>,
 
-    count: u32,
+    instance_start_index: u32,
+    instance_end_index: u32,
 
-    /// Number of meshes out of `count` which have outlines.
-    /// We put all instances with outlines at the start of the instance buffer range.
-    count_with_outlines: u32,
+    /// Last index for meshes with with outlines
+    ///
+    /// We put all instances with outlines at the start of the instance buffer range, so this is always
+    /// smaller or equal to `instance_end_index`.
+    /// If it is equal to `instance_end_index`, there are no meshes with outlines in this batch.
+    instance_end_index_with_outlines: u32,
 }
 
 #[derive(Clone)]
@@ -116,11 +120,16 @@ impl DrawData for MeshDrawData {
         collector: &mut DrawableCollector<'_>,
     ) {
         // TODO(andreas): transparency, distance sorting etc.
-        let phases = DrawPhase::Opaque | DrawPhase::PickingLayer | DrawPhase::OutlineMask;
 
-        for (batch_idx, _batch) in self.batches.iter().enumerate() {
+        for (batch_idx, batch) in self.batches.iter().enumerate() {
+            let phases = if batch.instance_end_index_with_outlines == batch.instance_start_index {
+                DrawPhase::Opaque | DrawPhase::PickingLayer
+            } else {
+                DrawPhase::OutlineMask | DrawPhase::Opaque | DrawPhase::PickingLayer
+            };
+
             collector.add_drawable(
-                phases, // TODO(andreas): even if count with outlines is 0, we have to submit the drawable right now.
+                phases,
                 DrawDataDrawable {
                     distance_sort_key: f32::MAX,
                     draw_data_payload: batch_idx as _,
@@ -164,7 +173,7 @@ impl GpuMeshInstance {
 impl MeshDrawData {
     /// Transforms and uploads mesh instance data to be consumed by gpu.
     ///
-    /// Try bundling all mesh instances into a single draw data instance whenever possible.
+    /// Tries bundling all mesh instances into a single draw data instance whenever possible.
     /// If you pass zero mesh instances, subsequent drawing will do nothing.
     /// Mesh data itself is gpu uploaded if not already present.
     pub fn new(
@@ -276,17 +285,20 @@ impl MeshDrawData {
                         picking_layer_id: instance.picking_layer_id.into(),
                     })?;
                 }
-                num_processed_instances += count;
 
                 if let Some(mesh) = mesh {
                     batches.push(MeshBatch {
                         mesh,
-                        count: count as _,
-                        count_with_outlines,
+                        instance_start_index: num_processed_instances,
+                        instance_end_index: (num_processed_instances + count),
+                        instance_end_index_with_outlines: (num_processed_instances
+                            + count_with_outlines),
                     });
                 }
+
+                num_processed_instances += count;
             }
-            assert_eq!(num_processed_instances, instances.len());
+            assert_eq!(num_processed_instances as usize, instances.len());
             instance_buffer_staging.copy_to_buffer(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 &instance_buffer,
@@ -445,15 +457,9 @@ impl Renderer for MeshRenderer {
                 continue; // Instance buffer was empty.
             };
             pass.set_vertex_buffer(0, instance_buffer.slice(..));
-            let mut instance_start_index = 0;
 
             for drawable in *drawables {
                 let mesh_batch = &draw_data.batches[drawable.draw_data_payload as usize];
-
-                if phase == DrawPhase::OutlineMask && mesh_batch.count_with_outlines == 0 {
-                    instance_start_index += mesh_batch.count;
-                    continue;
-                }
 
                 let vertex_buffer_combined = &mesh_batch.mesh.vertex_buffer_combined;
                 let index_buffer = &mesh_batch.mesh.index_buffer;
@@ -483,23 +489,17 @@ impl Renderer for MeshRenderer {
                     wgpu::IndexFormat::Uint32,
                 );
 
-                let num_meshes_to_draw = if phase == DrawPhase::OutlineMask {
-                    mesh_batch.count_with_outlines
+                let instance_range = if phase == DrawPhase::OutlineMask {
+                    mesh_batch.instance_start_index..mesh_batch.instance_end_index_with_outlines
                 } else {
-                    mesh_batch.count
+                    mesh_batch.instance_start_index..mesh_batch.instance_end_index
                 };
-                let instance_range =
-                    instance_start_index..(instance_start_index + num_meshes_to_draw);
+                debug_assert!(!instance_range.is_empty());
 
                 for material in &mesh_batch.mesh.materials {
-                    debug_assert!(num_meshes_to_draw > 0);
-
                     pass.set_bind_group(1, &material.bind_group, &[]);
                     pass.draw_indexed(material.index_range.clone(), 0, instance_range.clone());
                 }
-
-                // Advance instance start index with *total* number of instances in this batch.
-                instance_start_index += mesh_batch.count;
             }
         }
 
