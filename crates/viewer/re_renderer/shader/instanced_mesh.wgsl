@@ -33,7 +33,7 @@ struct VertexOut {
     normal_world_space: vec3f,
 
     @location(3) @interpolate(flat)
-    additive_tint_rgb: vec3f, // 0-1 linear space
+    additive_tint_rgba: vec4f, // 0-1 linear space
 
     @location(4) @interpolate(flat)
     outline_mask_ids: vec2u,
@@ -60,7 +60,7 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
     out.color = linear_from_srgba(in_vertex.color);
     out.texcoord = in_vertex.texcoord;
     out.normal_world_space = world_normal;
-    out.additive_tint_rgb = linear_from_srgb(in_instance.additive_tint_srgb.rgb);
+    out.additive_tint_rgba = linear_from_srgba(in_instance.additive_tint_srgba);
     out.outline_mask_ids = in_instance.outline_mask_ids;
     out.picking_layer_id = in_instance.picking_layer_id;
 
@@ -77,14 +77,16 @@ fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
         default: { texture = vec3f(0.0); }
     }
 
-    let albedo = texture
-                 * in.color.rgb
-                 * material.albedo_factor.rgb
-                 + in.additive_tint_rgb;
+    var albedo = texture * in.color * material.albedo_factor;
+
+    // The additive tint is encoded as pre-multiplied alpha.
+    albedo *= in.additive_tint_rgba.a;
+    albedo += vec4f(in.additive_tint_rgba.rgb, 0.0);
+
 
     if all(in.normal_world_space == vec3f(0.0, 0.0, 0.0)) {
         // no normal, no shading
-        return vec4f(albedo, 1.0);
+        return albedo;
     } else {
         let normal = normalize(in.normal_world_space);
 
@@ -96,9 +98,9 @@ fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
 
         shading = clamp(shading, 0.0, 1.0);
 
-        let radiance = albedo * shading;
+        let radiance = albedo.rgb * shading;
 
-        return vec4f(radiance, 1.0);
+        return vec4f(radiance, albedo.a);
     }
 }
 

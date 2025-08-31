@@ -256,6 +256,22 @@ impl<'a> DrawableCollector<'a> {
         }
     }
 
+    #[inline]
+    fn make_drawable(
+        info: DrawDataDrawable,
+        draw_data_index: DrawDataIndex,
+        renderer_key: RendererTypeId,
+    ) -> Drawable {
+        Drawable {
+            distance_sort_key: info.distance_sort_key,
+            draw_data_payload: info.draw_data_payload,
+            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                renderer_key,
+                draw_data_index,
+            ),
+        }
+    }
+
     /// Add multiple drawables to the collector for the given phases.
     ///
     /// Ignores any phase that isn't active.
@@ -277,14 +293,9 @@ impl<'a> DrawableCollector<'a> {
 
         for phase in phases {
             per_phase_drawables.drawables[phase.enum_into_u32() as usize].extend(
-                drawables.iter().map(|info| Drawable {
-                    distance_sort_key: info.distance_sort_key,
-                    draw_data_payload: info.draw_data_payload,
-                    draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
-                        *renderer_key,
-                        *draw_data_index,
-                    ),
-                }),
+                drawables
+                    .iter()
+                    .map(|info| Self::make_drawable(*info, *draw_data_index, *renderer_key)),
             );
         }
     }
@@ -299,6 +310,24 @@ impl<'a> DrawableCollector<'a> {
         drawable: DrawDataDrawable,
     ) {
         self.add_drawables(phases, &[drawable]);
+    }
+
+    /// Add a single drawable to a single phase.
+    ///
+    /// Ignores any phase that isn't active.
+    #[inline]
+    pub fn add_drawable_for_phase(&mut self, phase: DrawPhase, drawable: DrawDataDrawable) {
+        let Self {
+            per_phase_drawables,
+            draw_data_index,
+            renderer_key,
+        } = self;
+
+        if per_phase_drawables.active_phases.contains(phase) {
+            per_phase_drawables.drawables[phase.enum_into_u32() as usize].push(
+                Self::make_drawable(drawable, *draw_data_index, *renderer_key),
+            );
+        }
     }
 
     /// Returns the phases that are currently active.

@@ -3,8 +3,9 @@
 //! Uses instancing to render instances of the same mesh in a single draw call.
 //! Instance data is kept in an instance-stepped vertex data.
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, ops::Range, sync::Arc};
 
+use enumset::EnumSet;
 use smallvec::smallvec;
 
 use crate::{
@@ -87,19 +88,23 @@ mod gpu_data {
     }
 }
 
+/// A batch of mesh instances that are drawn together.
+///
+/// Note that we don't split the mesh by material.
+/// This means that some materials during opaque/transparent drawing need to be ignored.
 #[derive(Clone)]
 struct MeshBatch {
     mesh: Arc<GpuMesh>,
+    instance_range: Range<u32>,
+    draw_phase: DrawPhase,
 
-    instance_start_index: u32,
-    instance_end_index: u32,
+    /// If true, all the instances in this batch have a transparent tint,
+    /// meaning that all materials are drawn with transparency.
+    /// This can only ever be true if [`Self::draw_phase`] is [`DrawPhase::Transparent`].
+    has_transparent_tint: bool,
 
-    /// Last index for meshes with outlines
-    ///
-    /// We put all instances with outlines at the start of the instance buffer range, so this is always
-    /// smaller or equal to `instance_end_index`.
-    /// If it is equal to `instance_start_index`, there are no meshes with outlines in this batch.
-    instance_end_index_with_outlines: u32,
+    /// Position of the batch in world space, used for distance sorting.
+    position: glam::Vec3A,
 }
 
 #[derive(Clone)]
@@ -116,24 +121,13 @@ impl DrawData for MeshDrawData {
 
     fn collect_drawables(
         &self,
-        _view_info: &DrawableCollectionViewInfo,
+        view_info: &DrawableCollectionViewInfo,
         collector: &mut DrawableCollector<'_>,
     ) {
-        // TODO(andreas): transparency, distance sorting etc.
-
         for (batch_idx, batch) in self.batches.iter().enumerate() {
-            let phases = if batch.instance_end_index_with_outlines == batch.instance_start_index {
-                DrawPhase::Opaque | DrawPhase::PickingLayer
-            } else {
-                DrawPhase::OutlineMask | DrawPhase::Opaque | DrawPhase::PickingLayer
-            };
-
-            collector.add_drawable(
-                phases,
-                DrawDataDrawable {
-                    distance_sort_key: f32::MAX,
-                    draw_data_payload: batch_idx as _,
-                },
+            collector.add_drawable_for_phase(
+                batch.draw_phase,
+                DrawDataDrawable::from_world_position(view_info, batch.position, batch_idx as _),
             );
         }
     }
@@ -147,7 +141,7 @@ pub struct GpuMeshInstance {
     pub world_from_mesh: glam::Affine3A,
 
     /// Per-instance (as opposed to per-material/mesh!) tint color that is added to the albedo texture.
-    /// Alpha channel is currently unused.
+    /// The alpha channel is multiplied with the output color.
     pub additive_tint: Color32,
 
     /// Optional outline mask setting for this instance.
@@ -163,7 +157,7 @@ impl GpuMeshInstance {
         Self {
             gpu_mesh,
             world_from_mesh: glam::Affine3A::IDENTITY,
-            additive_tint: Color32::TRANSPARENT,
+            additive_tint: Color32::BLACK,
             outline_mask_ids: OutlineMaskPreference::NONE,
             picking_layer_id: PickingLayerId::default(),
         }
@@ -216,7 +210,7 @@ impl MeshDrawData {
                 // (different mesh allocations have different gpu buffers internally, so they are by this definition not equal)
                 .entry(Arc::as_ptr(&instance.gpu_mesh))
                 .or_insert_with(|| Vec::with_capacity(instances.len()))
-                .push(instance);
+                .push((instance, EnumSet::<DrawPhase>::new())); // Draw phase is filled out later.
         }
 
         let mut batches = Vec::new();
@@ -232,25 +226,35 @@ impl MeshDrawData {
 
             let mut num_processed_instances = 0;
             for (_mesh_ptr, mut instances) in instances_by_mesh {
-                let mut count = 0;
-                let mut count_with_outlines = 0;
+                let Some(first_instance) = instances.first() else {
+                    continue;
+                };
+                let first_instance = first_instance.0;
+                let mesh = first_instance.gpu_mesh.clone();
 
-                // Put all instances with outlines at the start of the instance buffer range.
-                instances.sort_by(|a, b| {
-                    a.outline_mask_ids
-                        .is_none()
-                        .cmp(&b.outline_mask_ids.is_none())
-                });
+                // TODO(andreas): precompute these two.
+                let any_material_transparent = mesh
+                    .materials
+                    .iter()
+                    .any(|material| material.has_transparency);
+                let all_materials_transparent = mesh
+                    .materials
+                    .iter()
+                    .all(|material| material.has_transparency);
 
-                let mut mesh = None;
-                for instance in instances {
-                    if mesh.is_none() {
-                        mesh = Some(instance.gpu_mesh.clone());
-                    }
+                // Any instances participating in the opaque & outline mask drawphases can be batched together.
+                // For that, we need continuous runs, ideally all of the instances together in a single run.
+                for (instance, phases) in &mut instances {
+                    *phases = instance_draw_phases(
+                        instance,
+                        any_material_transparent,
+                        all_materials_transparent,
+                    );
+                }
+                instances.sort_by_key(|(_instance, phases)| *phases);
 
-                    count += 1;
-                    count_with_outlines += instance.outline_mask_ids.is_some() as u32;
-
+                // Add the instances to the instance buffer.
+                for (i, (instance, phases)) in instances.iter().enumerate() {
                     let world_from_mesh_mat3 = instance.world_from_mesh.matrix3;
                     // If the matrix is not invertible the draw result is likely invalid as well.
                     // However, at this point it's really hard to bail out!
@@ -284,19 +288,60 @@ impl MeshDrawData {
                             .map_or([0, 0, 0, 0], |mask| [mask[0], mask[1], 0, 0]),
                         picking_layer_id: instance.picking_layer_id.into(),
                     })?;
+
+                    // Transparent instances can not be batched.
+                    if phases.contains(DrawPhase::Transparent) {
+                        let instance_idx = num_processed_instances + i as u32;
+                        batches.push(MeshBatch {
+                            mesh: mesh.clone(), // TODO(andreas): That's a lot of arc cloning going on here.
+                            instance_range: instance_idx..(instance_idx + 1),
+                            draw_phase: DrawPhase::Transparent,
+                            has_transparent_tint: !instance.additive_tint.is_opaque(),
+                            position: instance.world_from_mesh.translation,
+                        });
+                    }
                 }
 
-                if let Some(mesh) = mesh {
-                    batches.push(MeshBatch {
-                        mesh,
-                        instance_start_index: num_processed_instances,
-                        instance_end_index: (num_processed_instances + count),
-                        instance_end_index_with_outlines: (num_processed_instances
-                            + count_with_outlines),
-                    });
+                // Identify runs of instances with the opaque draw phase for batching.
+                // Might be more efficient (citiation needed) to do this in a single iteration, but this is more readable.
+                for phase in [DrawPhase::Opaque, DrawPhase::OutlineMask] {
+                    for chunk in instances.chunk_by(|(_, phases_a), (_, phases_b)| {
+                        phases_a.contains(phase) == phases_b.contains(phase)
+                    }) {
+                        if !chunk[0].1.contains(phase) {
+                            continue;
+                        }
+
+                        // SAFETY: `chunk` and `instances` are both from the same allocation with chunk being a subset of instances.
+                        #[expect(unsafe_code)]
+                        let start_idx = unsafe { chunk.as_ptr().offset_from(instances.as_ptr()) };
+                        let instance_start = num_processed_instances + start_idx as u32;
+                        let instance_end = instance_start + chunk.len() as u32;
+
+                        batches.push(MeshBatch {
+                            mesh: mesh.clone(),
+                            instance_range: instance_start..instance_end,
+                            draw_phase: phase,
+                            has_transparent_tint: false,
+                            // Ordering isn't super important, so for many instances just pick the first as representative.
+                            position: chunk[0].0.world_from_mesh.translation,
+                        });
+                    }
                 }
 
-                num_processed_instances += count;
+                // Add one additional batch for the picking layer in which all instances are drawn in one go regardless.
+                // (see `instance_draw_phases`)
+                batches.push(MeshBatch {
+                    mesh,
+                    instance_range: num_processed_instances
+                        ..(num_processed_instances + instances.len() as u32),
+                    draw_phase: DrawPhase::PickingLayer,
+                    has_transparent_tint: false,
+                    // Ordering isn't super important, so for many instances just pick the first as representative.
+                    position: first_instance.world_from_mesh.translation,
+                });
+
+                num_processed_instances += instances.len() as u32;
             }
             assert_eq!(num_processed_instances as usize, instances.len());
             instance_buffer_staging.copy_to_buffer(
@@ -314,9 +359,13 @@ impl MeshDrawData {
 }
 
 pub struct MeshRenderer {
-    render_pipeline_shaded: GpuRenderPipelineHandle,
-    render_pipeline_picking_layer: GpuRenderPipelineHandle,
-    render_pipeline_outline_mask: GpuRenderPipelineHandle,
+    rp_shaded: GpuRenderPipelineHandle,
+
+    rp_shaded_alpha_blended_cull_back: GpuRenderPipelineHandle,
+    rp_shaded_alpha_blended_cull_front: GpuRenderPipelineHandle,
+
+    rp_picking_layer: GpuRenderPipelineHandle,
+    rp_outline_mask: GpuRenderPipelineHandle,
     pub bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
@@ -371,9 +420,14 @@ impl Renderer for MeshRenderer {
             &include_shader_module!("../../shader/instanced_mesh.wgsl"),
         );
 
+        // TODO(#1741): Make this configurable.
+        // Use GLTF convention right now.
+        let front_face = wgpu::FrontFace::Ccw;
+
         let primitive = wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
-            cull_mode: None, //Some(wgpu::Face::Back), // TODO(andreas): Need to specify from outside if mesh is CW or CCW?
+            cull_mode: None, //Some(wgpu::Face::Back), // TODO(#1741): Need to specify from outside if mesh is CW or CCW?
+            front_face,
             ..Default::default()
         };
         // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
@@ -382,8 +436,8 @@ impl Renderer for MeshRenderer {
                 .chain(mesh_vertices::vertex_buffer_layouts())
                 .collect();
 
-        let render_pipeline_shaded_desc = RenderPipelineDesc {
-            label: "MeshRenderer::render_pipeline_shaded".into(),
+        let rp_shaded_desc = RenderPipelineDesc {
+            label: "MeshRenderer::rp_shaded".into(),
             pipeline_layout,
             vertex_entrypoint: "vs_main".into(),
             vertex_handle: shader_module,
@@ -392,38 +446,68 @@ impl Renderer for MeshRenderer {
             vertex_buffers,
             render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
             primitive,
-            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE),
             multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), false),
         };
-        let render_pipeline_shaded =
-            render_pipelines.get_or_create(ctx, &render_pipeline_shaded_desc);
-        let render_pipeline_picking_layer = render_pipelines.get_or_create(
+        let rp_shaded = render_pipelines.get_or_create(ctx, &rp_shaded_desc);
+
+        let rp_shaded_alpha_blended_cull_back_desc = RenderPipelineDesc {
+            label: "MeshRenderer::rp_shaded_alpha_blended_front".into(),
+            render_targets: smallvec![Some(wgpu::ColorTargetState {
+                format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+            depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE_NO_WRITE),
+            primitive: wgpu::PrimitiveState {
+                cull_mode: Some(wgpu::Face::Back),
+                front_face,
+                ..primitive
+            },
+            ..rp_shaded_desc.clone()
+        };
+        let rp_shaded_alpha_blended_cull_front_desc = RenderPipelineDesc {
+            label: "MeshRenderer::rp_shaded_alpha_blended_back".into(),
+            primitive: wgpu::PrimitiveState {
+                cull_mode: Some(wgpu::Face::Front),
+                ..primitive
+            },
+            ..rp_shaded_alpha_blended_cull_back_desc.clone()
+        };
+        let rp_shaded_alpha_blended_cull_back =
+            render_pipelines.get_or_create(ctx, &rp_shaded_alpha_blended_cull_back_desc);
+        let rp_shaded_alpha_blended_cull_front =
+            render_pipelines.get_or_create(ctx, &rp_shaded_alpha_blended_cull_front_desc);
+
+        let rp_picking_layer = render_pipelines.get_or_create(
             ctx,
             &RenderPipelineDesc {
-                label: "MeshRenderer::render_pipeline_picking_layer".into(),
+                label: "MeshRenderer::rp_picking_layer".into(),
                 fragment_entrypoint: "fs_main_picking_layer".into(),
                 render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
                 depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
                 multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
-                ..render_pipeline_shaded_desc.clone()
+                ..rp_shaded_desc.clone()
             },
         );
-        let render_pipeline_outline_mask = render_pipelines.get_or_create(
+        let rp_outline_mask = render_pipelines.get_or_create(
             ctx,
             &RenderPipelineDesc {
-                label: "MeshRenderer::render_pipeline_outline_mask".into(),
+                label: "MeshRenderer::rp_outline_mask".into(),
                 fragment_entrypoint: "fs_main_outline_mask".into(),
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 multisample: OutlineMaskProcessor::mask_default_msaa_state(ctx.device_caps().tier),
-                ..render_pipeline_shaded_desc
+                ..rp_shaded_desc
             },
         );
 
         Self {
-            render_pipeline_shaded,
-            render_pipeline_picking_layer,
-            render_pipeline_outline_mask,
+            rp_shaded,
+            rp_shaded_alpha_blended_cull_back,
+            rp_shaded_alpha_blended_cull_front,
+            rp_picking_layer,
+            rp_outline_mask,
             bind_group_layout,
         }
     }
@@ -438,14 +522,15 @@ impl Renderer for MeshRenderer {
         re_tracing::profile_function!();
 
         let pipeline_handle = match phase {
-            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
-            DrawPhase::Opaque => self.render_pipeline_shaded,
-            DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
+            DrawPhase::OutlineMask => Some(self.rp_outline_mask),
+            DrawPhase::Opaque => Some(self.rp_shaded),
+            DrawPhase::PickingLayer => Some(self.rp_picking_layer),
+            DrawPhase::Transparent => None, // Handled later since we have to switch back and forth between front & back face culling.
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
-        let pipeline = render_pipelines.get(pipeline_handle)?;
-
-        pass.set_pipeline(pipeline);
+        if let Some(pipeline_handle) = pipeline_handle {
+            pass.set_pipeline(render_pipelines.get(pipeline_handle)?);
+        }
 
         for DrawInstruction {
             draw_data,
@@ -488,16 +573,48 @@ impl Renderer for MeshRenderer {
                     wgpu::IndexFormat::Uint32,
                 );
 
-                let instance_range = if phase == DrawPhase::OutlineMask {
-                    mesh_batch.instance_start_index..mesh_batch.instance_end_index_with_outlines
-                } else {
-                    mesh_batch.instance_start_index..mesh_batch.instance_end_index
-                };
-                debug_assert!(!instance_range.is_empty());
-
                 for material in &mesh_batch.mesh.materials {
+                    if phase == DrawPhase::Transparent
+                        && !material.has_transparency
+                        && !mesh_batch.has_transparent_tint
+                    {
+                        // Skip if this material is to be handled by opaque drawables.
+                        continue;
+                    }
+                    if phase == DrawPhase::Opaque && material.has_transparency {
+                        // Skip if this is to be handled by transparent drawables.
+                        continue;
+                    }
+
                     pass.set_bind_group(1, &material.bind_group, &[]);
-                    pass.draw_indexed(material.index_range.clone(), 0, instance_range.clone());
+
+                    if phase == DrawPhase::Transparent {
+                        // First draw without front faces.
+                        pass.set_pipeline(
+                            render_pipelines.get(self.rp_shaded_alpha_blended_cull_front)?,
+                        );
+                        pass.draw_indexed(
+                            material.index_range.clone(),
+                            0,
+                            mesh_batch.instance_range.clone(),
+                        );
+
+                        // And then without back faces.
+                        pass.set_pipeline(
+                            render_pipelines.get(self.rp_shaded_alpha_blended_cull_back)?,
+                        );
+                        pass.draw_indexed(
+                            material.index_range.clone(),
+                            0,
+                            mesh_batch.instance_range.clone(),
+                        );
+                    } else {
+                        pass.draw_indexed(
+                            material.index_range.clone(),
+                            0,
+                            mesh_batch.instance_range.clone(),
+                        );
+                    }
                 }
             }
         }
@@ -505,3 +622,32 @@ impl Renderer for MeshRenderer {
         Ok(())
     }
 }
+
+/// Determines which draw phases an mesh instance participates in.
+fn instance_draw_phases(
+    instance: &GpuMeshInstance,
+    any_material_transparent: bool,
+    all_materials_transparent: bool,
+) -> EnumSet<DrawPhase> {
+    let mut phases = EnumSet::from(DrawPhase::PickingLayer);
+
+    if instance.outline_mask_ids.is_some() {
+        phases.insert(DrawPhase::OutlineMask);
+    }
+
+    if !instance.additive_tint.is_opaque() {
+        // Everything is transparently tinted.
+        phases.insert(DrawPhase::Transparent);
+    } else {
+        if any_material_transparent {
+            phases.insert(DrawPhase::Transparent);
+        }
+        if !all_materials_transparent {
+            phases.insert(DrawPhase::Opaque);
+        }
+    }
+
+    phases
+}
+
+// TODO: add tests for drawable generation
