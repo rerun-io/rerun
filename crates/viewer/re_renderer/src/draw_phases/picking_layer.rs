@@ -81,11 +81,13 @@ impl<T: 'static + Send + Sync> PickingResult<T> {
     }
 }
 
+type ReadbackBeltUserData = Box<dyn std::any::Any + Send + Sync>;
+
 /// Type used as user data on the gpu readback belt.
-struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
+struct ReadbackBeltMetadata {
     picking_rect: RectInt,
     world_from_cropped_projection: glam::Mat4,
-    user_data: T,
+    user_data: ReadbackBeltUserData,
 
     depth_readback_workaround_in_use: bool,
 }
@@ -174,7 +176,7 @@ impl PickingLayerProcessor {
     /// `enable_picking_target_sampling` should be enabled only for debugging purposes.
     /// It allows to sample the picking layer texture in a shader.
     #[allow(clippy::too_many_arguments)]
-    pub fn new<T: 'static + Send + Sync>(
+    pub fn new(
         ctx: &RenderContext,
         view_name: &DebugLabel,
         screen_resolution: glam::UVec2,
@@ -182,7 +184,7 @@ impl PickingLayerProcessor {
         frame_uniform_buffer_content: &FrameUniformBuffer,
         enable_picking_target_sampling: bool,
         readback_identifier: GpuReadbackIdentifier,
-        readback_user_data: T,
+        readback_user_data: ReadbackBeltUserData,
     ) -> Self {
         let mut picking_target_usage =
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC;
@@ -397,9 +399,9 @@ impl PickingLayerProcessor {
         ctx: &RenderContext,
         identifier: GpuReadbackIdentifier,
     ) -> Option<PickingResult<T>> {
-        ctx.gpu_readback_belt.lock().readback_newest_available(
-            identifier,
-            |data, metadata: Box<ReadbackBeltMetadata<T>>| {
+        ctx.gpu_readback_belt
+            .lock()
+            .readback_newest_available(identifier, |data, metadata: Box<ReadbackBeltMetadata>| {
                 // Assert that our texture data reinterpretation works out from a pixel size point of view.
                 debug_assert_eq!(
                     Self::PICKING_LAYER_DEPTH_FORMAT
@@ -442,15 +444,15 @@ impl PickingLayerProcessor {
                     picking_depth_data = picking_depth_data.into_iter().step_by(4).collect();
                 }
 
-                PickingResult {
+                Some(PickingResult {
                     picking_id_data,
                     picking_depth_data,
-                    user_data: metadata.user_data,
+                    user_data: *metadata.user_data.downcast::<T>().ok()?,
                     rect: metadata.picking_rect,
                     world_from_cropped_projection: metadata.world_from_cropped_projection,
-                }
-            },
-        )
+                })
+            })
+            .flatten()
     }
 }
 

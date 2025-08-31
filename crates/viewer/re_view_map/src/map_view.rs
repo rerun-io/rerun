@@ -5,7 +5,9 @@ use walkers::{HttpTiles, Map, MapMemory, Tiles};
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
-use re_renderer::{RenderContext, ViewBuilder};
+use re_renderer::{
+    RenderContext, ViewBuilder, ViewPickingConfiguration, view_builder::ViewBuilderError,
+};
 use re_types::{
     View as _, ViewClassIdentifier,
     blueprint::{
@@ -309,8 +311,23 @@ impl ViewClass for MapView {
         // Draw all objects using re_renderer
         //
 
-        let mut view_builder =
-            create_view_builder(ctx.render_ctx(), ui.ctx(), map_rect, &query.highlights);
+        let picking_config = handle_picking_and_ui_interactions(
+            ctx,
+            ctx.render_ctx(),
+            ui.ctx(),
+            query,
+            state,
+            map_response,
+            map_rect,
+        );
+
+        let mut view_builder = create_view_builder(
+            ctx.render_ctx(),
+            ui.ctx(),
+            map_rect,
+            &query.highlights,
+            picking_config,
+        )?;
 
         geo_line_strings_visualizers.queue_draw_data(
             ctx.render_ctx(),
@@ -323,17 +340,6 @@ impl ViewClass for MapView {
             &mut view_builder,
             &projector,
             &query.highlights,
-        )?;
-
-        handle_picking_and_ui_interactions(
-            ctx,
-            ctx.render_ctx(),
-            ui.ctx(),
-            &mut view_builder,
-            query,
-            state,
-            map_response,
-            map_rect,
         )?;
 
         ui.painter().add(gpu_bridge::new_renderer_callback(
@@ -361,7 +367,8 @@ fn create_view_builder(
     egui_ctx: &egui::Context,
     view_rect: Rect,
     highlights: &ViewHighlights,
-) -> ViewBuilder {
+    picking_config: Option<ViewPickingConfiguration>,
+) -> Result<ViewBuilder, ViewBuilderError> {
     let pixels_per_point = egui_ctx.pixels_per_point();
     let resolution_in_pixel =
         gpu_bridge::viewport_resolution_in_pixels(view_rect, pixels_per_point);
@@ -393,6 +400,8 @@ fn create_view_builder(
 
             // Make sure the map in the background is not completely overwritten
             blend_with_background: true,
+
+            picking_config,
         },
     )
 }
@@ -403,12 +412,11 @@ fn handle_picking_and_ui_interactions(
     ctx: &ViewerContext<'_>,
     render_ctx: &RenderContext,
     egui_ctx: &egui::Context,
-    view_builder: &mut ViewBuilder,
     query: &ViewQuery<'_>,
     state: &mut MapViewState,
     map_response: Response,
     map_rect: Rect,
-) -> Result<(), ViewSystemExecutionError> {
+) -> Option<ViewPickingConfiguration> {
     let picking_readback_identifier = query.view_id.hash();
 
     if let Some(pointer_in_ui) = map_response.hover_pos() {
@@ -443,21 +451,20 @@ fn handle_picking_and_ui_interactions(
             .at_most(128.0) as u32;
         // ------
 
-        view_builder.schedule_picking_rect(
-            render_ctx,
-            re_renderer::RectInt::from_middle_and_extent(
+        Some(ViewPickingConfiguration {
+            picking_rect: re_renderer::RectInt::from_middle_and_extent(
                 glam::ivec2(pointer_in_pixel.x as _, pointer_in_pixel.y as _),
                 glam::uvec2(picking_rect_size, picking_rect_size),
             ),
-            picking_readback_identifier,
-            (),
-            ctx.app_options().show_picking_debug_overlay,
-        )?;
+            readback_identifier: picking_readback_identifier,
+            readback_user_data: Box::new(()),
+            show_debug_view: ctx.app_options().show_picking_debug_overlay,
+        })
     } else {
         // TODO(andreas): should we keep flushing out the gpu picking results? Does spatial view do this?
         state.last_gpu_picking_result = None;
+        None
     }
-    Ok(())
 }
 
 /// Handle all UI interactions based on the currently picked instance (if any).

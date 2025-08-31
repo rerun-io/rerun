@@ -23,9 +23,6 @@ pub enum ViewBuilderError {
     #[error("Screenshot was already scheduled.")]
     ScreenshotAlreadyScheduled,
 
-    #[error("Picking rectangle readback was already scheduled.")]
-    PickingRectAlreadyScheduled,
-
     #[error(transparent)]
     InvalidDebugOverlay(#[from] crate::renderer::DebugOverlayError),
 }
@@ -52,8 +49,6 @@ struct ViewTargetSetup {
     /// If MSAA is disabled, this is the same as `main_target_msaa`.
     main_target_resolved: GpuTexture,
     depth_buffer: GpuTexture,
-
-    frame_uniform_buffer_content: FrameUniformBuffer,
 
     resolution_in_pixel: [u32; 2],
 }
@@ -189,7 +184,7 @@ impl Projection {
 }
 
 /// Basic configuration for a target view.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct TargetConfiguration {
     pub name: DebugLabel,
 
@@ -225,6 +220,12 @@ pub struct TargetConfiguration {
     /// Otherwise, this step will overwrite whatever was there before, drawing the view builder's result
     /// as an opaque rectangle.
     pub blend_with_background: bool,
+
+    /// Configuration for the picking layer if any.
+    ///
+    /// If this is `None`, no picking layer will be created.
+    /// For details see [`ViewPickingConfiguration`].
+    pub picking_config: Option<ViewPickingConfiguration>,
 }
 
 impl Default for TargetConfiguration {
@@ -242,8 +243,57 @@ impl Default for TargetConfiguration {
             pixels_per_point: 1.0,
             outline_config: None,
             blend_with_background: false,
+            picking_config: None,
         }
     }
+}
+
+/// Configures the readback of a rectangle from the picking layer.
+///
+/// The picking result will still be valid if the rectangle is partially or fully outside of bounds.
+/// Areas that are not overlapping with the primary target will be filled as-if the view's target was bigger,
+/// i.e. all values are valid picking IDs, it is up to the user to discard anything that is out of bounds.
+///
+/// Data from the picking rect needs to be retrieved via [`crate::PickingLayerProcessor::readback_result`].
+/// To do so, you need to pass the exact same `identifier` and type of user data as you've done here:
+///
+///  TODO: outdated snippet
+/// ```no_run
+/// use re_renderer::{view_builder::ViewBuilder, RectInt, PickingLayerProcessor, RenderContext, ViewPickingConfiguration};
+///
+/// fn setup_picking_config() -> Option<ViewPickingConfiguration> {
+///     Some(ViewPickingConfiguration {
+///         picking_rect: RectInt::from_middle_and_extent(
+///             glam::ivec2(0, 0),
+///             glam::uvec2(100, 100),
+///         ),
+///         readback_identifier: 42,
+///         readback_user_data: Box::new("My screenshot".to_owned()),
+///         show_debug_view: false,
+///     })
+/// }
+///
+/// fn receive_screenshots(ctx: &RenderContext) {
+///     while let Some(result) = PickingLayerProcessor::readback_result::<String>(ctx, 42) {
+///         re_log::info!("Received picking_data {}", result.user_data);
+///     }
+/// }
+/// ```
+///
+/// Received data that isn't retrieved for more than a frame will be automatically discarded.
+#[derive(Debug)]
+pub struct ViewPickingConfiguration {
+    /// The rectangle to read back from the picking layer.
+    pub picking_rect: RectInt,
+
+    /// Identifier to be passed to the readback result.
+    pub readback_identifier: GpuReadbackIdentifier,
+
+    /// User data to be passed to the readback result.
+    pub readback_user_data: Box<dyn std::any::Any + Send + Sync>,
+
+    /// Whether to draw a debug view of the picking layer when compositing the final view.
+    pub show_debug_view: bool,
 }
 
 impl ViewBuilder {
@@ -356,7 +406,7 @@ impl ViewBuilder {
             },
         });
 
-    pub fn new(ctx: &RenderContext, config: TargetConfiguration) -> Self {
+    pub fn new(ctx: &RenderContext, config: TargetConfiguration) -> Result<Self, ViewBuilderError> {
         re_tracing::profile_function!();
 
         // Can't handle 0 size resolution since this would imply creating zero sized textures.
@@ -515,6 +565,8 @@ impl ViewBuilder {
             frame_uniform_buffer,
         );
 
+        let mut debug_overlays: Vec<QueueableDrawData> = Vec::new();
+
         let outline_mask_processor = config.outline_config.as_ref().map(|outline_config| {
             OutlineMaskProcessor::new(
                 ctx,
@@ -523,16 +575,34 @@ impl ViewBuilder {
                 config.resolution_in_pixel,
             )
         });
+        let picking_processor = if let Some(picking_config) = config.picking_config {
+            let picking_processor = PickingLayerProcessor::new(
+                ctx,
+                &config.name,
+                config.resolution_in_pixel.into(),
+                picking_config.picking_rect,
+                &frame_uniform_buffer_content,
+                picking_config.show_debug_view,
+                picking_config.readback_identifier,
+                picking_config.readback_user_data,
+            );
 
-        let composition_draw = CompositorDrawData::new(
-            ctx,
-            &main_target_resolved,
-            outline_mask_processor
-                .as_ref()
-                .map(|p| p.final_voronoi_texture()),
-            &config.outline_config,
-            config.blend_with_background,
-        );
+            if picking_config.show_debug_view {
+                debug_overlays.push(
+                    DebugOverlayDrawData::new(
+                        ctx,
+                        &picking_processor.picking_target,
+                        config.resolution_in_pixel.into(),
+                        picking_config.picking_rect,
+                    )?
+                    .into(),
+                );
+            }
+
+            Some(picking_processor)
+        } else {
+            None
+        };
 
         let setup = ViewTargetSetup {
             name: config.name,
@@ -541,20 +611,36 @@ impl ViewBuilder {
             main_target_resolved,
             depth_buffer,
             resolution_in_pixel: config.resolution_in_pixel,
-            frame_uniform_buffer_content,
         };
 
         ctx.active_frame
             .num_view_builders_created
             .fetch_add(1, std::sync::atomic::Ordering::Release);
 
-        Self {
+        let mut view_builder = Self {
             setup,
-            queued_draws: vec![composition_draw.into()],
+            queued_draws: Default::default(),
             outline_mask_processor,
             screenshot_processor: Default::default(),
-            picking_processor: Default::default(),
+            picking_processor,
+        };
+
+        view_builder.queue_draw(CompositorDrawData::new(
+            ctx,
+            &view_builder.setup.main_target_resolved,
+            view_builder
+                .outline_mask_processor
+                .as_ref()
+                .map(|p| p.final_voronoi_texture()),
+            &config.outline_config,
+            config.blend_with_background,
+        ));
+
+        for debug_overlay in debug_overlays {
+            view_builder.queue_draw(debug_overlay);
         }
+
+        Ok(view_builder)
     }
 
     /// Resolution in pixels as configured on view builder creation.
@@ -780,75 +866,6 @@ impl ViewBuilder {
             identifier,
             user_data,
         ));
-
-        Ok(())
-    }
-
-    /// Schedules the readback of a rectangle from the picking layer.
-    ///
-    /// Needs to be called before [`ViewBuilder::draw`].
-    /// Can only be called once per frame per [`ViewBuilder`].
-    ///
-    /// The result will still be valid if the rectangle is partially or fully outside of bounds.
-    /// Areas that are not overlapping with the primary target will be filled as-if the view's target was bigger,
-    /// i.e. all values are valid picking IDs, it is up to the user to discard anything that is out of bounds.
-    ///
-    /// Note that the picking layer will not be created in the first place if this isn't called.
-    ///
-    /// Data from the picking rect needs to be retrieved via [`crate::PickingLayerProcessor::readback_result`].
-    /// To do so, you need to pass the exact same `identifier` and type of user data as you've done here:
-    /// ```no_run
-    /// use re_renderer::{view_builder::ViewBuilder, RectInt, PickingLayerProcessor, RenderContext};
-    /// fn schedule_picking_readback(
-    ///     ctx: &RenderContext,
-    ///     view_builder: &mut ViewBuilder,
-    ///     picking_rect: RectInt,
-    /// ) {
-    ///     view_builder.schedule_picking_rect(
-    ///         ctx, picking_rect, 42, "My screenshot".to_owned(), false,
-    ///     );
-    /// }
-    /// fn receive_screenshots(ctx: &RenderContext) {
-    ///     while let Some(result) = PickingLayerProcessor::readback_result::<String>(ctx, 42) {
-    ///         re_log::info!("Received picking_data {}", result.user_data);
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// Received data that isn't retrieved for more than a frame will be automatically discarded.
-    pub fn schedule_picking_rect<T: 'static + Send + Sync>(
-        &mut self,
-        ctx: &RenderContext,
-        picking_rect: RectInt,
-        readback_identifier: GpuReadbackIdentifier,
-        readback_user_data: T,
-        show_debug_view: bool,
-    ) -> Result<(), ViewBuilderError> {
-        if self.picking_processor.is_some() {
-            return Err(ViewBuilderError::PickingRectAlreadyScheduled);
-        }
-
-        let picking_processor = PickingLayerProcessor::new(
-            ctx,
-            &self.setup.name,
-            self.setup.resolution_in_pixel.into(),
-            picking_rect,
-            &self.setup.frame_uniform_buffer_content,
-            show_debug_view,
-            readback_identifier,
-            readback_user_data,
-        );
-
-        if show_debug_view {
-            self.queue_draw(DebugOverlayDrawData::new(
-                ctx,
-                &picking_processor.picking_target,
-                self.setup.resolution_in_pixel.into(),
-                picking_rect,
-            )?);
-        }
-
-        self.picking_processor = Some(picking_processor);
 
         Ok(())
     }

@@ -1,8 +1,8 @@
 use egui::NumExt as _;
 
 use re_data_ui::{DataUi as _, item_ui};
-use re_log::ResultExt as _;
 use re_log_types::Instance;
+use re_renderer::ViewPickingConfiguration;
 use re_ui::{
     UiExt as _,
     list_item::{PropertyContent, list_item_scope},
@@ -28,18 +28,17 @@ pub fn picking(
     picking_context: &PickingContext,
     ui: &egui::Ui,
     mut response: egui::Response,
-    view_builder: &mut re_renderer::view_builder::ViewBuilder,
     state: &mut SpatialViewState,
     system_output: &re_viewer_context::SystemExecutionOutput,
     ui_rects: &[PickableUiRect],
     query: &ViewQuery<'_>,
     spatial_kind: SpatialViewKind,
-) -> Result<egui::Response, ViewSystemExecutionError> {
+) -> Result<(egui::Response, Option<ViewPickingConfiguration>), ViewSystemExecutionError> {
     re_tracing::profile_function!();
 
     if ui.ctx().dragged_id().is_some() {
         state.previous_picking_result = None;
-        return Ok(response);
+        return Ok((response, None));
     }
 
     let picking_rect_size = PickingContext::UI_INTERACTION_RADIUS * ui.ctx().pixels_per_point();
@@ -50,18 +49,15 @@ pub fn picking(
         .at_least(8.0)
         .at_most(128.0) as u32;
 
-    view_builder
-        .schedule_picking_rect(
-            ctx.render_ctx(),
-            re_renderer::RectInt::from_middle_and_extent(
-                picking_context.pointer_in_pixel.as_ivec2(),
-                glam::uvec2(picking_rect_size, picking_rect_size),
-            ),
-            query.view_id.gpu_readback_id(),
-            (),
-            ctx.app_options().show_picking_debug_overlay,
-        )
-        .ok_or_log_error_once();
+    let picking_config = ViewPickingConfiguration {
+        picking_rect: re_renderer::RectInt::from_middle_and_extent(
+            picking_context.pointer_in_pixel.as_ivec2(),
+            glam::uvec2(picking_rect_size, picking_rect_size),
+        ),
+        readback_identifier: query.view_id.gpu_readback_id(),
+        readback_user_data: Box::new(()),
+        show_debug_view: ctx.app_options().show_picking_debug_overlay,
+    };
 
     let annotations = system_output
         .context_systems
@@ -227,7 +223,7 @@ pub fn picking(
 
     ctx.handle_select_hover_drag_interactions(&response, hovered_items, false);
 
-    Ok(response)
+    Ok((response, Some(picking_config)))
 }
 
 fn iter_pickable_rects(
