@@ -45,8 +45,7 @@ pub struct DrawPhaseManager {
 }
 
 impl DrawPhaseManager {
-    // TODO: docs
-
+    /// Creates a new draw phase manager that takes care of planning drawing work for the given active phases.
     pub fn new(active_phases: EnumSet<DrawPhase>) -> Self {
         Self {
             active_phases,
@@ -55,6 +54,9 @@ impl DrawPhaseManager {
         }
     }
 
+    /// Adds a draw data to the draw phase manager.
+    ///
+    /// This will collect the drawables from the given draw data and add them to the appropriate work queues of each draw phase.
     pub fn add_draw_data(
         &mut self,
         ctx: &RenderContext,
@@ -75,6 +77,8 @@ impl DrawPhaseManager {
         self.draw_data.push(draw_data);
     }
 
+    /// Draws all drawables for a given phase.
+    // TODO(andreas): In the future this should also dispatch to specific phase setup & teardown which is right now hardcoded in `ViewBuilder`.
     pub fn draw(
         &self,
         renderers: &Renderers,
@@ -89,7 +93,7 @@ impl DrawPhaseManager {
             "Phase {phase:?} not active",
         );
 
-        // TODO: sort drawables according to the phases's requirements.
+        // TODO(andreas): sort drawables according to the phases's requirements.
 
         let renderer_chunked_drawables =
             self.drawables[phase as usize].chunk_by(|a, b| a.renderer_key == b.renderer_key);
@@ -113,8 +117,10 @@ impl DrawPhaseManager {
             );
 
             let Some(renderer) = renderers.get_by_key(renderer_key) else {
-                // TODO: better error message.
-                re_log::error!("Renderer not found: {renderer_key}");
+                debug_assert!(
+                    false,
+                    "Previously acquired renderer not found by key. Since renderers are never deleted this should be impossible."
+                );
                 continue;
             };
 
@@ -122,14 +128,13 @@ impl DrawPhaseManager {
                 renderer.run_draw_instructions(gpu_resources, phase, pass, &draw_instructions);
 
             if let Err(err) = draw_result {
-                // TODO: better error message
-                re_log::error!("Failed to draw: {err}");
+                re_log::error!("Error drawing with {}: {err}", renderer.name());
             }
         }
     }
 }
 
-// TODO: docs
+/// Collector injected into [`DrawData::collect_drawables`] in order to build up drawable list.
 pub struct DrawableCollector<'a> {
     per_phase_drawables: &'a mut DrawPhaseManager,
     draw_data_index: DrawDataIndex,
