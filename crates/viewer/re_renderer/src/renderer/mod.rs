@@ -172,6 +172,9 @@ pub trait RendererExt: Send + Sync {
         pass: &mut wgpu::RenderPass<'_>,
         type_erased_draw_instructions: &[DrawInstruction<'_, QueueableDrawData>],
     ) -> Result<(), DrawError>;
+
+    /// Name of the renderer, used for debugging & error reporting.
+    fn name(&self) -> &'static str;
 }
 
 impl<R: Renderer + Send + Sync> RendererExt for R {
@@ -192,6 +195,10 @@ impl<R: Renderer + Send + Sync> RendererExt for R {
                 .collect();
 
         self.draw(gpu_resources, phase, pass, &draw_instructions)
+    }
+
+    fn name(&self) -> &'static str {
+        std::any::type_name::<R>()
     }
 }
 
