@@ -120,7 +120,7 @@ impl DrawData for PointCloudDrawData {
         collector: &mut DrawableCollector<'_>,
     ) {
         // TODO(#1611): transparency, split drawables for some semblence of transparency ordering.
-        // TODO(#1025, #4787): Better handling of 2D objects, use per-2d layer sorting instead of depth offsets.
+        // TODO(#1025, #4787): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
 
         for (batch_idx, batch) in self.batches.iter().enumerate() {
             collector.add_drawable(
