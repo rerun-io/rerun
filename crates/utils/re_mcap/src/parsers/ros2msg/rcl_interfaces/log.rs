@@ -1,5 +1,8 @@
-use re_chunk::{Chunk, ChunkId};
+use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, StringBuilder, UInt32Builder};
+use re_chunk::{Chunk, ChunkComponents, ChunkId};
+use re_log_types::TimeCell;
 use re_types::{
+    ComponentDescriptor, SerializedComponentColumn,
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
     datatypes::Rgba32,
@@ -8,7 +11,8 @@ use re_types::{
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
-    ros2msg::definitions::rcl_interfaces,
+    ros2msg::definitions::rcl_interfaces::{self, LogLevel},
+    util::fixed_size_list_builder,
 };
 
 /// Plugin that parses `rcl_interfaces/msg/Log` messages.
@@ -18,52 +22,58 @@ pub struct LogSchemaPlugin;
 pub struct LogMessageParser {
     text_entries: Vec<String>,
     levels: Vec<String>,
-    colors: Vec<Option<Color>>,
+    colors: Vec<Color>,
+    file: FixedSizeListBuilder<StringBuilder>,
+    function: FixedSizeListBuilder<StringBuilder>,
+    line: FixedSizeListBuilder<UInt32Builder>,
 }
 
 impl LogMessageParser {
+    const ARCHETYPE_NAME: &str = "rcl_interfaces.msg.Log";
+
     pub fn new(num_rows: usize) -> Self {
         Self {
             text_entries: Vec::with_capacity(num_rows),
             levels: Vec::with_capacity(num_rows),
             colors: Vec::with_capacity(num_rows),
+            file: fixed_size_list_builder(1, num_rows),
+            function: fixed_size_list_builder(1, num_rows),
+            line: fixed_size_list_builder(1, num_rows),
         }
     }
 
-    fn ros2_level_to_rerun_level(level: rcl_interfaces::LogLevel) -> &'static str {
-        match level {
-            rcl_interfaces::LogLevel::Debug => "DEBUG",
-            rcl_interfaces::LogLevel::Info => "INFO",
-            rcl_interfaces::LogLevel::Warn => "WARN",
-            rcl_interfaces::LogLevel::Error => "ERROR",
-            rcl_interfaces::LogLevel::Fatal => "CRITICAL",
-            rcl_interfaces::LogLevel::Unknown => "TRACE",
+    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
+        SerializedComponentColumn {
+            list_array: array.into(),
+            descriptor: ComponentDescriptor::partial(name)
+                .with_archetype(Self::ARCHETYPE_NAME.into()),
         }
     }
 
-    fn ros2_level_to_color(level: rcl_interfaces::LogLevel) -> Option<Color> {
+    fn ros2_level_to_color(level: LogLevel) -> Color {
         match level {
-            rcl_interfaces::LogLevel::Debug => Some(Color::from(Rgba32::from_rgb(128, 128, 128))), // Gray
-            rcl_interfaces::LogLevel::Info => Some(Color::from(Rgba32::from_rgb(0, 128, 255))), // Blue
-            rcl_interfaces::LogLevel::Warn => Some(Color::from(Rgba32::from_rgb(255, 165, 0))), // Orange
-            rcl_interfaces::LogLevel::Error => Some(Color::from(Rgba32::from_rgb(255, 0, 0))), // Red
-            rcl_interfaces::LogLevel::Fatal => Some(Color::from(Rgba32::from_rgb(139, 0, 0))), // Dark Red
-            rcl_interfaces::LogLevel::Unknown => None,
+            LogLevel::Info => Color::from(Rgba32::from_rgb(0, 128, 255)), // Blue
+            LogLevel::Warn => Color::from(Rgba32::from_rgb(255, 165, 0)), // Orange
+            LogLevel::Error => Color::from(Rgba32::from_rgb(255, 0, 0)),  // Red
+            LogLevel::Fatal => Color::from(Rgba32::from_rgb(139, 0, 0)),  // Dark Red
+            LogLevel::Unknown | LogLevel::Debug => {
+                Color::from(Rgba32::from_rgb(128, 128, 128)) // Gray
+            }
         }
     }
 }
 
 impl MessageParser for LogMessageParser {
-    fn append(&mut self, _ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
+    fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         let rcl_interfaces::Log {
-            stamp: _stamp,
+            stamp,
             level,
             name,
             msg: log_msg,
             file,
             function,
-            line: _line,
+            line,
         } = match cdr::try_decode_message::<rcl_interfaces::Log>(&msg.data) {
             Ok(log) => log,
             Err(e) => {
@@ -79,21 +89,28 @@ impl MessageParser for LogMessageParser {
                 return Ok(());
             }
         };
+
+        // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
+        ctx.add_time_cell(
+            "timestamp",
+            TimeCell::from_timestamp_nanos_since_epoch(stamp.as_nanos()),
+        );
+
         // Format the log message with additional context information
-        let formatted_msg = if !name.is_empty() || !file.is_empty() || !function.is_empty() {
-            format!(
-                "[{}] {}",
-                if name.is_empty() { String::new() } else { name },
-                log_msg
-            )
-        } else {
-            log_msg
-        };
+        let formatted_msg = format!("[{name}] {log_msg}");
 
         self.text_entries.push(formatted_msg);
-        self.levels
-            .push(Self::ros2_level_to_rerun_level(level).to_owned());
+        self.levels.push(level.to_string());
         self.colors.push(Self::ros2_level_to_color(level));
+
+        self.file.values().append_value(file);
+        self.file.append(true);
+
+        self.function.values().append_value(function);
+        self.function.append(true);
+
+        self.line.values().append_slice(&[line]);
+        self.line.append(true);
 
         Ok(())
     }
@@ -104,6 +121,9 @@ impl MessageParser for LogMessageParser {
             text_entries,
             levels,
             colors,
+            mut file,
+            mut function,
+            mut line,
         } = *self;
 
         let entity_path = ctx.entity_path().clone();
@@ -114,23 +134,26 @@ impl MessageParser for LogMessageParser {
         let level_components: Vec<TextLogLevel> =
             levels.into_iter().map(TextLogLevel::from).collect();
 
-        let mut text_log = TextLog::update_fields()
+        let text_log = TextLog::update_fields()
             .with_many_text(text_components)
-            .with_many_level(level_components);
+            .with_many_level(level_components)
+            .with_many_color(colors);
 
-        // Add colors if any are present
-        let filtered_colors: Vec<Color> = colors.into_iter().flatten().collect();
-        if !filtered_colors.is_empty() {
-            text_log = text_log.with_many_color(filtered_colors);
-        }
+        let mut chunk_components: Vec<SerializedComponentColumn> = text_log.columns_of_unit_batches()?.collect();
 
-        let chunk_components = text_log.columns_of_unit_batches()?.collect();
+        chunk_components.extend([
+            Self::create_metadata_column("file", file.finish()),
+            Self::create_metadata_column("function", function.finish()),
+            Self::create_metadata_column("line", line.finish()),
+        ]);
+
+        let components: ChunkComponents = chunk_components.into_iter().collect();
 
         Ok(vec![Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path,
             timelines,
-            chunk_components,
+            components,
         )?])
     }
 }

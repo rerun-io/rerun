@@ -2,6 +2,7 @@
 //!
 //! Based on definitions taken from <https://github.com/ros2/rcl_interfaces/tree/rolling/rcl_interfaces/msg>
 
+
 use serde::{Deserialize, Serialize};
 
 use super::builtin_interfaces::Time;
@@ -48,6 +49,23 @@ impl From<u8> for LogLevel {
 impl From<LogLevel> for u8 {
     fn from(val: LogLevel) -> Self {
         val as Self
+    }
+}
+
+impl std::fmt::Display for LogLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Debug => "DEBUG",
+                Self::Info => "INFO",
+                Self::Warn => "WARN",
+                Self::Error => "ERROR",
+                Self::Fatal => "CRITICAL",
+                Self::Unknown => "TRACE",
+            }
+        )
     }
 }
 
