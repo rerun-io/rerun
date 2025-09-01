@@ -2,11 +2,12 @@ use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_sdk::{
     logs::SdkLoggerProvider, metrics::SdkMeterProvider, trace::SdkTracerProvider,
 };
+use std::sync::Arc;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
 
-use crate::{LogFormat, TelemetryArgs};
+use crate::{LogFormat, TelemetryArgs, shared_reader::SharedManualReader};
 
 // ---
 
@@ -20,6 +21,8 @@ pub struct Telemetry {
     logs: Option<SdkLoggerProvider>,
     traces: Option<SdkTracerProvider>,
     metrics: Option<SdkMeterProvider>,
+    /// The shared manual reader for pull-based metrics collection
+    metrics_reader: Option<Arc<opentelemetry_sdk::metrics::ManualReader>>,
 
     drop_behavior: TelemetryDropBehavior,
 }
@@ -48,6 +51,7 @@ impl Telemetry {
             logs,
             traces,
             metrics,
+            metrics_reader: _,
             drop_behavior: _,
         } = self;
 
@@ -81,6 +85,7 @@ impl Telemetry {
             logs,
             traces,
             metrics,
+            metrics_reader: _,
             drop_behavior: _,
         } = self;
 
@@ -134,6 +139,7 @@ impl Telemetry {
             trace_sampler_args,
             metric_endpoint,
             metric_interval,
+            metrics_listen_address: _, // TelemetryArgs only, used at the caller site
         } = args;
 
         if !enabled {
@@ -157,6 +163,7 @@ impl Telemetry {
                 logs: None,
                 metrics: None,
                 traces: None,
+                metrics_reader: None,
                 drop_behavior,
             });
         }
@@ -333,29 +340,45 @@ impl Telemetry {
         // Metric strategy
         // ===============
         //
-        // * Our metric strategy is basically the opposite of our logging strategy: everything goes
-        //   through OpenTelemetry directly, `tracing` is never involved.
+        // * Metrics can be pushed to an OTLP endpoint as defined by OTEL SDK variables.
+        //   OTEL_METRIC_EXPORT_INTERVAL environment variable applies for push interval.
+        //   This is enabled by setting OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
         //
-        // * Metrics are uploaded (as opposed to scrapped!) using the OTLP protocol, on a fixed interval
-        //   defined by the OTEL_METRIC_EXPORT_INTERVAL environment variable.
+        // * Additionally a prometheus-style scraping endpoint can be enabled by calling
+        //   start_metrics_listener() on the returned Telemetry instance.
+        //
+        // Both ways use the same data for actual metrics.
+        //
+        let (metric_provider, metrics_reader) = if otel_enabled {
+            let mut builder = SdkMeterProvider::builder();
 
-        let metric_provider = if otel_enabled {
-            let exporter = opentelemetry_otlp::MetricExporter::builder()
-                // That's the only thing Prometheus supports.
+            // OTLP exporter for push-based metrics
+            let otlp_exporter = opentelemetry_otlp::MetricExporter::builder()
                 .with_temporality(opentelemetry_sdk::metrics::Temporality::Cumulative)
-                .with_http() // Prometheus only supports HTTP-based OTLP
+                .with_http()
                 .build()?;
+            builder = builder.with_periodic_exporter(otlp_exporter);
 
-            let provider = SdkMeterProvider::builder()
-                .with_periodic_exporter(exporter)
-                .build();
+            // Always add a ManualReader for potential metrics listener
+            // We use SharedManualReader to share the same reader instance between
+            // the MeterProvider (for registration) and the metrics server (for collection)
+            let shared_reader =
+                SharedManualReader::new(opentelemetry_sdk::metrics::Temporality::Cumulative);
 
-            // All metrics are logged directly via `opentelemetry`.
+            let reader_for_telemetry = shared_reader.inner();
+            builder = builder.with_reader(shared_reader);
+
+            let provider = builder.build();
+
+            // Set as global provider - this makes all metrics created via opentelemetry::global::meter()
+            // available to all registered readers: OTLP push and ManualReader
             opentelemetry::global::set_meter_provider(provider.clone());
 
-            Some(provider)
+            tracing::info!("metric provider created with manual reader support");
+
+            (Some(provider), Some(reader_for_telemetry))
         } else {
-            None
+            (None, None)
         };
 
         if tracy_enabled {
@@ -385,12 +408,63 @@ impl Telemetry {
                 .try_init()?;
         }
 
+        tracing::info!("Telemetry initialized");
+
         Ok(Self {
             drop_behavior,
             logs: logger_provider,
             traces: tracer_provider,
             metrics: metric_provider,
+            metrics_reader,
         })
+    }
+
+    /// Start a dedicated HTTP server for metrics collection at the given address.
+    ///
+    /// This binds to the specified address and spawns an HTTP server that exposes a
+    /// `/metrics` endpoint for Prometheus-style scraping. The metrics are collected
+    /// on-demand when the endpoint is accessed.
+    ///
+    /// # Arguments
+    ///
+    /// * `addr` - The address to listen on (e.g., ":9091", "0.0.0.0:9091", or "127.0.0.1:9091")
+    ///
+    /// # Returns
+    ///
+    /// Returns an error if:
+    /// - Telemetry was not initialized with metrics support
+    /// - The address is invalid or cannot be parsed
+    /// - The server fails to bind to the address (e.g., port already in use)
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use re_perf_telemetry::{Telemetry, TelemetryArgs, TelemetryDropBehavior};
+    ///
+    /// let args = TelemetryArgs { /* ... */ };
+    /// let telemetry = Telemetry::init(args, TelemetryDropBehavior::Shutdown)?;
+    ///
+    /// // This will return an error if the port is already in use
+    /// telemetry.start_metrics_listener(":9091").await?;
+    /// ```
+    pub async fn start_metrics_listener(&self, addr: &str) -> anyhow::Result<()> {
+        let reader = self.metrics_reader.as_ref()
+            .ok_or_else(|| anyhow::anyhow!(
+                "Cannot start metrics listener: telemetry was not initialized with metrics support. \
+                Ensure TELEMETRY_ENABLED=true and OTEL_SDK_ENABLED=true"
+            ))?;
+
+        // Clone the Arc to pass to the server
+        let reader_for_server = Arc::clone(reader);
+
+        // Start the metrics server - this will bind synchronously and return an error
+        // if binding fails (e.g., port already in use), but the actual serving happens
+        // asynchronously in a spawned task
+        let bound_addr =
+            crate::metrics_server::start_metrics_server(addr, reader_for_server).await?;
+
+        tracing::info!("Metrics server started on {}", bound_addr);
+        Ok(())
     }
 }
 
