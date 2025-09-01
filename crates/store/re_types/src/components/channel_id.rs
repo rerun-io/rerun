@@ -22,9 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: A 16-bit ID representing an MCAP channel.
 ///
 /// Used to identify specific channels within an MCAP file.
-#[derive(
-    Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable,
-)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct ChannelId(pub crate::datatypes::UInt16);
@@ -73,7 +71,7 @@ impl ::re_types_core::Loggable for ChannelId {
     where
         Self: Sized,
     {
-        crate::datatypes::UInt16::from_arrow(arrow_data).map(bytemuck::cast_vec)
+        crate::datatypes::UInt16::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
     }
 }
 

@@ -1,6 +1,6 @@
 use arrow::array::{ListBuilder, UInt8Builder};
 use re_chunk::{ChunkId, external::arrow::array::FixedSizeListBuilder};
-use re_types::archetypes::MCAPMessage;
+use re_types::archetypes::McapMessage;
 
 use crate::{
     Error, LayerIdentifier, MessageLayer,
@@ -43,7 +43,7 @@ impl MessageParser for RawMcapMessageParser {
             ChunkId::new(),
             entity_path.clone(),
             timelines,
-            std::iter::once((MCAPMessage::descriptor_data(), data.finish().into())).collect(),
+            std::iter::once((McapMessage::descriptor_data(), data.finish().into())).collect(),
         )
         .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
