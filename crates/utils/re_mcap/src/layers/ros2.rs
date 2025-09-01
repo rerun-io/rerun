@@ -3,9 +3,10 @@ use crate::{
     parsers::ros2msg::{
         rcl_interfaces::LogMessageParser,
         sensor_msgs::{
-            CameraInfoMessageParser, CompressedImageMessageParser, ImageMessageParser,
-            ImuMessageParser, JointStateMessageParser, NavSatFixMessageParser,
-            PointCloud2MessageParser,
+            BatteryStateMessageParser, CameraInfoMessageParser, CompressedImageMessageParser,
+            FluidPressureMessageParser, ImageMessageParser, ImuMessageParser,
+            JointStateMessageParser, NavSatFixMessageParser, PointCloud2MessageParser,
+            RangeMessageParser, TemperatureMessageParser,
         },
         std_msgs::StringMessageParser,
     },
@@ -44,15 +45,19 @@ impl MessageLayer for McapRos2Layer {
 
         Some(match schema.name.as_ref() {
             "rcl_interfaces/msg/Log" => Box::new(LogMessageParser::new(num_rows)),
+            "sensor_msgs/msg/BatteryState" => Box::new(BatteryStateMessageParser::new(num_rows)),
             "sensor_msgs/msg/CameraInfo" => Box::new(CameraInfoMessageParser::new(num_rows)),
             "sensor_msgs/msg/CompressedImage" => {
                 Box::new(CompressedImageMessageParser::new(num_rows))
             }
+            "sensor_msgs/msg/FluidPressure" => Box::new(FluidPressureMessageParser::new(num_rows)),
             "sensor_msgs/msg/Image" => Box::new(ImageMessageParser::new(num_rows)),
             "sensor_msgs/msg/Imu" => Box::new(ImuMessageParser::new(num_rows)),
             "sensor_msgs/msg/JointState" => Box::new(JointStateMessageParser::new(num_rows)),
             "sensor_msgs/msg/NavSatFix" => Box::new(NavSatFixMessageParser::new(num_rows)),
             "sensor_msgs/msg/PointCloud2" => Box::new(PointCloud2MessageParser::new(num_rows)),
+            "sensor_msgs/msg/Range" => Box::new(RangeMessageParser::new(num_rows)),
+            "sensor_msgs/msg/Temperature" => Box::new(TemperatureMessageParser::new(num_rows)),
             "std_msgs/msg/String" => Box::new(StringMessageParser::new(num_rows)),
             _ => {
                 re_log::warn_once!(
