@@ -17,12 +17,12 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use datafusion::{error::DataFusionError, execution::SendableRecordBatchStream};
 use futures_util::{Stream, StreamExt as _};
+use re_cloud_client::ConnectionClient;
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
-use re_cloud_client::ConnectionClient;
 use re_log_types::{ApplicationId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::cloud::v1alpha1::GetChunksRequest;

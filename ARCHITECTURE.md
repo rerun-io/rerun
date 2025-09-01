@@ -98,11 +98,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/9f89376256c984dd7999ec5a4e745889eb1a9c5a/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/9f89376256c984dd7999ec5a4e745889eb1a9c5a/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/9f89376256c984dd7999ec5a4e745889eb1a9c5a/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/9f89376256c984dd7999ec5a4e745889eb1a9c5a/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/9f89376256c984dd7999ec5a4e745889eb1a9c5a/1200w.png">
+  <img src="https://static.rerun.io/crates/2204d87230a8507b857808dbafe4486e965ae97f/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/2204d87230a8507b857808dbafe4486e965ae97f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/2204d87230a8507b857808dbafe4486e965ae97f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/2204d87230a8507b857808dbafe4486e965ae97f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/2204d87230a8507b857808dbafe4486e965ae97f/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -196,10 +196,11 @@ Update instructions:
 
 | Crate                | Description                                                       |
 |----------------------|-------------------------------------------------------------------|
+| re_cloud_client      | Official client for the Rerun Cloud platform                      |
 | re_data_loader       | Handles loading of Rerun data from file using data loader plugins |
 | re_data_source       | Handles loading of Rerun data from different sources              |
-| re_grpc_client       | Communicate with the Rerun Data Platform over gRPC                |
-| re_grpc_server       | Host an in-memory Storage Node                                    |
+| re_grpc_client       | Client for the legacy StoreHub API                                |
+| re_grpc_server       | Server for the legacy StoreHub API                                |
 | re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP             |
 
 ### Build support

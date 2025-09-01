@@ -1,4 +1,4 @@
-//! Client for `re_grpc_server`.
+//! Client for the legacy `StoreHub` API (`re_grpc_server`).
 
 pub mod read;
 pub use read::stream;

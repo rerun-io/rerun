@@ -1,4 +1,4 @@
-//! Official gRPC client for Rerun Cloud.
+//! Official gRPC client for the Rerun Cloud platform.
 
 mod connection_client;
 mod connection_registry;

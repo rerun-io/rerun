@@ -7,8 +7,8 @@ use datafusion::prelude::{SessionContext, col, lit};
 use egui::{Frame, Margin, RichText};
 
 use re_auth::Jwt;
-use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_cloud_client::ConnectionRegistryHandle;
+use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::cloud::v1alpha1::EntryKind;

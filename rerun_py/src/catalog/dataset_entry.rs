@@ -13,8 +13,8 @@ use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
 use re_cloud_client::get_chunks_response_to_chunk_and_partition_id;
+use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::cloud::v1alpha1::ext::DatasetDetails;
