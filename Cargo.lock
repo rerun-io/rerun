@@ -12288,9 +12288,9 @@ dependencies = [
 
 [[package]]
 name = "tonic-web-wasm-client"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66e3bb7acca55e6790354be650f4042d418fcf8e2bc42ac382348f2b6bf057e5"
+checksum = "898cd44be5e23e59d2956056538f1d6b3c5336629d384ffd2d92e76f87fb98ff"
 dependencies = [
  "base64 0.22.1",
  "byteorder",
@@ -12303,7 +12303,7 @@ dependencies = [
  "js-sys",
  "pin-project",
  "thiserror 2.0.12",
- "tonic 0.13.1",
+ "tonic 0.14.1",
  "tower-service",
  "wasm-bindgen",
  "wasm-bindgen-futures",
