@@ -1,16 +1,20 @@
-//! Client for `re_grpc_server`.
+//! Official gRPC client for Rerun Cloud.
 
-pub mod read;
-pub use read::stream;
+mod connection_client;
+mod connection_registry;
+mod redap;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub mod write;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use write::Client;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub mod write_table;
+pub use self::{
+    connection_client::GenericConnectionClient,
+    connection_registry::{
+        ClientConnectionError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
+    },
+    redap::{
+        ConnectionError, RedapClient, UiCommand, channel,
+        get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
+        stream_dataset_from_redap,
+    },
+};
 
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
@@ -73,7 +77,6 @@ impl std::error::Error for TonicStatusError {
     }
 }
 
-// TODO: check what is and isn't needed in there
 #[derive(thiserror::Error, Debug)]
 pub enum StreamError {
     /// Native connection error
@@ -82,10 +85,43 @@ pub enum StreamError {
     Transport(#[from] tonic::transport::Error),
 
     #[error(transparent)]
+    ClientConnectionError(#[from] ClientConnectionError),
+
+    #[error(transparent)]
     TonicStatus(#[from] TonicStatusError),
 
     #[error(transparent)]
+    Tokio(#[from] tokio::task::JoinError),
+
+    #[error(transparent)]
+    CodecError(#[from] re_log_encoding::codec::CodecError),
+
+    #[error(transparent)]
+    ChunkError(#[from] re_chunk::ChunkError),
+
+    #[error(transparent)]
     DecodeError(#[from] re_log_encoding::decoder::DecodeError),
+
+    #[error("Invalid URI: {0}")]
+    InvalidUri(String),
+
+    #[error(transparent)]
+    InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
+
+    #[error(transparent)]
+    TypeConversionError(#[from] re_protos::TypeConversionError),
+
+    #[error("Chunk data missing in response")]
+    MissingChunkData,
+
+    #[error("Column '{0}' is missing from the dataframe")]
+    MissingDataframeColumn(String),
+
+    #[error("{0}")]
+    MissingData(String),
+
+    #[error("arrow error: {0}")]
+    ArrowError(#[from] arrow::error::ArrowError),
 }
 
 const _: () = assert!(
