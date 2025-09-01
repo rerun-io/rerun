@@ -97,6 +97,14 @@ impl Cache for MeshCache {
         self.0.clear();
     }
 
+    fn name(&self) -> &'static str {
+        "Mesh Cache"
+    }
+
+    fn ui(&self, ui: &mut egui::Ui) {
+        ui.label(format!("rows: {}", self.0.len()));
+    }
+
     fn bytes_used(&self) -> u64 {
         self.0.total_size_bytes()
     }

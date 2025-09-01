@@ -31,6 +31,12 @@ impl Cache for TensorStatsCache {
         // Purging the tensor stats is not worth it - these are very small objects!
     }
 
+    fn name(&self) -> &'static str {
+        "Tensor Stats Cache"
+    }
+
+    fn ui(&self, ui: &mut egui::Ui) {}
+
     fn bytes_used(&self) -> u64 {
         self.0.total_size_bytes()
     }

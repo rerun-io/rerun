@@ -549,6 +549,12 @@ impl Cache for VideoStreamCache {
         // but it's almost entirely due to the decoder trying to retrieve a frame.
     }
 
+    fn name(&self) -> &'static str {
+        "Image Decode Cache"
+    }
+
+    fn ui(&self, ui: &mut egui::Ui) {}
+
     /// Keep existing cache entries up to date with new and removed video data.
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();

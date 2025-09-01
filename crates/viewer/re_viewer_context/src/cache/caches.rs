@@ -20,6 +20,13 @@ impl Caches {
         }
     }
 
+    /// Call a function with a reference to the caches map.
+    pub fn with_caches<R>(&self, f: impl FnOnce(&HashMap<TypeId, Box<dyn Cache>>) -> R) -> R {
+        let guard = self.caches.lock();
+
+        f(&guard)
+    }
+
     /// Call once per frame to potentially flush the cache(s).
     pub fn begin_frame(&self) {
         re_tracing::profile_function!();
@@ -97,6 +104,11 @@ pub trait Cache: std::any::Any + Send + Sync {
 
     /// Attempt to free up memory.
     fn purge_memory(&mut self);
+
+    fn name(&self) -> &'static str;
+
+    /// Display a debugging UI for this type of cache.
+    fn ui(&self, ui: &mut egui::Ui);
 
     /// React to the chunk store's changelog, if needed.
     ///

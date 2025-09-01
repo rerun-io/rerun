@@ -136,6 +136,12 @@ impl Cache for VideoAssetCache {
         // but it's almost entirely due to the decoder trying to retrieve a frame.
     }
 
+    fn name(&self) -> &'static str {
+        "Video Asset Cache"
+    }
+
+    fn ui(&self, ui: &mut egui::Ui) {}
+
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 

@@ -221,6 +221,12 @@ impl Cache for WireframeCache {
         self.0.clear();
     }
 
+    fn name(&self) -> &'static str {
+        "Wireframe Cache"
+    }
+
+    fn ui(&self, ui: &mut egui::Ui) {}
+
     fn bytes_used(&self) -> u64 {
         self.0.total_size_bytes()
     }
@@ -512,6 +518,12 @@ impl Cache for SolidCache {
     fn purge_memory(&mut self) {
         self.0.clear();
     }
+
+    fn name(&self) -> &'static str {
+        "Solid Cache"
+    }
+
+    fn ui(&self, ui: &mut egui::Ui) {}
 
     fn bytes_used(&self) -> u64 {
         0 // mostly VRAM

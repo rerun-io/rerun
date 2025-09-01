@@ -25,6 +25,12 @@ impl Cache for ImageStatsCache {
         // Purging the image stats is not worth it - these are very small objects!
     }
 
+    fn name(&self) -> &'static str {
+        "Image Stats Cache"
+    }
+
+    fn ui(&self, ui: &mut egui::Ui) {}
+
     /// Total memory used by this cache, in bytes.
     fn bytes_used(&self) -> u64 {
         self.0.total_size_bytes()

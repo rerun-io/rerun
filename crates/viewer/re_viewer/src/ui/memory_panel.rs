@@ -4,7 +4,7 @@ use re_memory::{MemoryLimit, MemoryUse, util::sec_since_start};
 use re_query::{QueryCacheStats, QueryCachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
-use re_viewer_context::store_hub::StoreHubStats;
+use re_viewer_context::{Caches, store_hub::StoreHubStats};
 
 use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 
@@ -42,6 +42,7 @@ impl MemoryPanel {
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
+        active_caches: Option<&Caches>,
     ) {
         re_tracing::profile_function!();
 
@@ -53,7 +54,7 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                Self::left_side(ui, limit, gpu_resource_stats, store_stats);
+                Self::left_side(ui, limit, gpu_resource_stats, store_stats, active_caches);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -67,6 +68,7 @@ impl MemoryPanel {
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
+        active_caches: Option<&Caches>,
     ) {
         ui.strong("Rerun Viewer resource usage");
 
@@ -82,20 +84,46 @@ impl MemoryPanel {
 
         if let Some(store_stats) = store_stats {
             ui.separator();
+            ui.collapsing("Store Stats", |ui| {
+                for (store_id, store_stats) in &store_stats.store_stats {
+                    let title = format!("{} {}", store_id.kind(), store_id.recording_id());
+                    ui.collapsing_header(&title, false, |ui| {
+                        ui.collapsing("Datastore Resources", |ui| {
+                            Self::store_stats(
+                                ui,
+                                &store_stats.store_config,
+                                &store_stats.store_stats,
+                            );
+                        });
 
-            for (store_id, store_stats) in &store_stats.store_stats {
-                let title = format!("{} {}", store_id.kind(), store_id.recording_id());
-                ui.collapsing_header(&title, false, |ui| {
-                    ui.collapsing("Datastore Resources", |ui| {
-                        Self::store_stats(ui, &store_stats.store_config, &store_stats.store_stats);
+                        ui.separator();
+                        ui.collapsing("Primary Query Caches", |ui| {
+                            Self::caches_stats(ui, &store_stats.query_cache_stats);
+                        });
                     });
+                }
+            });
+        }
 
-                    ui.separator();
-                    ui.collapsing("Primary Query Caches", |ui| {
-                        Self::caches_stats(ui, &store_stats.query_cache_stats);
-                    });
+        if let Some(caches) = active_caches {
+            ui.separator();
+            ui.collapsing("Caches", |ui| {
+                caches.with_caches(|caches| {
+                    let mut display_caches = caches
+                        .values()
+                        .map(|cache| (cache.name(), &**cache))
+                        .collect::<Vec<_>>();
+
+                    // Iterating a hash map doesn't give us a consistent ordering so we sort by name here.
+                    display_caches.sort_by_key(|(name, _)| *name);
+
+                    for (name, cache) in display_caches {
+                        ui.collapsing(name, |ui| {
+                            cache.ui(ui);
+                        });
+                    }
                 });
-            }
+            });
         }
     }
 

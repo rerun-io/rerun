@@ -165,6 +165,12 @@ impl Cache for ImageDecodeCache {
         );
     }
 
+    fn name(&self) -> &'static str {
+        "Image Decode Cache"
+    }
+
+    fn ui(&self, ui: &mut egui::Ui) {}
+
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
