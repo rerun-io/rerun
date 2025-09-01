@@ -24,11 +24,11 @@ pub(crate) async fn start_metrics_server(
     address: &str,
     reader: Arc<ManualReader>,
 ) -> anyhow::Result<SocketAddr> {
-    let addr: SocketAddr = address.parse().map_err(|e| {
+    let addr: SocketAddr = address.parse().map_err(|err| {
         anyhow::anyhow!(
             "Failed to parse metrics listen address '{}': {}",
             address,
-            e
+            err
         )
     })?;
 
@@ -39,16 +39,16 @@ pub(crate) async fn start_metrics_server(
     // Bind synchronously to catch binding errors immediately
     let listener = TcpListener::bind(addr)
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to bind to {}: {}", addr, e))?;
+        .map_err(|err| anyhow::anyhow!("Failed to bind to {}: {}", addr, err))?;
 
     let bound_addr = listener
         .local_addr()
-        .map_err(|e| anyhow::anyhow!("Failed to get local address: {}", e))?;
+        .map_err(|err| anyhow::anyhow!("Failed to get local address: {}", err))?;
 
     // Spawn the server task to run asynchronously
     tokio::spawn(async move {
-        if let Err(e) = axum::serve(listener, app).await {
-            error!("Metrics server error: {}", e);
+        if let Err(err) = axum::serve(listener, app).await {
+            error!("Metrics server error: {}", err);
         }
     });
 
@@ -62,9 +62,7 @@ async fn manual_metrics_handler(State(reader): State<Arc<ManualReader>>) -> impl
     // this is a temporary solution to expose metrics in different ways
     // (pull and push).
     // This is to be replaced in the future with a less complex solution,
-    // using only a single approach. The driver for this is the migration
-    // to a centralized metrics collection system.
-    // TODO(linear#DPF-2010)
+    // using only a single approach.
     let mut resource_metrics = ResourceMetrics::default();
 
     // Collect metrics from ManualReader
@@ -82,22 +80,22 @@ async fn manual_metrics_handler(State(reader): State<Arc<ManualReader>>) -> impl
                     [(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
                     buffer,
                 ),
-                Err(e) => {
-                    error!("Failed to encode metrics: {}", e);
+                Err(err) => {
+                    error!("Failed to encode metrics: {}", err);
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         [(header::CONTENT_TYPE, "text/plain")],
-                        format!("Failed to encode metrics: {e}"),
+                        format!("Failed to encode metrics: {err}"),
                     )
                 }
             }
         }
-        Err(e) => {
-            error!("Failed to collect metrics from ManualReader: {}", e);
+        Err(err) => {
+            error!("Failed to collect metrics from ManualReader: {}", err);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 [(header::CONTENT_TYPE, "text/plain")],
-                format!("Failed to collect metrics: {e}"),
+                format!("Failed to collect metrics: {err}"),
             )
         }
     }
