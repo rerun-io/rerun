@@ -21,9 +21,8 @@ pub struct DynamicLabels(Vec<(String, String)>);
 impl EncodeLabelSet for DynamicLabels {
     fn encode(
         &self,
-        encoder: prometheus_client::encoding::LabelSetEncoder<'_>,
+        encoder: &mut prometheus_client::encoding::LabelSetEncoder<'_>,
     ) -> Result<(), std::fmt::Error> {
-        let mut encoder = encoder;
         let Self(labels) = self;
         for (key, value) in labels {
             let mut label_encoder = encoder.encode_label();
