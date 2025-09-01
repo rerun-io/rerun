@@ -88,7 +88,6 @@ pub enum UICommand {
     #[cfg(debug_assertions)]
     ResetEguiMemory,
 
-    #[cfg(target_arch = "wasm32")]
     CopyDirectLink,
 
     CopyTimeRangeLink,
@@ -284,10 +283,9 @@ impl UICommand {
                 "Reset egui memory, useful for debugging UI code.",
             ),
 
-            #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => (
                 "Copy direct link",
-                "Copy a link to the viewer with the URL parameter set to the current .rrd data source.",
+                "Try to copy a shareable link to the current screen. This is not supported for all data sources & viewer states.",
             ),
 
             Self::CopyTimeRangeLink => (
@@ -429,7 +427,6 @@ impl UICommand {
             #[cfg(debug_assertions)]
             Self::ResetEguiMemory => smallvec![],
 
-            #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => smallvec![],
 
             Self::CopyTimeRangeLink => smallvec![],

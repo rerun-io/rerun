@@ -310,8 +310,13 @@ impl<'a> ServerEntriesData<'a> {
                         entry_id: entry.id(),
                         name: entry.name().to_owned(),
                         icon: entry.icon(),
-                        is_selected: ctx.selection().contains_item(&Item::RedapEntry(entry.id())),
-                        is_active: ctx.active_redap_entry() == Some(&entry.id()),
+                        is_selected: ctx.selection().contains_item(&Item::RedapEntry(
+                            re_uri::EntryUri {
+                                origin: origin.clone(),
+                                entry_id: entry.id(),
+                            },
+                        )),
+                        is_active: ctx.active_redap_entry() == Some(entry.id()),
                     };
 
                     match entry.inner() {
@@ -423,13 +428,20 @@ pub struct EntryData {
 
 impl EntryData {
     pub fn item(&self) -> Item {
-        Item::RedapEntry(self.entry_id)
+        Item::RedapEntry(self.entry_uri())
     }
 
     pub fn id(&self) -> egui::Id {
         egui::Id::new(&self.origin)
             .with(self.entry_id)
             .with(&self.name)
+    }
+
+    pub fn entry_uri(&self) -> re_uri::EntryUri {
+        re_uri::EntryUri {
+            origin: self.origin.clone(),
+            entry_id: self.entry_id,
+        }
     }
 }
 
