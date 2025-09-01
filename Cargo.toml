@@ -71,6 +71,7 @@ re_dataframe = { path = "crates/store/re_dataframe", version = "=0.25.0-alpha.1"
 re_datafusion = { path = "crates/store/re_datafusion", version = "=0.25.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.25.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.25.0-alpha.1", default-features = false }
+re_cloud_client = { path = "crates/store/re_cloud_client", version = "=0.25.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.25.0-alpha.1", default-features = false }
 re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.25.0-alpha.1", default-features = false }
 re_protos = { path = "crates/store/re_protos", version = "=0.25.0-alpha.1", default-features = false }
@@ -452,7 +453,7 @@ debug = false
 "re_error".debug = true
 "re_format".debug = true
 "re_format_arrow".debug = true
-"re_grpc_client".debug = true
+"re_cloud_client".debug = true
 "re_grpc_server".debug = true
 "re_int_histogram".debug = true
 "re_log".debug = true

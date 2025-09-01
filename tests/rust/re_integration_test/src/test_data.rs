@@ -1,4 +1,4 @@
-use re_grpc_client::ConnectionClient;
+use re_cloud_client::ConnectionClient;
 use re_protos::cloud::v1alpha1::EntryFilter;
 use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;

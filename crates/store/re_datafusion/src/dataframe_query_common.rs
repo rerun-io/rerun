@@ -15,7 +15,7 @@ use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 use re_dataframe::external::re_chunk::ChunkId;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
-use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
+use re_cloud_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::Loggable as _;

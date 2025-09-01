@@ -9,7 +9,7 @@ use datafusion::{
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
-use re_grpc_client::ConnectionClient;
+use re_cloud_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
     cloud::v1alpha1::SearchDatasetRequest, cloud::v1alpha1::SearchDatasetResponse,

@@ -7,7 +7,7 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{FileContents, LogDataSource};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
-use re_grpc_client::ConnectionRegistryHandle;
+use re_cloud_client::ConnectionRegistryHandle;
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
@@ -188,7 +188,7 @@ impl App {
         re_tracing::profile_function!();
 
         let connection_registry =
-            connection_registry.unwrap_or_else(re_grpc_client::ConnectionRegistry::new);
+            connection_registry.unwrap_or_else(re_cloud_client::ConnectionRegistry::new);
 
         if let Some(storage) = creation_context.storage
             && let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY)
@@ -962,7 +962,7 @@ impl App {
         let on_ui_cmd = {
             let command_sender = self.command_sender.clone();
             Box::new(move |cmd| match cmd {
-                re_grpc_client::UiCommand::SetLoopSelection {
+                re_cloud_client::UiCommand::SetLoopSelection {
                     recording_id,
                     timeline,
                     time_range,

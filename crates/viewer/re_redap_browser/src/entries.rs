@@ -11,7 +11,7 @@ use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 
 use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
-use re_grpc_client::{
+use re_cloud_client::{
     ClientConnectionError, ConnectionClient, ConnectionRegistryHandle, StreamError,
 };
 use re_log_encoding::codec::CodecError;

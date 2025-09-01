@@ -20,7 +20,7 @@ use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
-use re_grpc_client::ConnectionClient;
+use re_cloud_client::ConnectionClient;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::cloud::v1alpha1::GetChunksRequest;
@@ -79,7 +79,7 @@ impl DataframePartitionStream {
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
-        let mut chunk_stream = re_grpc_client::get_chunks_response_to_chunk_and_partition_id(
+        let mut chunk_stream = re_cloud_client::get_chunks_response_to_chunk_and_partition_id(
             get_chunks_response_stream,
         );
 

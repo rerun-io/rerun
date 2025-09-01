@@ -8,7 +8,7 @@ use egui::{Frame, Margin, RichText};
 
 use re_auth::Jwt;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
-use re_grpc_client::ConnectionRegistryHandle;
+use re_cloud_client::ConnectionRegistryHandle;
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::cloud::v1alpha1::EntryKind;
@@ -31,13 +31,13 @@ pub struct Server {
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: Arc<SessionContext>,
 
-    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: re_cloud_client::ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
 }
 
 impl Server {
     fn new(
-        connection_registry: re_grpc_client::ConnectionRegistryHandle,
+        connection_registry: re_cloud_client::ConnectionRegistryHandle,
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
@@ -396,7 +396,7 @@ impl RedapServers {
 
     fn handle_command(
         &mut self,
-        connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+        connection_registry: &re_cloud_client::ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         command: Command,

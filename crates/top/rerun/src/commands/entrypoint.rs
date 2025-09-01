@@ -723,7 +723,7 @@ fn run_impl(
     #[cfg(feature = "native_viewer")] profiler: re_tracing::Profiler,
 ) -> anyhow::Result<()> {
     //TODO(#10068): populate token passed with `--token`
-    let connection_registry = re_grpc_client::ConnectionRegistry::new();
+    let connection_registry = re_cloud_client::ConnectionRegistry::new();
 
     #[cfg(feature = "native_viewer")]
     let startup_options = {
@@ -878,7 +878,7 @@ fn start_native_viewer(
     call_source: CallSource,
     tokio_runtime_handle: &tokio::runtime::Handle,
     profiler: re_tracing::Profiler,
-    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: re_cloud_client::ConnectionRegistryHandle,
     startup_options: re_viewer::StartupOptions,
     server_addr: std::net::SocketAddr,
     server_memory_limit: re_sdk::MemoryLimit,
@@ -956,7 +956,7 @@ fn start_native_viewer(
 
 fn connect_to_existing_server(
     url_or_paths: Vec<String>,
-    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: &re_cloud_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
 ) -> anyhow::Result<()> {
     use re_sdk::sink::LogSink as _;
@@ -994,7 +994,7 @@ fn connect_to_existing_server(
 fn serve_web(
     url_or_paths: Vec<String>,
     call_source: &CallSource,
-    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: &re_cloud_client::ConnectionRegistryHandle,
     web_viewer_port: u16,
     force_wgpu_backend: Option<String>,
     video_decoder: Option<String>,
@@ -1079,7 +1079,7 @@ fn serve_grpc(
     url_or_paths: Vec<String>,
     call_source: &CallSource,
     tokio_runtime_handle: &tokio::runtime::Handle,
-    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: &re_cloud_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
     server_memory_limit: re_sdk::MemoryLimit,
 ) -> anyhow::Result<()> {
@@ -1117,7 +1117,7 @@ fn serve_grpc(
 fn save_or_test_receive(
     save: Option<String>,
     url_or_paths: Vec<String>,
-    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: &re_cloud_client::ConnectionRegistryHandle,
     _server_addr: std::net::SocketAddr,
     _server_memory_limit: re_sdk::MemoryLimit,
 ) -> anyhow::Result<()> {
@@ -1388,7 +1388,7 @@ impl ReceiversFromUrlParams {
     fn new(
         input_urls: Vec<String>,
         config: &UrlParamProcessingConfig,
-        connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+        connection_registry: &re_cloud_client::ConnectionRegistryHandle,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
         let mut urls_to_pass_on_to_viewer = Vec::new();

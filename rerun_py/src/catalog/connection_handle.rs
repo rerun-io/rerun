@@ -11,7 +11,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{ChunkStore, QueryExpression};
 use re_dataframe::ChunkStoreHandle;
 use re_datafusion::query_from_query_expression;
-use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
+use re_cloud_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
@@ -544,13 +544,13 @@ impl ConnectionHandle {
                     Ok::<_, PyErr>(resp)
                 })
                 .await
-                .map_err(Into::<re_grpc_client::StreamError>::into)
+                .map_err(Into::<re_cloud_client::StreamError>::into)
                 .map_err(to_py_err)??;
 
                 // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
                 // and the app layer (Arrow).
                 let mut chunk_stream =
-                    re_grpc_client::get_chunks_response_to_chunk_and_partition_id(
+                    re_cloud_client::get_chunks_response_to_chunk_and_partition_id(
                         get_chunks_response_stream,
                     );
 
@@ -638,7 +638,7 @@ impl ConnectionHandle {
                     })
                     .in_current_span()
                     .await
-                    .map_err(Into::<re_grpc_client::StreamError>::into)
+                    .map_err(Into::<re_cloud_client::StreamError>::into)
                     .map_err(to_py_err)??;
                 }
 
