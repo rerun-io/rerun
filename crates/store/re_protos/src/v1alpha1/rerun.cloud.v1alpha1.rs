@@ -799,7 +799,6 @@ pub struct FetchChunksRequest {
     /// * `chunk_id` - Chunk unique identifier
     /// * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
     /// * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
-    /// * `data_source_kind` - what kind of partition is this (rrd, mcap, etc)
     /// * `chunk_key` - chunk location details
     #[prost(message, optional, tag = "1")]
     pub chunk_infos: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
