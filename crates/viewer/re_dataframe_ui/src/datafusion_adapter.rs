@@ -99,6 +99,10 @@ impl DataFusionQuery {
             filters,
         } = &self.query_data;
 
+        //
+        // Partition links
+        //
+
         // Important: the needs to happen first, in case we sort/filter/etc. based on that
         // particular column.
         if let Some(partition_links) = partition_links {
@@ -117,6 +121,10 @@ impl DataFusionQuery {
             )?;
         }
 
+        //
+        // Entry links
+        //
+
         if let Some(entry_links) = entry_links {
             let uri = format!("{}/entry/", entry_links.origin);
 
@@ -130,9 +138,17 @@ impl DataFusionQuery {
             dataframe = dataframe.with_column(&entry_links.column_name, column)?;
         }
 
+        //
+        // Prefilter
+        //
+
         if let Some(prefilter) = prefilter {
             dataframe = dataframe.filter(prefilter.clone())?;
         }
+
+        //
+        // Filters
+        //
 
         let schema = dataframe.schema();
 
@@ -142,7 +158,8 @@ impl DataFusionQuery {
                 filter
                     .as_filter_expression(schema)
                     .inspect_err(|err| {
-                        //TODO: better error handling?
+                        // TODO(ab): error handling will need to be improved once we introduce non-
+                        // UI means of setting up filters.
                         re_log::warn_once!("invalid filter: {err}");
                     })
                     .ok()
@@ -154,13 +171,20 @@ impl DataFusionQuery {
             dataframe = dataframe.filter(filter_expr)?;
         }
 
+        //
+        // Sort
+        //
+
         if let Some(sort_by) = sort_by {
             dataframe = dataframe.sort(vec![
                 col(&sort_by.column_physical_name).sort(sort_by.direction.is_ascending(), true),
             ])?;
         }
 
-        // collect
+        //
+        // Collect
+        //
+
         let record_batches = dataframe.collect().await?;
 
         // TODO(#10421) IMPORTANT: fields must be copied here *before* converting to `SorbetBatch`,

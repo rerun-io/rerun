@@ -261,7 +261,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut new_blueprint = table_state.blueprint().clone();
 
         let mut filter_state =
-            FilterState::get_from_blueprint(ui.ctx(), session_id, table_state.blueprint());
+            FilterState::load_or_init_from_blueprint(ui.ctx(), session_id, table_state.blueprint());
 
         let requested_sorbet_batches = table_state.requested_sorbet_batches.lock();
 
@@ -303,6 +303,8 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
+        // TODO(ab): significant code duplication here. This could possible be addressed by allowing
+        // the rest of this function to run over a schema and emtpy dataframe.
         let (sorbet_schema, migrated_fields) = {
             // TODO(ab): We need to deal better with empty vec of sorbet batches. In that case, we
             // do have a schema, so we should be able to display an empty table.
@@ -312,9 +314,8 @@ impl<'a> DataFusionTableWidget<'a> {
                 }
 
                 drop(requested_sorbet_batches);
-                //TODO: address code duplication?
                 if filter_state.filter_bar_ui(ui) {
-                    new_blueprint.filters = filter_state.filters.clone();
+                    new_blueprint.filters = filter_state.to_blueprint_filters();
                     if table_state.blueprint() != &new_blueprint {
                         table_state.update_query(runtime, ui, new_blueprint);
                     }
@@ -386,7 +387,7 @@ impl<'a> DataFusionTableWidget<'a> {
         }
 
         if filter_state.filter_bar_ui(ui) {
-            new_blueprint.filters = filter_state.filters.clone();
+            new_blueprint.filters = filter_state.to_blueprint_filters();
         }
 
         apply_table_style_fixes(ui.style_mut());

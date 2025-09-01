@@ -29,7 +29,6 @@ pub struct SyntaxHighlightedBuilder {
     pub job: LayoutJob,
 }
 
-/// Easilut build
 impl SyntaxHighlightedBuilder {
     pub fn new(style: Arc<Style>) -> Self {
         Self {

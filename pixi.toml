@@ -478,7 +478,7 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 
 # Run the Python tests.
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends-on = [
-  "py-build",
+  "py-build-release",
 ] }
 
 snapshots = "python scripts/snapshots.py"
