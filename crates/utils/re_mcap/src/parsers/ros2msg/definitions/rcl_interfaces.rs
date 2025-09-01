@@ -2,7 +2,6 @@
 //!
 //! Based on definitions taken from <https://github.com/ros2/rcl_interfaces/tree/rolling/rcl_interfaces/msg>
 
-
 use serde::{Deserialize, Serialize};
 
 use super::builtin_interfaces::Time;

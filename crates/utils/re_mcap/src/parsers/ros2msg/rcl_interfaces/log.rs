@@ -75,14 +75,14 @@ impl MessageParser for LogMessageParser {
             file,
             function,
             line,
-        } = cdr::try_decode_message::<rcl_interfaces::Log>(&msg.data).context("Failed to decode `rcl_interfaces::Log` message from CDR data")?;
+        } = cdr::try_decode_message::<rcl_interfaces::Log>(&msg.data)
+            .context("Failed to decode `rcl_interfaces::Log` message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
             "timestamp",
             TimeCell::from_timestamp_nanos_since_epoch(stamp.as_nanos()),
         );
-
 
         self.text_entries.push(format!("[{name}] {log_msg}"));
         self.levels.push(level.to_string());
@@ -123,7 +123,8 @@ impl MessageParser for LogMessageParser {
             .with_many_level(level_components)
             .with_many_color(colors);
 
-        let mut chunk_components: Vec<SerializedComponentColumn> = text_log.columns_of_unit_batches()?.collect();
+        let mut chunk_components: Vec<SerializedComponentColumn> =
+            text_log.columns_of_unit_batches()?.collect();
 
         chunk_components.extend([
             Self::create_metadata_column("file", file.finish()),
