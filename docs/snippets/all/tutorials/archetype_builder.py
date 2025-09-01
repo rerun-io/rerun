@@ -1,4 +1,4 @@
-"""Log arbitrary data."""
+"""Log arbitrary archetype data."""
 
 import rerun as rr
 
@@ -6,10 +6,13 @@ rr.init("rerun_example_any_values", spawn=True)
 
 rr.log(
     "any_values",
-    rr.AnyValues(
-        # Using arbitrary Arrow data.
-        homepage="https://www.rerun.io",
-        repository="https://github.com/rerun-io/rerun",
+    rr.ArchetypeBuilder(
+        archetype="MySoftwareArchetype",
+        components={
+            # Using arbitrary Arrow data.
+            "homepage": "https://www.rerun.io",
+            "repository": "https://github.com/rerun-io/rerun",
+        },
     )
     # Using Rerun's builtin components.
     .with_component("confidence", rr.components.ScalarBatch._COMPONENT_TYPE, [1.2, 3.4, 5.6])

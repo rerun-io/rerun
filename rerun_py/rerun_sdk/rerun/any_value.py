@@ -90,9 +90,14 @@ class AnyValues(AsComponents):
                 DeprecationWarning,
                 stacklevel=2,
             )
-            self._builder._with_field_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
+            self._builder._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         else:
             self._builder.with_field(descriptor, value, drop_untyped_nones=drop_untyped_nones)
+        return self
+
+    def with_component(self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True) -> AnyValues:
+        """Adds an `Batch` to this `ArchetypeBuilder` bundle with name and component type."""
+        self._builder.with_component(field, component_type, value, drop_untyped_nones=drop_untyped_nones)
         return self
 
     def as_component_batches(self) -> list[DescribedComponentBatch]:

@@ -231,11 +231,13 @@ class ArchetypeBuilder(AsComponents):
     rr.log(
         "some_type", rr.ArchetypeBuilder(
             archetype="my_archetype",
-            confidence=[1.2, 3.4, 5.6],
-            description="Bla bla bla…",
-            # URIs will become clickable links
-            homepage="https://www.rerun.io",
-            repository="https://github.com/rerun-io/rerun",
+            components = {
+                confidence=[1.2, 3.4, 5.6],
+                description="Bla bla bla…",
+                # URIs will become clickable links
+                homepage="https://www.rerun.io",
+                repository="https://github.com/rerun-io/rerun",
+            },
         ),
     )
     ```
@@ -338,7 +340,7 @@ class ArchetypeBuilder(AsComponents):
         """Override the name in errors if contained elsewhere."""
         self._name = name
 
-    def _with_field_internal(
+    def _with_descriptor_internal(
         self, descriptor: ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
     ) -> ArchetypeBuilder:
         """Adds an `Batch` to this `ArchetypeBuilder` bundle."""
@@ -350,7 +352,14 @@ class ArchetypeBuilder(AsComponents):
     def with_field(self, field: str, value: Any, drop_untyped_nones: bool = True) -> ArchetypeBuilder:
         """Adds an `Batch` to this `ArchetypeBuilder` bundle."""
         descriptor = ComponentDescriptor(component=field, archetype=self._archetype)
-        return self._with_field_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
+        return self._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
+
+    def with_component(
+        self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True
+    ) -> ArchetypeBuilder:
+        """Adds an `Batch` to this `ArchetypeBuilder` bundle with name and component type."""
+        descriptor = ComponentDescriptor(component=field, archetype=self._archetype, component_type=component_type)
+        return self._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
 
     def as_component_batches(self) -> list[DescribedComponentBatch]:
         with catch_and_log_exceptions(self._name):
