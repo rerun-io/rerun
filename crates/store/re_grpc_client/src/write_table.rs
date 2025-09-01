@@ -1,7 +1,5 @@
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 
-// TODO: why does this file has its own client and everything???
-
 #[cfg(not(target_arch = "wasm32"))]
 use re_uri::Origin;
 

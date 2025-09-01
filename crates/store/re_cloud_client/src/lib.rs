@@ -79,11 +79,6 @@ impl std::error::Error for TonicStatusError {
 
 #[derive(thiserror::Error, Debug)]
 pub enum StreamError {
-    /// Native connection error
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("connection failed: {0}")]
-    Transport(#[from] tonic::transport::Error),
-
     #[error(transparent)]
     ClientConnectionError(#[from] ClientConnectionError),
 
@@ -102,17 +97,8 @@ pub enum StreamError {
     #[error(transparent)]
     DecodeError(#[from] re_log_encoding::decoder::DecodeError),
 
-    #[error("Invalid URI: {0}")]
-    InvalidUri(String),
-
-    #[error(transparent)]
-    InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
-
     #[error(transparent)]
     TypeConversionError(#[from] re_protos::TypeConversionError),
-
-    #[error("Chunk data missing in response")]
-    MissingChunkData,
 
     #[error("Column '{0}' is missing from the dataframe")]
     MissingDataframeColumn(String),

@@ -9,11 +9,11 @@ use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 
-use re_dataframe_ui::RequestedObject;
-use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
 use re_cloud_client::{
     ClientConnectionError, ConnectionClient, ConnectionRegistryHandle, StreamError,
 };
+use re_dataframe_ui::RequestedObject;
+use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
 use re_log_encoding::codec::CodecError;
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
@@ -67,19 +67,13 @@ impl EntryError {
             Self::ClientConnectionError(err)
             | Self::StreamError(StreamError::ClientConnectionError(err)) => Some(err),
 
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::StreamError(StreamError::Transport(_)) => None,
-
             Self::StreamError(
                 StreamError::Tokio(_)
                 | StreamError::CodecError(_)
                 | StreamError::ChunkError(_)
                 | StreamError::DecodeError(_)
-                | StreamError::InvalidUri(_)
-                | StreamError::InvalidSorbetSchema(_)
                 | StreamError::TonicStatus(_)
                 | StreamError::TypeConversionError(_)
-                | StreamError::MissingChunkData
                 | StreamError::MissingDataframeColumn(_)
                 | StreamError::MissingData(_)
                 | StreamError::ArrowError(_),

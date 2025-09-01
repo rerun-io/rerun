@@ -41,12 +41,9 @@ re_log_types.workspace = true
 re_protos.workspace = true
 re_smart_channel.workspace = true
 re_sorbet.workspace = true
-re_tracing.workspace = true
 re_uri.workspace = true
 
 arrow.workspace = true
-async-stream.workspace = true
-crossbeam.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 serde.workspace = true
@@ -56,7 +53,6 @@ tokio-stream.workspace = true
 tower.workspace = true
 tracing.workspace = true
 url.workspace = true
-web-time.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -69,6 +65,5 @@ tonic = { workspace = true, default-features = false, features = [
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tonic-web-wasm-client.workspace = true
 wasm-bindgen-futures.workspace = true
 tonic = { workspace = true, default-features = false }

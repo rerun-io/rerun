@@ -73,7 +73,6 @@ impl std::error::Error for TonicStatusError {
     }
 }
 
-// TODO: check what is and isn't needed in there
 #[derive(thiserror::Error, Debug)]
 pub enum StreamError {
     /// Native connection error
