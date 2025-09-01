@@ -7435,6 +7435,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "crossbeam",
+ "env_logger",
  "image",
  "indexmap 2.10.0",
  "itertools 0.14.0",
