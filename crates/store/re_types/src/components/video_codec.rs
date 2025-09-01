@@ -40,6 +40,18 @@ pub enum VideoCodec {
     ///
     /// Enum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian.
     H264 = 0x61766331,
+
+    /// High Efficiency Video Coding (HEVC/H.265)
+    ///
+    /// See <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>
+    ///
+    /// [`components::VideoSample`][crate::components::VideoSample]s using this codec should be formatted according to Annex B specification.
+    /// (Note that this is different from AVCC format found in MP4 files.
+    /// To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
+    /// Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)
+    ///
+    /// Enum value is the fourcc for 'hev1' (the WebCodec string assigned to this codec) in big endian.
+    H265 = 0x68657631,
 }
 
 impl ::re_types_core::Component for VideoCodec {
@@ -115,6 +127,7 @@ impl ::re_types_core::Loggable for VideoCodec {
             .into_iter()
             .map(|typ| match typ {
                 Some(1635148593) => Ok(Some(Self::H264)),
+                Some(1751479857) => Ok(Some(Self::H265)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -131,6 +144,7 @@ impl std::fmt::Display for VideoCodec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::H264 => write!(f, "H264"),
+            Self::H265 => write!(f, "H265"),
         }
     }
 }
@@ -138,7 +152,7 @@ impl std::fmt::Display for VideoCodec {
 impl ::re_types_core::reflection::Enum for VideoCodec {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::H264]
+        &[Self::H264, Self::H265]
     }
 
     #[inline]
@@ -146,6 +160,9 @@ impl ::re_types_core::reflection::Enum for VideoCodec {
         match self {
             Self::H264 => {
                 "Advanced Video Coding (AVC/H.264)\n\nSee <https://en.wikipedia.org/wiki/Advanced_Video_Coding>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)s using this codec should be formatted according to Annex B specification.\n(Note that this is different from AVCC format found in MP4 files.\nTo learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)\nKey frames (IDR) require inclusion of a SPS (Sequence Parameter Set)\n\nEnum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian."
+            }
+            Self::H265 => {
+                "High Efficiency Video Coding (HEVC/H.265)\n\nSee <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)s using this codec should be formatted according to Annex B specification.\n(Note that this is different from AVCC format found in MP4 files.\nTo learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)\nKey frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)\n\nEnum value is the fourcc for 'hev1' (the WebCodec string assigned to this codec) in big endian."
             }
         }
     }

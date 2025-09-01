@@ -1,14 +1,37 @@
-use std::fmt;
 use std::sync::Arc;
-use std::time::Duration;
+use std::{fmt, time::Duration};
 
 use parking_lot::Mutex;
 use re_chunk::ChunkBatcherConfig;
-use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, Options};
+use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, GrpcFlushError, Options};
 use re_log_encoding::encoder::{EncodeError, encode_as_bytes_local, local_raw_encoder};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 use crate::RecordingStream;
+
+/// An error that can occur when flushing.
+#[derive(Debug, thiserror::Error)]
+pub enum SinkFlushError {
+    /// Flush timed out - not all log messages were sent
+    #[error("Flush timed out - not all log messages were sent")]
+    Timeout,
+
+    /// An error occurred before reaching the timeout.
+    #[error("{message}")]
+    Failed {
+        /// Details
+        message: String,
+    },
+}
+
+impl SinkFlushError {
+    /// Custom error occurred
+    pub fn failed(message: impl Into<String>) -> Self {
+        Self::Failed {
+            message: message.into(),
+        }
+    }
+}
 
 /// Where the SDK sends its log messages.
 pub trait LogSink: Send + Sync + 'static {
@@ -33,14 +56,11 @@ pub trait LogSink: Send + Sync + 'static {
 
     /// Blocks until all pending data in the sink's send buffers has been fully flushed.
     ///
+    /// Returns an error if the underlying sink is in a bad state,
+    /// e.g. if a network connection has been severed, or failed to connect within a certain timeout.
+    ///
     /// If applicable, this should flush all data to any underlying OS-managed file descriptors.
-    /// See also [`LogSink::drop_if_disconnected`].
-    fn flush_blocking(&self);
-
-    /// Drops all pending data currently sitting in the sink's send buffers if it is unable to
-    /// flush it for any reason.
-    #[inline]
-    fn drop_if_disconnected(&self) {}
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError>;
 
     /// Send a blueprint directly to the log-sink.
     ///
@@ -110,11 +130,18 @@ impl LogSink for MultiSink {
         }
     }
 
+    // Flushes ALL sinks, and returns the most severe error, if any.
     #[inline]
-    fn flush_blocking(&self) {
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError> {
+        let mut worst_result = Ok(());
         for sink in self.0.lock().iter() {
-            sink.flush_blocking();
+            if let Err(err) = sink.flush_blocking(timeout) {
+                if matches!(worst_result, Ok(()) | Err(SinkFlushError::Timeout)) {
+                    worst_result = Err(err);
+                }
+            }
         }
+        worst_result
     }
 
     // NOTE: this is only really used for BufferedSink,
@@ -260,7 +287,9 @@ impl LogSink for BufferedSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {}
+    fn flush_blocking(&self, _timeout: Duration) -> Result<(), SinkFlushError> {
+        Ok(())
+    }
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -308,7 +337,9 @@ impl LogSink for MemorySink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {}
+    fn flush_blocking(&self, _timeout: Duration) -> Result<(), SinkFlushError> {
+        Ok(())
+    }
 
     #[inline]
     fn drain_backlog(&self) -> Vec<LogMsg> {
@@ -384,7 +415,7 @@ impl MemorySinkStorage {
     pub fn num_msgs(&self) -> usize {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
-        self.rec.flush_blocking();
+        self.rec.flush_blocking().ok();
         self.inner.lock().msgs.len()
     }
 
@@ -395,7 +426,7 @@ impl MemorySinkStorage {
     pub fn take(&self) -> Vec<LogMsg> {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
-        self.rec.flush_blocking();
+        self.rec.flush_blocking().ok();
         std::mem::take(&mut (self.write()))
     }
 
@@ -409,7 +440,7 @@ impl MemorySinkStorage {
         for sink in sinks {
             // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
             // in this flush; it's just a matter of making the table batcher tick early.
-            sink.rec.flush_blocking();
+            sink.rec.flush_blocking().ok();
             let mut inner = sink.inner.lock();
             inner.has_been_used = true;
 
@@ -430,7 +461,7 @@ impl MemorySinkStorage {
     pub fn drain_as_bytes(&self) -> Result<Vec<u8>, EncodeError> {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
-        self.rec.flush_blocking();
+        self.rec.flush_blocking().ok();
 
         let mut inner = self.inner.lock();
         inner.has_been_used = true;
@@ -479,7 +510,9 @@ impl LogSink for CallbackSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {}
+    fn flush_blocking(&self, _timeout: Duration) -> Result<(), SinkFlushError> {
+        Ok(())
+    }
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -512,13 +545,9 @@ impl GrpcSink {
     /// GrpcSink::new("rerun+http://127.0.0.1:9434/proxy");
     /// ```
     #[inline]
-    pub fn new(uri: re_uri::ProxyUri, flush_timeout: Option<Duration>) -> Self {
-        let options = Options {
-            flush_timeout,
-            ..Default::default()
-        };
+    pub fn new(uri: re_uri::ProxyUri) -> Self {
         Self {
-            client: MessageProxyClient::new(uri, options),
+            client: MessageProxyClient::new(uri, Options::default()),
         }
     }
 
@@ -537,7 +566,6 @@ impl Default for GrpcSink {
         use std::str::FromStr as _;
         Self::new(
             re_uri::ProxyUri::from_str(crate::DEFAULT_CONNECT_URL).expect("failed to parse uri"),
-            crate::default_flush_timeout(),
         )
     }
 }
@@ -547,8 +575,13 @@ impl LogSink for GrpcSink {
         self.client.send(msg);
     }
 
-    fn flush_blocking(&self) {
-        self.client.flush();
+    fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError> {
+        self.client
+            .flush_blocking(timeout)
+            .map_err(|err| match err {
+                GrpcFlushError::Timeout { .. } => SinkFlushError::Timeout,
+                err => SinkFlushError::failed(err.to_string()),
+            })
     }
 
     fn default_batcher_config(&self) -> ChunkBatcherConfig {

@@ -1,12 +1,30 @@
-use std::fmt;
 use std::{
+    fmt,
     path::PathBuf,
-    sync::mpsc::{Receiver, Sender, SyncSender},
+    sync::mpsc::{Receiver, RecvTimeoutError, SendError, Sender, SyncSender},
 };
 
 use parking_lot::Mutex;
 
 use re_log_types::LogMsg;
+
+/// An error that can occur when flushing.
+#[derive(Debug, thiserror::Error)]
+pub enum FileFlushError {
+    #[error("Failed to flush file: {message}")]
+    Failed { message: String },
+
+    #[error("File flush timed out - not all messages were written.")]
+    Timeout,
+}
+
+impl FileFlushError {
+    fn failed(message: impl Into<String>) -> Self {
+        Self::Failed {
+            message: message.into(),
+        }
+    }
+}
 
 /// Errors that can occur when creating a [`FileSink`].
 #[derive(thiserror::Error, Debug)]
@@ -26,13 +44,15 @@ pub enum FileSinkError {
 
 enum Command {
     Send(LogMsg),
-    Flush(SyncSender<()>),
+    Flush {
+        on_done: SyncSender<Result<(), String>>,
+    },
 }
 
 impl Command {
-    fn flush() -> (Self, Receiver<()>) {
+    fn flush() -> (Self, Receiver<Result<(), String>>) {
         let (tx, rx) = std::sync::mpsc::sync_channel(0); // oneshot
-        (Self::Flush(tx), rx)
+        (Self::Flush { on_done: tx }, rx)
     }
 }
 
@@ -112,10 +132,21 @@ impl FileSink {
     }
 
     #[inline]
-    pub fn flush_blocking(&self) {
+    pub fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), FileFlushError> {
         let (cmd, oneshot) = Command::flush();
-        self.tx.lock().send(Some(cmd)).ok();
-        oneshot.recv().ok();
+        self.tx.lock().send(Some(cmd)).map_err(|_ignored| {
+            FileFlushError::failed("File-writer thread shut down prematurely")
+        })?;
+
+        oneshot
+            .recv_timeout(timeout)
+            .map_err(|err| match err {
+                RecvTimeoutError::Timeout => FileFlushError::Timeout,
+                RecvTimeoutError::Disconnected => {
+                    FileFlushError::failed("File-writer thread shut down prematurely")
+                }
+            })?
+            .map_err(FileFlushError::failed)
     }
 
     #[inline]
@@ -147,13 +178,20 @@ fn spawn_and_stream<W: std::io::Write + Send + 'static>(
                                 return;
                             }
                         }
-                        Command::Flush(oneshot) => {
+                        Command::Flush { on_done } => {
                             re_log::trace!("Flushing…");
-                            if let Err(err) = encoder.flush_blocking() {
-                                re_log::error!("Failed to flush log stream to {target}: {err}");
-                                return;
+
+                            let result = encoder.flush_blocking().map_err(|err| {
+                                format!("Failed to flush log stream to {target}: {err}")
+                            });
+
+                            // Send back the result:
+                            if let Err(SendError(result)) = on_done.send(result)
+                                && let Err(err) = result
+                            {
+                                // There was an error, and nobody received it:
+                                re_log::error!("{err}");
                             }
-                            drop(oneshot); // signals the oneshot
                         }
                     }
                 }

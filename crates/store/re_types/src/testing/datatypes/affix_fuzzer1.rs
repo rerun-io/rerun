@@ -184,12 +184,11 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                                 single_string_required.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
                             );
-
                             #[allow(clippy::unwrap_used)]
                             let capacity = offsets.last().copied().unwrap() as usize;
                             let mut buffer_builder =
@@ -225,12 +224,11 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                                 single_string_optional.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
                             );
-
                             #[allow(clippy::unwrap_used)]
                             let capacity = offsets.last().copied().unwrap() as usize;
                             let mut buffer_builder =
@@ -325,11 +323,12 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 std::sync::Arc::new(Field::new("item", DataType::Utf8, false)),
                                 offsets,
                                 {
-                                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                                         many_strings_required_inner_data
                                             .iter()
                                             .map(|datum| datum.len()),
                                     );
+
                                     #[allow(clippy::unwrap_used)]
                                     let capacity = offsets.last().copied().unwrap() as usize;
                                     let mut buffer_builder =
@@ -385,11 +384,12 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 std::sync::Arc::new(Field::new("item", DataType::Utf8, false)),
                                 offsets,
                                 {
-                                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                                         many_strings_optional_inner_data
                                             .iter()
                                             .map(|datum| datum.len()),
                                     );
+
                                     #[allow(clippy::unwrap_used)]
                                     let capacity = offsets.last().copied().unwrap() as usize;
                                     let mut buffer_builder =

@@ -115,11 +115,24 @@ impl Claims {
         }
     }
 
+    /// Issuer
     pub fn iss(&self) -> &str {
         match self {
             #[cfg(feature = "workos")]
             Self::WorkOs(claims) => claims.iss.as_str(),
             Self::Redap(claims) => claims.iss.as_str(),
+        }
+    }
+
+    #[cfg(feature = "workos")]
+    pub fn permissions(&self) -> &[crate::workos::Permission] {
+        match self {
+            Self::WorkOs(claims) => claims
+                .permissions
+                .as_ref()
+                .map(|v| &v[..])
+                .unwrap_or_default(),
+            Self::Redap(_) => &[],
         }
     }
 }

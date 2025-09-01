@@ -50,10 +50,10 @@ def test_tensor_slice_selection() -> None:
     )
 
     for width, height, indices, slider in all_arrays:
-        width = cast(Optional[rr.datatypes.TensorDimensionSelectionLike], width)
-        height = cast(Optional[rr.datatypes.TensorDimensionSelectionLike], height)
-        indices = cast(Optional[rr.datatypes.TensorDimensionIndexSelectionArrayLike], indices)
-        slider = cast(Optional[rr.blueprint.datatypes.TensorDimensionIndexSliderArrayLike], slider)
+        width = cast("Optional[rr.datatypes.TensorDimensionSelectionLike]", width)
+        height = cast("Optional[rr.datatypes.TensorDimensionSelectionLike]", height)
+        indices = cast("Optional[rr.datatypes.TensorDimensionIndexSelectionArrayLike]", indices)
+        slider = cast("Optional[rr.blueprint.datatypes.TensorDimensionIndexSliderArrayLike]", slider)
 
         print(
             f"rr.TensorSliceSelection(\n"

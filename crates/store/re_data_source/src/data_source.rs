@@ -8,14 +8,14 @@ use crate::FileContents;
 use anyhow::Context as _;
 
 /// Somewhere we can get Rerun logging data from.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LogDataSource {
     /// A remote RRD file, served over http.
     ///
     /// Could be either an `.rrd` recording or a `.rbl` blueprint.
     RrdHttpUrl {
         /// This is a canonicalized URL path without any parameters or fragments.
-        url: String,
+        url: url::Url,
 
         /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
         follow: bool,
@@ -125,14 +125,12 @@ impl LogDataSource {
         } else if let Ok(uri) = url.parse::<re_uri::ProxyUri>() {
             Some(Self::RedapProxy(uri))
         } else {
-            let mut parsed_url = url::Url::parse(url)
+            let url = url::Url::parse(url)
                 .or_else(|_| url::Url::parse(&format!("http://{url}")))
                 .ok()?;
+            let path = url.path();
 
-            // Ignore any parameters, we don't support them for http urls.
-            parsed_url.set_query(None);
-            let url = parsed_url.to_string();
-            (url.ends_with(".rrd") || url.ends_with(".rbl"))
+            (path.ends_with(".rrd") || path.ends_with(".rbl"))
                 .then_some(Self::RrdHttpUrl { url, follow: false })
         }
     }
@@ -156,7 +154,9 @@ impl LogDataSource {
         match self {
             Self::RrdHttpUrl { url, follow } => Ok(
                 re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
-                    url, follow, on_msg,
+                    url.to_string(),
+                    follow,
+                    on_msg,
                 ),
             ),
 

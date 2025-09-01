@@ -193,7 +193,10 @@ fn load_video(
         re_log_types::TimeCell::ZERO_DURATION,
     );
 
-    let video_asset = AssetVideo::new(contents);
+    let video_asset = {
+        re_tracing::profile_scope!("serialize-as-arrow");
+        AssetVideo::new(contents)
+    };
 
     let video_frame_reference_chunk = match video_asset.read_frame_timestamps_nanos() {
         Ok(frame_timestamps_nanos) => {

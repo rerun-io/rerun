@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 import numpy as np
 import pytest
@@ -9,9 +9,6 @@ import rerun as rr
 import torch
 from rerun.components.line_strip3d import LineStrip3DArrayLike, LineStrip3DBatch
 from rerun.datatypes import Float32ArrayLike, Vec3D
-from rerun.datatypes.class_id import ClassIdArrayLike
-from rerun.datatypes.rgba32 import Rgba32ArrayLike
-from rerun.datatypes.utf8 import Utf8ArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -24,6 +21,11 @@ from .common_arrays import (
     radii_arrays,
     radii_expected,
 )
+
+if TYPE_CHECKING:
+    from rerun.datatypes.class_id import ClassIdArrayLike
+    from rerun.datatypes.rgba32 import Rgba32ArrayLike
+    from rerun.datatypes.utf8 import Utf8ArrayLike
 
 # fmt: off
 strips_arrays: list[LineStrip3DArrayLike] = [
@@ -84,11 +86,11 @@ def test_line_strips3d() -> None:
         strips = strips if strips is not None else strips_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
-        strips = cast(LineStrip3DArrayLike, strips)
-        radii = cast(Optional[Float32ArrayLike], radii)
-        colors = cast(Optional[Rgba32ArrayLike], colors)
-        labels = cast(Optional[Utf8ArrayLike], labels)
-        class_ids = cast(Optional[ClassIdArrayLike], class_ids)
+        strips = cast("LineStrip3DArrayLike", strips)
+        radii = cast("Optional[Float32ArrayLike]", radii)
+        colors = cast("Optional[Rgba32ArrayLike]", colors)
+        labels = cast("Optional[Utf8ArrayLike]", labels)
+        class_ids = cast("Optional[ClassIdArrayLike]", class_ids)
 
         print(
             f"rr.LineStrips3D(\n"

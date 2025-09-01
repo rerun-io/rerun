@@ -7,7 +7,7 @@ import os
 import subprocess
 import zipfile
 from pathlib import Path
-from typing import Final, Optional
+from typing import Final
 
 import pandas as pd
 
@@ -196,7 +196,7 @@ def download_laser_scanner_point_clouds(laser_scanner_point_cloud_id: str, visit
         download_file(file_url, filename, laser_scanner_point_clouds_folder_path)
 
 
-def get_metadata(dataset: str, download_dir: Path) -> Optional[pd.DataFrame]:
+def get_metadata(dataset: str, download_dir: Path) -> pd.DataFrame | None:
     filename = "metadata.csv"
     url = f"{ARkitscense_url}/threedod/{filename}" if "3dod" == dataset else f"{ARkitscense_url}/{dataset}/{filename}"
     dst_folder = download_dir / dataset

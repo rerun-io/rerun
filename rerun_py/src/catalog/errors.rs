@@ -18,8 +18,8 @@ use std::error::Error as _;
 use pyo3::PyErr;
 use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
 
-use re_grpc_client::ConnectionError;
-use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
+use re_grpc_client::{ClientConnectionError, ConnectionError};
+use re_protos::cloud::v1alpha1::ext::GetDatasetSchemaResponseError;
 
 // ---
 
@@ -28,6 +28,9 @@ use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
 #[derive(Debug, thiserror::Error)]
 #[expect(clippy::enum_variant_names)] // this is by design
 enum ExternalError {
+    #[error("{0}")]
+    ClientConnectionError(#[from] ClientConnectionError),
+
     #[error("{0}")]
     ConnectionError(#[from] ConnectionError),
 
@@ -96,9 +99,7 @@ impl_from_boxed!(tonic::Status, TonicStatusError);
 impl_from_boxed!(datafusion::error::DataFusionError, DatafusionError);
 impl_from_boxed!(re_protos::TypeConversionError, TypeConversionError);
 
-impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
-    for ExternalError
-{
+impl From<re_protos::cloud::v1alpha1::ext::GetDatasetSchemaResponseError> for ExternalError {
     fn from(value: GetDatasetSchemaResponseError) -> Self {
         match value {
             GetDatasetSchemaResponseError::ArrowError(err) => err.into(),
@@ -112,6 +113,10 @@ impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseE
 impl From<ExternalError> for PyErr {
     fn from(err: ExternalError) -> Self {
         match err {
+            ExternalError::ClientConnectionError(err) => {
+                PyConnectionError::new_err(err.to_string())
+            }
+
             ExternalError::ConnectionError(err) => PyConnectionError::new_err(err.to_string()),
 
             ExternalError::TonicStatusError(status) => {

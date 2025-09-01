@@ -7,7 +7,7 @@ use re_log_types::EntryId;
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::{
     TypeConversionError,
-    catalog::v1alpha1::{
+    cloud::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, FindEntriesRequest,
         ReadDatasetEntryRequest, ReadTableEntryRequest,
         ext::{
@@ -17,17 +17,17 @@ use re_protos::{
             UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
         },
     },
+    cloud::v1alpha1::{
+        RegisterWithDatasetResponse, ScanPartitionTableResponse,
+        ext::{DataSource, DataSourceKind, RegisterWithDatasetTaskDescriptor},
+    },
+    cloud::v1alpha1::{
+        ext::{RegisterWithDatasetRequest, ScanPartitionTableRequest},
+        rerun_cloud_service_client::RerunCloudServiceClient,
+    },
     common::v1alpha1::{
         TaskId,
         ext::{IfDuplicateBehavior, IfMissingBehavior, PartitionId, ScanParameters},
-    },
-    frontend::v1alpha1::{
-        ext::{RegisterWithDatasetRequest, ScanPartitionTableRequest},
-        frontend_service_client::FrontendServiceClient,
-    },
-    manifest_registry::v1alpha1::{
-        RegisterWithDatasetResponse, ScanPartitionTableResponse,
-        ext::{DataSource, DataSourceKind, RegisterWithDatasetTaskDescriptor},
     },
     missing_field,
 };
@@ -42,21 +42,21 @@ use crate::StreamError;
 //TODO(ab): this should NOT be `Clone`, to discourage callsites from holding on to a client for too
 //long. However we have a bunch of places that needs to be fixed before we can do that.
 #[derive(Debug, Clone)]
-pub struct GenericConnectionClient<T>(FrontendServiceClient<T>);
+pub struct GenericConnectionClient<T>(RerunCloudServiceClient<T>);
 
 impl<T> GenericConnectionClient<T> {
     /// Create a new [`Self`].
     ///
     /// This should not be used in the viewer, use [`crate::ConnectionRegistryHandle::client`]
     /// instead.
-    pub fn new(client: FrontendServiceClient<T>) -> Self {
+    pub fn new(client: RerunCloudServiceClient<T>) -> Self {
         Self(client)
     }
 
     /// Get a mutable reference to the underlying `RedapClient`.
     //TODO(#10188): this should disappear once we have wrapper for all endpoints and the client code
     //is using them.
-    pub fn inner(&mut self) -> &mut FrontendServiceClient<T> {
+    pub fn inner(&mut self) -> &mut RerunCloudServiceClient<T> {
         &mut self.0
     }
 }
@@ -343,7 +343,7 @@ where
         name: String,
         url: url::Url,
     ) -> Result<TableEntry, StreamError> {
-        let request = re_protos::catalog::v1alpha1::ext::RegisterTableRequest {
+        let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name,
             provider_details: LanceTable { table_url: url }.try_as_any()?,
         };
@@ -358,20 +358,23 @@ where
         Ok(response.table_entry)
     }
 
+    #[allow(clippy::fn_params_excessive_bools)]
     pub async fn do_maintenance(
         &mut self,
         dataset_id: EntryId,
         build_scalar_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
+        unsafe_allow_recent_cleanup: bool,
     ) -> Result<(), StreamError> {
         self.inner()
             .do_maintenance(tonic::Request::new(
-                re_protos::frontend::v1alpha1::ext::DoMaintenanceRequest {
+                re_protos::cloud::v1alpha1::ext::DoMaintenanceRequest {
                     dataset_id: Some(dataset_id.into()),
                     build_scalar_indexes,
                     compact_fragments,
                     cleanup_before,
+                    unsafe_allow_recent_cleanup,
                 }
                 .into(),
             ))

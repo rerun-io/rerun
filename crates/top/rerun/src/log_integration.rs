@@ -117,7 +117,7 @@ impl log::Log for Logger {
 
     #[inline]
     fn flush(&self) {
-        self.rec.flush_blocking();
+        self.rec.flush_blocking().ok();
     }
 }
 
