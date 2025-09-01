@@ -17,6 +17,7 @@ from .annotation_context import (
 )
 from .axis_length import AxisLength, AxisLengthBatch
 from .blob import Blob, BlobBatch
+from .channel_id import ChannelId, ChannelIdBatch
 from .class_id import ClassId, ClassIdBatch
 from .clear_is_recursive import ClearIsRecursive, ClearIsRecursiveBatch
 from .color import Color, ColorBatch
@@ -37,6 +38,7 @@ from .image_buffer import ImageBuffer, ImageBufferBatch
 from .image_format import ImageFormat, ImageFormatBatch
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch
 from .interactive import Interactive, InteractiveBatch
+from .key_value_pairs import KeyValuePairs, KeyValuePairsArrayLike, KeyValuePairsBatch, KeyValuePairsLike
 from .keypoint_id import KeypointId, KeypointIdBatch
 from .lat_lon import LatLon, LatLonBatch
 from .length import Length, LengthBatch
@@ -114,6 +116,8 @@ __all__ = [
     "AxisLengthBatch",
     "Blob",
     "BlobBatch",
+    "ChannelId",
+    "ChannelIdBatch",
     "ClassId",
     "ClassIdBatch",
     "ClearIsRecursive",
@@ -162,6 +166,10 @@ __all__ = [
     "ImagePlaneDistanceBatch",
     "Interactive",
     "InteractiveBatch",
+    "KeyValuePairs",
+    "KeyValuePairsArrayLike",
+    "KeyValuePairsBatch",
+    "KeyValuePairsLike",
     "KeypointId",
     "KeypointIdBatch",
     "LatLon",

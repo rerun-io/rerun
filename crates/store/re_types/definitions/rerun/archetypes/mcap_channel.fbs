@@ -1,0 +1,31 @@
+namespace rerun.archetypes;
+
+
+/// Information about an MCAP channel.
+///
+/// MCAP is a modular container format and logging library for multi-modal robotics data.
+/// This archetype stores channel metadata including topic, encoding, and custom metadata.
+///
+/// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+table McapChannel (
+  "attr.docs.category": "Data",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "PartialEq",
+  "attr.docs.unreleased"
+) {
+  // --- Required ---
+
+  /// The channel ID within the MCAP file.
+  id: rerun.components.ChannelId ("attr.rerun.component_required", order: 1000);
+
+  /// The topic name for this channel.
+  topic: rerun.components.Text ("attr.rerun.component_required", order: 2000);
+
+  /// The message encoding used by this channel.
+  message_encoding: rerun.components.Text ("attr.rerun.component_required", order: 3000);
+
+  // --- Optional ---
+
+  /// Custom metadata associated with this channel as key-value pairs.
+  metadata: rerun.components.KeyValuePairs ("attr.rerun.component_optional", nullable, order: 4000);
+}

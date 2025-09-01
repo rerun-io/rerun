@@ -1,0 +1,21 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// A raw MCAP message.
+///
+/// MCAP is a modular container format and logging library for multi-modal robotics data.
+/// This archetype stores raw MCAP message data as binary blobs for analysis.
+///
+/// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+table McapMessage (
+  "attr.docs.category": "Data",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "PartialEq",
+  "attr.docs.unreleased"
+) {
+  // --- Required ---
+
+  /// The raw MCAP message data as binary blob.
+  data: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+}

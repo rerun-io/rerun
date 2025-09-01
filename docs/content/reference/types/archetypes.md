@@ -10,6 +10,12 @@ built-in support. See [Entities and Components](../../concepts/entity-component.
 
 This page lists all built-in archetypes.
 
+## Data
+
+* [`McapChannel`](archetypes/mcap_channel.md): Information about an MCAP channel.
+* [`McapMessage`](archetypes/mcap_message.md): A raw MCAP message.
+* [`McapSchema`](archetypes/mcap_schema.md): Information about an MCAP schema definition.
+
 ## Geospatial
 
 * [`GeoLineStrings`](archetypes/geo_line_strings.md): Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.

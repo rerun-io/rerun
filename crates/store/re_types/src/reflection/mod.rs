@@ -481,6 +481,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ChannelId as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A 16-bit ID representing an MCAP channel.\n\nUsed to identify specific channels within an MCAP file.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: ChannelId::arrow_datatype(),
+                verify_arrow_array: ChannelId::verify_arrow_array,
+            },
+        ),
+        (
             <ClassId as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
@@ -678,6 +688,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(Interactive::default().to_arrow()?),
                 datatype: Interactive::arrow_datatype(),
                 verify_arrow_array: Interactive::verify_arrow_array,
+            },
+        ),
+        (
+            <KeyValuePairs as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A map of string keys to string values.\n\nThis component can be used to attach arbitrary metadata or annotations to entities.\nEach key-value pair is stored as a UTF-8 string mapping.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(KeyValuePairs::default().to_arrow()?),
+                datatype: KeyValuePairs::arrow_datatype(),
+                verify_arrow_array: KeyValuePairs::verify_arrow_array,
             },
         ),
         (
@@ -1913,6 +1933,70 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the lines.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
                     is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.McapChannel"),
+            ArchetypeReflection {
+                display_name: "Mcap channel",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "id", display_name : "Id",
+                    component_type : "rerun.components.ChannelId".into(), docstring_md :
+                    "The channel ID within the MCAP file.", is_required : true, },
+                    ArchetypeFieldReflection { name : "topic", display_name : "Topic",
+                    component_type : "rerun.components.Text".into(), docstring_md :
+                    "The topic name for this channel.", is_required : true, },
+                    ArchetypeFieldReflection { name : "message_encoding", display_name :
+                    "Message encoding", component_type : "rerun.components.Text".into(),
+                    docstring_md : "The message encoding used by this channel.",
+                    is_required : true, }, ArchetypeFieldReflection { name : "metadata",
+                    display_name : "Metadata", component_type :
+                    "rerun.components.KeyValuePairs".into(), docstring_md :
+                    "Custom metadata associated with this channel as key-value pairs.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.McapMessage"),
+            ArchetypeReflection {
+                display_name: "Mcap message",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "data", display_name : "Data",
+                    component_type : "rerun.components.Blob".into(), docstring_md :
+                    "The raw MCAP message data as binary blob.", is_required : true, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.McapSchema"),
+            ArchetypeReflection {
+                display_name: "Mcap schema",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "id", display_name : "Id",
+                    component_type : "rerun.components.ChannelId".into(), docstring_md :
+                    "The schema ID within the MCAP file.", is_required : true, },
+                    ArchetypeFieldReflection { name : "name", display_name : "Name",
+                    component_type : "rerun.components.Text".into(), docstring_md :
+                    "The name of this schema.", is_required : true, },
+                    ArchetypeFieldReflection { name : "encoding", display_name :
+                    "Encoding", component_type : "rerun.components.Text".into(),
+                    docstring_md :
+                    "The encoding format used by this schema (e.g., \"protobuf\", \"ros1msg\", \"jsonschema\").",
+                    is_required : true, }, ArchetypeFieldReflection { name : "data",
+                    display_name : "Data", component_type : "rerun.components.Blob"
+                    .into(), docstring_md : "The raw schema data as binary content.",
+                    is_required : true, },
                 ],
             },
         ),

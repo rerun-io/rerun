@@ -1,0 +1,18 @@
+namespace rerun.components;
+
+// ---
+
+/// A map of string keys to string values.
+///
+/// This component can be used to attach arbitrary metadata or annotations to entities.
+/// Each key-value pair is stored as a UTF-8 string mapping.
+table KeyValuePairs (
+  "attr.python.aliases": "Dict[str, str]",
+  "attr.python.array_aliases": "Dict[str, str], Sequence[Dict[str, str]]",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "Default, PartialEq, Eq",
+  "attr.docs.unreleased"
+) {
+  /// The key-value pairs that make up this string map.
+  pairs: [rerun.datatypes.Utf8Pair] (order: 100);
+}

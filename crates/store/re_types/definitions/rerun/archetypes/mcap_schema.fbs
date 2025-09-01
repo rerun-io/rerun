@@ -1,0 +1,29 @@
+namespace rerun.archetypes;
+
+
+/// Information about an MCAP schema definition.
+///
+/// This archetype stores schema metadata including the schema ID, name, encoding format,
+/// and the raw schema data itself.
+///
+/// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+table McapSchema (
+  "attr.docs.category": "Data",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "PartialEq",
+  "attr.docs.unreleased"
+) {
+  // --- Required ---
+
+  /// The schema ID within the MCAP file.
+  id: rerun.components.ChannelId ("attr.rerun.component_required", order: 1000);
+
+  /// The name of this schema.
+  name: rerun.components.Text ("attr.rerun.component_required", order: 2000);
+
+  /// The encoding format used by this schema (e.g., "protobuf", "ros1msg", "jsonschema").
+  encoding: rerun.components.Text ("attr.rerun.component_required", order: 3000);
+
+  /// The raw schema data as binary content.
+  data: rerun.components.Blob ("attr.rerun.component_required", order: 4000);
+}

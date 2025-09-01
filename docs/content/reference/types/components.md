@@ -18,6 +18,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`AnnotationContext`](components/annotation_context.md): The annotation context provides additional information on how to display entities.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
+* [`ChannelId`](components/channel_id.md): A 16-bit ID representing an MCAP channel.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`ClearIsRecursive`](components/clear_is_recursive.md): Configures how a clear operation should behave - recursive or not.
 * [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
@@ -38,6 +39,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`ImageFormat`](components/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 * [`Interactive`](components/interactive.md): Whether the entity can be interacted with.
+* [`KeyValuePairs`](components/key_value_pairs.md): A map of string keys to string values.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`LatLon`](components/lat_lon.md): A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
 * [`Length`](components/length.md): Length, or one-dimensional size.
