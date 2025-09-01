@@ -35,7 +35,7 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             .and_then(|auth| auth.to_str().ok()?.strip_prefix("Bearer "))
             .and_then(|token| token.split('.').skip(1).take(1).next())
             .and_then(|data| {
-                use base64::{Engine as _, engine::general_purpose};
+                use base64::{engine::general_purpose, Engine as _};
                 general_purpose::STANDARD_NO_PAD.decode(data).ok()
             })
             .and_then(|data| {
