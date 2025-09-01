@@ -9,6 +9,17 @@ import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/log_msg.proto";
 
 // The Rerun Cloud public API.
+//
+// ## Headers
+//
+// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+//
+// The so-called "standard dataset headers" correspond to at least one of the following headers:
+// * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.
+// * x-rerun-entry-name-bin: Name of the entry of interest, e.g. `droid:sample2k`.
+//
+// Headers with a -bin suffix must be base64-encoded (HTTP only supports ASCII values, UTF8 strings must
+// binary encoded).
 service RerunCloudService {
   rpc Version(VersionRequest) returns (VersionResponse) {}
 
@@ -22,6 +33,9 @@ service RerunCloudService {
 
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
 
+  // Fetch metadata about a specific dataset.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
 
   rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
@@ -48,6 +62,8 @@ service RerunCloudService {
   //
   // * To inspect the data of the partition table, use `ScanPartitionTable`.
   // * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (GetPartitionTableSchemaResponse) {}
 
   // Inspect the contents of the partition table (i.e. the dataset manifest).
@@ -207,9 +223,7 @@ message WriteChunksResponse {}
 
 /* Query schemas */
 
-message GetPartitionTableSchemaRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-}
+message GetPartitionTableSchemaRequest {}
 
 message GetPartitionTableSchemaResponse {
   rerun.common.v1alpha1.Schema schema = 1;
@@ -732,9 +746,7 @@ message CreateDatasetEntryResponse {
 
 // ReadDatasetEntry
 
-message ReadDatasetEntryRequest {
-  rerun.common.v1alpha1.EntryId id = 1;
-}
+message ReadDatasetEntryRequest {}
 
 message ReadDatasetEntryResponse {
   DatasetEntry dataset = 1;

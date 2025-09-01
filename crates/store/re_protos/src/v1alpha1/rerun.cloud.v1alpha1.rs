@@ -138,10 +138,7 @@ impl ::prost::Name for WriteChunksResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct GetPartitionTableSchemaRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-}
+pub struct GetPartitionTableSchemaRequest {}
 impl ::prost::Name for GetPartitionTableSchemaRequest {
     const NAME: &'static str = "GetPartitionTableSchemaRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
@@ -1241,10 +1238,7 @@ impl ::prost::Name for CreateDatasetEntryResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ReadDatasetEntryRequest {
-    #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-}
+pub struct ReadDatasetEntryRequest {}
 impl ::prost::Name for ReadDatasetEntryRequest {
     const NAME: &'static str = "ReadDatasetEntryRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
@@ -1712,6 +1706,17 @@ pub mod rerun_cloud_service_client {
     use tonic::codegen::http::Uri;
     use tonic::codegen::*;
     /// The Rerun Cloud public API.
+    ///
+    /// ## Headers
+    ///
+    /// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+    ///
+    /// The so-called "standard dataset headers" correspond to at least one of the following headers:
+    /// * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.
+    /// * x-rerun-entry-name-bin: Name of the entry of interest, e.g. `droid:sample2k`.
+    ///
+    /// Headers with a -bin suffix must be base64-encoded (HTTP only supports ASCII values, UTF8 strings must
+    /// binary encoded).
     #[derive(Debug, Clone)]
     pub struct RerunCloudServiceClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -1874,6 +1879,9 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Fetch metadata about a specific dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn read_dataset_entry(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadDatasetEntryRequest>,
@@ -1979,6 +1987,8 @@ pub mod rerun_cloud_service_client {
         ///
         /// * To inspect the data of the partition table, use `ScanPartitionTable`.
         /// * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn get_partition_table_schema(
             &mut self,
             request: impl tonic::IntoRequest<super::GetPartitionTableSchemaRequest>,
@@ -2375,6 +2385,9 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::CreateDatasetEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::CreateDatasetEntryResponse>, tonic::Status>;
+        /// Fetch metadata about a specific dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn read_dataset_entry(
             &self,
             request: tonic::Request<super::ReadDatasetEntryRequest>,
@@ -2405,6 +2418,8 @@ pub mod rerun_cloud_service_server {
         ///
         /// * To inspect the data of the partition table, use `ScanPartitionTable`.
         /// * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn get_partition_table_schema(
             &self,
             request: tonic::Request<super::GetPartitionTableSchemaRequest>,
@@ -2551,6 +2566,17 @@ pub mod rerun_cloud_service_server {
         ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>;
     }
     /// The Rerun Cloud public API.
+    ///
+    /// ## Headers
+    ///
+    /// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+    ///
+    /// The so-called "standard dataset headers" correspond to at least one of the following headers:
+    /// * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.
+    /// * x-rerun-entry-name-bin: Name of the entry of interest, e.g. `droid:sample2k`.
+    ///
+    /// Headers with a -bin suffix must be base64-encoded (HTTP only supports ASCII values, UTF8 strings must
+    /// binary encoded).
     #[derive(Debug)]
     pub struct RerunCloudServiceServer<T> {
         inner: Arc<T>,

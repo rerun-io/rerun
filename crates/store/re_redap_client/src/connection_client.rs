@@ -147,11 +147,12 @@ where
         &mut self,
         entry_id: EntryId,
     ) -> Result<DatasetEntry, StreamError> {
+        let mut req = tonic::Request::new(ReadDatasetEntryRequest {});
+        re_protos::headers::RerunHeadersInjector(&mut req).with_entry_id(entry_id.to_string())?;
+
         let response: ReadDatasetEntryResponse = self
             .inner()
-            .read_dataset_entry(ReadDatasetEntryRequest {
-                id: Some(entry_id.into()),
-            })
+            .read_dataset_entry(req)
             .await?
             .into_inner()
             .try_into()?;

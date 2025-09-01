@@ -22,24 +22,6 @@ use crate::common::v1alpha1::ext::{
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
 use crate::{TypeConversionError, missing_field};
 
-// --- GetPartitionTableSchemaRequest ---
-
-impl TryFrom<crate::cloud::v1alpha1::GetPartitionTableSchemaRequest> for re_log_types::EntryId {
-    type Error = TypeConversionError;
-
-    fn try_from(
-        value: crate::cloud::v1alpha1::GetPartitionTableSchemaRequest,
-    ) -> Result<Self, Self::Error> {
-        Ok(value
-            .dataset_id
-            .ok_or(missing_field!(
-                crate::cloud::v1alpha1::GetPartitionTableSchemaRequest,
-                "dataset_id"
-            ))?
-            .try_into()?)
-    }
-}
-
 // --- ScanPartitionTableRequest ---
 
 pub struct ScanPartitionTableRequest {
@@ -491,24 +473,6 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatas
                 ))?
                 .try_into()?,
         })
-    }
-}
-
-// --- ReadDatasetEntryRequest ---
-
-impl TryFrom<crate::cloud::v1alpha1::ReadDatasetEntryRequest> for re_log_types::EntryId {
-    type Error = TypeConversionError;
-
-    fn try_from(
-        value: crate::cloud::v1alpha1::ReadDatasetEntryRequest,
-    ) -> Result<Self, Self::Error> {
-        Ok(value
-            .id
-            .ok_or(missing_field!(
-                crate::cloud::v1alpha1::ReadDatasetEntryRequest,
-                "id"
-            ))?
-            .try_into()?)
     }
 }
 
