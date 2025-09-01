@@ -49,9 +49,7 @@ tonic = { workspace = true, default-features = false, features = [
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tonic = { workspace = true, default-features = false, features = [
-  "codegen",
-] }
+tonic = { workspace = true, default-features = false, features = ["codegen"] }
 
 [lints]
 workspace = true
