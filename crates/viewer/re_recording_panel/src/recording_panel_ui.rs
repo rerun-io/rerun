@@ -321,7 +321,7 @@ fn dataset_entry_ui(
     let DatasetData {
         entry_data:
             EntryData {
-                origin: _,
+                origin,
                 entry_id,
                 name,
                 icon,
@@ -393,7 +393,7 @@ fn dataset_entry_ui(
             .send_system(SystemCommand::SetSelection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                *entry_id,
+                re_uri::EntryUri::new(origin.clone(), *entry_id),
             )));
     }
 }
@@ -406,7 +406,7 @@ fn remote_table_entry_ui(
     let RemoteTableData {
         entry_data:
             EntryData {
-                origin: _,
+                origin,
                 entry_id,
                 name,
                 icon,
@@ -427,7 +427,7 @@ fn remote_table_entry_ui(
             .send_system(SystemCommand::SetSelection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                *entry_id,
+                re_uri::EntryUri::new(origin.clone(), *entry_id),
             )));
     }
 }
@@ -440,7 +440,7 @@ fn failed_entry_ui(
     let FailedEntryData {
         entry_data:
             EntryData {
-                origin: _,
+                origin,
                 entry_id,
                 name,
                 icon,
@@ -462,7 +462,7 @@ fn failed_entry_ui(
             .send_system(SystemCommand::SetSelection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                *entry_id,
+                re_uri::EntryUri::new(origin.clone(), *entry_id),
             )));
     }
 
