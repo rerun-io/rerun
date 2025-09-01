@@ -59,7 +59,8 @@ pub type RendererTypeId = u8;
 pub struct DrawDataDrawable {
     /// Used for sorting drawables within a [`DrawPhase`].
     ///
-    /// Low values mean closer, high values mean further away from the camera.
+    /// Low values mean closer, high values mean further away from the camera, with 0.0 being at the camera.
+    /// (negative values are allowed but reserved for special cases)
     /// This is typically simply the squared scene space distance to the observer,
     /// but may also be a 2D layer index or similar.
     ///

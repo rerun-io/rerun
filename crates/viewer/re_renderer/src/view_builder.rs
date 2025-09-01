@@ -662,7 +662,7 @@ impl ViewBuilder {
 
     /// Draws the frame as instructed to a temporary HDR target.
     pub fn draw(
-        &self,
+        &mut self,
         ctx: &RenderContext,
         clear_color: Rgba,
     ) -> Result<wgpu::CommandBuffer, PoolError> {
@@ -686,10 +686,16 @@ impl ViewBuilder {
         // However, having our locking concentrated for the duration of a view draw
         // is also beneficial since it enforces the model of prepare->draw which avoids a lot of repeated
         // locking and unlocking.
+        //
+        // TODO(andreas): Above limitation has been lifted by now. We can lift some of the restrictions now!
+
         let renderers = ctx.read_lock_renderers();
         let pipelines = ctx.gpu_resources.render_pipelines.resources();
 
         let setup = &self.setup;
+
+        // Prepare the drawables for drawing!
+        self.draw_phase_manager.sort_drawables();
 
         let mut encoder = ctx
             .device
