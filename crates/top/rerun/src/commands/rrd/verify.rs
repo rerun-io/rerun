@@ -120,6 +120,11 @@ impl Verifier {
             return Ok(());
         }
 
+        if component_type.full_name().starts_with("rerun.mcap.") {
+            re_log::debug_once!("Ignoring rerun.mcap component {component_type:?}");
+            return Ok(());
+        }
+
         if component.starts_with("rerun.components.") && component.ends_with("Indicator") {
             // Lacks reflection and data
             anyhow::bail!(
@@ -153,6 +158,11 @@ impl Verifier {
 
         if let Some(archetype_name) = archetype_name {
             if archetype_name.full_name().starts_with("rerun.") {
+                if archetype_name.full_name().starts_with("rerun.mcap.") {
+                    re_log::debug_once!("Ignoring rerun.mcap archetype {archetype_name:?}");
+                    return Ok(());
+                }
+
                 // Verify archetype.
                 // We may want to have a flag to allow some of this?
                 let archetype_reflection = self
