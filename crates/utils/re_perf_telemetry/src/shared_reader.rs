@@ -1,6 +1,6 @@
 use opentelemetry_sdk::error::OTelSdkResult;
 use opentelemetry_sdk::metrics::{
-    data::ResourceMetrics, reader::MetricReader, ManualReader, Pipeline, Temporality,
+    ManualReader, Pipeline, Temporality, data::ResourceMetrics, reader::MetricReader,
 };
 use std::sync::{Arc, Weak};
 use std::time::Duration;
