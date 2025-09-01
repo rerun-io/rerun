@@ -74,21 +74,7 @@ impl MessageParser for LogMessageParser {
             file,
             function,
             line,
-        } = match cdr::try_decode_message::<rcl_interfaces::Log>(&msg.data) {
-            Ok(log) => log,
-            Err(e) => {
-                // Log detailed diagnostic information about the decode failure
-                re_log::warn!(
-                    "Failed to decode rcl_interfaces::Log message from CDR data. Data length: {}, first 16 bytes: {:02x?}, error: {}",
-                    msg.data.len(),
-                    &msg.data.get(..16.min(msg.data.len())).unwrap_or(&[]),
-                    e
-                );
-
-                // Return early to skip this message but continue processing others
-                return Ok(());
-            }
-        };
+        } = match cdr::try_decode_message::<rcl_interfaces::Log>(&msg.data).context("Failed to decode `rcl_interfaces::Log` message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
@@ -96,10 +82,8 @@ impl MessageParser for LogMessageParser {
             TimeCell::from_timestamp_nanos_since_epoch(stamp.as_nanos()),
         );
 
-        // Format the log message with additional context information
-        let formatted_msg = format!("[{name}] {log_msg}");
 
-        self.text_entries.push(formatted_msg);
+        self.text_entries.push(format!("[{name}] {log_msg}"););
         self.levels.push(level.to_string());
         self.colors.push(Self::ros2_level_to_color(level));
 
@@ -129,7 +113,6 @@ impl MessageParser for LogMessageParser {
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
 
-        // Convert to the component types
         let text_components: Vec<Text> = text_entries.into_iter().map(Text::from).collect();
         let level_components: Vec<TextLogLevel> =
             levels.into_iter().map(TextLogLevel::from).collect();
