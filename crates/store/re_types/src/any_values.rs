@@ -14,7 +14,7 @@ impl Default for AnyValues {
     /// Creates an empty `AnyValues` container.
     fn default() -> Self {
         Self {
-            builder: ArchetypeBuilder::default_without_archetype(),
+            builder: ArchetypeBuilder::new_without_archetype(),
         }
     }
 }
@@ -85,6 +85,7 @@ mod test {
     use crate::components;
 
     use crate::ComponentDescriptor;
+    use re_types_core::datatypes::Utf8;
 
     use super::*;
 
@@ -92,7 +93,7 @@ mod test {
     fn without_archetype() {
         let values = AnyValues::default()
             .with_component::<components::Scalar>("confidence", [1.2f64, 3.4, 5.6])
-            .with_loggable::<components::Text>("homepage", "user.url", vec!["https://www.rerun.io"])
+            .with_loggable::<Utf8>("homepage", "user.url", vec!["https://www.rerun.io"])
             .with_field(
                 "description",
                 std::sync::Arc::new(arrow::array::StringArray::from(vec!["Bla bla bla…"])),

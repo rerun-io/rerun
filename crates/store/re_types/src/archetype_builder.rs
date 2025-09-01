@@ -11,7 +11,6 @@ use re_types_core::{try_serialize_field, AsComponents, ComponentType, Loggable};
 /// A helper for logging a dynamically defined archetype to Rerun.
 /// component names will be modified in a way similar to Rerun
 /// internal types to avoid name collisions.
-//TODO(nick): Should this allow default or is THAT a footgun?
 pub struct ArchetypeBuilder {
     archetype_name: Option<ArchetypeName>,
     batches: IntMap<ComponentIdentifier, SerializedComponentBatch>,
@@ -27,7 +26,8 @@ impl ArchetypeBuilder {
         }
     }
 
-    pub(crate) fn default_without_archetype() -> Self {
+    // Only crate public to reduce code duplication.
+    pub(crate) fn new_without_archetype() -> Self {
         Self {
             archetype_name: None,
             batches: Default::default(),
@@ -104,6 +104,7 @@ mod test {
     use std::collections::BTreeSet;
 
     use crate::components;
+    use re_types_core::datatypes::Utf8;
 
     use super::*;
 
@@ -111,7 +112,7 @@ mod test {
     fn with_archetype() {
         let values = ArchetypeBuilder::new("MyExample")
             .with_component::<components::Scalar>("confidence", [1.2f64, 3.4, 5.6])
-            .with_loggable::<components::Text>("homepage", "user.url", vec!["https://www.rerun.io"])
+            .with_loggable::<Utf8>("homepage", "user.url", vec!["https://www.rerun.io"])
             .with_field(
                 "description",
                 std::sync::Arc::new(arrow::array::StringArray::from(vec!["Bla bla bla…"])),
