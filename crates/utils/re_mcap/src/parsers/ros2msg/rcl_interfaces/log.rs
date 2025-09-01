@@ -1,3 +1,4 @@
+use anyhow::Context as _;
 use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, StringBuilder, UInt32Builder};
 use re_chunk::{Chunk, ChunkComponents, ChunkId};
 use re_log_types::TimeCell;
@@ -74,7 +75,7 @@ impl MessageParser for LogMessageParser {
             file,
             function,
             line,
-        } = match cdr::try_decode_message::<rcl_interfaces::Log>(&msg.data).context("Failed to decode `rcl_interfaces::Log` message from CDR data")?;
+        } = cdr::try_decode_message::<rcl_interfaces::Log>(&msg.data).context("Failed to decode `rcl_interfaces::Log` message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
@@ -83,7 +84,7 @@ impl MessageParser for LogMessageParser {
         );
 
 
-        self.text_entries.push(format!("[{name}] {log_msg}"););
+        self.text_entries.push(format!("[{name}] {log_msg}"));
         self.levels.push(level.to_string());
         self.colors.push(Self::ros2_level_to_color(level));
 
