@@ -1,28 +1,48 @@
 syntax = "proto3";
 
-package rerun.manifest_registry.v1alpha1;
+package rerun.cloud.v1alpha1;
 
+import "google/protobuf/any.proto";
+import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/log_msg.proto";
 
-service ManifestRegistryService {
-  // --- Write data ---
+// The Rerun Cloud public API.
+service RerunCloudService {
+  rpc Version(VersionRequest) returns (VersionResponse) {}
 
-  // Register new partitions with the Dataset (asynchronously)
+  // --- Catalog ---
+
+  rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
+
+  rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse) {}
+
+  rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {}
+
+  rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
+
+  rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
+
+  rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
+
+  rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {}
+
+  // --- Manifest Registry ---
+
+  /* Write data */
+
+  // Register new partitions with the Dataset
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
   // Write chunks to one or more partitions.
   //
   // The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
   //
-  // The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
+  // The destination dataset must be provided in the `x-rerun-dataset-id` header.
   rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
-  // Miscellaneous maintenance operations: scalar index creation, compaction, etc.
-  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
-
-  // --- Query schemas ---
+  /* Query schemas */
 
   // Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
   //
@@ -41,40 +61,17 @@ service ManifestRegistryService {
   // entities and components present in the dataset.
   rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (GetDatasetSchemaResponse) {}
 
-  // --- Indexing ---
+  /* Indexing */
 
   // Creates a custom index for a specific column (vector search, full-text search, etc).
-  //
-  // Index can be created for all or specific partitions. Creating an index will create a new
-  // index-specific chunk manifest for the Dataset.
-  // Chunk manifest contains information about individual chunk rows for all chunks containing
-  // relevant index data.
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
 
   // Recreate an index with the same configuration but (potentially) new data.
   rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
 
-  // --- Queries ---
+  /* Queries */
 
   // Search a previously created index.
-  //
-  // Do a full text, vector or scalar search. Currently only an Indexed search is supported, user must first
-  // call `CreateIndex` for the relevant column.
-  //
-  // The response is a RecordBatch with 4 columns:
-  // - 'partition_id': which partition the data is from
-  // - 'timepoint':  represents the points in time where index query matches.
-  //     What time points are matched depends on the type of index that is queried.
-  //     For example: for vector search it might be timepoints where top-K matches are found within *each* partition in
-  //     the indexed entry.
-  //     For inverted index it might be timepoints where the query string is found in the indexed column
-  // - instance column: if index column contains a batch of values (for example a list of embeddings), then each
-  //     instance of the batch is a separate row in the resulting RecordBatch
-  // - instance_id: this is a simple element index in the batch array. For example if indexed column is a list of
-  //     embeddings \[a,b,c\] (where each embedding is of same length) then 'instance_id' of embedding 'a' is 0,
-  //     'instance_id' of 'b' is 1, etc.
-  //
-  // TODO(zehiko) add support for "brute force" search.
   rpc SearchDataset(SearchDatasetRequest) returns (stream SearchDatasetResponse) {}
 
   // Perform Rerun-native queries on a dataset, returning the matching chunk IDs.
@@ -99,20 +96,69 @@ service ManifestRegistryService {
   // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
   rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
 
-  // --- Developer/Debug APIs ---
-  // Unstable APIs that are not exposed by the Frontend.
+  // --- Tables ---
+  // TODO(jleibs): This will be replaced / extended by Arrow Flight
 
-  // Fetch the internal state of a Partition Manifest.
-  rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
+  // Register a foreign table as a new table entry in the catalog.
+  rpc RegisterTable(RegisterTableRequest) returns (RegisterTableResponse) {}
 
-  // Fetch the internal state of a Schema Manifest.
-  rpc FetchSchemaManifest(FetchSchemaManifestRequest) returns (stream FetchSchemaManifestResponse) {}
+  rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse) {}
 
-  // Retrieves the chunk manifest for a specific index.
-  rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
+  rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
+
+  // --- Tasks ---
+
+  // Query the status of submitted tasks
+  rpc QueryTasks(QueryTasksRequest) returns (QueryTasksResponse) {}
+
+  // Fetch the output of a completed task
+  rpc FetchTaskOutput(FetchTaskOutputRequest) returns (FetchTaskOutputResponse) {}
+
+  // Query the status of submitted tasks as soon as they are no longer pending
+  rpc QueryTasksOnCompletion(QueryTasksOnCompletionRequest) returns (stream QueryTasksOnCompletionResponse) {}
+
+  // --- Utilities ---
+
+  // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
+  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
 }
 
-// --- Write data ---
+// ---
+
+message VersionRequest {}
+
+message VersionResponse {
+  rerun.common.v1alpha1.BuildInfo build_info = 1;
+}
+
+// Application level error - used as `details` in the `google.rpc.Status` message
+message Error {
+  // error code
+  ErrorCode code = 1;
+  // unique identifier associated with the request (e.g. recording id, recording storage url)
+  string id = 2;
+  // human readable details about the error
+  string message = 3;
+}
+
+// Error codes for application level errors
+enum ErrorCode {
+  // unused
+  ERROR_CODE_UNSPECIFIED = 0;
+
+  // object store access error
+  ERROR_CODE_OBJECT_STORE_ERROR = 1;
+
+  // metadata database access error
+  ERROR_CODE_METADATA_DB_ERROR = 2;
+
+  // Encoding / decoding error
+  ERROR_CODE_CODEC_ERROR = 3;
+}
+
+// --- Manifest Registry ---
+
+/* Write data */
 
 message DataSource {
   // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
@@ -133,7 +179,7 @@ enum DataSourceKind {
 }
 
 message RegisterWithDatasetRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
   repeated DataSource data_sources = 2;
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
 }
@@ -148,10 +194,10 @@ message WriteChunksRequest {
 
 message WriteChunksResponse {}
 
-// --- Query schemas ---
+/* Query schemas */
 
 message GetPartitionTableSchemaRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
 }
 
 message GetPartitionTableSchemaResponse {
@@ -159,7 +205,7 @@ message GetPartitionTableSchemaResponse {
 }
 
 message ScanPartitionTableRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
   rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
 }
 
@@ -169,17 +215,17 @@ message ScanPartitionTableResponse {
 }
 
 message GetDatasetSchemaRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
 }
 
 message GetDatasetSchemaResponse {
   rerun.common.v1alpha1.Schema schema = 1;
 }
 
-// --- Indexing ---
+/* Indexing */
 
 message CreateIndexRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
 
   // List of specific partitions that will be indexed (all if left empty).
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
@@ -193,6 +239,18 @@ message CreateIndexRequest {
 
   // Specify behavior when index for a partition was already created.
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
+}
+
+message CreateIndexResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message ReIndexRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+}
+
+message ReIndexResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 message IndexConfig {
@@ -249,23 +307,10 @@ message BTreeIndex {
   // TODO(zehiko) add properties as needed
 }
 
-message CreateIndexResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-message ReIndexRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-}
-
-message ReIndexResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-// --- Queries ---
+/* Queries */
 
 message SearchDatasetRequest {
-  // Dataset for which we want to search index
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
 
   // Index column that is queried
   IndexColumn column = 2;
@@ -310,8 +355,7 @@ message BTreeIndexQuery {
 }
 
 message QueryDatasetRequest {
-  // Dataset client wants to query
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
 
   // Client can specify what partitions are queried. If left unspecified (empty list),
   // all partitions will be queried.
@@ -359,9 +403,6 @@ message QueryDatasetRequest {
   // Generic parameters that will influence the behavior of the Lance scanner.
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
 
-  // A chunk-level latest-at or range query, or both.
-  //
-  // This query is AND'd together with the `partition_ids` and `chunk_ids` filters above.
   Query query = 6;
 }
 
@@ -437,8 +478,7 @@ message QueryRange {
 }
 
 message GetChunksRequest {
-  // Dataset for which we want to get chunks
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
 
   // Client can specify from which partitions to get chunks. If left unspecified (empty list),
   // data from all partition (that match other query parameters) will be included.
@@ -483,9 +523,7 @@ message GetChunksRequest {
   // If set, temporal data will be excluded from the results.
   bool exclude_temporal_data = 8;
 
-  // A chunk-level latest-at or range query, or both.
-  //
-  // This query is AND'd together with the `partition_ids` and `chunk_ids` filters above.
+  // Query details
   Query query = 5;
 }
 
@@ -495,48 +533,29 @@ message GetChunksResponse {
   repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
 }
 
-// --- Developer/Debug APIs ---
-// Unstable APIs that are not exposed by the Frontend.
+// --- Table Apis ---
 
-message FetchPartitionManifestRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-  rerun.common.v1alpha1.PartitionId id = 2;
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
+message GetTableSchemaRequest {
+  rerun.common.v1alpha1.EntryId table_id = 1;
 }
 
-// TODO(cmc): this should have response extensions too.
-message FetchPartitionManifestResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+message GetTableSchemaResponse {
+  rerun.common.v1alpha1.Schema schema = 1;
 }
 
-message FetchSchemaManifestRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+message ScanTableRequest {
+  rerun.common.v1alpha1.EntryId table_id = 1;
+  // TODO(jleibs): support ScanParameters iff we can plumb them into Datafusion TableProvider
+  // Otherwise, just wait for Arrow Flight
+  //rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
 }
 
-// TODO(cmc): this should have response extensions too.
-message FetchSchemaManifestResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-message FetchChunkManifestRequest {
-  // Dataset for which we want to fetch chunk manifest
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Chunk manifest is index specific
-  IndexColumn column = 2;
-
-  // Scan parameters
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
-}
-
-message FetchChunkManifestResponse {
-  // Chunk manifest as arrow RecordBatches
-  rerun.common.v1alpha1.DataframePart data = 1;
+message ScanTableResponse {
+  rerun.common.v1alpha1.DataframePart dataframe_part = 1;
 }
 
 message DoMaintenanceRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
 
   // Create the acceleration structures for temporal queries.
   //
@@ -551,36 +570,288 @@ message DoMaintenanceRequest {
   bool compact_fragments = 3;
 
   // If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+  // In case requested date is more recent than 1 hour, it will be ignored and 1 hour ago
+  // timestamp will be used. This is to prevent still used files (like recent transaction files)
+  // to be removed and cause Lance Dataset update issues.
+  // See https://docs.rs/lance/latest/lance/dataset/cleanup/index.html
+  // and https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html
   google.protobuf.Timestamp cleanup_before = 4;
+
+  // Override default platform behavior and allow cleanup of recent files. This will respect
+  // the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
+  // ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
+  bool unsafe_allow_recent_cleanup = 5;
 }
 
 message DoMaintenanceResponse {
   string report = 1;
 }
 
-// ----------------- Error handling -----------------
+// --- Tasks ---
 
-// Application level error - used as `details` in the `google.rpc.Status` message
-message Error {
-  // error code
-  ErrorCode code = 1;
-  // unique identifier associated with the request (e.g. recording id, recording storage url)
-  string id = 2;
-  // human readable details about the error
-  string message = 3;
+// A task is a unit of work that can be submitted to the system
+message Task {
+  // Unique identifier for the task
+  rerun.common.v1alpha1.TaskId id = 1;
+  // Type of the task
+  string task_type = 2;
+  // Task-type dependant data necessary to de-serialize the task
+  bytes task_data = 3;
 }
 
-// Error codes for application level errors
-enum ErrorCode {
-  // unused
-  ERROR_CODE_UNSPECIFIED = 0;
+// `SubmitTasksRequest` is the request message for submitting tasks
+message SubmitTasksRequest {
+  repeated Task tasks = 1;
+}
 
-  // object store access error
-  ERROR_CODE_OBJECT_STORE_ERROR = 1;
+// `SubmitTaskResponse` contains, for each submitted task
+// its submission outcome, encoded as a `RecordBatch`
+message SubmitTasksResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
 
-  // metadata database access error
-  ERROR_CODE_METADATA_DB_ERROR = 2;
+// `QueryTasksRequest` is the request message for querying tasks status
+message QueryTasksRequest {
+  // Empty queries for all tasks if the server allows it.
+  repeated rerun.common.v1alpha1.TaskId ids = 1;
+}
 
-  // Encoding / decoding error
-  ERROR_CODE_CODEC_ERROR = 3;
+// `QueryTasksResponse` is the response message for querying tasks status
+// encoded as a record batch
+message QueryTasksResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+// `QueryTasksOnCompletionRequest` is the request message for querying tasks status.
+// This is close-to-a-copy of `QueryTasksRequest`, with the addition of a timeout.
+message QueryTasksOnCompletionRequest {
+  // Empty queries for all tasks if the server allows it.
+  repeated rerun.common.v1alpha1.TaskId ids = 1;
+  // Time limit for the server to wait for task completion.
+  // The actual maximum time may be arbitrarily capped by the server.
+  google.protobuf.Duration timeout = 2;
+}
+
+// `QueryTaskOnCompletionResponse` is the response message for querying tasks status
+// encoded as a record batch. This is a copy of `QueryTasksResponse`.
+message QueryTasksOnCompletionResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+// `FetchTaskOutputRequest` is the request message for fetching task output
+message FetchTaskOutputRequest {
+  // Unique identifier for the task
+  rerun.common.v1alpha1.TaskId id = 1;
+}
+
+/// `FetchTaskOutputResponse` is the response message for fetching task output
+message FetchTaskOutputResponse {
+  // The output of the task, encoded as a record batch
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+// --- Catalog ---
+
+// FindEntries
+
+message FindEntriesRequest {
+  EntryFilter filter = 1;
+}
+
+message FindEntriesResponse {
+  repeated EntryDetails entries = 1;
+}
+
+// DeleteDatasetEntry
+
+message DeleteEntryRequest {
+  rerun.common.v1alpha1.EntryId id = 1;
+}
+
+message DeleteEntryResponse {}
+
+// UpdateEntry
+
+message UpdateEntryRequest {
+  // The entry to modify.
+  rerun.common.v1alpha1.EntryId id = 1;
+
+  // The new values for updatable fields.
+  EntryDetailsUpdate entry_details_update = 2;
+}
+
+message UpdateEntryResponse {
+  // The updated entry details
+  EntryDetails entry_details = 1;
+}
+
+// CreateDatasetEntry
+
+message CreateDatasetEntryRequest {
+  // Name of the dataset entry to create.
+  //
+  // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+  // with the same name already exists, the request will fail.
+  optional string name = 1;
+
+  // If specified, create the entry using this specific ID. Use at your own risk.
+  optional rerun.common.v1alpha1.EntryId id = 2;
+
+  //TODO(ab): add IfExistingBehavior?
+}
+
+message CreateDatasetEntryResponse {
+  DatasetEntry dataset = 1;
+}
+
+// ReadDatasetEntry
+
+message ReadDatasetEntryRequest {
+  rerun.common.v1alpha1.EntryId id = 1;
+}
+
+message ReadDatasetEntryResponse {
+  DatasetEntry dataset = 1;
+}
+
+// UpdateDatasetEntry
+
+message UpdateDatasetEntryRequest {
+  // The dataset to modify.
+  rerun.common.v1alpha1.EntryId id = 1;
+
+  // The new values.
+  DatasetDetails dataset_details = 2;
+}
+
+message UpdateDatasetEntryResponse {
+  // The updated dataset entry
+  DatasetEntry dataset = 1;
+}
+
+// RegisterTable
+
+message RegisterTableRequest {
+  // Name of the table entry to create.
+  //
+  // The name should be a short human-readable string. It must be unique within all entries in the catalog. If an entry
+  // with the same name already exists, the request will fail.
+  string name = 1;
+
+  // Information about the table to register.
+  //
+  // This must be encoded message of one one of the following supported types:
+  // - LanceTable
+  google.protobuf.Any provider_details = 2;
+
+  //TODO(ab): add IfExistingBehavior?
+}
+
+message RegisterTableResponse {
+  // Details about the table that was created and registered.
+  TableEntry table_entry = 1;
+}
+
+// ReadTableEntry
+
+message ReadTableEntryRequest {
+  rerun.common.v1alpha1.EntryId id = 1;
+}
+
+message ReadTableEntryResponse {
+  TableEntry table = 1;
+}
+
+message EntryFilter {
+  optional rerun.common.v1alpha1.EntryId id = 1;
+  optional string name = 2;
+  optional EntryKind entry_kind = 3;
+}
+
+// What type of entry. This has strong implication on which APIs are available for this entry.
+enum EntryKind {
+  // Always reserve unspecified as default value
+  ENTRY_KIND_UNSPECIFIED = 0;
+
+  // Order as TYPE, TYPE_VIEW so things stay consistent as we introduce new types.
+  ENTRY_KIND_DATASET = 1;
+
+  ENTRY_KIND_DATASET_VIEW = 2;
+
+  ENTRY_KIND_TABLE = 3;
+
+  ENTRY_KIND_TABLE_VIEW = 4;
+
+  ENTRY_KIND_BLUEPRINT_DATASET = 5;
+}
+
+// Minimal info about an Entry for high-level catalog summary
+message EntryDetails {
+  // The EntryId is immutable
+  rerun.common.v1alpha1.EntryId id = 1;
+
+  // The name of this entry.
+  optional string name = 2;
+
+  // The kind of entry
+  EntryKind entry_kind = 3;
+
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+// Updatable fields of an Entry
+message EntryDetailsUpdate {
+  // The name of this entry.
+  optional string name = 2;
+}
+
+message DatasetDetails {
+  // The blueprint dataset associated with this dataset (if any).
+  optional rerun.common.v1alpha1.EntryId blueprint_dataset = 3;
+
+  // The partition of the blueprint dataset corresponding to the default blueprint (if any).
+  optional rerun.common.v1alpha1.PartitionId default_blueprint = 4;
+}
+
+message DatasetEntry {
+  reserved 3;
+  reserved "blueprint_dataset";
+
+  EntryDetails details = 1;
+
+  // Dataset-specific information, may be update with `UpdateDatasetEntry`
+  DatasetDetails dataset_details = 4;
+
+  // Read-only
+  rerun.common.v1alpha1.DatasetHandle dataset_handle = 2;
+}
+
+message TableEntry {
+  EntryDetails details = 1;
+
+  // Details specific to the table-provider
+  google.protobuf.Any provider_details = 3;
+
+  reserved 2;
+  reserved "schema";
+}
+
+enum SystemTableKind {
+  // Always reserve unspecified as default value
+  SYSTEM_TABLE_KIND_UNSPECIFIED = 0;
+  // Not used yet
+  SYSTEM_TABLE_KIND_NAMESPACES = 1;
+  // All of the entries in the associated namespace
+  SYSTEM_TABLE_KIND_ENTRIES = 2;
+}
+
+message SystemTable {
+  SystemTableKind kind = 1;
+}
+
+// A foreign table stored as a Lance table.
+message LanceTable {
+  // The URL of the Lance table.
+  string table_url = 1;
 }

@@ -90,9 +90,6 @@ jobs:
         # See tests/assets/rrd/README.md for more
         run: pixi run check-backwards-compatibility
 
-      - name: Compare man page to CLI docs
-        run: pixi run rerun-build-web && pixi run ./scripts/ci/check_cli_docs.py
-
   rs-tests:
     name: Test on Linux
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
@@ -152,7 +149,7 @@ jobs:
         include:
           - runs_on: "macos-15-xlarge"
             name: "macos"
-          - runs_on: "windows-latest-16-cores"
+          - runs_on: "windows-latest-32-cores"
             name: "windows"
 
     # Note: we can't use `matrix.runs_on` here because its evaluated before the matrix stuff.

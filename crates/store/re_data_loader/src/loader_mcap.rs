@@ -162,7 +162,8 @@ pub fn load_mcap(
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!();
 
-    let store_id = settings.recommended_store_id();
+    // If there's an open store, use it. If there's no store yet, use the recommended id.
+    let store_id = settings.opened_store_id_or_recommended();
 
     if tx
         .send(LoadedData::LogMsg(

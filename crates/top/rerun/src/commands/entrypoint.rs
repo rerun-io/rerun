@@ -1,4 +1,4 @@
-use std::net::IpAddr;
+use std::{net::IpAddr, time::Duration};
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
@@ -96,16 +96,6 @@ struct Args {
     /// What bind address IP to use.
     #[clap(long, default_value = "0.0.0.0")]
     bind: IpAddr,
-
-    /// Set a maximum input latency, e.g. "200ms" or "10s".
-    ///
-    /// If we go over this, we start dropping packets.
-    ///
-    /// The default is no limit, which means Rerun might eat more and more memory
-    /// and have longer and longer latency, if you are logging data faster
-    /// than Rerun can index it.
-    #[clap(long)]
-    drop_at_latency: Option<String>,
 
     #[clap(
         long,
@@ -487,13 +477,6 @@ impl Args {
             // > What bind address IP to use.
             // >
             // > [default: 0.0.0.0]
-            //
-            // `--drop-at-latency <DROP_AT_LATENCY>`
-            // > Set a maximum input latency, e.g. "200ms" or "10s".
-            // >
-            // > If we go over this, we start dropping packets.
-            // >
-            // > The default is no limit, which means Rerun might eat more and more memory and have longer and longer latency, if you are logging data faster than Rerun can index it.
             // """
             let floatings = any_floating_args.then(|| {
                 let options = cmd
@@ -597,7 +580,8 @@ where
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
     );
 
-    #[cfg(not(all(not(target_arch = "wasm32"), feature = "perf_telemetry")))]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(feature = "perf_telemetry"))]
     re_crash_handler::install_crash_handlers(build_info.clone());
 
     use clap::Parser as _;
@@ -979,7 +963,7 @@ fn connect_to_existing_server(
 
     let uri: re_uri::ProxyUri = format!("rerun+http://{server_addr}/proxy").parse()?;
     re_log::info!(%uri, "Another viewer is already running, streaming data to it.");
-    let sink = re_sdk::sink::GrpcSink::new(uri, crate::default_flush_timeout());
+    let sink = re_sdk::sink::GrpcSink::new(uri);
     let receivers = ReceiversFromUrlParams::new(
         url_or_paths,
         &UrlParamProcessingConfig::convert_everything_to_data_sources(),
@@ -1000,7 +984,7 @@ fn connect_to_existing_server(
             }
         }
     }
-    sink.flush_blocking();
+    sink.flush_blocking(Duration::MAX)?;
 
     Ok(())
 }
@@ -1441,11 +1425,9 @@ impl ReceiversFromUrlParams {
                         data_sources.push(data_source);
                     }
                 }
-            } else if url.parse::<re_uri::RedapUri>().is_ok() {
-                // Readp URLs always have to be passed on.
-                urls_to_pass_on_to_viewer.push(url);
             } else {
-                re_log::warn!("{url:?} is not a valid data source or redap uri.");
+                // We don't have the full url parsing logic here. Just pass it on to the viewer!
+                urls_to_pass_on_to_viewer.push(url);
             }
         }
 

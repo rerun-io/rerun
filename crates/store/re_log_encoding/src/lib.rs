@@ -30,7 +30,7 @@ pub use app_id_injector::{
 
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
-pub use file_sink::{FileSink, FileSinkError};
+pub use file_sink::{FileFlushError, FileSink, FileSinkError};
 
 // ----------------------------------------------------------------------------
 

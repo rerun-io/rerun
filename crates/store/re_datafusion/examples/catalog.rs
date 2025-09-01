@@ -3,7 +3,7 @@ use datafusion::{common::exec_datafusion_err, prelude::SessionContext};
 use itertools::multizip;
 use re_datafusion::DataFusionConnector;
 use re_log_types::external::re_types_core::Loggable as _;
-use re_protos::catalog::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::EntryKind;
 use re_tuid::Tuid;
 
 #[tokio::main]

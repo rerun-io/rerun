@@ -13,6 +13,7 @@ to generate the first versions of these datasets.
 
 ```python
 from datetime import datetime, timedelta
+import numpy as np
 import random
 import rerun as rr
 
@@ -26,26 +27,32 @@ def maybe_val(val):
     else:
         return None
 
+def generate_nanosecond_time(base_time, minute_delta: int):
+    base_ns = base_time.astype(np.int64)
+    new_time_ns = base_ns + minute_delta * 60 * 1_000_000_000
+    return np.datetime64(0, 'ns') + np.timedelta64(new_time_ns, 'ns')
+
 def generate_data(filename, n_rows):
-    base_time = datetime(2024, 1, 1)
-    timestamps = [maybe_val(base_time + timedelta(minutes=i*2)) for i in range(n_rows)]
-    
+    # Intentionally create a timestamp that has values all the way down to nanosecond
+    base_time = np.datetime64('2024-01-15T10:30:45.123456789')
+    timestamps = [maybe_val(generate_nanosecond_time(base_time, i*2)) for i in range(n_rows)]
+
     # Generate durations in minutes
     durations = [maybe_val(timedelta(minutes=30 + i*5)) for i in range(n_rows)]
-    
+
     # Generate sequence numbers
     sequence_numbers = list(maybe_val(x) for x in range(1, n_rows + 1))
-    
+
     obj_x1 = list(maybe_val(float(x)) for x in range(1, n_rows + 1))
     obj_x2 = list(maybe_val(float(x)) for x in range(1, n_rows + 1))
     obj_x3 = list(maybe_val(float(x)) for x in range(1, n_rows + 1))
-    
+
     obj1_indices = list(range(n_rows))
     random.shuffle(obj1_indices)
-    
+
     obj2_indices = list(range(n_rows))
     random.shuffle(obj2_indices)
-    
+
     obj3_indices = list(range(n_rows))
     random.shuffle(obj3_indices)
 
@@ -74,18 +81,24 @@ def generate_data(filename, n_rows):
 
         if sequence is not None:
             rr.set_time("time_3", sequence=sequence)
-        
+
         if obj1_pos is not None:
             rr.log("/obj1", rr.Points3D([[obj1_pos, 0.0, 0.0]]))
 
         if obj2_pos is not None:
             rr.log("/obj2", rr.Points3D([[obj2_pos, 1.0, 0.0]]))
-        
+
         if obj3_pos is not None:
             rr.log("/obj3", rr.Points3D([[obj3_pos, 2.0, 0.0]]))
 
     rr.log("/text2", rr.TextDocument("After text"), static=True)
 
-generate_data("file1", 25)
-generate_data("file2", 50)
+# We want two different size data sets and we want to ensure
+# we have enough partitions that more than one get mapped to
+# each datafusion thread (14 by default, but fewer if less CPUs)
+for idx in range(1, 21):
+    if idx % 2 == 1:
+        generate_data(f"file{idx}", 25)
+    else:
+        generate_data(f"file{idx}", 50)
 ```
