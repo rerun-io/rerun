@@ -21,6 +21,7 @@ pub struct Telemetry {
     logs: Option<SdkLoggerProvider>,
     traces: Option<SdkTracerProvider>,
     metrics: Option<SdkMeterProvider>,
+
     /// The shared manual reader for pull-based metrics collection
     metrics_reader: Option<Arc<opentelemetry_sdk::metrics::ManualReader>>,
 
