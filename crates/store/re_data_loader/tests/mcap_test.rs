@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use re_data_loader::{DataLoaderSettings, LoadedData, loader_mcap::load_mcap};
-    use re_mcap::layers::SelectedLayers;
+    use re_mcap::{cdr::try_encode_message, layers::SelectedLayers};
 
     fn generate_ros2_mcap() -> Vec<u8> {
         let mut buffer = Vec::new();
@@ -33,26 +33,72 @@ mod tests {
                 )
                 .expect("Failed to add channel");
 
-            // Write some test messages
-            for i in 0..5 {
-                let timestamp = 1000000000 + i * 100000000; // nanoseconds
+            let header = re_mcap::parsers::ros2msg::definitions::std_msgs::Header {
+                stamp: re_mcap::parsers::ros2msg::definitions::builtin_interfaces::Time {
+                    sec: 123,
+                    nanosec: 45,
+                },
+                frame_id: String::new(),
+            };
+            let orientation = re_mcap::parsers::ros2msg::definitions::geometry_msgs::Quaternion {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                w: 1.125,
+            };
+            let imu = re_mcap::parsers::ros2msg::definitions::sensor_msgs::Imu {
+                header,
+                orientation,
+                orientation_covariance: [0.0; 9],
+                angular_velocity: re_mcap::parsers::ros2msg::definitions::geometry_msgs::Vector3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                angular_velocity_covariance: [0.0; 9],
+                linear_acceleration:
+                    re_mcap::parsers::ros2msg::definitions::geometry_msgs::Vector3 {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.0,
+                    },
+                linear_acceleration_covariance: [0.0; 9],
+            };
 
-                // Simple CDR-encoded point data (x=i, y=i*2, z=i*3)
-                let mut message_data = Vec::new();
-                message_data.extend_from_slice(&(i as f64).to_le_bytes()); // x
-                message_data.extend_from_slice(&((i * 2) as f64).to_le_bytes()); // y
-                message_data.extend_from_slice(&((i * 3) as f64).to_le_bytes()); // z
+            let message_data = try_encode_message(&imu).expect("Failed to encode message");
 
-                let message_header = mcap::records::MessageHeader {
-                    channel_id,
-                    sequence: i as u32,
-                    log_time: timestamp,
-                    publish_time: timestamp,
-                };
-                writer
-                    .write_to_known_channel(&message_header, &message_data)
-                    .expect("Failed to write message");
-            }
+            let timestamp = 1000000000;
+
+            let message_header = mcap::records::MessageHeader {
+                channel_id,
+                sequence: 1,
+                log_time: timestamp,
+                publish_time: timestamp,
+            };
+            writer
+                .write_to_known_channel(&message_header, &message_data)
+                .expect("Failed to write message");
+
+            // // Write some test messages
+            // for i in 0..5 {
+            //     let timestamp = 1000000000 + i * 100000000; // nanoseconds
+
+            //     // Simple CDR-encoded point data (x=i, y=i*2, z=i*3)
+            //     let mut message_data = Vec::new();
+            //     message_data.extend_from_slice(&(i as f64).to_le_bytes()); // x
+            //     message_data.extend_from_slice(&((i * 2) as f64).to_le_bytes()); // y
+            //     message_data.extend_from_slice(&((i * 3) as f64).to_le_bytes()); // z
+
+            //     let message_header = mcap::records::MessageHeader {
+            //         channel_id,
+            //         sequence: i as u32,
+            //         log_time: timestamp,
+            //         publish_time: timestamp,
+            //     };
+            //     writer
+            //         .write_to_known_channel(&message_header, &message_data)
+            //         .expect("Failed to write message");
+            // }
 
             writer.finish().unwrap();
         }
@@ -62,7 +108,7 @@ mod tests {
     #[test]
     fn test_load_generated_mcap_file() {
         env_logger::init();
-        
+
         let mcap_data = generate_ros2_mcap();
         let (tx, rx) = std::sync::mpsc::channel();
         let settings = DataLoaderSettings::recommended("test");

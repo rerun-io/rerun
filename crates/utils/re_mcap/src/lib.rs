@@ -3,7 +3,7 @@
 mod error;
 pub mod layers;
 
-pub(crate) mod parsers;
+pub mod parsers;
 pub(crate) mod util;
 
 pub use error::Error;

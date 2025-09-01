@@ -1,7 +1,7 @@
 pub mod cdr;
 pub(crate) mod dds;
 mod decode;
-pub(crate) mod ros2msg;
+pub mod ros2msg;
 
 pub use decode::{ChannelId, MessageParser, ParserContext};
 

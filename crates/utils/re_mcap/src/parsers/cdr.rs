@@ -23,8 +23,10 @@
 //! # }
 //! ```
 
+use std::io::Write;
+
 use anyhow::anyhow;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::dds::RepresentationIdentifier;
@@ -60,6 +62,20 @@ pub fn try_decode_message<'d, T: Deserialize<'d>>(msg: &'d [u8]) -> Result<T, Cd
             .map(|(v, _)| v)
             .map_err(CdrError::CdrEncoding)
     }
+}
+
+pub fn try_encode_message<T: Serialize>(msg: &T) -> Result<Vec<u8>, CdrError> {
+    let mut buffer = Vec::new();
+    let mut writer = std::io::Cursor::new(&mut buffer);
+
+    let representation_identifier = RepresentationIdentifier::CdrLittleEndian.to_bytes();
+    writer
+        .write_all(&representation_identifier)
+        .map_err(|e| CdrError::Other(anyhow::Error::from(e)))?;
+
+    cdr_encoding::to_writer::<_, byteorder::LittleEndian, _>(writer, msg)?;
+
+    Ok(buffer)
 }
 
 /// Errors from CDR decoding.
