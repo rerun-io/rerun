@@ -44,9 +44,23 @@ impl re_byte_size::SizeBytes for MeshCacheKey {
     }
 }
 
+struct MeshEntry {
+    mesh: Option<Arc<LoadedMesh>>,
+    last_used_generation: u64,
+}
+
+impl re_byte_size::SizeBytes for MeshEntry {
+    fn heap_size_bytes(&self) -> u64 {
+        self.mesh.heap_size_bytes()
+    }
+}
+
 /// Caches meshes based on their [`MeshCacheKey`].
 #[derive(Default)]
-pub struct MeshCache(HashMap<RowId, HashMap<MeshCacheKey, Option<Arc<LoadedMesh>>>>);
+pub struct MeshCache {
+    cache: HashMap<RowId, HashMap<MeshCacheKey, MeshEntry>>,
+    generation: u64,
+}
 
 /// Either a [`re_types::archetypes::Asset3D`] or [`re_types::archetypes::Mesh3D`] to be cached.
 #[derive(Debug, Clone)]
@@ -71,7 +85,8 @@ impl MeshCache {
         mesh: AnyMesh<'_>,
         render_ctx: &RenderContext,
     ) -> Option<Arc<LoadedMesh>> {
-        self.0
+        let entry = self
+            .cache
             .entry(key.versioned_instance_path_hash.row_id)
             .or_default()
             .entry(key)
@@ -81,24 +96,45 @@ impl MeshCache {
                 let result = LoadedMesh::load(name.to_owned(), mesh, render_ctx);
 
                 match result {
-                    Ok(cpu_mesh) => Some(Arc::new(cpu_mesh)),
+                    Ok(cpu_mesh) => MeshEntry {
+                        mesh: Some(Arc::new(cpu_mesh)),
+                        last_used_generation: 0,
+                    },
                     Err(err) => {
                         re_log::warn!("Failed to load mesh {name:?}: {}", re_error::format(&err));
-                        None
+                        MeshEntry {
+                            mesh: None,
+                            last_used_generation: 0,
+                        }
                     }
                 }
-            })
-            .clone()
+            });
+        entry.last_used_generation = self.generation;
+
+        entry.mesh.clone()
     }
 }
 
 impl Cache for MeshCache {
+    fn begin_frame(&mut self) {
+        // We aggressively clear caches that weren't used in the last frame because
+        // `query_result_hash` in `MeshCacheKey` includes overrides in the hash. And
+        // we currently have no way of knowing which hash should be removed because
+        // of overrides changing.
+        self.cache.retain(|_, meshes| {
+            meshes.retain(|_, mesh| mesh.last_used_generation == self.generation);
+
+            !meshes.is_empty()
+        });
+        self.generation += 1;
+    }
+
     fn purge_memory(&mut self) {
-        self.0.clear();
+        self.cache.clear();
     }
 
     fn bytes_used(&self) -> u64 {
-        self.0.total_size_bytes()
+        self.cache.total_size_bytes()
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
@@ -130,8 +166,8 @@ impl Cache for MeshCache {
             })
             .collect();
 
-        self.0
-            .retain(|row_id, _per_key| !row_ids_removed.contains(row_id));
+        self.cache
+            .retain(|row_id, _meshes| !row_ids_removed.contains(row_id));
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

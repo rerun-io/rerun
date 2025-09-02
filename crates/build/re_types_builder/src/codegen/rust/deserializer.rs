@@ -600,12 +600,10 @@ fn quote_arrow_field_deserializer(
         }
 
         DataType::Utf8 => {
-            let quoted_downcast = quote_array_downcast(
-                obj_field_fqname,
-                data_src,
-                quote!(StringArray),
-                quoted_datatype,
-            );
+            let quoted_downcast = {
+                let cast_as = quote!(StringArray);
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, quoted_datatype)
+            };
 
             let quoted_iter_transparency = quote_iterator_transparency(
                 objects,
@@ -641,8 +639,7 @@ fn quote_arrow_field_deserializer(
                                 (start, end), #data_src_buf.len(),
                             ));
                         }
-
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)] // TODO(apache/arrow-rs#6900): slice_with_length_unchecked unsafe when https://github.com/apache/arrow-rs/pull/6901 is merged and released
                         let data = #data_src_buf.slice_with_length(start, len);
 
                         Ok(data)
