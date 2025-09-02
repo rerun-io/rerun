@@ -537,6 +537,68 @@ fn quote_arrow_field_deserializer(
             }
         }
 
+        DataType::Binary => {
+            // Special code to handle deserializing both 32-bit and 64-bit opffsets (BinaryArray vs LargeBinaryArray)
+            quote! {{
+                fn extract_from_binary<O>(
+                    arrow_data: &arrow::array::GenericByteArray<arrow::datatypes::GenericBinaryType<O>>,
+                ) -> DeserializationResult<std::vec::Vec<Option<arrow::buffer::Buffer>>>
+                where
+                    O: ::arrow::array::OffsetSizeTrait,
+                {
+                    use ::arrow::array::Array as _;
+                    use ::re_types_core::arrow_zip_validity::ZipValidity;
+
+                    let arrow_data_buf = arrow_data.values();
+                    let offsets = arrow_data.offsets();
+
+                    ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
+                        .map(|elem| {
+                            elem.map(|window| {
+                                // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
+
+                                let start = window[0].as_usize();
+                                let end = window[1].as_usize();
+                                let len = end - start;
+
+                                // NOTE: It is absolutely crucial we explicitly handle the
+                                // boundchecks manually first, otherwise rustc completely chokes
+                                // when slicing the data (as in: a 100x perf drop)!
+                                if arrow_data_buf.len() < end {
+                                    // error context is appended below during final collection
+                                    return Err(DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        arrow_data_buf.len(),
+                                    ));
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data = arrow_data_buf.slice_with_length(start, len);
+                                Ok(data)
+                            })
+                            .transpose()
+                        })
+                        .collect::<DeserializationResult<Vec<Option<_>>>>()
+                }
+
+                if let Some(arrow_data) = #data_src.as_any().downcast_ref::<BinaryArray>() {
+                    extract_from_binary(arrow_data)
+                        .with_context(#obj_field_fqname)?
+                        .into_iter()
+                } else if let Some(arrow_data) = #data_src.as_any().downcast_ref::<LargeBinaryArray>()
+                {
+                    extract_from_binary(arrow_data)
+                        .with_context(#obj_field_fqname)?
+                        .into_iter()
+                } else {
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    return Err(DeserializationError::datatype_mismatch(expected, actual))
+                        .with_context(#obj_field_fqname);
+                }
+            }}
+        }
+
         DataType::Utf8 => {
             let quoted_downcast = {
                 let cast_as = quote!(StringArray);
@@ -824,7 +886,7 @@ fn quote_arrow_field_deserializer(
             quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter())
         }
 
-        _ => unimplemented!("{datatype:#?}"),
+        DataType::Object { .. } => unimplemented!("{datatype:#?}"),
     }
 }
 

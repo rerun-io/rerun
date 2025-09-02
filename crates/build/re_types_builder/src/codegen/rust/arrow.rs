@@ -35,7 +35,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
             DataType::Atomic(AtomicDataType::Float32) => quote!(DataType::Float32),
             DataType::Atomic(AtomicDataType::Float64) => quote!(DataType::Float64),
 
-            DataType::Binary => quote!(DataType::Binary),
+            DataType::Binary => quote!(DataType::LargeBinary),
 
             DataType::Utf8 => quote!(DataType::Utf8),
 
