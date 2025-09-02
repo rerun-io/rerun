@@ -2016,7 +2016,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { name : "encoding",
                     display_name : "Encoding", component_type : "rerun.components.Text"
                     .into(), docstring_md :
-                    "The schema definition format used to describe the message structure.\n\nCommon schema encodings include:\n* `protobuf` - Protocol Buffers schema definition\n* `ros1msg` - ROS1 message definition format\n* `ros2msg` - ROS2 message definition format  \n* `jsonschema` - JSON Schema specification\n* `flatbuffer` - FlatBuffers schema definition",
+                    "The schema definition format used to describe the message structure.\n\nCommon schema encodings include:\n* `protobuf` - Protocol Buffers schema definition\n* `ros1msg` - ROS1 message definition format\n* `ros2msg` - ROS2 message definition format\n* `jsonschema` - JSON Schema specification\n* `flatbuffer` - FlatBuffers schema definition",
                     is_required : true, }, ArchetypeFieldReflection { name : "data",
                     display_name : "Data", component_type : "rerun.components.Blob"
                     .into(), docstring_md :

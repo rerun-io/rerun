@@ -36,7 +36,7 @@ table McapSchema (
   /// Common schema encodings include:
   /// * `protobuf` - Protocol Buffers schema definition
   /// * `ros1msg` - ROS1 message definition format
-  /// * `ros2msg` - ROS2 message definition format  
+  /// * `ros2msg` - ROS2 message definition format
   /// * `jsonschema` - JSON Schema specification
   /// * `flatbuffer` - FlatBuffers schema definition
   encoding: rerun.components.Text ("attr.rerun.component_required", order: 3000);
