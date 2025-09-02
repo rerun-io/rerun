@@ -545,12 +545,12 @@ message GetChunksResponse {
 }
 
 message FetchChunksRequest {
-  // Information about the chunks to fetch. This dataframe has to include the following columns:
+  // Information about the chunks to fetch. These dataframes have to include the following columns:
   // * `chunk_id` - Chunk unique identifier
   // * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
   // * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
   // * `chunk_key` - chunk location details
-  rerun.common.v1alpha1.DataframePart chunk_infos = 1;
+  repeated rerun.common.v1alpha1.DataframePart chunk_infos = 1;
 }
 
 message FetchChunksResponse {

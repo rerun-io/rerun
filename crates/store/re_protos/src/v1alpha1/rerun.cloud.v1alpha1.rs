@@ -795,13 +795,13 @@ impl ::prost::Name for GetChunksResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchChunksRequest {
-    /// Information about the chunks to fetch. This dataframe has to include the following columns:
+    /// Information about the chunks to fetch. These dataframes have to include the following columns:
     /// * `chunk_id` - Chunk unique identifier
     /// * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
     /// * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
     /// * `chunk_key` - chunk location details
-    #[prost(message, optional, tag = "1")]
-    pub chunk_infos: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    #[prost(message, repeated, tag = "1")]
+    pub chunk_infos: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for FetchChunksRequest {
     const NAME: &'static str = "FetchChunksRequest";
