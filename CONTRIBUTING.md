@@ -36,6 +36,30 @@ Members of the `rerun-io` organization and collaborators in the `rerun-io/rerun`
 
 ![PR comment with the text `@rerun-bot approve`](https://github.com/rerun-io/rerun/assets/1665677/b5f07f3f-ea95-44a4-8eb7-f07c905f96c3)
 
+
+### Labeling of PRs & changelog generation
+
+Members of the `rerun-io` organization _have_ to add label PRs since they're part of how we generate [changelogs](https://github.com/rerun-io/rerun/blob/main/CHANGELOG.md).
+
+If `include in changelog` is present, the **title** of the PR will be used as a line in the detailed section of the changelog.
+Therefore, make sure that it's informative & concise without any additional context other than the category.
+If a PR title should not be part of the changelog, you _have_ to label the PR with `exclude from changelog`.
+
+The category of the changelog entry is governed by additional labels of which you have to provide at least one.
+The exact list may change over time, see the [CI job](./.github/workflows/labels.yml) checking for it for a full list.
+
+Beyond changelog categorization, it's encouraged to add too many rather than too few labels as they help with search.
+
+#### What should go to the changelog?
+
+Whether a PR should be added to the changelog isn't always clear cut, but it's advised to err on the side of
+adding too many entries rather than too few!
+Generally, whenever you believe that this is a value-add for a user browsing the detailed changelog, add it.
+Also, credit where credit is due, be more generous adding contributions from outside the `rerun-io` org to the changelog!
+
+We typically don't include:
+pure refactors, testing, CI fixes, fixes for bugs that showed up since the last release, minor doc changes (like typos) etc.
+
 ## Contributing to CI
 
 Every CI job would in its ideal state consist of only a single `pixi` (or similar) script invocation that works locally as-is.
