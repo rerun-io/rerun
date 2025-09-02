@@ -2,7 +2,7 @@
 
 mod test_data;
 
-use re_cloud_client::{ClientConnectionError, ConnectionClient, ConnectionRegistry};
+use re_redap_client::{ClientConnectionError, ConnectionClient, ConnectionRegistry};
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
 use std::net::TcpListener;

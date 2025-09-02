@@ -9,9 +9,6 @@ use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 
-use re_cloud_client::{
-    ClientConnectionError, ConnectionClient, ConnectionRegistryHandle, StreamError,
-};
 use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
 use re_log_encoding::codec::CodecError;
@@ -21,6 +18,9 @@ use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
 use re_protos::external::prost;
 use re_protos::external::prost::Name as _;
+use re_redap_client::{
+    ClientConnectionError, ConnectionClient, ConnectionRegistryHandle, StreamError,
+};
 use re_sorbet::SorbetError;
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;

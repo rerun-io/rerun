@@ -18,8 +18,8 @@ use std::error::Error as _;
 use pyo3::PyErr;
 use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
 
-use re_cloud_client::{ClientConnectionError, ConnectionError};
 use re_protos::cloud::v1alpha1::ext::GetDatasetSchemaResponseError;
+use re_redap_client::{ClientConnectionError, ConnectionError};
 
 // ---
 
@@ -50,7 +50,7 @@ enum ExternalError {
     ChunkStoreError(Box<re_chunk_store::ChunkStoreError>),
 
     #[error("{0}")]
-    StreamError(Box<re_cloud_client::StreamError>),
+    StreamError(Box<re_redap_client::StreamError>),
 
     #[error("{0}")]
     ArrowError(#[from] arrow::error::ArrowError),
@@ -97,7 +97,7 @@ macro_rules! impl_from_boxed {
 
 impl_from_boxed!(re_chunk::ChunkError, ChunkError);
 impl_from_boxed!(re_chunk_store::ChunkStoreError, ChunkStoreError);
-impl_from_boxed!(re_cloud_client::StreamError, StreamError);
+impl_from_boxed!(re_redap_client::StreamError, StreamError);
 impl_from_boxed!(tonic::transport::Error, TonicTransportError);
 impl_from_boxed!(tonic::Status, TonicStatusError);
 impl_from_boxed!(datafusion::error::DataFusionError, DatafusionError);
@@ -108,7 +108,7 @@ impl From<re_protos::cloud::v1alpha1::ext::GetDatasetSchemaResponseError> for Ex
         match value {
             GetDatasetSchemaResponseError::ArrowError(err) => err.into(),
             GetDatasetSchemaResponseError::TypeConversionError(err) => {
-                re_cloud_client::StreamError::from(err).into()
+                re_redap_client::StreamError::from(err).into()
             }
         }
     }

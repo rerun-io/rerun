@@ -40,7 +40,7 @@ pub struct WebHandle {
     tx_channels: HashMap<String, Channel>,
 
     /// The connection registry to use for the viewer.
-    connection_registry: re_cloud_client::ConnectionRegistryHandle,
+    connection_registry: re_redap_client::ConnectionRegistryHandle,
 
     app_options: AppOptions,
 }
@@ -54,7 +54,7 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
-        let connection_registry = re_cloud_client::ConnectionRegistry::new();
+        let connection_registry = re_redap_client::ConnectionRegistry::new();
 
         Ok(Self {
             runner: eframe::WebRunner::new(),
@@ -710,7 +710,7 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 fn create_app(
     main_thread_token: crate::MainThreadToken,
     cc: &eframe::CreationContext<'_>,
-    connection_registry: re_cloud_client::ConnectionRegistryHandle,
+    connection_registry: re_redap_client::ConnectionRegistryHandle,
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();

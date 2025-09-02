@@ -1,15 +1,15 @@
-//! Official gRPC client for the Rerun Cloud platform.
+//! Official gRPC client for the Rerun Data Protocol.
 
 mod connection_client;
 mod connection_registry;
-mod redap;
+mod grpc;
 
 pub use self::{
     connection_client::GenericConnectionClient,
     connection_registry::{
         ClientConnectionError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
     },
-    redap::{
+    grpc::{
         ConnectionError, RedapClient, UiCommand, channel,
         get_chunks_response_to_chunk_and_partition_id, stream_blueprint_and_partition_from_server,
         stream_dataset_from_redap,

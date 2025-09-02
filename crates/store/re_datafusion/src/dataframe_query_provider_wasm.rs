@@ -1,6 +1,10 @@
-use crate::dataframe_query_common::{
-    ChunkInfo, align_record_batch_to_schema, compute_partition_stream_chunk_info,
-};
+use std::any::Any;
+use std::collections::BTreeMap;
+use std::fmt::Debug;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll};
+
 use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
@@ -16,7 +20,8 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use datafusion::{error::DataFusionError, execution::SendableRecordBatchStream};
 use futures_util::{Stream, StreamExt as _};
-use re_cloud_client::ConnectionClient;
+use tokio::runtime::Handle;
+
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
@@ -25,13 +30,11 @@ use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::cloud::v1alpha1::GetChunksRequest;
 use re_protos::common::v1alpha1::PartitionId;
-use std::any::Any;
-use std::collections::BTreeMap;
-use std::fmt::Debug;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
-use tokio::runtime::Handle;
+use re_redap_client::ConnectionClient;
+
+use crate::dataframe_query_common::{
+    ChunkInfo, align_record_batch_to_schema, compute_partition_stream_chunk_info,
+};
 
 #[derive(Debug)]
 pub(crate) struct PartitionStreamExec {
@@ -79,7 +82,7 @@ impl DataframePartitionStream {
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
-        let mut chunk_stream = re_cloud_client::get_chunks_response_to_chunk_and_partition_id(
+        let mut chunk_stream = re_redap_client::get_chunks_response_to_chunk_and_partition_id(
             get_chunks_response_stream,
         );
 

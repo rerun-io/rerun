@@ -1,19 +1,15 @@
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 
-#[cfg(not(target_arch = "wasm32"))]
 use re_uri::Origin;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub type ViewerClient = MessageProxyServiceClient<tonic::transport::Channel>;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub async fn viewer_client(origin: Origin) -> Result<ViewerClient, tonic::transport::Error> {
     let channel = channel(origin).await?;
     Ok(MessageProxyServiceClient::new(channel)
         .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE))
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, tonic::transport::Error> {
     use tonic::transport::Endpoint;
 

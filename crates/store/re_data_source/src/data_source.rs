@@ -1,5 +1,5 @@
-use re_cloud_client::ConnectionRegistryHandle;
 use re_log_types::{LogMsg, RecordingId};
+use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
 use crate::FileContents;
@@ -148,7 +148,7 @@ impl LogDataSource {
     pub fn stream(
         self,
         connection_registry: &ConnectionRegistryHandle,
-        on_ui_cmd: Option<Box<dyn Fn(re_cloud_client::UiCommand) + Send + Sync>>,
+        on_ui_cmd: Option<Box<dyn Fn(re_redap_client::UiCommand) + Send + Sync>>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<Receiver<LogMsg>> {
         re_tracing::profile_function!();
@@ -253,7 +253,7 @@ impl LogDataSource {
                 let uri_clone = uri.clone();
                 let stream_partition = async move {
                     let client = connection_registry.client(uri_clone.origin.clone()).await?;
-                    re_cloud_client::stream_blueprint_and_partition_from_server(
+                    re_redap_client::stream_blueprint_and_partition_from_server(
                         client, tx, uri_clone, on_ui_cmd, on_msg,
                     )
                     .await

@@ -1,3 +1,9 @@
+use std::any::Any;
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet};
+use std::str::FromStr as _;
+use std::sync::Arc;
+
 use arrow::array::{
     ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
     TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
@@ -12,7 +18,7 @@ use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
-use re_cloud_client::{ConnectionClient, ConnectionRegistryHandle};
+
 use re_dataframe::external::re_chunk::ChunkId;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
@@ -23,14 +29,10 @@ use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest};
 use re_protos::common::v1alpha1::ext::ScanParameters;
+use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_tuid::Tuid;
 use re_uri::Origin;
-use std::any::Any;
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
-use std::str::FromStr as _;
-use std::sync::Arc;
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
 /// The default for Data Fusion is 8192, which leads to a 256Kb record batch on average for
