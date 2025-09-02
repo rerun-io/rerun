@@ -22,7 +22,6 @@ mod make_list_arrays;
 mod v0_0_1__to__v0_0_2;
 mod v0_0_2__to__v0_1_0;
 mod v0_1_0__to__v0_1_1;
-mod v0_1_1__to__v0_1_2;
 
 /// This trait needs to be implemented by any new migrations. It ensures that
 /// all migrations adhere to the same contract.
@@ -129,7 +128,6 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
                     batch = maybe_apply::<v0_0_1__to__v0_0_2::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_0_2__to__v0_1_0::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_1_0__to__v0_1_1::Migration>(&batch_version, batch);
-                    batch = maybe_apply::<v0_1_1__to__v0_1_2::Migration>(&batch_version, batch);
                     batch
                 }
             }
