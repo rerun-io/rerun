@@ -130,12 +130,24 @@ fn data_type_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
 
     let data_type_ui = DataTypeUi::new(field.data_type());
 
+    let text = if field.is_nullable() {
+        format!("nullable {}", data_type_ui.type_name)
+    } else {
+        field.name().to_owned()
+    };
+
     let property = PropertyContent::new(field.name())
-        .value_text(data_type_ui.type_name)
+        .value_text(text)
         .show_only_when_collapsed(false);
 
     if let Some(content) = data_type_ui.content {
-        item.show_hierarchical_with_children(ui, Id::new(field.name()), true, property, content);
+        item.show_hierarchical_with_children(
+            ui,
+            ui.unique_id().with(field.name()),
+            true,
+            property,
+            content,
+        );
     } else {
         item.show_hierarchical(ui, property);
     }
