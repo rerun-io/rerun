@@ -1,5 +1,7 @@
 use egui_kittest::Harness;
+use egui_kittest::kittest::{By, Queryable};
 use re_build_info::build_info;
+use std::sync::Arc;
 
 use crate::{
     App, AppEnvironment, AsyncRuntimeHandle, MainThreadToken, StartupOptions,
@@ -31,22 +33,73 @@ pub fn viewer_harness() -> Harness<'static, App> {
         })
 }
 
-/// Steps through the harness until the `predicate` closure returns `true`.
-pub async fn step_until<'app, 'harness, Predicate>(
-    harness: &'harness mut egui_kittest::Harness<'app, App>,
-    mut predicate: Predicate,
+/// Utility to wait until some widget appears.
+pub struct StepUntil {
     step_duration: tokio::time::Duration,
     max_duration: tokio::time::Duration,
-) where
-    Predicate: for<'a> FnMut(&'a egui_kittest::Harness<'app, App>) -> bool,
-{
-    let start_time = std::time::Instant::now();
-    let mut success = predicate(harness);
-    while !success && start_time.elapsed() <= max_duration {
-        harness.step();
-        tokio::time::sleep(step_duration).await;
-        harness.step();
-        success = predicate(harness);
+    debug_label: String,
+}
+
+impl StepUntil {
+    pub fn new(debug_label: impl ToString) -> Self {
+        Self {
+            debug_label: debug_label.to_string(),
+            step_duration: tokio::time::Duration::from_millis(100),
+            max_duration: tokio::time::Duration::from_secs(5),
+        }
     }
-    assert!(success, "Timed out waiting for predicate to be true.");
+
+    /// Step duration.
+    ///
+    /// Default is 100ms.
+    pub fn step_duration(mut self, duration: tokio::time::Duration) -> Self {
+        self.step_duration = duration;
+        self
+    }
+
+    /// Max duration to wait for the predicate to be true.
+    ///
+    /// Default is 5 seconds.
+    pub fn max_duration(mut self, duration: tokio::time::Duration) -> Self {
+        self.max_duration = duration;
+        self
+    }
+
+    /// Set the max_duration to step_duration * steps
+    pub fn steps(mut self, steps: u32) -> Self {
+        self.max_duration = self.step_duration * steps;
+        self
+    }
+
+    /// Step until the predicate returns Some.
+    pub async fn run<'app, 'harness: 'pre, 'pre, State, Predicate, R>(
+        self,
+        harness: &'harness mut egui_kittest::Harness<'app, State>,
+        mut predicate: Predicate,
+    ) -> R
+    where
+        Predicate: FnMut(&'pre Harness<'app, State>) -> Option<R>,
+    {
+        let start_time = std::time::Instant::now();
+        loop {
+            match predicate(harness) {
+                Some(result) => {
+                    return result;
+                }
+                None => {
+                    if start_time.elapsed() > self.max_duration {
+                        panic!(
+                            r#"Timed out waiting for "{}"
+
+Found nodes: {:?}"#,
+                            self.debug_label,
+                            harness.root()
+                        );
+                    }
+                    tokio::time::sleep(self.step_duration).await;
+                    harness.step();
+                }
+            }
+        }
+    }
 }
