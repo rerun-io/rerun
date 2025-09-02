@@ -148,7 +148,7 @@ impl MemoryPanel {
         });
 
         if !report.per_cache_item_info.is_empty() {
-            egui::ScrollArea::horizontal()
+            egui::ScrollArea::vertical()
                 .max_height(200.0)
                 .id_salt(name)
                 .show(ui, |ui| {
