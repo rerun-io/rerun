@@ -62,20 +62,6 @@ pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {
     std::sync::Arc::new(array)
 }
 
-/// Returns an iterator with the lengths of the offsets.
-pub fn offsets_lengths(offsets: &OffsetBuffer<i32>) -> impl Iterator<Item = usize> + '_ {
-    // TODO(emilk): remove when we update to Arrow 54 (which has an API for this)
-    offsets.windows(2).map(|w| {
-        let start = w[0];
-        let end = w[1];
-        debug_assert!(
-            start <= end && 0 <= start,
-            "Bad arrow offset buffer: {start}, {end}"
-        );
-        end.saturating_sub(start).max(0) as usize
-    })
-}
-
 /// Repartitions a [`ListArray`] according to the specified `lengths`, ignoring previous partitioning.
 ///
 /// The specified `lengths` must sum to the total length underlying values (i.e. the child array).

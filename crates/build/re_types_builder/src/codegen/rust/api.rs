@@ -783,6 +783,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Float16 => quote!(half::f16),
             Type::Float32 => quote!(f32),
             Type::Float64 => quote!(f64),
+            Type::Binary => quote!(::arrow::buffer::Buffer),
             Type::String => quote!(::re_types_core::ArrowString),
             Type::Array { elem_type, length } => {
                 if *unwrap {
@@ -821,6 +822,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Float16 => quote!(half::f16),
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
+            ElementType::Binary => quote!(::arrow::buffer::Buffer),
             ElementType::String => quote!(::re_types_core::ArrowString),
             ElementType::Object { fqname } => quote_fqname_as_type_path(fqname),
         }
