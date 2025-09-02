@@ -1,4 +1,4 @@
-//! Server implementation of an in-memory Storage Node ("proxy").
+//! Server for the legacy `StoreHub` API.
 
 pub mod shutdown;
 

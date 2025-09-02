@@ -9,12 +9,12 @@ use datafusion::{
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
-use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
     cloud::v1alpha1::SearchDatasetRequest, cloud::v1alpha1::SearchDatasetResponse,
     common::v1alpha1::ScanParameters,
 };
+use re_redap_client::ConnectionClient;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
