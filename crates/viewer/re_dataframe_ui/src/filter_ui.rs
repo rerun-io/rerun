@@ -64,6 +64,7 @@ impl FilterState {
     /// Display the filter bar UI.
     ///
     /// Returns true if the filter must be committed.
+    #[must_use]
     pub fn filter_bar_ui(&mut self, ui: &mut egui::Ui) -> bool {
         if self.filters.is_empty() {
             return false;
@@ -130,6 +131,7 @@ impl IdentifiedFilter {
     /// UI for a single filter.
     ///
     /// Returns true if the filter must be committed.
+    #[must_use]
     fn ui(&mut self, ui: &mut egui::Ui, activate_filter: bool) -> DisplayFilterUiResult {
         let mut result = DisplayFilterUiResult {
             should_commit: false,
@@ -265,6 +267,54 @@ impl FilterOperation {
     fn rhs_text(&self) -> String {
         match self {
             Self::StringContains(query) => query.clone(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_filter_ui() {
+        // Let's remember to update this test when adding new filter operations.
+        let _: () = {
+            let _op = FilterOperation::StringContains(String::new());
+            match _op {
+                FilterOperation::StringContains(_) => {}
+            }
+        };
+
+        let test_cases = [
+            (
+                FilterOperation::StringContains("query".to_owned()),
+                "string_contains",
+            ),
+            (
+                FilterOperation::StringContains(String::new()),
+                "string_contains_empty",
+            ),
+        ];
+
+        for (filter_op, test_name) in test_cases {
+            let mut harness = egui_kittest::Harness::builder()
+                .with_size(egui::Vec2::new(500.0, 80.0))
+                .build_ui(|ui| {
+                    re_ui::apply_style_and_install_loaders(ui.ctx());
+
+                    let mut filter_state = FilterState {
+                        filters: vec![
+                            Filter::new("column:name".to_owned(), filter_op.clone()).into(),
+                        ],
+                        active_filter: None,
+                    };
+
+                    let _res = filter_state.filter_bar_ui(ui);
+                });
+
+            harness.run();
+
+            harness.snapshot(format!("filter_ui_{test_name}"));
         }
     }
 }
