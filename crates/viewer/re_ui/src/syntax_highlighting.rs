@@ -31,10 +31,10 @@ pub struct SyntaxHighlightedBuilder<'a> {
 
 /// Easily build syntax-highlighted [`LayoutJob`]s.
 impl<'a> SyntaxHighlightedBuilder<'a> {
-    pub fn new(style: &'a Style, tokens: &'a DesignTokens) -> Self {
+    pub fn new(style: &'a Style) -> Self {
         Self {
             style,
-            tokens,
+            tokens: crate::design_tokens_of_visuals(style.visuals()),
             job: LayoutJob::default(),
         }
     }

@@ -2,9 +2,9 @@ use crate::datatype_ui::data_type_ui;
 use crate::show_index::ShowIndex;
 use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
 use re_format::format_uint;
-use re_ui::list_item::{list_item_scope, LabelContent, PropertyContent};
-use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::UiExt as _;
+use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
 enum NodeLabel {
     /// The index to *display*. May be different from the actual index of the value.
@@ -56,19 +56,19 @@ impl<'a> ArrowNode<'a> {
     pub fn show(self, ui: &mut Ui, index: usize) {
         let label = match self.label {
             NodeLabel::Index(idx) => {
-                let mut builder = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+                let mut builder = SyntaxHighlightedBuilder::new(ui.style());
                 builder.code_index(&format_uint(idx));
                 builder.into_widget_text()
             }
             NodeLabel::Name(name) => {
-                let mut builder = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+                let mut builder = SyntaxHighlightedBuilder::new(ui.style());
                 builder.code_name(&name);
                 builder.into_widget_text()
             }
             NodeLabel::Custom(name) => name,
         };
 
-        let mut value = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+        let mut value = SyntaxHighlightedBuilder::new(ui.style());
         let result = self.values.write(index, &mut value);
         let value = match result {
             Ok(()) => value.into_widget_text(),

@@ -60,7 +60,7 @@ impl<'a> ArrayUi<'a> {
     ///
     /// Arrays will be limited to a sane number of items.
     pub fn job(&self, ui: &Ui) -> Result<LayoutJob, ArrowError> {
-        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
         write_list(&mut highlighted, 0..self.array.len(), &*self.format)?;
         Ok(highlighted.into_job())
     }
@@ -69,7 +69,7 @@ impl<'a> ArrayUi<'a> {
     ///
     /// Nested arrays will be limited to a sane number of items.
     pub fn value_job(&self, ui: &Ui, idx: usize) -> Result<LayoutJob, ArrowError> {
-        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
         self.format.write(idx, &mut highlighted)?;
         Ok(highlighted.into_job())
     }
@@ -176,7 +176,7 @@ pub(crate) trait ShowIndex {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult;
 
     fn show(&self, idx: usize, ui: &mut Ui) {
-        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
         let result = self.write(idx, &mut highlighted);
         match result {
             Ok(_) => {
@@ -212,7 +212,7 @@ trait ShowIndexState<'a> {
     ) -> EmptyArrowResult;
 
     fn show(&self, state: &Self::State, idx: usize, ui: &mut Ui) {
-        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
         let result = self.write(state, idx, &mut highlighted);
         match result {
             Ok(_) => {
@@ -578,7 +578,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
         let iter = start..end;
 
         for idx in iter {
-            let mut key_string = SyntaxHighlightedBuilder::new(ui.style(), ui.tokens());
+            let mut key_string = SyntaxHighlightedBuilder::new(ui.style());
             let result = state.0.write(idx, &mut key_string);
             let text = if result.is_err() {
                 RichText::new("cannot display key")
