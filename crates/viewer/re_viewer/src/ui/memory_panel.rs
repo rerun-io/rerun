@@ -156,8 +156,8 @@ impl MemoryPanel {
                         .num_columns(3)
                         .show(ui, |ui| {
                             ui.label(egui::RichText::new("Name").underline());
-                            ui.label(egui::RichText::new("Memory (cpu)").underline());
-                            ui.label(egui::RichText::new("Memory (gpu)").underline());
+                            ui.label(egui::RichText::new("Memory (CPU)").underline());
+                            ui.label(egui::RichText::new("Memory (GPU)").underline());
                             ui.end_row();
 
                             for item in &report.per_cache_item_info {
