@@ -60,6 +60,17 @@ Also, credit where credit is due, be more generous adding contributions from out
 We typically don't include:
 pure refactors, testing, CI fixes, fixes for bugs that showed up since the last release, minor doc changes (like typos) etc.
 
+#### Other special labels
+
+* `deploy docs`:
+  PRs marked with this will automatically be cherry-picked to the `docs-latest` branch which then will kick off a rebuild of the public [doc page](https://www.rerun.io/docs)
+  Use this for landing doc fixes that are relevant to the latest release.
+* `do-not-merge`:
+  Will fail the CI unconditionally.
+  Useful e.g. for opening PRs that target branches other than `main` which you want to rebase prior to merging
+  or when you're still waiting on a test result.
+  Alternatively, you can also use checkboxes in the PR description - any unticked checkboxes will make the ci fail automatically ✨
+
 ## Contributing to CI
 
 Every CI job would in its ideal state consist of only a single `pixi` (or similar) script invocation that works locally as-is.

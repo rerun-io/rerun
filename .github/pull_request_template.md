@@ -19,4 +19,6 @@ We track various metrics at <https://build.rerun.io>.
 For maintainers:
 * To run all checks from `main`, comment on the PR with `@rerun-bot full-check`.
 * To deploy documentation changes immediately after merging this PR, add the `deploy docs` label.
+
+For more details check the PR section on <https://github.com/rerun-io/rerun/blob/main/CONTRIBUTING.md>.
 -->
