@@ -200,3 +200,7 @@ jobs:
 
       - name: Check the python library signatures
         run: pixi run -e wheel-test-min python scripts/ci/python_check_signatures.py
+
+      - name: Report disk usage
+        if: always() # Run this even if a previous step fails.
+        run: df -h
