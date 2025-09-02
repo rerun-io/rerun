@@ -19,5 +19,5 @@ uint64
 
 ## Used by
 
-* [`ChannelCountPair`](../datatypes/channel_count_pair.md)
+* [`ChannelCountPair`](../datatypes/channel_count_pair.md?speculative-link)
 * [`Count`](../components/count.md?speculative-link)

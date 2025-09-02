@@ -26,9 +26,9 @@ Struct {
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `ChannelCountPair`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ChannelCountPair.html)
- * 🐍 [Python API docs for `ChannelCountPair`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ChannelCountPair)
- * 🦀 [Rust API docs for `ChannelCountPair`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ChannelCountPair.html)
+ * 🌊 [C++ API docs for `ChannelCountPair`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ChannelCountPair.html?speculative-link)
+ * 🐍 [Python API docs for `ChannelCountPair`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.ChannelCountPair)
+ * 🦀 [Rust API docs for `ChannelCountPair`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ChannelCountPair.html?speculative-link)
 
 
 ## Used by

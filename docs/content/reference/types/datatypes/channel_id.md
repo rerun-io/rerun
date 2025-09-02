@@ -14,9 +14,9 @@ uint16
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `ChannelId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ChannelId.html)
- * 🐍 [Python API docs for `ChannelId`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ChannelId)
- * 🦀 [Rust API docs for `ChannelId`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ChannelId.html)
+ * 🌊 [C++ API docs for `ChannelId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ChannelId.html?speculative-link)
+ * 🐍 [Python API docs for `ChannelId`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.ChannelId)
+ * 🦀 [Rust API docs for `ChannelId`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ChannelId.html?speculative-link)
 
 
 ## Used by
