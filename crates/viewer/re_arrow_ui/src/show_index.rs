@@ -21,7 +21,6 @@ use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::text::LayoutJob;
 use egui::{RichText, Ui};
-use half::f16;
 use re_ui::UiExt as _;
 use re_ui::list_item::LabelContent;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -330,11 +329,7 @@ primitive_display!(re_format::format_int: Int8Type, Int16Type, Int32Type, Int64T
 primitive_display!(re_format::format_uint: UInt8Type, UInt16Type, UInt32Type, UInt64Type);
 primitive_display!(re_format::format_f32: Float32Type);
 primitive_display!(re_format::format_f64: Float64Type);
-
-fn format_f16(value: f16) -> String {
-    re_format::format_f32(value.to_f32())
-}
-primitive_display!(format_f16: Float16Type);
+primitive_display!(re_format::format_f16: Float16Type);
 
 impl<OffsetSize: OffsetSizeTrait> ShowIndex for &GenericBinaryArray<OffsetSize> {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult {

@@ -1,7 +1,6 @@
 use crate::datatype_ui::DataTypeUi;
 use crate::show_index::ArrayUi;
 use arrow::{array::Array, error::ArrowError, util::display::FormatOptions};
-use egui::Id;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_ui::list_item::{PropertyContent, list_item_scope};
 use re_ui::{UiExt as _, UiLayout};
