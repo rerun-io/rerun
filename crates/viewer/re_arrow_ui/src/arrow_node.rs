@@ -32,6 +32,8 @@ impl<'a> ArrowNode<'a> {
     }
 
     /// Create a new [`ArrowNode`] with a name label.
+    ///
+    /// Use this with e.g. field names of a `StructArray`.
     pub fn name(name: impl Into<String>, values: &'a dyn ShowIndex) -> Self {
         Self {
             label: NodeLabel::Name(name.into()),
