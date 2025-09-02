@@ -117,9 +117,9 @@ impl MeshCache {
 
 impl Cache for MeshCache {
     fn begin_frame(&mut self) {
-        // We aggressivly clear caches that weren't used in the last frame because
+        // We aggressively clear caches that weren't used in the last frame because
         // `query_result_hash` in `MeshCacheKey` includes overrides in the hash. And
-        // we currenlty have no way of knowing which hash should be removed because
+        // we currently have no way of knowing which hash should be removed because
         // of overrides changing.
         self.cache.retain(|_, meshes| {
             meshes.retain(|_, mesh| mesh.last_used_generation == self.generation);
