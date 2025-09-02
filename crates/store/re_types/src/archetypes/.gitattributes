@@ -25,6 +25,7 @@ line_strips3d.rs linguist-generated=true
 mcap_channel.rs linguist-generated=true
 mcap_message.rs linguist-generated=true
 mcap_schema.rs linguist-generated=true
+mcap_statistics.rs linguist-generated=true
 mesh3d.rs linguist-generated=true
 mod.rs linguist-generated=true
 pinhole.rs linguist-generated=true

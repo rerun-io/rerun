@@ -25,6 +25,7 @@ include "./archetypes/line_strips3d.fbs";
 include "./archetypes/mcap_channel.fbs";
 include "./archetypes/mcap_message.fbs";
 include "./archetypes/mcap_schema.fbs";
+include "./archetypes/mcap_statistics.fbs";
 include "./archetypes/mesh3d.fbs";
 include "./archetypes/pinhole.fbs";
 include "./archetypes/points2d.fbs";

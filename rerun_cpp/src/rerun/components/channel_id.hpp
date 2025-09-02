@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/uint16.hpp"
+#include "../datatypes/channel_id.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -14,34 +14,34 @@ namespace rerun::components {
     ///
     /// Used to identify specific channels within an MCAP file.
     struct ChannelId {
-        rerun::datatypes::UInt16 id;
+        rerun::datatypes::ChannelId id;
 
       public:
         ChannelId() = default;
 
-        ChannelId(rerun::datatypes::UInt16 id_) : id(id_) {}
+        ChannelId(rerun::datatypes::ChannelId id_) : id(id_) {}
 
-        ChannelId& operator=(rerun::datatypes::UInt16 id_) {
+        ChannelId& operator=(rerun::datatypes::ChannelId id_) {
             id = id_;
             return *this;
         }
 
-        ChannelId(uint16_t value_) : id(value_) {}
+        ChannelId(uint16_t id_) : id(id_) {}
 
-        ChannelId& operator=(uint16_t value_) {
-            id = value_;
+        ChannelId& operator=(uint16_t id_) {
+            id = id_;
             return *this;
         }
 
-        /// Cast to the underlying UInt16 datatype
-        operator rerun::datatypes::UInt16() const {
+        /// Cast to the underlying ChannelId datatype
+        operator rerun::datatypes::ChannelId() const {
             return id;
         }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::UInt16) == sizeof(components::ChannelId));
+    static_assert(sizeof(rerun::datatypes::ChannelId) == sizeof(components::ChannelId));
 
     /// \private
     template <>
@@ -50,7 +50,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::UInt16>::arrow_datatype();
+            return Loggable<rerun::datatypes::ChannelId>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::ChannelId` into an arrow array.
@@ -58,14 +58,17 @@ namespace rerun {
             const components::ChannelId* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::UInt16>::to_arrow(nullptr, 0);
+                return Loggable<rerun::datatypes::ChannelId>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::UInt16>::to_arrow(&instances->id, num_instances);
+                return Loggable<rerun::datatypes::ChannelId>::to_arrow(
+                    &instances->id,
+                    num_instances
+                );
             }
         }
     };

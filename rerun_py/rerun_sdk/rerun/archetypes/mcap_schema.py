@@ -36,7 +36,7 @@ class McapSchema(Archetype):
 
     def __init__(
         self: Any,
-        id: datatypes.UInt16Like,
+        id: datatypes.ChannelIdLike,
         name: datatypes.Utf8Like,
         encoding: datatypes.Utf8Like,
         data: datatypes.BlobLike,
@@ -84,7 +84,7 @@ class McapSchema(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        id: datatypes.UInt16Like | None = None,
+        id: datatypes.ChannelIdLike | None = None,
         name: datatypes.Utf8Like | None = None,
         encoding: datatypes.Utf8Like | None = None,
         data: datatypes.BlobLike | None = None,
@@ -134,7 +134,7 @@ class McapSchema(Archetype):
     def columns(
         cls,
         *,
-        id: datatypes.UInt16ArrayLike | None = None,
+        id: datatypes.ChannelIdArrayLike | None = None,
         name: datatypes.Utf8ArrayLike | None = None,
         encoding: datatypes.Utf8ArrayLike | None = None,
         data: datatypes.BlobArrayLike | None = None,

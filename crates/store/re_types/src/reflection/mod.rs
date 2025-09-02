@@ -491,6 +491,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ChannelMessageCounts as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A mapping of channel IDs to their respective message counts.\n\nUsed in MCAP statistics to track how many messages were recorded per channel.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ChannelMessageCounts::default().to_arrow()?),
+                datatype: ChannelMessageCounts::arrow_datatype(),
+                verify_arrow_array: ChannelMessageCounts::verify_arrow_array,
+            },
+        ),
+        (
             <ClassId as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
@@ -528,6 +538,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(Colormap::default().to_arrow()?),
                 datatype: Colormap::arrow_datatype(),
                 verify_arrow_array: Colormap::verify_arrow_array,
+            },
+        ),
+        (
+            <Count as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A generic count value.\n\nUsed for counting various entities like messages, schemas, channels, etc.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: Count::arrow_datatype(),
+                verify_arrow_array: Count::verify_arrow_array,
             },
         ),
         (
@@ -1997,6 +2017,52 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name : "Data", component_type : "rerun.components.Blob"
                     .into(), docstring_md : "The raw schema data as binary content.",
                     is_required : true, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.McapStatistics"),
+            ArchetypeReflection {
+                display_name: "Mcap statistics",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "message_count", display_name :
+                    "Message count", component_type : "rerun.components.Count".into(),
+                    docstring_md : "Total number of messages in the MCAP file.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "schema_count", display_name : "Schema count", component_type :
+                    "rerun.components.Count".into(), docstring_md :
+                    "Total number of schemas defined in the MCAP file.", is_required :
+                    true, }, ArchetypeFieldReflection { name : "channel_count",
+                    display_name : "Channel count", component_type :
+                    "rerun.components.Count".into(), docstring_md :
+                    "Total number of channels in the MCAP file.", is_required : true, },
+                    ArchetypeFieldReflection { name : "attachment_count", display_name :
+                    "Attachment count", component_type : "rerun.components.Count".into(),
+                    docstring_md : "Total number of attachments in the MCAP file.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "metadata_count", display_name : "Metadata count", component_type :
+                    "rerun.components.Count".into(), docstring_md :
+                    "Total number of metadata records in the MCAP file.", is_required :
+                    true, }, ArchetypeFieldReflection { name : "chunk_count",
+                    display_name : "Chunk count", component_type :
+                    "rerun.components.Count".into(), docstring_md :
+                    "Total number of chunks in the MCAP file.", is_required : true, },
+                    ArchetypeFieldReflection { name : "message_start_time", display_name
+                    : "Message start time", component_type : "rerun.components.Timestamp"
+                    .into(), docstring_md :
+                    "Timestamp of the earliest message in the MCAP file.", is_required :
+                    true, }, ArchetypeFieldReflection { name : "message_end_time",
+                    display_name : "Message end time", component_type :
+                    "rerun.components.Timestamp".into(), docstring_md :
+                    "Timestamp of the latest message in the MCAP file.", is_required :
+                    true, }, ArchetypeFieldReflection { name : "channel_message_counts",
+                    display_name : "Channel message counts", component_type :
+                    "rerun.components.ChannelMessageCounts".into(), docstring_md :
+                    "Per-channel message counts showing how many messages were recorded for each channel ID.",
+                    is_required : false, },
                 ],
             },
         ),

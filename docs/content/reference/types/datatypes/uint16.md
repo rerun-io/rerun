@@ -19,4 +19,4 @@ uint16
 
 ## Used by
 
-* [`ChannelId`](../components/channel_id.md?speculative-link)
+* [`ChannelCountPair`](../datatypes/channel_count_pair.md)

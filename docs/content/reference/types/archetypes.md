@@ -15,6 +15,7 @@ This page lists all built-in archetypes.
 * [`McapChannel`](archetypes/mcap_channel.md): Information about an MCAP channel.
 * [`McapMessage`](archetypes/mcap_message.md): A raw MCAP message.
 * [`McapSchema`](archetypes/mcap_schema.md): Information about an MCAP schema definition.
+* [`McapStatistics`](archetypes/mcap_statistics.md): Statistical information about an MCAP file.
 
 ## Geospatial
 

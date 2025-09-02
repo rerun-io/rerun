@@ -36,7 +36,7 @@ class McapChannel(Archetype):
 
     def __init__(
         self: Any,
-        id: datatypes.UInt16Like,
+        id: datatypes.ChannelIdLike,
         topic: datatypes.Utf8Like,
         message_encoding: datatypes.Utf8Like,
         *,
@@ -85,7 +85,7 @@ class McapChannel(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        id: datatypes.UInt16Like | None = None,
+        id: datatypes.ChannelIdLike | None = None,
         topic: datatypes.Utf8Like | None = None,
         message_encoding: datatypes.Utf8Like | None = None,
         metadata: components.KeyValuePairsLike | None = None,
@@ -135,7 +135,7 @@ class McapChannel(Archetype):
     def columns(
         cls,
         *,
-        id: datatypes.UInt16ArrayLike | None = None,
+        id: datatypes.ChannelIdArrayLike | None = None,
         topic: datatypes.Utf8ArrayLike | None = None,
         message_encoding: datatypes.Utf8ArrayLike | None = None,
         metadata: components.KeyValuePairsArrayLike | None = None,

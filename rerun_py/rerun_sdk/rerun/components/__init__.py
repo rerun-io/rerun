@@ -18,10 +18,17 @@ from .annotation_context import (
 from .axis_length import AxisLength, AxisLengthBatch
 from .blob import Blob, BlobBatch
 from .channel_id import ChannelId, ChannelIdBatch
+from .channel_message_counts import (
+    ChannelMessageCounts,
+    ChannelMessageCountsArrayLike,
+    ChannelMessageCountsBatch,
+    ChannelMessageCountsLike,
+)
 from .class_id import ClassId, ClassIdBatch
 from .clear_is_recursive import ClearIsRecursive, ClearIsRecursiveBatch
 from .color import Color, ColorBatch
 from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike
+from .count import Count, CountBatch
 from .depth_meter import DepthMeter, DepthMeterBatch
 from .draw_order import DrawOrder, DrawOrderBatch
 from .entity_path import EntityPath, EntityPathBatch
@@ -118,6 +125,10 @@ __all__ = [
     "BlobBatch",
     "ChannelId",
     "ChannelIdBatch",
+    "ChannelMessageCounts",
+    "ChannelMessageCountsArrayLike",
+    "ChannelMessageCountsBatch",
+    "ChannelMessageCountsLike",
     "ClassId",
     "ClassIdBatch",
     "ClearIsRecursive",
@@ -128,6 +139,8 @@ __all__ = [
     "ColormapArrayLike",
     "ColormapBatch",
     "ColormapLike",
+    "Count",
+    "CountBatch",
     "DepthMeter",
     "DepthMeterBatch",
     "DrawOrder",

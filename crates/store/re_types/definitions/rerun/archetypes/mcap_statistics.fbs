@@ -1,0 +1,45 @@
+namespace rerun.archetypes;
+
+/// Statistical information about an MCAP file.
+///
+/// This archetype stores statistics about the MCAP file structure and content,
+/// including message counts, timing information, and per-channel statistics.
+///
+/// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+table McapStatistics (
+  "attr.docs.category": "Data",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "PartialEq",
+  "attr.docs.unreleased"
+) {
+  // --- Required ---
+
+  /// Total number of messages in the MCAP file.
+  message_count: rerun.components.Count ("attr.rerun.component_required", order: 1000);
+
+  /// Total number of schemas defined in the MCAP file.
+  schema_count: rerun.components.Count ("attr.rerun.component_required", order: 2000);
+
+  /// Total number of channels in the MCAP file.
+  channel_count: rerun.components.Count ("attr.rerun.component_required", order: 3000);
+
+  /// Total number of attachments in the MCAP file.
+  attachment_count: rerun.components.Count ("attr.rerun.component_required", order: 4000);
+
+  /// Total number of metadata records in the MCAP file.
+  metadata_count: rerun.components.Count ("attr.rerun.component_required", order: 5000);
+
+  /// Total number of chunks in the MCAP file.
+  chunk_count: rerun.components.Count ("attr.rerun.component_required", order: 6000);
+
+  /// Timestamp of the earliest message in the MCAP file.
+  message_start_time: rerun.components.Timestamp ("attr.rerun.component_required", order: 7000);
+
+  /// Timestamp of the latest message in the MCAP file.
+  message_end_time: rerun.components.Timestamp ("attr.rerun.component_required", order: 8000);
+
+  // --- Optional ---
+
+  /// Per-channel message counts showing how many messages were recorded for each channel ID.
+  channel_message_counts: rerun.components.ChannelMessageCounts ("attr.rerun.component_optional", nullable, order: 9000);
+}

@@ -1,0 +1,15 @@
+namespace rerun.components;
+
+/// A mapping of channel IDs to their respective message counts.
+///
+/// Used in MCAP statistics to track how many messages were recorded per channel.
+table ChannelMessageCounts (
+  "attr.python.aliases": "Dict[int, int]",
+  "attr.python.array_aliases": "Dict[int, int], Sequence[Dict[int, int]]",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "Default, PartialEq, Eq",
+  "attr.docs.unreleased"
+) {
+  /// The channel ID to message count pairs.
+  counts: [rerun.datatypes.ChannelCountPair] (order: 100);
+}

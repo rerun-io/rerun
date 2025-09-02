@@ -27,6 +27,7 @@ line_strips3d.py linguist-generated=true
 mcap_channel.py linguist-generated=true
 mcap_message.py linguist-generated=true
 mcap_schema.py linguist-generated=true
+mcap_statistics.py linguist-generated=true
 mesh3d.py linguist-generated=true
 pinhole.py linguist-generated=true
 points2d.py linguist-generated=true

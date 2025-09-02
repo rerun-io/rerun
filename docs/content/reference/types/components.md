@@ -19,10 +19,12 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
 * [`ChannelId`](components/channel_id.md): A 16-bit ID representing an MCAP channel.
+* [`ChannelMessageCounts`](components/channel_message_counts.md): A mapping of channel IDs to their respective message counts.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`ClearIsRecursive`](components/clear_is_recursive.md): Configures how a clear operation should behave - recursive or not.
 * [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 * [`Colormap`](components/colormap.md): Colormap for mapping scalar values within a given range to a color.
+* [`Count`](components/count.md): A generic count value.
 * [`DepthMeter`](components/depth_meter.md): The world->depth map scaling factor.
 * [`DrawOrder`](components/draw_order.md): Draw order of 2D elements. Higher values are drawn on top of lower values.
 * [`EntityPath`](components/entity_path.md): A path to an entity, usually to reference some data that is part of the target entity.

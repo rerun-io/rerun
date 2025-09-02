@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct ChannelId(pub crate::datatypes::UInt16);
+pub struct ChannelId(pub crate::datatypes::ChannelId);
 
 impl ::re_types_core::Component for ChannelId {
     #[inline]
@@ -39,7 +39,7 @@ impl ::re_types_core::Component for ChannelId {
 impl ::re_types_core::Loggable for ChannelId {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        crate::datatypes::UInt16::arrow_datatype()
+        crate::datatypes::ChannelId::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -48,7 +48,7 @@ impl ::re_types_core::Loggable for ChannelId {
     where
         Self: Clone + 'a,
     {
-        crate::datatypes::UInt16::to_arrow_opt(data.into_iter().map(|datum| {
+        crate::datatypes::ChannelId::to_arrow_opt(data.into_iter().map(|datum| {
             datum.map(|datum| match datum.into() {
                 ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
                 ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
@@ -62,7 +62,7 @@ impl ::re_types_core::Loggable for ChannelId {
     where
         Self: Sized,
     {
-        crate::datatypes::UInt16::from_arrow_opt(arrow_data)
+        crate::datatypes::ChannelId::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
@@ -71,35 +71,36 @@ impl ::re_types_core::Loggable for ChannelId {
     where
         Self: Sized,
     {
-        crate::datatypes::UInt16::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+        crate::datatypes::ChannelId::from_arrow(arrow_data)
+            .map(|v| v.into_iter().map(Self).collect())
     }
 }
 
-impl<T: Into<crate::datatypes::UInt16>> From<T> for ChannelId {
+impl<T: Into<crate::datatypes::ChannelId>> From<T> for ChannelId {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::UInt16> for ChannelId {
+impl std::borrow::Borrow<crate::datatypes::ChannelId> for ChannelId {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt16 {
+    fn borrow(&self) -> &crate::datatypes::ChannelId {
         &self.0
     }
 }
 
 impl std::ops::Deref for ChannelId {
-    type Target = crate::datatypes::UInt16;
+    type Target = crate::datatypes::ChannelId;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt16 {
+    fn deref(&self) -> &crate::datatypes::ChannelId {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ChannelId {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt16 {
+    fn deref_mut(&mut self) -> &mut crate::datatypes::ChannelId {
         &mut self.0
     }
 }
@@ -112,6 +113,6 @@ impl ::re_byte_size::SizeBytes for ChannelId {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::UInt16>::is_pod()
+        <crate::datatypes::ChannelId>::is_pod()
     }
 }
