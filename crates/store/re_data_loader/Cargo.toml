@@ -35,10 +35,6 @@ re_mcap.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
-prost-reflect.workspace = true
-prost-build.workspace = true
-prost-types.workspace = true
-prost.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
