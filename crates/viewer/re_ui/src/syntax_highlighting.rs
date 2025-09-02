@@ -34,7 +34,7 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
     pub fn new(style: &'a Style) -> Self {
         Self {
             style,
-            tokens: crate::design_tokens_of_visuals(style.visuals()),
+            tokens: crate::design_tokens_of_visuals(&style.visuals),
             job: LayoutJob::default(),
         }
     }

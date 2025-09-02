@@ -1,4 +1,4 @@
-use crate::datatype_ui::data_type_ui;
+use crate::datatype_ui::DataTypeUi;
 use crate::show_index::ShowIndex;
 use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
 use re_format::format_uint;
@@ -79,7 +79,7 @@ impl<'a> ArrowNode<'a> {
 
         let nested = self.values.is_item_nested();
         let data_type = self.values.array().data_type();
-        let data_type_ui = data_type_ui(data_type);
+        let data_type_ui = DataTypeUi::new(data_type);
 
         let item = ui.list_item();
         // We *don't* use index for the ID, since it might change across timesteps,
@@ -122,7 +122,7 @@ impl<'a> ArrowNode<'a> {
                                             |ui| {
                                                 ui.list_item().show_hierarchical_with_children(
                                                     ui,
-                                                    Id::new("arrow data type item hover"),
+                                                    Id::new("arrow data type hover item"),
                                                     true,
                                                     LabelContent::new(data_type_ui.type_name),
                                                     content,
