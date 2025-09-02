@@ -223,7 +223,10 @@ message WriteChunksResponse {}
 
 /* Query schemas */
 
-message GetPartitionTableSchemaRequest {}
+message GetPartitionTableSchemaRequest {
+  reserved 1;
+  reserved "dataset_id";
+}
 
 message GetPartitionTableSchemaResponse {
   rerun.common.v1alpha1.Schema schema = 1;
@@ -746,7 +749,10 @@ message CreateDatasetEntryResponse {
 
 // ReadDatasetEntry
 
-message ReadDatasetEntryRequest {}
+message ReadDatasetEntryRequest {
+  reserved 1;
+  reserved "id";
+}
 
 message ReadDatasetEntryResponse {
   DatasetEntry dataset = 1;
