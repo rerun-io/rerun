@@ -189,6 +189,9 @@ pub(crate) trait ShowIndex {
         }
     }
 
+    /// Is a single item of this array nested?
+    ///
+    /// If true, the list item will be shown as an expandable node.
     fn is_item_nested(&self) -> bool {
         false
     }
