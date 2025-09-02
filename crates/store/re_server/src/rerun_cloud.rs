@@ -162,6 +162,7 @@ macro_rules! decl_stream {
     };
 }
 
+decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
 decl_stream!(GetChunksResponseStream<manifest:GetChunksResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(ScanPartitionTableResponseStream<manifest:ScanPartitionTableResponse>);
@@ -892,6 +893,16 @@ impl RerunCloudService for RerunCloudHandler {
         Ok(tonic::Response::new(
             Box::pin(stream) as Self::GetChunksStream
         ))
+    }
+
+    type FetchChunksStream = FetchChunksResponseStream;
+
+    async fn fetch_chunks(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::FetchChunksRequest>,
+    ) -> std::result::Result<tonic::Response<Self::FetchChunksStream>, tonic::Status> {
+        // TODO(zehiko) implement fetch_chunks
+        Err(tonic::Status::unimplemented("fetch_chunks not implemented"))
     }
 
     // --- Table APIs ---

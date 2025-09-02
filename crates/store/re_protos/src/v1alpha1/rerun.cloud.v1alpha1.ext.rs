@@ -1255,7 +1255,7 @@ impl ScanPartitionTableResponse {
 // --- DataSource --
 
 // NOTE: Match the values of the Protobuf definition to keep life simple.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum DataSourceKind {
     Rrd = 1,
 }

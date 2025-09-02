@@ -219,7 +219,9 @@ impl AuthContext {
         let Some(content) = serde_json::to_string_pretty(&*self.jwks).ok_or_log_error() else {
             return;
         };
-        std::fs::write(&path, content).ok_or_log_error();
+        if let Err(err) = std::fs::write(&path, content) {
+            re_log::warn!("Failed to write to cache file {path:?}: {err}");
+        }
     }
 
     // TODO(jan): implement when integrating directly in the Viewer

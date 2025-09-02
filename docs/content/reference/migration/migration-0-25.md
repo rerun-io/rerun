@@ -15,6 +15,11 @@ Use `--web-viewer` instead.
 This feature has been defunct for a while. A better replacement can be tracked [in this issue](https://github.com/rerun-io/rerun/issues/11024).
 
 
+## Removed the `-o` CLI argument shorthand for `--stdout` in `script_add_args`
+
+Use `--stdout` directly instead.
+
+
 ## Flush takes an optional timeout, and returns errors
 When flushing a recording stream you can now give it a maximum time for how long it should block.
 The flush will block until either it completes, fails (e.g. because of connection loss), or the timeout is reached.

@@ -1,5 +1,5 @@
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{ComponentPath, DataPath, EntityPath, EntryId, TableId};
+use re_log_types::{ComponentPath, DataPath, EntityPath, TableId};
 
 use crate::{ContainerId, Contents, ViewId};
 
@@ -38,7 +38,7 @@ pub enum Item {
     /// A table or dataset entry stored in a Redap server.
     // TODO(ab): this should probably be split into separate variant, and made more consistent with
     // `AppId` and `TableId`.
-    RedapEntry(EntryId),
+    RedapEntry(re_uri::EntryUri),
 
     /// A Redap server.
     RedapServer(re_uri::Origin),
@@ -60,6 +60,34 @@ impl Item {
 
             Self::InstancePath(instance_path) | Self::DataResult(_, instance_path) => {
                 Some(&instance_path.entity_path)
+            }
+        }
+    }
+
+    /// Converts this item to a data path if possible.
+    pub fn to_data_path(&self) -> Option<DataPath> {
+        match self {
+            Self::AppId(_)
+            | Self::TableId(_)
+            | Self::DataSource(_)
+            | Self::View(_)
+            | Self::Container(_)
+            | Self::StoreId(_)
+            | Self::RedapServer(_)
+            | Self::RedapEntry(_) => None,
+
+            Self::ComponentPath(component_path) => Some(DataPath {
+                entity_path: component_path.entity_path.clone(),
+                instance: None,
+                component_descriptor: Some(component_path.component_descriptor.clone()),
+            }),
+
+            Self::InstancePath(instance_path) | Self::DataResult(_, instance_path) => {
+                Some(DataPath {
+                    entity_path: instance_path.entity_path.clone(),
+                    instance: Some(instance_path.instance),
+                    component_descriptor: None,
+                })
             }
         }
     }
@@ -145,8 +173,8 @@ impl std::fmt::Debug for Item {
                 write!(f, "({view_id:?}, {instance_path}")
             }
             Self::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
-            Self::RedapEntry(entry_id) => {
-                write!(f, "{entry_id}")
+            Self::RedapEntry(entry) => {
+                write!(f, "{entry}")
             }
             Self::RedapServer(server) => write!(f, "{server}"),
         }

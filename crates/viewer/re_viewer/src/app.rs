@@ -7,8 +7,8 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{FileContents, LogDataSource};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
-use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
+use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
@@ -188,7 +188,7 @@ impl App {
         re_tracing::profile_function!();
 
         let connection_registry =
-            connection_registry.unwrap_or_else(re_grpc_client::ConnectionRegistry::new);
+            connection_registry.unwrap_or_else(re_redap_client::ConnectionRegistry::new);
 
         if let Some(storage) = creation_context.storage
             && let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY)
@@ -507,9 +507,17 @@ impl App {
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
+        display_mode: &DisplayMode,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(egui_ctx, app_blueprint, storage_context, store_context, cmd);
+            self.run_ui_command(
+                egui_ctx,
+                app_blueprint,
+                storage_context,
+                store_context,
+                display_mode,
+                cmd,
+            );
         }
     }
 
@@ -630,6 +638,10 @@ impl App {
             }
 
             SystemCommand::ChangeDisplayMode(display_mode) => {
+                if &display_mode == self.state.navigation.peek() {
+                    return;
+                }
+
                 // Update web-navigation bar if this isn't about local recordings.
                 //
                 // Recordings are on selection since recording change always comes with a selection change.
@@ -645,9 +657,13 @@ impl App {
                 }
 
                 self.state.navigation.replace(display_mode);
+                egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
 
             SystemCommand::AddRedapServer(origin) => {
+                if origin == *re_redap_browser::EXAMPLES_ORIGIN {
+                    return;
+                }
                 if self.state.redap_servers.has_server(&origin) {
                     return;
                 }
@@ -742,10 +758,10 @@ impl App {
 
             SystemCommand::SetSelection(item) => {
                 match &item {
-                    Item::RedapEntry(entry_id) => {
+                    Item::RedapEntry(entry) => {
                         self.state
                             .navigation
-                            .replace(DisplayMode::RedapEntry(*entry_id));
+                            .replace(DisplayMode::RedapEntry(entry.clone()));
                     }
 
                     Item::RedapServer(origin) => {
@@ -782,6 +798,7 @@ impl App {
                     store_hub,
                     self.state.navigation.peek(),
                 );
+                egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
             SystemCommand::SetActiveTime {
@@ -865,7 +882,7 @@ impl App {
         match data_source {
             LogDataSource::RrdHttpUrl { url, follow } => {
                 let new_source = SmartChannelSource::RrdHttpStream {
-                    url: url.clone(),
+                    url: url.to_string(),
                     follow: *follow,
                 };
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
@@ -962,7 +979,7 @@ impl App {
         let on_ui_cmd = {
             let command_sender = self.command_sender.clone();
             Box::new(move |cmd| match cmd {
-                re_grpc_client::UiCommand::SetLoopSelection {
+                re_redap_client::UiCommand::SetLoopSelection {
                     recording_id,
                     timeline,
                     time_range,
@@ -1027,8 +1044,9 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
-        _storage_context: &StorageContext<'_>,
+        storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
+        display_mode: &DisplayMode,
         cmd: UICommand,
     ) {
         let mut force_store_info = false;
@@ -1067,7 +1085,7 @@ impl App {
                     for item in self.state.selection_state.selected_items().iter_items() {
                         match item {
                             Item::AppId(selected_app_id) => {
-                                for recording in _storage_context.bundle.recordings() {
+                                for recording in storage_context.bundle.recordings() {
                                     if recording.application_id() == selected_app_id {
                                         selected_stores.push(recording.store_id().clone());
                                     }
@@ -1082,7 +1100,7 @@ impl App {
 
                     let selected_stores = selected_stores
                         .iter()
-                        .filter_map(|store_id| _storage_context.bundle.get(store_id))
+                        .filter_map(|store_id| storage_context.bundle.get(store_id))
                         .collect_vec();
 
                     if selected_stores.is_empty() {
@@ -1388,13 +1406,8 @@ impl App {
                 re_ui::apply_style_and_install_loaders(egui_ctx);
             }
 
-            #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
-                if self.run_copy_direct_link_command(store_context).is_none() {
-                    re_log::error!(
-                        "Failed to copy direct link to clipboard. Is this not running in a browser?"
-                    );
-                }
+                self.run_copy_direct_link_command(storage_context, display_mode);
             }
 
             UICommand::CopyTimeRangeLink => {
@@ -1549,27 +1562,38 @@ impl App {
         Ok(url)
     }
 
-    #[cfg(target_arch = "wasm32")]
     fn run_copy_direct_link_command(
         &mut self,
-        store_context: Option<&StoreContext<'_>>,
-    ) -> Option<()> {
-        use crate::web_tools::JsResultExt as _;
-        let href = self.get_viewer_url().ok_or_log_js_error()?;
-
-        let direct_link = match store_context
-            .map(|ctx| ctx.recording)
-            .and_then(|rec| rec.data_source.as_ref())
+        storage_context: &StorageContext<'_>,
+        display_mode: &DisplayMode,
+    ) {
+        // TODO(rerun-io/dataplatform#2663): Should take into account dataplatform URLs if any are provided.
+        let base_url;
+        #[cfg(target_arch = "wasm32")]
         {
-            Some(SmartChannelSource::RrdHttpStream { url, .. }) => format!("{href}?url={url}"),
-            _ => href,
+            use crate::web_tools::JsResultExt as _;
+            base_url = crate::web_tools::current_base_url().ok_or_log_js_error();
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            base_url = None;
         };
 
-        self.egui_ctx.copy_text(direct_link.clone());
-        self.notifications
-            .success(format!("Copied {direct_link:?} to clipboard"));
-
-        Some(())
+        match crate::open_url::ViewerImportUrl::from_display_mode(
+            storage_context.hub,
+            display_mode.clone(),
+        )
+        .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
+        {
+            Ok(url) => {
+                self.egui_ctx.copy_text(url);
+                self.notifications
+                    .success("Copied link to clipboard".to_owned());
+            }
+            Err(err) => {
+                re_log::error!("{err}");
+            }
+        }
     }
 
     fn run_copy_time_range_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
@@ -2764,11 +2788,13 @@ impl eframe::App for App {
             Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
+            let display_mode = self.state.navigation.peek().clone();
             self.run_pending_ui_commands(
                 egui_ctx,
                 &app_blueprint,
                 &storage_context,
                 store_context.as_ref(),
+                &display_mode,
             );
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
@@ -3150,7 +3176,13 @@ fn update_web_address_bar(
     if !enable_history {
         return None;
     }
-    let url = crate::open_url::display_mode_to_content_url(store_hub, display_mode)?;
+    let Ok(url) =
+        crate::open_url::ViewerImportUrl::from_display_mode(store_hub, display_mode.clone())
+            // History entries expect the url parameter, not the full url, therefore don't pass a base url.
+            .and_then(|url| url.sharable_url(None))
+    else {
+        return None;
+    };
 
     re_log::debug!("Updating navigation bar");
 

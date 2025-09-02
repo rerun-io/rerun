@@ -253,13 +253,13 @@ def main() -> None:
                 log_api.append(summary)
                 added = True
             else:
-                if "🌊 C++ API" in labels:
+                if "sdk-cpp" in labels:
                     cpp.append(summary)
                     added = True
-                if "🐍 Python API" in labels:
+                if "sdk-python" in labels:
                     python.append(summary)
                     added = True
-                if "🦀 Rust API" in labels:
+                if "sdk-rust" in labels:
                     rust.append(summary)
                     added = True
 
