@@ -178,6 +178,13 @@ fn show_arrow_builtin<'a>(
 
 type EmptyArrowResult = Result<(), ArrowError>;
 
+/// [`egui::Widget`] for arrays.
+///
+/// This is implemented for all the different arrow array types.
+///
+/// In addition to displaying the value as a rerun list item, it can also be formatted with syntax
+/// highlighting via [`Self::write`].
+///
 /// UI-equivalent of arrows `DisplayIndex` trait.
 pub(crate) trait ShowIndex {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult;
