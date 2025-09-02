@@ -10,10 +10,15 @@ use crate::parsers::ros2msg::{
 
 // Type aliases for scalar messages convenience
 pub type TemperatureMessageParser = ScalarMessageParser<Temperature>;
+
 pub type FluidPressureMessageParser = ScalarMessageParser<FluidPressure>;
+
 pub type RelativeHumidityMessageParser = ScalarMessageParser<RelativeHumidity>;
+
 pub type IlluminanceMessageParser = ScalarMessageParser<Illuminance>;
+
 pub type RangeMessageParser = ScalarMessageParser<Range>;
+
 pub type BatteryStateMessageParser = ScalarMessageParser<BatteryState>;
 
 impl ScalarExtractor for Temperature {
