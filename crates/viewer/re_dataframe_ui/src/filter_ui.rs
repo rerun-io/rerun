@@ -302,6 +302,15 @@ impl FilterOperation {
                     });
                 }
             }
+
+            Self::BooleanEquals(query) => {
+                ui.label("is");
+                if ui.re_radio_value(query, true, "true").clicked()
+                    || ui.re_radio_value(query, false, "false").clicked()
+                {
+                    action = FilterUiAction::CommitStateToBlueprint;
+                }
+            }
         }
 
         action
@@ -311,6 +320,8 @@ impl FilterOperation {
     fn operator_text(&self) -> &'static str {
         match self {
             Self::StringContains(_) => "contains",
+
+            Self::BooleanEquals(_) => "is",
         }
     }
 
@@ -318,6 +329,8 @@ impl FilterOperation {
     fn rhs_text(&self) -> String {
         match self {
             Self::StringContains(query) => query.clone(),
+
+            Self::BooleanEquals(query) => format!("{query}"),
         }
     }
 }
@@ -332,7 +345,7 @@ mod tests {
         let _: () = {
             let _op = FilterOperation::StringContains(String::new());
             match _op {
-                FilterOperation::StringContains(_) => {}
+                FilterOperation::StringContains(_) | FilterOperation::BooleanEquals(_) => {}
             }
         };
 
@@ -344,6 +357,11 @@ mod tests {
             (
                 FilterOperation::StringContains(String::new()),
                 "string_contains_empty",
+            ),
+            (FilterOperation::BooleanEquals(true), "boolean_equals_true"),
+            (
+                FilterOperation::BooleanEquals(false),
+                "boolean_equals_false",
             ),
         ]
         .into_iter()
