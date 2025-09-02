@@ -36,8 +36,12 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
         match make_ui(array) {
             Ok(array_formatter) => match ui_layout {
                 UiLayout::SelectionPanel => {
-                    list_item_scope(ui, Id::new("arrow_ui"), |ui| {
+                    // Data type has a separate scope to prevent items from being aligned.
+                    // If they are aligned it makes it confusingly look like a table.
+                    list_item_scope(ui, "arrow_data_type_ui", |ui| {
                         DataTypeUi::new(array.data_type()).list_item_ui(ui);
+                    });
+                    list_item_scope(ui, "arrow_ui", |ui| {
                         if array.len() == 1 {
                             array_formatter.show_value(0, ui);
                         } else {
