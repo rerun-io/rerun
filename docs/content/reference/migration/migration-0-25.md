@@ -29,3 +29,14 @@ Previously this could only be configured for gRPC sinks, and it was configured o
 In the C++ and Python APIs, negative timeouts used to have special meaning. Now they are no longer permitted.
 
 The Python flush calls now raises an error if the flushing did not complete successfully.
+
+
+## Changed arrow encoding of blobs
+We used to encode blobs as `List<uint8>`, which was rather unidiomatic.
+Now they are instead encoded as `Binary`.
+Old data will be migrated on ingestion (zero-copy).
+
+Affects the following components:
+- [`Blob`](https://rerun.io/docs/reference/types/components/blob)
+- [`ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer)
+- [`VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)

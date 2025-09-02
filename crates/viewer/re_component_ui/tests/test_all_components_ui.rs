@@ -103,9 +103,19 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
             "any_value_small_array",
         ),
         TestCase::from_arrow(
-            ComponentType::from("custom_large_blob"),
-            arrow::array::UInt8Array::from(vec![42; 3001]),
-            "any_value_large_blob",
+            ComponentType::from("one_small_blob"),
+            arrow::array::BinaryArray::from_vec(vec![&[1, 2, 3]]),
+            "any_value_one_small_blob",
+        ),
+        TestCase::from_arrow(
+            ComponentType::from("one_large_blob"),
+            arrow::array::LargeBinaryArray::from_vec(vec![&vec![42_u8; 3001]]),
+            "any_value_one_large_blob",
+        ),
+        TestCase::from_arrow(
+            ComponentType::from("two_large_blobs"),
+            arrow::array::LargeBinaryArray::from_vec(vec![&vec![42_u8; 3001], &vec![69_u8; 6001]]),
+            "any_value_two_large_blobs",
         ),
         TestCase::from_arrow(
             ComponentType::from("custom_struct_array"),
