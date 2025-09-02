@@ -269,6 +269,7 @@
       "color": "{Gray.250}"
     },
 
+    // TODO(ab, lucas, katya): review these
     "code_index": {
       "color": "#BF68AF"
     },
@@ -278,6 +279,18 @@
     "code_string": {
       "color": "#7782EA"
     },
+
+    // TODO(ab, katya): review these
+    "table_filter_frame_stroke": {
+      "color": "{Gray.400}",
+      "width": 1
+    },
+    "table_filter_operator_text_color": {
+      "color": "#7782EA",
+    },
+    "table_filter_rhs_text_color": {
+      "color": "#32AA79",
+    }
   },
 
   "alert_success": {

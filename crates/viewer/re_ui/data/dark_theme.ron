@@ -279,6 +279,18 @@
     "code_string": {
       "color": "#818EF8"
     },
+
+    // TODO(ab, katya): review these
+    "table_filter_frame_stroke": {
+      "color": "{Gray.400}",
+      "width": 1
+    },
+    "table_filter_operator_text_color": {
+      "color": "#818EF8",
+    },
+    "table_filter_rhs_text_color": {
+      "color": "#4ACB94",
+    }
   },
 
   "alert_success": {

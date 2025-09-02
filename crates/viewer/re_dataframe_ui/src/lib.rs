@@ -5,6 +5,8 @@
 mod datafusion_adapter;
 mod datafusion_table_widget;
 mod display_record_batch;
+mod filter_ui;
+mod filters;
 mod header_tooltip;
 mod requested_object;
 mod table_blueprint;

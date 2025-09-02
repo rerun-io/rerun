@@ -212,6 +212,11 @@ pub struct DesignTokens {
     pub code_index: Color32,
     pub code_string: Color32,
     pub code_primitive: Color32,
+
+    // Table filter UI
+    pub table_filter_frame_stroke: Stroke,
+    pub table_filter_operator_text_color: Color32,
+    pub table_filter_rhs_text_color: Color32,
 }
 
 impl DesignTokens {
@@ -349,6 +354,10 @@ impl DesignTokens {
             code_index: get_color("code_index"),
             code_string: get_color("code_string"),
             code_primitive: get_color("code_primitive"),
+
+            table_filter_frame_stroke: get_stroke("table_filter_frame_stroke"),
+            table_filter_operator_text_color: get_color("table_filter_operator_text_color"),
+            table_filter_rhs_text_color: get_color("table_filter_rhs_text_color"),
         })
     }
 

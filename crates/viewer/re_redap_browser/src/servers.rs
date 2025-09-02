@@ -181,7 +181,7 @@ impl Server {
                 blueprint
             })
             .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
-            .filter(
+            .prefilter(
                 col("entry_kind")
                     .in_list(
                         vec![lit(EntryKind::Table as i32), lit(EntryKind::Dataset as i32)],
