@@ -10,13 +10,6 @@ built-in support. See [Entities and Components](../../concepts/entity-component.
 
 This page lists all built-in archetypes.
 
-## Data
-
-* [`McapChannel`](archetypes/mcap_channel.md): A channel within an MCAP file that defines how messages are structured and encoded.
-* [`McapMessage`](archetypes/mcap_message.md): The binary payload of a single MCAP message, without metadata.
-* [`McapSchema`](archetypes/mcap_schema.md): A schema definition that describes the structure of messages in an MCAP file.
-* [`McapStatistics`](archetypes/mcap_statistics.md): Recording-level statistics about an MCAP file, logged as a RecordingProperty.
-
 ## Geospatial
 
 * [`GeoLineStrings`](archetypes/geo_line_strings.md): Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
@@ -34,6 +27,13 @@ This page lists all built-in archetypes.
 * [`Image`](archetypes/image.md): A monochrome or color image.
 * [`SegmentationImage`](archetypes/segmentation_image.md): An image made up of integer [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s.
 * [`Tensor`](archetypes/tensor.md): An N-dimensional array of numbers.
+
+## MCAP
+
+* [`McapChannel`](archetypes/mcap_channel.md): A channel within an MCAP file that defines how messages are structured and encoded.
+* [`McapMessage`](archetypes/mcap_message.md): The binary payload of a single MCAP message, without metadata.
+* [`McapSchema`](archetypes/mcap_schema.md): A schema definition that describes the structure of messages in an MCAP file.
+* [`McapStatistics`](archetypes/mcap_statistics.md): Recording-level statistics about an MCAP file, logged as a RecordingProperty.
 
 ## Plotting
 

@@ -12,7 +12,7 @@ namespace rerun.archetypes;
 /// [archetypes.McapMessage] for the messages that conform to these schemas, and the
 /// [MCAP specification](https://mcap.dev/) for complete format details.
 table McapSchema (
-  "attr.docs.category": "Data",
+  "attr.docs.category": "MCAP",
   "attr.rerun.state": "unstable",
   "attr.rust.derive": "PartialEq",
   "attr.docs.unreleased"
