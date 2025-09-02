@@ -6,9 +6,9 @@ use egui::{NumExt as _, Ui, text_edit::TextEditState, text_selection::LabelSelec
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{AbsoluteTimeRangeF, LogMsg, StoreId, TableId};
 use re_redap_browser::RedapServers;
+use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, UiExt as _};
