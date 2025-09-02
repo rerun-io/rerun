@@ -479,15 +479,15 @@ overview of what's possible and how.
 Rerun will typically support Python version up until their end-of-life. If you are using an older version
 of Python, you can use the table below to make sure you choose the proper Rerun version for your Python installation.
 
-| **Rerun Version** | **Release Date** | **Minimum Supported Python Version** |
-|-------------------|------------------|--------------------------------------|
-| 0.25              | Sep./Oct. 2025   | 3.10+                                |
-| 0.24              | Jul. 17, 2025    | 3.9+                                 |
-| 0.23              | Apr. 24, 2025    | 3.9+                                 |
-| 0.22              | Feb. 6, 2025     | 3.9+                                 |
-| 0.21              | Dec. 18. 2024    | 3.9+                                 |
-| 0.20              | Nov. 14, 2024    | 3.9+                                 |
-| 0.19              | Oct. 17, 2024    | 3.8+                                 |
+| **Rerun Version** | **Release Date** | **Supported Python Version** |
+|-------------------|------------------|------------------------------|
+| 0.25              | Sep./Oct. 2025   | 3.10+                        |
+| 0.24              | Jul. 17, 2025    | 3.9+                         |
+| 0.23              | Apr. 24, 2025    | 3.9+                         |
+| 0.22              | Feb. 6, 2025     | 3.9+                         |
+| 0.21              | Dec. 18. 2024    | 3.9+                         |
+| 0.20              | Nov. 14, 2024    | 3.9+                         |
+| 0.19              | Oct. 17, 2024    | 3.8+                         |
 
 
 ## APIs
