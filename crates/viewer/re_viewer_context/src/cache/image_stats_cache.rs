@@ -29,7 +29,9 @@ impl Cache for ImageStatsCache {
         "Image Stats Cache"
     }
 
-    fn ui(&self, ui: &mut egui::Ui) {}
+    fn ui(&self, ui: &mut egui::Ui) {
+        ui.label(format!("num images: {}", self.0.len()));
+    }
 
     /// Total memory used by this cache, in bytes.
     fn bytes_used(&self) -> u64 {

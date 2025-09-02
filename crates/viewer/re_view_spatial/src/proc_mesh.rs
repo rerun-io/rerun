@@ -225,7 +225,9 @@ impl Cache for WireframeCache {
         "Wireframe Cache"
     }
 
-    fn ui(&self, ui: &mut egui::Ui) {}
+    fn ui(&self, ui: &mut egui::Ui) {
+        ui.label(format!("num meshes: {}", self.0.len()));
+    }
 
     fn bytes_used(&self) -> u64 {
         self.0.total_size_bytes()
@@ -523,7 +525,9 @@ impl Cache for SolidCache {
         "Solid Cache"
     }
 
-    fn ui(&self, ui: &mut egui::Ui) {}
+    fn ui(&self, ui: &mut egui::Ui) {
+        ui.label(format!("num meshes: {}", self.0.len()));
+    }
 
     fn bytes_used(&self) -> u64 {
         0 // mostly VRAM

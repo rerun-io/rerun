@@ -5,6 +5,7 @@ use std::sync::{
 
 use ahash::HashMap;
 
+use itertools::Itertools as _;
 use re_byte_size::SizeBytes as _;
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
@@ -140,7 +141,28 @@ impl Cache for VideoAssetCache {
         "Video Asset Cache"
     }
 
-    fn ui(&self, ui: &mut egui::Ui) {}
+    fn ui(&self, ui: &mut egui::Ui) {
+        egui::ScrollArea::vertical()
+            .max_height(200.0)
+            .id_salt("video_asset_cache")
+            .show(ui, |ui| {
+                egui::Grid::new("video_asset_cache grid")
+                    .num_columns(3)
+                    .show(ui, |ui| {
+                        ui.label(egui::RichText::new("Blob").underline());
+                        ui.label(egui::RichText::new("Num Videos").underline());
+                        ui.end_row();
+
+                        for (cache_key, item) in
+                            self.0.iter().sorted_unstable_by_key(|(k, _)| k.0.hash64())
+                        {
+                            ui.label(format!("{:x}", cache_key.0.hash64()));
+                            ui.label(re_format::format_uint(item.len()));
+                            ui.end_row();
+                        }
+                    })
+            });
+    }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();

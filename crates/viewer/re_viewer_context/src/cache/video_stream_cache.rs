@@ -553,7 +553,9 @@ impl Cache for VideoStreamCache {
         "Image Decode Cache"
     }
 
-    fn ui(&self, ui: &mut egui::Ui) {}
+    fn ui(&self, ui: &mut egui::Ui) {
+        ui.label(format!("num streams: {}", self.0.len()));
+    }
 
     /// Keep existing cache entries up to date with new and removed video data.
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {

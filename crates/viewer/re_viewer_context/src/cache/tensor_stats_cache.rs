@@ -35,7 +35,9 @@ impl Cache for TensorStatsCache {
         "Tensor Stats Cache"
     }
 
-    fn ui(&self, ui: &mut egui::Ui) {}
+    fn ui(&self, ui: &mut egui::Ui) {
+        ui.label(format!("num tensors: {}", self.0.len()));
+    }
 
     fn bytes_used(&self) -> u64 {
         self.0.total_size_bytes()

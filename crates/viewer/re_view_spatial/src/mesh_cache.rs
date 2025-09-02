@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
 
-use itertools::Either;
+use itertools::{Either, Itertools as _};
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_entity_db::VersionedInstancePathHash;
@@ -103,6 +103,26 @@ impl Cache for MeshCache {
 
     fn ui(&self, ui: &mut egui::Ui) {
         ui.label(format!("rows: {}", self.0.len()));
+        egui::ScrollArea::vertical()
+            .max_height(200.0)
+            .id_salt("mesh_cache")
+            .show(ui, |ui| {
+                egui::Grid::new("mesh_cache grid")
+                    .num_columns(3)
+                    .show(ui, |ui| {
+                        ui.label(egui::RichText::new("RowId").underline());
+                        ui.label(egui::RichText::new("Num Meshes").underline());
+                        ui.end_row();
+
+                        for (row_id, item) in
+                            self.0.iter().sorted_unstable_by_key(|(row_id, _)| *row_id)
+                        {
+                            ui.label(format!("{row_id}",));
+                            ui.label(re_format::format_uint(item.len()));
+                            ui.end_row();
+                        }
+                    })
+            });
     }
 
     fn bytes_used(&self) -> u64 {

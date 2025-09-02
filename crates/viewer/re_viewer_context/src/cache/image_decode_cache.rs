@@ -1,5 +1,6 @@
 use ahash::HashMap;
 
+use itertools::Itertools as _;
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
@@ -169,7 +170,35 @@ impl Cache for ImageDecodeCache {
         "Image Decode Cache"
     }
 
-    fn ui(&self, ui: &mut egui::Ui) {}
+    fn ui(&self, ui: &mut egui::Ui) {
+        ui.label(format!(
+            "memory used: {}",
+            re_format::format_bytes(self.memory_used as f64)
+        ));
+        ui.label(format!("generation: {}", self.generation));
+        egui::ScrollArea::vertical()
+            .max_height(200.0)
+            .id_salt("image_decode_cache")
+            .show(ui, |ui| {
+                egui::Grid::new("image_decode_cache grid")
+                    .num_columns(3)
+                    .show(ui, |ui| {
+                        ui.label(egui::RichText::new("Blob").underline());
+                        ui.label(egui::RichText::new("Num Images").underline());
+                        ui.end_row();
+
+                        for (cache_key, item) in self
+                            .cache
+                            .iter()
+                            .sorted_unstable_by_key(|(k, _)| k.0.hash64())
+                        {
+                            ui.label(format!("{:x}", cache_key.0.hash64()));
+                            ui.label(re_format::format_uint(item.len()));
+                            ui.end_row();
+                        }
+                    })
+            });
+    }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
         re_tracing::profile_function!();
