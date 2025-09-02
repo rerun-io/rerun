@@ -7226,7 +7226,6 @@ dependencies = [
  "arrow",
  "egui",
  "egui_kittest",
- "half",
  "re_arrow_util",
  "re_format",
  "re_tracing",

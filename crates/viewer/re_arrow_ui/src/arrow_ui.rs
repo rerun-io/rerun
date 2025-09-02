@@ -13,7 +13,6 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-        // TODO: Should this also be handled in the arrow tree UI?
         // Special-treat text.
         // This is so that we can show urls as clickable links.
         // Note: we match on the raw data here, so this works for any component containing text.

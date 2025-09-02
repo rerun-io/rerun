@@ -23,7 +23,6 @@ re_ui.workspace = true
 
 arrow.workspace = true
 egui.workspace = true
-half.workspace = true
 
 [dev-dependencies]
 egui_kittest.workspace = true
