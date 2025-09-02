@@ -33,12 +33,12 @@ impl<'a> ArrowNode<'a> {
         }
     }
 
-    /// Create a new [`ArrowNode`] with a name label.
+    /// Create a new [`ArrowNode`] from an Arrow field.
     ///
-    /// Use this with e.g. field names of a `StructArray`.
-    pub fn name(name: impl Into<String>, values: &'a dyn ShowIndex) -> Self {
+    /// This will set the name to the fields name.
+    pub fn field(field: &'a arrow::datatypes::Field, values: &'a dyn ShowIndex) -> Self {
         Self {
-            label: NodeLabel::Name(name.into()),
+            label: NodeLabel::Name(field.name().to_owned()),
             values,
         }
     }
@@ -107,6 +107,7 @@ impl<'a> ArrowNode<'a> {
                             // Keep showing the data type when the tooltip is open, so the
                             // user can interact with it.
                             if visuals.hovered || tooltip_open {
+                                // TODO(lucas): We should show the nullability here too
                                 let response =
                                     ui.small(RichText::new(&data_type_ui.type_name).strong());
                                 ui.painter().rect_stroke(

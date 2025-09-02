@@ -16,7 +16,7 @@ use arrow::array::{
     StructArray, UnionArray, as_generic_binary_array, downcast_dictionary_array,
     downcast_integer_array, downcast_run_array,
 };
-use arrow::datatypes::{ArrowNativeType as _, DataType, UnionMode};
+use arrow::datatypes::{ArrowNativeType as _, DataType, Field, UnionMode};
 use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::text::LayoutJob;
@@ -487,7 +487,7 @@ impl<'a> ShowIndexState<'a> for &'a FixedSizeListArray {
 }
 
 /// Pairs a boxed [`ShowIndex`] with its field name
-type FieldDisplay<'a> = (&'a str, Box<dyn ShowIndex + 'a>);
+type FieldDisplay<'a> = (&'a Field, Box<dyn ShowIndex + 'a>);
 
 impl<'a> ShowIndexState<'a> for &'a StructArray {
     type State = Vec<FieldDisplay<'a>>;
@@ -500,7 +500,7 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
             .zip(fields)
             .map(|(a, f)| {
                 let format = make_ui(a.as_ref(), options)?;
-                Ok((f.name().as_str(), format))
+                Ok((&**f, format))
             })
             .collect()
     }
@@ -513,14 +513,14 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
     ) -> EmptyArrowResult {
         let mut iter = s.iter();
         f.code_syntax("{");
-        if let Some((name, display)) = iter.next() {
-            f.code_identifier(name);
+        if let Some((field, display)) = iter.next() {
+            f.code_identifier(field.name());
             f.code_syntax(": ");
             display.as_ref().write(idx, f)?;
         }
-        for (name, display) in iter {
+        for (field, display) in iter {
             f.code_syntax(", ");
-            f.code_identifier(name);
+            f.code_identifier(field.name());
             f.code_syntax(": ");
             display.as_ref().write(idx, f)?;
         }
@@ -529,8 +529,8 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
     }
 
     fn show(&self, state: &Self::State, idx: usize, ui: &mut Ui) {
-        for (name, display) in state {
-            let node = ArrowNode::name(*name, display.as_ref());
+        for (field, show_field) in state {
+            let node = ArrowNode::field(field, show_field.as_ref());
             node.show(ui, idx);
         }
     }
@@ -551,7 +551,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
 
     fn write(
         &self,
-        s: &Self::State,
+        (keys, values): &Self::State,
         idx: usize,
         f: &mut SyntaxHighlightedBuilder<'_>,
     ) -> EmptyArrowResult {
@@ -562,23 +562,23 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
 
         f.code_syntax("{");
         if let Some(idx) = iter.next() {
-            s.0.write(idx, f)?;
+            keys.write(idx, f)?;
             f.code_syntax(": ");
-            s.1.write(idx, f)?;
+            values.write(idx, f)?;
         }
 
         for idx in iter {
             f.code_syntax(", ");
-            s.0.write(idx, f)?;
+            keys.write(idx, f)?;
             f.code_syntax(": ");
-            s.1.write(idx, f)?;
+            values.write(idx, f)?;
         }
 
         f.code_syntax("}");
         Ok(())
     }
 
-    fn show(&self, state: &Self::State, idx: usize, ui: &mut Ui) {
+    fn show(&self, (keys, values): &Self::State, idx: usize, ui: &mut Ui) {
         let offsets = self.value_offsets();
         let end = offsets[idx + 1].as_usize();
         let start = offsets[idx].as_usize();
@@ -586,7 +586,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
 
         for idx in iter {
             let mut key_string = SyntaxHighlightedBuilder::new(ui.style());
-            let result = state.0.write(idx, &mut key_string);
+            let result = keys.write(idx, &mut key_string);
             let text = if result.is_err() {
                 RichText::new("cannot display key")
                     .color(ui.tokens().error_fg_color)
@@ -595,7 +595,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
                 key_string.into_widget_text()
             };
 
-            ArrowNode::custom(text, state.1.as_ref()).show(ui, idx);
+            ArrowNode::custom(text, values.as_ref()).show(ui, idx);
         }
     }
 
@@ -605,7 +605,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
 }
 
 impl<'a> ShowIndexState<'a> for &'a UnionArray {
-    type State = (Vec<Option<(&'a str, Box<dyn ShowIndex + 'a>)>>, UnionMode);
+    type State = (Vec<Option<FieldDisplay<'a>>>, UnionMode);
 
     fn prepare(&self, options: &FormatOptions<'a>) -> Result<Self::State, ArrowError> {
         let DataType::Union(fields, mode) = (*self).data_type() else {
@@ -613,49 +613,50 @@ impl<'a> ShowIndexState<'a> for &'a UnionArray {
         };
 
         let max_id = fields.iter().map(|(id, _)| id).max().unwrap_or_default() as usize;
-        let mut out: Vec<Option<FieldDisplay<'_>>> = (0..max_id + 1).map(|_| None).collect();
+        let mut show_fields: Vec<Option<FieldDisplay<'_>>> =
+            (0..max_id + 1).map(|_| None).collect();
         for (i, field) in fields.iter() {
             let formatter = make_ui(self.child(i).as_ref(), options)?;
-            out[i as usize] = Some((field.name().as_str(), formatter));
+            show_fields[i as usize] = Some((field, formatter));
         }
-        Ok((out, *mode))
+        Ok((show_fields, *mode))
     }
 
     fn write(
         &self,
-        s: &Self::State,
+        (fields, mode): &Self::State,
         idx: usize,
         f: &mut SyntaxHighlightedBuilder<'_>,
     ) -> EmptyArrowResult {
         let id = self.type_id(idx);
-        let idx = match s.1 {
+        let idx = match mode {
             UnionMode::Dense => self.value_offset(idx),
             UnionMode::Sparse => idx,
         };
-        let (name, field) = s.0[id as usize]
+        let (field, show_field) = fields[id as usize]
             .as_ref()
             .expect("Union field should be present");
 
         f.code_syntax("{");
-        f.code_identifier(name);
+        f.code_identifier(field.name());
         f.code_syntax("=");
-        field.write(idx, f)?;
+        show_field.write(idx, f)?;
         f.code_syntax("}");
 
         Ok(())
     }
 
-    fn show(&self, state: &Self::State, idx: usize, ui: &mut Ui) {
+    fn show(&self, (fields, mode): &Self::State, idx: usize, ui: &mut Ui) {
         let id = self.type_id(idx);
-        let idx = match state.1 {
+        let idx = match mode {
             UnionMode::Dense => self.value_offset(idx),
             UnionMode::Sparse => idx,
         };
-        let (name, field) = state.0[id as usize]
+        let (field, show_field) = fields[id as usize]
             .as_ref()
             .expect("Union field should be present");
 
-        let node = ArrowNode::name(*name, field.as_ref());
+        let node = ArrowNode::field(field, show_field.as_ref());
         node.show(ui, idx);
     }
 
