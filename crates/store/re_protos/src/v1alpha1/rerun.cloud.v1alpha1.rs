@@ -1961,9 +1961,9 @@ pub mod rerun_cloud_service_client {
         }
         /// Write chunks to one or more partitions.
         ///
-        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
         ///
-        /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
+        /// This endpoint requires the standard dataset headers.
         pub async fn write_chunks(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::WriteChunksRequest>,
@@ -2407,9 +2407,9 @@ pub mod rerun_cloud_service_server {
         ) -> std::result::Result<tonic::Response<super::RegisterWithDatasetResponse>, tonic::Status>;
         /// Write chunks to one or more partitions.
         ///
-        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
         ///
-        /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
+        /// This endpoint requires the standard dataset headers.
         async fn write_chunks(
             &self,
             request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,

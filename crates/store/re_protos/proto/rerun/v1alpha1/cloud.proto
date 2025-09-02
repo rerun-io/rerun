@@ -51,9 +51,9 @@ service RerunCloudService {
 
   // Write chunks to one or more partitions.
   //
-  // The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+  // The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
   //
-  // The destination dataset must be provided in the `x-rerun-dataset-id` header.
+  // This endpoint requires the standard dataset headers.
   rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
   /* Query schemas */
