@@ -130,7 +130,7 @@ impl Cache for MeshCache {
     }
 
     fn name(&self) -> &'static str {
-        "Mesh Cache"
+        "Meshes"
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {

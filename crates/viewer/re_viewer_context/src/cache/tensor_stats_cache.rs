@@ -40,7 +40,7 @@ impl Cache for TensorStatsCache {
     }
 
     fn name(&self) -> &'static str {
-        "Tensor Stats Cache"
+        "Tensor Stats"
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {

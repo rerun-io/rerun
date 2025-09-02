@@ -554,7 +554,7 @@ impl Cache for VideoStreamCache {
     }
 
     fn name(&self) -> &'static str {
-        "Image Decode Cache"
+        "Video Streams"
     }
 
     /// Keep existing cache entries up to date with new and removed video data.

@@ -230,7 +230,7 @@ impl Cache for WireframeCache {
     }
 
     fn name(&self) -> &'static str {
-        "Wireframe Cache"
+        "Proc Mesh Wireframes"
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -535,7 +535,7 @@ impl Cache for SolidCache {
     }
 
     fn name(&self) -> &'static str {
-        "Solid Cache"
+        "Proc Mesh Solids"
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

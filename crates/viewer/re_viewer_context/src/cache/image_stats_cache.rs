@@ -34,7 +34,7 @@ impl Cache for ImageStatsCache {
     }
 
     fn name(&self) -> &'static str {
-        "Image Stats Cache"
+        "Image Stats"
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {

@@ -156,7 +156,7 @@ impl Cache for ImageDecodeCache {
     }
 
     fn name(&self) -> &'static str {
-        "Image Decode Cache"
+        "Image Decodings"
     }
 
     fn purge_memory(&mut self) {

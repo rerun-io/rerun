@@ -143,7 +143,7 @@ impl Cache for VideoAssetCache {
     }
 
     fn name(&self) -> &'static str {
-        "Video Asset Cache"
+        "Video Assets"
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {
