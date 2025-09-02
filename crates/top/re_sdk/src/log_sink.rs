@@ -3,7 +3,7 @@ use std::{fmt, time::Duration};
 
 use parking_lot::Mutex;
 use re_chunk::ChunkBatcherConfig;
-use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, GrpcFlushError, Options};
+use re_grpc_client::write::{Client as MessageProxyClient, GrpcFlushError, Options};
 use re_log_encoding::encoder::{EncodeError, encode_as_bytes_local, local_raw_encoder};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
@@ -527,10 +527,10 @@ pub struct GrpcSink {
 }
 
 /// The connection state of the underlying gRPC connection of a [`GrpcSink`].
-pub type GrpcSinkConnectionState = re_grpc_client::message_proxy::write::ClientConnectionState;
+pub type GrpcSinkConnectionState = re_grpc_client::write::ClientConnectionState;
 
 /// The reason why a [`GrpcSink`] was disconnected.
-pub type GrpcSinkConnectionFailure = re_grpc_client::message_proxy::write::ClientConnectionFailure;
+pub type GrpcSinkConnectionFailure = re_grpc_client::write::ClientConnectionFailure;
 
 impl GrpcSink {
     /// Connect to the in-memory storage node over HTTP.

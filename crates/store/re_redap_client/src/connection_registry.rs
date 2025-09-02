@@ -10,7 +10,7 @@ use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
 
 use crate::TonicStatusError;
 use crate::connection_client::GenericConnectionClient;
-use crate::redap::{ConnectionError, RedapClient, RedapClientInner};
+use crate::grpc::{ConnectionError, RedapClient, RedapClientInner};
 
 /// This is the type of `ConnectionClient` used throughout the viewer, where the
 /// `ConnectionRegistry` is used.
@@ -266,7 +266,7 @@ impl ConnectionRegistryHandle {
         origin: re_uri::Origin,
         token: Option<Jwt>,
     ) -> Result<RedapClient, ClientConnectionError> {
-        let mut raw_client = match crate::redap::client(origin.clone(), token.clone()).await {
+        let mut raw_client = match crate::grpc::client(origin.clone(), token.clone()).await {
             Ok(raw_client) => raw_client,
 
             Err(err) => {

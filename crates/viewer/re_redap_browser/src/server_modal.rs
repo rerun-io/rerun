@@ -1,6 +1,6 @@
 use std::str::FromStr as _;
 
-use re_grpc_client::ConnectionRegistryHandle;
+use re_redap_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
