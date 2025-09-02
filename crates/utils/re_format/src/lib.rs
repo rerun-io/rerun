@@ -426,7 +426,7 @@ fn test_format_f16() {
         (f16::from_f32(-42.0), "−42"),
         (f16::from_f32(-4.20), "−4.1992"), // f16 precision limitation
         (f16::from_f32(12_345.0), "12 344"), // f16 precision limitation
-        (f16::PI, "3.141"),
+        (f16::PI, "3.1406"),               // f16 precision limitation
     ];
     for (value, expected) in cases {
         let got = format_f16(value);
