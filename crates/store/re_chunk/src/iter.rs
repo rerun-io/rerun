@@ -4,7 +4,7 @@ use arrow::{
     array::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef, ArrowPrimitiveType, BinaryArray,
         BooleanArray as ArrowBooleanArray, FixedSizeListArray as ArrowFixedSizeListArray,
-        ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
+        LargeBinaryArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
         StringArray as ArrowStringArray, StructArray as ArrowStructArray,
     },
     buffer::{BooleanBuffer as ArrowBooleanBuffer, Buffer, ScalarBuffer as ArrowScalarBuffer},
@@ -533,7 +533,7 @@ where
     }))
 }
 
-// We special case `&[u8]` so that it works both for `List[u8]` and `Binary` arrays.
+// We special case `&[u8]` so that it works both for `List[u8]` and `Binary/LargeBinary` arrays.
 fn slice_as_u8<'a>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
@@ -545,14 +545,28 @@ fn slice_as_u8<'a>(
         let lengths = offsets.lengths().collect_vec();
 
         // NOTE: No need for validity checks here, `component_spans` already takes care of that.
-        Either::Left(component_spans.map(move |span| {
+        Either::Left(Either::Left(component_spans.map(move |span| {
             let offsets = &offsets[span.range()];
             let lengths = &lengths[span.range()];
             izip!(offsets, lengths)
                 // NOTE: Not an actual clone, just a refbump of the underlying buffer.
                 .map(|(&idx, &len)| values.clone().slice_with_length(idx as _, len))
                 .collect_vec()
-        }))
+        })))
+    } else if let Some(binary_array) = array.downcast_array_ref::<LargeBinaryArray>() {
+        let values = binary_array.values();
+        let offsets = binary_array.offsets();
+        let lengths = offsets.lengths().collect_vec();
+
+        // NOTE: No need for validity checks here, `component_spans` already takes care of that.
+        Either::Left(Either::Right(component_spans.map(move |span| {
+            let offsets = &offsets[span.range()];
+            let lengths = &lengths[span.range()];
+            izip!(offsets, lengths)
+                // NOTE: Not an actual clone, just a refbump of the underlying buffer.
+                .map(|(&idx, &len)| values.clone().slice_with_length(idx as _, len))
+                .collect_vec()
+        })))
     } else {
         Either::Right(
             slice_as_buffer_native::<arrow::array::types::UInt8Type, u8>(
