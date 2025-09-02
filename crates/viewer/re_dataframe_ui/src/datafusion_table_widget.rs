@@ -304,7 +304,7 @@ impl<'a> DataFusionTableWidget<'a> {
         };
 
         // TODO(ab): significant code duplication here. This could possible be addressed by allowing
-        // the rest of this function to run over a schema and emtpy dataframe.
+        // the rest of this function to run over a schema and empty dataframe.
         let (sorbet_schema, migrated_fields) = {
             // TODO(ab): We need to deal better with empty vec of sorbet batches. In that case, we
             // do have a schema, so we should be able to display an empty table.
