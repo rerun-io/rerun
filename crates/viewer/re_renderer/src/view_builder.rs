@@ -255,30 +255,7 @@ impl Default for TargetConfiguration {
 /// i.e. all values are valid picking IDs, it is up to the user to discard anything that is out of bounds.
 ///
 /// Data from the picking rect needs to be retrieved via [`crate::PickingLayerProcessor::readback_result`].
-/// To do so, you need to pass the exact same `identifier` and type of user data as you've done here:
-///
-///  TODO: outdated snippet
-/// ```no_run
-/// use re_renderer::{view_builder::ViewBuilder, RectInt, PickingLayerProcessor, RenderContext, ViewPickingConfiguration};
-///
-/// fn setup_picking_config() -> Option<ViewPickingConfiguration> {
-///     Some(ViewPickingConfiguration {
-///         picking_rect: RectInt::from_middle_and_extent(
-///             glam::ivec2(0, 0),
-///             glam::uvec2(100, 100),
-///         ),
-///         readback_identifier: 42,
-///         readback_user_data: Box::new("My screenshot".to_owned()),
-///         show_debug_view: false,
-///     })
-/// }
-///
-/// fn receive_screenshots(ctx: &RenderContext) {
-///     while let Some(result) = PickingLayerProcessor::readback_result::<String>(ctx, 42) {
-///         re_log::info!("Received picking_data {}", result.user_data);
-///     }
-/// }
-/// ```
+/// To do so, you need to pass the exact same `identifier` and type of user data.
 ///
 /// Received data that isn't retrieved for more than a frame will be automatically discarded.
 #[derive(Debug)]
