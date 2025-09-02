@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
 
-use itertools::{Either, Itertools as _};
+use itertools::Either;
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_entity_db::VersionedInstancePathHash;
@@ -12,7 +12,7 @@ use re_types::{
     archetypes::{Asset3D, Mesh3D},
     components::MediaType,
 };
-use re_viewer_context::Cache;
+use re_viewer_context::{Cache, CacheMemoryReport, CacheMemoryReportItem};
 
 use crate::mesh_loader::{LoadedMesh, NativeAsset3D, NativeMesh3D};
 
@@ -97,36 +97,43 @@ impl Cache for MeshCache {
         self.0.clear();
     }
 
+    fn memory_report(&self) -> CacheMemoryReport {
+        let mut full_bytes_gpu = 0;
+        let mut items: Vec<_> = self
+            .0
+            .iter()
+            .map(|(row_id, meshes)| {
+                let bytes_gpu = meshes
+                    .values()
+                    .filter_map(Option::as_ref)
+                    .map(|mesh| {
+                        mesh.mesh_instances
+                            .iter()
+                            .map(|s| {
+                                s.gpu_mesh.gpu_byte_size() / Arc::strong_count(&s.gpu_mesh) as u64
+                            })
+                            .sum::<u64>()
+                            / Arc::strong_count(mesh) as u64
+                    })
+                    .sum();
+                full_bytes_gpu += bytes_gpu;
+                CacheMemoryReportItem {
+                    item_name: row_id.short_string(),
+                    bytes_cpu: meshes.total_size_bytes(),
+                    bytes_gpu: Some(bytes_gpu),
+                }
+            })
+            .collect();
+        items.sort_by(|a, b| a.item_name.cmp(&b.item_name));
+        CacheMemoryReport {
+            bytes_cpu: self.0.total_size_bytes(),
+            bytes_gpu: Some(full_bytes_gpu),
+            per_cache_item_info: items,
+        }
+    }
+
     fn name(&self) -> &'static str {
         "Mesh Cache"
-    }
-
-    fn ui(&self, ui: &mut egui::Ui) {
-        ui.label(format!("rows: {}", self.0.len()));
-        egui::ScrollArea::vertical()
-            .max_height(200.0)
-            .id_salt("mesh_cache")
-            .show(ui, |ui| {
-                egui::Grid::new("mesh_cache grid")
-                    .num_columns(3)
-                    .show(ui, |ui| {
-                        ui.label(egui::RichText::new("RowId").underline());
-                        ui.label(egui::RichText::new("Num Meshes").underline());
-                        ui.end_row();
-
-                        for (row_id, item) in
-                            self.0.iter().sorted_unstable_by_key(|(row_id, _)| *row_id)
-                        {
-                            ui.label(format!("{row_id}",));
-                            ui.label(re_format::format_uint(item.len()));
-                            ui.end_row();
-                        }
-                    })
-            });
-    }
-
-    fn bytes_used(&self) -> u64 {
-        self.0.total_size_bytes()
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {

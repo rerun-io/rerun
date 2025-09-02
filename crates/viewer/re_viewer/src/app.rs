@@ -13,7 +13,7 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, Caches, CommandReceiver, CommandSender,
+    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
     StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
     ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
@@ -1696,7 +1696,6 @@ impl App {
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
-        active_caches: Option<&Caches>,
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
@@ -1713,7 +1712,6 @@ impl App {
                     &self.startup_options.memory_limit,
                     gpu_resource_stats,
                     store_stats,
-                    active_caches,
                 );
             });
     }
@@ -1763,7 +1761,6 @@ impl App {
         store_context: Option<&StoreContext<'_>>,
         storage_context: &StorageContext<'_>,
         store_stats: Option<&StoreHubStats>,
-        active_caches: Option<&Caches>,
     ) {
         let mut main_panel_frame = egui::Frame::default();
         if re_ui::CUSTOM_WINDOW_DECORATIONS {
@@ -1787,7 +1784,7 @@ impl App {
                     ui,
                 );
 
-                self.memory_panel_ui(ui, gpu_resource_stats, store_stats, active_caches);
+                self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 
                 self.egui_debug_panel_ui(ui);
 
@@ -2748,7 +2745,6 @@ impl eframe::App for App {
                 store_context.as_ref(),
                 &storage_context,
                 store_stats.as_ref(),
-                store_context.as_ref().map(|s| s.caches),
             );
 
             if re_ui::CUSTOM_WINDOW_DECORATIONS {

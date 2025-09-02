@@ -107,6 +107,7 @@ impl MemoryHistory {
                     store_stats,
                     query_cache_stats,
                     viewer_cache_size,
+                    cache_memory_reports: _,
                 } = stats;
 
                 match store_id.kind() {
