@@ -513,7 +513,7 @@ impl ViewerOpenUrl {
 
             Self::RrdHttpUrl(url) => {
                 let path = url.path();
-                let rrd_file_name = path.split('/').last().map(|s| s.to_string());
+                let rrd_file_name = path.split('/').next_back().map(|s| s.to_owned());
 
                 ViewerOpenUrlDescription {
                     category: "RRD from link",
