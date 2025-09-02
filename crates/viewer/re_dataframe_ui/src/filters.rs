@@ -1,6 +1,6 @@
 use arrow::datatypes::{DataType, Field};
 use datafusion::common::DFSchema;
-use datafusion::prelude::{Column, Expr, col, lit, regexp_like};
+use datafusion::prelude::{Column, Expr, col, lit, lower};
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum FilterError {
@@ -96,8 +96,18 @@ impl FilterOperation {
                     }
                 };
 
-                Ok(regexp_like(operand, lit(query_string), Some(lit("i"))))
+                Ok(contains_patch(lower(operand), lower(lit(query_string))))
             }
         }
     }
+}
+
+// TODO(ab): this is a workaround for https://github.com/apache/datafusion/pull/16046. Next time we
+// update datafusion, this should break compilation. Remove this function and replace
+// `contains_patch` by `datafusion::prelude::contains` in the method above.
+fn contains_patch(arg1: Expr, arg2: Expr) -> Expr {
+    // make sure we break compilation when we update datafusion
+    let _ = datafusion::prelude::contains();
+
+    datafusion::functions::string::contains().call(<[_]>::into_vec(Box::new([arg1, arg2])))
 }

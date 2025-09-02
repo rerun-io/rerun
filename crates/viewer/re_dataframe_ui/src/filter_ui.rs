@@ -157,6 +157,7 @@ impl Filter {
         activate_filter: bool,
     ) -> DisplayFilterUiResult {
         let mut should_delete_filter = false;
+        let mut action_due_to_filter_deletion = FilterUiAction::None;
 
         let mut response = Frame::new()
             .inner_margin(Margin::symmetric(4, 4))
@@ -183,6 +184,7 @@ impl Filter {
                     .clicked()
                 {
                     should_delete_filter = true;
+                    action_due_to_filter_deletion = FilterUiAction::CommitStateToBlueprint;
                 }
 
                 text_response
@@ -210,33 +212,35 @@ impl Filter {
             action
         });
 
-        // Handle the logic of committing or cancelling the filter edit. This can happen in two
+        // Handle the logic of committing or cancelling the filter edit. This can happen in three
         // ways:
         //
-        // 1) The popup is closed by "normal" means (e.g. clicking outside, etc.). This triggers a
+        // 1) A filter was deleted. This triggers a commit.
+        // 2) The popup is closed by "normal" means (e.g. clicking outside, etc.). This triggers a
         //    commit, unless it happened with Esc, in which case we cancel the edit.
-        // 2) The `FilterOperation::popup_ui` itself triggers a commit/cancel action (typically
+        // 3) The `FilterOperation::popup_ui` itself triggers a commit/cancel action (typically
         //    when interacting with a text field and detecting either Enter or Esc). When that
         //    happens, we close the popup and propagate the action.
-        let filter_action = popup_response
-            .map(|inner_response| match inner_response.inner {
-                FilterUiAction::None => {
-                    if inner_response.response.should_close() {
-                        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-                            FilterUiAction::CancelStateEdit
-                        } else {
-                            FilterUiAction::CommitStateToBlueprint
-                        }
+
+        let (action_due_to_closed_popup, action_from_popup_ui) = popup_response
+            .map(|inner_response| {
+                let action_due_to_closed_popup = if inner_response.response.should_close() {
+                    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                        FilterUiAction::CancelStateEdit
                     } else {
-                        FilterUiAction::None
+                        FilterUiAction::CommitStateToBlueprint
                     }
-                }
-                FilterUiAction::CommitStateToBlueprint | FilterUiAction::CancelStateEdit => {
-                    ui.close();
-                    inner_response.inner
-                }
+                } else {
+                    FilterUiAction::None
+                };
+
+                (action_due_to_closed_popup, inner_response.inner)
             })
             .unwrap_or_default();
+
+        let filter_action = action_due_to_filter_deletion
+            .merge(action_due_to_closed_popup)
+            .merge(action_from_popup_ui);
 
         DisplayFilterUiResult {
             filter_action,
