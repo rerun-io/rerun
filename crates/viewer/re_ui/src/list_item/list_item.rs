@@ -82,6 +82,7 @@ pub struct ListVisuals {
     pub active: bool,
     pub interactive: bool,
     pub strong: bool,
+    pub openness: Option<f32>,
 }
 
 impl ListVisuals {
@@ -157,6 +158,32 @@ impl ListVisuals {
         } else {
             self.interactive_icon_tint(icon_hovered)
         }
+    }
+
+    /// Is the item collapsible?
+    pub fn is_collapsible(&self) -> bool {
+        self.openness.is_some()
+    }
+
+    /// Is the item fully collapsed?
+    ///
+    /// Returns true if the item is not collapsible.
+    pub fn collapsed(&self) -> bool {
+        self.openness.is_none_or(|openness| openness <= 0.0)
+    }
+
+    /// Is the item fully opened?
+    ///
+    /// Returns false if the item is not collapsible.
+    pub fn opened(&self) -> bool {
+        !self.collapsed()
+    }
+
+    /// Openness of the item.
+    ///
+    /// 0.0 if the item is not collapsible.
+    pub fn openness(&self) -> f32 {
+        self.openness.unwrap_or(0.0)
     }
 }
 
@@ -500,6 +527,7 @@ impl ListItem {
             active,
             interactive,
             strong: false,
+            openness: collapse_openness,
         };
 
         let mut collapse_response = None;
