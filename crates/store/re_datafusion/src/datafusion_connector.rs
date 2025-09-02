@@ -3,11 +3,11 @@ use std::sync::Arc;
 use datafusion::{catalog::TableProvider, error::DataFusionError};
 use tracing::instrument;
 
-use re_grpc_client::ConnectionClient;
 use re_log_types::{EntryId, external::re_tuid::Tuid};
-use re_protos::catalog::v1alpha1::{
+use re_protos::cloud::v1alpha1::{
     DatasetEntry, EntryFilter, ReadDatasetEntryRequest, ext::EntryDetails,
 };
+use re_redap_client::ConnectionClient;
 
 use crate::partition_table::PartitionTableProvider;
 use crate::table_entry_provider::TableEntryTableProvider;
@@ -30,7 +30,7 @@ impl DataFusionConnector {
         let entry: EntryDetails = self
             .client
             .inner()
-            .find_entries(re_protos::catalog::v1alpha1::FindEntriesRequest {
+            .find_entries(re_protos::cloud::v1alpha1::FindEntriesRequest {
                 filter: Some(EntryFilter {
                     name: Some("__entries".to_owned()),
                     ..Default::default()

@@ -65,8 +65,8 @@ parking_lot = { workspace = true, features = ["serde"] }
 serde.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
+static_assertions.workspace = true
 thiserror.workspace = true
-web-time.workspace = true
 wgpu.workspace = true
 
 # Native dependencies:

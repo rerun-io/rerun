@@ -355,6 +355,8 @@ fn setup_target_config(
                 principal_point.extend(1.0),
             ),
             resolution,
+            color: None,
+            line_width: None,
         }
     };
     let pinhole_rect = Rect::from_min_size(

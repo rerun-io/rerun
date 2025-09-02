@@ -1,12 +1,12 @@
 //! Rerun dataloader for MCAP files.
 
-use std::{io::Cursor, sync::mpsc::Sender};
+use std::{io::Cursor, path::Path, sync::mpsc::Sender};
 
 use anyhow::Context as _;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
+use re_mcap::{LayerRegistry, SelectedLayers};
 
-use crate::mcap::layers::{LayerRegistry, SelectedLayers};
 use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
 const MCAP_LOADER_NAME: &str = "McapLoader";
@@ -16,13 +16,13 @@ const MCAP_LOADER_NAME: &str = "McapLoader";
 /// There are many different ways to extract and interpret information from MCAP files.
 /// For example, it might be interesting to query for particular fields of messages,
 /// or show information directly in the Rerun viewer. Because use-cases can vary, the
-/// [`McapLoader`] is made up of [`crate::mcap::Layer`]s, each representing different views of the
+/// [`McapLoader`] is made up of [`re_mcap::Layer`]s, each representing different views of the
 /// underlying data.
 ///
 /// These layers can be specified in the CLI wen converting an MCAP file
 /// to an .rrd. Here are a few examples:
-/// - [`crate::mcap::layers::McapProtobufLayer`]
-/// - [`crate::mcap::layers::McapRawLayer`]
+/// - [`re_mcap::layers::McapProtobufLayer`]
+/// - [`re_mcap::layers::McapRawLayer`]
 pub struct McapLoader {
     selected_layers: SelectedLayers,
 }
@@ -54,11 +54,7 @@ impl DataLoader for McapLoader {
         path: std::path::PathBuf,
         tx: Sender<crate::LoadedData>,
     ) -> std::result::Result<(), DataLoaderError> {
-        if path.is_dir()
-            || path
-                .extension()
-                .is_none_or(|ext| !ext.eq_ignore_ascii_case("mcap"))
-        {
+        if !is_mcap_file(&path) {
             return Err(DataLoaderError::Incompatible(path)); // simply not interested
         }
 
@@ -94,7 +90,7 @@ impl DataLoader for McapLoader {
         _contents: std::borrow::Cow<'_, [u8]>,
         tx: Sender<crate::LoadedData>,
     ) -> std::result::Result<(), crate::DataLoaderError> {
-        if filepath.is_dir() || filepath.extension().is_none_or(|ext| ext != "mcap") {
+        if !is_mcap_file(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
         }
 
@@ -127,10 +123,14 @@ impl DataLoader for McapLoader {
     fn load_from_file_contents(
         &self,
         settings: &crate::DataLoaderSettings,
-        _filepath: std::path::PathBuf,
+        filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: Sender<crate::LoadedData>,
     ) -> std::result::Result<(), DataLoaderError> {
+        if !is_mcap_file(&filepath) {
+            return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
+        }
+
         let contents = contents.into_owned();
 
         load_mcap(&contents, settings, &tx, self.selected_layers.clone())
@@ -162,7 +162,8 @@ fn load_mcap(
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!();
 
-    let store_id = settings.recommended_store_id();
+    // If there's an open store, use it. If there's no store yet, use the recommended id.
+    let store_id = settings.opened_store_id_or_recommended();
 
     if tx
         .send(LoadedData::LogMsg(
@@ -196,7 +197,7 @@ fn load_mcap(
 
     let reader = Cursor::new(&mcap);
 
-    let summary = crate::mcap::util::read_summary(reader)?
+    let summary = re_mcap::read_summary(reader)?
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
     let registry = LayerRegistry::all();
@@ -228,4 +229,13 @@ pub fn store_info(store_id: StoreId) -> SetStoreInfo {
             store_version: Some(re_build_info::CrateVersion::LOCAL),
         },
     }
+}
+
+/// Checks if a file is an MCAP file.
+fn is_mcap_file(filepath: &Path) -> bool {
+    !filepath.is_dir()
+        && filepath
+            .extension()
+            .map(|ext| ext.eq_ignore_ascii_case("mcap"))
+            .unwrap_or(false)
 }

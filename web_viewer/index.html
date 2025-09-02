@@ -351,6 +351,7 @@
           enable_history: true,
           notebook: get_query_bool(query, "notebook", false),
           persist: get_query_bool(query, "persist", true),
+          fallback_token: query.get("token"),
         };
 
         let handle = new wasm_bindgen.WebHandle(options);

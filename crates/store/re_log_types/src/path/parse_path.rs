@@ -31,7 +31,7 @@ pub enum PathParseError {
     UnexpectedInstance(Instance),
 
     #[error("Found an unexpected trailing component descriptor: {0:?}")]
-    UnexpectedComponentDescriptor(ComponentDescriptor),
+    UnexpectedComponentDescriptor(Box<ComponentDescriptor>),
 
     #[error("Missing component")]
     MissingComponentIdentifier,
@@ -55,6 +55,11 @@ pub enum PathParseError {
     #[error("Expected e.g. '\\u{{262E}}', found: '\\u{0}'")]
     InvalidUnicodeEscape(String),
 }
+
+const _: () = assert!(
+    std::mem::size_of::<PathParseError>() <= 48,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 type Result<T, E = PathParseError> = std::result::Result<T, E>;
 
@@ -179,7 +184,7 @@ impl EntityPath {
         }
         if let Some(component_descriptor) = component_descriptor {
             return Err(PathParseError::UnexpectedComponentDescriptor(
-                component_descriptor,
+                component_descriptor.into(),
             ));
         }
 

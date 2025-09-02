@@ -11,6 +11,26 @@ use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
 #[derive(Debug, Clone)]
 pub struct UserContext {
     pub user_id: String,
+
+    #[cfg(feature = "workos")]
+    pub permissions: Vec<crate::workos::Permission>,
+}
+
+#[cfg(feature = "workos")]
+impl UserContext {
+    pub fn has_read_permission(&self) -> bool {
+        use crate::workos::Permission as P;
+
+        self.permissions
+            .iter()
+            .any(|p| p == &P::Read || p == &P::ReadWrite)
+    }
+
+    pub fn has_write_permission(&self) -> bool {
+        use crate::workos::Permission as P;
+
+        self.permissions.iter().any(|p| p == &P::ReadWrite)
+    }
 }
 
 impl TryFrom<&MetadataValue<Ascii>> for Jwt {
@@ -57,6 +77,9 @@ impl Interceptor for Authenticator {
 
             req.extensions_mut().insert(UserContext {
                 user_id: claims.sub().to_owned(),
+
+                #[cfg(feature = "workos")]
+                permissions: claims.permissions().to_vec(),
             });
         }
 

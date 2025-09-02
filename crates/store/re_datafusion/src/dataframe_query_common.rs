@@ -1,9 +1,16 @@
+use std::any::Any;
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet};
+use std::str::FromStr as _;
+use std::sync::Arc;
+
 use arrow::array::{
     ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
     TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
     TimestampSecondArray, UInt64Array, new_null_array,
 };
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
+use arrow::record_batch::RecordBatchOptions;
 use async_trait::async_trait;
 use datafusion::catalog::{Session, TableProvider};
 use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusion_err};
@@ -11,27 +18,21 @@ use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
+
 use re_dataframe::external::re_chunk::ChunkId;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
-use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::Loggable as _;
+use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
+use re_protos::cloud::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest};
 use re_protos::common::v1alpha1::ext::ScanParameters;
-use re_protos::frontend::v1alpha1::{
-    GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest,
-};
-use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
+use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_tuid::Tuid;
 use re_uri::Origin;
-use std::any::Any;
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
-use std::str::FromStr as _;
-use std::sync::Arc;
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
 /// The default for Data Fusion is 8192, which leads to a 256Kb record batch on average for
@@ -406,9 +407,10 @@ pub fn align_record_batch_to_schema(
         }
     }
 
-    Ok(RecordBatch::try_new(
+    Ok(RecordBatch::try_new_with_options(
         target_schema.clone(),
         aligned_columns,
+        &RecordBatchOptions::new().with_row_count(Some(num_rows)),
     )?)
 }
 

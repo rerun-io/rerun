@@ -98,7 +98,7 @@ pub struct ServeGuard {
 impl Drop for ServeGuard {
     fn drop(&mut self) {
         if self.block_on_drop {
-            eprintln!("Sleeping indefinitely while serving web viewer... Press ^C when done.");
+            eprintln!("Sleeping indefinitely while serving web viewer… Press ^C when done.");
             // TODO(andreas): It would be a lot better if we had a handle to the web server and could call `block_until_shutdown` on it.
             std::thread::sleep(std::time::Duration::from_secs(u64::MAX));
         }
@@ -116,8 +116,7 @@ impl RerunArgs {
             )),
 
             RerunBehavior::Connect(url) => Ok((
-                RecordingStreamBuilder::new(application_id)
-                    .connect_grpc_opts(url, re_sdk::default_flush_timeout())?,
+                RecordingStreamBuilder::new(application_id).connect_grpc_opts(url)?,
                 Default::default(),
             )),
 
@@ -141,7 +140,7 @@ impl RerunArgs {
 
                 crate::serve_web_viewer(crate::web_viewer::WebViewerConfig {
                     open_browser: true,
-                    connect_to: Some("rerun+http://localhost:9876/proxy".to_owned()),
+                    connect_to: vec!["rerun+http://localhost:9876/proxy".to_owned()],
                     ..Default::default()
                 })?
                 .detach();

@@ -19,10 +19,13 @@ _deps
 **/rerun_cpp/docs/xml
 *.tgz
 
-# Rust compile target directory:
-**/target
-**/target_ra
-**/target_wasm
+# Rust compile target directories.
+# These should only be found in the repository root, so prefix them all with slashes:
+/target
+/target_pixi
+/target_pixi_wasm
+/target_ra
+/target_wasm
 
 # Python virtual environment:
 **/venv*
@@ -80,3 +83,6 @@ justfile
 
 # IDE stuff
 /.idea
+
+# Lychee link checker cache
+.lycheecache

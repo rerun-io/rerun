@@ -13,6 +13,7 @@ mod task;
 
 use std::sync::Arc;
 
+use arrow::array::RecordBatchOptions;
 use arrow::{
     array::{Float32Array, RecordBatch},
     datatypes::Field,
@@ -67,7 +68,7 @@ enum PyVectorDistanceMetric {
     Hamming,
 }
 
-impl From<PyVectorDistanceMetric> for re_protos::manifest_registry::v1alpha1::VectorDistanceMetric {
+impl From<PyVectorDistanceMetric> for re_protos::cloud::v1alpha1::VectorDistanceMetric {
     fn from(metric: PyVectorDistanceMetric) -> Self {
         match metric {
             PyVectorDistanceMetric::L2 => Self::L2,
@@ -88,9 +89,7 @@ enum VectorDistanceMetricLike {
     CatchAll(String),
 }
 
-impl TryFrom<VectorDistanceMetricLike>
-    for re_protos::manifest_registry::v1alpha1::VectorDistanceMetric
-{
+impl TryFrom<VectorDistanceMetricLike> for re_protos::cloud::v1alpha1::VectorDistanceMetric {
     type Error = PyErr;
 
     fn try_from(metric: VectorDistanceMetricLike) -> Result<Self, PyErr> {
@@ -111,8 +110,7 @@ impl TryFrom<VectorDistanceMetricLike>
 
 impl From<PyVectorDistanceMetric> for i32 {
     fn from(metric: PyVectorDistanceMetric) -> Self {
-        let proto_typed =
-            re_protos::manifest_registry::v1alpha1::VectorDistanceMetric::from(metric);
+        let proto_typed = re_protos::cloud::v1alpha1::VectorDistanceMetric::from(metric);
 
         proto_typed as Self
     }
@@ -146,12 +144,17 @@ impl VectorLike<'_> {
                     })?
                     .to_vec();
 
-                RecordBatch::try_new(Arc::new(schema), vec![Arc::new(Float32Array::from(floats))])
-                    .map_err(to_py_err)
+                RecordBatch::try_new_with_options(
+                    Arc::new(schema),
+                    vec![Arc::new(Float32Array::from(floats))],
+                    &RecordBatchOptions::default(),
+                )
+                .map_err(to_py_err)
             }
-            VectorLike::Vector(floats) => RecordBatch::try_new(
+            VectorLike::Vector(floats) => RecordBatch::try_new_with_options(
                 Arc::new(schema),
                 vec![Arc::new(Float32Array::from(floats.clone()))],
+                &RecordBatchOptions::default(),
             )
             .map_err(to_py_err),
         }

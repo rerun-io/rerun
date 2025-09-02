@@ -58,7 +58,6 @@ def script_add_args(parser: ArgumentParser) -> None:
     parser.add_argument("--url", type=str, default=None, help="Connect to this Rerun URL")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
     parser.add_argument(
-        "-o",
         "--stdout",
         dest="stdout",
         action="store_true",

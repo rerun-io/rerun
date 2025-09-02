@@ -39,6 +39,9 @@
 
 mod args;
 mod grpc;
+mod metrics_server;
+mod prometheus;
+mod shared_reader;
 mod telemetry;
 mod utils;
 

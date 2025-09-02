@@ -62,7 +62,7 @@ impl ControlApp {
 
         tokio::spawn(async move {
             loop {
-                re_log::info!("Waiting for connection...");
+                re_log::info!("Waiting for connection…");
                 let app = app.clone();
                 match app.listener.accept().await {
                     Ok((socket, addr)) => {

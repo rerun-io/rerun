@@ -5,18 +5,17 @@ pub mod stream;
 #[cfg(feature = "decoder")]
 pub mod streaming;
 
-use std::io::BufRead as _;
-use std::io::Read as _;
+use std::io::{BufRead as _, Read as _};
 
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
-use crate::FileHeader;
-use crate::OLD_RRD_HEADERS;
-use crate::app_id_injector::CachingApplicationIdInjector;
-use crate::codec;
-use crate::codec::file::decoder;
-use crate::{EncodingOptions, Serializer};
+use crate::{
+    EncodingOptions, FileHeader, OLD_RRD_HEADERS, Serializer,
+    app_id_injector::CachingApplicationIdInjector,
+    codec::{self, file::decoder},
+};
+
 // ----------------------------------------------------------------------------
 
 fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError> {
@@ -30,8 +29,8 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError>
     if encoded_version.major == 0 && encoded_version.minor < 23 {
         // We broke compatibility for 0.23 for (hopefully) the last time.
         Err(DecodeError::IncompatibleRerunVersion {
-            file: encoded_version,
-            local: CrateVersion::LOCAL,
+            file: Box::new(encoded_version),
+            local: Box::new(CrateVersion::LOCAL),
         })
     } else if encoded_version <= CrateVersion::LOCAL {
         // Loading old files should be fine, and if it is not, the chunk migration in re_sorbet should already log a warning.
@@ -60,8 +59,8 @@ pub enum DecodeError {
         "Data from Rerun version {file}, which is incompatible with the local Rerun version {local}"
     )]
     IncompatibleRerunVersion {
-        file: CrateVersion,
-        local: CrateVersion,
+        file: Box<CrateVersion>,
+        local: Box<CrateVersion>,
     },
 
     /// This is returned when `ArrowMsg` or `BlueprintActivationCommand` are received with a legacy
@@ -86,19 +85,36 @@ pub enum DecodeError {
     Protobuf(#[from] re_protos::external::prost::DecodeError),
 
     #[error("Could not convert type from protobuf: {0}")]
-    TypeConversion(#[from] re_protos::TypeConversionError),
+    TypeConversion(Box<re_protos::TypeConversionError>),
 
     #[error("Sorbet error: {0}")]
     SorbetError(#[from] re_sorbet::SorbetError),
 
     #[error("Failed to read chunk: {0}")]
-    Chunk(#[from] re_chunk::ChunkError),
+    Chunk(Box<re_chunk::ChunkError>),
 
     #[error("Arrow error: {0}")]
     Arrow(#[from] arrow::error::ArrowError),
 
     #[error("Codec error: {0}")]
     Codec(#[from] codec::CodecError),
+}
+
+const _: () = assert!(
+    std::mem::size_of::<DecodeError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
+
+impl From<re_protos::TypeConversionError> for DecodeError {
+    fn from(value: re_protos::TypeConversionError) -> Self {
+        Self::TypeConversion(Box::new(value))
+    }
+}
+
+impl From<re_chunk::ChunkError> for DecodeError {
+    fn from(value: re_chunk::ChunkError) -> Self {
+        Self::Chunk(Box::new(value))
+    }
 }
 
 impl From<re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError> for DecodeError {

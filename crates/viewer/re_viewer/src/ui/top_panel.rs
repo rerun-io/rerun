@@ -26,7 +26,7 @@ pub fn top_panel(
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
         // React to dragging and double-clicking the top bar:
         #[cfg(not(target_arch = "wasm32"))]
-        if !re_ui::NATIVE_WINDOW_BAR {
+        if !re_ui::native_window_bar(ui.ctx().os()) {
             // Interact with background first, so that buttons in the top bar gets input priority
             // (last added widget has priority for input).
             let title_bar_response = ui.interact(
@@ -69,7 +69,7 @@ pub fn top_panel(
 
     // On MacOS, we show the close/minimize/maximize buttons in the top panel.
     // We _always_ want to show the top panel in that case, and only hide its content.
-    if !re_ui::NATIVE_WINDOW_BAR {
+    if !re_ui::native_window_bar(ui.ctx().os()) {
         panel.show_inside(ui, |ui| content(ui, is_expanded));
     } else {
         panel.show_animated_inside(ui, is_expanded, |ui| content(ui, is_expanded));
@@ -107,29 +107,31 @@ fn top_bar_ui(
             if let Some(latency_snapshot) = latency_snapshot {
                 // Should we show the e2e latency?
 
-                // High enough to be consering; low enough to be believable (and almost realtime).
+                // High enough to be concerning; low enough to be believable (and almost realtime).
                 let is_latency_interesting = latency_snapshot
                     .e2e
                     .is_some_and(|e2e| app.app_options().warn_e2e_latency < e2e && e2e < 60.0);
 
-                // Avoid flicker by showing the latency for 1 seconds ince it was last deemned interesting:
-
+                // Avoid flicker by showing the latency for 1 second since it was last deemed interesting:
                 if is_latency_interesting {
-                    app.latest_latency_interest = web_time::Instant::now();
+                    app.latest_latency_interest = Some(web_time::Instant::now());
                 }
 
-                if app.latest_latency_interest.elapsed().as_secs_f32() < 1.0 {
+                if app
+                    .latest_latency_interest
+                    .is_some_and(|instant| instant.elapsed().as_secs_f32() < 1.0)
+                {
                     ui.separator();
                     latency_snapshot_button_ui(ui, latency_snapshot);
                 }
             }
         }
 
-        if cfg!(debug_assertions) {
+        if cfg!(debug_assertions) && !app.app_env().is_test() {
             multi_pass_warning_dot_ui(ui);
         }
 
-        show_warnings(frame, ui);
+        show_warnings(frame, ui, app.app_env());
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -153,7 +155,7 @@ fn top_bar_ui(
     });
 }
 
-fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui) {
+fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppEnvironment) {
     // We could log these as warning instead and relying on the notification panel to show it.
     // However, there are a few benefits of instead showing it like this:
     // * it's more visible
@@ -170,7 +172,9 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui) {
         .on_hover_text("egui was compiled with debug assertions enabled.");
     }
 
-    show_software_rasterizer_warning(frame, ui);
+    if !app_env.is_test() {
+        show_software_rasterizer_warning(frame, ui);
+    }
 
     if crate::docker_detection::is_docker() {
         ui.hyperlink_to(
@@ -332,14 +336,14 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
-        let icon = if app.is_fullscreen_mode() {
-            &re_ui::icons::MINIMIZE
+        let (icon, label) = if app.is_fullscreen_mode() {
+            (&re_ui::icons::MINIMIZE, "Minimize")
         } else {
-            &re_ui::icons::MAXIMIZE
+            (&re_ui::icons::MAXIMIZE, "Maximize")
         };
 
         if ui
-            .medium_icon_toggle_button(icon, &mut true)
+            .medium_icon_toggle_button(icon, label, &mut true)
             .on_hover_text("Toggle fullscreen")
             .clicked()
         {
@@ -352,6 +356,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                "Selection panel toggle",
                 &mut app_blueprint.selection_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
@@ -365,6 +370,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                "Time panel toggle",
                 &mut app_blueprint.time_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
@@ -378,6 +384,7 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
         && ui
             .medium_icon_toggle_button(
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
+                "Blueprint panel toggle",
                 &mut app_blueprint.blueprint_panel_state().is_expanded(),
             )
             .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))

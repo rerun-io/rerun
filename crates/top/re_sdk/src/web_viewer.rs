@@ -2,6 +2,8 @@ use re_chunk::ChunkBatcherConfig;
 use re_log_types::LogMsg;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
+use crate::log_sink::SinkFlushError;
+
 // ----------------------------------------------------------------------------
 
 /// Failure to host a web viewer and/or Rerun server.
@@ -104,10 +106,15 @@ impl crate::sink::LogSink for WebViewerSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {
-        if let Err(err) = self.sender.flush_blocking() {
-            re_log::error_once!("Failed to flush: {err}");
-        }
+    fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), SinkFlushError> {
+        self.sender
+            .flush_blocking(timeout)
+            .map_err(|err| match err {
+                re_smart_channel::FlushError::Closed => {
+                    SinkFlushError::failed("The viewer is no longer subscribed")
+                }
+                re_smart_channel::FlushError::Timeout => SinkFlushError::Timeout,
+            })
     }
 
     fn default_batcher_config(&self) -> ChunkBatcherConfig {
@@ -149,11 +156,11 @@ pub struct WebViewerConfig {
     /// Defaults to [`WebViewerServerPort::AUTO`].
     pub web_port: WebViewerServerPort,
 
-    /// The url to which any spawned webviewer should connect.
+    /// The urls to which any spawned webviewer should connect.
     ///
-    /// This url is a hosted RRD file that we retrieve via the message proxy.
+    /// This url is a redap uri or a hosted RRD file that we retrieve via the message proxy.
     /// Has no effect if [`Self::open_browser`] is false.
-    pub connect_to: Option<String>,
+    pub connect_to: Vec<String>,
 
     /// If set, adjusts the browser url to force a specific backend, either `webgl` or `webgpu`.
     ///
@@ -177,7 +184,7 @@ impl Default for WebViewerConfig {
         Self {
             bind_ip: "0.0.0.0".to_owned(),
             web_port: WebViewerServerPort::AUTO,
-            connect_to: None,
+            connect_to: Vec::new(),
             force_wgpu_backend: None,
             video_decoder: None,
             open_browser: true,
@@ -220,7 +227,7 @@ impl WebViewerConfig {
             viewer_url = format!("{viewer_url}{arg_delimiter}{arg}");
         };
 
-        if let Some(source_url) = connect_to {
+        for source_url in connect_to {
             // TODO(jan): remove after we change from `rerun+http` to `rerun-http`
             let source_url = percent_encoding::utf8_percent_encode(
                 &source_url,

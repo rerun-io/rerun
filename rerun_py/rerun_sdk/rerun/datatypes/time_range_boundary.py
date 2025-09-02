@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Literal, Union
 
 import pyarrow as pa
@@ -56,6 +55,8 @@ class TimeRangeBoundary(TimeRangeBoundaryExt):
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     TimeRangeBoundaryLike = Union[
         TimeRangeBoundary,
         None,
@@ -88,7 +89,7 @@ class TimeRangeBoundaryBatch(BaseBatch[TimeRangeBoundaryArrayLike]):
 
         if not hasattr(data, "__iter__") or isinstance(data, (type(None), TimeRangeBoundary, datatypes.TimeInt)):  # type: ignore[arg-type]
             data = [data]  # type: ignore[list-item]
-        data = cast(Sequence[TimeRangeBoundaryLike], data)  # type: ignore[redundant-cast]
+        data = cast("Sequence[TimeRangeBoundaryLike]", data)  # type: ignore[redundant-cast]
 
         types: list[int] = []
         value_offsets: list[int] = []

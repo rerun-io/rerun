@@ -1,16 +1,17 @@
+use std::str::FromStr as _;
+
 use ahash::HashMap;
 use egui::{NumExt as _, Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{AbsoluteTimeRangeF, LogMsg, StoreId, TableId};
 use re_redap_browser::RedapServers;
+use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, UiExt as _};
-use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandSender,
     ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
@@ -40,6 +41,7 @@ pub struct AppState {
     pub blueprint_cfg: RecordingConfig,
 
     /// Maps blueprint id to the current undo state for it.
+    #[serde(skip)]
     pub blueprint_undo_state: HashMap<StoreId, BlueprintUndoState>,
 
     selection_panel: re_selection_panel::SelectionPanel,
@@ -129,19 +131,6 @@ impl AppState {
         &mut self.app_options
     }
 
-    pub fn add_redap_server(&self, command_sender: &CommandSender, origin: Origin) {
-        if !self.redap_servers.has_server(&origin) {
-            command_sender.send_system(SystemCommand::AddRedapServer(origin));
-        }
-    }
-
-    pub fn select_redap_entry(&self, command_sender: &CommandSender, uri: &re_uri::EntryUri) {
-        // make sure the server exists
-        self.add_redap_server(command_sender, uri.origin.clone());
-
-        command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
-    }
-
     /// Currently selected section of time, if any.
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub fn loop_selection(
@@ -161,6 +150,7 @@ impl AppState {
     #[expect(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
+        app_env: &crate::AppEnvironment,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
@@ -317,7 +307,7 @@ impl AppState {
                 let display_mode = self.navigation.peek();
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
-                        is_test: false,
+                        is_test: app_env.is_test(),
 
                         app_options,
                         reflection,
@@ -398,7 +388,7 @@ impl AppState {
                 // it's just a bunch of refs so not really that big of a deal in practice.
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
-                        is_test: false,
+                        is_test: app_env.is_test(),
 
                         app_options,
                         reflection,
@@ -572,16 +562,16 @@ impl AppState {
                                             re_recording_panel::recordings_panel_ui(
                                                 &ctx,
                                                 ui,
-                                                welcome_screen_state.hide_examples,
                                                 redap_servers,
+                                                welcome_screen_state.hide_examples,
                                             );
                                         });
                                 } else {
                                     re_recording_panel::recordings_panel_ui(
                                         &ctx,
                                         ui,
-                                        welcome_screen_state.hide_examples,
                                         redap_servers,
+                                        welcome_screen_state.hide_examples,
                                     );
                                 }
 
@@ -637,7 +627,7 @@ impl AppState {
                             }
 
                             DisplayMode::RedapEntry(entry) => {
-                                redap_servers.entry_ui(&ctx, ui, *entry);
+                                redap_servers.entry_ui(&ctx, ui, entry.entry_id);
                             }
 
                             DisplayMode::RedapServer(origin) => {
@@ -870,24 +860,20 @@ pub(crate) fn recording_config_entry<'cfgs>(
 ///
 /// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
 fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &CommandSender) {
-    let mut opened_any_url = false;
     let follow_if_http = false;
 
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                let select_redap_source_when_loaded = open_url.new_tab;
+                if let Ok(url) = open_url::ViewerImportUrl::from_str(&open_url.url) {
+                    let select_redap_source_when_loaded = open_url.new_tab;
+                    url.open(
+                        egui_ctx,
+                        follow_if_http,
+                        select_redap_source_when_loaded,
+                        command_sender,
+                    );
 
-                if open_url::try_open_url_in_viewer(
-                    egui_ctx,
-                    &open_url.url,
-                    follow_if_http,
-                    select_redap_source_when_loaded,
-                    command_sender,
-                )
-                .is_ok()
-                {
-                    opened_any_url = true;
                     // We handled the URL, therefore egui shouldn't do anything anymore with it.
                     return false;
                 } else {
@@ -898,11 +884,6 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
             true
         });
     });
-
-    if opened_any_url {
-        // Make sure we process commands that were sent by the `try_open_content_url_in_viewer` call.
-        egui_ctx.request_repaint();
-    }
 }
 
 pub fn default_blueprint_panel_width(screen_width: f32) -> f32 {

@@ -1,8 +1,11 @@
-use crate::dataframe_query_common::{
-    ChunkInfo, align_record_batch_to_schema, compute_partition_stream_chunk_info,
-    prepend_string_column_schema,
-};
-use arrow::array::{Array, RecordBatch, StringArray};
+use std::any::Any;
+use std::collections::BTreeMap;
+use std::fmt::Debug;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll};
+
+use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{Schema, SchemaRef};
 use datafusion::common::hash_utils::HashValue as _;
@@ -17,28 +20,28 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use datafusion::{error::DataFusionError, execution::SendableRecordBatchStream};
 use futures_util::{Stream, StreamExt as _};
-use re_dataframe::external::re_chunk::Chunk;
-use re_dataframe::external::re_chunk_store::ChunkStore;
-use re_dataframe::{
-    ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
-};
-use re_grpc_client::ConnectionClient;
-use re_log_types::{ApplicationId, StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::common::v1alpha1::PartitionId;
-use re_protos::frontend::v1alpha1::GetChunksRequest;
-use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_sorbet::{ColumnDescriptor, ColumnSelector};
-use std::any::Any;
-use std::collections::BTreeMap;
-use std::fmt::Debug;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
 use tokio::runtime::Handle;
 use tokio::sync::Notify;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
 use tracing::Instrument as _;
+
+use re_dataframe::external::re_chunk::Chunk;
+use re_dataframe::external::re_chunk_store::ChunkStore;
+use re_dataframe::{
+    ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
+};
+use re_log_types::{ApplicationId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_protos::cloud::v1alpha1::GetChunksRequest;
+use re_protos::common::v1alpha1::PartitionId;
+use re_redap_client::ConnectionClient;
+use re_sorbet::{ColumnDescriptor, ColumnSelector};
+
+use crate::dataframe_query_common::{
+    ChunkInfo, align_record_batch_to_schema, compute_partition_stream_chunk_info,
+    prepend_string_column_schema,
+};
 
 /// This parameter sets the back pressure that either the streaming provider
 /// can place on the CPU worker thread or the CPU worker thread can place on
@@ -66,7 +69,7 @@ pub(crate) struct PartitionStreamExec {
 
 type ChunksWithPartition = Vec<(Chunk, Option<String>)>;
 
-pub struct DataframePartitionStream {
+pub struct DataframePartitionStreamInner {
     projected_schema: SchemaRef,
     client: ConnectionClient,
     chunk_request: GetChunksRequest,
@@ -83,12 +86,27 @@ pub struct DataframePartitionStream {
     cpu_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
 }
 
+/// This is a temporary fix to minimize the impact of leaking memory
+/// per issue <https://github.com/rerun-io/dataplatform/issues/1494>
+/// The work around is to check for when the stream has exhausted and
+/// to set the `inner` to None, thereby clearing the memory since
+/// we are not properly getting a `drop` call from the upstream
+/// FFI interface. When the upstream issue resolves, change
+/// `DataframePartitionStreamInner` back into `DataframePartitionStream`
+/// and delete this wrapper struct.
+pub struct DataframePartitionStream {
+    inner: Option<DataframePartitionStreamInner>,
+}
+
 impl Stream for DataframePartitionStream {
     type Item = Result<RecordBatch, DataFusionError>;
 
     #[tracing::instrument(level = "info", skip_all)]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.get_mut();
+        let this_outer = self.get_mut();
+        let Some(this) = this_outer.inner.as_mut() else {
+            return Poll::Ready(None);
+        };
 
         // If we have any errors on the worker thread, we want to ensure we pass them up
         // through the stream.
@@ -127,15 +145,25 @@ impl Stream for DataframePartitionStream {
             )));
         }
 
-        this.store_output_channel
+        let result = this
+            .store_output_channel
             .poll_recv(cx)
-            .map(|result| Ok(result).transpose())
+            .map(|result| Ok(result).transpose());
+
+        if matches!(&result, Poll::Ready(None)) {
+            this_outer.inner = None;
+        }
+
+        result
     }
 }
 
 impl RecordBatchStream for DataframePartitionStream {
     fn schema(&self) -> SchemaRef {
-        Arc::clone(&self.projected_schema)
+        self.inner
+            .as_ref()
+            .map(|inner| inner.projected_schema.clone())
+            .unwrap_or(Schema::empty().into())
     }
 }
 
@@ -157,7 +185,9 @@ impl PartitionStreamExec {
             None => Arc::clone(table_schema),
         };
 
-        if projection.is_some() {
+        if let Some(projected_cols) = projection
+            && !projected_cols.is_empty()
+        {
             let selection = projected_schema
                 .fields()
                 .iter()
@@ -269,10 +299,9 @@ async fn send_next_row(
         return plan_err!("Unexpected number of columns returned from query");
     }
 
-    let pid_array = Arc::new(StringArray::from(vec![
-        partition_id.to_owned();
-        next_row[0].len()
-    ])) as Arc<dyn Array>;
+    let num_rows = next_row[0].len();
+    let pid_array =
+        Arc::new(StringArray::from(vec![partition_id.to_owned(); num_rows])) as Arc<dyn Array>;
 
     next_row.insert(0, pid_array);
 
@@ -281,7 +310,11 @@ async fn send_next_row(
         DATASET_MANIFEST_ID_FIELD_NAME,
     ));
 
-    let batch = RecordBatch::try_new(batch_schema, next_row)?;
+    let batch = RecordBatch::try_new_with_options(
+        batch_schema,
+        next_row,
+        &RecordBatchOptions::default().with_row_count(Some(num_rows)),
+    )?;
 
     let output_batch = align_record_batch_to_schema(&batch, target_schema)?;
 
@@ -425,7 +458,7 @@ async fn chunk_stream_io_loop(
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
-        let mut chunk_stream = re_grpc_client::get_chunks_response_to_chunk_and_partition_id(
+        let mut chunk_stream = re_redap_client::get_chunks_response_to_chunk_and_partition_id(
             get_chunks_response_stream,
         );
 
@@ -498,7 +531,7 @@ impl ExecutionPlan for PartitionStreamExec {
             ),
         ));
 
-        let stream = DataframePartitionStream {
+        let stream = DataframePartitionStreamInner {
             projected_schema: self.projected_schema.clone(),
             store_output_channel: batches_rx,
             client,
@@ -508,6 +541,9 @@ impl ExecutionPlan for PartitionStreamExec {
             io_join_handle: None,
             cpu_join_handle,
             cpu_runtime: Arc::clone(&self.worker_runtime),
+        };
+        let stream = DataframePartitionStream {
+            inner: Some(stream),
         };
 
         Ok(Box::pin(stream))

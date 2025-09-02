@@ -15,7 +15,7 @@ const MAX_UNDOS: usize = 100;
 ///
 /// When undoing, we move back time, and redoing move it forward.
 /// When editing, we first drop all data after the current time.
-#[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, Default)]
 pub struct BlueprintUndoState {
     /// The current blueprint time, used for latest-at.
     ///
@@ -39,6 +39,11 @@ pub struct BlueprintUndoState {
     /// where we create undo-points every frame.
     inflection_points: BTreeMap<TimeInt, u64>,
 }
+
+// We don't restore undo-state when closing the viewer.
+// If you want to support this, make sure you replace the call to `cumulative_frame_nr` with something else,
+// (because that resets to zero on restart) and also make sure you test it properly!
+static_assertions::assert_not_impl_any!(BlueprintUndoState: serde::Serialize);
 
 impl BlueprintUndoState {
     /// Default latest-at query
@@ -130,7 +135,15 @@ impl BlueprintUndoState {
             return; // Don't create undo points while we're still interacting.
         }
 
+        // NOTE: we may be called several times in each frame (if we do multiple egui passes).
         let frame_nr = egui_ctx.cumulative_frame_nr();
+
+        if let Some((_, last_frame_nr)) = self.inflection_points.last_key_value() {
+            debug_assert!(
+                *last_frame_nr <= frame_nr,
+                "Frame counter is running backwards, from {last_frame_nr} to {frame_nr}!"
+            );
+        }
 
         // Nothing is happening - remember this as a time to undo to.
         let time = max_blueprint_time(blueprint_db);

@@ -72,7 +72,7 @@ impl ItemTitle {
             }
 
             // TODO(#10566): There should be an `EntryName` in this `Item` arm.
-            Item::RedapEntry(entry) => Self::new(entry.to_string(), &icons::DATASET),
+            Item::RedapEntry(entry) => Self::new(entry.entry_id.to_string(), &icons::DATASET),
 
             // TODO(lucasmerlin): Icon?
             Item::RedapServer(origin) => Self::new(origin.to_string(), &icons::DATASET),

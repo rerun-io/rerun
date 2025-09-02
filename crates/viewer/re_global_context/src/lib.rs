@@ -53,7 +53,7 @@ pub struct GlobalContext<'a> {
     pub command_sender: &'a CommandSender,
 
     /// Registry of authenticated redap connections
-    pub connection_registry: &'a re_grpc_client::ConnectionRegistryHandle,
+    pub connection_registry: &'a re_redap_client::ConnectionRegistryHandle,
 
     /// The current display mode of the viewer.
     pub display_mode: &'a DisplayMode,
@@ -71,7 +71,7 @@ pub enum DisplayMode {
     LocalTable(TableId),
 
     /// The Redap server/catalog/collection browser.
-    RedapEntry(re_log_types::EntryId),
+    RedapEntry(re_uri::EntryUri),
     RedapServer(re_uri::Origin),
 
     /// The current recording's data store browser.

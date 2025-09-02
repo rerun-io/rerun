@@ -13,6 +13,8 @@ fn roundtrip() {
             .serialized(Pinhole::descriptor_resolution()),
         camera_xyz: components::ViewCoordinates::RDF.serialized(Pinhole::descriptor_camera_xyz()),
         image_plane_distance: None,
+        color: None,
+        line_width: None,
     };
 
     let arch = Pinhole::new([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])

@@ -7,7 +7,6 @@ import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
-from typing import Optional
 
 from github import Github
 from gitignore_parser import parse_gitignore
@@ -104,7 +103,7 @@ def check_issue_closed_api(repo_owner: str, repo_name: str, issue_number: int) -
 # --- Git blame on a line ---
 
 
-def get_line_blame_info(file_path: str, line_number: int, repo_path: str = ".") -> Optional[str]:
+def get_line_blame_info(file_path: str, line_number: int, repo_path: str = ".") -> str | None:
     """
     Simpler version that uses regular git blame output.
 
@@ -277,7 +276,7 @@ def main() -> None:
 
     # Collect all files to process
     files_to_process = []
-    print("Collecting files to process...")
+    print("Collecting files to process…")
     for root, dirs, files in os.walk(".", topdown=True):
         dirs[:] = [d for d in dirs if not should_ignore(d)]
 
@@ -290,14 +289,14 @@ def main() -> None:
                 if filepath.replace("\\", "/") not in exclude_paths:
                     files_to_process.append(filepath)
 
-    print(f"Processing {len(files_to_process)} files...")
+    print(f"Processing {len(files_to_process)} files…")
 
     # Process files in parallel using ThreadPoolExecutor
     ok = True
     completed_files = 0
     max_workers = min(args.max_workers, len(files_to_process))  # Don't create more threads than files
 
-    print(f"Using {max_workers} worker threads...")
+    print(f"Using {max_workers} worker threads…")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all file processing tasks

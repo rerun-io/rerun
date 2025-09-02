@@ -17,11 +17,12 @@ The Rerun command-line interface:
 **Commands**
 
 * `analytics`: Configure the behavior of our analytics.
-* `mcap`: Manipulate the contents of .mcap files.
-* `rrd`: Manipulate the contents of .rrd and .rbl files.
-* `reset`: Reset the memory of the Rerun Viewer.
-* `man`: Generates the Rerun CLI manual (markdown).
 * `auth`: Authentication with the redap.
+* `man`: Generates the Rerun CLI manual (markdown).
+* `mcap`: Manipulate the contents of .mcap files.
+* `reset`: Reset the memory of the Rerun Viewer.
+* `rrd`: Manipulate the contents of .rrd and .rbl files.
+* `server`: In-memory Rerun data server.
 
 **Arguments**
 
@@ -41,13 +42,6 @@ The Rerun command-line interface:
 > What bind address IP to use.
 >
 > [Default: `0.0.0.0`]
-
-* `--drop-at-latency <DROP_AT_LATENCY>`
-> Set a maximum input latency, e.g. "200ms" or "10s".
->
-> If we go over this, we start dropping packets.
->
-> The default is no limit, which means Rerun might eat more and more memory and have longer and longer latency, if you are logging data faster than Rerun can index it.
 
 * `--memory-limit <MEMORY_LIMIT>`
 > An upper limit on how much memory the Rerun Viewer should use.
@@ -88,15 +82,10 @@ The Rerun command-line interface:
 * `--screenshot-to <SCREENSHOT_TO>`
 > Take a screenshot of the app and quit. We use this to generate screenshots of our examples. Useful together with `--window-size`.
 
-* `--serve <SERVE>`
-> Deprecated: use `--serve-web` instead.
->
-> [Default: `false`]
-
 * `--serve-web <SERVE_WEB>`
-> This will host a web-viewer over HTTP, and a gRPC server.
+> This will host a web-viewer over HTTP, and a gRPC server, unless one or more URIs are provided that can be viewed directly in the web viewer.
 >
-> The server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
+> If started, the web server will act like a proxy, listening for incoming connections from logging SDKs, and forwarding it to Rerun viewers.
 >
 > Using this sets the default `--server-memory-limit` to 25% of available system memory.
 >
@@ -237,6 +226,45 @@ Associate an email address with the current user.
 **Arguments**
 
 * `<EMAIL>`
+
+## rerun auth
+
+Authentication with the redap.
+
+**Usage**: `rerun auth <COMMAND>`
+
+**Commands**
+
+* `login`: Log into Rerun.
+* `token`: Retrieve the stored access token.
+
+## rerun auth login
+
+Log into Rerun.
+
+This command opens a page in your default browser, allowing you to log in to the Rerun data platform.
+
+Once you've logged in, your credentials are stored on your machine.
+
+To sign up, contact us through the form linked at <https://rerun.io/#open-source-vs-commercial>.
+
+**Usage**: `rerun auth login [OPTIONS]`
+
+**Options**
+
+* `--login-url <LOGIN_URL>`
+>
+> [Default: `https://rerun.io/login`]
+
+* `--no-open-browser <NO_OPEN_BROWSER>`
+> Post a link instead of directly opening in the browser.
+>
+> [Default: `false`]
+
+* `--force <FORCE>`
+> Trigger the full login flow even if valid credentials already exist.
+>
+> [Default: `false`]
 
 ## rerun mcap
 
@@ -584,41 +612,26 @@ Can be used to ensure that the current Rerun version can load the data.
 * `<PATH_TO_INPUT_RRDS>`
 > Paths to read from. Reads from standard input if none are specified.
 
-## rerun auth
+## rerun server
 
-Authentication with the redap.
+In-memory Rerun data server.
 
-**Usage**: `rerun auth <COMMAND>`
-
-**Commands**
-
-* `login`: Log into Rerun.
-* `token`: Retrieve the stored access token.
-
-## rerun auth login
-
-Log into Rerun.
-
-This command opens a page in your default browser, allowing you to log in to the Rerun data platform.
-
-Once you've logged in, your credentials are stored on your machine.
-
-To sign up, contact us through the form linked at <https://rerun.io/#open-source-vs-commercial>.
-
-**Usage**: `rerun auth login [OPTIONS]`
+**Usage**: `rerun server [OPTIONS]`
 
 **Options**
 
-* `--login-url <LOGIN_URL>`
+* `--addr <ADDR>`
+> Address to listen on.
 >
-> [Default: `https://rerun.io/login`]
+> [Default: `0.0.0.0`]
 
-* `--no-open-browser <NO_OPEN_BROWSER>`
-> Post a link instead of directly opening in the browser.
+* `-p, --port <PORT>`
+> Port to bind to.
 >
-> [Default: `false`]
+> [Default: `51234`]
 
-* `--force <FORCE>`
-> Trigger the full login flow even if valid credentials already exist.
->
-> [Default: `false`]
+* `-d, --dataset <DATASETS>`
+> Load a directory of RRD as dataset (can be specified multiple times).
+
+* `-V, --version `
+> Print version.

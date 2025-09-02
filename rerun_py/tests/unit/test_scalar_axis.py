@@ -32,8 +32,8 @@ def test_scalar_axis() -> None:
     )
 
     for range, zoom_lock in all_arrays:
-        range = cast(Optional[rr.datatypes.Range1DLike], range)
-        zoom_lock = cast(Optional[rr.datatypes.Bool], zoom_lock)
+        range = cast("Optional[rr.datatypes.Range1DLike]", range)
+        zoom_lock = cast("Optional[rr.datatypes.Bool]", zoom_lock)
 
         print(
             f"rr.ScalarAxis(\n"

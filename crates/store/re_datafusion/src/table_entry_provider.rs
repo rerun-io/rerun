@@ -9,12 +9,12 @@ use datafusion::{
 };
 use tracing::instrument;
 
-use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, EntryIdOrName};
-use re_protos::catalog::v1alpha1::ext::EntryDetails;
-use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
-use re_protos::frontend::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
+use re_protos::cloud::v1alpha1::ext::EntryDetails;
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
+use re_protos::cloud::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
+use re_redap_client::ConnectionClient;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;

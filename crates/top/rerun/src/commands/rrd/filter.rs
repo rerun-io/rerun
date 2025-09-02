@@ -1,6 +1,7 @@
 use std::{collections::HashSet, io::IsTerminal as _};
 
 use anyhow::Context as _;
+use arrow::array::RecordBatchOptions;
 use arrow::{
     array::RecordBatch as ArrowRecordBatch,
     datatypes::{Field as ArrowField, Schema as ArrowSchema},
@@ -123,14 +124,17 @@ impl FilterCommand {
                                         .map(|(field, col)| (field.clone(), col.clone()))
                                         .unzip();
 
-                                        if let Ok(new_batch) = ArrowRecordBatch::try_new(
-                                            ArrowSchema::new_with_metadata(
-                                                fields,
-                                                batch.schema().metadata().clone(),
+                                        if let Ok(new_batch) =
+                                            ArrowRecordBatch::try_new_with_options(
+                                                ArrowSchema::new_with_metadata(
+                                                    fields,
+                                                    batch.schema().metadata().clone(),
+                                                )
+                                                .into(),
+                                                columns,
+                                                &RecordBatchOptions::default(),
                                             )
-                                            .into(),
-                                            columns,
-                                        ) {
+                                        {
                                             msg.batch = new_batch;
                                             Some(re_log_types::LogMsg::ArrowMsg(store_id, msg))
                                         } else {

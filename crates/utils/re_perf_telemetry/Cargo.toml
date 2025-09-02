@@ -56,7 +56,10 @@ opentelemetry-appender-tracing = { workspace = true, features = [
   "experimental_use_tracing_span_context",
 ] }
 opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
-opentelemetry_sdk = { workspace = true, features = ["rt-tokio"] }
+opentelemetry_sdk = { workspace = true, features = [
+  "rt-tokio",
+  "experimental_metrics_custom_reader",
+] }
 parking_lot.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -70,6 +73,9 @@ tracing-subscriber = { workspace = true, features = [
   "env-filter",
   "json",
 ] }
+axum = "0.8.4"
+prometheus-client = "0.24"
+tokio = { workspace = true }
 
 # External (optional)
 tracing-tracy = { workspace = true, optional = true }

@@ -11,22 +11,23 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{ChunkStore, QueryExpression};
 use re_dataframe::ChunkStoreHandle;
 use re_datafusion::query_from_query_expression;
-use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
-    catalog::v1alpha1::{
+    cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
+    cloud::v1alpha1::{
         EntryFilter,
         ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
+    },
+    cloud::v1alpha1::{
+        GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest, QueryTasksResponse,
     },
     common::v1alpha1::{
         TaskId,
         ext::{IfDuplicateBehavior, ScanParameters},
     },
-    frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest},
-    manifest_registry::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
-    redap_tasks::v1alpha1::QueryTasksResponse,
 };
+use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
@@ -101,8 +102,8 @@ impl ConnectionHandle {
         &self,
         py: Python<'_>,
         entry_id: EntryId,
-        entry_details_update: re_protos::catalog::v1alpha1::ext::EntryDetailsUpdate,
-    ) -> PyResult<re_protos::catalog::v1alpha1::ext::EntryDetails> {
+        entry_details_update: re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate,
+    ) -> PyResult<re_protos::cloud::v1alpha1::ext::EntryDetails> {
         wait_for_future(
             py,
             async {
@@ -296,6 +297,7 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
+    #[allow(clippy::fn_params_excessive_bools)]
     pub fn do_maintenance(
         &self,
         py: Python<'_>,
@@ -303,6 +305,7 @@ impl ConnectionHandle {
         build_scalar_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
+        unsafe_allow_recent_cleanup: bool,
     ) -> PyResult<()> {
         wait_for_future(
             py,
@@ -314,6 +317,7 @@ impl ConnectionHandle {
                         build_scalar_indexes,
                         compact_fragments,
                         cleanup_before,
+                        unsafe_allow_recent_cleanup,
                     )
                     .await
                     .map_err(to_py_err)
@@ -328,7 +332,7 @@ impl ConnectionHandle {
         wait_for_future(
             py,
             async {
-                let request = re_protos::redap_tasks::v1alpha1::QueryTasksRequest {
+                let request = re_protos::cloud::v1alpha1::QueryTasksRequest {
                     ids: task_ids.to_vec(),
                 };
 
@@ -370,7 +374,7 @@ impl ConnectionHandle {
                         "failed to convert timeout to serialized duration: {err}"
                     ))
                 })?;
-                let request = re_protos::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest {
+                let request = re_protos::cloud::v1alpha1::QueryTasksOnCompletionRequest {
                     ids: task_ids,
                     timeout: Some(timeout),
                 };
@@ -540,13 +544,13 @@ impl ConnectionHandle {
                     Ok::<_, PyErr>(resp)
                 })
                 .await
-                .map_err(Into::<re_grpc_client::StreamError>::into)
+                .map_err(Into::<re_redap_client::StreamError>::into)
                 .map_err(to_py_err)??;
 
                 // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
                 // and the app layer (Arrow).
                 let mut chunk_stream =
-                    re_grpc_client::get_chunks_response_to_chunk_and_partition_id(
+                    re_redap_client::get_chunks_response_to_chunk_and_partition_id(
                         get_chunks_response_stream,
                     );
 
@@ -634,7 +638,7 @@ impl ConnectionHandle {
                     })
                     .in_current_span()
                     .await
-                    .map_err(Into::<re_grpc_client::StreamError>::into)
+                    .map_err(Into::<re_redap_client::StreamError>::into)
                     .map_err(to_py_err)??;
                 }
 

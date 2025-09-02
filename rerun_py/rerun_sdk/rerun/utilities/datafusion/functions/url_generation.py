@@ -100,7 +100,11 @@ def partition_url_with_timeref_udf(dataset: DatasetEntry, timeline_name: str) ->
         raise RerunOptionalDependencyError("datafusion", "datafusion")
 
     def inner_udf(partition_id_arr: pa.Array, timestamp_arr: pa.Array) -> pa.Array:
-        timestamp_us = pa.compute.cast(timestamp_arr, pa.timestamp("us"))
+        # The choice of `ceil_temporal` is important since this timestamp drives a cursor
+        # selection. Due to Rerun latest-at semantics, in order for data from the provided
+        # timestamp to be visible, the cursor must be set to a point in time which is
+        # greater than or equal to the target.
+        timestamp_us = pa.compute.ceil_temporal(timestamp_arr, unit="microsecond")
 
         timestamp_us = pa.compute.strftime(
             timestamp_us,
