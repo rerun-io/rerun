@@ -1,4 +1,4 @@
-use std::{mem::size_of, ops::Range, sync::Arc};
+use std::{mem::size_of, ops::Range};
 
 use ecolor::Rgba;
 use smallvec::{SmallVec, smallvec};
@@ -206,9 +206,7 @@ impl GpuMesh {
     /// The total buffer sizes are divided by how many strong references
     /// they have.
     pub fn gpu_byte_size(&self) -> u64 {
-        self.index_buffer.inner.size() / Arc::strong_count(&self.index_buffer) as u64
-            + self.vertex_buffer_combined.size()
-                / Arc::strong_count(&self.vertex_buffer_combined) as u64
+        self.index_buffer.inner.size() + self.vertex_buffer_combined.size()
     }
 }
 

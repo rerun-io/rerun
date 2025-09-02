@@ -527,11 +527,7 @@ impl Cache for SolidCache {
             bytes_gpu: Some(
                 self.0
                     .values()
-                    .map(|mesh| {
-                        mesh.as_ref().map_or(0, |m| {
-                            m.gpu_mesh.gpu_byte_size() / Arc::strong_count(&m.gpu_mesh) as u64
-                        })
-                    })
+                    .map(|mesh| mesh.as_ref().map_or(0, |m| m.gpu_mesh.gpu_byte_size()))
                     .sum(),
             ),
             per_cache_item_info: Vec::new(),

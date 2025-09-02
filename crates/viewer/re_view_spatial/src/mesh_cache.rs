@@ -109,11 +109,8 @@ impl Cache for MeshCache {
                     .map(|mesh| {
                         mesh.mesh_instances
                             .iter()
-                            .map(|s| {
-                                s.gpu_mesh.gpu_byte_size() / Arc::strong_count(&s.gpu_mesh) as u64
-                            })
+                            .map(|s| s.gpu_mesh.gpu_byte_size())
                             .sum::<u64>()
-                            / Arc::strong_count(mesh) as u64
                     })
                     .sum();
                 full_bytes_gpu += bytes_gpu;
