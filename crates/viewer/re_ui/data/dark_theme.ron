@@ -280,16 +280,16 @@
       "color": "#818EF8"
     },
 
-    //TODO(#10777): reuse the same color schema as the one introduced for arrow syntax highlighting
+    // TODO(ab, katya): review these
     "table_filter_frame_stroke": {
       "color": "{Gray.400}",
       "width": 1
     },
     "table_filter_operator_text_color": {
-      "color": "{Blue.525}",
+      "color": "#818EF8",
     },
     "table_filter_rhs_text_color": {
-      "color": "{Purple.525}",
+      "color": "#4ACB94",
     }
   },
 

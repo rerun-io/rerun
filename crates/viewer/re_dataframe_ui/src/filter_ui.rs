@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use egui::{Frame, Margin, Style, text::LayoutJob};
 
 use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
@@ -164,13 +162,10 @@ impl Filter {
             .stroke(ui.tokens().table_filter_frame_stroke)
             .corner_radius(2.0)
             .show(ui, |ui| {
-                let widget_text = SyntaxHighlightedBuilder::new(Arc::clone(ui.style()))
+                let widget_text = SyntaxHighlightedBuilder::new(ui.style())
                     .append(&self.column_name)
                     .append(&" ")
-                    .append(&SyntaxHighlightFilterOperation {
-                        ui,
-                        filter_operation: &self.operation,
-                    })
+                    .append(&self.operation)
                     .into_widget_text();
 
                 let text_response = ui.add(
@@ -249,35 +244,27 @@ impl Filter {
     }
 }
 
-//TODO(#10777): this wrapper will no longer be needed with the updated `SyntaxHighlighting` trait
-struct SyntaxHighlightFilterOperation<'a> {
-    ui: &'a mut egui::Ui,
-    filter_operation: &'a FilterOperation,
-}
-
-impl SyntaxHighlighting for SyntaxHighlightFilterOperation<'_> {
+impl SyntaxHighlighting for FilterOperation {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+        let tokens = re_ui::design_tokens_of_visuals(&style.visuals);
+
         let normal_text_format = egui::TextFormat::simple(
             egui::TextStyle::Body.resolve(style),
             egui::Color32::PLACEHOLDER,
         );
         let operator_text_format = egui::TextFormat::simple(
             egui::TextStyle::Body.resolve(style),
-            self.ui.tokens().table_filter_operator_text_color,
+            tokens.table_filter_operator_text_color,
         );
         let rhs_text_format = egui::TextFormat::simple(
             egui::TextStyle::Body.resolve(style),
-            self.ui.tokens().table_filter_rhs_text_color,
+            tokens.table_filter_rhs_text_color,
         );
 
-        job.append(
-            self.filter_operation.operator_text(),
-            0.0,
-            operator_text_format,
-        );
+        job.append(self.operator_text(), 0.0, operator_text_format);
 
         job.append(" ", 0.0, normal_text_format.clone());
-        let rhs_text = self.filter_operation.rhs_text();
+        let rhs_text = self.rhs_text();
         job.append(
             if rhs_text.is_empty() {
                 "…"
