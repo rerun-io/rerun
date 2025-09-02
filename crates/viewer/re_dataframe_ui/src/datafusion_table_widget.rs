@@ -314,11 +314,9 @@ impl<'a> DataFusionTableWidget<'a> {
                 }
 
                 drop(requested_sorbet_batches);
-                if filter_state.filter_bar_ui(ui) {
-                    new_blueprint.filters = filter_state.to_blueprint_filters();
-                    if table_state.blueprint() != &new_blueprint {
-                        table_state.update_query(runtime, ui, new_blueprint);
-                    }
+                filter_state.filter_bar_ui(ui, &mut new_blueprint);
+                if table_state.blueprint() != &new_blueprint {
+                    table_state.update_query(runtime, ui, new_blueprint);
                 }
                 filter_state.store(ui.ctx(), session_id);
 
@@ -386,9 +384,7 @@ impl<'a> DataFusionTableWidget<'a> {
             );
         }
 
-        if filter_state.filter_bar_ui(ui) {
-            new_blueprint.filters = filter_state.to_blueprint_filters();
-        }
+        filter_state.filter_bar_ui(ui, &mut new_blueprint);
 
         apply_table_style_fixes(ui.style_mut());
 

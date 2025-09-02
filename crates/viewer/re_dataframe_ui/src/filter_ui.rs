@@ -7,6 +7,32 @@ use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlight
 use crate::TableBlueprint;
 use crate::filters::{Filter, FilterOperation};
 
+/// Action to take based on the user interaction.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum FilterUiAction {
+    #[default]
+    None,
+
+    /// The user as closed the filter popup using enter or clicking outside. The updated filter
+    /// state should be committed to the table blueprint.
+    CommitStateToBlueprint,
+
+    /// The user closed the filter popup using escape, so the edit should be cancelled by resetting
+    /// the filter state from the table blueprint.
+    CancelStateEdit,
+}
+
+impl FilterUiAction {
+    fn merge(self, other: Self) -> Self {
+        // We only consider the first non-noop action. There should never be more than one in a
+        // frame anyway.
+        match (self, other) {
+            (Self::None, other) => other,
+            (Self::CommitStateToBlueprint | Self::CancelStateEdit, _) => self,
+        }
+    }
+}
+
 /// Current state of the filter bar.
 ///
 /// Since this is dynamically changed, e.g. as the user types a query, the content of [`Self`] can
@@ -51,21 +77,34 @@ impl FilterState {
         self.active_filter = Some(self.filters.len() - 1);
     }
 
-    /// Convert the current state into filters to be used by the table blueprint.
-    pub fn to_blueprint_filters(&self) -> Vec<Filter> {
-        self.filters.clone()
-    }
-
     /// Display the filter bar UI.
     ///
-    /// Returns true if the filter must be committed.
+    /// This handles committing and/or restoring the state from the blueprint.
+    pub fn filter_bar_ui(&mut self, ui: &mut egui::Ui, table_blueprint: &mut TableBlueprint) {
+        let action = self.filter_bar_ui_impl(ui);
+
+        match action {
+            FilterUiAction::None => {}
+
+            FilterUiAction::CommitStateToBlueprint => {
+                table_blueprint.filters = self.filters.clone();
+            }
+
+            FilterUiAction::CancelStateEdit => {
+                self.filters = table_blueprint.filters.clone();
+                self.active_filter = None;
+            }
+        }
+    }
+
     #[must_use]
-    pub fn filter_bar_ui(&mut self, ui: &mut egui::Ui) -> bool {
+    fn filter_bar_ui_impl(&mut self, ui: &mut egui::Ui) -> FilterUiAction {
         if self.filters.is_empty() {
-            return false;
+            return Default::default();
         }
 
         let mut should_commit = false;
+        let mut action = FilterUiAction::None;
 
         Frame::new()
             .inner_margin(Margin {
@@ -82,8 +121,10 @@ impl FilterState {
                     for (index, filter) in self.filters.iter_mut().enumerate() {
                         let filter_id = ui.make_persistent_id(index);
                         let result = filter.ui(ui, filter_id, Some(index) == active_index);
-                        should_commit |= result.should_commit;
-                        if result.should_close {
+
+                        action = action.merge(result.filter_action);
+
+                        if result.should_delete_filter {
                             remove_idx = Some(index);
                         }
                     }
@@ -96,20 +137,18 @@ impl FilterState {
                 });
             });
 
-        should_commit
+        action
     }
 }
 
 /// Output of the `DisplayFilter::ui` method.
 struct DisplayFilterUiResult {
-    should_commit: bool,
-    should_close: bool,
+    filter_action: FilterUiAction,
+    should_delete_filter: bool,
 }
 
 impl Filter {
     /// UI for a single filter.
-    ///
-    /// Returns true if the filter must be committed.
     #[must_use]
     fn ui(
         &mut self,
@@ -117,10 +156,7 @@ impl Filter {
         filter_id: egui::Id,
         activate_filter: bool,
     ) -> DisplayFilterUiResult {
-        let mut result = DisplayFilterUiResult {
-            should_commit: false,
-            should_close: false,
-        };
+        let mut should_delete_filter = false;
 
         let mut response = Frame::new()
             .inner_margin(Margin::symmetric(4, 4))
@@ -146,7 +182,7 @@ impl Filter {
                     .small_icon_button(&re_ui::icons::CLOSE, "Remove filter")
                     .clicked()
                 {
-                    result.should_close = true;
+                    should_delete_filter = true;
                 }
 
                 text_response
@@ -164,14 +200,48 @@ impl Filter {
         }
 
         let popup_response = popup.show(|ui| {
-            self.operation.popup_ui(ui, popup_was_closed);
+            let action = self.operation.popup_ui(ui, popup_was_closed);
+
+            // Ensure we close the popup if the popup ui decided on an action.
+            if action != FilterUiAction::None {
+                ui.close();
+            }
+
+            action
         });
 
-        if popup_response.is_some_and(|inner_response| inner_response.response.should_close()) {
-            result.should_commit = true;
-        }
+        // Handle the logic of committing or cancelling the filter edit. This can happen in two
+        // ways:
+        //
+        // 1) The popup is closed by "normal" means (e.g. clicking outside, etc.). This triggers a
+        //    commit, unless it happened with Esc, in which case we cancel the edit.
+        // 2) The `FilterOperation::popup_ui` itself triggers a commit/cancel action (typically
+        //    when interacting with a text field and detecting either Enter or Esc). When that
+        //    happens, we close the popup and propagate the action.
+        let filter_action = popup_response
+            .map(|inner_response| match inner_response.inner {
+                FilterUiAction::None => {
+                    if inner_response.response.should_close() {
+                        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                            FilterUiAction::CancelStateEdit
+                        } else {
+                            FilterUiAction::CommitStateToBlueprint
+                        }
+                    } else {
+                        FilterUiAction::None
+                    }
+                }
+                FilterUiAction::CommitStateToBlueprint | FilterUiAction::CancelStateEdit => {
+                    ui.close();
+                    inner_response.inner
+                }
+            })
+            .unwrap_or_default();
 
-        result
+        DisplayFilterUiResult {
+            filter_action,
+            should_delete_filter,
+        }
     }
 }
 
@@ -218,8 +288,8 @@ impl SyntaxHighlighting for SyntaxHighlightFilterOperation<'_> {
 
 impl FilterOperation {
     /// Returns true if the filter must be committed.
-    fn popup_ui(&mut self, ui: &mut egui::Ui, popup_just_opened: bool) -> bool {
-        let mut should_commit = false;
+    fn popup_ui(&mut self, ui: &mut egui::Ui, popup_just_opened: bool) -> FilterUiAction {
+        let mut action = FilterUiAction::None;
 
         match self {
             Self::StringContains(query) => {
@@ -229,14 +299,21 @@ impl FilterOperation {
                     response.request_focus();
                 }
 
-                if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                    ui.close();
-                    should_commit = true;
+                if response.lost_focus() {
+                    action = ui.input(|i| {
+                        if i.key_pressed(egui::Key::Enter) {
+                            FilterUiAction::CommitStateToBlueprint
+                        } else if i.key_pressed(egui::Key::Escape) {
+                            FilterUiAction::CancelStateEdit
+                        } else {
+                            FilterUiAction::None
+                        }
+                    });
                 }
             }
         }
 
-        should_commit
+        action
     }
 
     /// Display text of the operator.
@@ -290,7 +367,7 @@ mod tests {
                         active_filter: None,
                     };
 
-                    let _res = filter_state.filter_bar_ui(ui);
+                    let _res = filter_state.filter_bar_ui_impl(ui);
                 });
 
             harness.run();
