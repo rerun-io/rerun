@@ -15,6 +15,7 @@ from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
 )
+from .channel_count_pair_ext import ChannelCountPairExt
 
 __all__ = ["ChannelCountPair", "ChannelCountPairArrayLike", "ChannelCountPairBatch", "ChannelCountPairLike"]
 
@@ -34,7 +35,7 @@ def _channel_count_pair__message_count__special_field_converter_override(x: data
 
 
 @define(init=False)
-class ChannelCountPair:
+class ChannelCountPair(ChannelCountPairExt):
     """**Datatype**: A pair representing a channel ID and its associated message count."""
 
     def __init__(self: Any, channel_id: datatypes.UInt16Like, message_count: datatypes.UInt64Like) -> None:
@@ -85,15 +86,4 @@ class ChannelCountPairBatch(BaseBatch[ChannelCountPairArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ChannelCountPairArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.datatypes import UInt16Batch, UInt64Batch
-
-        if isinstance(data, ChannelCountPair):
-            data = [data]
-
-        return pa.StructArray.from_arrays(
-            [
-                UInt16Batch([x.channel_id for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                UInt64Batch([x.message_count for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        return ChannelCountPairExt.native_to_pa_array_override(data, data_type)

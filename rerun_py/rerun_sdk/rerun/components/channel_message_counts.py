@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Dict, Sequence
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
@@ -65,12 +65,12 @@ class ChannelMessageCounts(ComponentMixin):
 
 
 if TYPE_CHECKING:
-    ChannelMessageCountsLike = Union[ChannelMessageCounts, Dict[int, int]]
+    ChannelMessageCountsLike = Union[ChannelMessageCounts, dict[int, int]]
 else:
     ChannelMessageCountsLike = Any
 
 ChannelMessageCountsArrayLike = Union[
-    ChannelMessageCounts, Sequence[ChannelMessageCountsLike], Dict[int, int], Sequence[Dict[int, int]]
+    ChannelMessageCounts, Sequence[ChannelMessageCountsLike], dict[int, int], Sequence[dict[int, int]]
 ]
 
 

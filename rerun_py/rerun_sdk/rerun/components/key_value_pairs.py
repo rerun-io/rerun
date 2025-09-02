@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Dict, Sequence
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Union
 
 import pyarrow as pa
@@ -61,11 +61,11 @@ class KeyValuePairs(ComponentMixin):
 
 
 if TYPE_CHECKING:
-    KeyValuePairsLike = Union[KeyValuePairs, Dict[str, str]]
+    KeyValuePairsLike = Union[KeyValuePairs, dict[str, str]]
 else:
     KeyValuePairsLike = Any
 
-KeyValuePairsArrayLike = Union[KeyValuePairs, Sequence[KeyValuePairsLike], Dict[str, str], Sequence[Dict[str, str]]]
+KeyValuePairsArrayLike = Union[KeyValuePairs, Sequence[KeyValuePairsLike], dict[str, str], Sequence[dict[str, str]]]
 
 
 class KeyValuePairsBatch(BaseBatch[KeyValuePairsArrayLike], ComponentBatchMixin):

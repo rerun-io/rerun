@@ -4,8 +4,8 @@ namespace rerun.components;
 ///
 /// Used in MCAP statistics to track how many messages were recorded per channel.
 table ChannelMessageCounts (
-  "attr.python.aliases": "Dict[int, int]",
-  "attr.python.array_aliases": "Dict[int, int], Sequence[Dict[int, int]]",
+  "attr.python.aliases": "dict[int, int]",
+  "attr.python.array_aliases": "dict[int, int], Sequence[dict[int, int]]",
   "attr.rerun.state": "unstable",
   "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.docs.unreleased"

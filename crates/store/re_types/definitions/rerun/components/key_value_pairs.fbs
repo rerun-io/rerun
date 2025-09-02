@@ -7,8 +7,8 @@ namespace rerun.components;
 /// This component can be used to attach arbitrary metadata or annotations to entities.
 /// Each key-value pair is stored as a UTF-8 string mapping.
 table KeyValuePairs (
-  "attr.python.aliases": "Dict[str, str]",
-  "attr.python.array_aliases": "Dict[str, str], Sequence[Dict[str, str]]",
+  "attr.python.aliases": "dict[str, str]",
+  "attr.python.array_aliases": "dict[str, str], Sequence[dict[str, str]]",
   "attr.rerun.state": "unstable",
   "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.docs.unreleased"
