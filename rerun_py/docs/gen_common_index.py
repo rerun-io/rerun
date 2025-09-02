@@ -263,6 +263,15 @@ SECTION_TABLE: Final[list[Section]] = [
         ],
         gen_page=False,
     ),
+    Section(
+        title="MCAP",
+        class_list=[
+            "archetypes.McapChannel",
+            "archetypes.McapMessage",
+            "archetypes.McapSchema",
+            "archetypes.McapStatistics",
+        ],
+    ),
     # Section(
     #     title="Deprecated",
     #     class_list=[],
