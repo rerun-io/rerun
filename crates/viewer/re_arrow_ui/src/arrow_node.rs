@@ -9,7 +9,7 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 enum NodeLabel {
     /// The index to *display*. May be different from the actual index of the value.
     ///
-    /// E.g. in a ListArray, this is the index in the child list. The index passed to
+    /// E.g. in a [`arrow::array::ListArray`], this is the index in the child list. The index passed to
     /// [`ArrowNode::show`] is the index in the parent array.
     ///
     /// Also see [`crate::show_index::list_ui`] for a more thorough explanation.

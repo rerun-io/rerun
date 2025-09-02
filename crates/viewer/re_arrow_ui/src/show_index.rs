@@ -409,9 +409,9 @@ fn write_list(
 /// If there are enough items, it will show items in a tree of ranges.
 ///
 /// Since arrow arrays might not start at 0, you need pass a `Range<usize>`.
-/// E.g. a GenericListArray consists of a single large values array and an offsets array.
+/// E.g. a [`GenericListArray`] consists of a single large values array and an offsets array.
 /// So the nth list would be a slice of the main array based on the offsets array at n.
-/// See e.g. [`GenericListArray`] for more info.
+/// See the [`GenericListArray`] docs for more info.
 ///
 /// The indexes shown in the UI will be _normalized_ so it's always `0..end-start`.
 pub(crate) fn list_ui(ui: &mut Ui, range: Range<usize>, values: &dyn ShowIndex) {
