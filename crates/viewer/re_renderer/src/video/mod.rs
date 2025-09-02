@@ -49,6 +49,9 @@ pub enum VideoPlayerError {
 
     #[error("Failed to create gpu texture from decoded video data: {0}")]
     ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
+
+    #[error("Decoder unexpectedly exited")]
+    DecoderUnexpectedlyExited,
 }
 
 const _: () = assert!(

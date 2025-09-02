@@ -6,7 +6,6 @@ use re_viewer::viewer_test_utils;
 use re_viewer::viewer_test_utils::StepUntil;
 
 /// Navigates from welcome to settings screen and snapshots it.
-#[cfg(not(windows))] // TODO(#10971): Fix it
 #[tokio::test]
 async fn settings_screen() {
     let mut harness = viewer_test_utils::viewer_harness();
@@ -14,7 +13,7 @@ async fn settings_screen() {
     harness.run_ok();
     harness.get_by_label_contains("Settings…").click();
     // Wait for the FFmpeg-check loading spinner to disappear.
-    StepUntil::new("loading ffmpeg version")
+    StepUntil::new("Settings screen shows up with FFMpeg binary not found error")
         .run(&mut harness, |harness| {
             harness.query_by_label_contains(
                 "The specified FFmpeg binary path does not exist or is not a file.",

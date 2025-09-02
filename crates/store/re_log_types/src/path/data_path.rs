@@ -23,7 +23,9 @@ pub struct DataPath {
 impl std::fmt::Display for DataPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.entity_path.fmt(f)?;
-        if let Some(instance) = &self.instance {
+        if let Some(instance) = &self.instance
+            && instance != &Instance::ALL
+        {
             write!(f, "[#{instance}]")?;
         }
         if let Some(component_descriptor) = &self.component_descriptor {

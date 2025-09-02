@@ -116,8 +116,7 @@ impl RerunArgs {
             )),
 
             RerunBehavior::Connect(url) => Ok((
-                RecordingStreamBuilder::new(application_id)
-                    .connect_grpc_opts(url, re_sdk::default_flush_timeout())?,
+                RecordingStreamBuilder::new(application_id).connect_grpc_opts(url)?,
                 Default::default(),
             )),
 

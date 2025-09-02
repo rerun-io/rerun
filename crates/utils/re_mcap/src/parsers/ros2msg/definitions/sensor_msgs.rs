@@ -290,3 +290,94 @@ pub struct JointState {
     /// The efforts applied in the joints.
     pub effort: Vec<f64>,
 }
+
+/// Navigation Satellite fix status information.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NavSatStatus {
+    /// Navigation satellite fix status.
+    pub status: NavSatFixStatus,
+
+    /// Navigation satellite service type.
+    pub service: NavSatService,
+}
+
+/// Navigation satellite fix status values.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[repr(i8)]
+pub enum NavSatFixStatus {
+    /// Unable to fix position.
+    NoFix = -1,
+
+    /// Unaugmented fix.
+    Fix = 0,
+
+    /// Satellite-based augmentation.
+    SbasFix = 1,
+
+    /// Ground-based augmentation.
+    GbasFix = 2,
+}
+
+/// Navigation satellite service type values.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[repr(u16)]
+pub enum NavSatService {
+    Gps = 1,
+    Glonass = 2,
+    Compass = 4,
+    Galileo = 8,
+}
+
+/// Position covariance type for navigation satellite fix.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum CovarianceType {
+    Unknown = 0,
+    Approximated = 1,
+    DiagonalKnown = 2,
+    Known = 3,
+}
+
+/// Navigation Satellite fix for any Global Navigation Satellite System
+///
+/// Specified using the WGS 84 reference ellipsoid.
+///
+/// `header.stamp` specifies the ROS time for this measurement (the
+/// corresponding satellite time may be reported using the
+/// `sensor_msgs/TimeReference` message).
+///
+/// `header.frame_id` is the frame of reference reported by the satellite
+/// receiver, usually the location of the antenna. This is a
+/// Euclidean frame relative to the vehicle, not a reference
+/// ellipsoid.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NavSatFix {
+    /// Metadata including timestamp and coordinate frame.
+    pub header: Header,
+
+    /// Satellite fix status information.
+    pub status: NavSatStatus,
+
+    /// Latitude (degrees). Positive is north of equator; negative is south.
+    pub latitude: f64,
+
+    /// Longitude (degrees). Positive is east of prime meridian; negative is west.
+    pub longitude: f64,
+
+    /// Altitude (m). Positive is above the WGS 84 ellipsoid
+    /// (quiet NaN if no altitude is available).
+    pub altitude: f64,
+
+    /// Position covariance (m^2) defined relative to a tangential plane
+    /// through the reported position. The components are East, North, and
+    /// Up (ENU), in row-major order.
+    ///
+    /// Beware: this coordinate system exhibits singularities at the poles.
+    pub position_covariance: [f64; 9],
+
+    /// If the covariance of the fix is known, fill it in completely. If the
+    /// GPS receiver provides the variance of each measurement, put them
+    /// along the diagonal. If only Dilution of Precision is available,
+    /// estimate an approximate covariance from that.
+    pub position_covariance_type: CovarianceType,
+}

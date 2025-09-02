@@ -98,7 +98,7 @@ oss_server = ["dep:re_server"]
 ## This only works on native.
 perf_telemetry = [
   "dep:re_perf_telemetry",
-  "re_grpc_client/perf_telemetry",
+  "re_redap_client/perf_telemetry",
   "re_viewer?/perf_telemetry",
 ]
 
@@ -143,7 +143,7 @@ re_entity_db.workspace = true
 re_error.workspace = true
 re_format.workspace = true
 re_format_arrow.workspace = true
-re_grpc_client.workspace = true
+re_redap_client.workspace = true
 re_log.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true

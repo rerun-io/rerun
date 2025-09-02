@@ -13,18 +13,20 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import tomlkit
-from tomlkit.container import Container
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../scripts/")
 from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
 
+if TYPE_CHECKING:
+    from tomlkit.container import Container
+
 config_path = Path(__file__).parent / "snippets.toml"
 config = tomlkit.loads(config_path.read_text())
 
-OPT_OUT: dict[str, Any] = cast(Container, config["opt_out"])
+OPT_OUT: dict[str, Any] = cast("Container", config["opt_out"])
 OPT_OUT_ENTIRELY: dict[str, Any] = OPT_OUT["run"].value
 OPT_OUT_BACKWARDS_CHECK: list[str] = OPT_OUT["backwards_check"].value
 OPT_OUT_COMPARE = OPT_OUT["compare"].value

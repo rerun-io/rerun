@@ -200,7 +200,7 @@ def get_size_benchmark_data(gcs: storage.Client, commits: list[CommitWithDate]) 
 
 
 BYTE_UNITS = ["b", "kb", "kib", "mb", "mib", "gb", "gib", "tb", "tib"]
-VALID_CONVERSIONS = {unit: BYTE_UNITS for unit in BYTE_UNITS}
+VALID_CONVERSIONS = dict.fromkeys(BYTE_UNITS, BYTE_UNITS)
 
 UNITS = {
     "b": 1,

@@ -12,16 +12,17 @@ from rerun.blueprint.components.included_content import IncludedContentBatch
 from rerun.blueprint.components.row_share import RowShare, RowShareBatch
 from rerun.components.name import Name, NameBatch
 from rerun.components.visible import Visible, VisibleBatch
-from rerun.datatypes.bool import BoolLike
 from rerun.datatypes.entity_path import EntityPath, EntityPathArrayLike, EntityPathLike
-from rerun.datatypes.float32 import Float32ArrayLike
-from rerun.datatypes.uint32 import UInt32ArrayLike
-from rerun.datatypes.utf8 import Utf8Like
 
 from .common_arrays import none_empty_or_value
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from rerun.datatypes.bool import BoolLike
+    from rerun.datatypes.float32 import Float32ArrayLike
+    from rerun.datatypes.uint32 import UInt32ArrayLike
+    from rerun.datatypes.utf8 import Utf8Like
 
 
 def test_container_blueprint() -> None:
@@ -97,14 +98,14 @@ def test_container_blueprint() -> None:
     ) in all_arrays:
         container_kind = container_kind if container_kind is not None else container_kind_arrays[-1]
 
-        container_kind = cast(ContainerKindLike, container_kind)
-        display_name = cast(Optional[Utf8Like], display_name)
-        contents = cast(Optional[EntityPathArrayLike], contents)
-        col_shares = cast(Optional[Float32ArrayLike], col_shares)
-        row_shares = cast(Optional[Float32ArrayLike], row_shares)
-        active_tab = cast(Optional[EntityPathLike], active_tab)
-        visible = cast(Optional[BoolLike], visible)
-        grid_columns = cast(Optional[UInt32ArrayLike], grid_columns)
+        container_kind = cast("ContainerKindLike", container_kind)
+        display_name = cast("Optional[Utf8Like]", display_name)
+        contents = cast("Optional[EntityPathArrayLike]", contents)
+        col_shares = cast("Optional[Float32ArrayLike]", col_shares)
+        row_shares = cast("Optional[Float32ArrayLike]", row_shares)
+        active_tab = cast("Optional[EntityPathLike]", active_tab)
+        visible = cast("Optional[BoolLike]", visible)
+        grid_columns = cast("Optional[UInt32ArrayLike]", grid_columns)
 
         print(
             "rr.ContainerBlueprint(\n",

@@ -5,7 +5,7 @@ use pyo3::{
     pyclass, pymethods,
     types::PyAnyMethods as _,
 };
-use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind};
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::{
     ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyRerunHtmlTable, PyTableEntry, to_py_err,
@@ -43,7 +43,7 @@ impl PyCatalogClientInternal {
 
         let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
-        let connection_registry = re_grpc_client::ConnectionRegistry::new();
+        let connection_registry = re_redap_client::ConnectionRegistry::new();
 
         let token = token
             .map(TryFrom::try_from)

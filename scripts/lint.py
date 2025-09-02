@@ -1132,7 +1132,7 @@ def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
     crates_dir = Path("crates")
     architecture_md_file = Path("ARCHITECTURE.md")
 
-    architecture_md = architecture_md_file.read_text()
+    architecture_md = architecture_md_file.read_text("utf-8")
 
     # extract all crate names ("re_…") from ARCHITECTURE.md to ensure they actually exist
     listed_crates: dict[str, int] = {}

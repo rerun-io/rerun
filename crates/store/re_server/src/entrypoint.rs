@@ -7,7 +7,7 @@ use tokio::signal::unix::{SignalKind, signal};
 use tokio::signal::windows::{ctrl_break, ctrl_close};
 use tracing::{info, warn};
 
-use crate::ServerBuilder;
+use crate::{ServerBuilder, ServerHandle};
 
 // ---
 
@@ -16,15 +16,15 @@ use crate::ServerBuilder;
 pub struct Args {
     /// Address to listen on.
     #[clap(long, default_value = "0.0.0.0")]
-    addr: String,
+    pub addr: String,
 
     /// Port to bind to.
     #[clap(long, short = 'p', default_value_t = 51234)]
-    port: u16,
+    pub port: u16,
 
     /// Load a directory of RRD as dataset (can be specified multiple times).
     #[clap(long = "dataset", short = 'd')]
-    datasets: Vec<PathBuf>,
+    pub datasets: Vec<PathBuf>,
 }
 
 impl Args {
@@ -33,11 +33,11 @@ impl Args {
         rt.block_on(self.run_async())
     }
 
-    async fn run_async(self) -> anyhow::Result<()> {
-        let frontend_server = {
-            use re_protos::frontend::v1alpha1::frontend_service_server::FrontendServiceServer;
+    pub async fn create_server_handle(self) -> anyhow::Result<ServerHandle> {
+        let rerun_cloud_server = {
+            use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer;
 
-            let mut builder = crate::FrontendHandlerBuilder::new();
+            let mut builder = crate::RerunCloudHandlerBuilder::new();
 
             for dataset in &self.datasets {
                 builder = builder.with_directory_as_dataset(
@@ -46,7 +46,7 @@ impl Args {
                 )?;
             }
 
-            FrontendServiceServer::new(builder.build())
+            RerunCloudServiceServer::new(builder.build())
                 .max_decoding_message_size(re_grpc_server::MAX_DECODING_MESSAGE_SIZE)
                 .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE)
         };
@@ -55,13 +55,19 @@ impl Args {
 
         let server_builder = ServerBuilder::default()
             .with_address(addr)
-            .with_service(frontend_server);
+            .with_service(rerun_cloud_server);
 
         let server = server_builder.build();
 
         let mut server_handle = server.start();
 
         server_handle.wait_for_ready().await?;
+
+        Ok(server_handle)
+    }
+
+    async fn run_async(self) -> anyhow::Result<()> {
+        let mut server_handle = self.create_server_handle().await?;
 
         #[cfg(unix)]
         let mut term_signal = signal(SignalKind::terminate())?;

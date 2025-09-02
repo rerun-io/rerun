@@ -45,7 +45,7 @@ map_view = ["dep:re_view_map"]
 ## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
 ##
 ## This only works on native.
-perf_telemetry = ["dep:re_perf_telemetry", "re_grpc_client/perf_telemetry"]
+perf_telemetry = ["dep:re_perf_telemetry", "re_redap_client/perf_telemetry"]
 
 testing = ["dep:egui_kittest", "dep:tokio"]
 
@@ -68,7 +68,7 @@ re_chunk_store_ui.workspace = true
 re_entity_db.workspace = true
 re_error.workspace = true
 re_format.workspace = true
-re_grpc_client.workspace = true
+re_redap_client.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding = { workspace = true, features = [
   "decoder",
@@ -139,6 +139,8 @@ serde_json.workspace = true
 serde-wasm-bindgen.workspace = true
 tap.workspace = true
 thiserror.workspace = true
+url.workspace = true
+vec1.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
 

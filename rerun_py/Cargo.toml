@@ -38,7 +38,7 @@ nasm = ["re_video/nasm"]
 ## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
 ##
 ## This only works on native.
-perf_telemetry = ["dep:re_perf_telemetry", "re_grpc_client/perf_telemetry"]
+perf_telemetry = ["dep:re_perf_telemetry", "re_redap_client/perf_telemetry"]
 
 server = ["re_sdk/server", "dep:re_grpc_server"]
 
@@ -62,6 +62,7 @@ re_chunk_store.workspace = true
 re_dataframe.workspace = true
 re_datafusion.workspace = true
 re_format_arrow.workspace = true
+re_redap_client.workspace = true
 re_grpc_client.workspace = true
 re_grpc_server = { workspace = true, optional = true }
 re_log = { workspace = true, features = ["setup"] }

@@ -1,5 +1,5 @@
-use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{LogMsg, RecordingId};
+use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
 use crate::FileContents;
@@ -8,14 +8,14 @@ use crate::FileContents;
 use anyhow::Context as _;
 
 /// Somewhere we can get Rerun logging data from.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LogDataSource {
     /// A remote RRD file, served over http.
     ///
     /// Could be either an `.rrd` recording or a `.rbl` blueprint.
     RrdHttpUrl {
         /// This is a canonicalized URL path without any parameters or fragments.
-        url: String,
+        url: url::Url,
 
         /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
         follow: bool,
@@ -125,14 +125,12 @@ impl LogDataSource {
         } else if let Ok(uri) = url.parse::<re_uri::ProxyUri>() {
             Some(Self::RedapProxy(uri))
         } else {
-            let mut parsed_url = url::Url::parse(url)
+            let url = url::Url::parse(url)
                 .or_else(|_| url::Url::parse(&format!("http://{url}")))
                 .ok()?;
+            let path = url.path();
 
-            // Ignore any parameters, we don't support them for http urls.
-            parsed_url.set_query(None);
-            let url = parsed_url.to_string();
-            (url.ends_with(".rrd") || url.ends_with(".rbl"))
+            (path.ends_with(".rrd") || path.ends_with(".rbl"))
                 .then_some(Self::RrdHttpUrl { url, follow: false })
         }
     }
@@ -148,7 +146,7 @@ impl LogDataSource {
     pub fn stream(
         self,
         connection_registry: &ConnectionRegistryHandle,
-        on_ui_cmd: Option<Box<dyn Fn(re_grpc_client::UiCommand) + Send + Sync>>,
+        on_ui_cmd: Option<Box<dyn Fn(re_redap_client::UiCommand) + Send + Sync>>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<Receiver<LogMsg>> {
         re_tracing::profile_function!();
@@ -156,7 +154,9 @@ impl LogDataSource {
         match self {
             Self::RrdHttpUrl { url, follow } => Ok(
                 re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
-                    url, follow, on_msg,
+                    url.to_string(),
+                    follow,
+                    on_msg,
                 ),
             ),
 
@@ -253,7 +253,7 @@ impl LogDataSource {
                 let uri_clone = uri.clone();
                 let stream_partition = async move {
                     let client = connection_registry.client(uri_clone.origin.clone()).await?;
-                    re_grpc_client::stream_blueprint_and_partition_from_server(
+                    re_redap_client::stream_blueprint_and_partition_from_server(
                         client, tx, uri_clone, on_ui_cmd, on_msg,
                     )
                     .await
@@ -270,7 +270,7 @@ impl LogDataSource {
                 Ok(rx)
             }
 
-            Self::RedapProxy(uri) => Ok(re_grpc_client::message_proxy::stream(uri, on_msg)),
+            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri, on_msg)),
         }
     }
 }

@@ -102,9 +102,7 @@ impl View3DState {
         scene_bbox: &SceneBoundingBoxes,
         scene_view_coordinates: Option<ViewCoordinates>,
     ) {
-        // Mark as interaction since we want to stop doing any automatic interpolations,
-        // even if this is caused by a full reset.
-        self.last_eye_interaction = Some(Instant::now());
+        self.last_eye_interaction = None;
         self.interpolate_to_view_eye(default_eye(&scene_bbox.current, scene_view_coordinates));
         self.tracked_entity = None;
         self.camera_before_tracked_entity = None;

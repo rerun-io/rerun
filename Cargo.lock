@@ -1018,10 +1018,13 @@ checksum = "021e862c184ae977658b36c4500f7feac3221ca5da43e3f25bd04ab6c79a29b5"
 dependencies = [
  "axum-core",
  "bytes",
+ "form_urlencoded",
  "futures-util",
  "http",
  "http-body",
  "http-body-util",
+ "hyper",
+ "hyper-util",
  "itoa",
  "matchit",
  "memchr",
@@ -1030,10 +1033,15 @@ dependencies = [
  "pin-project-lite",
  "rustversion",
  "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "serde_urlencoded",
  "sync_wrapper",
+ "tokio",
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -1053,6 +1061,7 @@ dependencies = [
  "sync_wrapper",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -1993,6 +2002,15 @@ checksum = "6b50826342786a51a89e2da3a28f1c32b06e387201bc2d19791f622c673706b1"
 dependencies = [
  "cast",
  "itertools 0.10.5",
+]
+
+[[package]]
+name = "cros-codecs"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80f7441b4f31c17b6b6b7f57f6c202944aad11d0ab23739a9ff88d8d34dec621"
+dependencies = [
+ "log",
 ]
 
 [[package]]
@@ -2997,6 +3015,12 @@ name = "dpi"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
+
+[[package]]
+name = "dtoa"
+version = "1.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6add3b8cff394282be81f3fc1a0605db594ed69890078ca6e2cab1c408bcf04"
 
 [[package]]
 name = "ecolor"
@@ -6739,6 +6763,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "prometheus-client"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4500adecd7af8e0e9f4dbce15cfee07ce913fbf6ad605cc468b83f2d531ee94"
+dependencies = [
+ "dtoa",
+ "itoa",
+ "parking_lot",
+ "prometheus-client-derive-encode",
+]
+
+[[package]]
+name = "prometheus-client-derive-encode"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9adf1691c04c0a5ff46ff8f262b58beb07b0dbb61f96f9f54f6cbd82106ed87f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+]
+
+[[package]]
 name = "prost"
 version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7468,6 +7515,7 @@ dependencies = [
  "re_log",
  "re_log_encoding",
  "re_log_types",
+ "re_redap_client",
  "re_smart_channel",
  "re_tracing",
  "re_uri",
@@ -7586,10 +7634,10 @@ dependencies = [
  "itertools 0.14.0",
  "log",
  "re_dataframe",
- "re_grpc_client",
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_redap_client",
  "re_sorbet",
  "re_tuid",
  "re_uri",
@@ -7638,6 +7686,7 @@ dependencies = [
  "itertools 0.14.0",
  "nohash-hasher",
  "parking_lot",
+ "re_arrow_util",
  "re_build_info",
  "re_byte_size",
  "re_chunk",
@@ -7701,9 +7750,9 @@ dependencies = [
  "re_chunk_store",
  "re_data_source",
  "re_entity_db",
- "re_grpc_client",
  "re_log",
  "re_log_types",
+ "re_redap_client",
  "re_renderer",
  "re_smart_channel",
  "re_tracing",
@@ -7723,32 +7772,24 @@ dependencies = [
 name = "re_grpc_client"
 version = "0.25.0-alpha.1+dev"
 dependencies = [
- "arrow",
  "async-stream",
- "itertools 0.14.0",
- "jiff",
- "re_arrow_util",
- "re_auth",
+ "crossbeam",
  "re_chunk",
- "re_error",
  "re_log",
  "re_log_encoding",
  "re_log_types",
- "re_perf_telemetry",
  "re_protos",
  "re_smart_channel",
  "re_sorbet",
+ "re_tracing",
  "re_uri",
- "serde",
  "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
  "tonic",
  "tonic-web-wasm-client",
- "tower",
- "tracing",
- "url",
  "wasm-bindgen-futures",
+ "web-time",
 ]
 
 [[package]]
@@ -7798,10 +7839,14 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_kittest",
- "insta",
+ "re_protos",
+ "re_redap_client",
+ "re_sdk",
+ "re_server",
+ "re_uri",
  "re_viewer",
+ "tempfile",
  "tokio",
- "ureq",
 ]
 
 [[package]]
@@ -7947,6 +7992,7 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "axum",
  "base64 0.22.1",
  "clap",
  "http",
@@ -7955,8 +8001,10 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "parking_lot",
+ "prometheus-client",
  "serde",
  "serde_json",
+ "tokio",
  "tonic",
  "tower",
  "tower-http",
@@ -8088,19 +8136,48 @@ dependencies = [
  "re_component_ui",
  "re_dataframe_ui",
  "re_datafusion",
- "re_grpc_client",
  "re_log",
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_redap_client",
  "re_sorbet",
  "re_ui",
  "re_uri",
  "re_viewer_context",
  "serde",
  "thiserror 1.0.69",
- "tonic",
  "url",
+]
+
+[[package]]
+name = "re_redap_client"
+version = "0.25.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "itertools 0.14.0",
+ "jiff",
+ "re_arrow_util",
+ "re_auth",
+ "re_chunk",
+ "re_error",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_perf_telemetry",
+ "re_protos",
+ "re_smart_channel",
+ "re_uri",
+ "serde",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-web-wasm-client",
+ "tower",
+ "tracing",
+ "url",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -8288,6 +8365,7 @@ dependencies = [
  "re_tracing",
  "re_uri",
  "serde",
+ "thiserror 1.0.69",
  "web-time",
 ]
 
@@ -8346,10 +8424,10 @@ dependencies = [
  "re_chunk_store",
  "re_entity_db",
  "re_global_context",
- "re_grpc_client",
  "re_log",
  "re_log_encoding",
  "re_log_types",
+ "re_redap_client",
  "re_renderer",
  "re_tracing",
  "re_types",
@@ -8547,6 +8625,7 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "notify",
+ "num-traits",
  "parking_lot",
  "rand 0.8.5",
  "re_analytics",
@@ -8587,6 +8666,7 @@ dependencies = [
  "bit-vec",
  "cfg_aliases",
  "criterion",
+ "cros-codecs",
  "crossbeam",
  "econtext",
  "ffmpeg-sidecar",
@@ -8767,6 +8847,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_mp4",
  "re_query",
  "re_renderer",
  "re_test_context",
@@ -8915,7 +8996,6 @@ dependencies = [
  "re_entity_db",
  "re_error",
  "re_format",
- "re_grpc_client",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -8924,6 +9004,7 @@ dependencies = [
  "re_query",
  "re_recording_panel",
  "re_redap_browser",
+ "re_redap_client",
  "re_renderer",
  "re_selection_panel",
  "re_smart_channel",
@@ -8957,6 +9038,8 @@ dependencies = [
  "tap",
  "thiserror 1.0.69",
  "tokio",
+ "url",
+ "vec1",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -9017,7 +9100,6 @@ dependencies = [
  "tokio",
  "wasm-bindgen-futures",
  "web-sys",
- "web-time",
  "wgpu",
 ]
 
@@ -9298,7 +9380,6 @@ dependencies = [
  "re_format",
  "re_format_arrow",
  "re_global_context",
- "re_grpc_client",
  "re_grpc_server",
  "re_log",
  "re_log_encoding",
@@ -9307,6 +9388,7 @@ dependencies = [
  "re_memory",
  "re_perf_telemetry",
  "re_protos",
+ "re_redap_client",
  "re_sdk",
  "re_server",
  "re_smart_channel",
@@ -9354,6 +9436,9 @@ dependencies = [
  "infer",
  "parking_lot",
  "re_arrow_util",
+ "re_build_info",
+ "re_build_tools",
+ "re_crash_handler",
  "re_log",
  "re_sdk",
  "re_video",
@@ -9398,6 +9483,7 @@ dependencies = [
  "re_memory",
  "re_perf_telemetry",
  "re_protos",
+ "re_redap_client",
  "re_sdk",
  "re_sorbet",
  "re_tuid",
@@ -9504,202 +9590,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "unicode-ident",
-]
-
-[[package]]
-name = "roundtrip_annotation_context"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_arrows2d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_arrows3d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_boxes2d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_boxes3d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_depth_image"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "image",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_image"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "half",
- "image",
- "ndarray",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_line_strips2d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_line_strips3d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_pinhole"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_points2d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_points3d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_segmentation_image"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "image",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_tensor"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "ndarray",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_text_document"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_text_log"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_transform3d"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_view_coordinates"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_visible_time_ranges"
-version = "0.25.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "re_log",
- "rerun",
 ]
 
 [[package]]
@@ -10000,6 +9890,16 @@ dependencies = [
  "itoa",
  "memchr",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_path_to_error"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59fab13f937fa393d08645bf3a84bdfe86e296747b506ada67bb15f10f218b2a"
+dependencies = [
+ "itoa",
  "serde",
 ]
 
@@ -10564,6 +10464,7 @@ version = "0.25.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_format",
+ "re_memory",
  "rerun",
 ]
 

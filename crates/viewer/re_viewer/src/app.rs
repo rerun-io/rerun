@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{str::FromStr as _, sync::Arc};
 
 use itertools::Itertools as _;
 
@@ -7,8 +7,8 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{FileContents, LogDataSource};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
-use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
+use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
@@ -26,6 +26,7 @@ use crate::{
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     event::ViewerEventDispatcher,
+    open_url::ViewerImportUrl,
     startup_options::StartupOptions,
 };
 
@@ -112,7 +113,11 @@ pub struct App {
 
     egui_debug_panel_open: bool,
 
-    pub(crate) latest_latency_interest: web_time::Instant,
+    /// Last time the latency was deemed interesting.
+    ///
+    /// Note that initializing with an "old" `Instant` won't work reliably cross platform
+    /// since `Instant`'s counter may start at program start.
+    pub(crate) latest_latency_interest: Option<web_time::Instant>,
 
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
@@ -183,7 +188,7 @@ impl App {
         re_tracing::profile_function!();
 
         let connection_registry =
-            connection_registry.unwrap_or_else(re_grpc_client::ConnectionRegistry::new);
+            connection_registry.unwrap_or_else(re_redap_client::ConnectionRegistry::new);
 
         if let Some(storage) = creation_context.storage
             && let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY)
@@ -246,7 +251,6 @@ impl App {
         if app_env.is_test() {
             // Disable certain labels/warnings/etc that would be flaky or not CI-runner-agnostic in snapshot tests.
             state.app_options.show_metrics = false;
-            state.app_options.show_software_rasterizer_warning = false;
         }
 
         let view_class_registry = crate::default_views::create_view_class_registry()
@@ -267,11 +271,6 @@ impl App {
 
         let mut component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut component_ui_registry);
-
-        // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.;
-        let long_time_ago = web_time::Instant::now()
-            .checked_sub(web_time::Duration::from_secs(1_000_000_000))
-            .unwrap_or(web_time::Instant::now());
 
         let (_adapter_backend, _device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
             (
@@ -364,7 +363,7 @@ impl App {
 
             egui_debug_panel_open: false,
 
-            latest_latency_interest: long_time_ago,
+            latest_latency_interest: None,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
@@ -412,19 +411,23 @@ impl App {
         self.state.app_options_mut()
     }
 
+    pub fn app_env(&self) -> &crate::AppEnvironment {
+        &self.app_env
+    }
+
     /// Open a content URL in the viewer.
     pub fn open_url_or_file(&self, url: &str) {
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
 
-        if crate::open_url::try_open_url_or_file_in_viewer(
-            &self.egui_ctx,
-            url,
-            follow_if_http,
-            select_redap_source_when_loaded,
-            &self.command_sender,
-        ) == Err(())
-        {
+        if let Ok(url) = crate::open_url::ViewerImportUrl::from_str(url) {
+            url.open(
+                &self.egui_ctx,
+                follow_if_http,
+                select_redap_source_when_loaded,
+                &self.command_sender,
+            );
+        } else {
             re_log::warn!("Failed to open URL: {url}");
         }
     }
@@ -504,9 +507,17 @@ impl App {
         app_blueprint: &AppBlueprint<'_>,
         storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
+        display_mode: &DisplayMode,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(egui_ctx, app_blueprint, storage_context, store_context, cmd);
+            self.run_ui_command(
+                egui_ctx,
+                app_blueprint,
+                storage_context,
+                store_context,
+                display_mode,
+                cmd,
+            );
         }
     }
 
@@ -565,8 +576,32 @@ impl App {
                     }
                     RecordingOrTable::Table { .. } => None,
                 };
-                self.rx_log
-                    .retain(|r| Some(r.source()) != data_source.as_ref());
+                if let Some(data_source) = data_source {
+                    // Only certain sources should be closed.
+                    #[allow(clippy::match_same_arms)]
+                    let should_close = match &data_source {
+                        // Specific files should stop streaming when closing them.
+                        SmartChannelSource::File(_) => true,
+
+                        // Specific HTTP streams should stop streaming when closing them.
+                        SmartChannelSource::RrdHttpStream { .. } => true,
+
+                        // Specific GRPC streams should stop streaming when closing them.
+                        // TODO(#10967): We still stream in some data after that.
+                        SmartChannelSource::RedapGrpcStream { .. } => true,
+
+                        // Don't close generic connections (like to an SDK) that may feed in different recordings over time.
+                        SmartChannelSource::RrdWebEventListener
+                        | SmartChannelSource::JsChannel { .. }
+                        | SmartChannelSource::Sdk
+                        | SmartChannelSource::Stdin
+                        | SmartChannelSource::MessageProxy(_) => false,
+                    };
+
+                    if should_close {
+                        self.rx_log.retain(|r| r.source() != &data_source);
+                    }
+                }
 
                 store_hub.remove(&entry);
 
@@ -603,6 +638,10 @@ impl App {
             }
 
             SystemCommand::ChangeDisplayMode(display_mode) => {
+                if &display_mode == self.state.navigation.peek() {
+                    return;
+                }
+
                 // Update web-navigation bar if this isn't about local recordings.
                 //
                 // Recordings are on selection since recording change always comes with a selection change.
@@ -618,9 +657,13 @@ impl App {
                 }
 
                 self.state.navigation.replace(display_mode);
+                egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
 
             SystemCommand::AddRedapServer(origin) => {
+                if origin == *re_redap_browser::EXAMPLES_ORIGIN {
+                    return;
+                }
                 if self.state.redap_servers.has_server(&origin) {
                     return;
                 }
@@ -715,10 +758,10 @@ impl App {
 
             SystemCommand::SetSelection(item) => {
                 match &item {
-                    Item::RedapEntry(entry_id) => {
+                    Item::RedapEntry(entry) => {
                         self.state
                             .navigation
-                            .replace(DisplayMode::RedapEntry(*entry_id));
+                            .replace(DisplayMode::RedapEntry(entry.clone()));
                     }
 
                     Item::RedapServer(origin) => {
@@ -755,6 +798,7 @@ impl App {
                     store_hub,
                     self.state.navigation.peek(),
                 );
+                egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
             SystemCommand::SetActiveTime {
@@ -838,7 +882,7 @@ impl App {
         match data_source {
             LogDataSource::RrdHttpUrl { url, follow } => {
                 let new_source = SmartChannelSource::RrdHttpStream {
-                    url: url.clone(),
+                    url: url.to_string(),
                     follow: *follow,
                 };
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
@@ -935,7 +979,7 @@ impl App {
         let on_ui_cmd = {
             let command_sender = self.command_sender.clone();
             Box::new(move |cmd| match cmd {
-                re_grpc_client::UiCommand::SetLoopSelection {
+                re_redap_client::UiCommand::SetLoopSelection {
                     recording_id,
                     timeline,
                     time_range,
@@ -1000,8 +1044,9 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
-        _storage_context: &StorageContext<'_>,
+        storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
+        display_mode: &DisplayMode,
         cmd: UICommand,
     ) {
         let mut force_store_info = false;
@@ -1040,7 +1085,7 @@ impl App {
                     for item in self.state.selection_state.selected_items().iter_items() {
                         match item {
                             Item::AppId(selected_app_id) => {
-                                for recording in _storage_context.bundle.recordings() {
+                                for recording in storage_context.bundle.recordings() {
                                     if recording.application_id() == selected_app_id {
                                         selected_stores.push(recording.store_id().clone());
                                     }
@@ -1055,7 +1100,7 @@ impl App {
 
                     let selected_stores = selected_stores
                         .iter()
-                        .filter_map(|store_id| _storage_context.bundle.get(store_id))
+                        .filter_map(|store_id| storage_context.bundle.get(store_id))
                         .collect_vec();
 
                     if selected_stores.is_empty() {
@@ -1361,13 +1406,8 @@ impl App {
                 re_ui::apply_style_and_install_loaders(egui_ctx);
             }
 
-            #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
-                if self.run_copy_direct_link_command(store_context).is_none() {
-                    re_log::error!(
-                        "Failed to copy direct link to clipboard. Is this not running in a browser?"
-                    );
-                }
+                self.run_copy_direct_link_command(storage_context, display_mode);
             }
 
             UICommand::CopyTimeRangeLink => {
@@ -1386,6 +1426,10 @@ impl App {
                 if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgpu").is_err() {
                     re_log::error!("Failed to set URL parameter `renderer=webgpu` & refresh page.");
                 }
+            }
+
+            UICommand::CopyEntityHierarchy => {
+                self.copy_entity_hierarchy_to_clipboard(egui_ctx, store_context);
             }
 
             UICommand::AddRedapServer => {
@@ -1518,27 +1562,38 @@ impl App {
         Ok(url)
     }
 
-    #[cfg(target_arch = "wasm32")]
     fn run_copy_direct_link_command(
         &mut self,
-        store_context: Option<&StoreContext<'_>>,
-    ) -> Option<()> {
-        use crate::web_tools::JsResultExt as _;
-        let href = self.get_viewer_url().ok_or_log_js_error()?;
-
-        let direct_link = match store_context
-            .map(|ctx| ctx.recording)
-            .and_then(|rec| rec.data_source.as_ref())
+        storage_context: &StorageContext<'_>,
+        display_mode: &DisplayMode,
+    ) {
+        // TODO(rerun-io/dataplatform#2663): Should take into account dataplatform URLs if any are provided.
+        let base_url;
+        #[cfg(target_arch = "wasm32")]
         {
-            Some(SmartChannelSource::RrdHttpStream { url, .. }) => format!("{href}?url={url}"),
-            _ => href,
+            use crate::web_tools::JsResultExt as _;
+            base_url = crate::web_tools::current_base_url().ok_or_log_js_error();
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            base_url = None;
         };
 
-        self.egui_ctx.copy_text(direct_link.clone());
-        self.notifications
-            .success(format!("Copied {direct_link:?} to clipboard"));
-
-        Some(())
+        match crate::open_url::ViewerImportUrl::from_display_mode(
+            storage_context.hub,
+            display_mode.clone(),
+        )
+        .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
+        {
+            Ok(url) => {
+                self.egui_ctx.copy_text(url);
+                self.notifications
+                    .success("Copied link to clipboard".to_owned());
+            }
+            Err(err) => {
+                re_log::error!("{err}");
+            }
+        }
     }
 
     fn run_copy_time_range_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
@@ -1604,6 +1659,36 @@ impl App {
         self.egui_ctx.copy_text(url.clone());
         self.notifications
             .success(format!("Copied {url:?} to clipboard"));
+    }
+
+    fn copy_entity_hierarchy_to_clipboard(
+        &mut self,
+        egui_ctx: &egui::Context,
+        store_context: Option<&StoreContext<'_>>,
+    ) {
+        let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
+            re_log::warn!("Could not copy entity hierarchy: No active recording");
+            return;
+        };
+
+        let mut hierarchy_text = String::new();
+
+        // Add application ID and recording ID header
+        hierarchy_text.push_str(&format!(
+            "Application ID: {}\nRecording ID: {}\n\n",
+            entity_db.application_id(),
+            entity_db.recording_id()
+        ));
+
+        hierarchy_text.push_str(&entity_db.format_with_components());
+
+        if hierarchy_text.is_empty() {
+            hierarchy_text = "(no entities)".to_owned();
+        }
+
+        egui_ctx.copy_text(hierarchy_text.clone());
+        self.notifications
+            .success("Copied entity hierarchy with schema to clipboard".to_owned());
     }
 
     fn memory_panel_ui(
@@ -2139,7 +2224,7 @@ impl App {
         storage_ctx: &StorageContext<'_>,
         command_sender: &CommandSender,
     ) {
-        #![allow(clippy::needless_continue)] // false positive, depending on target_arche
+        #![allow(clippy::needless_continue)] // false positive, depending on target_arch
 
         preview_files_being_dropped(egui_ctx);
 
@@ -2667,18 +2752,49 @@ impl eframe::App for App {
                 paint_native_window_frame(egui_ctx);
             }
 
-            if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-                self.command_sender.send_ui(cmd);
+            if let Some(cmd) = self
+                .cmd_palette
+                .show(egui_ctx, &ViewerImportUrl::command_palette_parse_url)
+            {
+                match cmd {
+                    re_ui::CommandPaletteAction::UiCommand(cmd) => {
+                        self.command_sender.send_ui(cmd);
+                    }
+                    re_ui::CommandPaletteAction::OpenUrl(url_desc) => {
+                        let follow_if_http = false;
+                        let select_redap_source_when_loaded = true;
+
+                        match url_desc.url.parse::<ViewerImportUrl>() {
+                            Ok(url) => {
+                                url.open(
+                                    egui_ctx,
+                                    follow_if_http,
+                                    select_redap_source_when_loaded,
+                                    &self.command_sender,
+                                );
+                            }
+                            Err(err) => {
+                                re_log::warn!("{err}");
+                            }
+                        }
+
+                        // Note that we can't use `ui.ctx().open_url(egui::OpenUrl::same_tab(uri))` here because..
+                        // * the url redirect in `check_for_clicked_hyperlinks` wouldn't be hit
+                        // * we don't actually want to open any URLs in the browser here ever, only ever into the current viewer
+                    }
+                }
             }
 
             Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
+            let display_mode = self.state.navigation.peek().clone();
             self.run_pending_ui_commands(
                 egui_ctx,
                 &app_blueprint,
                 &storage_context,
                 store_context.as_ref(),
+                &display_mode,
             );
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
@@ -3060,7 +3176,13 @@ fn update_web_address_bar(
     if !enable_history {
         return None;
     }
-    let url = crate::open_url::display_mode_to_content_url(store_hub, display_mode)?;
+    let Ok(url) =
+        crate::open_url::ViewerImportUrl::from_display_mode(store_hub, display_mode.clone())
+            // History entries expect the url parameter, not the full url, therefore don't pass a base url.
+            .and_then(|url| url.sharable_url(None))
+    else {
+        return None;
+    };
 
     re_log::debug!("Updating navigation bar");
 

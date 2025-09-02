@@ -104,7 +104,7 @@ def build_python_sdk() -> None:
 # ====================================================================================================
 # SNIPPETS
 #
-# We scrape FBS for screenshot URL and generate the corresponding snippets RRD with roundtrips.py
+# We scrape FBS for screenshot URL and generate the corresponding snippets RRD with compare_snippet_output.py
 # ====================================================================================================
 
 

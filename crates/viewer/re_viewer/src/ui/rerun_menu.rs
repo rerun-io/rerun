@@ -408,6 +408,11 @@ fn debug_menu_options_ui(
 
     #[cfg(not(target_arch = "wasm32"))]
     {
+        ui.horizontal(|ui| {
+            ui.label("Command line:");
+            ui.monospace(std::env::args().collect::<Vec<_>>().join(" "));
+        });
+
         if ui.button("Mobile size").clicked() {
             // let size = egui::vec2(375.0, 812.0); // iPhone 12 mini
             let size = egui::vec2(375.0, 667.0); //  iPhone SE 2nd gen

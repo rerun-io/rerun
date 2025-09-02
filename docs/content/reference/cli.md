@@ -43,13 +43,6 @@ The Rerun command-line interface:
 >
 > [Default: `0.0.0.0`]
 
-* `--drop-at-latency <DROP_AT_LATENCY>`
-> Set a maximum input latency, e.g. "200ms" or "10s".
->
-> If we go over this, we start dropping packets.
->
-> The default is no limit, which means Rerun might eat more and more memory and have longer and longer latency, if you are logging data faster than Rerun can index it.
-
 * `--memory-limit <MEMORY_LIMIT>`
 > An upper limit on how much memory the Rerun Viewer should use.
 > When this limit is reached, Rerun will drop the oldest data.

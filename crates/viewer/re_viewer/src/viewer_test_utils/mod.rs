@@ -101,5 +101,21 @@ Found nodes: {:?}"#,
                 }
             }
         }
+
+        if !success {
+            // Take a screenshot of the state of the harness if we failed the test.
+            // This is invaluable for debugging test failures.
+            let snapshot_path = "tests/failures";
+            harness
+                .try_snapshot_options(
+                    test_description,
+                    &egui_kittest::SnapshotOptions::default().output_path(snapshot_path),
+                )
+                .ok();
+
+            panic!(
+                "Timed out waiting for predicate to be true for {test_description:?}. A screenshot of the harness has been saved to `{snapshot_path}/{test_description}.new.png`."
+            );
+        }
     }
 }

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import itertools
-from typing import Optional, cast
+from typing import TYPE_CHECKING, Optional, cast
 
 import rerun as rr
 import rerun.blueprint as rrb
 from rerun.blueprint import components as blueprint_components
-from rerun.datatypes.bool import BoolLike
 
 from .common_arrays import none_empty_or_value
+
+if TYPE_CHECKING:
+    from rerun.datatypes.bool import BoolLike
 
 
 def test_scalar_axis() -> None:
@@ -30,8 +32,8 @@ def test_scalar_axis() -> None:
     )
 
     for corner, visible in all_arrays:
-        corner = cast(Optional[blueprint_components.Corner2DLike], corner)
-        visible = cast(Optional[BoolLike], visible)
+        corner = cast("Optional[blueprint_components.Corner2DLike]", corner)
+        visible = cast("Optional[BoolLike]", visible)
 
         print(
             f"rr.PlotLegend(\n"
