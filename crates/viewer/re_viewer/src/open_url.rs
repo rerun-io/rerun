@@ -168,6 +168,27 @@ pub fn base_url(url: &url::Url) -> url::Url {
     base_url
 }
 
+/// A description of what happens when opening a [`ViewerOpenUrl`].
+pub struct ViewerOpenUrlDescription {
+    /// The general category of this URL.
+    pub category: &'static str,
+
+    /// The specific target of this URL if known.
+    ///
+    /// This is always shorter than the original URL.
+    pub target_short: Option<String>,
+}
+
+impl std::fmt::Display for ViewerOpenUrlDescription {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(target) = &self.target_short {
+            write!(f, "{}: {target}", self.category)
+        } else {
+            write!(f, "{}", self.category)
+        }
+    }
+}
+
 impl ViewerOpenUrl {
     /// Tries to create a viewer import URL for the current display mode (typically for sharing purposes).
     ///
@@ -478,39 +499,67 @@ impl ViewerOpenUrl {
 
         Some(CommandPaletteUrl {
             url: url.to_owned(),
-            command_text: open_url.open_description(),
+            command_text: format!("Open {}", open_url.open_description()),
         })
     }
 
     /// Describes what happens when calling [`Self::open`] with this URL.
-    pub fn open_description(&self) -> String {
+    pub fn open_description(&self) -> ViewerOpenUrlDescription {
         match self {
-            Self::IntraRecordingSelection(_) => "Go to selection".to_owned(),
+            Self::IntraRecordingSelection(item) => ViewerOpenUrlDescription {
+                category: "Selection",
+                target_short: item.entity_path().map(|p| p.to_string()),
+            },
 
-            Self::RrdHttpUrl(_) => "Open rrd from link".to_owned(),
+            Self::RrdHttpUrl(url) => {
+                let path = url.path();
+                let rrd_file_name = path.split('/').last().map(|s| s.to_string());
+
+                ViewerOpenUrlDescription {
+                    category: "RRD from link",
+                    target_short: rrd_file_name,
+                }
+            }
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(path) => format!("Open file {}", path.display()),
+            Self::FilePath(path) => ViewerOpenUrlDescription {
+                category: "File",
+                target_short: path.file_name().map(|s| s.display().to_string()),
+            },
 
-            Self::RedapDatasetPartition(uri) => format!("Open partition {}", uri.partition_id),
+            Self::RedapDatasetPartition(uri) => ViewerOpenUrlDescription {
+                category: "Partition",
+                target_short: Some(uri.partition_id.clone()),
+            },
 
-            Self::RedapProxy(_) => "Connect to GRPC proxy".to_owned(),
+            Self::RedapProxy(_) => ViewerOpenUrlDescription {
+                category: "GRPC proxy",
+                target_short: None,
+            },
 
-            Self::RedapCatalog(uri) => {
-                format!("Open redap catalog at {}", uri.origin)
-            }
+            Self::RedapCatalog(uri) => ViewerOpenUrlDescription {
+                category: "Catalog",
+                target_short: Some(uri.origin.host.to_string()),
+            },
 
-            Self::RedapEntry(uri) => {
-                format!("Open redap entry {}", uri.entry_id)
-            }
+            Self::RedapEntry(uri) => ViewerOpenUrlDescription {
+                category: "Redap Entry",
+                target_short: Some(uri.entry_id.to_string()),
+            },
 
-            Self::WebEventListener => "Connect to web event listener".to_owned(),
+            Self::WebEventListener => ViewerOpenUrlDescription {
+                category: "Web event listener",
+                target_short: None,
+            },
 
             Self::WebViewerUrl { url_parameters, .. } => {
                 if url_parameters.len() == 1 {
                     url_parameters.first().open_description()
                 } else {
-                    format!("Open {} URLs", url_parameters.len())
+                    ViewerOpenUrlDescription {
+                        category: "Open several URLs",
+                        target_short: Some(format!("{} URLs", url_parameters.len())),
+                    }
                 }
             }
         }

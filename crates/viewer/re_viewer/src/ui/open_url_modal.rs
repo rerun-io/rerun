@@ -55,12 +55,23 @@ impl OpenUrlModal {
                 let open_url = ViewerOpenUrl::from_str(&self.url);
                 let can_import = match &open_url {
                     Ok(url) => {
-                        ui.label(url.open_description());
+                        let description = url.open_description();
+                        if let Some(target_short) = description.target_short {
+                            ui.horizontal(|ui| {
+                                ui.label(format!("{}:", description.category));
+                                ui.strong(target_short);
+                            });
+                        } else {
+                            ui.label(description.category);
+                        }
+
                         true
                     }
                     // Our parse errors aren't terribly informative when you're just typing malformed links.
                     Err(_err) => {
-                        ui.error_label("Not a valid URL that can be opened.");
+                        ui.error_label(
+                            "Can't open this link - it doesn't appear to be a valid URL.",
+                        );
                         false
                     }
                 };
