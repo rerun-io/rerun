@@ -14,7 +14,7 @@ use crate::filters::{Filter, FilterOperation};
 /// to indicate when this content should be committed to the blueprint.
 #[derive(Clone, Debug)]
 pub struct FilterState {
-    pub filters: Vec<IdentifiedFilter>,
+    pub filters: Vec<Filter>,
     pub active_filter: Option<usize>,
 }
 
@@ -29,12 +29,7 @@ impl FilterState {
     ) -> Self {
         ctx.data_mut(|data| {
             data.get_temp_mut_or_insert_with(persisted_id, || Self {
-                filters: table_blueprint
-                    .filters
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
+                filters: table_blueprint.filters.clone(),
                 active_filter: None,
             })
             .clone()
@@ -52,13 +47,13 @@ impl FilterState {
 
     /// Add a new filter to the filter bar.
     pub fn push_new_filter(&mut self, filter: Filter) {
-        self.filters.push(filter.into());
+        self.filters.push(filter);
         self.active_filter = Some(self.filters.len() - 1);
     }
 
     /// Convert the current state into filters to be used by the table blueprint.
     pub fn to_blueprint_filters(&self) -> Vec<Filter> {
-        self.filters.iter().map(|f| f.filter.clone()).collect()
+        self.filters.clone()
     }
 
     /// Display the filter bar UI.
@@ -85,7 +80,8 @@ impl FilterState {
 
                     let mut remove_idx = None;
                     for (index, filter) in self.filters.iter_mut().enumerate() {
-                        let result = filter.ui(ui, Some(index) == active_index);
+                        let filter_id = ui.make_persistent_id(index);
+                        let result = filter.ui(ui, filter_id, Some(index) == active_index);
                         should_commit |= result.should_commit;
                         if result.should_close {
                             remove_idx = Some(index);
@@ -110,29 +106,17 @@ struct DisplayFilterUiResult {
     should_close: bool,
 }
 
-/// Wrapper over [`Filter`] with an associated id.
-#[derive(Clone, Debug)]
-pub struct IdentifiedFilter {
-    filter: Filter,
-
-    /// Unique id of this filter, randomly generated upon creation.
-    id: egui::Id,
-}
-
-impl From<Filter> for IdentifiedFilter {
-    fn from(value: Filter) -> Self {
-        let id = egui::Id::new(getrandom::u64().expect("Failed to generate a random id"));
-
-        Self { filter: value, id }
-    }
-}
-
-impl IdentifiedFilter {
+impl Filter {
     /// UI for a single filter.
     ///
     /// Returns true if the filter must be committed.
     #[must_use]
-    fn ui(&mut self, ui: &mut egui::Ui, activate_filter: bool) -> DisplayFilterUiResult {
+    fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        filter_id: egui::Id,
+        activate_filter: bool,
+    ) -> DisplayFilterUiResult {
         let mut result = DisplayFilterUiResult {
             should_commit: false,
             should_close: false,
@@ -144,11 +128,11 @@ impl IdentifiedFilter {
             .corner_radius(2.0)
             .show(ui, |ui| {
                 let widget_text = SyntaxHighlightedBuilder::new(Arc::clone(ui.style()))
-                    .append(&self.filter.column_name)
+                    .append(&self.column_name)
                     .append(&" ")
                     .append(&SyntaxHighlightFilterOperation {
                         ui,
-                        filter_operation: &self.filter.operation,
+                        filter_operation: &self.operation,
                     })
                     .into_widget_text();
 
@@ -168,11 +152,11 @@ impl IdentifiedFilter {
                 text_response
             });
 
-        let popup_was_closed = !egui::Popup::is_id_open(ui.ctx(), self.id);
+        let popup_was_closed = !egui::Popup::is_id_open(ui.ctx(), filter_id);
 
         response.inner.interact_rect = response.response.interact_rect.expand(3.0);
         let mut popup = egui::Popup::menu(&response.inner)
-            .id(self.id)
+            .id(filter_id)
             .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside);
 
         if activate_filter {
@@ -180,7 +164,7 @@ impl IdentifiedFilter {
         }
 
         let popup_response = popup.show(|ui| {
-            self.filter.operation.popup_ui(ui, popup_was_closed);
+            self.operation.popup_ui(ui, popup_was_closed);
         });
 
         if popup_response.is_some_and(|inner_response| inner_response.response.should_close()) {
@@ -302,9 +286,7 @@ mod tests {
                     re_ui::apply_style_and_install_loaders(ui.ctx());
 
                     let mut filter_state = FilterState {
-                        filters: vec![
-                            Filter::new("column:name".to_owned(), filter_op.clone()).into(),
-                        ],
+                        filters: vec![Filter::new("column:name".to_owned(), filter_op.clone())],
                         active_filter: None,
                     };
 

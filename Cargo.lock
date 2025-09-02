@@ -7595,7 +7595,6 @@ dependencies = [
  "egui_dnd",
  "egui_kittest",
  "egui_table",
- "getrandom 0.3.3",
  "itertools 0.14.0",
  "nohash-hasher",
  "parking_lot",
