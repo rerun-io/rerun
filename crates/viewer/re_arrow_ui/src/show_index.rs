@@ -179,7 +179,7 @@ pub(crate) trait ShowIndex {
         let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
         let result = self.write(idx, &mut highlighted);
         match result {
-            Ok(_) => {
+            Ok(()) => {
                 ui.list_item()
                     .show_hierarchical(ui, LabelContent::new(highlighted.into_widget_text()));
             }
@@ -218,7 +218,7 @@ trait ShowIndexState<'a> {
         let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
         let result = self.write(state, idx, &mut highlighted);
         match result {
-            Ok(_) => {
+            Ok(()) => {
                 ui.list_item()
                     .show_hierarchical(ui, LabelContent::new(highlighted.into_widget_text()));
             }
