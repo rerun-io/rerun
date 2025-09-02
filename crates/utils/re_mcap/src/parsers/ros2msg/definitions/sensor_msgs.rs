@@ -492,6 +492,51 @@ pub struct FluidPressure {
     pub variance: f64,
 }
 
+/// Single reading from a relative humidity sensor.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RelativeHumidity {
+    /// Timestamp is the time the humidity was measured.
+    /// `frame_id` is the location of the humidity sensor.
+    pub header: Header,
+
+    /// Expression of the relative humidity from `0.0` to `1.0`.
+    ///
+    /// - `0.0` is no partial pressure of water vapor
+    /// - `1.0` represents partial pressure of saturation
+    pub humidity: f64,
+
+    /// 0 is interpreted as variance unknown.
+    pub variance: f64,
+}
+
+/// Single photometric illuminance measurement.
+///
+/// Light should be assumed to be measured along the sensor's x-axis (the area of detection is the y-z plane).
+/// The illuminance should have a 0 or positive value and be received with
+/// the sensor's +X axis pointing toward the light source.
+///
+/// Photometric illuminance is the measure of the human eye's sensitivity of the
+/// intensity of light encountering or passing through a surface.
+///
+/// All other Photometric and Radiometric measurements should not use this message.
+///
+/// This message cannot represent:
+///  - Luminous intensity (candela/light source output)
+///  - Luminance (nits/light output per area)
+///  - Irradiance (watt/area), etc.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Illuminance {
+    /// Timestamp is the time the illuminance was measured.
+    /// `frame_id` is the location of the illuminance sensor.
+    pub header: Header,
+
+    /// Measurement of the Photometric Illuminance in Lux.
+    pub illuminance: f64,
+
+    /// 0 is interpreted as variance unknown.
+    pub variance: f64,
+}
+
 /// Radiation type for range sensors.
 /// 0 = ULTRASOUND, 1 = INFRARED
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]

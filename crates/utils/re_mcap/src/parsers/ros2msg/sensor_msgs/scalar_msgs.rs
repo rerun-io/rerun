@@ -1,6 +1,8 @@
 use crate::parsers::ros2msg::{
     definitions::{
-        sensor_msgs::{BatteryState, FluidPressure, Range, Temperature},
+        sensor_msgs::{
+            BatteryState, FluidPressure, Illuminance, Range, RelativeHumidity, Temperature,
+        },
         std_msgs::Header,
     },
     scalar_parser::{ScalarExtractor, ScalarMessageParser},
@@ -9,6 +11,8 @@ use crate::parsers::ros2msg::{
 // Type aliases for scalar messages convenience
 pub type TemperatureMessageParser = ScalarMessageParser<Temperature>;
 pub type FluidPressureMessageParser = ScalarMessageParser<FluidPressure>;
+pub type RelativeHumidityMessageParser = ScalarMessageParser<RelativeHumidity>;
+pub type IlluminanceMessageParser = ScalarMessageParser<Illuminance>;
 pub type RangeMessageParser = ScalarMessageParser<Range>;
 pub type BatteryStateMessageParser = ScalarMessageParser<BatteryState>;
 
@@ -43,6 +47,40 @@ impl ScalarExtractor for FluidPressure {
 
     fn archetype_name() -> &'static str {
         "sensor_msgs.msg.FluidPressure"
+    }
+}
+
+impl ScalarExtractor for RelativeHumidity {
+    fn extract_scalars(&self) -> Vec<(&str, f64)> {
+        vec![
+            ("relative_humidity", self.humidity),
+            ("variance", self.variance),
+        ]
+    }
+
+    fn header(&self) -> &Header {
+        &self.header
+    }
+
+    fn archetype_name() -> &'static str {
+        "sensor_msgs.msg.RelativeHumidity"
+    }
+}
+
+impl ScalarExtractor for Illuminance {
+    fn extract_scalars(&self) -> Vec<(&str, f64)> {
+        vec![
+            ("illuminance", self.illuminance),
+            ("variance", self.variance),
+        ]
+    }
+
+    fn header(&self) -> &Header {
+        &self.header
+    }
+
+    fn archetype_name() -> &'static str {
+        "sensor_msgs.msg.Illuminance"
     }
 }
 
