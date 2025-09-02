@@ -21,6 +21,7 @@ re_log.workspace = true
 re_log_types.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
+re_types_core.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
