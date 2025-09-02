@@ -191,8 +191,7 @@ impl IdentifiedFilter {
     }
 }
 
-// TODO(#11059): this helper is only needed because the `SyntaxHighlighting` trait has no access to
-// the current theme, so it cannot access design tokens.
+//TODO(#10777): this wrapper will no longer be needed with the updated `SyntaxHighlighting` trait
 struct SyntaxHighlightFilterOperation<'a> {
     ui: &'a mut egui::Ui,
     filter_operation: &'a FilterOperation,

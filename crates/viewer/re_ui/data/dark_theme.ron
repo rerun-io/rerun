@@ -269,6 +269,7 @@
     "list_item_collapse_default": {
       "color": "{Gray.700}"
     },
+    //TODO(#10777): reuse the same color schema as the one introduced for arrow syntax highlighting
     "table_filter_frame_stroke": {
       "color": "{Gray.400}",
       "width": 1
