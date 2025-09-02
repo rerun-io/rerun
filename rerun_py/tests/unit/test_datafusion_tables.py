@@ -28,6 +28,14 @@ DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" 
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_windows_tzdata() -> None:
+    """
+    Adds timezone data on Windows machines.
+
+    Pyarrow requires timezone data to handle timestamps properly.
+    Arrow can use the OS-provided timezone database on Mac and Linux
+    but it requires this command to install tzdata for Windows.
+    https://arrow.apache.org/docs/python/install.html#tzdata-on-windows
+    """
     if platform.system() == "Windows":
         pa.util.download_tzdata_on_windows()
 
