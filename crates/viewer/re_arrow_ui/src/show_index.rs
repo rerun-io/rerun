@@ -419,7 +419,7 @@ fn write_list(
 /// See e.g. [`GenericListArray`] for more info.
 ///
 /// The indexes shown in the UI will be _normalized_ so it's always `0..end-start`.
-fn list_ui(ui: &mut Ui, range: Range<usize>, values: &dyn ShowIndex) {
+pub(crate) fn list_ui(ui: &mut Ui, range: Range<usize>, values: &dyn ShowIndex) {
     let ui_range = 0..(range.end - range.start);
 
     list_item_ranges(ui, ui_range, &mut |ui, ui_idx| {

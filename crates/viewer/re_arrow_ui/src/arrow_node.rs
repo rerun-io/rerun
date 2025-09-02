@@ -11,6 +11,8 @@ enum NodeLabel {
     ///
     /// E.g. in a ListArray, this is the index in the child list. The index passed to
     /// [`ArrowNode::show`] is the index in the parent array.
+    ///
+    /// Also see [`crate::show_index::list_ui`] for a more thorough explanation.
     Index(usize),
     Name(String),
     Custom(WidgetText),
