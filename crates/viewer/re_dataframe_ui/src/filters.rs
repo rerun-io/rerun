@@ -107,6 +107,7 @@ impl FilterOperation {
 // `contains_patch` by `datafusion::prelude::contains` in the method above.
 fn contains_patch(arg1: Expr, arg2: Expr) -> Expr {
     // make sure we break compilation when we update datafusion
+    #[cfg(debug_assertions)]
     let _ = datafusion::prelude::contains();
 
     datafusion::functions::string::contains().call(<[_]>::into_vec(Box::new([arg1, arg2])))

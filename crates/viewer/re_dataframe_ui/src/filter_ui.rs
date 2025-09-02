@@ -341,6 +341,7 @@ mod tests {
 
     fn test_cases() -> Vec<(FilterOperation, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
+        #[cfg(debug_assertions)]
         let _: () = {
             let _op = FilterOperation::StringContains(String::new());
             match _op {
