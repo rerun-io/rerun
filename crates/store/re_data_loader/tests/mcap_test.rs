@@ -9,14 +9,9 @@ mod tests {
             let mut writer = mcap::Writer::new(std::io::Cursor::new(&mut buffer)).unwrap();
 
             // Register a schema
-            let schema_name = "sensor_msgs/msg/CameraInfo";
+            let schema_name = "sensor_msgs/msg/Imu";
             let schema_encoding = "ros2msg";
-            let schema_data = br#"
-            message TestSchema {
-                optional x double = 1;
-                optional y double = 2;
-                optional z double = 3;
-            }"#;
+            let schema_data = br#"..."#;
             let schema_id = writer
                 .add_schema(schema_name, schema_encoding, schema_data)
                 .expect("Failed to add schema");
@@ -38,10 +33,10 @@ mod tests {
                     sec: 123,
                     nanosec: 45,
                 },
-                frame_id: String::new(),
+                frame_id: "boo".to_owned(),
             };
             let orientation = re_mcap::parsers::ros2msg::definitions::geometry_msgs::Quaternion {
-                x: 0.0,
+                x: std::f64::consts::PI,
                 y: 0.0,
                 z: 0.0,
                 w: 1.125,
@@ -49,7 +44,7 @@ mod tests {
             let imu = re_mcap::parsers::ros2msg::definitions::sensor_msgs::Imu {
                 header,
                 orientation,
-                orientation_covariance: [0.0; 9],
+                orientation_covariance: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
                 angular_velocity: re_mcap::parsers::ros2msg::definitions::geometry_msgs::Vector3 {
                     x: 0.0,
                     y: 0.0,
@@ -71,7 +66,7 @@ mod tests {
 
             let message_header = mcap::records::MessageHeader {
                 channel_id,
-                sequence: 1,
+                sequence: 0,
                 log_time: timestamp,
                 publish_time: timestamp,
             };
@@ -118,7 +113,9 @@ mod tests {
         while let Ok(res) = rx.recv() {
             match res {
                 LoadedData::Chunk(_, _, chunk) => {
-                    println!("Generated MCAP chunk: {:?}", chunk);
+                    if &format!("{}", chunk.entity_path()) == "/test/points" {
+                        println!("\n\nGenerated MCAP chunk: {:?}", chunk);
+                    }
                 }
                 _ => {} // LoadedData::LogMsg(_, log_msg) => println!("Generated MCAP result: {log_msg:#?}"),
                         // LoadedData::ArrowMsg(_, _, _) => println!("Generated MCAP arrow msg"),

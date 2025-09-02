@@ -72,6 +72,9 @@ pub fn try_encode_message<T: Serialize>(msg: &T) -> Result<Vec<u8>, CdrError> {
     writer
         .write_all(&representation_identifier)
         .map_err(|e| CdrError::Other(anyhow::Error::from(e)))?;
+    writer
+        .write_all(&[0u8, 0u8])
+        .map_err(|e| CdrError::Other(anyhow::Error::from(e)))?;
 
     cdr_encoding::to_writer::<_, byteorder::LittleEndian, _>(writer, msg)?;
 
