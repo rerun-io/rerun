@@ -117,10 +117,11 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets =
-                                arrow::buffer::OffsetBuffer::from_lengths(s.iter().map(|opt| {
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                                s.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }));
+                                }),
+                            );
                             #[allow(clippy::unwrap_used)]
                             let capacity = offsets.last().copied().unwrap() as usize;
                             let mut buffer_builder =

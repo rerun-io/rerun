@@ -16,10 +16,6 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
         CError::unexpected_null("video_bytes").write_error(error);
         return std::ptr::null_mut();
     }
-    if video_bytes_len == 0 {
-        CError::new(CErrorCode::VideoLoadError, "Zero video bytes").write_error(error);
-        return std::ptr::null_mut();
-    }
     let Some(alloc_func) = alloc_func else {
         CError::unexpected_null("alloc_func").write_error(error);
         return std::ptr::null_mut();
@@ -48,7 +44,7 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
         Err(err) => {
             CError::new(
                 CErrorCode::VideoLoadError,
-                &format!("Failed to load video: {err}"),
+                &format!("Failed to play video: {err}"),
             )
             .write_error(error);
             return std::ptr::null_mut();
