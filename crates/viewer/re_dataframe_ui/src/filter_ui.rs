@@ -335,8 +335,7 @@ impl FilterOperation {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_filter_ui() {
+    fn test_cases() -> Vec<(FilterOperation, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
         let _: () = {
             let _op = FilterOperation::StringContains(String::new());
@@ -345,7 +344,7 @@ mod tests {
             }
         };
 
-        let test_cases = [
+        [
             (
                 FilterOperation::StringContains("query".to_owned()),
                 "string_contains",
@@ -354,9 +353,14 @@ mod tests {
                 FilterOperation::StringContains(String::new()),
                 "string_contains_empty",
             ),
-        ];
+        ]
+        .into_iter()
+        .collect()
+    }
 
-        for (filter_op, test_name) in test_cases {
+    #[test]
+    fn test_filter_ui() {
+        for (filter_op, test_name) in test_cases() {
             let mut harness = egui_kittest::Harness::builder()
                 .with_size(egui::Vec2::new(500.0, 80.0))
                 .build_ui(|ui| {
@@ -373,6 +377,23 @@ mod tests {
             harness.run();
 
             harness.snapshot(format!("filter_ui_{test_name}"));
+        }
+    }
+
+    #[test]
+    fn test_popup_ui() {
+        for (mut filter_op, test_name) in test_cases() {
+            let mut harness = egui_kittest::Harness::builder()
+                .with_size(egui::Vec2::new(700.0, 500.0))
+                .build_ui(|ui| {
+                    re_ui::apply_style_and_install_loaders(ui.ctx());
+
+                    let _res = filter_op.popup_ui(ui, true);
+                });
+
+            harness.run();
+
+            harness.snapshot(format!("popup_ui_{test_name}"));
         }
     }
 }
