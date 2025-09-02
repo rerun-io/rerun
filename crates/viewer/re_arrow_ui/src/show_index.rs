@@ -412,8 +412,13 @@ fn write_list(
 /// Show a list.
 ///
 /// If there are enough items, it will show items in a tree of ranges.
-/// Since arrow arrays might not start at 0, you can pass a `Range<usize>`.
-/// The indexes shown in the UI will be _normalized_ so it's always `0..end-start`
+///
+/// Since arrow arrays might not start at 0, you need pass a `Range<usize>`.
+/// E.g. a GenericListArray consists of a single large values array and an offsets array.
+/// So the nth list would be a slice of the main array based on the offsets array at n.
+/// See e.g. [`GenericListArray`] for more info.
+///
+/// The indexes shown in the UI will be _normalized_ so it's always `0..end-start`.
 fn list_ui(ui: &mut Ui, range: Range<usize>, values: &dyn ShowIndex) {
     let ui_range = 0..(range.end - range.start);
 
