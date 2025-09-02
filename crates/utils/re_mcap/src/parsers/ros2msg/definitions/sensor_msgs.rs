@@ -497,16 +497,16 @@ pub struct Range {
     /// The type of radiation used by the sensor.
     pub radiation_type: RadiationType,
 
-    /// The size of the arc that the distance reading is valid for [rad].
+    /// The size of the arc that the distance reading is valid for (rad).
     pub field_of_view: f32,
 
-    /// Minimum range value [m].
+    /// Minimum range value (m).
     pub min_range: f32,
 
-    /// Maximum range value [m].
+    /// Maximum range value (m).
     pub max_range: f32,
 
-    /// Range data [m].
+    /// Range data (m).
     ///
     /// ### Note
     ///
