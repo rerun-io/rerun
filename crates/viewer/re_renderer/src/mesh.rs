@@ -201,10 +201,7 @@ pub struct GpuMesh {
 }
 
 impl GpuMesh {
-    /// Returns the approximate byte size this `GpuMesh` contributes.
-    ///
-    /// The total buffer sizes are divided by how many strong references
-    /// they have.
+    /// Returns the byte size this `GpuMesh` uses in total.
     pub fn gpu_byte_size(&self) -> u64 {
         self.index_buffer.inner.size() + self.vertex_buffer_combined.size()
     }
