@@ -2,12 +2,15 @@ use crate::datatype_ui::data_type_ui;
 use crate::show_index::ShowIndex;
 use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
 use re_format::format_uint;
-use re_ui::UiExt as _;
-use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
+use re_ui::list_item::{list_item_scope, LabelContent, PropertyContent};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::UiExt as _;
 
 enum NodeLabel {
     /// The index to *display*. May be different from the actual index of the value.
+    ///
+    /// E.g. in a ListArray, this is the index in the child list. The index passed to
+    /// [`ArrowNode::show`] is the index in the parent array.
     Index(usize),
     Name(String),
     Custom(WidgetText),
@@ -36,7 +39,7 @@ impl<'a> ArrowNode<'a> {
         }
     }
 
-    /// The index to *display*
+    /// The index to *display* (See [`NodeLabel::Index`]).
     pub fn index(idx: usize, values: &'a dyn ShowIndex) -> Self {
         Self {
             label: NodeLabel::Index(idx),
@@ -44,8 +47,10 @@ impl<'a> ArrowNode<'a> {
         }
     }
 
-    /// The index of the *value* to display.
-    /// Can be different from [`ArrowNode::index`] e.g. in a sliced array.
+    /// Index is the index of the *value* to display.
+    ///
+    /// Can be different from [`ArrowNode::index`] (the index to display) e.g. in a sliced array.
+    /// See also [`NodeLabel::Index`].
     pub fn show(self, ui: &mut Ui, index: usize) {
         let label = match self.label {
             NodeLabel::Index(idx) => {
