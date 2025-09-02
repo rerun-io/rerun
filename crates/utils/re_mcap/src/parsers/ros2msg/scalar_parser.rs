@@ -24,15 +24,12 @@ pub trait ScalarExtractor: serde::de::DeserializeOwned {
 
     /// Extract the header from the message for timestamp information.
     fn header(&self) -> &Header;
-
-    /// Returns the archetype name for this message type.
-    fn archetype_name() -> &'static str;
 }
 
 /// Generic message parser for ROS2 messages that implement [`ScalarExtractor`].
 ///
 /// This parser can handle any message type that implements the [`ScalarExtractor`] trait,
-/// automatically extracting the specified scalar fields and logging them as Rerun Scalars.
+/// automatically extracting the specified scalar fields and logging them as [`Scalars`].
 pub struct ScalarMessageParser<T: ScalarExtractor> {
     scalars: FixedSizeListBuilder<Float64Builder>,
     field_names: Vec<String>,
@@ -69,7 +66,7 @@ impl<T: ScalarExtractor> ScalarMessageParser<T> {
         Chunk::builder(entity_path)
             .with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::default(), // static chunk
                 &SeriesLines::new().with_names(field_names.to_vec()),
             )
             .build()
@@ -83,7 +80,7 @@ impl<T: ScalarExtractor> MessageParser for ScalarMessageParser<T> {
         let message = cdr::try_decode_message::<T>(&msg.data).with_context(|| {
             format!(
                 "Failed to decode {} message from CDR data",
-                T::archetype_name()
+                std::any::type_name::<T>()
             )
         })?;
 
@@ -100,19 +97,15 @@ impl<T: ScalarExtractor> MessageParser for ScalarMessageParser<T> {
             self.init_field_names(&scalar_values);
         }
 
-        let values: Vec<f64> = self
-            .field_names
-            .iter()
-            .map(|field_name| {
+        for field_name in &self.field_names {
+            self.scalars.values().append_value(
                 scalar_values
                     .iter()
-                    .find(|(name, _)| name == field_name)
-                    .map(|(_, value)| *value)
-                    .unwrap_or(f64::NAN) // Use NaN if field not found (shouldn't happen)
-            })
-            .collect();
+                    .find_map(|(name, value)| (name == field_name).then_some(*value))
+                    .unwrap_or(f64::NAN), // Use NaN if field not found (shouldn't happen)
+            );
+        }
 
-        self.scalars.values().append_slice(&values);
         self.scalars.append(true);
 
         Ok(())

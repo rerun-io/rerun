@@ -27,10 +27,6 @@ impl ScalarExtractor for Temperature {
     fn header(&self) -> &Header {
         &self.header
     }
-
-    fn archetype_name() -> &'static str {
-        "sensor_msgs.msg.Temperature"
-    }
 }
 
 impl ScalarExtractor for FluidPressure {
@@ -43,10 +39,6 @@ impl ScalarExtractor for FluidPressure {
 
     fn header(&self) -> &Header {
         &self.header
-    }
-
-    fn archetype_name() -> &'static str {
-        "sensor_msgs.msg.FluidPressure"
     }
 }
 
@@ -61,10 +53,6 @@ impl ScalarExtractor for RelativeHumidity {
     fn header(&self) -> &Header {
         &self.header
     }
-
-    fn archetype_name() -> &'static str {
-        "sensor_msgs.msg.RelativeHumidity"
-    }
 }
 
 impl ScalarExtractor for Illuminance {
@@ -77,10 +65,6 @@ impl ScalarExtractor for Illuminance {
 
     fn header(&self) -> &Header {
         &self.header
-    }
-
-    fn archetype_name() -> &'static str {
-        "sensor_msgs.msg.Illuminance"
     }
 }
 
@@ -95,10 +79,6 @@ impl ScalarExtractor for Range {
 
     fn header(&self) -> &Header {
         &self.header
-    }
-
-    fn archetype_name() -> &'static str {
-        "sensor_msgs.msg.Range"
     }
 }
 
@@ -115,9 +95,5 @@ impl ScalarExtractor for BatteryState {
 
     fn header(&self) -> &Header {
         &self.header
-    }
-
-    fn archetype_name() -> &'static str {
-        "sensor_msgs.msg.BatteryState"
     }
 }
