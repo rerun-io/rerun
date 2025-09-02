@@ -58,6 +58,7 @@ fn arrow_list_ui(ui: &mut egui::Ui) {
             ]
             .to_arrow(),
         ),
+        ("String with newline", Utf8::from("Hello\nworld").to_arrow()),
         ("Empty Blob", Blob::from(vec![]).to_arrow()),
         ("Small Blob", Blob::from(vec![1, 2, 3, 4]).to_arrow()),
         ("Big Blob", Blob::from(vec![42; 1_234_567]).to_arrow()),
