@@ -40,7 +40,7 @@ namespace rerun::archetypes {
         /// Human-readable name identifying this schema.
         ///
         /// Schema names typically describe the message type or data structure
-        /// (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
+        /// (e.g., "geometry_msgs/msg/Twist", "sensor_msgs/msg/Image", "MyCustomMessage").
         std::optional<ComponentBatch> name;
 
         /// The schema definition format used to describe the message structure.
@@ -130,7 +130,7 @@ namespace rerun::archetypes {
         /// Human-readable name identifying this schema.
         ///
         /// Schema names typically describe the message type or data structure
-        /// (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
+        /// (e.g., "geometry_msgs/msg/Twist", "sensor_msgs/msg/Image", "MyCustomMessage").
         McapSchema with_name(const rerun::components::Text& _name) && {
             name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
             return std::move(*this);

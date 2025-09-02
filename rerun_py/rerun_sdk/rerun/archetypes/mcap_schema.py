@@ -59,7 +59,7 @@ class McapSchema(Archetype):
             Human-readable name identifying this schema.
 
             Schema names typically describe the message type or data structure
-            (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
+            (e.g., "geometry_msgs/msg/Twist", "sensor_msgs/msg/Image", "MyCustomMessage").
         encoding:
             The schema definition format used to describe the message structure.
 
@@ -127,7 +127,7 @@ class McapSchema(Archetype):
             Human-readable name identifying this schema.
 
             Schema names typically describe the message type or data structure
-            (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
+            (e.g., "geometry_msgs/msg/Twist", "sensor_msgs/msg/Image", "MyCustomMessage").
         encoding:
             The schema definition format used to describe the message structure.
 
@@ -198,7 +198,7 @@ class McapSchema(Archetype):
             Human-readable name identifying this schema.
 
             Schema names typically describe the message type or data structure
-            (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
+            (e.g., "geometry_msgs/msg/Twist", "sensor_msgs/msg/Image", "MyCustomMessage").
         encoding:
             The schema definition format used to describe the message structure.
 
@@ -286,7 +286,7 @@ class McapSchema(Archetype):
     # Human-readable name identifying this schema.
     #
     # Schema names typically describe the message type or data structure
-    # (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
+    # (e.g., "geometry_msgs/msg/Twist", "sensor_msgs/msg/Image", "MyCustomMessage").
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

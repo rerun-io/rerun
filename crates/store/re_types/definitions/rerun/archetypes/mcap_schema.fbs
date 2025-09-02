@@ -28,7 +28,7 @@ table McapSchema (
   /// Human-readable name identifying this schema.
   ///
   /// Schema names typically describe the message type or data structure
-  /// (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
+  /// (e.g., "geometry_msgs/msg/Twist", "sensor_msgs/msg/Image", "MyCustomMessage").
   name: rerun.components.Text ("attr.rerun.component_required", order: 2000);
 
   /// The schema definition format used to describe the message structure.

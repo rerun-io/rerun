@@ -2012,7 +2012,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { name : "name",
                     display_name : "Name", component_type : "rerun.components.Text"
                     .into(), docstring_md :
-                    "Human-readable name identifying this schema.\n\nSchema names typically describe the message type or data structure\n(e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).",
+                    "Human-readable name identifying this schema.\n\nSchema names typically describe the message type or data structure\n(e.g., \"geometry_msgs/msg/Twist\", \"sensor_msgs/msg/Image\", \"MyCustomMessage\").",
                     is_required : true, }, ArchetypeFieldReflection { name : "encoding",
                     display_name : "Encoding", component_type : "rerun.components.Text"
                     .into(), docstring_md :
