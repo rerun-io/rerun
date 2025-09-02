@@ -62,7 +62,7 @@ impl<'a> ArrowNode<'a> {
             }
             NodeLabel::Name(name) => {
                 let mut builder = SyntaxHighlightedBuilder::new(ui.style());
-                builder.code_name(&name);
+                builder.code_identifier(&name);
                 builder.into_widget_text()
             }
             NodeLabel::Custom(name) => name,

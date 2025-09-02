@@ -54,8 +54,10 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
         self.job.append("\"", 0.0, format);
     }
 
-    /// A string name (e.g. the key of a map).
-    pub fn code_name(&mut self, portion: &str) {
+    /// A string identifier.
+    ///
+    /// E.g. a variable name, field name, etc. Won't be quoted.
+    pub fn code_identifier(&mut self, portion: &str) {
         let mut format = monospace_text_format(self.style);
         format.color = self.tokens.text_default;
         self.job.append(portion, 0.0, format);

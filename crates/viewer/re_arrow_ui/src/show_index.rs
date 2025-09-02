@@ -519,13 +519,13 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
         let mut iter = s.iter();
         f.code_syntax("{");
         if let Some((name, display)) = iter.next() {
-            f.code_name(name);
+            f.code_identifier(name);
             f.code_syntax(": ");
             display.as_ref().write(idx, f)?;
         }
         for (name, display) in iter {
             f.code_syntax(", ");
-            f.code_name(name);
+            f.code_identifier(name);
             f.code_syntax(": ");
             display.as_ref().write(idx, f)?;
         }
@@ -642,7 +642,7 @@ impl<'a> ShowIndexState<'a> for &'a UnionArray {
             .expect("Union field should be present");
 
         f.code_syntax("{");
-        f.code_name(name);
+        f.code_identifier(name);
         f.code_syntax("=");
         field.write(idx, f)?;
         f.code_syntax("}");
