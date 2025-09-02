@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import platform
 import subprocess
 import time
 from typing import TYPE_CHECKING
@@ -23,6 +24,12 @@ CATALOG_URL = f"rerun+http://{HOST}:{PORT}"
 DATASET_NAME = "dataset"
 
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_windows_tzdata() -> None:
+    if platform.system() == "Windows":
+        pa.util.download_tzdata_on_windows()
 
 
 def shutdown_process(process: subprocess.Popen[str]) -> None:
