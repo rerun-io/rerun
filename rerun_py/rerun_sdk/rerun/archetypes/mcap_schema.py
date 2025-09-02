@@ -24,12 +24,16 @@ __all__ = ["McapSchema"]
 @define(str=False, repr=False, init=False)
 class McapSchema(Archetype):
     """
-    **Archetype**: Information about an MCAP schema definition.
+    **Archetype**: A schema definition that describes the structure of messages in an MCAP file.
 
-    This archetype stores schema metadata including the schema ID, name, encoding format,
-    and the raw schema data itself.
+    Schemas define the data types and field structures used by messages in MCAP channels.
+    They provide the blueprint for interpreting message payloads, specifying field names,
+    types, and organization. Each schema is referenced by channels to indicate how their
+    messages should be decoded and understood.
 
-    See also [MCAP specification](https://mcap.dev/) for more details on the format.
+    See also [`archetypes.McapChannel`][rerun.archetypes.McapChannel] for channels that reference these schemas,
+    [`archetypes.McapMessage`][rerun.archetypes.McapMessage] for the messages that conform to these schemas, and the
+    [MCAP specification](https://mcap.dev/) for complete format details.
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
@@ -47,13 +51,31 @@ class McapSchema(Archetype):
         Parameters
         ----------
         id:
-            The schema ID within the MCAP file.
+            Unique identifier for this schema within the MCAP file.
+
+            Schema IDs must be unique within a single MCAP file and are used by channels
+            to reference the schema that defines their message structure.
         name:
-            The name of this schema.
+            Human-readable name identifying this schema.
+
+            Schema names typically describe the message type or data structure
+            (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
         encoding:
-            The encoding format used by this schema (e.g., "protobuf", "ros1msg", "jsonschema").
+            The schema definition format used to describe the message structure.
+
+            Common schema encodings include:
+            * `protobuf` - Protocol Buffers schema definition
+            * `ros1msg` - ROS1 message definition format
+            * `ros2msg` - ROS2 message definition format
+            * `jsonschema` - JSON Schema specification
+            * `flatbuffer` - FlatBuffers schema definition
         data:
-            The raw schema data as binary content.
+            The schema definition content as binary data.
+
+            This contains the actual schema specification in the format indicated by the
+            `encoding` field. For text-based schemas (like ROS message definitions or JSON Schema),
+            this is typically UTF-8 encoded text. For binary schema formats, this contains
+            the serialized schema data.
 
         """
 
@@ -97,13 +119,31 @@ class McapSchema(Archetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         id:
-            The schema ID within the MCAP file.
+            Unique identifier for this schema within the MCAP file.
+
+            Schema IDs must be unique within a single MCAP file and are used by channels
+            to reference the schema that defines their message structure.
         name:
-            The name of this schema.
+            Human-readable name identifying this schema.
+
+            Schema names typically describe the message type or data structure
+            (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
         encoding:
-            The encoding format used by this schema (e.g., "protobuf", "ros1msg", "jsonschema").
+            The schema definition format used to describe the message structure.
+
+            Common schema encodings include:
+            * `protobuf` - Protocol Buffers schema definition
+            * `ros1msg` - ROS1 message definition format
+            * `ros2msg` - ROS2 message definition format
+            * `jsonschema` - JSON Schema specification
+            * `flatbuffer` - FlatBuffers schema definition
         data:
-            The raw schema data as binary content.
+            The schema definition content as binary data.
+
+            This contains the actual schema specification in the format indicated by the
+            `encoding` field. For text-based schemas (like ROS message definitions or JSON Schema),
+            this is typically UTF-8 encoded text. For binary schema formats, this contains
+            the serialized schema data.
 
         """
 
@@ -150,13 +190,31 @@ class McapSchema(Archetype):
         Parameters
         ----------
         id:
-            The schema ID within the MCAP file.
+            Unique identifier for this schema within the MCAP file.
+
+            Schema IDs must be unique within a single MCAP file and are used by channels
+            to reference the schema that defines their message structure.
         name:
-            The name of this schema.
+            Human-readable name identifying this schema.
+
+            Schema names typically describe the message type or data structure
+            (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
         encoding:
-            The encoding format used by this schema (e.g., "protobuf", "ros1msg", "jsonschema").
+            The schema definition format used to describe the message structure.
+
+            Common schema encodings include:
+            * `protobuf` - Protocol Buffers schema definition
+            * `ros1msg` - ROS1 message definition format
+            * `ros2msg` - ROS2 message definition format
+            * `jsonschema` - JSON Schema specification
+            * `flatbuffer` - FlatBuffers schema definition
         data:
-            The raw schema data as binary content.
+            The schema definition content as binary data.
+
+            This contains the actual schema specification in the format indicated by the
+            `encoding` field. For text-based schemas (like ROS message definitions or JSON Schema),
+            this is typically UTF-8 encoded text. For binary schema formats, this contains
+            the serialized schema data.
 
         """
 
@@ -213,7 +271,10 @@ class McapSchema(Archetype):
         default=None,
         converter=components.ChannelIdBatch._converter,  # type: ignore[misc]
     )
-    # The schema ID within the MCAP file.
+    # Unique identifier for this schema within the MCAP file.
+    #
+    # Schema IDs must be unique within a single MCAP file and are used by channels
+    # to reference the schema that defines their message structure.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -222,7 +283,10 @@ class McapSchema(Archetype):
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
-    # The name of this schema.
+    # Human-readable name identifying this schema.
+    #
+    # Schema names typically describe the message type or data structure
+    # (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -231,7 +295,14 @@ class McapSchema(Archetype):
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
-    # The encoding format used by this schema (e.g., "protobuf", "ros1msg", "jsonschema").
+    # The schema definition format used to describe the message structure.
+    #
+    # Common schema encodings include:
+    # * `protobuf` - Protocol Buffers schema definition
+    # * `ros1msg` - ROS1 message definition format
+    # * `ros2msg` - ROS2 message definition format
+    # * `jsonschema` - JSON Schema specification
+    # * `flatbuffer` - FlatBuffers schema definition
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -240,7 +311,12 @@ class McapSchema(Archetype):
         default=None,
         converter=components.BlobBatch._converter,  # type: ignore[misc]
     )
-    # The raw schema data as binary content.
+    # The schema definition content as binary data.
+    #
+    # This contains the actual schema specification in the format indicated by the
+    # `encoding` field. For text-based schemas (like ROS message definitions or JSON Schema),
+    # this is typically UTF-8 encoded text. For binary schema formats, this contains
+    # the serialized schema data.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -19,26 +19,44 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Information about an MCAP channel.
+/// **Archetype**: A channel within an MCAP file that defines how messages are structured and encoded.
 ///
-/// MCAP is a modular container format and logging library for multi-modal robotics data.
-/// This archetype stores channel metadata including topic, encoding, and custom metadata.
+/// Channels in MCAP files group messages by topic and define their encoding format.
+/// Each channel has a unique identifier and specifies the message schema and encoding used
+/// for all messages published to that topic.
 ///
-/// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+/// See also [`archetypes::McapMessage`][crate::archetypes::McapMessage] for individual messages within a channel,
+/// [`archetypes::McapSchema`][crate::archetypes::McapSchema] for the data structure definitions, and the
+/// [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct McapChannel {
-    /// The channel ID within the MCAP file.
+    /// Unique identifier for this channel within the MCAP file.
+    ///
+    /// Channel IDs must be unique within a single MCAP file and are used to associate
+    /// messages with their corresponding channel definition.
     pub id: Option<SerializedComponentBatch>,
 
-    /// The topic name for this channel.
+    /// The topic name that this channel publishes to.
+    ///
+    /// Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
+    /// categorize and organize different data streams within the system.
     pub topic: Option<SerializedComponentBatch>,
 
-    /// The message encoding used by this channel.
+    /// The encoding format used for messages in this channel.
+    ///
+    /// Common encodings include:
+    /// * `ros1` - ROS1 message format
+    /// * `cdr` - Common Data Representation (CDR) message format
+    /// * `protobuf` - Protocol Buffers
+    /// * `json` - JSON encoding
     pub message_encoding: Option<SerializedComponentBatch>,
 
-    /// Custom metadata associated with this channel as key-value pairs.
+    /// Additional metadata for this channel stored as key-value pairs.
+    ///
+    /// This can include channel-specific configuration, description, units, coordinate frames,
+    /// or any other contextual information that helps interpret the data in this channel.
     pub metadata: Option<SerializedComponentBatch>,
 }
 
@@ -306,7 +324,10 @@ impl McapChannel {
         self.columns(std::iter::repeat_n(1, len))
     }
 
-    /// The channel ID within the MCAP file.
+    /// Unique identifier for this channel within the MCAP file.
+    ///
+    /// Channel IDs must be unique within a single MCAP file and are used to associate
+    /// messages with their corresponding channel definition.
     #[inline]
     pub fn with_id(mut self, id: impl Into<crate::components::ChannelId>) -> Self {
         self.id = try_serialize_field(Self::descriptor_id(), [id]);
@@ -326,7 +347,10 @@ impl McapChannel {
         self
     }
 
-    /// The topic name for this channel.
+    /// The topic name that this channel publishes to.
+    ///
+    /// Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
+    /// categorize and organize different data streams within the system.
     #[inline]
     pub fn with_topic(mut self, topic: impl Into<crate::components::Text>) -> Self {
         self.topic = try_serialize_field(Self::descriptor_topic(), [topic]);
@@ -346,7 +370,13 @@ impl McapChannel {
         self
     }
 
-    /// The message encoding used by this channel.
+    /// The encoding format used for messages in this channel.
+    ///
+    /// Common encodings include:
+    /// * `ros1` - ROS1 message format
+    /// * `cdr` - Common Data Representation (CDR) message format
+    /// * `protobuf` - Protocol Buffers
+    /// * `json` - JSON encoding
     #[inline]
     pub fn with_message_encoding(
         mut self,
@@ -371,7 +401,10 @@ impl McapChannel {
         self
     }
 
-    /// Custom metadata associated with this channel as key-value pairs.
+    /// Additional metadata for this channel stored as key-value pairs.
+    ///
+    /// This can include channel-specific configuration, description, units, coordinate frames,
+    /// or any other contextual information that helps interpret the data in this channel.
     #[inline]
     pub fn with_metadata(mut self, metadata: impl Into<crate::components::KeyValuePairs>) -> Self {
         self.metadata = try_serialize_field(Self::descriptor_metadata(), [metadata]);

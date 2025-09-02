@@ -12,10 +12,10 @@ This page lists all built-in archetypes.
 
 ## Data
 
-* [`McapChannel`](archetypes/mcap_channel.md): Information about an MCAP channel.
-* [`McapMessage`](archetypes/mcap_message.md): A raw MCAP message.
-* [`McapSchema`](archetypes/mcap_schema.md): Information about an MCAP schema definition.
-* [`McapStatistics`](archetypes/mcap_statistics.md): Statistical information about an MCAP file.
+* [`McapChannel`](archetypes/mcap_channel.md): A channel within an MCAP file that defines how messages are structured and encoded.
+* [`McapMessage`](archetypes/mcap_message.md): The binary payload of a single MCAP message, without metadata.
+* [`McapSchema`](archetypes/mcap_schema.md): A schema definition that describes the structure of messages in an MCAP file.
+* [`McapStatistics`](archetypes/mcap_statistics.md): Recording-level statistics about an MCAP file, logged as a RecordingProperty.
 
 ## Geospatial
 

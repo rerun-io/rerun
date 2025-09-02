@@ -24,12 +24,15 @@ __all__ = ["McapChannel"]
 @define(str=False, repr=False, init=False)
 class McapChannel(Archetype):
     """
-    **Archetype**: Information about an MCAP channel.
+    **Archetype**: A channel within an MCAP file that defines how messages are structured and encoded.
 
-    MCAP is a modular container format and logging library for multi-modal robotics data.
-    This archetype stores channel metadata including topic, encoding, and custom metadata.
+    Channels in MCAP files group messages by topic and define their encoding format.
+    Each channel has a unique identifier and specifies the message schema and encoding used
+    for all messages published to that topic.
 
-    See also [MCAP specification](https://mcap.dev/) for more details on the format.
+    See also [`archetypes.McapMessage`][rerun.archetypes.McapMessage] for individual messages within a channel,
+    [`archetypes.McapSchema`][rerun.archetypes.McapSchema] for the data structure definitions, and the
+    [MCAP specification](https://mcap.dev/) for complete format details.
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
@@ -48,13 +51,28 @@ class McapChannel(Archetype):
         Parameters
         ----------
         id:
-            The channel ID within the MCAP file.
+            Unique identifier for this channel within the MCAP file.
+
+            Channel IDs must be unique within a single MCAP file and are used to associate
+            messages with their corresponding channel definition.
         topic:
-            The topic name for this channel.
+            The topic name that this channel publishes to.
+
+            Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
+            categorize and organize different data streams within the system.
         message_encoding:
-            The message encoding used by this channel.
+            The encoding format used for messages in this channel.
+
+            Common encodings include:
+            * `ros1` - ROS1 message format
+            * `cdr` - Common Data Representation (CDR) message format
+            * `protobuf` - Protocol Buffers
+            * `json` - JSON encoding
         metadata:
-            Custom metadata associated with this channel as key-value pairs.
+            Additional metadata for this channel stored as key-value pairs.
+
+            This can include channel-specific configuration, description, units, coordinate frames,
+            or any other contextual information that helps interpret the data in this channel.
 
         """
 
@@ -98,13 +116,28 @@ class McapChannel(Archetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         id:
-            The channel ID within the MCAP file.
+            Unique identifier for this channel within the MCAP file.
+
+            Channel IDs must be unique within a single MCAP file and are used to associate
+            messages with their corresponding channel definition.
         topic:
-            The topic name for this channel.
+            The topic name that this channel publishes to.
+
+            Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
+            categorize and organize different data streams within the system.
         message_encoding:
-            The message encoding used by this channel.
+            The encoding format used for messages in this channel.
+
+            Common encodings include:
+            * `ros1` - ROS1 message format
+            * `cdr` - Common Data Representation (CDR) message format
+            * `protobuf` - Protocol Buffers
+            * `json` - JSON encoding
         metadata:
-            Custom metadata associated with this channel as key-value pairs.
+            Additional metadata for this channel stored as key-value pairs.
+
+            This can include channel-specific configuration, description, units, coordinate frames,
+            or any other contextual information that helps interpret the data in this channel.
 
         """
 
@@ -151,13 +184,28 @@ class McapChannel(Archetype):
         Parameters
         ----------
         id:
-            The channel ID within the MCAP file.
+            Unique identifier for this channel within the MCAP file.
+
+            Channel IDs must be unique within a single MCAP file and are used to associate
+            messages with their corresponding channel definition.
         topic:
-            The topic name for this channel.
+            The topic name that this channel publishes to.
+
+            Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
+            categorize and organize different data streams within the system.
         message_encoding:
-            The message encoding used by this channel.
+            The encoding format used for messages in this channel.
+
+            Common encodings include:
+            * `ros1` - ROS1 message format
+            * `cdr` - Common Data Representation (CDR) message format
+            * `protobuf` - Protocol Buffers
+            * `json` - JSON encoding
         metadata:
-            Custom metadata associated with this channel as key-value pairs.
+            Additional metadata for this channel stored as key-value pairs.
+
+            This can include channel-specific configuration, description, units, coordinate frames,
+            or any other contextual information that helps interpret the data in this channel.
 
         """
 
@@ -214,7 +262,10 @@ class McapChannel(Archetype):
         default=None,
         converter=components.ChannelIdBatch._converter,  # type: ignore[misc]
     )
-    # The channel ID within the MCAP file.
+    # Unique identifier for this channel within the MCAP file.
+    #
+    # Channel IDs must be unique within a single MCAP file and are used to associate
+    # messages with their corresponding channel definition.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -223,7 +274,10 @@ class McapChannel(Archetype):
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
-    # The topic name for this channel.
+    # The topic name that this channel publishes to.
+    #
+    # Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
+    # categorize and organize different data streams within the system.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -232,7 +286,13 @@ class McapChannel(Archetype):
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
-    # The message encoding used by this channel.
+    # The encoding format used for messages in this channel.
+    #
+    # Common encodings include:
+    # * `ros1` - ROS1 message format
+    # * `cdr` - Common Data Representation (CDR) message format
+    # * `protobuf` - Protocol Buffers
+    # * `json` - JSON encoding
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -241,7 +301,10 @@ class McapChannel(Archetype):
         default=None,
         converter=components.KeyValuePairsBatch._converter,  # type: ignore[misc]
     )
-    # Custom metadata associated with this channel as key-value pairs.
+    # Additional metadata for this channel stored as key-value pairs.
+    #
+    # This can include channel-specific configuration, description, units, coordinate frames,
+    # or any other contextual information that helps interpret the data in this channel.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

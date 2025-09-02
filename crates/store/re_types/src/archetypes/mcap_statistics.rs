@@ -19,41 +19,63 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Statistical information about an MCAP file.
+/// **Archetype**: Recording-level statistics about an MCAP file, logged as a RecordingProperty.
 ///
-/// This archetype stores statistics about the MCAP file structure and content,
-/// including message counts, timing information, and per-channel statistics.
+/// This archetype contains summary information about an entire MCAP recording, including
+/// counts of messages, schemas, channels, and other records, as well as timing information
+/// spanning the full recording duration. It is typically logged once per recording to provide
+/// an overview of the dataset's structure and content.
 ///
-/// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+/// See also [`archetypes::McapChannel`][crate::archetypes::McapChannel] for individual channel definitions,
+/// [`archetypes::McapMessage`][crate::archetypes::McapMessage] for message content, [`archetypes::McapSchema`][crate::archetypes::McapSchema] for schema definitions,
+/// and the [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct McapStatistics {
-    /// Total number of messages in the MCAP file.
+    /// Total number of data messages contained in the MCAP recording.
+    ///
+    /// This count includes all timestamped data messages but excludes metadata records,
+    /// schema definitions, and other non-message records.
     pub message_count: Option<SerializedComponentBatch>,
 
-    /// Total number of schemas defined in the MCAP file.
+    /// Number of unique schema definitions in the recording.
+    ///
+    /// Each schema defines the structure for one or more message types used by channels.
     pub schema_count: Option<SerializedComponentBatch>,
 
-    /// Total number of channels in the MCAP file.
+    /// Number of channels defined in the recording.
+    ///
+    /// Each channel represents a unique topic and encoding combination for publishing messages.
     pub channel_count: Option<SerializedComponentBatch>,
 
-    /// Total number of attachments in the MCAP file.
+    /// Number of file attachments embedded in the recording.
+    ///
+    /// Attachments can include calibration files, configuration data, or other auxiliary files.
     pub attachment_count: Option<SerializedComponentBatch>,
 
-    /// Total number of metadata records in the MCAP file.
+    /// Number of metadata records providing additional context about the recording.
+    ///
+    /// Metadata records contain key-value pairs with information about the recording environment,
+    /// system configuration, or other contextual data.
     pub metadata_count: Option<SerializedComponentBatch>,
 
-    /// Total number of chunks in the MCAP file.
+    /// Number of data chunks used to organize messages in the file.
+    ///
+    /// Chunks group related messages together for efficient storage and indexed access.
     pub chunk_count: Option<SerializedComponentBatch>,
 
-    /// Timestamp of the earliest message in the MCAP file.
+    /// Timestamp of the earliest message in the recording.
+    ///
+    /// This marks the beginning of the recorded data timeline.
     pub message_start_time: Option<SerializedComponentBatch>,
 
-    /// Timestamp of the latest message in the MCAP file.
+    /// Timestamp of the latest message in the recording.
+    ///
+    /// Together with `message_start_time`, this defines the total duration of the recording.
     pub message_end_time: Option<SerializedComponentBatch>,
 
-    /// Per-channel message counts showing how many messages were recorded for each channel ID.
+    /// Detailed breakdown of message counts per channel.
     pub channel_message_counts: Option<SerializedComponentBatch>,
 }
 
@@ -500,7 +522,10 @@ impl McapStatistics {
         self.columns(std::iter::repeat_n(1, len))
     }
 
-    /// Total number of messages in the MCAP file.
+    /// Total number of data messages contained in the MCAP recording.
+    ///
+    /// This count includes all timestamped data messages but excludes metadata records,
+    /// schema definitions, and other non-message records.
     #[inline]
     pub fn with_message_count(
         mut self,
@@ -523,7 +548,9 @@ impl McapStatistics {
         self
     }
 
-    /// Total number of schemas defined in the MCAP file.
+    /// Number of unique schema definitions in the recording.
+    ///
+    /// Each schema defines the structure for one or more message types used by channels.
     #[inline]
     pub fn with_schema_count(mut self, schema_count: impl Into<crate::components::Count>) -> Self {
         self.schema_count = try_serialize_field(Self::descriptor_schema_count(), [schema_count]);
@@ -543,7 +570,9 @@ impl McapStatistics {
         self
     }
 
-    /// Total number of channels in the MCAP file.
+    /// Number of channels defined in the recording.
+    ///
+    /// Each channel represents a unique topic and encoding combination for publishing messages.
     #[inline]
     pub fn with_channel_count(
         mut self,
@@ -566,7 +595,9 @@ impl McapStatistics {
         self
     }
 
-    /// Total number of attachments in the MCAP file.
+    /// Number of file attachments embedded in the recording.
+    ///
+    /// Attachments can include calibration files, configuration data, or other auxiliary files.
     #[inline]
     pub fn with_attachment_count(
         mut self,
@@ -591,7 +622,10 @@ impl McapStatistics {
         self
     }
 
-    /// Total number of metadata records in the MCAP file.
+    /// Number of metadata records providing additional context about the recording.
+    ///
+    /// Metadata records contain key-value pairs with information about the recording environment,
+    /// system configuration, or other contextual data.
     #[inline]
     pub fn with_metadata_count(
         mut self,
@@ -616,7 +650,9 @@ impl McapStatistics {
         self
     }
 
-    /// Total number of chunks in the MCAP file.
+    /// Number of data chunks used to organize messages in the file.
+    ///
+    /// Chunks group related messages together for efficient storage and indexed access.
     #[inline]
     pub fn with_chunk_count(mut self, chunk_count: impl Into<crate::components::Count>) -> Self {
         self.chunk_count = try_serialize_field(Self::descriptor_chunk_count(), [chunk_count]);
@@ -636,7 +672,9 @@ impl McapStatistics {
         self
     }
 
-    /// Timestamp of the earliest message in the MCAP file.
+    /// Timestamp of the earliest message in the recording.
+    ///
+    /// This marks the beginning of the recorded data timeline.
     #[inline]
     pub fn with_message_start_time(
         mut self,
@@ -661,7 +699,9 @@ impl McapStatistics {
         self
     }
 
-    /// Timestamp of the latest message in the MCAP file.
+    /// Timestamp of the latest message in the recording.
+    ///
+    /// Together with `message_start_time`, this defines the total duration of the recording.
     #[inline]
     pub fn with_message_end_time(
         mut self,
@@ -686,7 +726,7 @@ impl McapStatistics {
         self
     }
 
-    /// Per-channel message counts showing how many messages were recorded for each channel ID.
+    /// Detailed breakdown of message counts per channel.
     #[inline]
     pub fn with_channel_message_counts(
         mut self,

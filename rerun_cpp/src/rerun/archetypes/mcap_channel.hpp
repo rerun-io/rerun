@@ -17,26 +17,44 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: Information about an MCAP channel.
+    /// **Archetype**: A channel within an MCAP file that defines how messages are structured and encoded.
     ///
-    /// MCAP is a modular container format and logging library for multi-modal robotics data.
-    /// This archetype stores channel metadata including topic, encoding, and custom metadata.
+    /// Channels in MCAP files group messages by topic and define their encoding format.
+    /// Each channel has a unique identifier and specifies the message schema and encoding used
+    /// for all messages published to that topic.
     ///
-    /// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+    /// See also `archetypes::McapMessage` for individual messages within a channel,
+    /// `archetypes::McapSchema` for the data structure definitions, and the
+    /// [MCAP specification](https://mcap.dev/) for complete format details.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct McapChannel {
-        /// The channel ID within the MCAP file.
+        /// Unique identifier for this channel within the MCAP file.
+        ///
+        /// Channel IDs must be unique within a single MCAP file and are used to associate
+        /// messages with their corresponding channel definition.
         std::optional<ComponentBatch> id;
 
-        /// The topic name for this channel.
+        /// The topic name that this channel publishes to.
+        ///
+        /// Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
+        /// categorize and organize different data streams within the system.
         std::optional<ComponentBatch> topic;
 
-        /// The message encoding used by this channel.
+        /// The encoding format used for messages in this channel.
+        ///
+        /// Common encodings include:
+        /// * `ros1` - ROS1 message format
+        /// * `cdr` - Common Data Representation (CDR) message format
+        /// * `protobuf` - Protocol Buffers
+        /// * `json` - JSON encoding
         std::optional<ComponentBatch> message_encoding;
 
-        /// Custom metadata associated with this channel as key-value pairs.
+        /// Additional metadata for this channel stored as key-value pairs.
+        ///
+        /// This can include channel-specific configuration, description, units, coordinate frames,
+        /// or any other contextual information that helps interpret the data in this channel.
         std::optional<ComponentBatch> metadata;
 
       public:
@@ -89,7 +107,10 @@ namespace rerun::archetypes {
         /// Clear all the fields of a `McapChannel`.
         static McapChannel clear_fields();
 
-        /// The channel ID within the MCAP file.
+        /// Unique identifier for this channel within the MCAP file.
+        ///
+        /// Channel IDs must be unique within a single MCAP file and are used to associate
+        /// messages with their corresponding channel definition.
         McapChannel with_id(const rerun::components::ChannelId& _id) && {
             id = ComponentBatch::from_loggable(_id, Descriptor_id).value_or_throw();
             return std::move(*this);
@@ -104,7 +125,10 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// The topic name for this channel.
+        /// The topic name that this channel publishes to.
+        ///
+        /// Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
+        /// categorize and organize different data streams within the system.
         McapChannel with_topic(const rerun::components::Text& _topic) && {
             topic = ComponentBatch::from_loggable(_topic, Descriptor_topic).value_or_throw();
             return std::move(*this);
@@ -119,7 +143,13 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// The message encoding used by this channel.
+        /// The encoding format used for messages in this channel.
+        ///
+        /// Common encodings include:
+        /// * `ros1` - ROS1 message format
+        /// * `cdr` - Common Data Representation (CDR) message format
+        /// * `protobuf` - Protocol Buffers
+        /// * `json` - JSON encoding
         McapChannel with_message_encoding(const rerun::components::Text& _message_encoding) && {
             message_encoding =
                 ComponentBatch::from_loggable(_message_encoding, Descriptor_message_encoding)
@@ -140,7 +170,10 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Custom metadata associated with this channel as key-value pairs.
+        /// Additional metadata for this channel stored as key-value pairs.
+        ///
+        /// This can include channel-specific configuration, description, units, coordinate frames,
+        /// or any other contextual information that helps interpret the data in this channel.
         McapChannel with_metadata(const rerun::components::KeyValuePairs& _metadata) && {
             metadata =
                 ComponentBatch::from_loggable(_metadata, Descriptor_metadata).value_or_throw();

@@ -17,41 +17,63 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: Statistical information about an MCAP file.
+    /// **Archetype**: Recording-level statistics about an MCAP file, logged as a RecordingProperty.
     ///
-    /// This archetype stores statistics about the MCAP file structure and content,
-    /// including message counts, timing information, and per-channel statistics.
+    /// This archetype contains summary information about an entire MCAP recording, including
+    /// counts of messages, schemas, channels, and other records, as well as timing information
+    /// spanning the full recording duration. It is typically logged once per recording to provide
+    /// an overview of the dataset's structure and content.
     ///
-    /// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+    /// See also `archetypes::McapChannel` for individual channel definitions,
+    /// `archetypes::McapMessage` for message content, `archetypes::McapSchema` for schema definitions,
+    /// and the [MCAP specification](https://mcap.dev/) for complete format details.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct McapStatistics {
-        /// Total number of messages in the MCAP file.
+        /// Total number of data messages contained in the MCAP recording.
+        ///
+        /// This count includes all timestamped data messages but excludes metadata records,
+        /// schema definitions, and other non-message records.
         std::optional<ComponentBatch> message_count;
 
-        /// Total number of schemas defined in the MCAP file.
+        /// Number of unique schema definitions in the recording.
+        ///
+        /// Each schema defines the structure for one or more message types used by channels.
         std::optional<ComponentBatch> schema_count;
 
-        /// Total number of channels in the MCAP file.
+        /// Number of channels defined in the recording.
+        ///
+        /// Each channel represents a unique topic and encoding combination for publishing messages.
         std::optional<ComponentBatch> channel_count;
 
-        /// Total number of attachments in the MCAP file.
+        /// Number of file attachments embedded in the recording.
+        ///
+        /// Attachments can include calibration files, configuration data, or other auxiliary files.
         std::optional<ComponentBatch> attachment_count;
 
-        /// Total number of metadata records in the MCAP file.
+        /// Number of metadata records providing additional context about the recording.
+        ///
+        /// Metadata records contain key-value pairs with information about the recording environment,
+        /// system configuration, or other contextual data.
         std::optional<ComponentBatch> metadata_count;
 
-        /// Total number of chunks in the MCAP file.
+        /// Number of data chunks used to organize messages in the file.
+        ///
+        /// Chunks group related messages together for efficient storage and indexed access.
         std::optional<ComponentBatch> chunk_count;
 
-        /// Timestamp of the earliest message in the MCAP file.
+        /// Timestamp of the earliest message in the recording.
+        ///
+        /// This marks the beginning of the recorded data timeline.
         std::optional<ComponentBatch> message_start_time;
 
-        /// Timestamp of the latest message in the MCAP file.
+        /// Timestamp of the latest message in the recording.
+        ///
+        /// Together with `message_start_time`, this defines the total duration of the recording.
         std::optional<ComponentBatch> message_end_time;
 
-        /// Per-channel message counts showing how many messages were recorded for each channel ID.
+        /// Detailed breakdown of message counts per channel.
         std::optional<ComponentBatch> channel_message_counts;
 
       public:
@@ -159,7 +181,10 @@ namespace rerun::archetypes {
         /// Clear all the fields of a `McapStatistics`.
         static McapStatistics clear_fields();
 
-        /// Total number of messages in the MCAP file.
+        /// Total number of data messages contained in the MCAP recording.
+        ///
+        /// This count includes all timestamped data messages but excludes metadata records,
+        /// schema definitions, and other non-message records.
         McapStatistics with_message_count(const rerun::components::Count& _message_count) && {
             message_count = ComponentBatch::from_loggable(_message_count, Descriptor_message_count)
                                 .value_or_throw();
@@ -178,7 +203,9 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Total number of schemas defined in the MCAP file.
+        /// Number of unique schema definitions in the recording.
+        ///
+        /// Each schema defines the structure for one or more message types used by channels.
         McapStatistics with_schema_count(const rerun::components::Count& _schema_count) && {
             schema_count = ComponentBatch::from_loggable(_schema_count, Descriptor_schema_count)
                                .value_or_throw();
@@ -197,7 +224,9 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Total number of channels in the MCAP file.
+        /// Number of channels defined in the recording.
+        ///
+        /// Each channel represents a unique topic and encoding combination for publishing messages.
         McapStatistics with_channel_count(const rerun::components::Count& _channel_count) && {
             channel_count = ComponentBatch::from_loggable(_channel_count, Descriptor_channel_count)
                                 .value_or_throw();
@@ -216,7 +245,9 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Total number of attachments in the MCAP file.
+        /// Number of file attachments embedded in the recording.
+        ///
+        /// Attachments can include calibration files, configuration data, or other auxiliary files.
         McapStatistics with_attachment_count(const rerun::components::Count& _attachment_count) && {
             attachment_count =
                 ComponentBatch::from_loggable(_attachment_count, Descriptor_attachment_count)
@@ -237,7 +268,10 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Total number of metadata records in the MCAP file.
+        /// Number of metadata records providing additional context about the recording.
+        ///
+        /// Metadata records contain key-value pairs with information about the recording environment,
+        /// system configuration, or other contextual data.
         McapStatistics with_metadata_count(const rerun::components::Count& _metadata_count) && {
             metadata_count =
                 ComponentBatch::from_loggable(_metadata_count, Descriptor_metadata_count)
@@ -258,7 +292,9 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Total number of chunks in the MCAP file.
+        /// Number of data chunks used to organize messages in the file.
+        ///
+        /// Chunks group related messages together for efficient storage and indexed access.
         McapStatistics with_chunk_count(const rerun::components::Count& _chunk_count) && {
             chunk_count = ComponentBatch::from_loggable(_chunk_count, Descriptor_chunk_count)
                               .value_or_throw();
@@ -277,7 +313,9 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Timestamp of the earliest message in the MCAP file.
+        /// Timestamp of the earliest message in the recording.
+        ///
+        /// This marks the beginning of the recorded data timeline.
         McapStatistics with_message_start_time(
             const rerun::components::Timestamp& _message_start_time
         ) && {
@@ -300,7 +338,9 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Timestamp of the latest message in the MCAP file.
+        /// Timestamp of the latest message in the recording.
+        ///
+        /// Together with `message_start_time`, this defines the total duration of the recording.
         McapStatistics with_message_end_time(const rerun::components::Timestamp& _message_end_time
         ) && {
             message_end_time =
@@ -322,7 +362,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Per-channel message counts showing how many messages were recorded for each channel ID.
+        /// Detailed breakdown of message counts per channel.
         McapStatistics with_channel_message_counts(
             const rerun::components::ChannelMessageCounts& _channel_message_counts
         ) && {

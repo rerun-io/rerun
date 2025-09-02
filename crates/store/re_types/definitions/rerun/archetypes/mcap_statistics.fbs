@@ -1,11 +1,15 @@
 namespace rerun.archetypes;
 
-/// Statistical information about an MCAP file.
+/// Recording-level statistics about an MCAP file, logged as a RecordingProperty.
 ///
-/// This archetype stores statistics about the MCAP file structure and content,
-/// including message counts, timing information, and per-channel statistics.
+/// This archetype contains summary information about an entire MCAP recording, including
+/// counts of messages, schemas, channels, and other records, as well as timing information
+/// spanning the full recording duration. It is typically logged once per recording to provide
+/// an overview of the dataset's structure and content.
 ///
-/// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+/// See also [archetypes.McapChannel] for individual channel definitions,
+/// [archetypes.McapMessage] for message content, [archetypes.McapSchema] for schema definitions,
+/// and the [MCAP specification](https://mcap.dev/) for complete format details.
 table McapStatistics (
   "attr.docs.category": "Data",
   "attr.rerun.state": "unstable",
@@ -14,32 +18,50 @@ table McapStatistics (
 ) {
   // --- Required ---
 
-  /// Total number of messages in the MCAP file.
+  /// Total number of data messages contained in the MCAP recording.
+  ///
+  /// This count includes all timestamped data messages but excludes metadata records,
+  /// schema definitions, and other non-message records.
   message_count: rerun.components.Count ("attr.rerun.component_required", order: 1000);
 
-  /// Total number of schemas defined in the MCAP file.
+  /// Number of unique schema definitions in the recording.
+  ///
+  /// Each schema defines the structure for one or more message types used by channels.
   schema_count: rerun.components.Count ("attr.rerun.component_required", order: 2000);
 
-  /// Total number of channels in the MCAP file.
+  /// Number of channels defined in the recording.
+  ///
+  /// Each channel represents a unique topic and encoding combination for publishing messages.
   channel_count: rerun.components.Count ("attr.rerun.component_required", order: 3000);
 
-  /// Total number of attachments in the MCAP file.
+  /// Number of file attachments embedded in the recording.
+  ///
+  /// Attachments can include calibration files, configuration data, or other auxiliary files.
   attachment_count: rerun.components.Count ("attr.rerun.component_required", order: 4000);
 
-  /// Total number of metadata records in the MCAP file.
+  /// Number of metadata records providing additional context about the recording.
+  ///
+  /// Metadata records contain key-value pairs with information about the recording environment,
+  /// system configuration, or other contextual data.
   metadata_count: rerun.components.Count ("attr.rerun.component_required", order: 5000);
 
-  /// Total number of chunks in the MCAP file.
+  /// Number of data chunks used to organize messages in the file.
+  ///
+  /// Chunks group related messages together for efficient storage and indexed access.
   chunk_count: rerun.components.Count ("attr.rerun.component_required", order: 6000);
 
-  /// Timestamp of the earliest message in the MCAP file.
+  /// Timestamp of the earliest message in the recording.
+  ///
+  /// This marks the beginning of the recorded data timeline.
   message_start_time: rerun.components.Timestamp ("attr.rerun.component_required", order: 7000);
 
-  /// Timestamp of the latest message in the MCAP file.
+  /// Timestamp of the latest message in the recording.
+  ///
+  /// Together with `message_start_time`, this defines the total duration of the recording.
   message_end_time: rerun.components.Timestamp ("attr.rerun.component_required", order: 8000);
 
   // --- Optional ---
 
-  /// Per-channel message counts showing how many messages were recorded for each channel ID.
+  /// Detailed breakdown of message counts per channel.
   channel_message_counts: rerun.components.ChannelMessageCounts ("attr.rerun.component_optional", nullable, order: 9000);
 }

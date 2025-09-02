@@ -17,26 +17,48 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: Information about an MCAP schema definition.
+    /// **Archetype**: A schema definition that describes the structure of messages in an MCAP file.
     ///
-    /// This archetype stores schema metadata including the schema ID, name, encoding format,
-    /// and the raw schema data itself.
+    /// Schemas define the data types and field structures used by messages in MCAP channels.
+    /// They provide the blueprint for interpreting message payloads, specifying field names,
+    /// types, and organization. Each schema is referenced by channels to indicate how their
+    /// messages should be decoded and understood.
     ///
-    /// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+    /// See also `archetypes::McapChannel` for channels that reference these schemas,
+    /// `archetypes::McapMessage` for the messages that conform to these schemas, and the
+    /// [MCAP specification](https://mcap.dev/) for complete format details.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct McapSchema {
-        /// The schema ID within the MCAP file.
+        /// Unique identifier for this schema within the MCAP file.
+        ///
+        /// Schema IDs must be unique within a single MCAP file and are used by channels
+        /// to reference the schema that defines their message structure.
         std::optional<ComponentBatch> id;
 
-        /// The name of this schema.
+        /// Human-readable name identifying this schema.
+        ///
+        /// Schema names typically describe the message type or data structure
+        /// (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
         std::optional<ComponentBatch> name;
 
-        /// The encoding format used by this schema (e.g., "protobuf", "ros1msg", "jsonschema").
+        /// The schema definition format used to describe the message structure.
+        ///
+        /// Common schema encodings include:
+        /// * `protobuf` - Protocol Buffers schema definition
+        /// * `ros1msg` - ROS1 message definition format
+        /// * `ros2msg` - ROS2 message definition format
+        /// * `jsonschema` - JSON Schema specification
+        /// * `flatbuffer` - FlatBuffers schema definition
         std::optional<ComponentBatch> encoding;
 
-        /// The raw schema data as binary content.
+        /// The schema definition content as binary data.
+        ///
+        /// This contains the actual schema specification in the format indicated by the
+        /// `encoding` field. For text-based schemas (like ROS message definitions or JSON Schema),
+        /// this is typically UTF-8 encoded text. For binary schema formats, this contains
+        /// the serialized schema data.
         std::optional<ComponentBatch> data;
 
       public:
@@ -87,7 +109,10 @@ namespace rerun::archetypes {
         /// Clear all the fields of a `McapSchema`.
         static McapSchema clear_fields();
 
-        /// The schema ID within the MCAP file.
+        /// Unique identifier for this schema within the MCAP file.
+        ///
+        /// Schema IDs must be unique within a single MCAP file and are used by channels
+        /// to reference the schema that defines their message structure.
         McapSchema with_id(const rerun::components::ChannelId& _id) && {
             id = ComponentBatch::from_loggable(_id, Descriptor_id).value_or_throw();
             return std::move(*this);
@@ -102,7 +127,10 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// The name of this schema.
+        /// Human-readable name identifying this schema.
+        ///
+        /// Schema names typically describe the message type or data structure
+        /// (e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).
         McapSchema with_name(const rerun::components::Text& _name) && {
             name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
             return std::move(*this);
@@ -117,7 +145,14 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// The encoding format used by this schema (e.g., "protobuf", "ros1msg", "jsonschema").
+        /// The schema definition format used to describe the message structure.
+        ///
+        /// Common schema encodings include:
+        /// * `protobuf` - Protocol Buffers schema definition
+        /// * `ros1msg` - ROS1 message definition format
+        /// * `ros2msg` - ROS2 message definition format
+        /// * `jsonschema` - JSON Schema specification
+        /// * `flatbuffer` - FlatBuffers schema definition
         McapSchema with_encoding(const rerun::components::Text& _encoding) && {
             encoding =
                 ComponentBatch::from_loggable(_encoding, Descriptor_encoding).value_or_throw();
@@ -134,7 +169,12 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// The raw schema data as binary content.
+        /// The schema definition content as binary data.
+        ///
+        /// This contains the actual schema specification in the format indicated by the
+        /// `encoding` field. For text-based schemas (like ROS message definitions or JSON Schema),
+        /// this is typically UTF-8 encoded text. For binary schema formats, this contains
+        /// the serialized schema data.
         McapSchema with_data(const rerun::components::Blob& _data) && {
             data = ComponentBatch::from_loggable(_data, Descriptor_data).value_or_throw();
             return std::move(*this);

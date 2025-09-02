@@ -19,17 +19,26 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: A raw MCAP message.
+/// **Archetype**: The binary payload of a single MCAP message, without metadata.
 ///
-/// MCAP is a modular container format and logging library for multi-modal robotics data.
-/// This archetype stores raw MCAP message data as binary blobs for analysis.
+/// This archetype represents only the raw message data from an MCAP file. It does not include
+/// MCAP message metadata such as timestamps, channel IDs, sequence numbers, or publication times.
+/// The binary payload represents sensor data, commands, or other information encoded according
+/// to the format specified by the associated channel.
 ///
-/// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+/// See [`archetypes::McapChannel`][crate::archetypes::McapChannel] for channel definitions that specify message encoding,
+/// [`archetypes::McapSchema`][crate::archetypes::McapSchema] for data structure definitions, and the
+/// [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct McapMessage {
-    /// The raw MCAP message data as binary blob.
+    /// The raw message payload as a binary blob.
+    ///
+    /// This contains the actual message data encoded according to the format specified
+    /// by the associated channel's `message_encoding` field. The structure and interpretation
+    /// of this binary data depends on the encoding format (e.g., ros1, cdr, protobuf)
+    /// and the message schema defined for the channel.
     pub data: Option<SerializedComponentBatch>,
 }
 
@@ -184,7 +193,12 @@ impl McapMessage {
         self.columns(std::iter::repeat_n(1, len))
     }
 
-    /// The raw MCAP message data as binary blob.
+    /// The raw message payload as a binary blob.
+    ///
+    /// This contains the actual message data encoded according to the format specified
+    /// by the associated channel's `message_encoding` field. The structure and interpretation
+    /// of this binary data depends on the encoding format (e.g., ros1, cdr, protobuf)
+    /// and the message schema defined for the channel.
     #[inline]
     pub fn with_data(mut self, data: impl Into<crate::components::Blob>) -> Self {
         self.data = try_serialize_field(Self::descriptor_data(), [data]);

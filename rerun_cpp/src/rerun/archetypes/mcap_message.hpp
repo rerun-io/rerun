@@ -15,17 +15,26 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: A raw MCAP message.
+    /// **Archetype**: The binary payload of a single MCAP message, without metadata.
     ///
-    /// MCAP is a modular container format and logging library for multi-modal robotics data.
-    /// This archetype stores raw MCAP message data as binary blobs for analysis.
+    /// This archetype represents only the raw message data from an MCAP file. It does not include
+    /// MCAP message metadata such as timestamps, channel IDs, sequence numbers, or publication times.
+    /// The binary payload represents sensor data, commands, or other information encoded according
+    /// to the format specified by the associated channel.
     ///
-    /// See also [MCAP specification](https://mcap.dev/) for more details on the format.
+    /// See `archetypes::McapChannel` for channel definitions that specify message encoding,
+    /// `archetypes::McapSchema` for data structure definitions, and the
+    /// [MCAP specification](https://mcap.dev/) for complete format details.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct McapMessage {
-        /// The raw MCAP message data as binary blob.
+        /// The raw message payload as a binary blob.
+        ///
+        /// This contains the actual message data encoded according to the format specified
+        /// by the associated channel's `message_encoding` field. The structure and interpretation
+        /// of this binary data depends on the encoding format (e.g., ros1, cdr, protobuf)
+        /// and the message schema defined for the channel.
         std::optional<ComponentBatch> data;
 
       public:
@@ -56,7 +65,12 @@ namespace rerun::archetypes {
         /// Clear all the fields of a `McapMessage`.
         static McapMessage clear_fields();
 
-        /// The raw MCAP message data as binary blob.
+        /// The raw message payload as a binary blob.
+        ///
+        /// This contains the actual message data encoded according to the format specified
+        /// by the associated channel's `message_encoding` field. The structure and interpretation
+        /// of this binary data depends on the encoding format (e.g., ros1, cdr, protobuf)
+        /// and the message schema defined for the channel.
         McapMessage with_data(const rerun::components::Blob& _data) && {
             data = ComponentBatch::from_loggable(_data, Descriptor_data).value_or_throw();
             return std::move(*this);

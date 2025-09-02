@@ -1966,17 +1966,19 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "id", display_name : "Id",
                     component_type : "rerun.components.ChannelId".into(), docstring_md :
-                    "The channel ID within the MCAP file.", is_required : true, },
-                    ArchetypeFieldReflection { name : "topic", display_name : "Topic",
-                    component_type : "rerun.components.Text".into(), docstring_md :
-                    "The topic name for this channel.", is_required : true, },
-                    ArchetypeFieldReflection { name : "message_encoding", display_name :
-                    "Message encoding", component_type : "rerun.components.Text".into(),
-                    docstring_md : "The message encoding used by this channel.",
+                    "Unique identifier for this channel within the MCAP file.\n\nChannel IDs must be unique within a single MCAP file and are used to associate\nmessages with their corresponding channel definition.",
+                    is_required : true, }, ArchetypeFieldReflection { name : "topic",
+                    display_name : "Topic", component_type : "rerun.components.Text"
+                    .into(), docstring_md :
+                    "The topic name that this channel publishes to.\n\nTopics are typically hierarchical paths (e.g., \"/sensors/camera/image\") that\ncategorize and organize different data streams within the system.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "message_encoding", display_name : "Message encoding", component_type
+                    : "rerun.components.Text".into(), docstring_md :
+                    "The encoding format used for messages in this channel.\n\nCommon encodings include:\n* `ros1` - ROS1 message format\n* `cdr` - Common Data Representation (CDR) message format\n* `protobuf` - Protocol Buffers\n* `json` - JSON encoding",
                     is_required : true, }, ArchetypeFieldReflection { name : "metadata",
                     display_name : "Metadata", component_type :
                     "rerun.components.KeyValuePairs".into(), docstring_md :
-                    "Custom metadata associated with this channel as key-value pairs.",
+                    "Additional metadata for this channel stored as key-value pairs.\n\nThis can include channel-specific configuration, description, units, coordinate frames,\nor any other contextual information that helps interpret the data in this channel.",
                     is_required : false, },
                 ],
             },
@@ -1991,7 +1993,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "data", display_name : "Data",
                     component_type : "rerun.components.Blob".into(), docstring_md :
-                    "The raw MCAP message data as binary blob.", is_required : true, },
+                    "The raw message payload as a binary blob.\n\nThis contains the actual message data encoded according to the format specified\nby the associated channel's `message_encoding` field. The structure and interpretation\nof this binary data depends on the encoding format (e.g., ros1, cdr, protobuf)\nand the message schema defined for the channel.",
+                    is_required : true, },
                 ],
             },
         ),
@@ -2005,17 +2008,19 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "id", display_name : "Id",
                     component_type : "rerun.components.ChannelId".into(), docstring_md :
-                    "The schema ID within the MCAP file.", is_required : true, },
-                    ArchetypeFieldReflection { name : "name", display_name : "Name",
-                    component_type : "rerun.components.Text".into(), docstring_md :
-                    "The name of this schema.", is_required : true, },
-                    ArchetypeFieldReflection { name : "encoding", display_name :
-                    "Encoding", component_type : "rerun.components.Text".into(),
-                    docstring_md :
-                    "The encoding format used by this schema (e.g., \"protobuf\", \"ros1msg\", \"jsonschema\").",
+                    "Unique identifier for this schema within the MCAP file.\n\nSchema IDs must be unique within a single MCAP file and are used by channels\nto reference the schema that defines their message structure.",
+                    is_required : true, }, ArchetypeFieldReflection { name : "name",
+                    display_name : "Name", component_type : "rerun.components.Text"
+                    .into(), docstring_md :
+                    "Human-readable name identifying this schema.\n\nSchema names typically describe the message type or data structure\n(e.g., `geometry_msgs/msg/Twist`, `sensor_msgs/msg/Image`, `MyCustomMessage`).",
+                    is_required : true, }, ArchetypeFieldReflection { name : "encoding",
+                    display_name : "Encoding", component_type : "rerun.components.Text"
+                    .into(), docstring_md :
+                    "The schema definition format used to describe the message structure.\n\nCommon schema encodings include:\n* `protobuf` - Protocol Buffers schema definition\n* `ros1msg` - ROS1 message definition format\n* `ros2msg` - ROS2 message definition format  \n* `jsonschema` - JSON Schema specification\n* `flatbuffer` - FlatBuffers schema definition",
                     is_required : true, }, ArchetypeFieldReflection { name : "data",
                     display_name : "Data", component_type : "rerun.components.Blob"
-                    .into(), docstring_md : "The raw schema data as binary content.",
+                    .into(), docstring_md :
+                    "The schema definition content as binary data.\n\nThis contains the actual schema specification in the format indicated by the\n`encoding` field. For text-based schemas (like ROS message definitions or JSON Schema),\nthis is typically UTF-8 encoded text. For binary schema formats, this contains\nthe serialized schema data.",
                     is_required : true, },
                 ],
             },
@@ -2030,38 +2035,40 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { name : "message_count", display_name :
                     "Message count", component_type : "rerun.components.Count".into(),
-                    docstring_md : "Total number of messages in the MCAP file.",
+                    docstring_md :
+                    "Total number of data messages contained in the MCAP recording.\n\nThis count includes all timestamped data messages but excludes metadata records,\nschema definitions, and other non-message records.",
                     is_required : true, }, ArchetypeFieldReflection { name :
                     "schema_count", display_name : "Schema count", component_type :
                     "rerun.components.Count".into(), docstring_md :
-                    "Total number of schemas defined in the MCAP file.", is_required :
-                    true, }, ArchetypeFieldReflection { name : "channel_count",
-                    display_name : "Channel count", component_type :
+                    "Number of unique schema definitions in the recording.\n\nEach schema defines the structure for one or more message types used by channels.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "channel_count", display_name : "Channel count", component_type :
                     "rerun.components.Count".into(), docstring_md :
-                    "Total number of channels in the MCAP file.", is_required : true, },
-                    ArchetypeFieldReflection { name : "attachment_count", display_name :
-                    "Attachment count", component_type : "rerun.components.Count".into(),
-                    docstring_md : "Total number of attachments in the MCAP file.",
+                    "Number of channels defined in the recording.\n\nEach channel represents a unique topic and encoding combination for publishing messages.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "attachment_count", display_name : "Attachment count", component_type
+                    : "rerun.components.Count".into(), docstring_md :
+                    "Number of file attachments embedded in the recording.\n\nAttachments can include calibration files, configuration data, or other auxiliary files.",
                     is_required : true, }, ArchetypeFieldReflection { name :
                     "metadata_count", display_name : "Metadata count", component_type :
                     "rerun.components.Count".into(), docstring_md :
-                    "Total number of metadata records in the MCAP file.", is_required :
-                    true, }, ArchetypeFieldReflection { name : "chunk_count",
-                    display_name : "Chunk count", component_type :
+                    "Number of metadata records providing additional context about the recording.\n\nMetadata records contain key-value pairs with information about the recording environment,\nsystem configuration, or other contextual data.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "chunk_count", display_name : "Chunk count", component_type :
                     "rerun.components.Count".into(), docstring_md :
-                    "Total number of chunks in the MCAP file.", is_required : true, },
-                    ArchetypeFieldReflection { name : "message_start_time", display_name
-                    : "Message start time", component_type : "rerun.components.Timestamp"
-                    .into(), docstring_md :
-                    "Timestamp of the earliest message in the MCAP file.", is_required :
-                    true, }, ArchetypeFieldReflection { name : "message_end_time",
-                    display_name : "Message end time", component_type :
-                    "rerun.components.Timestamp".into(), docstring_md :
-                    "Timestamp of the latest message in the MCAP file.", is_required :
-                    true, }, ArchetypeFieldReflection { name : "channel_message_counts",
-                    display_name : "Channel message counts", component_type :
-                    "rerun.components.ChannelMessageCounts".into(), docstring_md :
-                    "Per-channel message counts showing how many messages were recorded for each channel ID.",
+                    "Number of data chunks used to organize messages in the file.\n\nChunks group related messages together for efficient storage and indexed access.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "message_start_time", display_name : "Message start time",
+                    component_type : "rerun.components.Timestamp".into(), docstring_md :
+                    "Timestamp of the earliest message in the recording.\n\nThis marks the beginning of the recorded data timeline.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "message_end_time", display_name : "Message end time", component_type
+                    : "rerun.components.Timestamp".into(), docstring_md :
+                    "Timestamp of the latest message in the recording.\n\nTogether with `message_start_time`, this defines the total duration of the recording.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "channel_message_counts", display_name : "Channel message counts",
+                    component_type : "rerun.components.ChannelMessageCounts".into(),
+                    docstring_md : "Detailed breakdown of message counts per channel.",
                     is_required : false, },
                 ],
             },
