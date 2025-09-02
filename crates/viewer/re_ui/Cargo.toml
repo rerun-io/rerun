@@ -32,13 +32,8 @@ default = []
 ## Enable anonymized telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
-## UI for arrow data
-arrow = ["dep:arrow"]
-
-
 [dependencies]
 re_analytics = { workspace = true, optional = true }
-re_arrow_util.workspace = true
 re_entity_db.workspace = true                        # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
 re_format.workspace = true
 re_log.workspace = true
@@ -47,7 +42,6 @@ re_tracing.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
-arrow = { workspace = true, optional = true }
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
@@ -73,7 +67,6 @@ notify.workspace = true # Only used with the `hot_reload_design_tokens` feature
 [dev-dependencies]
 egui_kittest.workspace = true
 rand = { workspace = true, features = ["std"] }
-re_types.workspace = true
 
 
 [build-dependencies]

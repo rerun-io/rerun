@@ -1,15 +1,15 @@
-#![cfg(feature = "arrow")]
-
+use egui_kittest::SnapshotResults;
+use re_ui::{UiExt as _, UiLayout};
 use std::f32::consts::PI;
 
-use re_ui::{UiExt as _, UiLayout};
+mod arrow_test_data;
 
 #[test]
 pub fn test_arrow_ui() {
     let mut harness = egui_kittest::Harness::builder().build_ui(|ui| {
         re_ui::apply_style_and_install_loaders(ui.ctx());
 
-        show_some_arrow_ui(ui);
+        arrow_list_ui(ui);
     });
 
     harness.run();
@@ -20,7 +20,7 @@ pub fn test_arrow_ui() {
     harness.snapshot("arrow_ui");
 }
 
-fn show_some_arrow_ui(ui: &mut egui::Ui) {
+fn arrow_list_ui(ui: &mut egui::Ui) {
     // We use a handful of realistic data in this test.
 
     use re_types::{
@@ -58,6 +58,7 @@ fn show_some_arrow_ui(ui: &mut egui::Ui) {
             ]
             .to_arrow(),
         ),
+        ("String with newline", Utf8::from("Hello\nworld").to_arrow()),
         ("Empty Blob", Blob::from(vec![]).to_arrow()),
         ("Small Blob", Blob::from(vec![1, 2, 3, 4]).to_arrow()),
         ("Big Blob", Blob::from(vec![42; 1_234_567]).to_arrow()),
@@ -72,8 +73,32 @@ fn show_some_arrow_ui(ui: &mut egui::Ui) {
         for (name, arrow_result) in tests {
             ui.grid_left_hand_label(name);
             let arrow = arrow_result.expect("Failed to convert to arrow");
-            re_ui::arrow_ui(ui, UiLayout::List, &arrow);
+            re_arrow_ui::arrow_ui(ui, UiLayout::List, &arrow);
             ui.end_row();
         }
     });
+}
+
+#[test]
+fn arrow_tree_ui() {
+    let arrays = arrow_test_data::all_arrays();
+
+    let mut results = SnapshotResults::new();
+
+    for (array_name, arrow) in arrays {
+        let mut harness = egui_kittest::Harness::builder()
+            .with_size((300.0, 500.0))
+            .build_ui(|ui| {
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+
+                re_arrow_ui::arrow_ui(ui, UiLayout::SelectionPanel, &arrow);
+            });
+
+        harness.run();
+
+        harness.fit_contents();
+
+        harness.run();
+        results.add(harness.try_snapshot(array_name));
+    }
 }
