@@ -27,6 +27,11 @@ use re_ui::list_item::LabelContent;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use std::ops::Range;
 
+/// The maximum number of items when formatting an array to string.
+///
+/// If an array has more items, it will be truncated with `…`.
+pub const MAX_ARROW_LIST_ITEMS: usize = 10;
+
 pub struct ArrayUi<'a> {
     array: &'a dyn Array,
     format: Box<dyn ShowIndex + 'a>,
@@ -58,7 +63,7 @@ impl<'a> ArrayUi<'a> {
 
     /// Returns a [`LayoutJob`] that displays the data.
     ///
-    /// Arrays will be limited to a sane number of items.
+    /// Arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
     pub fn job(&self, ui: &Ui) -> Result<LayoutJob, ArrowError> {
         let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
         write_list(&mut highlighted, 0..self.array.len(), &*self.format)?;
@@ -67,7 +72,7 @@ impl<'a> ArrayUi<'a> {
 
     /// Returns a [`LayoutJob`] that displays a single value at `idx`.
     ///
-    /// Nested arrays will be limited to a sane number of items.
+    /// Nested arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
     pub fn value_job(&self, ui: &Ui, idx: usize) -> Result<LayoutJob, ArrowError> {
         let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
         self.format.write(idx, &mut highlighted)?;
@@ -384,7 +389,6 @@ fn write_list(
     mut range: Range<usize>,
     values: &dyn ShowIndex,
 ) -> EmptyArrowResult {
-    const MAX_LIST_ITEMS: usize = 10;
     f.code_syntax("[");
     if let Some(idx) = range.next() {
         values.write(idx, f)?;
@@ -393,8 +397,8 @@ fn write_list(
     let mut items = 1;
 
     for idx in range {
-        if items >= MAX_LIST_ITEMS {
-            f.code_syntax(", ...");
+        if items >= MAX_ARROW_LIST_ITEMS {
+            f.code_syntax(", …");
             break;
         }
         f.code_syntax(", ");
