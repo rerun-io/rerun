@@ -21,7 +21,7 @@ npm i @rerun-io/web-viewer-react
 ```
 
 ℹ️ Note:
-The package version is equal to the supported Rerun SDK version, and [RRD files are not yet stable across different versions](https://github.com/rerun-io/rerun/issues/6410).
+The package version is equal to the supported Rerun SDK version, and RRD files are only compatible across different (adjacent) versions since 0.23 (see [here](https://github.com/rerun-io/rerun/issues/6410) and [here](https://rerun.io/blog/release-0.23)).
 This means that `@rerun-io/web-viewer-react@0.10.0` can only connect to a data source (`.rrd` file, gRPC connection, etc.) that originates from a Rerun SDK with version `0.10.0`!
 
 ## Usage
