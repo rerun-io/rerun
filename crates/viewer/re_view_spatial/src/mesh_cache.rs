@@ -12,7 +12,7 @@ use re_types::{
     archetypes::{Asset3D, Mesh3D},
     components::MediaType,
 };
-use re_viewer_context::Cache;
+use re_viewer_context::{Cache, CacheMemoryReport, CacheMemoryReportItem};
 
 use crate::mesh_loader::{LoadedMesh, NativeAsset3D, NativeMesh3D};
 
@@ -133,8 +133,40 @@ impl Cache for MeshCache {
         self.cache.clear();
     }
 
-    fn bytes_used(&self) -> u64 {
-        self.cache.total_size_bytes()
+    fn memory_report(&self) -> CacheMemoryReport {
+        let mut full_bytes_gpu = 0;
+        let mut items: Vec<_> = self
+            .cache
+            .iter()
+            .map(|(row_id, meshes)| {
+                let bytes_gpu = meshes
+                    .values()
+                    .filter_map(|entry| entry.mesh.as_ref())
+                    .map(|mesh| {
+                        mesh.mesh_instances
+                            .iter()
+                            .map(|s| s.gpu_mesh.gpu_byte_size())
+                            .sum::<u64>()
+                    })
+                    .sum();
+                full_bytes_gpu += bytes_gpu;
+                CacheMemoryReportItem {
+                    item_name: row_id.short_string(),
+                    bytes_cpu: meshes.total_size_bytes(),
+                    bytes_gpu: Some(bytes_gpu),
+                }
+            })
+            .collect();
+        items.sort_by(|a, b| a.item_name.cmp(&b.item_name));
+        CacheMemoryReport {
+            bytes_cpu: self.cache.total_size_bytes(),
+            bytes_gpu: Some(full_bytes_gpu),
+            per_cache_item_info: items,
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        "Meshes"
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {

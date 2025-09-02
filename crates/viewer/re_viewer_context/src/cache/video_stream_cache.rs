@@ -16,7 +16,7 @@ use re_log_types::{EntityPathHash, TimeType};
 use re_types::{archetypes::VideoStream, components};
 use re_video::{DecodeSettings, StableIndexDeque};
 
-use crate::Cache;
+use crate::{Cache, CacheMemoryReport};
 
 /// A buffer of multiple video sample data from the datastore.
 ///
@@ -523,10 +523,6 @@ impl Cache for VideoStreamCache {
         }
     }
 
-    fn bytes_used(&self) -> u64 {
-        self.0.total_size_bytes()
-    }
-
     fn purge_memory(&mut self) {
         // We aggressively purge all unused video data every frame.
         // The expectation here is that parsing video data is fairly fast,
@@ -535,6 +531,18 @@ impl Cache for VideoStreamCache {
         // As of writing, in a debug wasm build with Chrome loading a 600MiB 1h video
         // this assumption holds up fine: There is a (sufferable) delay,
         // but it's almost entirely due to the decoder trying to retrieve a frame.
+    }
+
+    fn memory_report(&self) -> CacheMemoryReport {
+        CacheMemoryReport {
+            bytes_cpu: self.0.total_size_bytes(),
+            bytes_gpu: None,
+            per_cache_item_info: Vec::new(),
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        "Video Streams"
     }
 
     /// Keep existing cache entries up to date with new and removed video data.

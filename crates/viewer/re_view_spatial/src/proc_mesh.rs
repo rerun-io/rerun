@@ -17,7 +17,7 @@ use re_renderer::{
     RenderContext,
     mesh::{self, GpuMesh, MeshError},
 };
-use re_viewer_context::Cache;
+use re_viewer_context::{Cache, CacheMemoryReport};
 
 // ----------------------------------------------------------------------------
 
@@ -221,8 +221,16 @@ impl Cache for WireframeCache {
         self.0.clear();
     }
 
-    fn bytes_used(&self) -> u64 {
-        self.0.total_size_bytes()
+    fn memory_report(&self) -> CacheMemoryReport {
+        CacheMemoryReport {
+            bytes_cpu: self.0.total_size_bytes(),
+            bytes_gpu: None,
+            per_cache_item_info: Vec::new(),
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        "Proc Mesh Wireframes"
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -513,8 +521,21 @@ impl Cache for SolidCache {
         self.0.clear();
     }
 
-    fn bytes_used(&self) -> u64 {
-        0 // mostly VRAM
+    fn memory_report(&self) -> CacheMemoryReport {
+        CacheMemoryReport {
+            bytes_cpu: self.0.total_size_bytes(),
+            bytes_gpu: Some(
+                self.0
+                    .values()
+                    .map(|mesh| mesh.as_ref().map_or(0, |m| m.gpu_mesh.gpu_byte_size()))
+                    .sum(),
+            ),
+            per_cache_item_info: Vec::new(),
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        "Proc Mesh Solids"
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

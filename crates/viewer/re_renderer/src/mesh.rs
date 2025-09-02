@@ -200,6 +200,13 @@ pub struct GpuMesh {
     pub materials: SmallVec<[GpuMaterial; 1]>,
 }
 
+impl GpuMesh {
+    /// Returns the byte size this `GpuMesh` uses in total.
+    pub fn gpu_byte_size(&self) -> u64 {
+        self.index_buffer.inner.size() + self.vertex_buffer_combined.size()
+    }
+}
+
 #[derive(Clone)]
 pub struct GpuMaterial {
     /// Index range within the owning [`CpuMesh`] that should be rendered with this material.
