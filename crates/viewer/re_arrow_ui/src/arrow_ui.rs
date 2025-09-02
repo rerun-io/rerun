@@ -1,9 +1,10 @@
-use crate::datatype_ui::DataTypeUi;
-use crate::show_index::ArrayUi;
 use arrow::{array::Array, error::ArrowError, util::display::FormatOptions};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_ui::list_item::list_item_scope;
 use re_ui::{UiExt as _, UiLayout};
+
+use crate::datatype_ui::DataTypeUi;
+use crate::show_index::ArrayUi;
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
     re_tracing::profile_function!();

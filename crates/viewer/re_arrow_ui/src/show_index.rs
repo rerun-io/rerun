@@ -1,8 +1,8 @@
 //! [`ArrayUi`] can be used to show arbitrary Arrow data with a nice UI.
 //! The implementation is inspired from arrows built-in display formatter:
 //! <https://github.com/apache/arrow-rs/blob/c628435f9f14abc645fb546442132974d3d380ca/arrow-cast/src/display.rs>
-use crate::arrow_node::ArrowNode;
-use crate::list_item_ranges::list_item_ranges;
+use std::ops::Range;
+
 use arrow::array::cast::{
     AsArray as _, as_generic_list_array, as_map_array, as_struct_array, as_union_array,
 };
@@ -21,10 +21,13 @@ use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::text::LayoutJob;
 use egui::{RichText, Ui};
+
 use re_ui::UiExt as _;
 use re_ui::list_item::LabelContent;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
-use std::ops::Range;
+
+use crate::arrow_node::ArrowNode;
+use crate::list_item_ranges::list_item_ranges;
 
 /// The maximum number of items when formatting an array to string.
 ///

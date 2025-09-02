@@ -1,7 +1,9 @@
+use std::ops::Range;
+
 use egui::Ui;
+
 use re_ui::UiExt as _;
 use re_ui::list_item::LabelContent;
-use std::ops::Range;
 
 /// Utility to efficiently display a large list as recursive tree of smaller ranges.
 pub fn list_item_ranges(ui: &mut Ui, range: Range<usize>, item_fn: &mut dyn FnMut(&mut Ui, usize)) {

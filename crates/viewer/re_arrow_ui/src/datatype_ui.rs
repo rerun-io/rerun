@@ -1,5 +1,6 @@
 use arrow::datatypes::DataType;
 use egui::Id;
+
 use re_ui::UiExt as _;
 use re_ui::list_item::PropertyContent;
 
