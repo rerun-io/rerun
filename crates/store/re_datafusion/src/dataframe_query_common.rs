@@ -138,7 +138,6 @@ impl DataframeQueryTableProvider {
         };
 
         let dataset_query = QueryDatasetRequest {
-            dataset_id: Some(dataset_id.into()),
             partition_ids: partition_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
@@ -164,7 +163,11 @@ impl DataframeQueryTableProvider {
 
         let response_stream = client
             .inner()
-            .query_dataset(dataset_query)
+            .query_dataset(
+                tonic::Request::new(dataset_query)
+                    .with_entry_id(dataset_id)
+                    .map_err(|err| exec_datafusion_err!("{err}"))?,
+            )
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?
             .into_inner();

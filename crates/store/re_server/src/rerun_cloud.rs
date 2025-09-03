@@ -623,25 +623,19 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
     ) -> std::result::Result<tonic::Response<Self::QueryDatasetStream>, tonic::Status> {
-        let re_protos::cloud::v1alpha1::QueryDatasetRequest {
-            dataset_id,
-            partition_ids,
-            chunk_ids,
-            entity_paths,
-            ..
-        } = request.into_inner();
-
-        if !chunk_ids.is_empty() {
+        if !request.get_ref().chunk_ids.is_empty() {
             return Err(tonic::Status::unimplemented(
                 "query_dataset: querying specific chunk ids is not implemented",
             ));
         }
 
-        let dataset_id = dataset_id
-            .ok_or(tonic::Status::unimplemented(
-                "query_dataset: dataset must be specified",
-            ))?
-            .try_into()?;
+        let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
+
+        let re_protos::cloud::v1alpha1::QueryDatasetRequest {
+            partition_ids,
+            entity_paths,
+            ..
+        } = request.into_inner();
 
         let entity_paths: IntSet<EntityPath> = entity_paths
             .into_iter()
@@ -653,7 +647,7 @@ impl RerunCloudService for RerunCloudHandler {
             .map(PartitionId::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let storage_engines = self.get_storage_engines(dataset_id, partition_ids).await?;
+        let storage_engines = self.get_storage_engines(entry_id, partition_ids).await?;
 
         let stream = futures::stream::iter(storage_engines.into_iter().map(
             move |(partition_id, storage_engine)| {

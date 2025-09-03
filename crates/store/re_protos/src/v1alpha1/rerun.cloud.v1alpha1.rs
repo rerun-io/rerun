@@ -528,8 +528,6 @@ impl ::prost::Name for BTreeIndexQuery {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryDatasetRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Client can specify what partitions are queried. If left unspecified (empty list),
     /// all partitions will be queried.
     #[prost(message, repeated, tag = "2")]

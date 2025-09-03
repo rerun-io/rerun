@@ -391,8 +391,6 @@ message BTreeIndexQuery {
 }
 
 message QueryDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // Client can specify what partitions are queried. If left unspecified (empty list),
   // all partitions will be queried.
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
@@ -440,6 +438,9 @@ message QueryDatasetRequest {
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
 
   Query query = 6;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message QueryDatasetResponse {
