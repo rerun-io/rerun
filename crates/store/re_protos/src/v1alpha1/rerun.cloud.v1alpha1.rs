@@ -265,10 +265,7 @@ impl ::prost::Name for CreateIndexResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ReIndexRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-}
+pub struct ReIndexRequest {}
 impl ::prost::Name for ReIndexRequest {
     const NAME: &'static str = "ReIndexRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";

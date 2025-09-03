@@ -280,7 +280,8 @@ message CreateIndexResponse {
 }
 
 message ReIndexRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message ReIndexResponse {
