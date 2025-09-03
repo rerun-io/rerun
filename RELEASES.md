@@ -56,6 +56,7 @@ The name should be:
 - `release-0.x.y` for final releases and their release candidates.
 - `release-0.x.y-alpha.N` where `N` is incremented from the previous alpha,
   or defaulted to `1` if no previous alpha exists.
+ **IMPORTANT**: because alpha releases branches are not always merged, the version on `main` (e.g. in `Cargo.toml`, etc.) may not match the last alpha release. So always double-check the actual version of the last alpha release.
 
 Note that `release-0.x` is _invalid_. Always specify the `y`, even if it is `0`,
 e.g. `release-0.15.0` instead of `release-0.15`.
@@ -133,3 +134,6 @@ For minor release, merge the release branch to `main`.
 For patch release, manually create a new PR from `main` and cherry-pick the required commits. This includes at least
 the `CHANLGE.log` update, plus any other changes made on the release branch that hasn't been cherry-picked in the
 first place.
+
+For alpha release, it's fine to merge **iff** the release job was successful. Otherwise, do not merge, as this would
+introduce broken links in the docs. If needed, cherry-pick any commit back to `main`.
