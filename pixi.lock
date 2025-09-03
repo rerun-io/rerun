@@ -29963,7 +29963,7 @@ packages:
 - pypi: ./examples/python/open_photogrammetry_format
   name: open-photogrammetry-format
   version: 0.1.0
-  sha256: 4c9ddae0cded3c1defd739160099dab7c18a24efd1ba6c37d60a808dd3807b4c
+  sha256: de3134df09286a5d9809cfafcb1082c1ffe45bf70c84adcf79d8f090c14fc1ab
   requires_dist:
   - numpy
   - pillow
