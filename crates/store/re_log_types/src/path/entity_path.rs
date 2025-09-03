@@ -150,8 +150,13 @@ impl EntityPath {
         Self::new(
             file_path
                 .clean()
-                .iter()
-                .map(|p| EntityPathPart::from(p.to_string_lossy().to_string()))
+                .components()
+                .filter_map(|component| match component {
+                    std::path::Component::Normal(os_str) => {
+                        Some(EntityPathPart::from(os_str.to_string_lossy().to_string()))
+                    }
+                    _ => None, // Skip root, prefix, parent dir, current dir components
+                })
                 .collect(),
         )
     }
@@ -795,5 +800,72 @@ mod tests {
             &EntityPath::from("world") / EntityPathPart::new("robot/arm"),
             EntityPath::from("world/robot\\/arm")
         );
+    }
+
+    #[test]
+    fn from_file_path() {
+        assert_eq!(
+            EntityPath::from_file_path(std::path::Path::new("foo/bar/baz.txt")),
+            EntityPath::from("foo/bar/baz.txt")
+        );
+        assert_eq!(
+            EntityPath::from_file_path(std::path::Path::new("/absolute/path/file.log")),
+            EntityPath::from("absolute/path/file.log")
+        );
+        assert_eq!(
+            EntityPath::from_file_path(std::path::Path::new("single_file.txt")),
+            EntityPath::from("single_file.txt")
+        );
+        assert_eq!(
+            EntityPath::from_file_path(std::path::Path::new("foo/../bar/./baz.txt")),
+            EntityPath::from("bar/baz.txt")
+        );
+
+        assert_eq!(
+            EntityPath::from_file_path(std::path::Path::new("bar/./../baz.txt")),
+            EntityPath::from("baz.txt")
+        );
+
+        assert_eq!(
+            EntityPath::from_file_path(std::path::Path::new("folder/file with spaces.txt")),
+            EntityPath::from("folder/file with spaces.txt")
+        );
+        assert_eq!(
+            EntityPath::from_file_path(std::path::Path::new("")),
+            EntityPath::root()
+        );
+        assert_eq!(
+            EntityPath::from_file_path(std::path::Path::new("/")),
+            EntityPath::root()
+        );
+
+        // Windows paths
+        #[cfg(target_os = "windows")]
+        {
+            assert_eq!(
+                EntityPath::from_file_path(std::path::Path::new(
+                    r"C:\Users\user\Documents\robot.txt"
+                )),
+                EntityPath::from("Users/user/Documents/robot.txt")
+            );
+            assert_eq!(
+                EntityPath::from_file_path(std::path::Path::new(
+                    r"folder\subfolder\camera_rgbd.mp4"
+                )),
+                EntityPath::from("folder/subfolder/camera_rgbd.mp4")
+            );
+            assert_eq!(
+                EntityPath::from_file_path(std::path::Path::new(
+                    r"D:\Program Files\App\config.ini"
+                )),
+                EntityPath::from("Program Files/App/config.ini")
+            );
+
+            // UNC prefix from network share should be stripped
+            assert_eq!(
+                EntityPath::from_file_path(std::path::Path::new(r"\\server\share\file.dat")),
+                EntityPath::from("file.dat")
+            );
+        }
     }
 }
