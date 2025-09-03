@@ -721,6 +721,7 @@ mkdocstrings = "==0.26.2"
 mkdocstrings-python = "==1.12.1"
 setuptools = ">75"
 sphobjinv = "==2.3.1"
+griffe-warnings-deprecated = "==1.1.0"
 
 [feature.py-test-deps]
 platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
