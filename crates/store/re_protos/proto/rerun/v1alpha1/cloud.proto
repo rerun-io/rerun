@@ -258,8 +258,6 @@ message GetDatasetSchemaResponse {
 /* Indexing */
 
 message CreateIndexRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // List of specific partitions that will be indexed (all if left empty).
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
@@ -272,6 +270,9 @@ message CreateIndexRequest {
 
   // Specify behavior when index for a partition was already created.
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message CreateIndexResponse {

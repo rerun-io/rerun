@@ -13,6 +13,7 @@ use re_dataframe::ChunkStoreHandle;
 use re_datafusion::query_from_query_expression;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
     cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
     cloud::v1alpha1::{
@@ -234,9 +235,11 @@ impl ConnectionHandle {
                 self.client()
                     .await?
                     .inner()
-                    .get_dataset_schema(GetDatasetSchemaRequest {
-                        dataset_id: Some(entry_id.into()),
-                    })
+                    .get_dataset_schema(
+                        tonic::Request::new(GetDatasetSchemaRequest {})
+                            .with_entry_id(entry_id)
+                            .map_err(to_py_err)?,
+                    )
                     .await
                     .map_err(to_py_err)?
                     .into_inner()

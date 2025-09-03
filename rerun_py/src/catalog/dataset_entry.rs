@@ -24,15 +24,17 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
 use re_protos::common::v1alpha1::ext::DatasetHandle;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::get_chunks_response_to_chunk_and_partition_id;
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
+
+use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema};
+use crate::utils::wait_for_future;
 
 use super::{
     PyDataFusionTable, PyEntry, PyEntryId, VectorDistanceMetricLike, VectorLike,
     dataframe_query::PyDataframeQueryView, task::PyTasks, to_py_err,
 };
-use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema};
-use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
 #[pyclass(name = "DatasetEntry", extends=PyEntry)]
@@ -519,8 +521,6 @@ impl PyDatasetEntry {
         };
 
         let request = CreateIndexRequest {
-            dataset_id: Some(dataset_id.into()),
-
             partition_ids: vec![],
             partition_layers: vec![],
 
@@ -538,7 +538,11 @@ impl PyDatasetEntry {
                 .client()
                 .await?
                 .inner()
-                .create_index(request)
+                .create_index(
+                    tonic::Request::new(request)
+                        .with_entry_id(dataset_id)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                )
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -583,8 +587,6 @@ impl PyDatasetEntry {
         };
 
         let request = CreateIndexRequest {
-            dataset_id: Some(dataset_id.into()),
-
             partition_ids: vec![],
             partition_layers: vec![],
 
@@ -602,7 +604,11 @@ impl PyDatasetEntry {
                 .client()
                 .await?
                 .inner()
-                .create_index(request)
+                .create_index(
+                    tonic::Request::new(request)
+                        .with_entry_id(dataset_id)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                )
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
