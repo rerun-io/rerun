@@ -711,6 +711,7 @@ rerun-sdk = { path = "rerun_py", editable = true }
 
 [feature.python-docs.pypi-dependencies]
 griffe = "==1.4.1"
+griffe-warnings-deprecated = "==1.1.0"
 mkdocs = "==1.6.1"
 mkdocs-gen-files = "==0.5.0"
 mkdocs-literate-nav = "==0.6.1"
@@ -721,7 +722,6 @@ mkdocstrings = "==0.26.2"
 mkdocstrings-python = "==1.12.1"
 setuptools = ">75"
 sphobjinv = "==2.3.1"
-griffe-warnings-deprecated = "==1.1.0"
 
 [feature.py-test-deps]
 platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
