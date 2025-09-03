@@ -28,7 +28,7 @@ This page is meant to give an high level overview of ongoing and planned work. T
 ### Medium term
 - Filtering in table and dataframe views
 - Configurable data interpretability (e.g. MCAP files with custom messages)
-    - Including _data blueprints_ that define and store interpretions for later viewing
+    - Including _data blueprints_ that define and store interpretations for later viewing
 - Dataset views that give zero-copy modified views into large datasets
 
 ### Longer term
