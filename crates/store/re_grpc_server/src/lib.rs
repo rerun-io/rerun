@@ -1388,30 +1388,37 @@ mod tests {
 
     #[tokio::test]
     async fn memory_limit_does_not_interrupt_stream() {
-        // Use an absurdly low memory limit to force all messages to be dropped immediately from history
-        let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
-        let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-        let messages = fake_log_stream_blueprint(3);
+        let memory_limits = [
+            0, // Will actually disable the message buffer and GC logic. Good to test that!
+            1, // An absurdly low memory limit to force all messages to be dropped immediately from history
+        ];
 
-        // Start reading
-        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
+        for memory_limit in memory_limits {
+            let (completion, addr) =
+                setup_with_memory_limit(MemoryLimit::from_bytes(memory_limit)).await;
+            let mut client = make_client(addr).await; // We use the same client for both producing and consuming
+            let messages = fake_log_stream_blueprint(3);
 
-        // Write a few messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+            // Start reading
+            let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
 
-        // The messages should be echoed to us, even though none of them will be stored in history
-        let actual = read_log_stream(&mut log_stream, messages.len()).await;
-        assert_eq!(messages, actual);
+            // Write a few messages
+            client
+                .write_messages(tokio_stream::iter(
+                    messages
+                        .clone()
+                        .into_iter()
+                        .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
+                        .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
+                ))
+                .await
+                .unwrap();
 
-        completion.finish();
+            // The messages should be echoed to us, even though none of them will be stored in history
+            let actual = read_log_stream(&mut log_stream, messages.len()).await;
+            assert_eq!(messages, actual);
+
+            completion.finish();
+        }
     }
 }
