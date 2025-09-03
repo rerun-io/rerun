@@ -241,8 +241,7 @@ pub(crate) mod gpu_data {
         pub fn new(albedo_factor: ecolor::Rgba, texture_format: TextureFormat) -> Self {
             Self {
                 albedo_factor: albedo_factor.into(),
-                texture_format: texture_format as u32,
-                row_padding: Default::default(),
+                texture_format: (texture_format as u32).into(),
                 end_padding: Default::default(),
             }
         }
