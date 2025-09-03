@@ -22,6 +22,7 @@ use re_protos::cloud::v1alpha1::{
     GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
     QueryDatasetResponse, ScanPartitionTableResponse,
 };
+use re_protos::headers::RerunHeadersExtractorExt as _;
 use re_protos::{cloud::v1alpha1::RegisterWithDatasetResponse, common::v1alpha1::ext::PartitionId};
 use re_protos::{
     cloud::v1alpha1::ext,
@@ -968,7 +969,7 @@ fn get_entry_id_from_headers<T>(
     store: &InMemoryStore,
     req: &tonic::Request<T>,
 ) -> Result<EntryId, tonic::Status> {
-    if let Some(entry_id) = re_protos::headers::RerunHeadersExtractor(req).entry_id()? {
+    if let Some(entry_id) = req.entry_id()? {
         const HEADER: &str = re_protos::headers::RERUN_HTTP_HEADER_ENTRY_ID;
 
         let entry_id: EntryId = entry_id.parse().map_err(|err| {
@@ -978,9 +979,7 @@ fn get_entry_id_from_headers<T>(
         })?;
 
         Ok(entry_id)
-    } else if let Some(dataset_name) =
-        re_protos::headers::RerunHeadersExtractor(req).entry_name()?
-    {
+    } else if let Some(dataset_name) = req.entry_name()? {
         Ok(store
             .dataset_by_name(&dataset_name)
             .ok_or_else(|| {

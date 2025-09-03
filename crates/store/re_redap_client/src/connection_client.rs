@@ -29,6 +29,7 @@ use re_protos::{
         TaskId,
         ext::{IfDuplicateBehavior, IfMissingBehavior, PartitionId, ScanParameters},
     },
+    headers::RerunHeadersInjectorExt as _,
     missing_field,
 };
 
@@ -147,12 +148,12 @@ where
         &mut self,
         entry_id: EntryId,
     ) -> Result<DatasetEntry, StreamError> {
-        let mut req = tonic::Request::new(ReadDatasetEntryRequest {});
-        re_protos::headers::RerunHeadersInjector(&mut req).with_entry_id(entry_id.to_string())?;
-
         let response: ReadDatasetEntryResponse = self
             .inner()
-            .read_dataset_entry(req)
+            .read_dataset_entry(
+                tonic::Request::new(ReadDatasetEntryRequest {})
+                    .with_entry_id(entry_id.to_string())?,
+            )
             .await?
             .into_inner()
             .try_into()?;
