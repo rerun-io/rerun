@@ -16,7 +16,7 @@ pub const RERUN_HTTP_HEADER_ENTRY_NAME: &str = "x-rerun-entry-name-bin";
 ///
 /// Example:
 /// ```
-/// # use re_protos::headers::RerunHeadersInjector;
+/// # use re_protos::headers::RerunHeadersInjectorExt as _;
 /// let mut req = tonic::Request::new(()).with_entry_name("droid:sample2k").unwrap();
 /// ```
 pub trait RerunHeadersInjectorExt: Sized {
@@ -73,9 +73,9 @@ impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
 ///
 /// Example:
 /// ```
-/// # use re_protos::headers::RerunHeadersExtractor;
+/// # use re_protos::headers::RerunHeadersExtractorExt as _;
 /// # let req = tonic::Request::new(());
-/// let entry_id = RerunHeadersExtractor(&req).entry_id().unwrap();
+/// let entry_id = req.entry_id().unwrap();
 /// ```
 pub trait RerunHeadersExtractorExt {
     fn entry_id(&self) -> Result<Option<re_log_types::EntryId>, tonic::Status>;
