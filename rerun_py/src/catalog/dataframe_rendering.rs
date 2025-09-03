@@ -119,6 +119,8 @@ impl PyRerunHtmlTable {
     ) -> PyResult<String> {
         let batch_opts = RecordBatchFormatOpts::default();
 
+        println!("Somewhere deep in rust… but html");
+
         let tables = batches
             .into_iter()
             .map(|batch| RecordBatch::from_pyarrow_bound(&batch))
@@ -157,6 +159,8 @@ impl PyRerunHtmlTable {
         table_uuid: &str,
     ) -> PyResult<String> {
         let batch_opts = RecordBatchFormatOpts::default();
+
+        println!("Somewhere deep in rust…");
 
         let mut tables = batches
             .into_iter()
