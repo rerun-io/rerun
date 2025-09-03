@@ -124,10 +124,11 @@ cpp = ["base", "cpp"]
 # Just the deps for running snippet comparisons.
 wheel-test-min = [
   "base",
-  "wheel-test",
-  "wheel-build",
+  "cpp",
   "py-test-deps",
   "python-pypi",
+  "wheel-build",
+  "wheel-test",
 ]
 
 # The full deps for running all examples
