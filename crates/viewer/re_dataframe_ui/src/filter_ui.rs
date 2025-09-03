@@ -197,7 +197,9 @@ impl Filter {
         }
 
         let popup_response = popup.show(|ui| {
-            let action = self.operation.popup_ui(ui, popup_was_closed);
+            let action = self
+                .operation
+                .popup_ui(ui, self.column_name.as_ref(), popup_was_closed);
 
             // Ensure we close the popup if the popup ui decided on an action.
             if action != FilterUiAction::None {
@@ -277,14 +279,55 @@ impl SyntaxHighlighting for FilterOperation {
     }
 }
 
+// TODO(ab): this is rather simplistic for now. This might turn into a widget that allows the
+// user to change the current operator.
+struct PopupTopText<'a> {
+    column_name: &'a str,
+    operator_text: &'a str,
+}
+
+impl SyntaxHighlighting for PopupTopText<'_> {
+    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+        let tokens = re_ui::design_tokens_of_visuals(&style.visuals);
+
+        let normal_text_format = egui::TextFormat::simple(
+            egui::TextStyle::Body.resolve(style),
+            egui::Color32::PLACEHOLDER,
+        );
+        let operator_text_format = egui::TextFormat::simple(
+            egui::TextStyle::Body.resolve(style),
+            tokens.table_filter_operator_text_color,
+        );
+
+        job.append(
+            &format!("{} ", self.column_name),
+            0.0,
+            normal_text_format.clone(),
+        );
+        job.append(self.operator_text, 0.0, operator_text_format);
+    }
+}
+
 impl FilterOperation {
     /// Returns true if the filter must be committed.
-    fn popup_ui(&mut self, ui: &mut egui::Ui, popup_just_opened: bool) -> FilterUiAction {
+    fn popup_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        column_name: &str,
+        popup_just_opened: bool,
+    ) -> FilterUiAction {
         let mut action = FilterUiAction::None;
+
+        let top_text = SyntaxHighlightedBuilder::new(ui.style())
+            .append(&PopupTopText {
+                column_name,
+                operator_text: self.operator_text(),
+            })
+            .into_widget_text();
 
         match self {
             Self::StringContains(query) => {
-                ui.label("contains");
+                ui.label(top_text);
                 let response = ui.text_edit_singleline(query);
                 if popup_just_opened {
                     response.request_focus();
@@ -304,7 +347,7 @@ impl FilterOperation {
             }
 
             Self::BooleanEquals(query) => {
-                ui.label("is");
+                ui.label(top_text);
                 if ui.re_radio_value(query, true, "true").clicked()
                     || ui.re_radio_value(query, false, "false").clicked()
                 {
@@ -398,7 +441,7 @@ mod tests {
                 .build_ui(|ui| {
                     re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                    let _res = filter_op.popup_ui(ui, true);
+                    let _res = filter_op.popup_ui(ui, "column:name", true);
                 });
 
             harness.run();
