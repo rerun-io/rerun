@@ -15970,7 +15970,7 @@ packages:
 - pypi: ./examples/python/controlnet
   name: controlnet
   version: 0.1.0
-  sha256: 72444415608fbfa92bd2e3391653572e7d1e8645b8269192f3394367fdb1f1ce
+  sha256: 30af0136604c6c5d1accedd7e3e6ce71c9ef1b39e84c0ecf3c4629fa47d5dc63
   requires_dist:
   - accelerate
   - opencv-python
@@ -15980,7 +15980,7 @@ packages:
   - torch==2.8.0
   - transformers
   - rerun-sdk
-  requires_python: '>=3.9'
+  requires_python: '>=3.10'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/26/f8/a81170a816679fca9ccd907b801992acfc03c33f952440421c921af2cc57/cryptography-38.0.4-cp36-abi3-manylinux_2_28_x86_64.whl
   name: cryptography

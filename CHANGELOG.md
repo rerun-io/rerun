@@ -4,7 +4,7 @@
 
 #### Deprecations
 
-- Python 3.9 has been deprecated.
+- Python 3.9 has been deprecated and will be removed in 0.26.
 
 
 ## [0.24.1](https://github.com/rerun-io/rerun/compare/0.24.0...0.24.1) - 2025-08-07 - Bug fixes

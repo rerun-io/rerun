@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools
 import random
 import sys
+import warnings
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import numpy as np
@@ -10,9 +11,15 @@ import numpy as np
 __version__ = "0.25.0-alpha.1+dev"
 __version_info__ = (0, 25, 0, "alpha.1")
 
+if sys.version_info < (3, 10):
+    warnings.warn(
+        "Python 3.9 is past EOL (https://devguide.python.org/versions/). Rerun version 0.26 will drop support/testing of Python 3.9.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
-if sys.version_info < (3, 10):  # noqa: UP036
-    raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
+if sys.version_info < (3, 9):  # noqa: UP036
+    raise RuntimeError("Rerun SDK requires Python 3.9 or later.")
 
 
 # =====================================
