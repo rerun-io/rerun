@@ -27,7 +27,8 @@ DATAFUSION_MAJOR_VERSION_COMPATIBILITY_SETS = [
 
 
 def _are_datafusion_versions_compatible(v1: int, v2: int) -> bool:
-    """Determine compatibility between two DataFusion versions.
+    """
+    Determine compatibility between two DataFusion versions.
 
     In some rare cases, we may need to have a mismatch, e.g. in some deployed Rerun Cloud docker images. So we have a
     carefully crafted compatibility allowlist for known-to-be-ffi-compatible DataFusion releases.
