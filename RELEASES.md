@@ -48,7 +48,7 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
 
 # Release process
 
-### 1. Check the root [`Cargo.toml`](/Cargo.toml) to see what version we are currently on.
+### 1. Check the root [`Cargo.toml`](./Cargo.toml) to see what version we are currently on.
 
 ### 2. Create a release branch.
 
@@ -86,7 +86,7 @@ Where `z` is the previous patch number.
 Note that the `cherry-pick` will fail if there are no additional `docs-latest` commits to include,
 which is fine.
 
-### 4. Update [`CHANGELOG.md`](/CHANGELOG.md) and clean ups.
+### 4. Update [`CHANGELOG.md`](./CHANGELOG.md) and clean ups.
 
 Update the change log. It should include:
   - A one-line summary of the release
