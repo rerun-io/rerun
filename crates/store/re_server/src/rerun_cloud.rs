@@ -358,16 +358,16 @@ impl RerunCloudService for RerunCloudHandler {
         tonic::Response<re_protos::cloud::v1alpha1::RegisterWithDatasetResponse>,
         tonic::Status,
     > {
-        let re_protos::cloud::v1alpha1::ext::RegisterWithDatasetRequest {
-            dataset_id,
-            data_sources,
-            on_duplicate,
-        } = request.into_inner().try_into()?;
-
         let mut store = self.store.write().await;
+        let dataset_id = get_entry_id_from_headers(&store, &request)?;
         let dataset = store.dataset_mut(dataset_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Dataset with ID {dataset_id} not found"))
         })?;
+
+        let re_protos::cloud::v1alpha1::ext::RegisterWithDatasetRequest {
+            data_sources,
+            on_duplicate,
+        } = request.into_inner().try_into()?;
 
         let mut partition_ids: Vec<String> = vec![];
         let mut partition_layers: Vec<String> = vec![];

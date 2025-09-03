@@ -206,9 +206,11 @@ enum DataSourceKind {
 }
 
 message RegisterWithDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
   repeated DataSource data_sources = 2;
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message RegisterWithDatasetResponse {

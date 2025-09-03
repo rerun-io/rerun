@@ -151,8 +151,7 @@ where
         let response: ReadDatasetEntryResponse = self
             .inner()
             .read_dataset_entry(
-                tonic::Request::new(ReadDatasetEntryRequest {})
-                    .with_entry_id(entry_id.to_string())?,
+                tonic::Request::new(ReadDatasetEntryRequest {}).with_entry_id(entry_id)?,
             )
             .await?
             .into_inner()
@@ -254,16 +253,15 @@ where
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<Vec<RegisterWithDatasetTaskDescriptor>, StreamError> {
+        let req = tonic::Request::new(RegisterWithDatasetRequest {
+            data_sources,
+            on_duplicate,
+        })
+        .with_entry_id(dataset_id)?;
+
         let response = self
             .inner()
-            .register_with_dataset(tonic::Request::new(
-                RegisterWithDatasetRequest {
-                    dataset_id,
-                    data_sources,
-                    on_duplicate,
-                }
-                .into(),
-            ))
+            .register_with_dataset(req.map(Into::into))
             .await?
             .into_inner()
             .data

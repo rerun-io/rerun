@@ -75,8 +75,6 @@ impl ::prost::Name for DataSource {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterWithDatasetRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(message, repeated, tag = "2")]
     pub data_sources: ::prost::alloc::vec::Vec<DataSource>,
     #[prost(

@@ -79,7 +79,6 @@ impl TryFrom<crate::cloud::v1alpha1::GetDatasetSchemaRequest> for re_log_types::
 
 #[derive(Debug)]
 pub struct RegisterWithDatasetRequest {
-    pub dataset_id: EntryId,
     pub data_sources: Vec<DataSource>,
     pub on_duplicate: IfDuplicateBehavior,
 }
@@ -91,17 +90,11 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterWithDatasetRequest> for RegisterWit
         value: crate::cloud::v1alpha1::RegisterWithDatasetRequest,
     ) -> Result<Self, Self::Error> {
         let crate::cloud::v1alpha1::RegisterWithDatasetRequest {
-            dataset_id,
             data_sources,
             on_duplicate,
         } = value;
+
         Ok(Self {
-            dataset_id: dataset_id
-                .ok_or(missing_field!(
-                    crate::cloud::v1alpha1::RegisterWithDatasetRequest,
-                    "dataset_id"
-                ))?
-                .try_into()?,
             data_sources: data_sources
                 .into_iter()
                 .map(TryInto::try_into)
@@ -114,7 +107,6 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterWithDatasetRequest> for RegisterWit
 impl From<RegisterWithDatasetRequest> for crate::cloud::v1alpha1::RegisterWithDatasetRequest {
     fn from(value: RegisterWithDatasetRequest) -> Self {
         Self {
-            dataset_id: Some(value.dataset_id.into()),
             data_sources: value.data_sources.into_iter().map(Into::into).collect(),
             on_duplicate: crate::common::v1alpha1::IfDuplicateBehavior::from(value.on_duplicate)
                 as i32,

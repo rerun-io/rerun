@@ -20,7 +20,7 @@ pub const RERUN_HTTP_HEADER_ENTRY_NAME: &str = "x-rerun-entry-name-bin";
 /// let mut req = tonic::Request::new(()).with_entry_name("droid:sample2k").unwrap();
 /// ```
 pub trait RerunHeadersInjectorExt: Sized {
-    fn with_entry_id(self, entry_id: impl AsRef<str>) -> Result<Self, tonic::Status>;
+    fn with_entry_id(self, entry_id: re_log_types::EntryId) -> Result<Self, tonic::Status>;
 
     fn with_entry_name(self, entry_name: impl AsRef<str>) -> Result<Self, tonic::Status>;
 
@@ -28,10 +28,10 @@ pub trait RerunHeadersInjectorExt: Sized {
 }
 
 impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
-    fn with_entry_id(mut self, entry_id: impl AsRef<str>) -> Result<Self, tonic::Status> {
+    fn with_entry_id(mut self, entry_id: re_log_types::EntryId) -> Result<Self, tonic::Status> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_ID;
 
-        let entry_id = entry_id.as_ref();
+        let entry_id = entry_id.to_string();
         let entry_id = entry_id.parse().map_err(|err| {
             tonic::Status::invalid_argument(format!(
                 "'{entry_id}' is not a valid value for '{HEADER}': {err:#}"

@@ -53,7 +53,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
     #[instrument(skip(self), err)]
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
         let req = tonic::Request::new(GetPartitionTableSchemaRequest {})
-            .with_entry_id(self.dataset_id.to_string())
+            .with_entry_id(self.dataset_id)
             .map_err(|err| DataFusionError::External(Box::new(err)))?;
 
         let mut client = self.client.clone();
