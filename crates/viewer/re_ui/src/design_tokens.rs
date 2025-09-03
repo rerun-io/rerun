@@ -58,6 +58,7 @@ pub struct DesignTokens {
     pub large_button_icon_size: Vec2,
     pub large_button_corner_radius: f32,
     pub small_icon_size: Vec2,
+    pub modal_button_width: f32,
 
     // All these colors can be found in dark_theme.ron and light_theme.ron:
     pub top_bar_color: Color32,
@@ -243,6 +244,7 @@ impl DesignTokens {
             large_button_icon_size: Vec2::splat(get_scalar("large_button_icon_size")?),
             large_button_corner_radius: get_scalar("large_button_corner_radius")?,
             small_icon_size: Vec2::splat(get_scalar("small_icon_size")?),
+            modal_button_width: get_scalar("modal_button_width")?,
 
             top_bar_color: get_color("top_bar_color"),
             bottom_bar_color: get_color("bottom_bar_color"),

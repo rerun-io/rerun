@@ -174,8 +174,13 @@ impl ServerModal {
                 };
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let button_width = ui.tokens().modal_button_width;
+
                     if let (Ok(origin), Ok(token)) = (origin, token) {
-                        if ui.button(save_text).clicked()
+                        let save_button_response = ui.add(
+                            egui::Button::new(save_text).min_size(egui::vec2(button_width, 0.0)),
+                        );
+                        if save_button_response.clicked()
                             || ui.input(|i| i.key_pressed(egui::Key::Enter))
                         {
                             ui.close();
@@ -196,7 +201,9 @@ impl ServerModal {
                         ui.add_enabled(false, egui::Button::new(save_text));
                     }
 
-                    if ui.button("Cancel").clicked() {
+                    let cancel_button_response =
+                        ui.add(egui::Button::new("Cancel").min_size(egui::vec2(button_width, 0.0)));
+                    if cancel_button_response.clicked() {
                         ui.close();
                     }
                 });
