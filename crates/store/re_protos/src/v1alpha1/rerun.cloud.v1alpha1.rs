@@ -414,8 +414,6 @@ impl ::prost::Name for BTreeIndex {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SearchDatasetRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Index column that is queried
     #[prost(message, optional, tag = "2")]
     pub column: ::core::option::Option<IndexColumn>,

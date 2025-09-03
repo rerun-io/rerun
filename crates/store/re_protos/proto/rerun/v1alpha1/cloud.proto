@@ -345,8 +345,6 @@ message BTreeIndex {
 /* Queries */
 
 message SearchDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // Index column that is queried
   IndexColumn column = 2;
 
@@ -361,6 +359,9 @@ message SearchDatasetRequest {
 
   // Scan parameters
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message SearchDatasetResponse {

@@ -643,7 +643,6 @@ impl PyDatasetEntry {
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
         let request = SearchDatasetRequest {
-            dataset_id: Some(dataset_id.into()),
             column: Some(component_descriptor.0.into()),
             properties: Some(IndexQueryProperties {
                 props: Some(
@@ -661,7 +660,7 @@ impl PyDatasetEntry {
         };
 
         let provider = wait_for_future(self_.py(), async move {
-            SearchResultsTableProvider::new(connection.client().await?, request)
+            SearchResultsTableProvider::new(connection.client().await?, dataset_id, request)
                 .map_err(to_py_err)?
                 .into_provider()
                 .await
@@ -696,7 +695,6 @@ impl PyDatasetEntry {
         let query = query.to_record_batch()?;
 
         let request = SearchDatasetRequest {
-            dataset_id: Some(dataset_id.into()),
             column: Some(component_descriptor.0.into()),
             properties: Some(IndexQueryProperties {
                 props: Some(index_query_properties::Props::Vector(VectorIndexQuery {
@@ -712,7 +710,7 @@ impl PyDatasetEntry {
         };
 
         let provider = wait_for_future(self_.py(), async move {
-            SearchResultsTableProvider::new(connection.client().await?, request)
+            SearchResultsTableProvider::new(connection.client().await?, dataset_id, request)
                 .map_err(to_py_err)?
                 .into_provider()
                 .await
