@@ -28,3 +28,9 @@ See [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archetypes/
  * 🐍 [Python API docs for `McapMessage`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.McapMessage)
  * 🦀 [Rust API docs for `McapMessage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapMessage.html?speculative-link)
 
+## Example
+
+### Simple MCAP message
+
+snippet: archetypes/mcap_message_simple
+

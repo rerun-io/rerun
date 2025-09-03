@@ -9,12 +9,11 @@ int main() {
 
     // Example binary message data (could be from a ROS message, protobuf, etc.)
     // This represents a simple sensor reading encoded as bytes
-    const std::string sensor_data = "sensor_reading: temperature=23.5, humidity=65.2, timestamp=1743465600";
+    const std::string sensor_data =
+        "sensor_reading: temperature=23.5, humidity=65.2, timestamp=1743465600";
 
     rec.log(
         "mcap/messages/sensor_reading",
-        rerun::archetypes::McapMessage(
-            rerun::components::Blob(sensor_data)
-        )
+        rerun::archetypes::McapMessage(rerun::components::Blob(sensor_data))
     );
 }
