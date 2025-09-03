@@ -24,17 +24,14 @@ impl OpenUrlModal {
             || ModalWrapper::new("Open from URL").max_width(400.0),
             |ui| {
                 ui.horizontal(|ui| {
-                    ui.label(
-                        egui::RichText::new("Paste a URL below.")
-                            .color(ui.visuals().strong_text_color()),
-                    );
+                    ui.strong("Paste a URL below.");
 
                     // Repeat shortcut on the right to remind users of how to open this modal quickly.
                     let shortcut_text = UICommand::OpenUrl
                         .formatted_kb_shortcut(ui.ctx())
                         .unwrap_or_default();
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.label(egui::RichText::new(shortcut_text).weak());
+                        ui.weak(shortcut_text);
                     });
                 });
 
@@ -77,7 +74,7 @@ impl OpenUrlModal {
                 };
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let button_width = 50.0; // TODO(andreas): can we standardize this in the modals?
+                    let button_width = ui.tokens().modal_button_width;
 
                     let open_response = ui.add_enabled(
                         can_import,
