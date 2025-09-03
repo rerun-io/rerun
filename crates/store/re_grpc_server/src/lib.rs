@@ -555,7 +555,7 @@ impl EventLoop {
     ) {
         channel
             .send((
-                // static messages come first
+                // persistent messages come first
                 self.persistent_message_queue
                     .iter()
                     .cloned()
@@ -1271,7 +1271,7 @@ mod tests {
             }
         }
 
-        // The GC runs _before_ a message is stored, so we should see the static message, and the last message sent.
+        // The GC runs _before_ a message is stored, so we should see the persistent message, and the last message sent.
         assert_eq!(actual.len(), 2);
         assert_eq!(&actual[0], &messages[0]);
         assert_eq!(&actual[1], messages.last().unwrap());
