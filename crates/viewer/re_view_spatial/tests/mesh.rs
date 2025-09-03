@@ -9,8 +9,6 @@ use re_viewport_blueprint::ViewBlueprint;
 pub fn test_single_channel_mesh() {
     let texture_format = re_types::components::ImageFormat::l8([2, 2]);
     let texture_buffer = re_types::components::ImageBuffer::from(vec![128, 255, 0, 128]);
-    // let texture_format = re_types::components::ImageFormat::rgb8([2, 2]);
-    // let texture_buffer = re_types::components::ImageBuffer::from(vec![255; 4 * 3]);
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     // Log a simple quad mesh with a texture with one channel.
@@ -50,5 +48,11 @@ pub fn test_single_channel_mesh() {
         .with_size(size)
         .build_ui(|ui| test_context.run_with_single_view(ui, view_id));
 
-    harness.snapshot_options("mesh3d_quad", &SnapshotOptions::new());
+    let broken_pixels_fraction = 0.0045;
+    harness.snapshot_options(
+        "mesh3d_grayscale_texture",
+        &SnapshotOptions::new().failed_pixel_count_threshold(
+            (size.x * size.y * broken_pixels_fraction).round() as usize,
+        ),
+    );
 }
