@@ -33,7 +33,7 @@ This page lists all built-in archetypes.
 * [`McapChannel`](archetypes/mcap_channel.md): A channel within an MCAP file that defines how messages are structured and encoded.
 * [`McapMessage`](archetypes/mcap_message.md): The binary payload of a single MCAP message, without metadata.
 * [`McapSchema`](archetypes/mcap_schema.md): A schema definition that describes the structure of messages in an MCAP file.
-* [`McapStatistics`](archetypes/mcap_statistics.md): Recording-level statistics about an MCAP file, logged as a RecordingProperty.
+* [`McapStatistics`](archetypes/mcap_statistics.md): Recording-level statistics about an MCAP file, logged as a part of [`archetypes.RecordingInfo`](https://rerun.io/docs/reference/types/archetypes/recording_info).
 
 ## Plotting
 

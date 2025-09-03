@@ -24,7 +24,7 @@ __all__ = ["McapStatistics"]
 @define(str=False, repr=False, init=False)
 class McapStatistics(Archetype):
     """
-    **Archetype**: Recording-level statistics about an MCAP file, logged as a RecordingProperty.
+    **Archetype**: Recording-level statistics about an MCAP file, logged as a part of [`archetypes.RecordingInfo`][rerun.archetypes.RecordingInfo].
 
     This archetype contains summary information about an entire MCAP recording, including
     counts of messages, schemas, channels, and other records, as well as timing information

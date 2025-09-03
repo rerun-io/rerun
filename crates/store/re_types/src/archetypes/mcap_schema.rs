@@ -42,7 +42,7 @@ pub struct McapSchema {
     /// Human-readable name identifying this schema.
     ///
     /// Schema names typically describe the message type or data structure
-    /// (e.g., "geometry_msgs/msg/Twist", "sensor_msgs/msg/Image", "MyCustomMessage").
+    /// (e.g., `"geometry_msgs/msg/Twist"`, `"sensor_msgs/msg/Image"`, `"MyCustomMessage"`).
     pub name: Option<SerializedComponentBatch>,
 
     /// The schema definition format used to describe the message structure.
@@ -351,7 +351,7 @@ impl McapSchema {
     /// Human-readable name identifying this schema.
     ///
     /// Schema names typically describe the message type or data structure
-    /// (e.g., "geometry_msgs/msg/Twist", "sensor_msgs/msg/Image", "MyCustomMessage").
+    /// (e.g., `"geometry_msgs/msg/Twist"`, `"sensor_msgs/msg/Image"`, `"MyCustomMessage"`).
     #[inline]
     pub fn with_name(mut self, name: impl Into<crate::components::Text>) -> Self {
         self.name = try_serialize_field(Self::descriptor_name(), [name]);
