@@ -48,24 +48,6 @@ impl From<ScanPartitionTableRequest> for crate::cloud::v1alpha1::ScanPartitionTa
     }
 }
 
-// --- GetDatasetSchemaRequest ---
-
-impl TryFrom<crate::cloud::v1alpha1::GetDatasetSchemaRequest> for re_log_types::EntryId {
-    type Error = TypeConversionError;
-
-    fn try_from(
-        value: crate::cloud::v1alpha1::GetDatasetSchemaRequest,
-    ) -> Result<Self, Self::Error> {
-        Ok(value
-            .dataset_id
-            .ok_or(missing_field!(
-                crate::cloud::v1alpha1::GetDatasetSchemaRequest,
-                "dataset_id"
-            ))?
-            .try_into()?)
-    }
-}
-
 // --- RegisterWithDatasetRequest ---
 
 #[derive(Debug)]

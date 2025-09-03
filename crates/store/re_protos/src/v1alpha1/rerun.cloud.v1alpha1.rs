@@ -194,10 +194,7 @@ impl ::prost::Name for ScanPartitionTableResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct GetDatasetSchemaRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-}
+pub struct GetDatasetSchemaRequest {}
 impl ::prost::Name for GetDatasetSchemaRequest {
     const NAME: &'static str = "GetDatasetSchemaRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";

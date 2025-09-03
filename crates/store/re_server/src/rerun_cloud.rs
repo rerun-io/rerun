@@ -564,9 +564,9 @@ impl RerunCloudService for RerunCloudHandler {
         tonic::Response<re_protos::cloud::v1alpha1::GetDatasetSchemaResponse>,
         tonic::Status,
     > {
-        let entry_id = request.into_inner().try_into()?;
-
         let store = self.store.read().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+
         let dataset = store.dataset(entry_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
         })?;
