@@ -280,7 +280,7 @@ jobs:
       - name: Full Link Checker
         #if: ${{ inputs.CHANNEL == 'nightly' }}
         id: lychee
-        uses: lycheeverse/lychee-action@v1.10.0
+        uses: lycheeverse/lychee-action@v2.6.1
         with:
           fail: true
           lycheeVersion: "0.20.1"
