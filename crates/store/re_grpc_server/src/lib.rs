@@ -500,6 +500,19 @@ struct MessageBuffer {
     /// First to be garbage collected if we run into the memory limit.
     disposable: MsgQueue,
 
+    /// "Static" (non-temporal) data messages.
+    ///
+    /// Our chunk-store already keeps static messages forever,
+    /// and it makes sense: you usually log them once,
+    /// and then expect them to stay around.
+    ///
+    /// We keep the static messages for as long as we can, but if [`Self::disposable`]
+    /// is empty and we're still over our memory budget, we start throwing
+    /// away the oldest messages from here too.
+    /// This is because some users use static logging for camera images,
+    /// which adds up very quickly.
+    static_: MsgQueue,
+
     /// These are never garbage collected.
     persistent: MsgQueue,
 }
@@ -508,24 +521,25 @@ impl MessageBuffer {
     fn size_bytes(&self) -> u64 {
         let Self {
             disposable,
+            static_,
             persistent,
         } = self;
-        disposable.size_bytes + persistent.size_bytes
+        disposable.size_bytes + static_.size_bytes + persistent.size_bytes
     }
 
     fn all(&self) -> Vec<LogOrTableMsgProto> {
         re_tracing::profile_function!();
 
-        // persistent messages come first
         let Self {
             disposable,
+            static_,
             persistent,
         } = self;
 
-        persistent
-            .iter()
+        // NOTE: the order here is important!
+        // TODO(#6523): make this behavior configurable
+        itertools::chain!(persistent.iter(), static_.iter(), disposable.iter(),)
             .cloned()
-            .chain(disposable.iter().cloned())
             .collect()
     }
 
@@ -560,6 +574,8 @@ impl MessageBuffer {
                 if is_blueprint {
                     // Persist blueprint messages forever.
                     self.persistent.push_back(msg.into());
+                } else if inner.is_static == Some(true) {
+                    self.static_.push_back(msg.into());
                 } else {
                     // Recording data
                     self.disposable.push_back(msg.into());
@@ -587,6 +603,16 @@ impl MessageBuffer {
             messages_dropped += 1;
             if self.size_bytes() < max_bytes {
                 break;
+            }
+        }
+
+        if max_bytes < self.size_bytes() {
+            re_log::info_once!("Starting to drop static messages too");
+            while self.static_.pop_front().is_some() {
+                messages_dropped += 1;
+                if self.size_bytes() < max_bytes {
+                    break;
+                }
             }
         }
 
@@ -697,8 +723,6 @@ impl EventLoop {
     }
 
     fn gc_if_using_too_much_ram(&mut self) {
-        re_tracing::profile_function!();
-
         let Some(max_bytes) = self.server_memory_limit.max_bytes else {
             // Unlimited memory!
             return;
