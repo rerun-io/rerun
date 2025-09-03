@@ -31,3 +31,9 @@ See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archet
  * 🐍 [Python API docs for `McapSchema`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.McapSchema)
  * 🦀 [Rust API docs for `McapSchema`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapSchema.html?speculative-link)
 
+## Example
+
+### Simple MCAP schema
+
+snippet: archetypes/mcap_schema_simple
+

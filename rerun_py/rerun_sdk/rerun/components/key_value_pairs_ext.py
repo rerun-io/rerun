@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import pyarrow as pa
 
 if TYPE_CHECKING:
+    from ..datatypes import Utf8PairLike
     from . import KeyValuePairsArrayLike
 
 
@@ -16,7 +17,7 @@ class KeyValuePairsExt:
     """Extension for [KeyValuePairs][rerun.components.KeyValuePairs]."""
 
     @staticmethod
-    def pairs__field_converter_override(data) -> list:
+    def pairs__field_converter_override(data: Sequence[Utf8PairLike]) -> list[Utf8PairLike]:
         if isinstance(data, dict):
             return [_utf8_pair_converter((k, v)) for k, v in data.items()]
         elif hasattr(data, "__iter__") and not isinstance(data, str):
@@ -31,11 +32,7 @@ class KeyValuePairsExt:
                     pairs.append(_utf8_pair_converter(item))
             return pairs
         else:
-            # For non-iterable data, try to return as-is or convert
-            if hasattr(data, "pairs") and not isinstance(data, str):
-                return data.pairs
-            # Return empty list for invalid input
-            return []
+            raise ValueError(f"Cannot convert {type(data)} to `KeyValuePairs`")
 
     @staticmethod
     def native_to_pa_array_override(data: KeyValuePairsArrayLike, data_type: pa.DataType) -> pa.Array:

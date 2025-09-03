@@ -11,6 +11,8 @@ namespace rerun.archetypes;
 /// See also [archetypes.McapChannel] for channels that reference these schemas,
 /// [archetypes.McapMessage] for the messages that conform to these schemas, and the
 /// [MCAP specification](https://mcap.dev/) for complete format details.
+///
+/// \example archetypes/mcap_schema_simple !api title="Simple MCAP schema"
 table McapSchema (
   "attr.docs.category": "MCAP",
   "attr.rerun.state": "unstable",
