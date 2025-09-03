@@ -66,9 +66,13 @@ impl OpenUrlModal {
                     }
                     // Our parse errors aren't terribly informative when you're just typing malformed links.
                     Err(_err) => {
-                        ui.error_label(
-                            "Can't open this link - it doesn't appear to be a valid URL.",
-                        );
+                        if self.url.is_empty() {
+                            ui.error_label("Please paste a valid URL.");
+                        } else {
+                            ui.error_label(
+                                "Can't open this link - it doesn't appear to be a valid URL.",
+                            );
+                        }
                         false
                     }
                 };
@@ -97,5 +101,41 @@ impl OpenUrlModal {
         );
 
         self.just_opened = false;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use parking_lot::Mutex;
+
+    use crate::ui::OpenUrlModal;
+
+    #[test]
+    fn test_open_url_modal() {
+        let mut modal = OpenUrlModal::default();
+        modal.open();
+
+        let url = Mutex::new(String::new());
+
+        let mut harness = egui_kittest::Harness::builder()
+            .with_size(egui::Vec2::new(450.0, 200.0))
+            .build_ui(|ui| {
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+
+                modal.url = url.lock().clone();
+                modal.ui(ui);
+            });
+
+        *url.lock() = String::new();
+        harness.run();
+        harness.snapshot("open_url_modal__no_url");
+
+        *url.lock() = "rerun://sandbox.redap.rerun.io:443/dataset/185998CF5EF38BF27f3e5ede1ca9a1a2?partition_id=ILIAD_5e938e3b_2023_07_28_10h_25m_47s".to_owned();
+        harness.run();
+        harness.snapshot("open_url_modal__valid_url");
+
+        *url.lock() = "The shovel was a ground breaking invention.".to_owned();
+        harness.run();
+        harness.snapshot("open_url_modal__invalid_url");
     }
 }
