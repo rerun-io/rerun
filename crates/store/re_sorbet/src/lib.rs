@@ -31,6 +31,8 @@ mod sorbet_columns;
 mod sorbet_schema;
 pub mod timestamp_metadata;
 
+use arrow::array::RecordBatch;
+
 pub use self::{
     chunk_batch::{ChunkBatch, MismatchedChunkSchemaError},
     chunk_columns::ChunkColumnDescriptors,
@@ -91,4 +93,13 @@ pub fn chunk_id_of_schema(
     } else {
         Err(SorbetError::MissingChunkId)
     }
+}
+
+/// If this is a [`ChunkBatch`]: does it contain static data?
+// TODO(#10343): remove this
+pub fn is_static_chunk(batch: &RecordBatch) -> Option<bool> {
+    re_tracing::profile_function!();
+    ChunkBatch::try_from(batch)
+        .ok()
+        .map(|chunk| chunk.is_static())
 }

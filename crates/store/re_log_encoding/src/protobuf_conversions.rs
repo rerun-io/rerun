@@ -190,14 +190,20 @@ pub fn arrow_msg_to_proto(
 ) -> Result<re_protos::log_msg::v1alpha1::ArrowMsg, crate::encoder::EncodeError> {
     re_tracing::profile_function!();
 
+    let re_log_types::ArrowMsg {
+        chunk_id,
+        batch,
+        on_release: _,
+    } = arrow_msg;
+
     use crate::codec::arrow::encode_arrow;
     use re_protos::log_msg::v1alpha1::ArrowMsg as ProtoArrowMsg;
 
-    let payload = encode_arrow(&arrow_msg.batch, compression)?;
+    let payload = encode_arrow(batch, compression)?;
 
     Ok(ProtoArrowMsg {
         store_id: Some(store_id.into()),
-        chunk_id: Some(arrow_msg.chunk_id.into()),
+        chunk_id: Some((*chunk_id).into()),
         compression: match compression {
             crate::Compression::Off => re_protos::log_msg::v1alpha1::Compression::None as i32,
             crate::Compression::LZ4 => re_protos::log_msg::v1alpha1::Compression::Lz4 as i32,
@@ -205,5 +211,6 @@ pub fn arrow_msg_to_proto(
         uncompressed_size: payload.uncompressed_size as i32,
         encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,
         payload: payload.data.into(),
+        is_static: re_sorbet::is_static_chunk(batch),
     })
 }

@@ -356,6 +356,7 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
             uncompressed_size,
             encoding: _,
             payload,
+            is_static: _,
         } = arrow_msg;
 
         let ipc_schema_size_bytes = {
