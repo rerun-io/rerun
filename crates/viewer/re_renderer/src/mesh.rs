@@ -233,8 +233,7 @@ pub(crate) mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct MaterialUniformBuffer {
         albedo_factor: wgpu_buffer_types::Vec4,
-        texture_format: u32,
-        row_padding: [f32; 4 - 1],
+        texture_format: wgpu_buffer_types::U32RowPadded,
         end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
     }
 
