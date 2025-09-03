@@ -126,6 +126,7 @@ impl MessageParser for LogMessageParser {
         let mut chunk_components: Vec<SerializedComponentColumn> =
             text_log.columns_of_unit_batches()?.collect();
 
+        // TODO(#11098): these should be part of the `TextLog` archetype instead
         chunk_components.extend([
             Self::create_metadata_column("file", file.finish()),
             Self::create_metadata_column("function", function.finish()),
