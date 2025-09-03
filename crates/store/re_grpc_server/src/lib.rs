@@ -46,7 +46,7 @@ pub const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
 // Channel capacity is completely arbitrary, e just want something large enough
 // to handle bursts of messages. This is roughly 16 MiB of `Msg` (excluding their contents).
 const MESSAGE_QUEUE_CAPACITY: usize =
-    (16 * 1024 * 1024 / std::mem::size_of::<Msg>()).next_power_of_two();
+    (16 * 1024 * 1024 / std::mem::size_of::<LogOrTableMsgProto>()).next_power_of_two();
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]
@@ -412,7 +412,7 @@ enum Event {
     /// New client connected, requesting full history and subscribing to new messages.
     NewClient(
         oneshot::Sender<(
-            Vec<Msg>,
+            Vec<LogOrTableMsgProto>,
             broadcast::Receiver<LogMsgProto>,
             broadcast::Receiver<TableMsgProto>,
         )>,
@@ -432,12 +432,12 @@ struct TableMsgProto {
 }
 
 #[derive(Clone)]
-enum Msg {
+enum LogOrTableMsgProto {
     LogMsg(LogMsgProto),
     Table(TableMsgProto),
 }
 
-impl Msg {
+impl LogOrTableMsgProto {
     fn total_size_bytes(&self) -> u64 {
         match self {
             Self::LogMsg(log_msg) => log_msg.total_size_bytes(),
@@ -446,13 +446,13 @@ impl Msg {
     }
 }
 
-impl From<LogMsgProto> for Msg {
+impl From<LogMsgProto> for LogOrTableMsgProto {
     fn from(value: LogMsgProto) -> Self {
         Self::LogMsg(value)
     }
 }
 
-impl From<TableMsgProto> for Msg {
+impl From<TableMsgProto> for LogOrTableMsgProto {
     fn from(value: TableMsgProto) -> Self {
         Self::Table(value)
     }
@@ -463,23 +463,23 @@ impl From<TableMsgProto> for Msg {
 #[derive(Default)]
 struct MsgQueue {
     /// Messages stored in order of arrival, and garbage collected if the server hits the memory limit.
-    queue: VecDeque<Msg>,
+    queue: VecDeque<LogOrTableMsgProto>,
 
     /// Total size of [`Self::queue`] in bytes.
     size_bytes: u64,
 }
 
 impl MsgQueue {
-    pub fn iter(&self) -> impl Iterator<Item = &Msg> {
+    pub fn iter(&self) -> impl Iterator<Item = &LogOrTableMsgProto> {
         self.queue.iter()
     }
 
-    pub fn push_back(&mut self, msg: Msg) {
+    pub fn push_back(&mut self, msg: LogOrTableMsgProto) {
         self.size_bytes += msg.total_size_bytes();
         self.queue.push_back(msg);
     }
 
-    pub fn pop_front(&mut self) -> Option<Msg> {
+    pub fn pop_front(&mut self) -> Option<LogOrTableMsgProto> {
         if let Some(msg) = self.queue.pop_front() {
             self.size_bytes -= msg.total_size_bytes();
             Some(msg)
@@ -548,7 +548,7 @@ impl EventLoop {
     fn handle_new_client(
         &self,
         channel: oneshot::Sender<(
-            Vec<Msg>,
+            Vec<LogOrTableMsgProto>,
             broadcast::Receiver<LogMsgProto>,
             broadcast::Receiver<TableMsgProto>,
         )>,
@@ -559,7 +559,7 @@ impl EventLoop {
                 self.persistent_message_queue
                     .iter()
                     .cloned()
-                    .map(Msg::from)
+                    .map(LogOrTableMsgProto::from)
                     .chain(self.ordered_message_queue.iter().cloned())
                     .collect(),
                 self.broadcast_log_tx.subscribe(),
@@ -622,7 +622,8 @@ impl EventLoop {
 
         self.gc_if_using_too_much_ram();
 
-        self.ordered_message_queue.push_back(Msg::Table(table));
+        self.ordered_message_queue
+            .push_back(LogOrTableMsgProto::Table(table));
     }
 
     fn is_history_disabled(&self) -> bool {
@@ -747,7 +748,7 @@ impl MessageProxy {
             history
                 .into_iter()
                 .filter_map(|log_msg| {
-                    if let Msg::LogMsg(log_msg) = log_msg {
+                    if let LogOrTableMsgProto::LogMsg(log_msg) = log_msg {
                         Some(ReadMessagesResponse {
                             log_msg: Some(log_msg),
                         })
@@ -789,7 +790,7 @@ impl MessageProxy {
             history
                 .into_iter()
                 .filter_map(|table| {
-                    if let Msg::Table(table) = table {
+                    if let LogOrTableMsgProto::Table(table) = table {
                         Some(ReadTablesResponse {
                             id: Some(table.id),
                             data: Some(table.data),
