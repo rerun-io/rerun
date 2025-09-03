@@ -491,6 +491,116 @@ impl MsgQueue {
 
 // -----------------------------------------------------------------------------------
 
+/// Contains all messages received so far,
+/// minus some that are garbage collected when needed.
+#[derive(Default)]
+struct MessageBuffer {
+    /// Normal data messages.
+    ///
+    /// First to be garbage collected if we run into the memory limit.
+    disposable: MsgQueue,
+
+    /// These are never garbage collected.
+    persistent: MsgQueue,
+}
+
+impl MessageBuffer {
+    fn size_bytes(&self) -> u64 {
+        let Self {
+            disposable,
+            persistent,
+        } = self;
+        disposable.size_bytes + persistent.size_bytes
+    }
+
+    fn all(&self) -> Vec<LogOrTableMsgProto> {
+        re_tracing::profile_function!();
+
+        // persistent messages come first
+        let Self {
+            disposable,
+            persistent,
+        } = self;
+
+        persistent
+            .iter()
+            .cloned()
+            .chain(disposable.iter().cloned())
+            .collect()
+    }
+
+    fn add_table(&mut self, table: TableMsgProto) {
+        self.disposable.push_back(table.into());
+    }
+
+    fn add_log_msg(&mut self, msg: LogMsgProto) {
+        let Some(inner) = &msg.msg else {
+            re_log::error!(
+                "{}",
+                re_protos::missing_field!(re_protos::log_msg::v1alpha1::LogMsg, "msg")
+            );
+            return;
+        };
+
+        // We put store info, blueprint data, and blueprint activation commands
+        // in a separate queue that does *not* get garbage collected.
+        use re_protos::log_msg::v1alpha1::log_msg::Msg;
+        match inner {
+            // Store info, blueprint activation commands
+            Msg::SetStoreInfo(..) | Msg::BlueprintActivationCommand(..) => {
+                self.persistent.push_back(msg.into());
+            }
+
+            Msg::ArrowMsg(inner) => {
+                let is_blueprint = inner
+                    .store_id
+                    .as_ref()
+                    .is_some_and(|id| id.kind() == StoreKindProto::Blueprint);
+
+                if is_blueprint {
+                    // Persist blueprint messages forever.
+                    self.persistent.push_back(msg.into());
+                } else {
+                    // Recording data
+                    self.disposable.push_back(msg.into());
+                }
+            }
+        }
+    }
+
+    pub fn gc(&mut self, max_bytes: u64) {
+        if self.size_bytes() <= max_bytes {
+            // We're not using too much memory.
+            return;
+        }
+
+        re_tracing::profile_scope!("Drop messages");
+        re_log::info_once!(
+            "Memory limit ({}) exceeded. Dropping old log messages from the gRPC proxy server. Clients connecting after this will not see the full history.",
+            re_format::format_bytes(max_bytes as _)
+        );
+
+        let start_size = self.size_bytes();
+        let mut messages_dropped = 0;
+
+        while self.disposable.pop_front().is_some() {
+            messages_dropped += 1;
+            if self.size_bytes() < max_bytes {
+                break;
+            }
+        }
+
+        let bytes_dropped = start_size - self.size_bytes();
+
+        re_log::trace!(
+            "Dropped {} bytes in {messages_dropped} message(s)",
+            re_format::format_bytes(bytes_dropped as _)
+        );
+    }
+}
+
+// -----------------------------------------------------------------------------------
+
 /// Main event loop for the server, which runs in its own task.
 ///
 /// Handles message history, and broadcasts messages to clients.
@@ -506,12 +616,7 @@ struct EventLoop {
     /// Channel for incoming events.
     event_rx: mpsc::Receiver<Event>,
 
-    /// Messages stored in order of arrival, and garbage collected if the server hits the memory limit.
-    ordered_message_queue: MsgQueue,
-
-    /// Messages potentially out of order with the rest of the message stream.
-    /// These are never garbage collected.
-    persistent_message_queue: VecDeque<LogMsgProto>,
+    messages: MessageBuffer,
 }
 
 impl EventLoop {
@@ -526,8 +631,7 @@ impl EventLoop {
             broadcast_log_tx,
             broadcast_table_tx,
             event_rx,
-            ordered_message_queue: Default::default(),
-            persistent_message_queue: Default::default(),
+            messages: Default::default(),
         }
     }
 
@@ -555,13 +659,7 @@ impl EventLoop {
     ) {
         channel
             .send((
-                // persistent messages come first
-                self.persistent_message_queue
-                    .iter()
-                    .cloned()
-                    .map(LogOrTableMsgProto::from)
-                    .chain(self.ordered_message_queue.iter().cloned())
-                    .collect(),
+                self.messages.all(),
                 self.broadcast_log_tx.subscribe(),
                 self.broadcast_table_tx.subscribe(),
             ))
@@ -578,38 +676,7 @@ impl EventLoop {
 
         self.gc_if_using_too_much_ram();
 
-        let Some(inner) = &msg.msg else {
-            re_log::error!(
-                "{}",
-                re_protos::missing_field!(re_protos::log_msg::v1alpha1::LogMsg, "msg")
-            );
-            return;
-        };
-
-        // We put store info, blueprint data, and blueprint activation commands
-        // in a separate queue that does *not* get garbage collected.
-        use re_protos::log_msg::v1alpha1::log_msg::Msg;
-        match inner {
-            // Store info, blueprint activation commands
-            Msg::SetStoreInfo(..) | Msg::BlueprintActivationCommand(..) => {
-                self.persistent_message_queue.push_back(msg);
-            }
-
-            // Blueprint data
-            Msg::ArrowMsg(inner)
-                if inner
-                    .store_id
-                    .as_ref()
-                    .is_some_and(|id| id.kind() == StoreKindProto::Blueprint) =>
-            {
-                self.persistent_message_queue.push_back(msg);
-            }
-
-            // Recording data
-            Msg::ArrowMsg(..) => {
-                self.ordered_message_queue.push_back(msg.into());
-            }
-        }
+        self.messages.add_log_msg(msg);
     }
 
     fn handle_table(&mut self, table: TableMsgProto) {
@@ -622,8 +689,7 @@ impl EventLoop {
 
         self.gc_if_using_too_much_ram();
 
-        self.ordered_message_queue
-            .push_back(LogOrTableMsgProto::Table(table));
+        self.messages.add_table(table);
     }
 
     fn is_history_disabled(&self) -> bool {
@@ -638,38 +704,7 @@ impl EventLoop {
             return;
         };
 
-        let max_bytes = max_bytes as u64;
-        if max_bytes >= self.ordered_message_queue.size_bytes {
-            // We're not using too much memory.
-            return;
-        }
-
-        {
-            re_tracing::profile_scope!("Drop messages");
-            re_log::info_once!(
-                "Memory limit ({}) exceeded. Dropping old log messages from the gRPC proxy server. Clients connecting after this will not see the full history.",
-                re_format::format_bytes(max_bytes as _)
-            );
-
-            let start_size = self.ordered_message_queue.size_bytes;
-            let mut messages_dropped = 0;
-
-            while max_bytes < self.ordered_message_queue.size_bytes {
-                // only drop messages from temporal queue
-                if self.ordered_message_queue.pop_front().is_some() {
-                    messages_dropped += 1;
-                } else {
-                    break;
-                }
-            }
-
-            let bytes_dropped = start_size - self.ordered_message_queue.size_bytes;
-
-            re_log::trace!(
-                "Dropped {} bytes in {messages_dropped} message(s)",
-                re_format::format_bytes(bytes_dropped as _)
-            );
-        }
+        self.messages.gc(max_bytes as _);
     }
 }
 
