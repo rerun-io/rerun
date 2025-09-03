@@ -48,11 +48,11 @@ pub struct McapSchema {
     /// The schema definition format used to describe the message structure.
     ///
     /// Common schema encodings include:
-    /// * `protobuf` - Protocol Buffers schema definition
-    /// * `ros1msg` - ROS1 message definition format
-    /// * `ros2msg` - ROS2 message definition format
-    /// * `jsonschema` - JSON Schema specification
-    /// * `flatbuffer` - FlatBuffers schema definition
+    /// * `protobuf` - [Protocol Buffers](https://mcap.dev/spec/registry#protobuf-1) schema definition
+    /// * `ros1msg` - [ROS1](https://mcap.dev/spec/registry#ros1msg) message definition format
+    /// * `ros2msg` - [ROS2](https://mcap.dev/spec/registry#ros2msg) message definition format
+    /// * `jsonschema` - [JSON Schema](https://mcap.dev/spec/registry#jsonschema) specification
+    /// * `flatbuffer` - [FlatBuffers](https://mcap.dev/spec/registry#flatbuffer) schema definition
     pub encoding: Option<SerializedComponentBatch>,
 
     /// The schema definition content as binary data.
@@ -374,11 +374,11 @@ impl McapSchema {
     /// The schema definition format used to describe the message structure.
     ///
     /// Common schema encodings include:
-    /// * `protobuf` - Protocol Buffers schema definition
-    /// * `ros1msg` - ROS1 message definition format
-    /// * `ros2msg` - ROS2 message definition format
-    /// * `jsonschema` - JSON Schema specification
-    /// * `flatbuffer` - FlatBuffers schema definition
+    /// * `protobuf` - [Protocol Buffers](https://mcap.dev/spec/registry#protobuf-1) schema definition
+    /// * `ros1msg` - [ROS1](https://mcap.dev/spec/registry#ros1msg) message definition format
+    /// * `ros2msg` - [ROS2](https://mcap.dev/spec/registry#ros2msg) message definition format
+    /// * `jsonschema` - [JSON Schema](https://mcap.dev/spec/registry#jsonschema) specification
+    /// * `flatbuffer` - [FlatBuffers](https://mcap.dev/spec/registry#flatbuffer) schema definition
     #[inline]
     pub fn with_encoding(mut self, encoding: impl Into<crate::components::Text>) -> Self {
         self.encoding = try_serialize_field(Self::descriptor_encoding(), [encoding]);

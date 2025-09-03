@@ -64,11 +64,11 @@ class McapSchema(Archetype):
             The schema definition format used to describe the message structure.
 
             Common schema encodings include:
-            * `protobuf` - Protocol Buffers schema definition
-            * `ros1msg` - ROS1 message definition format
-            * `ros2msg` - ROS2 message definition format
-            * `jsonschema` - JSON Schema specification
-            * `flatbuffer` - FlatBuffers schema definition
+            * `protobuf` - [Protocol Buffers](https://mcap.dev/spec/registry#protobuf-1) schema definition
+            * `ros1msg` - [ROS1](https://mcap.dev/spec/registry#ros1msg) message definition format
+            * `ros2msg` - [ROS2](https://mcap.dev/spec/registry#ros2msg) message definition format
+            * `jsonschema` - [JSON Schema](https://mcap.dev/spec/registry#jsonschema) specification
+            * `flatbuffer` - [FlatBuffers](https://mcap.dev/spec/registry#flatbuffer) schema definition
         data:
             The schema definition content as binary data.
 
@@ -132,11 +132,11 @@ class McapSchema(Archetype):
             The schema definition format used to describe the message structure.
 
             Common schema encodings include:
-            * `protobuf` - Protocol Buffers schema definition
-            * `ros1msg` - ROS1 message definition format
-            * `ros2msg` - ROS2 message definition format
-            * `jsonschema` - JSON Schema specification
-            * `flatbuffer` - FlatBuffers schema definition
+            * `protobuf` - [Protocol Buffers](https://mcap.dev/spec/registry#protobuf-1) schema definition
+            * `ros1msg` - [ROS1](https://mcap.dev/spec/registry#ros1msg) message definition format
+            * `ros2msg` - [ROS2](https://mcap.dev/spec/registry#ros2msg) message definition format
+            * `jsonschema` - [JSON Schema](https://mcap.dev/spec/registry#jsonschema) specification
+            * `flatbuffer` - [FlatBuffers](https://mcap.dev/spec/registry#flatbuffer) schema definition
         data:
             The schema definition content as binary data.
 
@@ -203,11 +203,11 @@ class McapSchema(Archetype):
             The schema definition format used to describe the message structure.
 
             Common schema encodings include:
-            * `protobuf` - Protocol Buffers schema definition
-            * `ros1msg` - ROS1 message definition format
-            * `ros2msg` - ROS2 message definition format
-            * `jsonschema` - JSON Schema specification
-            * `flatbuffer` - FlatBuffers schema definition
+            * `protobuf` - [Protocol Buffers](https://mcap.dev/spec/registry#protobuf-1) schema definition
+            * `ros1msg` - [ROS1](https://mcap.dev/spec/registry#ros1msg) message definition format
+            * `ros2msg` - [ROS2](https://mcap.dev/spec/registry#ros2msg) message definition format
+            * `jsonschema` - [JSON Schema](https://mcap.dev/spec/registry#jsonschema) specification
+            * `flatbuffer` - [FlatBuffers](https://mcap.dev/spec/registry#flatbuffer) schema definition
         data:
             The schema definition content as binary data.
 
@@ -298,11 +298,11 @@ class McapSchema(Archetype):
     # The schema definition format used to describe the message structure.
     #
     # Common schema encodings include:
-    # * `protobuf` - Protocol Buffers schema definition
-    # * `ros1msg` - ROS1 message definition format
-    # * `ros2msg` - ROS2 message definition format
-    # * `jsonschema` - JSON Schema specification
-    # * `flatbuffer` - FlatBuffers schema definition
+    # * `protobuf` - [Protocol Buffers](https://mcap.dev/spec/registry#protobuf-1) schema definition
+    # * `ros1msg` - [ROS1](https://mcap.dev/spec/registry#ros1msg) message definition format
+    # * `ros2msg` - [ROS2](https://mcap.dev/spec/registry#ros2msg) message definition format
+    # * `jsonschema` - [JSON Schema](https://mcap.dev/spec/registry#jsonschema) specification
+    # * `flatbuffer` - [FlatBuffers](https://mcap.dev/spec/registry#flatbuffer) schema definition
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
