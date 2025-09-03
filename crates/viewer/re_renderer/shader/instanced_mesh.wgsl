@@ -72,8 +72,8 @@ fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
     let sample = textureSample(albedo_texture, trilinear_sampler_repeat, in.texcoord);
     var texture: vec3f;
     switch material.texture_format {
-        case 0u: { texture = linear_from_srgb(sample.rgb); }
-        case 1u: { texture = linear_from_srgb(sample.rrr); }
+        case FORMAT_RGBA: { texture = linear_from_srgb(sample.rgb); }
+        case FORMAT_GRAYSCALE: { texture = linear_from_srgb(sample.rrr); }
         default: { texture = vec3f(0.0); }
     }
 
