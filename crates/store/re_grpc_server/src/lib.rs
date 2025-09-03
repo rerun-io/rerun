@@ -1049,7 +1049,7 @@ mod tests {
         messages
     }
 
-    fn fake_log_stream_recording(n: usize) -> Vec<LogMsg> {
+    fn fake_log_stream_recording(n: usize, static_: bool) -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Recording, "test_app");
 
         let mut messages = Vec::new();
@@ -1066,15 +1066,21 @@ mod tests {
             },
         }));
         for _ in 0..n {
+            let timepoint = if static_ {
+                re_log_types::TimePoint::STATIC
+            } else {
+                re_log_types::TimePoint::default().with(
+                    re_log_types::Timeline::new_sequence("log_time"),
+                    re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
+                )
+            };
+
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
                 re_chunk::Chunk::builder("test_entity")
                     .with_archetype(
                         re_chunk::RowId::new(),
-                        re_log_types::TimePoint::default().with(
-                            re_log_types::Timeline::new_sequence("log_time"),
-                            re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
-                        ),
+                        timepoint,
                         &re_types::archetypes::Points2D::new([(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)]),
                     )
                     .build()
@@ -1129,6 +1135,22 @@ mod tests {
         .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE)
     }
 
+    async fn write_messages(
+        client: &mut MessageProxyServiceClient<Channel>,
+        messages: Vec<LogMsg>,
+    ) {
+        client
+            .write_messages(tokio_stream::iter(
+                messages
+                    .clone()
+                    .into_iter()
+                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
+                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
+            ))
+            .await
+            .unwrap();
+    }
+
     async fn read_log_stream(
         log_stream: &mut tonic::Response<tonic::Streaming<ReadMessagesResponse>>,
         n: usize,
@@ -1155,17 +1177,7 @@ mod tests {
         // start reading
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
 
-        // write a few messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // the messages should be echoed to us
         let actual = read_log_stream(&mut log_stream, messages.len()).await;
@@ -1189,17 +1201,7 @@ mod tests {
 
         // don't read anything yet - these messages should be sent to us as part of history when we call `read_messages` later
 
-        // Write a few messages:
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // Start reading now - we should receive full history at this point:
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1228,17 +1230,7 @@ mod tests {
             );
         }
 
-        // Write a few messages using our single producer:
-        producer
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut producer, messages.clone()).await;
 
         // Each consumer should've received them:
         for log_stream in &mut log_streams {
@@ -1269,16 +1261,7 @@ mod tests {
 
         // Write a few messages using each producer:
         for producer in &mut producers {
-            producer
-                .write_messages(tokio_stream::iter(
-                    messages
-                        .clone()
-                        .into_iter()
-                        .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                        .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-                ))
-                .await
-                .unwrap();
+            write_messages(producer, messages.clone()).await;
         }
 
         let expected = [messages.clone(), messages.clone()].concat();
@@ -1300,19 +1283,9 @@ mod tests {
         // Use an absurdly low memory limit to force all messages to be dropped immediately from history
         let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
         let mut client = make_client(addr).await;
-        let messages = fake_log_stream_recording(3);
+        let messages = fake_log_stream_recording(3, false);
 
-        // Write some messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // Start reading
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1351,16 +1324,7 @@ mod tests {
         let messages = fake_log_stream_blueprint(3);
 
         // Write some messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // Start reading
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1406,17 +1370,7 @@ mod tests {
             // Start reading
             let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
 
-            // Write a few messages
-            client
-                .write_messages(tokio_stream::iter(
-                    messages
-                        .clone()
-                        .into_iter()
-                        .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                        .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-                ))
-                .await
-                .unwrap();
+            write_messages(&mut client, messages.clone()).await;
 
             // The messages should be echoed to us, even though none of them will be stored in history
             let actual = read_log_stream(&mut log_stream, messages.len()).await;
