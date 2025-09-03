@@ -629,6 +629,13 @@ impl MessageBuffer {
             "Dropped {} bytes in {messages_dropped} message(s)",
             re_format::format_bytes(bytes_dropped as _)
         );
+
+        if max_bytes < self.size_bytes() {
+            re_log::warn_once!(
+                "The gRPC server is using more memory than the given memory limit ({}), despite having garbage-collected all non-persistent messages.",
+                re_format::format_bytes(max_bytes as _)
+            );
+        }
     }
 }
 
