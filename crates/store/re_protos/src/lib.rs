@@ -167,6 +167,7 @@ impl From<TypeConversionError> for pyo3::PyErr {
     }
 }
 
+/// Create [`TypeConversionError::MissingField`]
 #[macro_export]
 macro_rules! missing_field {
     ($type:ty, $field:expr $(,)?) => {
@@ -174,6 +175,7 @@ macro_rules! missing_field {
     };
 }
 
+/// Create [`TypeConversionError::InvalidField`]
 #[macro_export]
 macro_rules! invalid_field {
     ($type:ty, $field:expr, $reason:expr $(,)?) => {

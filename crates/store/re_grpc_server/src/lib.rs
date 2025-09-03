@@ -46,7 +46,7 @@ pub const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
 // Channel capacity is completely arbitrary, e just want something large enough
 // to handle bursts of messages. This is roughly 16 MiB of `Msg` (excluding their contents).
 const MESSAGE_QUEUE_CAPACITY: usize =
-    (16 * 1024 * 1024 / std::mem::size_of::<Msg>()).next_power_of_two();
+    (16 * 1024 * 1024 / std::mem::size_of::<LogOrTableMsgProto>()).next_power_of_two();
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]
@@ -412,7 +412,7 @@ enum Event {
     /// New client connected, requesting full history and subscribing to new messages.
     NewClient(
         oneshot::Sender<(
-            Vec<Msg>,
+            Vec<LogOrTableMsgProto>,
             broadcast::Receiver<LogMsgProto>,
             broadcast::Receiver<TableMsgProto>,
         )>,
@@ -432,12 +432,12 @@ struct TableMsgProto {
 }
 
 #[derive(Clone)]
-enum Msg {
+enum LogOrTableMsgProto {
     LogMsg(LogMsgProto),
     Table(TableMsgProto),
 }
 
-impl Msg {
+impl LogOrTableMsgProto {
     fn total_size_bytes(&self) -> u64 {
         match self {
             Self::LogMsg(log_msg) => log_msg.total_size_bytes(),
@@ -446,17 +446,50 @@ impl Msg {
     }
 }
 
-impl From<LogMsgProto> for Msg {
+impl From<LogMsgProto> for LogOrTableMsgProto {
     fn from(value: LogMsgProto) -> Self {
         Self::LogMsg(value)
     }
 }
 
-impl From<TableMsgProto> for Msg {
+impl From<TableMsgProto> for LogOrTableMsgProto {
     fn from(value: TableMsgProto) -> Self {
         Self::Table(value)
     }
 }
+
+// -----------------------------------------------------------------------------------
+
+#[derive(Default)]
+struct MsgQueue {
+    /// Messages stored in order of arrival, and garbage collected if the server hits the memory limit.
+    queue: VecDeque<LogOrTableMsgProto>,
+
+    /// Total size of [`Self::queue`] in bytes.
+    size_bytes: u64,
+}
+
+impl MsgQueue {
+    pub fn iter(&self) -> impl Iterator<Item = &LogOrTableMsgProto> {
+        self.queue.iter()
+    }
+
+    pub fn push_back(&mut self, msg: LogOrTableMsgProto) {
+        self.size_bytes += msg.total_size_bytes();
+        self.queue.push_back(msg);
+    }
+
+    pub fn pop_front(&mut self) -> Option<LogOrTableMsgProto> {
+        if let Some(msg) = self.queue.pop_front() {
+            self.size_bytes -= msg.total_size_bytes();
+            Some(msg)
+        } else {
+            None
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------------
 
 /// Main event loop for the server, which runs in its own task.
 ///
@@ -474,12 +507,10 @@ struct EventLoop {
     event_rx: mpsc::Receiver<Event>,
 
     /// Messages stored in order of arrival, and garbage collected if the server hits the memory limit.
-    ordered_message_queue: VecDeque<Msg>,
+    ordered_message_queue: MsgQueue,
 
-    /// Total size of `ordered_message_queue` in bytes.
-    ordered_message_bytes: u64,
-
-    /// Messages potentially out of order with the rest of the message stream. These are never garbage collected.
+    /// Messages potentially out of order with the rest of the message stream.
+    /// These are never garbage collected.
     persistent_message_queue: VecDeque<LogMsgProto>,
 }
 
@@ -496,7 +527,6 @@ impl EventLoop {
             broadcast_table_tx,
             event_rx,
             ordered_message_queue: Default::default(),
-            ordered_message_bytes: 0,
             persistent_message_queue: Default::default(),
         }
     }
@@ -518,18 +548,18 @@ impl EventLoop {
     fn handle_new_client(
         &self,
         channel: oneshot::Sender<(
-            Vec<Msg>,
+            Vec<LogOrTableMsgProto>,
             broadcast::Receiver<LogMsgProto>,
             broadcast::Receiver<TableMsgProto>,
         )>,
     ) {
         channel
             .send((
-                // static messages come first
+                // persistent messages come first
                 self.persistent_message_queue
                     .iter()
                     .cloned()
-                    .map(Msg::from)
+                    .map(LogOrTableMsgProto::from)
                     .chain(self.ordered_message_queue.iter().cloned())
                     .collect(),
                 self.broadcast_log_tx.subscribe(),
@@ -577,8 +607,6 @@ impl EventLoop {
 
             // Recording data
             Msg::ArrowMsg(..) => {
-                let approx_size_bytes = msg.total_size_bytes();
-                self.ordered_message_bytes += approx_size_bytes;
                 self.ordered_message_queue.push_back(msg.into());
             }
         }
@@ -594,9 +622,8 @@ impl EventLoop {
 
         self.gc_if_using_too_much_ram();
 
-        let approx_size_bytes = table.total_size_bytes();
-        self.ordered_message_bytes += approx_size_bytes;
-        self.ordered_message_queue.push_back(Msg::Table(table));
+        self.ordered_message_queue
+            .push_back(LogOrTableMsgProto::Table(table));
     }
 
     fn is_history_disabled(&self) -> bool {
@@ -612,7 +639,7 @@ impl EventLoop {
         };
 
         let max_bytes = max_bytes as u64;
-        if max_bytes >= self.ordered_message_bytes {
+        if max_bytes >= self.ordered_message_queue.size_bytes {
             // We're not using too much memory.
             return;
         }
@@ -620,24 +647,23 @@ impl EventLoop {
         {
             re_tracing::profile_scope!("Drop messages");
             re_log::info_once!(
-                "Memory limit ({}) exceeded. Dropping old log messages from the server. Clients connecting after this will not see the full history.",
+                "Memory limit ({}) exceeded. Dropping old log messages from the gRPC proxy server. Clients connecting after this will not see the full history.",
                 re_format::format_bytes(max_bytes as _)
             );
 
-            let bytes_to_free = self.ordered_message_bytes - max_bytes;
-
-            let mut bytes_dropped = 0;
+            let start_size = self.ordered_message_queue.size_bytes;
             let mut messages_dropped = 0;
 
-            while bytes_dropped < bytes_to_free {
+            while max_bytes < self.ordered_message_queue.size_bytes {
                 // only drop messages from temporal queue
-                if let Some(msg) = self.ordered_message_queue.pop_front() {
-                    bytes_dropped += msg.total_size_bytes();
+                if self.ordered_message_queue.pop_front().is_some() {
                     messages_dropped += 1;
                 } else {
                     break;
                 }
             }
+
+            let bytes_dropped = start_size - self.ordered_message_queue.size_bytes;
 
             re_log::trace!(
                 "Dropped {} bytes in {messages_dropped} message(s)",
@@ -722,7 +748,7 @@ impl MessageProxy {
             history
                 .into_iter()
                 .filter_map(|log_msg| {
-                    if let Msg::LogMsg(log_msg) = log_msg {
+                    if let LogOrTableMsgProto::LogMsg(log_msg) = log_msg {
                         Some(ReadMessagesResponse {
                             log_msg: Some(log_msg),
                         })
@@ -764,7 +790,7 @@ impl MessageProxy {
             history
                 .into_iter()
                 .filter_map(|table| {
-                    if let Msg::Table(table) = table {
+                    if let LogOrTableMsgProto::Table(table) = table {
                         Some(ReadTablesResponse {
                             id: Some(table.id),
                             data: Some(table.data),
@@ -1246,7 +1272,7 @@ mod tests {
             }
         }
 
-        // The GC runs _before_ a message is stored, so we should see the static message, and the last message sent.
+        // The GC runs _before_ a message is stored, so we should see the persistent message, and the last message sent.
         assert_eq!(actual.len(), 2);
         assert_eq!(&actual[0], &messages[0]);
         assert_eq!(&actual[1], messages.last().unwrap());
