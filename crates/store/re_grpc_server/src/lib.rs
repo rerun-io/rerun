@@ -611,7 +611,10 @@ impl MessageBuffer {
         }
 
         if max_bytes < self.size_bytes() {
-            re_log::info_once!("Starting to drop static messages too");
+            re_log::info_once!(
+                "Memory limit ({}) exceeded. Dropping old *static* log messages as well. Clients connecting after this will no longer see the complete set of static data.",
+                re_format::format_bytes(max_bytes as _)
+            );
             while self.static_.pop_front().is_some() {
                 messages_dropped += 1;
                 if self.size_bytes() < max_bytes {
