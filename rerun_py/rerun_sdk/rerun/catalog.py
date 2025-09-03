@@ -36,6 +36,8 @@ class CatalogClient:
             raise RerunMissingDependencyError("datafusion", "datafusion")
 
         # Check that we have a compatible version of datafusion.
+        # We need a version match because the FFI is currently unstable, see:
+        # https://github.com/apache/datafusion/issues/17374
         expected_df_version = CatalogClientInternal.datafusion_major_version()
         datafusion_version = version("datafusion")
         datafusion_major_version = int(datafusion_version.split(".")[0])
