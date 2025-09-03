@@ -8,7 +8,7 @@ We aim to make it fast, simple to use, and easy to adapt and integrate into your
 Open an issue or pull request on [GitHub](https://github.com/rerun-io/rerun) or join us on [Discord](https://discord.gg/PXtCgFBSmH) to let the community know what you'd like to see.
 
 
-This page is meant to give an high level overview of ongoing and planned work. This roadmap is subject to change; the GitHub repo will be the most authoritative source.
+This page is meant to give an high level overview of ongoing and planned work. This roadmap is subject to change; GitHub repo will be the most authoritative source for active development.
 
 ## We continually work on
 - Performance improvements
@@ -23,12 +23,13 @@ This page is meant to give an high level overview of ongoing and planned work. T
 - Improving our data ingestion and interpretation flexibility, especially through initial support for common ROS2 messages in MCAP files
 - Greater capabilities around sharing links to data
 - h.265 video streaming support
+- An in-memory catalog to make recording file management simpler
 
 ### Medium term
-- Custom message interpretability for dataloaders (e.g. MCAP files)
-    - Including _data blueprints_ that define and store interpretions
-- Dataset views that give zero-copy views into large datasets
 - Filtering in table and dataframe views
+- Configurable data interpretability (e.g. MCAP files with custom messages)
+    - Including _data blueprints_ that define and store interpretions for later viewing
+- Dataset views that give zero-copy modified views into large datasets
 
 ### Longer term
 - Callbacks and the ability to build interactive applications with Rerun
@@ -36,4 +37,3 @@ This page is meant to give an high level overview of ongoing and planned work. T
 - Official ROS2 bridge
 - Extensibility of all parts of the stack
 - Data format stability
-- Performance around storing and retrieving chunks
