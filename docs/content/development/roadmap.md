@@ -26,7 +26,10 @@ This page is meant to give an high level overview of ongoing and planned work.
 - Callbacks and the ability to build interactive applications with Rerun
     - For example: UI for tweaking configs, custom data annotation tools, etc
 - Rerun data platform alpha (commercial)
-    - Get in touch on hi@rerun.io if you're interested in becoming a design partner
+    - Managed infrastructure to ingest, store, analyze, and stream large amounts of robotics-style data
+    - Built around Rerun's open source data model with built-in visual debugging
+    - Single database interface for data from multiple sources (MCAP, proprietary log-formats, LeRobot Datasets, Lance, etc.)
+    - [Get in touch](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ) if you'd like to become a design partner
 
 ### Longer term
 - Extensibility of all parts of the stack
