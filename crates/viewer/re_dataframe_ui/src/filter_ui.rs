@@ -1,6 +1,9 @@
 use egui::{Frame, Margin, Style, text::LayoutJob};
 
-use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
+use re_ui::{
+    SyntaxHighlighting, UiExt as _, design_tokens_of_visuals,
+    syntax_highlighting::SyntaxHighlightedBuilder,
+};
 
 use crate::TableBlueprint;
 use crate::filters::{Filter, FilterOperation};
@@ -163,9 +166,9 @@ impl Filter {
             .corner_radius(2.0)
             .show(ui, |ui| {
                 let widget_text = SyntaxHighlightedBuilder::new(ui.style())
-                    .append(&self.column_name)
-                    .append(&" ")
-                    .append(&self.operation)
+                    .with(&self.column_name)
+                    .with(&" ")
+                    .with(&self.operation)
                     .into_widget_text();
 
                 let text_response = ui.add(
@@ -245,33 +248,36 @@ impl Filter {
 }
 
 impl SyntaxHighlighting for FilterOperation {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        let tokens = re_ui::design_tokens_of_visuals(&style.visuals);
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        let normal_text_format = |style| {
+            egui::TextFormat::simple(
+                egui::TextStyle::Body.resolve(style),
+                egui::Color32::PLACEHOLDER,
+            )
+        };
+        let operator_text_format = |style| {
+            egui::TextFormat::simple(
+                egui::TextStyle::Body.resolve(style),
+                design_tokens_of_visuals(&style.visuals).table_filter_operator_text_color,
+            )
+        };
+        let rhs_text_format = |style| {
+            egui::TextFormat::simple(
+                egui::TextStyle::Body.resolve(style),
+                design_tokens_of_visuals(&style.visuals).table_filter_rhs_text_color,
+            )
+        };
 
-        let normal_text_format = egui::TextFormat::simple(
-            egui::TextStyle::Body.resolve(style),
-            egui::Color32::PLACEHOLDER,
-        );
-        let operator_text_format = egui::TextFormat::simple(
-            egui::TextStyle::Body.resolve(style),
-            tokens.table_filter_operator_text_color,
-        );
-        let rhs_text_format = egui::TextFormat::simple(
-            egui::TextStyle::Body.resolve(style),
-            tokens.table_filter_rhs_text_color,
-        );
+        builder.append_with_format(self.operator_text(), operator_text_format);
 
-        job.append(self.operator_text(), 0.0, operator_text_format);
-
-        job.append(" ", 0.0, normal_text_format.clone());
+        builder.append_with_format(" ", normal_text_format);
         let rhs_text = self.rhs_text();
-        job.append(
+        builder.append_with_format(
             if rhs_text.is_empty() {
                 "…"
             } else {
                 &rhs_text
             },
-            0.0,
             rhs_text_format,
         );
     }
