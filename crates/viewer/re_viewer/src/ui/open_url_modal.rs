@@ -10,6 +10,9 @@ pub struct OpenUrlModal {
     modal: ModalHandler,
     url: String,
     just_opened: bool,
+
+    /// Used in tests to hide the platform dependent shortcut text.
+    hide_shortcut: bool,
 }
 
 impl OpenUrlModal {
@@ -27,12 +30,14 @@ impl OpenUrlModal {
                     ui.strong("Paste a URL below.");
 
                     // Repeat shortcut on the right to remind users of how to open this modal quickly.
-                    let shortcut_text = UICommand::OpenUrl
-                        .formatted_kb_shortcut(ui.ctx())
-                        .unwrap_or_default();
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.weak(shortcut_text);
-                    });
+                    if !self.hide_shortcut {
+                        let shortcut_text = UICommand::OpenUrl
+                            .formatted_kb_shortcut(ui.ctx())
+                            .unwrap_or_default();
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.weak(shortcut_text);
+                        });
+                    }
                 });
 
                 let edit_output = egui::TextEdit::singleline(&mut self.url)
@@ -112,7 +117,10 @@ mod tests {
 
     #[test]
     fn test_open_url_modal() {
-        let mut modal = OpenUrlModal::default();
+        let mut modal = OpenUrlModal {
+            hide_shortcut: true, // Shortcuts are platform specific, so they shouldn't show up in the screenshots.
+            ..Default::default()
+        };
         modal.open();
 
         let url = Mutex::new(String::new());
