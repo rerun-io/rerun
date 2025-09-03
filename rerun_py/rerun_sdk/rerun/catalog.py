@@ -36,19 +36,11 @@ class CatalogClient:
             raise RerunMissingDependencyError("datafusion", "datafusion")
 
         # Check that we have a compatible version of datafusion.
-        #
-        # Note: ideally, we would pull the spec from our `pyproject.toml` file or package metadata. I tried, and it's
-        # complex, flaky, and introduces additional dependencies (such as `packaging` and/or `tomli`). Also, if we have
-        # a mismatch here, tests will fail, so we shouldn't forget to update.
-        #
-        # TODO(ab): we could be more flexible here and allow versions that are known to be FFI compatible (e.g. 48 is
-        # compatible with 47). That would make the version check more complicated though, unless we start depending on
-        # the `packaging` package.
-        version_spec = "datafusion==47.0.0"
-
+        expected_df_version = CatalogClientInternal.datafusion_major_version()
         datafusion_version = version("datafusion")
-        if datafusion_version != version_spec.split("==")[1]:
-            raise RerunIncompatibleDependencyVersionError("datafusion", datafusion_version, version_spec)
+        datafusion_major_version = int(datafusion_version.split(".")[0])
+        if datafusion_major_version != expected_df_version:
+            raise RerunIncompatibleDependencyVersionError("datafusion", datafusion_version, expected_df_version)
 
         self._raw_client = CatalogClientInternal(address, token)
 

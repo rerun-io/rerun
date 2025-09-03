@@ -285,10 +285,10 @@ class RerunMissingDependencyError(ImportError):
 class RerunIncompatibleDependencyVersionError(ImportError):
     """Raised when a dependency has an incompatible version."""
 
-    def __init__(self, package: str, actual_version: str, requirement: str) -> None:
+    def __init__(self, package: str, actual_version: str, required_major_version: int) -> None:
         super().__init__(
             f"'{package}' version {actual_version} is incompatible with rerun. "
             f"Please install rerun as rerun[{package}]/rerun[all] "
             f"to use this functionality. "
-            f"Requirement: {requirement}"
+            f"Required major version: {required_major_version}"
         )
