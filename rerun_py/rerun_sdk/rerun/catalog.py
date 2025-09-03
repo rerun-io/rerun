@@ -43,6 +43,15 @@ def _are_datafusion_versions_compatible(v1: int, v2: int) -> bool:
     return False
 
 
+def _compatible_datafusion_version(version: int) -> list[int]:
+    """Returns a list of compatible DataFusion versions for the given version."""
+
+    for compat_set in DATAFUSION_MAJOR_VERSION_COMPATIBILITY_SETS:
+        if version in compat_set:
+            return sorted(compat_set)
+    return [version]
+
+
 class CatalogClient:
     """
     Client for a remote Rerun catalog server.
@@ -61,14 +70,15 @@ class CatalogClient:
         # Check that we have a compatible version of datafusion.
         # We need a version match because the FFI is currently unstable, see:
         # https://github.com/apache/datafusion/issues/17374
-        #
 
         expected_df_version = CatalogClientInternal.datafusion_major_version()
         datafusion_version = version("datafusion")
         datafusion_major_version = int(datafusion_version.split(".")[0])
 
         if not _are_datafusion_versions_compatible(datafusion_major_version, expected_df_version):
-            raise RerunIncompatibleDependencyVersionError("datafusion", datafusion_version, expected_df_version)
+            raise RerunIncompatibleDependencyVersionError(
+                "datafusion", datafusion_version, _compatible_datafusion_version(expected_df_version)
+            )
 
         self._raw_client = CatalogClientInternal(address, token)
 
