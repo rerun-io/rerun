@@ -491,6 +491,156 @@ impl MsgQueue {
 
 // -----------------------------------------------------------------------------------
 
+/// Contains all messages received so far,
+/// minus some that are garbage collected when needed.
+#[derive(Default)]
+struct MessageBuffer {
+    /// Normal data messages.
+    ///
+    /// First to be garbage collected if we run into the memory limit.
+    disposable: MsgQueue,
+
+    /// "Static" (non-temporal) data messages.
+    ///
+    /// Our chunk-store already keeps static messages forever,
+    /// and it makes sense: you usually log them once,
+    /// and then expect them to stay around.
+    ///
+    /// We keep the static messages for as long as we can, but if [`Self::disposable`]
+    /// is empty and we're still over our memory budget, we start throwing
+    /// away the oldest messages from here too.
+    /// This is because some users use static logging for camera images,
+    /// which adds up very quickly.
+    ///
+    /// Ideally we would keep exactly one static message per entity/component stream
+    /// (like the `ChunkStore` does), but we'll save that for:
+    /// TODO(#5531): replace this with `ChunkStore`
+    static_: MsgQueue,
+
+    /// These are never garbage collected.
+    persistent: MsgQueue,
+}
+
+impl MessageBuffer {
+    fn size_bytes(&self) -> u64 {
+        let Self {
+            disposable,
+            static_,
+            persistent,
+        } = self;
+        disposable.size_bytes + static_.size_bytes + persistent.size_bytes
+    }
+
+    fn all(&self) -> Vec<LogOrTableMsgProto> {
+        re_tracing::profile_function!();
+
+        let Self {
+            disposable,
+            static_,
+            persistent,
+        } = self;
+
+        // NOTE: the order here is important!
+        // TODO(#6523): make this behavior configurable
+        itertools::chain!(persistent.iter(), static_.iter(), disposable.iter(),)
+            .cloned()
+            .collect()
+    }
+
+    fn add_table(&mut self, table: TableMsgProto) {
+        self.disposable.push_back(table.into());
+    }
+
+    fn add_log_msg(&mut self, msg: LogMsgProto) {
+        let Some(inner) = &msg.msg else {
+            re_log::error!(
+                "{}",
+                re_protos::missing_field!(re_protos::log_msg::v1alpha1::LogMsg, "msg")
+            );
+            return;
+        };
+
+        // We put store info, blueprint data, and blueprint activation commands
+        // in a separate queue that does *not* get garbage collected.
+        use re_protos::log_msg::v1alpha1::log_msg::Msg;
+        match inner {
+            // Store info, blueprint activation commands
+            Msg::SetStoreInfo(..) | Msg::BlueprintActivationCommand(..) => {
+                self.persistent.push_back(msg.into());
+            }
+
+            Msg::ArrowMsg(inner) => {
+                let is_blueprint = inner
+                    .store_id
+                    .as_ref()
+                    .is_some_and(|id| id.kind() == StoreKindProto::Blueprint);
+
+                if is_blueprint {
+                    // Persist blueprint messages forever.
+                    self.persistent.push_back(msg.into());
+                } else if inner.is_static == Some(true) {
+                    self.static_.push_back(msg.into());
+                } else {
+                    // Recording data
+                    self.disposable.push_back(msg.into());
+                }
+            }
+        }
+    }
+
+    pub fn gc(&mut self, max_bytes: u64) {
+        if self.size_bytes() <= max_bytes {
+            // We're not using too much memory.
+            return;
+        }
+
+        re_tracing::profile_scope!("Drop messages");
+        re_log::info_once!(
+            "Memory limit ({}) exceeded. Dropping old log messages from the gRPC proxy server. Clients connecting after this will not see the full history.",
+            re_format::format_bytes(max_bytes as _)
+        );
+
+        let start_size = self.size_bytes();
+        let mut messages_dropped = 0;
+
+        while self.disposable.pop_front().is_some() {
+            messages_dropped += 1;
+            if self.size_bytes() < max_bytes {
+                break;
+            }
+        }
+
+        if max_bytes < self.size_bytes() {
+            re_log::info_once!(
+                "Memory limit ({}) exceeded. Dropping old *static* log messages as well. Clients connecting after this will no longer see the complete set of static data.",
+                re_format::format_bytes(max_bytes as _)
+            );
+            while self.static_.pop_front().is_some() {
+                messages_dropped += 1;
+                if self.size_bytes() < max_bytes {
+                    break;
+                }
+            }
+        }
+
+        let bytes_dropped = start_size - self.size_bytes();
+
+        re_log::trace!(
+            "Dropped {} bytes in {messages_dropped} message(s)",
+            re_format::format_bytes(bytes_dropped as _)
+        );
+
+        if max_bytes < self.size_bytes() {
+            re_log::warn_once!(
+                "The gRPC server is using more memory than the given memory limit ({}), despite having garbage-collected all non-persistent messages.",
+                re_format::format_bytes(max_bytes as _)
+            );
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------------
+
 /// Main event loop for the server, which runs in its own task.
 ///
 /// Handles message history, and broadcasts messages to clients.
@@ -506,12 +656,7 @@ struct EventLoop {
     /// Channel for incoming events.
     event_rx: mpsc::Receiver<Event>,
 
-    /// Messages stored in order of arrival, and garbage collected if the server hits the memory limit.
-    ordered_message_queue: MsgQueue,
-
-    /// Messages potentially out of order with the rest of the message stream.
-    /// These are never garbage collected.
-    persistent_message_queue: VecDeque<LogMsgProto>,
+    messages: MessageBuffer,
 }
 
 impl EventLoop {
@@ -526,8 +671,7 @@ impl EventLoop {
             broadcast_log_tx,
             broadcast_table_tx,
             event_rx,
-            ordered_message_queue: Default::default(),
-            persistent_message_queue: Default::default(),
+            messages: Default::default(),
         }
     }
 
@@ -555,13 +699,7 @@ impl EventLoop {
     ) {
         channel
             .send((
-                // persistent messages come first
-                self.persistent_message_queue
-                    .iter()
-                    .cloned()
-                    .map(LogOrTableMsgProto::from)
-                    .chain(self.ordered_message_queue.iter().cloned())
-                    .collect(),
+                self.messages.all(),
                 self.broadcast_log_tx.subscribe(),
                 self.broadcast_table_tx.subscribe(),
             ))
@@ -578,38 +716,7 @@ impl EventLoop {
 
         self.gc_if_using_too_much_ram();
 
-        let Some(inner) = &msg.msg else {
-            re_log::error!(
-                "{}",
-                re_protos::missing_field!(re_protos::log_msg::v1alpha1::LogMsg, "msg")
-            );
-            return;
-        };
-
-        // We put store info, blueprint data, and blueprint activation commands
-        // in a separate queue that does *not* get garbage collected.
-        use re_protos::log_msg::v1alpha1::log_msg::Msg;
-        match inner {
-            // Store info, blueprint activation commands
-            Msg::SetStoreInfo(..) | Msg::BlueprintActivationCommand(..) => {
-                self.persistent_message_queue.push_back(msg);
-            }
-
-            // Blueprint data
-            Msg::ArrowMsg(inner)
-                if inner
-                    .store_id
-                    .as_ref()
-                    .is_some_and(|id| id.kind() == StoreKindProto::Blueprint) =>
-            {
-                self.persistent_message_queue.push_back(msg);
-            }
-
-            // Recording data
-            Msg::ArrowMsg(..) => {
-                self.ordered_message_queue.push_back(msg.into());
-            }
-        }
+        self.messages.add_log_msg(msg);
     }
 
     fn handle_table(&mut self, table: TableMsgProto) {
@@ -622,8 +729,7 @@ impl EventLoop {
 
         self.gc_if_using_too_much_ram();
 
-        self.ordered_message_queue
-            .push_back(LogOrTableMsgProto::Table(table));
+        self.messages.add_table(table);
     }
 
     fn is_history_disabled(&self) -> bool {
@@ -631,45 +737,12 @@ impl EventLoop {
     }
 
     fn gc_if_using_too_much_ram(&mut self) {
-        re_tracing::profile_function!();
-
         let Some(max_bytes) = self.server_memory_limit.max_bytes else {
             // Unlimited memory!
             return;
         };
 
-        let max_bytes = max_bytes as u64;
-        if max_bytes >= self.ordered_message_queue.size_bytes {
-            // We're not using too much memory.
-            return;
-        }
-
-        {
-            re_tracing::profile_scope!("Drop messages");
-            re_log::info_once!(
-                "Memory limit ({}) exceeded. Dropping old log messages from the gRPC proxy server. Clients connecting after this will not see the full history.",
-                re_format::format_bytes(max_bytes as _)
-            );
-
-            let start_size = self.ordered_message_queue.size_bytes;
-            let mut messages_dropped = 0;
-
-            while max_bytes < self.ordered_message_queue.size_bytes {
-                // only drop messages from temporal queue
-                if self.ordered_message_queue.pop_front().is_some() {
-                    messages_dropped += 1;
-                } else {
-                    break;
-                }
-            }
-
-            let bytes_dropped = start_size - self.ordered_message_queue.size_bytes;
-
-            re_log::trace!(
-                "Dropped {} bytes in {messages_dropped} message(s)",
-                re_format::format_bytes(bytes_dropped as _)
-            );
-        }
+        self.messages.gc(max_bytes as _);
     }
 }
 
@@ -894,6 +967,7 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
 mod tests {
     use super::*;
 
+    use itertools::{Itertools as _, chain};
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_encoding::Compression;
@@ -936,13 +1010,8 @@ mod tests {
         }
     }
 
-    /// Generates `n` log messages wrapped in a `SetStoreInfo` at the start and `BlueprintActivationCommand` at the end,
-    /// to exercise message ordering.
-    fn fake_log_stream_blueprint(n: usize) -> Vec<LogMsg> {
-        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
-
-        let mut messages = Vec::new();
-        messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
+    fn set_store_info_msg(store_id: &StoreId) -> LogMsg {
+        LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::new(),
             info: StoreInfo {
                 store_id: store_id.clone(),
@@ -953,7 +1022,16 @@ mod tests {
                 },
                 store_version: Some(CrateVersion::LOCAL),
             },
-        }));
+        })
+    }
+
+    /// Generates `n` log messages wrapped in a `SetStoreInfo` at the start and `BlueprintActivationCommand` at the end,
+    /// to exercise message ordering.
+    fn fake_log_stream_blueprint(n: usize) -> Vec<LogMsg> {
+        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
+
+        let mut messages = Vec::new();
+        messages.push(set_store_info_msg(&store_id));
         for _ in 0..n {
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
@@ -986,32 +1064,43 @@ mod tests {
         messages
     }
 
+    #[derive(Clone, Copy)]
+    enum Temporalness {
+        Static,
+        Temporal,
+    }
+
     fn fake_log_stream_recording(n: usize) -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Recording, "test_app");
 
+        chain!(
+            [set_store_info_msg(&store_id)],
+            generate_log_messages(&store_id, n, Temporalness::Temporal)
+        )
+        .collect()
+    }
+
+    fn generate_log_messages(
+        store_id: &StoreId,
+        n: usize,
+        temporalness: Temporalness,
+    ) -> Vec<LogMsg> {
         let mut messages = Vec::new();
-        messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: *RowId::new(),
-            info: StoreInfo {
-                store_id: store_id.clone(),
-                cloned_from: None,
-                store_source: StoreSource::RustSdk {
-                    rustc_version: String::new(),
-                    llvm_version: String::new(),
-                },
-                store_version: Some(CrateVersion::LOCAL),
-            },
-        }));
         for _ in 0..n {
+            let timepoint = match temporalness {
+                Temporalness::Static => re_log_types::TimePoint::STATIC,
+                Temporalness::Temporal => re_log_types::TimePoint::default().with(
+                    re_log_types::Timeline::new_sequence("log_time"),
+                    re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
+                ),
+            };
+
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
                 re_chunk::Chunk::builder("test_entity")
                     .with_archetype(
                         re_chunk::RowId::new(),
-                        re_log_types::TimePoint::default().with(
-                            re_log_types::Timeline::new_sequence("log_time"),
-                            re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
-                        ),
+                        timepoint,
                         &re_types::archetypes::Points2D::new([(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)]),
                     )
                     .build()
@@ -1020,7 +1109,6 @@ mod tests {
                     .unwrap(),
             ));
         }
-
         messages
     }
 
@@ -1066,6 +1154,22 @@ mod tests {
         .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE)
     }
 
+    async fn write_messages(
+        client: &mut MessageProxyServiceClient<Channel>,
+        messages: Vec<LogMsg>,
+    ) {
+        client
+            .write_messages(tokio_stream::iter(
+                messages
+                    .clone()
+                    .into_iter()
+                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
+                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
+            ))
+            .await
+            .unwrap();
+    }
+
     async fn read_log_stream(
         log_stream: &mut tonic::Response<tonic::Streaming<ReadMessagesResponse>>,
         n: usize,
@@ -1092,17 +1196,7 @@ mod tests {
         // start reading
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
 
-        // write a few messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // the messages should be echoed to us
         let actual = read_log_stream(&mut log_stream, messages.len()).await;
@@ -1126,17 +1220,7 @@ mod tests {
 
         // don't read anything yet - these messages should be sent to us as part of history when we call `read_messages` later
 
-        // Write a few messages:
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // Start reading now - we should receive full history at this point:
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1165,17 +1249,7 @@ mod tests {
             );
         }
 
-        // Write a few messages using our single producer:
-        producer
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut producer, messages.clone()).await;
 
         // Each consumer should've received them:
         for log_stream in &mut log_streams {
@@ -1206,16 +1280,7 @@ mod tests {
 
         // Write a few messages using each producer:
         for producer in &mut producers {
-            producer
-                .write_messages(tokio_stream::iter(
-                    messages
-                        .clone()
-                        .into_iter()
-                        .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                        .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-                ))
-                .await
-                .unwrap();
+            write_messages(producer, messages.clone()).await;
         }
 
         let expected = [messages.clone(), messages.clone()].concat();
@@ -1239,17 +1304,7 @@ mod tests {
         let mut client = make_client(addr).await;
         let messages = fake_log_stream_recording(3);
 
-        // Write some messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // Start reading
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1288,16 +1343,7 @@ mod tests {
         let messages = fake_log_stream_blueprint(3);
 
         // Write some messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
+        write_messages(&mut client, messages.clone()).await;
 
         // Start reading
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
@@ -1329,29 +1375,56 @@ mod tests {
 
     #[tokio::test]
     async fn memory_limit_does_not_interrupt_stream() {
-        // Use an absurdly low memory limit to force all messages to be dropped immediately from history
-        let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
-        let mut client = make_client(addr).await; // We use the same client for both producing and consuming
-        let messages = fake_log_stream_blueprint(3);
+        let memory_limits = [
+            0, // Will actually disable the message buffer and GC logic. Good to test that!
+            1, // An absurdly low memory limit to force all messages to be dropped immediately from history
+        ];
 
-        // Start reading
+        for memory_limit in memory_limits {
+            let (completion, addr) =
+                setup_with_memory_limit(MemoryLimit::from_bytes(memory_limit)).await;
+            let mut client = make_client(addr).await; // We use the same client for both producing and consuming
+            let messages = fake_log_stream_blueprint(3);
+
+            // Start reading
+            let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
+
+            write_messages(&mut client, messages.clone()).await;
+
+            // The messages should be echoed to us, even though none of them will be stored in history
+            let actual = read_log_stream(&mut log_stream, messages.len()).await;
+            assert_eq!(messages, actual);
+
+            completion.finish();
+        }
+    }
+
+    #[tokio::test]
+    async fn static_data_is_returned_first() {
+        let (completion, addr) = setup_with_memory_limit(MemoryLimit::UNLIMITED).await;
+        let mut client = make_client(addr).await;
+
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
+
+        let set_store_info = vec![set_store_info_msg(&store_id)];
+        let first_static = generate_log_messages(&store_id, 1, Temporalness::Static);
+        let first_temporal = generate_log_messages(&store_id, 1, Temporalness::Temporal);
+        let second_static = generate_log_messages(&store_id, 1, Temporalness::Static);
+
+        write_messages(&mut client, set_store_info.clone()).await;
+        write_messages(&mut client, first_static.clone()).await;
+        write_messages(&mut client, first_temporal.clone()).await;
+        write_messages(&mut client, second_static.clone()).await;
+
+        // All static data should always come before temporal data:
+        let expected =
+            itertools::chain!(set_store_info, first_static, second_static, first_temporal)
+                .collect_vec();
+
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
+        let actual = read_log_stream(&mut log_stream, expected.len()).await;
 
-        // Write a few messages
-        client
-            .write_messages(tokio_stream::iter(
-                messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| log_msg_to_proto(msg, Compression::Off).unwrap())
-                    .map(|msg| WriteMessagesRequest { log_msg: Some(msg) }),
-            ))
-            .await
-            .unwrap();
-
-        // The messages should be echoed to us, even though none of them will be stored in history
-        let actual = read_log_stream(&mut log_stream, messages.len()).await;
-        assert_eq!(messages, actual);
+        assert_eq!(actual, expected);
 
         completion.finish();
     }

@@ -319,6 +319,7 @@ mod sizes {
                 uncompressed_size,
                 encoding,
                 payload,
+                is_static: _,
             } = self;
 
             store_id.heap_size_bytes()
