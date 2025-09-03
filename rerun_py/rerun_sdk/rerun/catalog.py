@@ -20,6 +20,12 @@ if TYPE_CHECKING:
     import datafusion
 
 
+# Known FFI compatible releases of Datafusion.
+DATAFUSION_MAJOR_VERSION_COMPATIBILITY_MAP = {
+    47: [46, 48],
+}
+
+
 class CatalogClient:
     """
     Client for a remote Rerun catalog server.
@@ -38,10 +44,20 @@ class CatalogClient:
         # Check that we have a compatible version of datafusion.
         # We need a version match because the FFI is currently unstable, see:
         # https://github.com/apache/datafusion/issues/17374
+        #
+        # In some rare cases, we may need to have a mismatch, e.g. in some deployed Rerun Cloud docker images. So we
+        # have a carefully crafted compatibility allowlist for known-to-be-ffi-compatible DataFusion releases.
+
         expected_df_version = CatalogClientInternal.datafusion_major_version()
         datafusion_version = version("datafusion")
         datafusion_major_version = int(datafusion_version.split(".")[0])
-        if datafusion_major_version != expected_df_version:
+
+        is_compatible = (
+            datafusion_major_version == expected_df_version
+            or datafusion_major_version in DATAFUSION_MAJOR_VERSION_COMPATIBILITY_MAP.get(expected_df_version, [])
+        )
+
+        if not is_compatible:
             raise RerunIncompatibleDependencyVersionError("datafusion", datafusion_version, expected_df_version)
 
         self._raw_client = CatalogClientInternal(address, token)
