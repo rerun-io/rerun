@@ -110,7 +110,7 @@ impl FilterOperation {
             }
 
             Self::BooleanEquals(value) => match field.data_type() {
-                DataType::Boolean => Ok(col(column.clone())),
+                DataType::Boolean => Ok(col(column.clone()).eq(value)),
 
                 DataType::List(field) | DataType::ListView(field)
                     if field.data_type() == &DataType::Boolean =>
