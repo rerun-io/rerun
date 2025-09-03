@@ -603,7 +603,7 @@ jinja2 = ">=3.1.3,<3.2"           # For `build_screenshot_compare.py` and other 
 mypy = "1.14.1.*"
 nasm = ">=2.16"                   # Required by https://github.com/memorysafety/rav1d for native video support
 ninja = "1.11.1.*"
-numpy = ">=2"                     # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
+numpy = ">=1.24"                  # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 prettier = ">=3.6"
 pyarrow = "18.0.0.*"              # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 pytest = ">=8.4.1"
@@ -693,7 +693,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 #
 # This is also redundantly defined in `python-pypi`
 opencv = ">4.6"
-numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+numpy = ">=1.24" # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
 
 [feature.python-dev.pypi-dependencies]
 # Install the `rerun_py` as a package in editable mode.
@@ -748,7 +748,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 [feature.python-pypi.dependencies]
 # Note these are the same as in `python-dev` but we need to repeat them here because the two are mutually exclusive.
 opencv = ">4.6"
-numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
+numpy = ">=1.24" # Rerun still needs numpy <2. Enforce this outside of the pypi dep tree so we pick up the conda version.
 
 
 [feature.python-pypi.pypi-dependencies]

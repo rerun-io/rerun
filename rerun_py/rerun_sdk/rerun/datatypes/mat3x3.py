@@ -12,6 +12,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
+from packaging import version
+IS_NUMPY_2 = True if version.parse(np.__version__) >= version.parse("2.0.0") else False
 
 from .._baseclasses import (
     BaseBatch,
@@ -70,7 +72,13 @@ class Mat3x3(Mat3x3Ext):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Mat3x3Ext in mat3x3_ext.py
-        return np.asarray(self.flat_columns, dtype=dtype, copy=copy)
+        if IS_NUMPY_2:
+            return np.asarray(self.flat_columns, dtype=dtype, copy=copy)
+        else:
+            if copy:
+                return np.array(self.flat_columns, dtype=dtype, copy=copy)
+            else:
+                return np.asarray(self.flat_columns, dtype=dtype)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of Mat3x3Ext in mat3x3_ext.py

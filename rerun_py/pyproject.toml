@@ -16,7 +16,7 @@ classifiers = [
 dependencies = [
   # Must match list in `.github/workflows/reusable_test_wheels.yml`
   "attrs>=23.1.0",
-  "numpy>=2",
+  "numpy>=1.24",
   "pillow>=8.0.0",          # Used for JPEG encoding. 8.0.0 added the `format` arguments to `Image.open`
   "pyarrow>=18.0.0",
   "typing_extensions>=4.5",
