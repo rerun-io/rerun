@@ -14718,12 +14718,12 @@ packages:
 - pypi: ./examples/python/blueprint_stocks
   name: blueprint-stocks
   version: 0.1.0
-  sha256: cf1919bbc931b1dbcae9b042b3d6d1b3b224c5e6dbdeb7d9d8f3b548fad23a8b
+  sha256: 931c90b4c05a2f881a1c68dcb9a84887e1a185ff0fc9d366fd7e5e60e1738b50
   requires_dist:
   - humanize
   - rerun-sdk
   - yfinance
-  requires_python: '>=3.10'
+  requires_python: '>=3.9'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/linux-64/buf-1.56.0-ha8f183a_0.conda
   sha256: 54ef4312e1c81abd15105f8b9bab49f22699f060e6864e9351b016e5411e5d2e
@@ -15970,7 +15970,7 @@ packages:
 - pypi: ./examples/python/controlnet
   name: controlnet
   version: 0.1.0
-  sha256: 30af0136604c6c5d1accedd7e3e6ce71c9ef1b39e84c0ecf3c4629fa47d5dc63
+  sha256: 72444415608fbfa92bd2e3391653572e7d1e8645b8269192f3394367fdb1f1ce
   requires_dist:
   - accelerate
   - opencv-python
@@ -15980,7 +15980,7 @@ packages:
   - torch==2.8.0
   - transformers
   - rerun-sdk
-  requires_python: '>=3.10'
+  requires_python: '>=3.9'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/26/f8/a81170a816679fca9ccd907b801992acfc03c33f952440421c921af2cc57/cryptography-38.0.4-cp36-abi3-manylinux_2_28_x86_64.whl
   name: cryptography
@@ -29963,7 +29963,7 @@ packages:
 - pypi: ./examples/python/open_photogrammetry_format
   name: open-photogrammetry-format
   version: 0.1.0
-  sha256: 1bf1ac24e064bb75c7f5672b761e519b8b941354a6d9c44d824643ff64f15e80
+  sha256: 4c9ddae0cded3c1defd739160099dab7c18a24efd1ba6c37d60a808dd3807b4c
   requires_dist:
   - numpy
   - pillow
@@ -29971,7 +29971,7 @@ packages:
   - requests
   - rerun-sdk
   - tqdm
-  requires_python: '>=3.10'
+  requires_python: '>=3.9'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/linux-64/opencl-headers-2025.06.13-h5888daf_0.conda
   sha256: 2b6ce54174ec19110e1b3c37455f7cd138d0e228a75727a9bba443427da30a36
@@ -33550,7 +33550,7 @@ packages:
 - pypi: ./rerun_py
   name: rerun-sdk
   version: 0.25.0a1+dev
-  sha256: 5221da5f22fa3bc1bb2556a4e82ee3dcb89cdd018653a00182009d8d7ec0b685
+  sha256: de26dd790e6a6cc8dfab7f1e0f5f8ff3e583cfdf5e7ca5139b4d6d31a5f477db
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -33562,7 +33562,7 @@ packages:
   - datafusion==47.0.0 ; extra == 'datafusion'
   - notebook ; extra == 'all'
   - datafusion ; extra == 'all'
-  requires_python: '>=3.10'
+  requires_python: '>=3.9'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
   name: rfc3339-validator
