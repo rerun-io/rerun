@@ -39,7 +39,7 @@ permissions:
   id-token: "write"
 
 env:
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.9"
 
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
