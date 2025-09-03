@@ -511,6 +511,10 @@ struct MessageBuffer {
     /// away the oldest messages from here too.
     /// This is because some users use static logging for camera images,
     /// which adds up very quickly.
+    ///
+    /// Ideally we would keep exactly one static message per entity/component stream
+    /// (like the `ChunkStore` does), but we'll save that for:
+    /// TODO(#5531): replace this with `ChunkStore`
     static_: MsgQueue,
 
     /// These are never garbage collected.
