@@ -263,22 +263,22 @@ jobs:
           restore-keys: cache-lychee-
 
       # For PRs: Check only links in added lines
-      - name: PR Link Checker (added lines only)
-        if: ${{ inputs.CHANNEL == 'pr' }}
-        run: |
-          # Install lychee
-          curl -sSL https://github.com/lycheeverse/lychee/releases/download/lychee-v0.20.1/lychee-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-          sudo mv lychee /usr/local/bin/
+      # - name: PR Link Checker (added lines only)
+      #   if: ${{ inputs.CHANNEL == 'pr' }}
+      #   run: |
+      #     # Install lychee
+      #     curl -sSL https://github.com/lycheeverse/lychee/releases/download/lychee-v0.20.1/lychee-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+      #     sudo mv lychee /usr/local/bin/
 
-          # Fetch the base branch
-          git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
+      #     # Fetch the base branch
+      #     git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
 
-          # Run our custom PR link checker
-          python3 scripts/ci/pr_link_checker.py --base-ref origin/${{ github.base_ref }}
+      #     # Run our custom PR link checker
+      #     python3 scripts/ci/pr_link_checker.py --base-ref origin/${{ github.base_ref }}
 
       # For nightly: Check all links in the entire codebase
       - name: Full Link Checker
-        if: ${{ inputs.CHANNEL == 'nightly' }}
+        #if: ${{ inputs.CHANNEL == 'nightly' }}
         id: lychee
         uses: lycheeverse/lychee-action@v1.10.0
         with:
