@@ -38,3 +38,9 @@ and the [MCAP specification](https://mcap.dev/) for complete format details.
  * 🐍 [Python API docs for `McapStatistics`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.McapStatistics)
  * 🦀 [Rust API docs for `McapStatistics`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapStatistics.html?speculative-link)
 
+## Example
+
+### Simple MCAP statistics
+
+snippet: archetypes/mcap_statistics_simple
+

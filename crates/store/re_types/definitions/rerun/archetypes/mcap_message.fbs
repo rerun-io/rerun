@@ -12,6 +12,8 @@ namespace rerun.archetypes;
 /// See [archetypes.McapChannel] for channel definitions that specify message encoding,
 /// [archetypes.McapSchema] for data structure definitions, and the
 /// [MCAP specification](https://mcap.dev/) for complete format details.
+///
+/// \example archetypes/mcap_message_simple !api title="Simple MCAP message"
 table McapMessage (
   "attr.docs.category": "MCAP",
   "attr.rerun.state": "unstable",
