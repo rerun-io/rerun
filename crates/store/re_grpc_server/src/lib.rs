@@ -957,6 +957,7 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
 mod tests {
     use super::*;
 
+    use itertools::{Itertools, chain};
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_encoding::Compression;
@@ -999,13 +1000,8 @@ mod tests {
         }
     }
 
-    /// Generates `n` log messages wrapped in a `SetStoreInfo` at the start and `BlueprintActivationCommand` at the end,
-    /// to exercise message ordering.
-    fn fake_log_stream_blueprint(n: usize) -> Vec<LogMsg> {
-        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
-
-        let mut messages = Vec::new();
-        messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
+    fn set_store_info_msg(store_id: &StoreId) -> LogMsg {
+        LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::new(),
             info: StoreInfo {
                 store_id: store_id.clone(),
@@ -1016,7 +1012,16 @@ mod tests {
                 },
                 store_version: Some(CrateVersion::LOCAL),
             },
-        }));
+        })
+    }
+
+    /// Generates `n` log messages wrapped in a `SetStoreInfo` at the start and `BlueprintActivationCommand` at the end,
+    /// to exercise message ordering.
+    fn fake_log_stream_blueprint(n: usize) -> Vec<LogMsg> {
+        let store_id = StoreId::random(StoreKind::Blueprint, "test_app");
+
+        let mut messages = Vec::new();
+        messages.push(set_store_info_msg(&store_id));
         for _ in 0..n {
             messages.push(LogMsg::ArrowMsg(
                 store_id.clone(),
@@ -1049,30 +1054,35 @@ mod tests {
         messages
     }
 
-    fn fake_log_stream_recording(n: usize, static_: bool) -> Vec<LogMsg> {
+    #[derive(Clone, Copy)]
+    enum Temporalness {
+        Static,
+        Temporal,
+    }
+
+    fn fake_log_stream_recording(n: usize) -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Recording, "test_app");
 
+        chain!(
+            [set_store_info_msg(&store_id)],
+            generate_log_messages(&store_id, n, Temporalness::Temporal)
+        )
+        .collect()
+    }
+
+    fn generate_log_messages(
+        store_id: &StoreId,
+        n: usize,
+        temporalness: Temporalness,
+    ) -> Vec<LogMsg> {
         let mut messages = Vec::new();
-        messages.push(LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: *RowId::new(),
-            info: StoreInfo {
-                store_id: store_id.clone(),
-                cloned_from: None,
-                store_source: StoreSource::RustSdk {
-                    rustc_version: String::new(),
-                    llvm_version: String::new(),
-                },
-                store_version: Some(CrateVersion::LOCAL),
-            },
-        }));
         for _ in 0..n {
-            let timepoint = if static_ {
-                re_log_types::TimePoint::STATIC
-            } else {
-                re_log_types::TimePoint::default().with(
+            let timepoint = match temporalness {
+                Temporalness::Static => re_log_types::TimePoint::STATIC,
+                Temporalness::Temporal => re_log_types::TimePoint::default().with(
                     re_log_types::Timeline::new_sequence("log_time"),
                     re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
-                )
+                ),
             };
 
             messages.push(LogMsg::ArrowMsg(
@@ -1089,7 +1099,6 @@ mod tests {
                     .unwrap(),
             ));
         }
-
         messages
     }
 
@@ -1283,7 +1292,7 @@ mod tests {
         // Use an absurdly low memory limit to force all messages to be dropped immediately from history
         let (completion, addr) = setup_with_memory_limit(MemoryLimit::from_bytes(1)).await;
         let mut client = make_client(addr).await;
-        let messages = fake_log_stream_recording(3, false);
+        let messages = fake_log_stream_recording(3);
 
         write_messages(&mut client, messages.clone()).await;
 
@@ -1378,5 +1387,35 @@ mod tests {
 
             completion.finish();
         }
+    }
+
+    #[tokio::test]
+    async fn static_data_is_returned_first() {
+        let (completion, addr) = setup_with_memory_limit(MemoryLimit::UNLIMITED).await;
+        let mut client = make_client(addr).await;
+
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
+
+        let set_store_info = vec![set_store_info_msg(&store_id)];
+        let first_static = generate_log_messages(&store_id, 1, Temporalness::Static);
+        let first_temporal = generate_log_messages(&store_id, 1, Temporalness::Temporal);
+        let second_static = generate_log_messages(&store_id, 1, Temporalness::Static);
+
+        write_messages(&mut client, set_store_info.clone()).await;
+        write_messages(&mut client, first_static.clone()).await;
+        write_messages(&mut client, first_temporal.clone()).await;
+        write_messages(&mut client, second_static.clone()).await;
+
+        // All static data should always come before temporal data:
+        let expected =
+            itertools::chain!(set_store_info, first_static, second_static, first_temporal)
+                .collect_vec();
+
+        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
+        let actual = read_log_stream(&mut log_stream, expected.len()).await;
+
+        assert_eq!(actual, expected);
+
+        completion.finish();
     }
 }
