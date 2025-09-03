@@ -35,6 +35,35 @@ class McapChannel(Archetype):
     [MCAP specification](https://mcap.dev/) for complete format details.
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
+    Example
+    -------
+    ### Simple MCAP channel:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_mcap_channel", spawn=True)
+
+    rr.log(
+        "mcap/channels/camera",
+        rr.McapChannel(
+            id=1,
+            topic="/camera/image",
+            message_encoding="cdr",
+            metadata={"frame_id": "camera_link", "encoding": "bgr8"},
+        ),
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png">
+      <img src="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/full.png" width="640">
+    </picture>
+    </center>
+
     """
 
     def __init__(

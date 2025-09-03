@@ -30,6 +30,37 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+///
+/// ## Example
+///
+/// ### Simple MCAP channel
+/// ```ignore
+/// use std::collections::HashMap;
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_mcap_channel").spawn()?;
+///
+///     let mut metadata = HashMap::new();
+///     metadata.insert("frame_id".to_string(), "camera_link".to_string());
+///     metadata.insert("encoding".to_string(), "bgr8".to_string());
+///
+///     rec.log(
+///         "mcap/channels/camera",
+///         &rerun::McapChannel::new(1, "/camera/image", "cdr").with_metadata(metadata),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png">
+///   <img src="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct McapChannel {
     /// Unique identifier for this channel within the MCAP file.

@@ -16,6 +16,7 @@ from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
+from .key_value_pairs_ext import KeyValuePairsExt
 
 if TYPE_CHECKING:
     from .. import datatypes
@@ -24,7 +25,7 @@ __all__ = ["KeyValuePairs", "KeyValuePairsArrayLike", "KeyValuePairsBatch", "Key
 
 
 @define(init=False)
-class KeyValuePairs(ComponentMixin):
+class KeyValuePairs(KeyValuePairsExt, ComponentMixin):
     """
     **Component**: A map of string keys to string values.
 
@@ -50,7 +51,9 @@ class KeyValuePairs(ComponentMixin):
         # You can define your own __init__ function as a member of KeyValuePairsExt in key_value_pairs_ext.py
         self.__attrs_init__(pairs=pairs)
 
-    pairs: list[datatypes.Utf8Pair] = field()
+    pairs: list[datatypes.Utf8Pair] = field(
+        converter=KeyValuePairsExt.pairs__field_converter_override,  # type: ignore[misc]
+    )
     # The key-value pairs that make up this string map.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -84,9 +87,7 @@ class KeyValuePairsBatch(BaseBatch[KeyValuePairsArrayLike], ComponentBatchMixin)
 
     @staticmethod
     def _native_to_pa_array(data: KeyValuePairsArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of KeyValuePairs not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in key_value_pairs_ext.py
+        return KeyValuePairsExt.native_to_pa_array_override(data, data_type)
 
 
 # This is patched in late to avoid circular dependencies.

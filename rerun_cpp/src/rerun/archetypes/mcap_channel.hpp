@@ -27,6 +27,31 @@ namespace rerun::archetypes {
     /// `archetypes::McapSchema` for the data structure definitions, and the
     /// [MCAP specification](https://mcap.dev/) for complete format details.
     ///
+    /// ## Example
+    ///
+    /// ### Simple MCAP channel
+    /// ![image](https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_mcap_channel");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     const std::vector<rerun::datatypes::Utf8Pair> metadata = {
+    ///         {"frame_id", "camera_link"},
+    ///         {"encoding", "bgr8"},
+    ///     };
+    ///
+    ///     rec.log(
+    ///         "mcap/channels/camera",
+    ///         rerun::archetypes::McapChannel(1, "/camera/image", "cdr")
+    ///             .with_metadata(rerun::components::KeyValuePairs(metadata))
+    ///     );
+    /// }
+    /// ```
+    ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct McapChannel {

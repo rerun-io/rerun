@@ -10,6 +10,8 @@ namespace rerun.archetypes;
 /// See also [archetypes.McapMessage] for individual messages within a channel,
 /// [archetypes.McapSchema] for the data structure definitions, and the
 /// [MCAP specification](https://mcap.dev/) for complete format details.
+///
+/// \example archetypes/mcap_channel_simple title="Simple MCAP channel" image="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png"
 table McapChannel (
   "attr.docs.category": "MCAP",
   "attr.rerun.state": "unstable",
