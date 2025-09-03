@@ -860,9 +860,11 @@ mod tests {
                 )),
                 EntityPath::from("Program Files/App/config.ini")
             );
+
+            // UNC prefix from network share should be stripped
             assert_eq!(
                 EntityPath::from_file_path(std::path::Path::new(r"\\server\share\file.dat")),
-                EntityPath::from("server/share/file.dat")
+                EntityPath::from("file.dat")
             );
         }
     }
