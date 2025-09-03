@@ -25,7 +25,6 @@ use crate::{TypeConversionError, missing_field};
 // --- ScanPartitionTableRequest ---
 
 pub struct ScanPartitionTableRequest {
-    pub dataset_id: EntryId,
     pub scan_parameters: Option<ScanParameters>,
 }
 
@@ -36,13 +35,6 @@ impl TryFrom<crate::cloud::v1alpha1::ScanPartitionTableRequest> for ScanPartitio
         value: crate::cloud::v1alpha1::ScanPartitionTableRequest,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
-            dataset_id: value
-                .dataset_id
-                .ok_or(missing_field!(
-                    crate::cloud::v1alpha1::ScanPartitionTableRequest,
-                    "dataset_id"
-                ))?
-                .try_into()?,
             scan_parameters: value.scan_parameters.map(TryInto::try_into).transpose()?,
         })
     }
@@ -51,7 +43,6 @@ impl TryFrom<crate::cloud::v1alpha1::ScanPartitionTableRequest> for ScanPartitio
 impl From<ScanPartitionTableRequest> for crate::cloud::v1alpha1::ScanPartitionTableRequest {
     fn from(value: ScanPartitionTableRequest) -> Self {
         Self {
-            dataset_id: Some(value.dataset_id.into()),
             scan_parameters: value.scan_parameters.map(Into::into),
         }
     }

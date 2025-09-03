@@ -525,15 +525,16 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ScanPartitionTableRequest>,
     ) -> Result<tonic::Response<Self::ScanPartitionTableStream>, tonic::Status> {
+        let store = self.store.read().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+
         let request: ScanPartitionTableRequest = request.into_inner().try_into()?;
         if request.scan_parameters.is_some() {
             return Err(tonic::Status::unimplemented(
                 "scan_partition_table: scan_parameters not implemented",
             ));
         }
-        let entry_id = request.dataset_id;
 
-        let store = self.store.read().await;
         let dataset = store.dataset(entry_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
         })?;
@@ -970,14 +971,6 @@ fn get_entry_id_from_headers<T>(
     req: &tonic::Request<T>,
 ) -> Result<EntryId, tonic::Status> {
     if let Some(entry_id) = req.entry_id()? {
-        const HEADER: &str = re_protos::headers::RERUN_HTTP_HEADER_ENTRY_ID;
-
-        let entry_id: EntryId = entry_id.parse().map_err(|err| {
-            tonic::Status::invalid_argument(format!(
-                "'{entry_id:?}' is not a valid value for `{HEADER}`: {err:#}"
-            ))
-        })?;
-
         Ok(entry_id)
     } else if let Some(dataset_name) = req.entry_name()? {
         Ok(store

@@ -78,13 +78,13 @@ impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
 /// let entry_id = RerunHeadersExtractor(&req).entry_id().unwrap();
 /// ```
 pub trait RerunHeadersExtractorExt {
-    fn entry_id(&self) -> Result<Option<&str>, tonic::Status>;
+    fn entry_id(&self) -> Result<Option<re_log_types::EntryId>, tonic::Status>;
 
     fn entry_name(&self) -> Result<Option<String>, tonic::Status>;
 }
 
 impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
-    fn entry_id(&self) -> Result<Option<&str>, tonic::Status> {
+    fn entry_id(&self) -> Result<Option<re_log_types::EntryId>, tonic::Status> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_ID;
 
         let Some(entry_id) = self.metadata().get(HEADER) else {
@@ -92,6 +92,11 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
         };
 
         let entry_id = entry_id.to_str().map_err(|err| {
+            tonic::Status::invalid_argument(format!(
+                "'{entry_id:?}' is not a valid value for '{HEADER}': {err:#}"
+            ))
+        })?;
+        let entry_id = entry_id.parse().map_err(|err| {
             tonic::Status::invalid_argument(format!(
                 "'{entry_id:?}' is not a valid value for '{HEADER}': {err:#}"
             ))

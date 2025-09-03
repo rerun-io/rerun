@@ -206,17 +206,19 @@ where
 
         let mut stream = self
             .inner()
-            .scan_partition_table(tonic::Request::new(
-                ScanPartitionTableRequest {
-                    dataset_id: entry_id,
-                    scan_parameters: Some(ScanParameters {
-                        columns: vec![COLUMN_NAME.to_owned()],
-                        on_missing_columns: IfMissingBehavior::Error,
-                        ..Default::default()
-                    }),
-                }
-                .into(),
-            ))
+            .scan_partition_table(
+                tonic::Request::new(
+                    ScanPartitionTableRequest {
+                        scan_parameters: Some(ScanParameters {
+                            columns: vec![COLUMN_NAME.to_owned()],
+                            on_missing_columns: IfMissingBehavior::Error,
+                            ..Default::default()
+                        }),
+                    }
+                    .into(),
+                )
+                .with_entry_id(entry_id)?,
+            )
             .await?
             .into_inner();
 

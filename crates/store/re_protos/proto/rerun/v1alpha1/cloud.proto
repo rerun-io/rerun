@@ -235,8 +235,10 @@ message GetPartitionTableSchemaResponse {
 }
 
 message ScanPartitionTableRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
   rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message ScanPartitionTableResponse {

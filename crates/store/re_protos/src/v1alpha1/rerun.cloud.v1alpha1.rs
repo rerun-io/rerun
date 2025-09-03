@@ -164,8 +164,6 @@ impl ::prost::Name for GetPartitionTableSchemaResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScanPartitionTableRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(message, optional, tag = "2")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
 }
