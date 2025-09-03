@@ -957,7 +957,7 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
 mod tests {
     use super::*;
 
-    use itertools::{Itertools, chain};
+    use itertools::{Itertools as _, chain};
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_encoding::Compression;
