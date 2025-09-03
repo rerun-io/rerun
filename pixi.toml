@@ -700,7 +700,7 @@ numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi d
 # This is very similar to `pixi run py-build`, and dispatches to maturin by way of PEP621.
 # However, pixi doesn't know how to track the rust dependencies of the python package, so
 # you still need to `pixi run py-build` in the correct environment if you change the rust code.
-rerun-sdk = { path = "rerun_py", editable = true, extras = ["all"] }
+rerun-sdk = { path = "rerun_py", editable = true }
 
 # The same applies to the notebook.
 # However, in order to build rerun-notebook and thus to even activate environments with the
@@ -711,6 +711,7 @@ rerun-sdk = { path = "rerun_py", editable = true, extras = ["all"] }
 
 [feature.python-docs.pypi-dependencies]
 griffe = "==1.4.1"
+griffe-warnings-deprecated = "==1.1.0"
 mkdocs = "==1.6.1"
 mkdocs-gen-files = "==0.5.0"
 mkdocs-literate-nav = "==0.6.1"
