@@ -71,9 +71,12 @@ impl TimestampMetadata {
         if cfg!(debug_assertions) {
             // Missing both happens all the time - but missing just one is suspicious.
             if grpc_encoded_at.is_some() && grpc_decoded_at.is_none() {
-                re_log::warn_once!(
-                    "Received a batch with an encode timestamp but no decode timestamp. Latency measurements will be incomplete."
-                );
+                // TODO(#10343): enable this non-critical warning again
+                if false {
+                    re_log::warn_once!(
+                        "Received a batch with an encode timestamp but no decode timestamp. Latency measurements will be incomplete."
+                    );
+                }
             }
             if grpc_decoded_at.is_some() && grpc_encoded_at.is_none() {
                 re_log::warn_once!(

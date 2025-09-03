@@ -17,6 +17,7 @@ pub trait UICommandSender {
 pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
     Open,
+    OpenUrl,
     Import,
 
     /// Save the current recording, or all selected recordings
@@ -133,6 +134,10 @@ impl UICommand {
             Self::Open => (
                 "Open…",
                 "Open any supported files (.rrd, images, meshes, …) in a new recording",
+            ),
+            Self::OpenUrl => (
+                "Open from URL…",
+                "Open or navigate to data from any supported URL",
             ),
             Self::Import => (
                 "Import into current recording…",
@@ -351,6 +356,10 @@ impl UICommand {
             Self::SaveRecordingSelection => smallvec![cmd_alt(Key::S)],
             Self::SaveBlueprint => smallvec![],
             Self::Open => smallvec![cmd(Key::O)],
+            // Some browsers have a "paste and go" action.
+            // But unfortunately there's no standard shortcut for this.
+            // Claude however thinks it's this one (it's not). Let's go with that anyways!
+            Self::OpenUrl => smallvec![cmd_shift(Key::L)],
             Self::Import => smallvec![cmd_shift(Key::O)],
             Self::CloseCurrentRecording => smallvec![],
             Self::CloseAllEntries => smallvec![],

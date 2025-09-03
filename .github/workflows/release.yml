@@ -194,7 +194,7 @@ jobs:
           cat <<EOF > pr-body.txt
           ### Next steps
           - Test the release
-          - If this is an 'alpha' release, you can just merge the pull request.
+          - If this is an 'alpha' release, merge the PR **only** if the release job succeeds and the link checker is happy. Otherwise, close the PR without merging and cherrypick to main as required.
           - Otherwise:
             - For any added commits, run the release workflow in 'rc' mode again
             - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'release' mode

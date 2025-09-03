@@ -29,3 +29,12 @@ Previously this could only be configured for gRPC sinks, and it was configured o
 In the C++ and Python APIs, negative timeouts used to have special meaning. Now they are no longer permitted.
 
 The Python flush calls now raises an error if the flushing did not complete successfully.
+
+## ❗ Deprecations
+
+### Python 3.9
+
+Support for Python 3.9 is being deprecated. Python 3.9 is past end-of-life. See: https://devguide.python.org/versions/
+In the next release, we will fully drop support and switch to Python 3.10 as the minimum supported version.
+
+See an overview for supported python versions [here](https://ref.rerun.io/docs/python/main/common#supported-python-versions).

@@ -29963,7 +29963,7 @@ packages:
 - pypi: examples/python/open_photogrammetry_format
   name: open-photogrammetry-format
   version: 0.1.0
-  sha256: 1bf1ac24e064bb75c7f5672b761e519b8b941354a6d9c44d824643ff64f15e80
+  sha256: de3134df09286a5d9809cfafcb1082c1ffe45bf70c84adcf79d8f090c14fc1ab
   requires_dist:
   - numpy
   - pillow
@@ -29971,7 +29971,7 @@ packages:
   - requests
   - rerun-sdk
   - tqdm
-  requires_python: '>=3.10'
+  requires_python: '>=3.9'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/linux-64/opencl-headers-2025.06.13-h5888daf_0.conda
   sha256: 2b6ce54174ec19110e1b3c37455f7cd138d0e228a75727a9bba443427da30a36
