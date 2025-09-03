@@ -14,6 +14,8 @@ from rerun_bindings import (
     VectorDistanceMetric as VectorDistanceMetric,
 )
 
+from .error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError
+
 if TYPE_CHECKING:
     import datafusion
 
@@ -27,13 +29,26 @@ class CatalogClient:
     """
 
     def __init__(self, address: str, token: str | None = None) -> None:
+        from importlib.metadata import version
         from importlib.util import find_spec
 
         if find_spec("datafusion") is None:
-            raise ImportError(
-                "The 'datafusion' package is required to use `CatalogClient`. "
-                "You can install it with `pip install datafusion`."
-            )
+            raise RerunMissingDependencyError("datafusion", "datafusion")
+
+        # Check that we have a compatible version of datafusion.
+        #
+        # Note: ideally, we would pull the spec from our `pyproject.toml` file or package metadata. I tried, and it's
+        # complex, flaky, and introduces additional dependencies (such as `packaging` and/or `tomli`). Also, if we have
+        # a mismatch here, tests will fail, so we shouldn't forget to update.
+        #
+        # TODO(ab): we could be more flexible here and allow versions that are known to be FFI compatible (e.g. 48 is
+        # compatible with 47). That would make the version check more complicated though, unless we start depending on
+        # the `packaging` package.
+        version_spec = "datafusion==47.0.0"
+
+        datafusion_version = version("datafusion")
+        if datafusion_version != version_spec.split("==")[1]:
+            raise RerunIncompatibleDependencyVersionError("datafusion", datafusion_version, version_spec)
 
         self._raw_client = CatalogClientInternal(address, token)
 
