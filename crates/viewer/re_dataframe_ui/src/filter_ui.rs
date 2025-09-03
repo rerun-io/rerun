@@ -1,4 +1,4 @@
-use egui::{Frame, Margin, Style, text::LayoutJob};
+use egui::{Frame, Margin};
 
 use re_ui::{
     SyntaxHighlighting, UiExt as _, design_tokens_of_visuals,
@@ -248,7 +248,7 @@ impl Filter {
 }
 
 impl SyntaxHighlighting for FilterOperation {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         let normal_text_format = |style| {
             egui::TextFormat::simple(
                 egui::TextStyle::Body.resolve(style),

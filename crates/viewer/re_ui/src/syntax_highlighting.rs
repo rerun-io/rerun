@@ -17,7 +17,7 @@ pub trait SyntaxHighlighting {
         builder.job
     }
 
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder);
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>);
 }
 
 // ----------------------------------------------------------------------------
@@ -137,14 +137,6 @@ fn text_format(style: &Style) -> TextFormat {
     }
 }
 
-fn monospace_text_format(style: &Style) -> TextFormat {
-    TextFormat {
-        font_id: egui::TextStyle::Monospace.resolve(style),
-        color: style.visuals.text_color(),
-        ..Default::default()
-    }
-}
-
 /// Monospace text format with a specific color (that may be overridden by the style).
 fn monospace_with_color(style: &Style, color: Color32) -> TextFormat {
     TextFormat {
@@ -155,25 +147,25 @@ fn monospace_with_color(style: &Style, color: Color32) -> TextFormat {
 }
 
 impl SyntaxHighlighting for &'_ str {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         builder.append_with_format(self, text_format);
     }
 }
 
 impl SyntaxHighlighting for String {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         builder.append_with_format(self, text_format);
     }
 }
 
 impl SyntaxHighlighting for EntityPathPart {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         builder.append_identifier(&self.ui_string());
     }
 }
 
 impl SyntaxHighlighting for Instance {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         if self.is_all() {
             builder.append_primitive("all");
         } else {
@@ -183,7 +175,7 @@ impl SyntaxHighlighting for Instance {
 }
 
 impl SyntaxHighlighting for EntityPath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         builder.append_syntax("/");
 
         for (i, part) in self.iter().enumerate() {
@@ -196,7 +188,7 @@ impl SyntaxHighlighting for EntityPath {
 }
 
 impl SyntaxHighlighting for InstancePath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         builder.append(&self.entity_path);
         if self.instance.is_specific() {
             builder.append(&InstanceInBrackets(self.instance));
@@ -205,31 +197,31 @@ impl SyntaxHighlighting for InstancePath {
 }
 
 impl SyntaxHighlighting for ComponentType {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         builder.append_identifier(self.short_name());
     }
 }
 
 impl SyntaxHighlighting for ArchetypeName {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         builder.append_identifier(self.as_str());
     }
 }
 
 impl SyntaxHighlighting for ComponentIdentifier {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(&self.to_string());
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+        builder.append_identifier(self.as_ref());
     }
 }
 
 impl SyntaxHighlighting for ComponentDescriptor {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         builder.append_identifier(self.display_name());
     }
 }
 
 impl SyntaxHighlighting for ComponentPath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         let Self {
             entity_path,
             component_descriptor,
@@ -245,7 +237,7 @@ impl SyntaxHighlighting for ComponentPath {
 pub struct InstanceInBrackets(pub Instance);
 
 impl SyntaxHighlighting for InstanceInBrackets {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         builder
             .append_syntax("[")
             .append(&self.0)
