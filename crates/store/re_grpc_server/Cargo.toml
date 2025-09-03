@@ -38,6 +38,7 @@ re_uri.workspace = true
 # External
 anyhow.workspace = true
 crossbeam.workspace = true
+itertools.workspace = true
 parking_lot.workspace = true
 tonic = { workspace = true, default-features = false, features = [
   "transport",

@@ -271,7 +271,7 @@ def deprecated_param(name: str, *, use_instead: str | None = None, since: str | 
     return decorator
 
 
-class RerunOptionalDependencyError(ImportError):
+class RerunMissingDependencyError(ImportError):
     """Raised when an optional dependency is not installed."""
 
     def __init__(self, package: str, optional_dep: str) -> None:
@@ -279,4 +279,16 @@ class RerunOptionalDependencyError(ImportError):
             f"'{package}' could not be imported. "
             f"Please install it, or install rerun as rerun[{optional_dep}]/rerun[all] "
             "to use this functionality."
+        )
+
+
+class RerunIncompatibleDependencyVersionError(ImportError):
+    """Raised when a dependency has an incompatible version."""
+
+    def __init__(self, package: str, actual_version: str, compatible_versions: list[int]) -> None:
+        super().__init__(
+            f"'{package}' version {actual_version} is incompatible with rerun. "
+            f"Please install rerun as rerun[{package}]/rerun[all] "
+            f"to use this functionality. "
+            f"Compatible major version(s): {', '.join(map(str, compatible_versions))}"
         )

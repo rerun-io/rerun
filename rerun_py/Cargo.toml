@@ -91,6 +91,7 @@ mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
 numpy.workspace = true
 parking_lot.workspace = true
 pyo3 = { workspace = true, features = [
+  # TODO(#10959): Update this to 3.10
   "abi3-py39", # Require at least Python 3.9
   "chrono",    #TODO(#9317): migrate to jiff
 ] }

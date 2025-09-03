@@ -147,6 +147,7 @@ fn process_messages<W: std::io::Write>(
                         uncompressed_size: _,
                         encoding: _,
                         payload: _,
+                        is_static: _,
                     }) => {
                         if let Some(target_store_id) = store_id {
                             if let Some(recording_id) = &rewrites.recording_id {
