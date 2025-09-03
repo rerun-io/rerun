@@ -458,6 +458,39 @@ impl From<TableMsgProto> for Msg {
     }
 }
 
+// -----------------------------------------------------------------------------------
+
+#[derive(Default)]
+struct MsgQueue {
+    /// Messages stored in order of arrival, and garbage collected if the server hits the memory limit.
+    queue: VecDeque<Msg>,
+
+    /// Total size of [`Self::queue`] in bytes.
+    size_bytes: u64,
+}
+
+impl MsgQueue {
+    pub fn iter(&self) -> impl Iterator<Item = &Msg> {
+        self.queue.iter()
+    }
+
+    pub fn push_back(&mut self, msg: Msg) {
+        self.size_bytes += msg.total_size_bytes();
+        self.queue.push_back(msg);
+    }
+
+    pub fn pop_front(&mut self) -> Option<Msg> {
+        if let Some(msg) = self.queue.pop_front() {
+            self.size_bytes -= msg.total_size_bytes();
+            Some(msg)
+        } else {
+            None
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------------
+
 /// Main event loop for the server, which runs in its own task.
 ///
 /// Handles message history, and broadcasts messages to clients.
@@ -474,12 +507,10 @@ struct EventLoop {
     event_rx: mpsc::Receiver<Event>,
 
     /// Messages stored in order of arrival, and garbage collected if the server hits the memory limit.
-    ordered_message_queue: VecDeque<Msg>,
+    ordered_message_queue: MsgQueue,
 
-    /// Total size of `ordered_message_queue` in bytes.
-    ordered_message_bytes: u64,
-
-    /// Messages potentially out of order with the rest of the message stream. These are never garbage collected.
+    /// Messages potentially out of order with the rest of the message stream.
+    /// These are never garbage collected.
     persistent_message_queue: VecDeque<LogMsgProto>,
 }
 
@@ -496,7 +527,6 @@ impl EventLoop {
             broadcast_table_tx,
             event_rx,
             ordered_message_queue: Default::default(),
-            ordered_message_bytes: 0,
             persistent_message_queue: Default::default(),
         }
     }
@@ -577,8 +607,6 @@ impl EventLoop {
 
             // Recording data
             Msg::ArrowMsg(..) => {
-                let approx_size_bytes = msg.total_size_bytes();
-                self.ordered_message_bytes += approx_size_bytes;
                 self.ordered_message_queue.push_back(msg.into());
             }
         }
@@ -594,8 +622,6 @@ impl EventLoop {
 
         self.gc_if_using_too_much_ram();
 
-        let approx_size_bytes = table.total_size_bytes();
-        self.ordered_message_bytes += approx_size_bytes;
         self.ordered_message_queue.push_back(Msg::Table(table));
     }
 
@@ -612,7 +638,7 @@ impl EventLoop {
         };
 
         let max_bytes = max_bytes as u64;
-        if max_bytes >= self.ordered_message_bytes {
+        if max_bytes >= self.ordered_message_queue.size_bytes {
             // We're not using too much memory.
             return;
         }
@@ -620,24 +646,23 @@ impl EventLoop {
         {
             re_tracing::profile_scope!("Drop messages");
             re_log::info_once!(
-                "Memory limit ({}) exceeded. Dropping old log messages from the server. Clients connecting after this will not see the full history.",
+                "Memory limit ({}) exceeded. Dropping old log messages from the gRPC proxy server. Clients connecting after this will not see the full history.",
                 re_format::format_bytes(max_bytes as _)
             );
 
-            let bytes_to_free = self.ordered_message_bytes - max_bytes;
-
-            let mut bytes_dropped = 0;
+            let start_size = self.ordered_message_queue.size_bytes;
             let mut messages_dropped = 0;
 
-            while bytes_dropped < bytes_to_free {
+            while max_bytes < self.ordered_message_queue.size_bytes {
                 // only drop messages from temporal queue
-                if let Some(msg) = self.ordered_message_queue.pop_front() {
-                    bytes_dropped += msg.total_size_bytes();
+                if self.ordered_message_queue.pop_front().is_some() {
                     messages_dropped += 1;
                 } else {
                     break;
                 }
             }
+
+            let bytes_dropped = start_size - self.ordered_message_queue.size_bytes;
 
             re_log::trace!(
                 "Dropped {} bytes in {messages_dropped} message(s)",
