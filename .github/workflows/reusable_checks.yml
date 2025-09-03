@@ -283,7 +283,7 @@ jobs:
         uses: lycheeverse/lychee-action@v2.6.1
         with:
           fail: true
-          lycheeVersion: "0.20.1"
+          lycheeVersion: "v0.20.1"
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
           # Pass --verbose, so that all considered links are printed, making it easier to debug.
           args: |
