@@ -46,7 +46,7 @@ We tag all data files (`.rrd` files) and communication protocols with the Rerun 
 Release builds of the Python Wheels are triggered by pushing a release tag to GitHub in the form `0.2.0`.
 If we are doing a patch release, we do a branch off of the latest release tag (e.g. `0.3.0`) and cherry-pick any fixes we want into that branch.
 
-## Alpha vs. final releases
+## Alpha vs final releases
 
 The overall process slightly differs between alphas and final releases.
 
