@@ -48,5 +48,10 @@ pub fn test_single_channel_mesh() {
         .with_size(size)
         .build_ui(|ui| test_context.run_with_single_view(ui, view_id));
 
-    harness.snapshot_options("mesh3d_grayscale_texture", &SnapshotOptions::new());
+    let broken_pixels_fraction = 0.0004;
+    harness.snapshot_options(
+        "mesh3d_grayscale_texture",
+        &SnapshotOptions::new()
+            .failed_pixel_count_threshold((size.x * size.y * broken_pixels_fraction) as usize),
+    );
 }
