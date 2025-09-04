@@ -103,14 +103,6 @@ class VideoStream(Archetype):
             continue
         rr.set_time("time", duration=float(packet.pts * packet.time_base))
         rr.log("video_stream", rr.VideoStream.from_fields(sample=bytes(packet)))
-
-
-    depth_image = 65535 * np.ones((200, 300), dtype=np.uint16)
-    depth_image[50:150, 50:150] = 20000
-    depth_image[130:180, 100:280] = 45000
-
-    # Log the tensor, assigning names to each dimension
-    rr.log("depth", rr.DepthImage(depth_image, meter=10_000.0))
     ```
     <center>
     <picture>
