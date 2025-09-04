@@ -5,7 +5,8 @@ use re_renderer::{external::re_video::VideoLoadError, video::Video};
 use re_types::{
     Archetype as _,
     archetypes::{AssetVideo, VideoFrameReference},
-    components::{self, Blob, MediaType, VideoTimestamp},
+    components::{self, Blob, MediaType, Opacity, VideoTimestamp},
+    image::ImageKind,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider,
@@ -15,7 +16,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    PickableTexturedRect,
+    PickableTexturedRect, SpatialViewState,
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
     visualizers::{
@@ -90,10 +91,13 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                 };
                 let all_video_references =
                     results.iter_as(timeline, VideoFrameReference::descriptor_video_reference());
+                let all_opacities =
+                    results.iter_as(timeline, VideoFrameReference::descriptor_opacity());
 
-                for (_index, video_timestamps, video_references) in re_query::range_zip_1x1(
+                for (_index, video_timestamps, video_references, opacity) in re_query::range_zip_1x2(
                     entity_iterator::iter_component(&all_video_timestamp_chunks, timeline),
                     all_video_references.slice::<String>(),
+                    all_opacities.slice::<f32>(),
                 ) {
                     let Some(video_timestamp): Option<&VideoTimestamp> = video_timestamps.first()
                     else {
@@ -105,6 +109,11 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                         spatial_ctx,
                         video_timestamp,
                         video_references,
+                        opacity
+                            .and_then(|slice| slice.first())
+                            .copied()
+                            .map(Opacity::from)
+                            .unwrap_or_else(|| self.fallback_for(ctx)),
                         entity_path,
                         view_query.view_id,
                     );
@@ -134,12 +143,14 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
 }
 
 impl VideoFrameReferenceVisualizer {
+    #[expect(clippy::too_many_arguments)]
     fn process_video_frame(
         &mut self,
         ctx: &re_viewer_context::QueryContext<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
         video_timestamp: &VideoTimestamp,
         video_references: Option<Vec<re_types::ArrowString>>,
+        opacity: Opacity,
         entity_path: &EntityPath,
         view_id: ViewId,
     ) {
@@ -200,6 +211,9 @@ impl VideoFrameReferenceVisualizer {
                         &std::iter::once(video_buffer.as_ref()).collect(),
                     ) {
                         Ok(video_frame_reference) => {
+                            #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
+                            let multiplicative_tint =
+                                re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
                             visualize_video_frame_texture(
                                 ctx.view_ctx,
                                 &mut self.data,
@@ -209,7 +223,7 @@ impl VideoFrameReferenceVisualizer {
                                 world_from_entity,
                                 spatial_ctx.highlight,
                                 video_resolution,
-                                egui::Rgba::WHITE,
+                                multiplicative_tint,
                             );
                         }
 
@@ -298,4 +312,21 @@ impl TypedComponentFallbackProvider<components::DrawOrder> for VideoFrameReferen
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => [components::EntityPath, components::DrawOrder]);
+impl TypedComponentFallbackProvider<components::Opacity> for VideoFrameReferenceVisualizer {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> components::Opacity {
+        // Videos should be transparent whenever they're on top of other media,
+        // But fully opaque if there is no other media in the scene.
+        let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
+            return 1.0.into();
+        };
+
+        // Videos are basically color images.
+        //
+        // Check [`crates/viewer/re_view_spatial/src/visualizers/images.rs`] for possible issues with this approach.
+        view_state
+            .fallback_opacity_for_image_kind(ImageKind::Color)
+            .into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => [components::EntityPath, components::DrawOrder, Opacity]);

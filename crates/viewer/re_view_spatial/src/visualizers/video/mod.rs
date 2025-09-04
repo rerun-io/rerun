@@ -82,7 +82,6 @@ fn visualize_video_frame_texture(
                 outline_mask: highlight.overall,
                 depth_offset,
                 multiplicative_tint,
-                ..Default::default()
             },
         };
         visualizer_data.add_pickable_rect(
