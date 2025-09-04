@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use re_chunk::TimelineName;
 use re_entity_db::{TimeCounts, TimesPerTimeline};
 use re_log_types::{
-    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, Timeline,
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeCell, TimeInt, TimeReal, TimeType,
+    Timeline,
 };
 
 use crate::NeedsRepaint;
@@ -587,6 +588,12 @@ impl TimeControl {
         self.states
             .get(self.timeline().name())
             .map(|state| state.current.time)
+    }
+
+    /// The current time & timeline.
+    pub fn time_cell(&self) -> Option<TimeCell> {
+        self.time()
+            .map(|t| TimeCell::new(self.timeline().typ(), t.floor().as_i64()))
     }
 
     /// The current time.
