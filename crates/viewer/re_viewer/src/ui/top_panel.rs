@@ -404,8 +404,31 @@ fn panel_buttons_r2l(
     }
 
     app.notifications.notification_toggle_button(ui);
+
+    let time_selection = app
+        .active_recording_config()
+        .map(|config| {
+            let time_ctrl = config.time_ctrl.read();
+            let range = time_ctrl.loop_selection().map_or(
+                re_log_types::AbsoluteTimeRange::EVERYTHING,
+                |range| re_log_types::AbsoluteTimeRange {
+                    min: range.min.floor(),
+                    max: range.max.ceil(),
+                },
+            );
+            let timeline = *time_ctrl.timeline();
+            re_uri::TimeSelection { timeline, range }
+        })
+        .unwrap_or_else(||
+            // This only happens if we don't have a recording open.
+            // In that case we also won't need to time selection for anything.
+            // Coming up with a meaningful default here makes the code downstream a bit simpler.
+            re_uri::TimeSelection {
+            timeline: re_log_types::Timeline::log_time(),
+            range: re_log_types::AbsoluteTimeRange::EVERYTHING,
+        });
     app.share_dialog
-        .ui(ui, store_hub, app.state.navigation.peek());
+        .ui(ui, store_hub, app.state.navigation.peek(), time_selection);
 }
 
 /// Shows clickable website link as an image (text doesn't look as nice)
