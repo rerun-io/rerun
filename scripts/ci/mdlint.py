@@ -228,6 +228,7 @@ class BacktickLinkError(Error):
             """,
         )
 
+
 class BadDataReferenceError(Error):
     CODE = "E005"
 
@@ -269,8 +270,8 @@ def get_non_void_element_spans(content: str, search_start: int, tagname: str) ->
     if element_start == -1:
         return None
 
-    opening_tag_content_start = element_start + len(tagname) + 1;
-    opening_tag_content_end = content.find(">", opening_tag_content_start);
+    opening_tag_content_start = element_start + len(tagname) + 1
+    opening_tag_content_end = content.find(">", opening_tag_content_start)
 
     line_start = content.rfind("\n", 0, element_start)
     if line_start == -1:
@@ -322,6 +323,7 @@ PICTURE_BAD_SOURCE_INDENT = re.compile("(\\n\\s*)(\\n\\s+)<source")
 
 DATA_INLINE_VIEWER = "data-inline-viewer"
 
+
 def check_picture_elements(content: str, errors: list[Error]) -> None:
     search_start = 0
     while True:
@@ -338,25 +340,23 @@ def check_picture_elements(content: str, errors: list[Error]) -> None:
 
         check_preceding_newline("picture", content, spans, errors)
 
-        tag_content = spans.opening_tag_content.slice(content);
-        data_inline_viewer = tag_content.find(DATA_INLINE_VIEWER);
+        tag_content = spans.opening_tag_content.slice(content)
+        data_inline_viewer = tag_content.find(DATA_INLINE_VIEWER)
 
         if data_inline_viewer >= 0:
-            data_reference_start = tag_content.find('"', data_inline_viewer + len(DATA_INLINE_VIEWER)) + 1;
-            data_reference_end = tag_content.find('"', data_reference_start);
+            data_reference_start = tag_content.find('"', data_inline_viewer + len(DATA_INLINE_VIEWER)) + 1
+            data_reference_end = tag_content.find('"', data_reference_start)
 
-            data_reference_span = Span(data_reference_start, data_reference_end);
-            data_reference_name = data_reference_span.slice(tag_content);
-            (kind, name) = data_reference_name.split("/");
+            data_reference_span = Span(data_reference_start, data_reference_end)
+            data_reference_name = data_reference_span.slice(tag_content)
+            (kind, name) = data_reference_name.split("/")
 
-            valid_reference = ((kind == "snippets" and glob(f"docs/snippets/all/**/{name}.py")) or
-                (kind == "examples" and glob(f"examples/python/{name}")))
-                
-
+            valid_reference = (kind == "snippets" and glob(f"docs/snippets/all/**/{name}.py")) or (
+                kind == "examples" and glob(f"examples/python/{name}")
+            )
 
             if not valid_reference:
                 errors.append(BadDataReferenceError(data_reference_name, data_reference_span))
-
 
         search_start = spans.element.end + 1
 
