@@ -285,35 +285,6 @@ impl SyntaxHighlighting for FilterOperation {
     }
 }
 
-// TODO(ab): this is rather simplistic for now. This might turn into a widget that allows the
-// user to change the current operator.
-struct PopupTopText<'a> {
-    column_name: &'a str,
-    operator_text: &'a str,
-}
-
-impl SyntaxHighlighting for PopupTopText<'_> {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        let tokens = re_ui::design_tokens_of_visuals(&style.visuals);
-
-        let normal_text_format = egui::TextFormat::simple(
-            egui::TextStyle::Body.resolve(style),
-            egui::Color32::PLACEHOLDER,
-        );
-        let operator_text_format = egui::TextFormat::simple(
-            egui::TextStyle::Body.resolve(style),
-            tokens.table_filter_operator_text_color,
-        );
-
-        job.append(
-            &format!("{} ", self.column_name),
-            0.0,
-            normal_text_format.clone(),
-        );
-        job.append(self.operator_text, 0.0, operator_text_format);
-    }
-}
-
 impl FilterOperation {
     /// Returns true if the filter must be committed.
     fn popup_ui(
@@ -324,12 +295,11 @@ impl FilterOperation {
     ) -> FilterUiAction {
         let mut action = FilterUiAction::None;
 
-        let top_text = SyntaxHighlightedBuilder::new(ui.style())
-            .append(&PopupTopText {
-                column_name,
-                operator_text: self.operator_text(),
-            })
-            .into_widget_text();
+        let mut top_text_builder = SyntaxHighlightedBuilder::new(ui.style());
+        top_text_builder.append(&column_name);
+        top_text_builder.append(&" ");
+        top_text_builder.append_primitive(self.operator_text());
+        let top_text = top_text_builder.into_widget_text();
 
         match self {
             Self::StringContains(query) => {

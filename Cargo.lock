@@ -7604,6 +7604,7 @@ dependencies = [
  "egui_dnd",
  "egui_kittest",
  "egui_table",
+ "insta",
  "itertools 0.14.0",
  "nohash-hasher",
  "parking_lot",
@@ -7624,6 +7625,7 @@ dependencies = [
  "serde",
  "static_assertions",
  "thiserror 1.0.69",
+ "tokio",
 ]
 
 [[package]]

@@ -12,8 +12,13 @@ mod requested_object;
 mod table_blueprint;
 pub mod table_utils;
 
-pub use datafusion_table_widget::DataFusionTableWidget;
-pub use display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
-pub use header_tooltip::column_header_tooltip_ui;
-pub use requested_object::RequestedObject;
-pub use table_blueprint::{ColumnBlueprint, TableBlueprint, default_display_name_for_column};
+pub use self::{
+    datafusion_table_widget::DataFusionTableWidget,
+    display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError},
+    header_tooltip::column_header_tooltip_ui,
+    requested_object::RequestedObject,
+    table_blueprint::{ColumnBlueprint, TableBlueprint, default_display_name_for_column},
+};
+
+// for testing purposes
+pub use self::filters::{Filter, FilterOperation};
