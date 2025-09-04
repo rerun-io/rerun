@@ -96,6 +96,31 @@ impl std::fmt::Display for StoreKind {
     }
 }
 
+impl std::str::FromStr for StoreKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "recording" => Ok(Self::Recording),
+            "blueprint" => Ok(Self::Blueprint),
+            unknown => Err(format!("{unknown:?} is not a valid StoreKind")),
+        }
+    }
+}
+
+#[test]
+fn store_kind_str_roundtrip() {
+    {
+        let kind = StoreKind::Recording;
+        assert_eq!(kind, kind.to_string().parse().unwrap());
+    }
+
+    {
+        let kind = StoreKind::Blueprint;
+        assert_eq!(kind, kind.to_string().parse().unwrap());
+    }
+}
+
 /// A unique id per store.
 ///
 /// The kind of store is part of the id, and can be either a [`StoreKind::Recording`] or a

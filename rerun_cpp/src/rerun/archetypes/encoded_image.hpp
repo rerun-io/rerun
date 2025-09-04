@@ -60,7 +60,7 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         std::optional<ComponentBatch> media_type;
 
-        /// Opacity of the image, useful for layering several images.
+        /// Opacity of the image, useful for layering several media.
         ///
         /// Defaults to 1.0 (fully opaque).
         std::optional<ComponentBatch> opacity;
@@ -171,7 +171,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Opacity of the image, useful for layering several images.
+        /// Opacity of the image, useful for layering several media.
         ///
         /// Defaults to 1.0 (fully opaque).
         EncodedImage with_opacity(const rerun::components::Opacity& _opacity) && {
