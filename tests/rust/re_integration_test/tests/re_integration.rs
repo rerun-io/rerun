@@ -1,5 +1,7 @@
-use egui_kittest::SnapshotResults;
-use egui_kittest::kittest::Queryable as _;
+use std::time::Duration;
+
+use egui_kittest::{SnapshotResults, kittest::Queryable as _};
+
 use re_integration_test::TestServer;
 use re_viewer::viewer_test_utils;
 
@@ -37,10 +39,9 @@ pub async fn dataset_ui_test() {
         "Redap server dataset appears",
         &mut harness,
         |harness| harness.query_by_label_contains("my_dataset").is_some(),
-        tokio::time::Duration::from_millis(100),
-        tokio::time::Duration::from_secs(5),
-    )
-    .await;
+        Duration::from_millis(100),
+        Duration::from_secs(5),
+    );
 
     harness.get_by_label("my_dataset").click();
     viewer_test_utils::step_until(
@@ -51,9 +52,8 @@ pub async fn dataset_ui_test() {
                 .query_by_label_contains("new_recording_id")
                 .is_some()
         },
-        tokio::time::Duration::from_millis(100),
-        tokio::time::Duration::from_secs(5),
-    )
-    .await;
+        Duration::from_millis(100),
+        Duration::from_secs(5),
+    );
     snapshot_results.add(harness.try_snapshot("dataset_ui_table"));
 }
