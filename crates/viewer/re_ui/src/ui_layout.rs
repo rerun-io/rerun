@@ -1,6 +1,8 @@
+use crate::syntax_highlighting::SyntaxHighlightedBuilder;
+use crate::{SyntaxHighlighting, UiExt as _};
+use egui::WidgetText;
+use egui::text::{LayoutJob, TextWrapping};
 use std::sync::Arc;
-
-use crate::UiExt as _;
 
 /// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -94,29 +96,35 @@ impl UiLayout {
     /// Show data while respecting the given UI layout.
     ///
     /// Import: for data only, labels should use [`UiLayout::label`] instead.
+    /// Make sure to use the right syntax highlighting.
     // TODO(#6315): must be merged with `Self::label` and have an improved API
-    pub fn data_label(self, ui: &mut egui::Ui, string: impl AsRef<str>) -> egui::Response {
-        self.data_label_impl(ui, string.as_ref())
+    pub fn data_label(
+        self,
+        ui: &mut egui::Ui,
+        data: impl Into<SyntaxHighlightedBuilder>,
+    ) -> egui::Response {
+        self.data_label_impl(ui, data.into().into_job())
     }
 
-    fn decorate_url(ui: &mut egui::Ui, text: &str, galley: Arc<egui::Galley>) -> egui::Response {
+    fn decorate_url(ui: &mut egui::Ui, galley: Arc<egui::Galley>) -> egui::Response {
+        let text = galley.text();
         // By default e.g., "droid:full" would be considered a valid URL. We decided we only care
         // about sane URL formats that include "://". This means e.g., "mailto:hello@world" won't
         // be considered a URL, but that is preferable to showing links for anything with a colon.
-        if text.contains("://") && url::Url::parse(text).is_ok() {
-            // This is a general link and should not open a new tab unless desired by the user.
-            ui.re_hyperlink(text, text, false)
-        } else {
-            ui.label(galley)
+        if text.contains("://") {
+            // Syntax highlighting may add quotes around strings.
+            let stripped = text.trim_matches(SyntaxHighlightedBuilder::QUOTE_CHAR);
+            if url::Url::parse(stripped).is_ok() {
+                // This is a general link and should not open a new tab unless desired by the user.
+                return ui.re_hyperlink(text, text, false);
+            }
         }
+        ui.label(galley)
     }
 
-    fn data_label_impl(self, ui: &mut egui::Ui, string: &str) -> egui::Response {
-        let font_id = egui::TextStyle::Monospace.resolve(ui.style());
-        let color = ui.visuals().text_color();
+    fn data_label_impl(self, ui: &mut egui::Ui, mut layout_job: LayoutJob) -> egui::Response {
         let wrap_width = ui.available_width();
-        let mut layout_job =
-            egui::text::LayoutJob::simple(string.to_owned(), font_id, color, wrap_width);
+        layout_job.wrap = TextWrapping::wrap_at_width(wrap_width);
 
         match self {
             Self::List => {
@@ -144,6 +152,6 @@ impl UiLayout {
 
         let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
 
-        Self::decorate_url(ui, string, galley)
+        Self::decorate_url(ui, galley)
     }
 }

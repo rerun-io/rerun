@@ -22,9 +22,9 @@ use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::text::LayoutJob;
 use egui::{RichText, Ui};
 
-use re_ui::UiExt as _;
-use re_ui::list_item::LabelContent;
+use re_ui::list_item::{CustomContent, LabelContent};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::{UiExt as _, UiLayout};
 
 use crate::arrow_node::ArrowNode;
 use crate::list_item_ranges::list_item_ranges;
@@ -67,18 +67,36 @@ impl<'a> ArrayUi<'a> {
     ///
     /// Arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
     pub fn job(&self, ui: &Ui) -> Result<LayoutJob, ArrowError> {
-        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
-        write_list(&mut highlighted, 0..self.array.len(), &*self.format)?;
-        Ok(highlighted.into_job())
+        Ok(self.highlighted(ui)?.into_job())
     }
 
     /// Returns a [`LayoutJob`] that displays a single value at `idx`.
     ///
     /// Nested arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
     pub fn value_job(&self, ui: &Ui, idx: usize) -> Result<LayoutJob, ArrowError> {
+        Ok(self.value_highlighted(ui, idx)?.into_job())
+    }
+
+    /// Returns a [`SyntaxHighlightedBuilder`] that displays the entire array.
+    ///
+    /// Arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
+    pub fn highlighted(&self, ui: &Ui) -> Result<SyntaxHighlightedBuilder, ArrowError> {
+        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
+        write_list(&mut highlighted, 0..self.array.len(), &*self.format)?;
+        Ok(highlighted)
+    }
+
+    /// Returns a [`SyntaxHighlightedBuilder`] that displays a single value at `idx`.
+    ///
+    /// Nested arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
+    pub fn value_highlighted(
+        &self,
+        ui: &Ui,
+        idx: usize,
+    ) -> Result<SyntaxHighlightedBuilder, ArrowError> {
         let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
         self.format.write(idx, &mut highlighted)?;
-        Ok(highlighted.into_job())
+        Ok(highlighted)
     }
 }
 
@@ -140,7 +158,7 @@ struct ShowBuiltIn<'a> {
 }
 
 impl ShowIndex for ShowBuiltIn<'_> {
-    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult {
+    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult {
         let mut text = String::new();
         self.formatter.value(idx).write(&mut text)?;
 
@@ -188,7 +206,7 @@ type EmptyArrowResult = Result<(), ArrowError>;
 /// UI-equivalent of arrows `DisplayIndex` trait.
 pub(crate) trait ShowIndex {
     /// Append the item at `idx` to the given [`SyntaxHighlightedBuilder`].
-    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult;
+    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult;
 
     /// Show the item at `idx` as a rerun `list_item`.
     fn show(&self, idx: usize, ui: &mut Ui) {
@@ -196,8 +214,12 @@ pub(crate) trait ShowIndex {
         let result = self.write(idx, &mut highlighted);
         match result {
             Ok(()) => {
-                ui.list_item()
-                    .show_hierarchical(ui, LabelContent::new(highlighted.into_widget_text()));
+                ui.list_item().show_hierarchical(
+                    ui,
+                    CustomContent::new(|ui, context| {
+                        UiLayout::List.data_label(ui, highlighted);
+                    }),
+                );
             }
             Err(err) => {
                 ui.error_label(err.to_string());
@@ -227,7 +249,7 @@ trait ShowIndexState<'a> {
         &self,
         state: &Self::State,
         idx: usize,
-        f: &mut SyntaxHighlightedBuilder<'_>,
+        f: &mut SyntaxHighlightedBuilder,
     ) -> EmptyArrowResult;
 
     fn show(&self, state: &Self::State, idx: usize, ui: &mut Ui) {
@@ -260,7 +282,7 @@ impl<'a, T: ShowIndex> ShowIndexState<'a> for T {
         &self,
         _: &Self::State,
         idx: usize,
-        f: &mut SyntaxHighlightedBuilder<'_>,
+        f: &mut SyntaxHighlightedBuilder,
     ) -> EmptyArrowResult {
         ShowIndex::write(self, idx, f)
     }
@@ -296,7 +318,7 @@ where
 }
 
 impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
-    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult {
+    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult {
         if self.array.is_null(idx) {
             if !self.null.is_empty() {
                 f.append_primitive(self.null);
@@ -323,7 +345,7 @@ macro_rules! primitive_display {
     ($fmt:path: $($t:ty),+) => {
         $(impl<'a> ShowIndex for &'a PrimitiveArray<$t>
         {
-            fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult {
+            fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult {
                 let value = self.value(idx);
                 let s = $fmt(value);
                 f.append_primitive(&s);
@@ -344,7 +366,7 @@ primitive_display!(re_format::format_f64: Float64Type);
 primitive_display!(re_format::format_f16: Float16Type);
 
 impl<OffsetSize: OffsetSizeTrait> ShowIndex for &GenericBinaryArray<OffsetSize> {
-    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult {
+    fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult {
         let value = self.value(idx);
         f.append_primitive(&re_format::format_bytes(value.len() as f64));
         Ok(())
@@ -366,7 +388,7 @@ impl<'a, K: ArrowDictionaryKeyType> ShowIndexState<'a> for &'a DictionaryArray<K
         &self,
         s: &Self::State,
         idx: usize,
-        f: &mut SyntaxHighlightedBuilder<'_>,
+        f: &mut SyntaxHighlightedBuilder,
     ) -> EmptyArrowResult {
         let value_idx = self.keys().values()[idx].as_usize();
         s.as_ref().write(value_idx, f)
@@ -384,7 +406,7 @@ impl<'a, K: RunEndIndexType> ShowIndexState<'a> for &'a RunArray<K> {
         &self,
         s: &Self::State,
         idx: usize,
-        f: &mut SyntaxHighlightedBuilder<'_>,
+        f: &mut SyntaxHighlightedBuilder,
     ) -> EmptyArrowResult {
         let value_idx = self.get_physical_index(idx);
         s.as_ref().write(value_idx, f)
@@ -392,7 +414,7 @@ impl<'a, K: RunEndIndexType> ShowIndexState<'a> for &'a RunArray<K> {
 }
 
 fn write_list(
-    f: &mut SyntaxHighlightedBuilder<'_>,
+    f: &mut SyntaxHighlightedBuilder,
     mut range: Range<usize>,
     values: &dyn ShowIndex,
 ) -> EmptyArrowResult {
@@ -447,7 +469,7 @@ impl<'a, O: OffsetSizeTrait> ShowIndexState<'a> for &'a GenericListArray<O> {
         &self,
         s: &Self::State,
         idx: usize,
-        f: &mut SyntaxHighlightedBuilder<'_>,
+        f: &mut SyntaxHighlightedBuilder,
     ) -> EmptyArrowResult {
         let offsets = self.value_offsets();
         let end = offsets[idx + 1].as_usize();
@@ -480,7 +502,7 @@ impl<'a> ShowIndexState<'a> for &'a FixedSizeListArray {
         &self,
         s: &Self::State,
         idx: usize,
-        f: &mut SyntaxHighlightedBuilder<'_>,
+        f: &mut SyntaxHighlightedBuilder,
     ) -> EmptyArrowResult {
         let start = idx * s.0;
         let end = start + s.0;
@@ -521,7 +543,7 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
         &self,
         s: &Self::State,
         idx: usize,
-        f: &mut SyntaxHighlightedBuilder<'_>,
+        f: &mut SyntaxHighlightedBuilder,
     ) -> EmptyArrowResult {
         let mut iter = s.iter();
         f.append_syntax("{");
@@ -565,7 +587,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
         &self,
         (keys, values): &Self::State,
         idx: usize,
-        f: &mut SyntaxHighlightedBuilder<'_>,
+        f: &mut SyntaxHighlightedBuilder,
     ) -> EmptyArrowResult {
         let offsets = self.value_offsets();
         let end = offsets[idx + 1].as_usize();
@@ -638,7 +660,7 @@ impl<'a> ShowIndexState<'a> for &'a UnionArray {
         &self,
         (fields, mode): &Self::State,
         idx: usize,
-        f: &mut SyntaxHighlightedBuilder<'_>,
+        f: &mut SyntaxHighlightedBuilder,
     ) -> EmptyArrowResult {
         let id = self.type_id(idx);
         let idx = match mode {

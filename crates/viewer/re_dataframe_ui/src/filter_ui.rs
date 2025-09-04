@@ -166,8 +166,8 @@ impl Filter {
             .corner_radius(2.0)
             .show(ui, |ui| {
                 let widget_text = SyntaxHighlightedBuilder::new(ui.style())
-                    .with(&self.column_name)
-                    .with(&" ")
+                    .with_identifier(&self.column_name)
+                    .with_identifier(&" ")
                     .with(&self.operation)
                     .into_widget_text();
 
@@ -248,29 +248,16 @@ impl Filter {
 }
 
 impl SyntaxHighlighting for FilterOperation {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
-        let normal_text_format = |style| {
-            egui::TextFormat::simple(
-                egui::TextStyle::Body.resolve(style),
-                egui::Color32::PLACEHOLDER,
-            )
-        };
-        let operator_text_format = |style| {
-            egui::TextFormat::simple(
-                egui::TextStyle::Body.resolve(style),
-                design_tokens_of_visuals(&style.visuals).table_filter_operator_text_color,
-            )
-        };
-        let rhs_text_format = |style| {
-            egui::TextFormat::simple(
-                egui::TextStyle::Body.resolve(style),
-                design_tokens_of_visuals(&style.visuals).table_filter_rhs_text_color,
-            )
-        };
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        let operator_text_format =
+            builder.monospace_with_color(builder.tokens.table_filter_operator_text_color);
+        let rhs_text_format =
+            builder.monospace_with_color(builder.tokens.table_filter_rhs_text_color);
 
-        builder.append_with_format(self.operator_text(), operator_text_format);
+        builder
+            .append_with_format(self.operator_text(), operator_text_format)
+            .append_body(" ");
 
-        builder.append_with_format(" ", normal_text_format);
         let rhs_text = self.rhs_text();
         builder.append_with_format(
             if rhs_text.is_empty() {

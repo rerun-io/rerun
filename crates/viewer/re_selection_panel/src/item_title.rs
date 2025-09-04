@@ -64,7 +64,8 @@ impl ItemTitle {
                     item_title.with_tooltip(
                         SyntaxHighlightedBuilder::new(&ctx.egui_ctx().style())
                             .with(instance_path)
-                            .with(&format!(" in view '{}'", view.display_name_or_default())),
+                            .with_body(" in view ")
+                            .with(&view.display_name_or_default()),
                     )
                 } else {
                     item_title

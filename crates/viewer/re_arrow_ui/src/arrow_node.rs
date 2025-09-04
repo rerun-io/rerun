@@ -1,9 +1,10 @@
-use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
+use egui::{Align, FontSelection, Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
+use std::sync::Arc;
 
 use re_format::format_uint;
-use re_ui::UiExt as _;
 use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::{UiExt as _, UiLayout};
 
 use crate::datatype_ui::DataTypeUi;
 use crate::show_index::ShowIndex;
@@ -72,15 +73,6 @@ impl<'a> ArrowNode<'a> {
             NodeLabel::Custom(name) => name,
         };
 
-        let mut value = SyntaxHighlightedBuilder::new(ui.style());
-        let result = self.values.write(index, &mut value);
-        let value = match result {
-            Ok(()) => value.into_widget_text(),
-            Err(err) => RichText::new(format!("Error: {err}"))
-                .color(ui.tokens().error_fg_color)
-                .into(),
-        };
-
         let nested = self.values.is_item_nested();
         let data_type = self.values.array().data_type();
         let data_type_ui = DataTypeUi::new(data_type);
@@ -101,7 +93,13 @@ impl<'a> ArrowNode<'a> {
                                 }
                                 ui.set_opacity(1.0 - visuals.openness());
                             }
-                            ui.label(value);
+                            let mut value = SyntaxHighlightedBuilder::new(ui.style());
+                            let result = self.values.write(index, &mut value);
+
+                            match result {
+                                Ok(()) => UiLayout::List.data_label(ui, value),
+                                Err(err) => ui.error_label(format!("Error: {err}")),
+                            };
                         },
                         |ui| {
                             let tooltip_open =

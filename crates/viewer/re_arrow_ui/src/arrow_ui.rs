@@ -14,24 +14,6 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-        // Special-treat text.
-        // This is so that we can show urls as clickable links.
-        // Note: we match on the raw data here, so this works for any component containing text.
-        if let Some(entries) = array.downcast_array_ref::<StringArray>() {
-            if entries.len() == 1 {
-                let string = entries.value(0);
-                ui_layout.data_label(ui, string);
-                return;
-            }
-        }
-        if let Some(entries) = array.downcast_array_ref::<LargeStringArray>() {
-            if entries.len() == 1 {
-                let string = entries.value(0);
-                ui_layout.data_label(ui, string);
-                return;
-            }
-        }
-
         match make_ui(array) {
             Ok(array_formatter) => match ui_layout {
                 UiLayout::SelectionPanel => {
@@ -49,14 +31,14 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
                     });
                 }
                 UiLayout::Tooltip | UiLayout::List => {
-                    let job = if array.len() == 1 {
-                        array_formatter.value_job(ui, 0)
+                    let highlighted = if array.len() == 1 {
+                        array_formatter.value_highlighted(ui, 0)
                     } else {
-                        array_formatter.job(ui)
+                        array_formatter.highlighted(ui)
                     };
-                    match job {
+                    match highlighted {
                         Ok(job) => {
-                            ui_layout.label(ui, job);
+                            ui_layout.data_label(ui, job);
                         }
                         Err(err) => {
                             ui.error_with_details_on_hover(err.to_string());
