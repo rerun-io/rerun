@@ -1968,6 +1968,8 @@ impl App {
                 }
             }
 
+            let is_example = entity_db.store_class().is_example();
+
             match &msg {
                 LogMsg::SetStoreInfo(_) => {
                     if channel_source.select_when_loaded() {
@@ -1986,6 +1988,26 @@ impl App {
                                 // the blueprint won't be activated until the whole _recording_ has finished loading.
                             }
                         }
+                    }
+
+                    if cfg!(target_arch = "wasm32")
+                        && !self.startup_options.is_in_notebook
+                        && !is_example
+                    {
+                        use std::sync::Once;
+                        static ONCE: Once = Once::new();
+                        ONCE.call_once(|| {
+                            // Tell the user there is a faster native viewer they can use instead of the web viewer:
+                            let notification = re_ui::notifications::Notification::new(
+                                re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
+                                re_ui::Link {
+                                    text: "Install…".into(),
+                                    url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
+                                }
+                            );
+                            self.command_sender
+                                .send_system(SystemCommand::ShowNotification(notification));
+                        });
                     }
                 }
 
