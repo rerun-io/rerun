@@ -408,35 +408,14 @@ fn panel_buttons_r2l(
     let active_recording_config = store_hub
         .active_recording()
         .and_then(|recording| app.state.recording_config(recording.store_id()));
-    let time_cursor = active_recording_config.and_then(|config| {
-        let time_ctrl = config.time_ctrl.read();
-        dbg!(time_ctrl.time_cell());
-        dbg!(time_ctrl.time());
-        time_ctrl
-            .time_cell()
-            .map(|cell| (*time_ctrl.timeline().name(), cell))
-    });
-    let time_range_selection = active_recording_config.map(|config| {
-        let time_ctrl = config.time_ctrl.read();
-        let range = time_ctrl.loop_selection().map_or(
-            re_log_types::AbsoluteTimeRange::EVERYTHING,
-            |range| re_log_types::AbsoluteTimeRange {
-                min: range.min.floor(),
-                max: range.max.ceil(),
-            },
-        );
-        let timeline = *time_ctrl.timeline();
-        re_uri::TimeSelection { timeline, range }
-    });
     let selection = app.state.selection_state.selected_items().first_item();
     app.share_dialog.ui(
         ui,
         store_hub,
         app.state.navigation.peek(),
         app.app_options().timestamp_format,
+        active_recording_config,
         selection,
-        time_cursor,
-        time_range_selection,
     );
 }
 
