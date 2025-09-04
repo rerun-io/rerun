@@ -844,6 +844,10 @@ impl App {
                 self.state.focused_item = Some(item);
             }
 
+            SystemCommand::ShowNotification(notification) => {
+                self.notifications.add(notification);
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             SystemCommand::FileSaver(file_saver) => {
                 if let Err(err) = self.background_tasks.spawn_file_saver(file_saver) {
