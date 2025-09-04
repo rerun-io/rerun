@@ -405,13 +405,18 @@ fn panel_buttons_r2l(
 
     app.notifications.notification_toggle_button(ui);
 
-    let time_cursor = app.active_recording_config().and_then(|config| {
+    let active_recording_config = store_hub
+        .active_recording()
+        .and_then(|recording| app.state.recording_config(recording.store_id()));
+    let time_cursor = active_recording_config.and_then(|config| {
         let time_ctrl = config.time_ctrl.read();
+        dbg!(time_ctrl.time_cell());
+        dbg!(time_ctrl.time());
         time_ctrl
             .time_cell()
             .map(|cell| (*time_ctrl.timeline().name(), cell))
     });
-    let time_range_selection = app.active_recording_config().map(|config| {
+    let time_range_selection = active_recording_config.map(|config| {
         let time_ctrl = config.time_ctrl.read();
         let range = time_ctrl.loop_selection().map_or(
             re_log_types::AbsoluteTimeRange::EVERYTHING,
@@ -428,6 +433,7 @@ fn panel_buttons_r2l(
         ui,
         store_hub,
         app.state.navigation.peek(),
+        app.app_options().timestamp_format,
         selection,
         time_cursor,
         time_range_selection,
