@@ -1,50 +1,36 @@
 #[cfg(test)]
 mod tests {
-    use arrow::array::Float64Array;
-    use re_chunk::{ArchetypeName, Chunk, ComponentIdentifier};
+    use re_chunk::{Chunk, ChunkId};
     use re_data_loader::{DataLoaderSettings, LoadedData, loader_mcap::load_mcap};
-    use re_mcap::{cdr::try_encode_message, layers::SelectedLayers, parsers::ros2msg};
+    use re_mcap::{
+        cdr::try_encode_message,
+        layers::SelectedLayers,
+        parsers::ros2msg::{
+            self,
+            definitions::{
+                geometry_msgs::{Quaternion, Vector3},
+                sensor_msgs::{PointField, PointFieldDatatype},
+            },
+        },
+    };
+    use serde::Serialize;
 
-    fn make_imu() -> ros2msg::definitions::sensor_msgs::Imu {
-        let header = ros2msg::definitions::std_msgs::Header {
+    fn make_header() -> ros2msg::definitions::std_msgs::Header {
+        ros2msg::definitions::std_msgs::Header {
             stamp: ros2msg::definitions::builtin_interfaces::Time {
                 sec: 123,
                 nanosec: 45,
             },
             frame_id: "boo".to_owned(),
-        };
-        let orientation = ros2msg::definitions::geometry_msgs::Quaternion {
-            x: std::f64::consts::PI,
-            y: 0.0,
-            z: 0.0,
-            w: 1.125,
-        };
-        ros2msg::definitions::sensor_msgs::Imu {
-            header,
-            orientation,
-            orientation_covariance: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
-            angular_velocity: ros2msg::definitions::geometry_msgs::Vector3 {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            },
-            angular_velocity_covariance: [0.0; 9],
-            linear_acceleration: ros2msg::definitions::geometry_msgs::Vector3 {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            },
-            linear_acceleration_covariance: [0.0; 9],
         }
     }
 
-    fn generate_ros2_mcap(imu: &ros2msg::definitions::sensor_msgs::Imu) -> Vec<u8> {
+    fn generate_ros2_mcap<T: Serialize>(ros2_object: &T, schema_name: &str) -> Vec<u8> {
         let mut buffer = Vec::new();
         {
             let mut writer = mcap::Writer::new(std::io::Cursor::new(&mut buffer)).unwrap();
 
             // Register a schema
-            let schema_name = "sensor_msgs/msg/Imu";
             let schema_encoding = "ros2msg";
             let schema_data = br#"ignored_schema_description"#;
             let schema_id = writer
@@ -63,7 +49,7 @@ mod tests {
                 )
                 .expect("Failed to add channel");
 
-            let message_data = try_encode_message(&imu).expect("Failed to encode message");
+            let message_data = try_encode_message(&ros2_object).expect("Failed to encode message");
 
             let timestamp = 1000000000;
             let message_header = mcap::records::MessageHeader {
@@ -76,46 +62,13 @@ mod tests {
                 .write_to_known_channel(&message_header, &message_data)
                 .expect("Failed to write message");
 
-            writer.finish().unwrap();
+            writer.finish().expect("Failed to finish writer");
         }
         buffer
     }
 
-    fn assert_component(chunks: &[Chunk], archetype: &str, component: &str, value: &[f64]) {
-        let archetype_name = ArchetypeName::new(archetype);
-        let component_identifier = ComponentIdentifier::new(&format!("{archetype}:{component}"));
-
-        for chunk in chunks {
-            for (component_desc, rows) in chunk.components().iter() {
-                if component_desc.archetype == Some(archetype_name)
-                    && component_desc.component == component_identifier
-                {
-                    println!("Found component {archetype}:{component}");
-                    // Only check the first row for now
-                    let cell = rows
-                        .iter()
-                        .flatten()
-                        .next()
-                        .expect("Expected at least one row");
-                    let float_array = cell
-                        .as_any()
-                        .downcast_ref::<Float64Array>()
-                        .expect("Expected cell to be a Float64Array");
-                    let cell_value = float_array.values().as_ref();
-                    assert_eq!(cell_value, value);
-                    return;
-                }
-            }
-        }
-        panic!("Component {archetype}:{component} not found");
-    }
-
-    #[test]
-    fn test_load_generated_mcap_file() {
-        env_logger::init();
-        let imu = make_imu();
-
-        let mcap_data = generate_ros2_mcap(&imu);
+    fn load_ros2_mcap<T: Serialize>(ros2_object: &T, schema_name: &str) -> Vec<Chunk> {
+        let mcap_data = generate_ros2_mcap(&ros2_object, schema_name);
         let (tx, rx) = std::sync::mpsc::channel();
         let settings = DataLoaderSettings::recommended("test");
         load_mcap(&mcap_data, &settings, &tx, SelectedLayers::All).unwrap();
@@ -123,44 +76,77 @@ mod tests {
 
         // Collect chunks
         let mut chunks = vec![];
+        let mut chunk_id = ChunkId::from_u128(123_456_789_123_456_789_123_456_789);
         while let Ok(res) = rx.recv() {
             if let LoadedData::Chunk(_, _, chunk) = res {
+                let chunk = chunk.with_id(chunk_id).zeroed();
                 chunks.push(chunk);
+                chunk_id = chunk_id.next();
             }
         }
+        chunks
+    }
 
-        println!("CHUNKS: {chunks:?}");
-
-        // Assert chunk contents
-        assert_component(
-            &chunks,
-            "sensor_msgs.msg.Imu",
-            "orientation",
-            &[
-                imu.orientation.x,
-                imu.orientation.y,
-                imu.orientation.z,
-                imu.orientation.w,
-            ],
+    #[test]
+    fn test_ros2_mcap_imu() {
+        let chunks = load_ros2_mcap(
+            &ros2msg::definitions::sensor_msgs::Imu {
+                header: make_header(),
+                orientation: Quaternion::new(0.5, 0.1, 0.7, 1.125),
+                orientation_covariance: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+                angular_velocity: Vector3::new(11.0, 12.0, 13.0),
+                angular_velocity_covariance: [1.0; 9],
+                linear_acceleration: Vector3::new(21.0, 22.0, 23.0),
+                linear_acceleration_covariance: [2.0; 9],
+            },
+            "sensor_msgs/msg/Imu",
         );
+        insta::assert_debug_snapshot!(chunks);
+    }
 
-        assert_component(
-            &chunks,
-            "sensor_msgs.msg.Imu",
-            "orientation_covariance",
-            &imu.orientation_covariance,
-        );
+    #[test]
+    fn test_ros2_mcap_pointcloud2() {
+        let height = 5u32;
+        let width = 10u32;
 
-        // FOUND A BUG! We don't load angular_velocity.
-        assert_component(
-            &chunks,
-            "sensor_msgs.msg.Imu",
-            "angular_velocity",
-            &[
-                imu.angular_velocity.x,
-                imu.angular_velocity.y,
-                imu.angular_velocity.z,
-            ],
+        let points = (0..height * width)
+            .map(|i| [i % width, i / width])
+            .collect::<Vec<_>>();
+
+        let fields = vec![
+            PointField {
+                name: "x".to_owned(),
+                offset: 0,
+                datatype: PointFieldDatatype::UInt32,
+                count: 1,
+            },
+            PointField {
+                name: "y".to_owned(),
+                offset: std::mem::size_of::<u32>() as u32,
+                datatype: PointFieldDatatype::UInt32,
+                count: 1,
+            },
+        ];
+        let data = points
+            .iter()
+            .flat_map(|p| [p[0].to_le_bytes(), p[1].to_le_bytes()])
+            .flatten()
+            .collect::<Vec<_>>();
+
+        let chunks = load_ros2_mcap(
+            &ros2msg::definitions::sensor_msgs::PointCloud2 {
+                header: make_header(),
+                height,
+                width,
+                fields,
+                is_bigendian: false,
+                point_step: std::mem::size_of::<[u32; 2]>() as u32,
+                row_step: std::mem::size_of::<[u32; 2]>() as u32 * width,
+                data,
+                is_dense: true,
+            },
+            "sensor_msgs/msg/PointCloud2",
         );
+        insta::assert_debug_snapshot!(chunks);
     }
 }

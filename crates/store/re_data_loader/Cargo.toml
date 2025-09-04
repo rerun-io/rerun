@@ -60,4 +60,4 @@ re_crash_handler.workspace = true
 
 [dev-dependencies]
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
-env_logger.workspace = true
+insta.workspace = true
