@@ -81,6 +81,10 @@ pub struct RerunArgs {
     #[clap(long, default_value = "25%")]
     server_memory_limit: String,
 
+    /// If true, play back the most recent data first when new clients connect.
+    #[clap(long)]
+    newest_first: bool,
+
     /// What bind address IP to use.
     #[clap(long, default_value = "0.0.0.0")]
     bind: String,
@@ -132,11 +136,18 @@ impl RerunArgs {
 
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
+                use re_grpc_server::PlaybackBehavior;
+
                 let server_memory_limit = re_memory::MemoryLimit::parse(&self.server_memory_limit)
                     .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
+                let server_options = re_grpc_server::ServerOptions {
+                    memory_limit: server_memory_limit,
+                    playback_behavior: PlaybackBehavior::from_newest_first(self.newest_first),
+                };
+
                 let rec = RecordingStreamBuilder::new("rerun_example_minimal_serve")
-                    .serve_grpc_opts(&self.bind, crate::DEFAULT_SERVER_PORT, server_memory_limit)?;
+                    .serve_grpc_opts(&self.bind, crate::DEFAULT_SERVER_PORT, server_options)?;
 
                 crate::serve_web_viewer(crate::web_viewer::WebViewerConfig {
                     open_browser: true,

@@ -24,6 +24,17 @@ namespace rerun {
         Blueprint,
     };
 
+    /// What happens when a client connects to a gRPC server?
+    enum class PlaybackBehavior {
+        /// Start playing back all the old data first,
+        /// and only after start sending anything that happened since.
+        OldestFirst,
+
+        /// Prioritize the newest arriving messages,
+        /// replaying the history later, starting with the newest.
+        NewestFirst,
+    }
+
     /// A `RecordingStream` handles everything related to logging data into Rerun.
     ///
     /// ## Multithreading and ordering
@@ -176,7 +187,8 @@ namespace rerun {
         /// This function returns immediately.
         Result<std::string> serve_grpc(
             std::string_view bind_ip = "0.0.0.0", uint16_t port = 9876,
-            std::string_view server_memory_limit = "25%"
+            std::string_view server_memory_limit = "25%",
+            PlaybackBehavior playback_behavior = PlaybackBehavior::OldestFirst
         ) const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it

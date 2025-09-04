@@ -2,6 +2,7 @@ use std::{net::IpAddr, time::Duration};
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
+use re_sdk::ServerOptions;
 use tokio::runtime::Runtime;
 
 use re_data_source::LogDataSource;
@@ -116,6 +117,10 @@ Example: `16GB` or `50%` (of system total).
 Default is `0B`, or `25%` if any of the `--serve-*` flags are set."
     )]
     server_memory_limit: Option<String>,
+
+    /// If true, play back the most recent data first when new clients connect.
+    #[clap(long)]
+    newest_first: bool,
 
     #[clap(
         long,
@@ -744,6 +749,11 @@ fn run_impl(
             .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
     };
 
+    let server_options = ServerOptions {
+        memory_limit: server_memory_limit,
+        playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(args.newest_first),
+    };
+
     // All URLs that we want to process.
     #[allow(unused_mut)]
     let mut url_or_paths = args.url_or_paths.clone();
@@ -765,7 +775,7 @@ fn run_impl(
             url_or_paths,
             &connection_registry,
             server_addr,
-            server_memory_limit,
+            server_options,
         )
     } else if args.serve_grpc {
         serve_grpc(
@@ -774,7 +784,7 @@ fn run_impl(
             tokio_runtime_handle,
             &connection_registry,
             server_addr,
-            server_memory_limit,
+            server_options,
         )
     } else if args.serve_web {
         // We always host the web-viewer in case the users wants it,
@@ -789,7 +799,7 @@ fn run_impl(
             args.renderer,
             args.video_decoder,
             server_addr,
-            server_memory_limit,
+            server_options,
             open_browser,
         )
     } else if args.connect.is_none() && is_another_server_already_running(server_addr) {
@@ -813,7 +823,7 @@ fn run_impl(
             profiler,
             connection_registry,
             server_addr,
-            server_memory_limit,
+            server_options,
         )
     }
 }
@@ -831,7 +841,7 @@ fn start_native_viewer(
     profiler: re_tracing::Profiler,
     connection_registry: re_redap_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
-    server_memory_limit: re_sdk::MemoryLimit,
+    server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
     let startup_options = native_startup_options_from_args(args)?;
 
@@ -858,7 +868,7 @@ fn start_native_viewer(
             crossbeam::channel::Receiver<re_log_types::TableMsg>,
         ) = re_grpc_server::spawn_with_recv(
             server_addr,
-            server_memory_limit,
+            server_options,
             re_grpc_server::shutdown::never(),
         );
 
@@ -999,7 +1009,7 @@ fn serve_web(
     force_wgpu_backend: Option<String>,
     video_decoder: Option<String>,
     server_addr: std::net::SocketAddr,
-    server_memory_limit: re_sdk::MemoryLimit,
+    server_options: re_sdk::ServerOptions,
     open_browser: bool,
 ) -> anyhow::Result<()> {
     if !cfg!(feature = "server") {
@@ -1038,7 +1048,7 @@ fn serve_web(
             // All `rxs` are consumed by the server.
             re_grpc_server::spawn_from_rx_set(
                 server_addr,
-                server_memory_limit,
+                server_options,
                 re_grpc_server::shutdown::never(),
                 ReceiveSet::new(log_receivers),
             );
@@ -1081,7 +1091,7 @@ fn serve_grpc(
     tokio_runtime_handle: &tokio::runtime::Handle,
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
-    server_memory_limit: re_sdk::MemoryLimit,
+    server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
     if !cfg!(feature = "server") {
         anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
@@ -1100,7 +1110,7 @@ fn serve_grpc(
         // Spawn a server which the Web Viewer can connect to.
         re_grpc_server::spawn_from_rx_set(
             server_addr,
-            server_memory_limit,
+            server_options,
             shutdown,
             ReceiveSet::new(receivers.log_receivers),
         );
@@ -1119,7 +1129,7 @@ fn save_or_test_receive(
     url_or_paths: Vec<String>,
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     _server_addr: std::net::SocketAddr,
-    _server_memory_limit: re_sdk::MemoryLimit,
+    _server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
     let receivers = ReceiversFromUrlParams::new(
         url_or_paths,
@@ -1142,7 +1152,7 @@ fn save_or_test_receive(
             crossbeam::channel::Receiver<re_log_types::TableMsg>,
         ) = re_grpc_server::spawn_with_recv(
             _server_addr,
-            _server_memory_limit,
+            _server_options,
             re_grpc_server::shutdown::never(),
         );
 
