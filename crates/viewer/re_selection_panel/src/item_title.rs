@@ -63,8 +63,8 @@ impl ItemTitle {
                 if let Some(view) = viewport.view(view_id) {
                     item_title.with_tooltip(
                         SyntaxHighlightedBuilder::new(&ctx.egui_ctx().style())
-                            .append(instance_path)
-                            .append(&format!(" in view '{}'", view.display_name_or_default())),
+                            .with(instance_path)
+                            .with(&format!(" in view '{}'", view.display_name_or_default())),
                     )
                 } else {
                     item_title

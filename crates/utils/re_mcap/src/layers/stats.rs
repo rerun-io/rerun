@@ -1,11 +1,5 @@
-use std::sync::Arc;
-
-use arrow::{
-    array::{MapBuilder, UInt16Array, UInt16Builder, UInt32Array, UInt64Array, UInt64Builder},
-    error::ArrowError,
-};
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
-use re_types::{AnyValues, components};
+use re_types::{archetypes::McapStatistics, components, datatypes};
 
 use crate::Error;
 
@@ -33,7 +27,7 @@ impl Layer for McapStatisticLayer {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::STATIC,
-                    &from_statistics(statistics)?,
+                    &from_statistics(statistics),
                 )
                 .build()?;
             emit(chunk);
@@ -45,7 +39,7 @@ impl Layer for McapStatisticLayer {
     }
 }
 
-fn from_statistics(stats: &::mcap::records::Statistics) -> Result<AnyValues, ArrowError> {
+fn from_statistics(stats: &::mcap::records::Statistics) -> McapStatistics {
     let ::mcap::records::Statistics {
         message_count,
         schema_count,
@@ -58,48 +52,22 @@ fn from_statistics(stats: &::mcap::records::Statistics) -> Result<AnyValues, Arr
         channel_message_counts,
     } = stats;
 
-    let key_builder = UInt16Builder::new();
-    let val_builder = UInt64Builder::new();
+    let channel_count_pairs: Vec<_> = channel_message_counts
+        .iter()
+        .map(|(&channel_id, &count)| datatypes::ChannelCountPair {
+            channel_id: channel_id.into(),
+            message_count: count.into(),
+        })
+        .collect();
 
-    let mut builder = MapBuilder::new(None, key_builder, val_builder);
-
-    for (&key, &val) in channel_message_counts {
-        builder.keys().append_value(key);
-        builder.values().append_value(val);
-        builder.append(true)?;
-    }
-
-    let channel_message_counts = builder.finish();
-
-    Ok(AnyValues::new("rerun.mcap.Statistics")
-        .with_field(
-            "message_count",
-            Arc::new(UInt64Array::from_value(*message_count, 1)),
-        )
-        .with_field(
-            "schema_count",
-            Arc::new(UInt16Array::from_value(*schema_count, 1)),
-        )
-        .with_field(
-            "channel_count",
-            Arc::new(UInt32Array::from_value(*channel_count, 1)),
-        )
-        .with_field(
-            "attachment_count",
-            Arc::new(UInt32Array::from_value(*attachment_count, 1)),
-        )
-        .with_field(
-            "metadata_count",
-            Arc::new(UInt32Array::from_value(*metadata_count, 1)),
-        )
-        .with_field(
-            "chunk_count",
-            Arc::new(UInt32Array::from_value(*chunk_count, 1)),
-        )
-        .with_component::<components::Timestamp>(
-            "message_start_time",
-            vec![*message_start_time as i64],
-        )
-        .with_component::<components::Timestamp>("message_end_time", vec![*message_end_time as i64])
-        .with_field("channel_message_counts", Arc::new(channel_message_counts)))
+    McapStatistics::update_fields()
+        .with_message_count(*message_count)
+        .with_schema_count(*schema_count as u64)
+        .with_channel_count(*channel_count as u64)
+        .with_attachment_count(*attachment_count as u64)
+        .with_metadata_count(*metadata_count as u64)
+        .with_chunk_count(*chunk_count as u64)
+        .with_message_start_time(*message_start_time as i64)
+        .with_message_end_time(*message_end_time as i64)
+        .with_channel_message_counts(components::ChannelMessageCounts(channel_count_pairs))
 }

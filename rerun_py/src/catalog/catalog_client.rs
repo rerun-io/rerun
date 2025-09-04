@@ -30,6 +30,11 @@ impl PyCatalogClientInternal {
 
 #[pymethods]
 impl PyCatalogClientInternal {
+    #[staticmethod]
+    pub fn datafusion_major_version() -> u64 {
+        datafusion_ffi::version()
+    }
+
     /// Create a new catalog client object.
     #[new]
     #[pyo3(text_signature = "(self, addr, token=None)")]

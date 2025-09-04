@@ -147,14 +147,14 @@ impl ShowIndex for ShowBuiltIn<'_> {
         let dt = self.array.data_type();
 
         if self.array.is_null(idx) {
-            f.code_primitive("null");
+            f.append_primitive("null");
         } else if matches!(
             dt,
             DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View
         ) {
-            f.code_string_value(&text);
+            f.append_string_value(&text);
         } else {
-            f.code_primitive(&text);
+            f.append_primitive(&text);
         }
 
         Ok(())
@@ -299,7 +299,7 @@ impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult {
         if self.array.is_null(idx) {
             if !self.null.is_empty() {
-                f.code_primitive(self.null);
+                f.append_primitive(self.null);
             }
             return Ok(());
         }
@@ -326,7 +326,7 @@ macro_rules! primitive_display {
             fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult {
                 let value = self.value(idx);
                 let s = $fmt(value);
-                f.code_primitive(&s);
+                f.append_primitive(&s);
                 Ok(())
             }
 
@@ -346,7 +346,7 @@ primitive_display!(re_format::format_f16: Float16Type);
 impl<OffsetSize: OffsetSizeTrait> ShowIndex for &GenericBinaryArray<OffsetSize> {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder<'_>) -> EmptyArrowResult {
         let value = self.value(idx);
-        f.code_primitive(&re_format::format_bytes(value.len() as f64));
+        f.append_primitive(&re_format::format_bytes(value.len() as f64));
         Ok(())
     }
 
@@ -396,7 +396,7 @@ fn write_list(
     mut range: Range<usize>,
     values: &dyn ShowIndex,
 ) -> EmptyArrowResult {
-    f.code_syntax("[");
+    f.append_syntax("[");
     if let Some(idx) = range.next() {
         values.write(idx, f)?;
     }
@@ -405,14 +405,14 @@ fn write_list(
 
     for idx in range {
         if items >= MAX_ARROW_LIST_ITEMS {
-            f.code_syntax(", …");
+            f.append_syntax(", …");
             break;
         }
-        f.code_syntax(", ");
+        f.append_syntax(", ");
         values.write(idx, f)?;
         items += 1;
     }
-    f.code_syntax("]");
+    f.append_syntax("]");
     Ok(())
 }
 
@@ -524,19 +524,19 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
         f: &mut SyntaxHighlightedBuilder<'_>,
     ) -> EmptyArrowResult {
         let mut iter = s.iter();
-        f.code_syntax("{");
+        f.append_syntax("{");
         if let Some((field, display)) = iter.next() {
-            f.code_identifier(field.name());
-            f.code_syntax(": ");
+            f.append_identifier(field.name());
+            f.append_syntax(": ");
             display.as_ref().write(idx, f)?;
         }
         for (field, display) in iter {
-            f.code_syntax(", ");
-            f.code_identifier(field.name());
-            f.code_syntax(": ");
+            f.append_syntax(", ");
+            f.append_identifier(field.name());
+            f.append_syntax(": ");
             display.as_ref().write(idx, f)?;
         }
-        f.code_syntax("}");
+        f.append_syntax("}");
         Ok(())
     }
 
@@ -572,21 +572,21 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
         let start = offsets[idx].as_usize();
         let mut iter = start..end;
 
-        f.code_syntax("{");
+        f.append_syntax("{");
         if let Some(idx) = iter.next() {
             keys.write(idx, f)?;
-            f.code_syntax(": ");
+            f.append_syntax(": ");
             values.write(idx, f)?;
         }
 
         for idx in iter {
-            f.code_syntax(", ");
+            f.append_syntax(", ");
             keys.write(idx, f)?;
-            f.code_syntax(": ");
+            f.append_syntax(": ");
             values.write(idx, f)?;
         }
 
-        f.code_syntax("}");
+        f.append_syntax("}");
         Ok(())
     }
 
@@ -649,11 +649,11 @@ impl<'a> ShowIndexState<'a> for &'a UnionArray {
             .as_ref()
             .expect("Union field should be present");
 
-        f.code_syntax("{");
-        f.code_identifier(field.name());
-        f.code_syntax("=");
+        f.append_syntax("{");
+        f.append_identifier(field.name());
+        f.append_syntax("=");
         show_field.write(idx, f)?;
-        f.code_syntax("}");
+        f.append_syntax("}");
 
         Ok(())
     }
