@@ -1,24 +1,25 @@
 use std::time::Duration;
 
-use egui::NumExt as _;
+use egui::{NumExt as _, Widget as _};
 use jiff::Timestamp;
 
 pub use re_log::Level;
 
-use crate::{UiExt as _, icons};
+use crate::{UiExt, icons};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NotificationLevel {
-    Info = 0,
-    Success = 1,
-    Warning = 2,
-    Error = 3,
+    Tip,
+    Info,
+    Success,
+    Warning,
+    Error,
 }
 
 impl NotificationLevel {
     fn color(&self, ui: &egui::Ui) -> egui::Color32 {
         match self {
-            Self::Info => ui.tokens().info_text_color,
+            Self::Tip | Self::Info => ui.tokens().info_text_color,
             Self::Warning => ui.style().visuals.warn_fg_color,
             Self::Error => ui.style().visuals.error_fg_color,
             Self::Success => ui.tokens().success_text_color,
@@ -52,9 +53,31 @@ fn notification_panel_popup_id() -> egui::Id {
     egui::Id::new("notification_panel_popup")
 }
 
-struct Notification {
+/// A link to some URL.
+pub struct Link {
+    pub text: String,
+    pub url: String,
+}
+
+impl egui::Widget for &Link {
+    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        let Link { text, url } = self;
+        ui.re_hyperlink(text, url, true)
+    }
+}
+
+impl egui::Widget for Link {
+    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        let Self { text, url } = self;
+        ui.re_hyperlink(text, url, true)
+    }
+}
+
+/// A notification to show the user
+pub struct Notification {
     level: NotificationLevel,
     text: String,
+    link: Option<Link>,
 
     /// When this notification was added to the list.
     created_at: Timestamp,
@@ -64,6 +87,24 @@ struct Notification {
 
     /// Whether this notification has been read.
     is_unread: bool,
+}
+
+impl Notification {
+    pub fn new(level: NotificationLevel, text: impl Into<String>) -> Self {
+        Self {
+            level,
+            text: text.into(),
+            link: None,
+            created_at: Timestamp::now(),
+            toast_ttl: base_ttl(),
+            is_unread: true,
+        }
+    }
+
+    pub fn with_link(mut self, link: Link) -> Self {
+        self.link = Some(link);
+        self
+    }
 }
 
 pub struct NotificationUi {
@@ -100,30 +141,23 @@ impl NotificationUi {
     }
 
     pub fn add_log(&mut self, message: re_log::LogMsg) {
-        if !is_relevant(&message.target, message.level) {
+        let re_log::LogMsg { level, target, msg } = message;
+
+        if !is_relevant(&target, level) {
             return;
         }
 
-        self.push(message.level.into(), message.msg);
+        self.add(Notification::new(level.into(), msg));
     }
-
     pub fn success(&mut self, text: impl Into<String>) {
-        self.push(NotificationLevel::Success, text.into());
+        self.add(Notification::new(NotificationLevel::Success, text.into()));
     }
 
-    fn push(&mut self, level: NotificationLevel, text: String) {
-        self.notifications.push(Notification {
-            level,
-            text,
-
-            created_at: Timestamp::now(),
-            toast_ttl: base_ttl(),
-            is_unread: true,
-        });
-
-        if Some(level) > self.unread_notification_level {
-            self.unread_notification_level = Some(level);
+    pub fn add(&mut self, notification: Notification) {
+        if Some(notification.level) > self.unread_notification_level {
+            self.unread_notification_level = Some(notification.level);
         }
+        self.notifications.push(notification);
     }
 
     /// A little bell-like button, that shows recent notifications when clicked.
@@ -304,7 +338,11 @@ impl Toasts {
             let response = response.on_hover_text("Click to close and copy contents");
 
             if response.clicked() {
-                egui_ctx.copy_text(notification.text.clone());
+                if let Some(link) = &notification.link {
+                    egui_ctx.open_url(egui::OpenUrl::new_tab(link.url.clone()));
+                } else {
+                    egui_ctx.copy_text(notification.text.clone());
+                }
                 notification.toast_ttl = Duration::ZERO;
             }
 
@@ -329,7 +367,16 @@ fn show_notification(
     mode: DisplayMode,
     mut on_dismiss: impl FnMut(),
 ) -> egui::Response {
-    let background_color = if mode == DisplayMode::Toast || notification.is_unread {
+    let Notification {
+        level,
+        text,
+        link,
+        created_at,
+        toast_ttl: _,
+        is_unread,
+    } = notification;
+
+    let background_color = if mode == DisplayMode::Toast || *is_unread {
         ui.tokens().notification_background_color
     } else {
         ui.tokens().notification_panel_background_color
@@ -343,38 +390,46 @@ fn show_notification(
         .show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.horizontal_top(|ui| {
-                    log_level_icon(ui, notification.level);
+                    log_level_icon(ui, *level);
                     ui.horizontal_top(|ui| {
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                         ui.set_width(270.0);
-                        ui.label(egui::RichText::new(notification.text.clone()));
+                        ui.label(egui::RichText::new(text.clone()));
                     });
 
                     ui.add_space(4.0);
                     if mode == DisplayMode::Panel {
-                        notification_age_label(ui, notification);
+                        notification_age_label(ui, *created_at);
                     }
                 });
 
-                ui.horizontal_top(|ui| {
-                    if mode != DisplayMode::Panel {
-                        return;
-                    }
+                let show_dismiss = mode == DisplayMode::Panel;
+                let show_bottom_bar = show_dismiss || link.is_some();
 
-                    ui.add_space(17.0);
-                    if ui.button("Dismiss").clicked() {
-                        on_dismiss();
-                    }
-                });
+                if show_bottom_bar {
+                    egui::Sides::new().show(
+                        ui,
+                        |ui| {
+                            if let Some(link) = link {
+                                link.ui(ui);
+                            }
+                        },
+                        |ui| {
+                            if show_dismiss && ui.button("Dismiss").clicked() {
+                                on_dismiss();
+                            }
+                        },
+                    );
+                }
             })
         })
         .response
 }
 
-fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
-    let age = Timestamp::now()
-        .duration_since(notification.created_at)
-        .as_secs_f64();
+fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
+    // TODO(emilk): use short_duration_ui
+
+    let age = Timestamp::now().duration_since(created_at).as_secs_f64();
 
     let formatted = if age < 10.0 {
         ui.ctx().request_repaint_after(Duration::from_secs(1));
@@ -387,14 +442,14 @@ fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
     } else {
         ui.ctx().request_repaint_after(Duration::from_secs(60));
 
-        notification.created_at.strftime("%H:%M").to_string()
+        created_at.strftime("%H:%M").to_string()
     };
 
     ui.horizontal_top(|ui| {
         ui.set_min_width(30.0);
         ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
             ui.label(egui::RichText::new(formatted).weak())
-                .on_hover_text(format!("{}", notification.created_at));
+                .on_hover_text(created_at.to_string());
         });
     });
 }
