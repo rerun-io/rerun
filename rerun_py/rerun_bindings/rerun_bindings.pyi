@@ -1046,6 +1046,7 @@ def set_callback_sink_blueprint(
 def serve_grpc(
     grpc_port: int | None,
     server_memory_limit: str,
+    newest_first: bool = False,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
 ) -> str:
