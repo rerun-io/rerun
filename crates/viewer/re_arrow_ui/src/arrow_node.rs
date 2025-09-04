@@ -61,12 +61,12 @@ impl<'a> ArrowNode<'a> {
         let label = match self.label {
             NodeLabel::Index(idx) => {
                 let mut builder = SyntaxHighlightedBuilder::new(ui.style());
-                builder.code_index(&format_uint(idx));
+                builder.append_index(&format_uint(idx));
                 builder.into_widget_text()
             }
             NodeLabel::Name(name) => {
                 let mut builder = SyntaxHighlightedBuilder::new(ui.style());
-                builder.code_identifier(&name);
+                builder.append_identifier(&name);
                 builder.into_widget_text()
             }
             NodeLabel::Custom(name) => name,
