@@ -65,20 +65,15 @@ pub fn try_decode_message<'d, T: Deserialize<'d>>(msg: &'d [u8]) -> Result<T, Cd
 }
 
 pub fn try_encode_message<T: Serialize>(msg: &T) -> Result<Vec<u8>, CdrError> {
-    let mut buffer = Vec::new();
-    let mut writer = std::io::Cursor::new(&mut buffer);
-
-    let representation_identifier = RepresentationIdentifier::CdrLittleEndian.to_bytes();
+    let mut writer = std::io::Cursor::new(Vec::new());
+    let mut header = [0u8; 4];
+    header[0..2].copy_from_slice(&RepresentationIdentifier::CdrLittleEndian.to_bytes());
     writer
-        .write_all(&representation_identifier)
-        .map_err(|e| CdrError::Other(anyhow::Error::from(e)))?;
-    writer
-        .write_all(&[0u8, 0u8])
-        .map_err(|e| CdrError::Other(anyhow::Error::from(e)))?;
+        .write_all(&header)
+        .map_err(|err| CdrError::Other(anyhow::Error::from(err)))?;
 
-    cdr_encoding::to_writer::<_, byteorder::LittleEndian, _>(writer, msg)?;
-
-    Ok(buffer)
+    cdr_encoding::to_writer::<_, byteorder::LittleEndian, _>(&mut writer, msg)?;
+    Ok(writer.into_inner())
 }
 
 /// Errors from CDR decoding.
