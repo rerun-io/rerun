@@ -155,6 +155,7 @@ impl NotificationUi {
 
         self.add(Notification::new(level.into(), msg));
     }
+
     pub fn success(&mut self, text: impl Into<String>) {
         self.add(Notification::new(NotificationLevel::Success, text.into()));
     }
