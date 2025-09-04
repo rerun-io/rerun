@@ -249,7 +249,7 @@ EXPLAIN = {
     NoPrecedingBlankLineError.CODE: NoPrecedingBlankLineError.explain,
     BlankLinesError.CODE: BlankLinesError.explain,
     BacktickLinkError.CODE: BacktickLinkError.explain,
-    BadDataReferenceError.CODE: BacktickLinkError.explain,
+    BadDataReferenceError.CODE: BadDataReferenceError.explain,
 }
 
 
