@@ -79,6 +79,10 @@ pub struct Notification {
     text: String,
     link: Option<Link>,
 
+    /// If set, the notification will NEVER be shown again
+    /// if the user has dismissed it.
+    permanent_dismiss_id: Option<egui::Id>,
+
     /// When this notification was added to the list.
     created_at: Timestamp,
 
@@ -95,6 +99,7 @@ impl Notification {
             level,
             text: text.into(),
             link: None,
+            permanent_dismiss_id: None,
             created_at: Timestamp::now(),
             toast_ttl: base_ttl(),
             is_unread: true,
@@ -111,9 +116,41 @@ impl Notification {
         self.toast_ttl = Duration::ZERO;
         self
     }
+
+    /// If set, the notification will NEVER be shown again
+    /// if the user has dismissed it.
+    pub fn permanent_dismiss_id(mut self, id: egui::Id) -> Self {
+        self.permanent_dismiss_id = Some(id);
+        self
+    }
+
+    /// Called only when this notification was dismissed on its own.
+    fn remember_dismiss(&self, ctx: &egui::Context) {
+        if let Some(permanent_dismiss_id) = self.permanent_dismiss_id {
+            ctx.data_mut(|data| data.insert_persisted(permanent_dismiss_id, PermaDismissiedMarker));
+        }
+    }
+
+    /// Did the user already dismiss this during an earlier run?
+    fn is_perma_dismissed(&self, ctx: &egui::Context) -> bool {
+        self.permanent_dismiss_id.is_some_and(|id| {
+            ctx.data_mut(|data| data.get_persisted::<PermaDismissiedMarker>(id))
+                .is_some()
+        })
+    }
+}
+
+#[derive(Clone, Copy, serde::Serialize, serde::Deserialize)]
+struct PermaDismissiedMarker;
+
+enum NotificationReaction {
+    Dismissed,
+    NeverShowAgain,
 }
 
 pub struct NotificationUi {
+    ctx: egui::Context,
+
     /// State of every notification.
     ///
     /// Notifications are stored in order of ascending `created_at`, so the latest one is at the end.
@@ -126,15 +163,10 @@ pub struct NotificationUi {
     toasts: Toasts,
 }
 
-impl Default for NotificationUi {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl NotificationUi {
-    pub fn new() -> Self {
+    pub fn new(ctx: egui::Context) -> Self {
         Self {
+            ctx,
             notifications: Vec::new(),
             unread_notification_level: None,
             was_open_last_frame: false,
@@ -149,11 +181,9 @@ impl NotificationUi {
     pub fn add_log(&mut self, message: re_log::LogMsg) {
         let re_log::LogMsg { level, target, msg } = message;
 
-        if !is_relevant(&target, level) {
-            return;
+        if is_relevant(&target, level) {
+            self.add(Notification::new(level.into(), msg));
         }
-
-        self.add(Notification::new(level.into(), msg));
     }
 
     pub fn success(&mut self, text: impl Into<String>) {
@@ -161,6 +191,10 @@ impl NotificationUi {
     }
 
     pub fn add(&mut self, notification: Notification) {
+        if notification.is_perma_dismissed(&self.ctx) {
+            return;
+        }
+
         if Some(notification.level) > self.unread_notification_level {
             self.unread_notification_level = Some(notification.level);
         }
@@ -240,9 +274,10 @@ impl NotificationUi {
             }
 
             for (i, notification) in notifications.iter().enumerate().rev() {
-                show_notification(ui, notification, DisplayMode::Panel, || {
+                let reaction = show_notification(ui, notification, DisplayMode::Panel).0;
+                if reaction.is_some() {
                     to_dismiss = Some(i);
-                });
+                }
             }
         };
 
@@ -279,7 +314,8 @@ impl NotificationUi {
         if dismiss_all {
             notifications.clear();
         } else if let Some(to_dismiss) = to_dismiss {
-            notifications.remove(to_dismiss);
+            let removed = notifications.remove(to_dismiss);
+            removed.remember_dismiss(ui.ctx());
         }
     }
 
@@ -330,7 +366,7 @@ impl Toasts {
                 .interactable(true)
                 .movable(false)
                 .show(egui_ctx, |ui| {
-                    show_notification(ui, notification, DisplayMode::Toast, || {})
+                    show_notification(ui, notification, DisplayMode::Toast);
                 })
                 .response;
 
@@ -368,12 +404,12 @@ fn show_notification(
     ui: &mut egui::Ui,
     notification: &Notification,
     mode: DisplayMode,
-    mut on_dismiss: impl FnMut(),
-) -> egui::Response {
+) -> (Option<NotificationReaction>, egui::Response) {
     let Notification {
         level,
         text,
         link,
+        permanent_dismiss_id,
         created_at,
         toast_ttl: _,
         is_unread,
@@ -385,7 +421,9 @@ fn show_notification(
         ui.tokens().notification_panel_background_color
     };
 
-    egui::Frame::window(ui.style())
+    let mut reaction = None;
+
+    let response = egui::Frame::window(ui.style())
         .corner_radius(4)
         .inner_margin(10.0)
         .fill(background_color)
@@ -418,15 +456,26 @@ fn show_notification(
                             }
                         },
                         |ui| {
-                            if show_dismiss && ui.button("Dismiss").clicked() {
-                                on_dismiss();
+                            if show_dismiss {
+                                if permanent_dismiss_id.is_some() {
+                                    if ui.button("Don't show again").clicked() {
+                                        reaction = Some(NotificationReaction::NeverShowAgain);
+                                    }
+                                } else {
+                                    //
+                                    if ui.button("Dismiss").clicked() {
+                                        reaction = Some(NotificationReaction::Dismissed);
+                                    }
+                                }
                             }
                         },
                     );
                 }
             })
         })
-        .response
+        .response;
+
+    (reaction, response)
 }
 
 fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
