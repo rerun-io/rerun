@@ -208,12 +208,7 @@ where
             .scan_partition_table(tonic::Request::new(
                 ScanPartitionTableRequest {
                     dataset_id: entry_id,
-                    // TODO: we need to be able to project server-side still though
-                    // scan_parameters: Some(ScanParameters {
-                    //     columns: vec![COLUMN_NAME.to_owned()],
-                    //     on_missing_columns: IfMissingBehavior::Error,
-                    //     ..Default::default()
-                    // }),
+                    columns: vec![COLUMN_NAME.to_owned()],
                 }
                 .into(),
             ))

@@ -42,6 +42,7 @@ impl TryFrom<crate::cloud::v1alpha1::GetPartitionTableSchemaRequest> for re_log_
 
 pub struct ScanPartitionTableRequest {
     pub dataset_id: EntryId,
+    pub columns: Vec<String>,
 }
 
 impl TryFrom<crate::cloud::v1alpha1::ScanPartitionTableRequest> for ScanPartitionTableRequest {
@@ -58,6 +59,7 @@ impl TryFrom<crate::cloud::v1alpha1::ScanPartitionTableRequest> for ScanPartitio
                     "dataset_id"
                 ))?
                 .try_into()?,
+            columns: value.columns,
         })
     }
 }
@@ -66,6 +68,7 @@ impl From<ScanPartitionTableRequest> for crate::cloud::v1alpha1::ScanPartitionTa
     fn from(value: ScanPartitionTableRequest) -> Self {
         Self {
             dataset_id: Some(value.dataset_id.into()),
+            columns: value.columns,
         }
     }
 }

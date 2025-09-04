@@ -167,10 +167,15 @@ impl ::prost::Name for GetPartitionTableSchemaResponse {
         "/rerun.cloud.v1alpha1.GetPartitionTableSchemaResponse".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScanPartitionTableRequest {
     #[prost(message, optional, tag = "1")]
     pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// A list of column names to be projected server-side.
+    ///
+    /// All of them if left empty.
+    #[prost(string, repeated, tag = "3")]
+    pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for ScanPartitionTableRequest {
     const NAME: &'static str = "ScanPartitionTableRequest";

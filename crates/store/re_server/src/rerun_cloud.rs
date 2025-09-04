@@ -549,12 +549,11 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::ScanPartitionTableRequest>,
     ) -> Result<tonic::Response<Self::ScanPartitionTableStream>, tonic::Status> {
         let request: ScanPartitionTableRequest = request.into_inner().try_into()?;
-        // TODO: this clause will exist for the upcoming `columns` field
-        // if request.scan_parameters.is_some() {
-        //     return Err(tonic::Status::unimplemented(
-        //         "scan_partition_table: scan_parameters not implemented",
-        //     ));
-        // }
+        if !request.columns.is_empty() {
+            return Err(tonic::Status::unimplemented(
+                "scan_partition_table: column projection not implemented",
+            ));
+        }
         let entry_id = request.dataset_id;
 
         let store = self.store.read().await;
