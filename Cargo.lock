@@ -12303,7 +12303,7 @@ dependencies = [
  "js-sys",
  "pin-project",
  "thiserror 2.0.12",
- "tonic 0.14.1",
+ "tonic 0.14.2",
  "tower-service",
  "wasm-bindgen",
  "wasm-bindgen-futures",

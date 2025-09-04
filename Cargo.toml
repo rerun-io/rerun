@@ -350,10 +350,10 @@ tokio = { version = "1.44.2", default-features = false }
 tokio-stream = "0.1.16"
 tokio-util = { version = "0.7.12", default-features = false }
 toml = { version = "0.8.10", default-features = false }
-tonic = { version = "0.14.1", default-features = false }
-tonic-prost = { version = "0.14.1", default-features = false }
-tonic-prost-build = { version = "0.14.1", default-features = false }
-tonic-web = "0.14.1"
+tonic = { version = "0.14.2", default-features = false }
+tonic-prost = { version = "0.14.2", default-features = false }
+tonic-prost-build = { version = "0.14.2", default-features = false }
+tonic-web = "0.14.2"
 tonic-web-wasm-client = "0.8.0"
 tower = "0.5"
 tower-http = "0.6"
