@@ -41,9 +41,14 @@ table VideoFrameReference (
     /// keep the video reference active.
     video_reference: rerun.components.EntityPath ("attr.rerun.component_optional", nullable, order: 2000);
 
+	/// Opacity of the video, useful for layering several media.
+	///
+	/// Defaults to 1.0 (fully opaque).
+	opacity: rerun.components.Opacity ("attr.rerun.component_optional", nullable, order: 2100);
+
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `-15.0`.
-    draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 2100);
+    draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 2200);
 }

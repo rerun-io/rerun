@@ -266,4 +266,4 @@ impl TypedComponentFallbackProvider<components::Opacity> for VideoStreamVisualiz
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(VideoStreamVisualizer => [components::DrawOrder]);
+re_viewer_context::impl_component_fallback_provider!(VideoStreamVisualizer => [components::DrawOrder, Opacity]);

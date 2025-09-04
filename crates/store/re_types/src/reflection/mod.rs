@@ -2314,6 +2314,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "video_reference", display_name : "Video reference", component_type :
                     "rerun.components.EntityPath".into(), docstring_md :
                     "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "opacity",
+                    display_name : "Opacity", component_type : "rerun.components.Opacity"
+                    .into(), docstring_md :
+                    "Opacity of the video, useful for layering several media.\n\nDefaults to 1.0 (fully opaque).",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_type :
                     "rerun.components.DrawOrder".into(), docstring_md :
@@ -2337,6 +2341,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name : "Sample", component_type :
                     "rerun.components.VideoSample".into(), docstring_md :
                     "Video sample data (also known as \"video chunk\").\n\nThe current timestamp is used as presentation timestamp (PTS) for all data in this sample.\nThere is currently no way to log differing decoding timestamps, meaning\nthat there is no support for B-frames.\nSee <https://github.com/rerun-io/rerun/issues/10090> for more details.\n\nUnlike any other data in Rerun, video samples are not allowed to be logged out of order,\nas this may break live video playback.\nI.e. any appended sample should have a timestamp greater than all previously logged samples.\n\nThe samples are expected to be encoded using the `codec` field.\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nUnless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image))\nnever log this component as static data as this means that you loose all information of\nprevious samples which may be required to decode an image.\n\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec) for codec specific requirements.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "opacity",
+                    display_name : "Opacity", component_type : "rerun.components.Opacity"
+                    .into(), docstring_md :
+                    "Opacity of the video stream, useful for layering several media.\n\nDefaults to 1.0 (fully opaque).",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_type :
                     "rerun.components.DrawOrder".into(), docstring_md :

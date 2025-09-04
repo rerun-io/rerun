@@ -127,21 +127,27 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
     std::sync::LazyLock::new(|| [VideoStream::descriptor_sample()]);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [VideoStream::descriptor_draw_order()]);
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            VideoStream::descriptor_opacity(),
+            VideoStream::descriptor_draw_order(),
+        ]
+    });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
     std::sync::LazyLock::new(|| {
         [
             VideoStream::descriptor_codec(),
             VideoStream::descriptor_sample(),
+            VideoStream::descriptor_opacity(),
             VideoStream::descriptor_draw_order(),
         ]
     });
 
 impl VideoStream {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 impl ::re_types_core::Archetype for VideoStream {
@@ -212,6 +218,7 @@ impl ::re_types_core::AsComponents for VideoStream {
         [
             self.codec.clone(),
             self.sample.clone(),
+            self.opacity.clone(),
             self.draw_order.clone(),
         ]
         .into_iter()
@@ -289,6 +296,9 @@ impl VideoStream {
             self.sample
                 .map(|sample| sample.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.opacity
+                .map(|opacity| opacity.partitioned(_lengths.clone()))
+                .transpose()?,
             self.draw_order
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -306,10 +316,12 @@ impl VideoStream {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_codec = self.codec.as_ref().map(|b| b.array.len());
         let len_sample = self.sample.as_ref().map(|b| b.array.len());
+        let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
         let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_codec)
             .or(len_sample)
+            .or(len_opacity)
             .or(len_draw_order)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
@@ -427,6 +439,7 @@ impl ::re_byte_size::SizeBytes for VideoStream {
     fn heap_size_bytes(&self) -> u64 {
         self.codec.heap_size_bytes()
             + self.sample.heap_size_bytes()
+            + self.opacity.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
     }
 }

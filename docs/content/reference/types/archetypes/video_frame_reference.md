@@ -18,6 +18,7 @@ TODO(#10422): [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference
 
 ### Optional
 * `video_reference`: [`EntityPath`](../components/entity_path.md)
+* `opacity`: [`Opacity`](../components/opacity.md)
 * `draw_order`: [`DrawOrder`](../components/draw_order.md)
 
 
