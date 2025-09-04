@@ -31,6 +31,7 @@ impl ShareDialog {
         ui: &mut egui::Ui,
         store_hub: &StoreHub,
         display_mode: &DisplayMode,
+        timestamp_format: re_log_types::TimestampFormat,
         current_selection: Option<&Item>,
         current_time_cursor: Option<(TimelineName, TimeCell)>,
         current_time_range_selection: Option<re_uri::TimeSelection>,
@@ -73,6 +74,7 @@ impl ShareDialog {
                         ui,
                         url,
                         &mut self.create_web_viewer_url,
+                        timestamp_format,
                         current_selection,
                         current_time_cursor,
                         current_time_range_selection,
@@ -86,6 +88,7 @@ fn popup_contents(
     ui: &mut egui::Ui,
     url: &mut ViewerOpenUrl,
     create_web_viewer_url: &mut bool,
+    timestamp_format: re_log_types::TimestampFormat,
     current_selection: Option<&Item>,
     current_time_cursor: Option<(TimelineName, TimeCell)>,
     current_time_range_selection: Option<re_uri::TimeSelection>,
@@ -152,10 +155,12 @@ fn popup_contents(
             let mut entire_range = url_time_range.is_none();
             ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_fn(
                 |ui, _| {
-                    ui.selectable_value(&mut entire_range, true, "Entire recording");
-                    ui.add_enabled_ui(current_time_range_selection.is_some(), |ui| {
-                        ui.selectable_value(&mut entire_range, false, "Trim to selection")
-                            .on_disabled_hover_text("No time range selected.");
+                    ui.selectable_toggle(|ui| {
+                        ui.selectable_value(&mut entire_range, true, "Entire recording");
+                        ui.add_enabled_ui(current_time_range_selection.is_some(), |ui| {
+                            ui.selectable_value(&mut entire_range, false, "Trim to selection")
+                                .on_disabled_hover_text("No time range selected.");
+                        });
                     });
                 },
             ));
@@ -168,7 +173,7 @@ fn popup_contents(
         }
 
         if let Some(fragments) = url.fragments_mut() {
-            ui.list_item_collapsible_noninteractive_label("Customize selection", false, |ui| {
+            ui.list_item_collapsible_noninteractive_label("Selection", false, |ui| {
                 let Fragment { focus, when } = fragments;
 
                 let mut any_focus = focus.is_some();
@@ -176,12 +181,21 @@ fn popup_contents(
                     current_selection.and_then(|selection| selection.to_data_path());
                 ui.list_item_flat_noninteractive(PropertyContent::new("Focus").value_fn(
                     |ui, _| {
-                        ui.selectable_value(&mut any_focus, false, "None");
-                        ui.add_enabled_ui(current_selection.is_some(), |ui| {
-                            ui.selectable_value(&mut any_focus, true, "Active selection")
-                                .on_disabled_hover_text(
-                                    "Current selection can't be embedded in the URL.",
-                                )
+                        ui.selectable_toggle(|ui| {
+                            ui.selectable_value(&mut any_focus, false, "None");
+                            ui.add_enabled_ui(current_selection.is_some(), |ui| {
+                                let mut label = egui::Atoms::new("Active");
+                                if let Some(current_selection) = &current_selection {
+                                    label.push_right(
+                                        egui::RichText::new(current_selection.to_string()).weak(),
+                                    );
+                                };
+
+                                ui.selectable_value(&mut any_focus, true, label)
+                                    .on_disabled_hover_text(
+                                        "Current selection can't be embedded in the URL.",
+                                    )
+                            });
                         });
                     },
                 ));
@@ -194,10 +208,22 @@ fn popup_contents(
                 let mut any_time = when.is_some();
                 ui.list_item_flat_noninteractive(PropertyContent::new("Selected time").value_fn(
                     |ui, _| {
-                        ui.selectable_value(&mut any_time, false, "None");
-                        ui.add_enabled_ui(current_time_cursor.is_some(), |ui| {
-                            ui.selectable_value(&mut any_time, true, "Current")
-                                .on_disabled_hover_text("No time selected.");
+                        ui.selectable_toggle(|ui| {
+                            ui.selectable_value(&mut any_time, false, "None");
+                            ui.add_enabled_ui(current_time_cursor.is_some(), |ui| {
+                                let mut label = egui::Atoms::new("Current");
+                                if let Some((_, time_cell)) = current_time_cursor {
+                                    label.push_right(
+                                        egui::RichText::new(
+                                            time_cell.format_compact(timestamp_format),
+                                        )
+                                        .weak(),
+                                    );
+                                };
+
+                                ui.selectable_value(&mut any_time, true, label)
+                                    .on_disabled_hover_text("No time selected.");
+                            });
                         });
                     },
                 ));

@@ -2255,14 +2255,6 @@ impl App {
         }
     }
 
-    /// Returns the currently active recording config if any recording is active.
-    pub fn active_recording_config(&self) -> Option<&RecordingConfig> {
-        self.store_hub
-            .as_ref()?
-            .active_recording()
-            .and_then(|db| self.state.recording_config(db.store_id()))
-    }
-
     // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal
     // fields may have been temporarily `take()`n out. Keep this a static method.
     fn handle_dropping_files(
