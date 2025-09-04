@@ -209,6 +209,7 @@ impl VideoFrameReferenceVisualizer {
                                 world_from_entity,
                                 spatial_ctx.highlight,
                                 video_resolution,
+                                egui::Rgba::WHITE,
                             );
                         }
 

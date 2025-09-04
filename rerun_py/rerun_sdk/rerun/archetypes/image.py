@@ -135,7 +135,7 @@ class Image(ImageExt, Archetype):
         format:
             The format of the image.
         opacity:
-            Opacity of the image, useful for layering several images.
+            Opacity of the image, useful for layering several media.
 
             Defaults to 1.0 (fully opaque).
         draw_order:
@@ -193,7 +193,7 @@ class Image(ImageExt, Archetype):
         format:
             The format of the image.
         opacity:
-            Opacity of the image, useful for layering several images.
+            Opacity of the image, useful for layering several media.
 
             Defaults to 1.0 (fully opaque).
         draw_order:
@@ -275,7 +275,7 @@ class Image(ImageExt, Archetype):
         default=None,
         converter=components.OpacityBatch._converter,  # type: ignore[misc]
     )
-    # Opacity of the image, useful for layering several images.
+    # Opacity of the image, useful for layering several media.
     #
     # Defaults to 1.0 (fully opaque).
     #

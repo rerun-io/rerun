@@ -59,6 +59,11 @@ pub struct VideoStream {
     /// See [`components::VideoCodec`][crate::components::VideoCodec] for codec specific requirements.
     pub sample: Option<SerializedComponentBatch>,
 
+    /// Opacity of the video stream, useful for layering several media.
+    ///
+    /// Defaults to 1.0 (fully opaque).
+    pub opacity: Option<SerializedComponentBatch>,
+
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
@@ -88,6 +93,18 @@ impl VideoStream {
             archetype: Some("rerun.archetypes.VideoStream".into()),
             component: "VideoStream:sample".into(),
             component_type: Some("rerun.components.VideoSample".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
+    ///
+    /// The corresponding component is [`crate::components::Opacity`].
+    #[inline]
+    pub fn descriptor_opacity() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.VideoStream".into()),
+            component: "VideoStream:opacity".into(),
+            component_type: Some("rerun.components.Opacity".into()),
         }
     }
 
@@ -171,6 +188,9 @@ impl ::re_types_core::Archetype for VideoStream {
         let sample = arrays_by_descr
             .get(&Self::descriptor_sample())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_sample()));
+        let opacity = arrays_by_descr
+            .get(&Self::descriptor_opacity())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_opacity()));
         let draw_order = arrays_by_descr
             .get(&Self::descriptor_draw_order())
             .map(|array| {
@@ -179,6 +199,7 @@ impl ::re_types_core::Archetype for VideoStream {
         Ok(Self {
             codec,
             sample,
+            opacity,
             draw_order,
         })
     }
@@ -208,6 +229,7 @@ impl VideoStream {
         Self {
             codec: try_serialize_field(Self::descriptor_codec(), [codec]),
             sample: None,
+            opacity: None,
             draw_order: None,
         }
     }
@@ -230,6 +252,10 @@ impl VideoStream {
             sample: Some(SerializedComponentBatch::new(
                 crate::components::VideoSample::arrow_empty(),
                 Self::descriptor_sample(),
+            )),
+            opacity: Some(SerializedComponentBatch::new(
+                crate::components::Opacity::arrow_empty(),
+                Self::descriptor_opacity(),
             )),
             draw_order: Some(SerializedComponentBatch::new(
                 crate::components::DrawOrder::arrow_empty(),
@@ -347,6 +373,28 @@ impl VideoStream {
         sample: impl IntoIterator<Item = impl Into<crate::components::VideoSample>>,
     ) -> Self {
         self.sample = try_serialize_field(Self::descriptor_sample(), sample);
+        self
+    }
+
+    /// Opacity of the video stream, useful for layering several media.
+    ///
+    /// Defaults to 1.0 (fully opaque).
+    #[inline]
+    pub fn with_opacity(mut self, opacity: impl Into<crate::components::Opacity>) -> Self {
+        self.opacity = try_serialize_field(Self::descriptor_opacity(), [opacity]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::Opacity`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_opacity`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_opacity(
+        mut self,
+        opacity: impl IntoIterator<Item = impl Into<crate::components::Opacity>>,
+    ) -> Self {
+        self.opacity = try_serialize_field(Self::descriptor_opacity(), opacity);
         self
     }
 

@@ -1683,7 +1683,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name : "opacity",
                     display_name : "Opacity", component_type : "rerun.components.Opacity"
                     .into(), docstring_md :
-                    "Opacity of the image, useful for layering several images.\n\nDefaults to 1.0 (fully opaque).",
+                    "Opacity of the image, useful for layering several media.\n\nDefaults to 1.0 (fully opaque).",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_type :
                     "rerun.components.DrawOrder".into(), docstring_md :
@@ -1809,7 +1809,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "opacity", display_name :
                     "Opacity", component_type : "rerun.components.Opacity".into(),
                     docstring_md :
-                    "Opacity of the image, useful for layering several images.\n\nDefaults to 1.0 (fully opaque).",
+                    "Opacity of the image, useful for layering several media.\n\nDefaults to 1.0 (fully opaque).",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_type :
                     "rerun.components.DrawOrder".into(), docstring_md :

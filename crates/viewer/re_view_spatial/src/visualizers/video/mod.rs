@@ -34,6 +34,7 @@ fn visualize_video_frame_texture(
     world_from_entity: glam::Affine3A,
     highlight: &re_viewer_context::ViewOutlineMasks,
     fallback_video_size: glam::Vec2,
+    multiplicative_tint: egui::Rgba,
 ) {
     let re_renderer::video::VideoFrameTexture {
         texture,
@@ -80,6 +81,7 @@ fn visualize_video_frame_texture(
                 texture_filter_minification: renderer::TextureFilterMin::Linear,
                 outline_mask: highlight.overall,
                 depth_offset,
+                multiplicative_tint,
                 ..Default::default()
             },
         };
