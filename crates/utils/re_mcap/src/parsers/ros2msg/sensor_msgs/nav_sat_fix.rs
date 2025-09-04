@@ -9,6 +9,7 @@ use re_types::{
     ComponentDescriptor, SerializedComponentColumn, archetypes::GeoPoints, components::LatLon,
 };
 
+use super::super::Ros2MessageParser;
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
@@ -34,7 +35,17 @@ pub struct NavSatFixMessageParser {
 impl NavSatFixMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.NavSatFix";
 
-    pub fn new(num_rows: usize) -> Self {
+    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
+        SerializedComponentColumn {
+            list_array: array.into(),
+            descriptor: ComponentDescriptor::partial(name)
+                .with_archetype(Self::ARCHETYPE_NAME.into()),
+        }
+    }
+}
+
+impl Ros2MessageParser for NavSatFixMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             geo_points: Vec::with_capacity(num_rows),
             latitude: fixed_size_list_builder(1, num_rows),
@@ -44,14 +55,6 @@ impl NavSatFixMessageParser {
             service: fixed_size_list_builder(1, num_rows),
             position_covariance: fixed_size_list_builder(9, num_rows),
             position_covariance_type: fixed_size_list_builder(1, num_rows),
-        }
-    }
-
-    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
-        SerializedComponentColumn {
-            list_array: array.into(),
-            descriptor: ComponentDescriptor::partial(name)
-                .with_archetype(Self::ARCHETYPE_NAME.into()),
         }
     }
 }

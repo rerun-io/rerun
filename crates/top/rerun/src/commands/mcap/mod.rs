@@ -25,6 +25,12 @@ pub struct ConvertCommand {
     #[clap(short = 'l', long = "layer")]
     selected_layers: Vec<String>,
 
+    /// Disable using the raw layer as a fallback for unsupported channels.
+    /// By default, channels that cannot be handled by semantic layers (protobuf, ROS2)
+    /// will be processed by the raw layer.
+    #[clap(long = "disable-raw-fallback")]
+    disable_raw_fallback: bool,
+
     /// If set, specifies the recording id of the output.
     ///
     /// When this flag is set and multiple input .rdd files are specified,
@@ -42,6 +48,7 @@ impl ConvertCommand {
             application_id,
             recording_id,
             selected_layers,
+            disable_raw_fallback,
         } = self;
 
         let start_time = std::time::Instant::now();
@@ -68,7 +75,7 @@ impl ConvertCommand {
             )
         };
 
-        let loader: &dyn DataLoader = &McapLoader::new(selected_layers);
+        let loader: &dyn DataLoader = &McapLoader::with_raw_fallback(selected_layers, !*disable_raw_fallback);
 
         // TODO(#10862): This currently loads the entire file into memory.
         let (tx, rx) = std::sync::mpsc::channel::<LoadedData>();

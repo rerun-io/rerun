@@ -8,6 +8,7 @@ use re_types::{
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
 };
 
+use super::super::Ros2MessageParser;
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
@@ -36,7 +37,17 @@ pub struct ImageMessageParser {
 impl ImageMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.Image";
 
-    pub fn new(num_rows: usize) -> Self {
+    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
+        SerializedComponentColumn {
+            list_array: array.into(),
+            descriptor: ComponentDescriptor::partial(name)
+                .with_archetype(Self::ARCHETYPE_NAME.into()),
+        }
+    }
+}
+
+impl Ros2MessageParser for ImageMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             blobs: Vec::with_capacity(num_rows),
             image_formats: Vec::with_capacity(num_rows),
@@ -46,14 +57,6 @@ impl ImageMessageParser {
             is_bigendian: fixed_size_list_builder(1, num_rows),
             step: fixed_size_list_builder(1, num_rows),
             is_depth_image: false,
-        }
-    }
-
-    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
-        SerializedComponentColumn {
-            list_array: array.into(),
-            descriptor: ComponentDescriptor::partial(name)
-                .with_archetype(Self::ARCHETYPE_NAME.into()),
         }
     }
 }

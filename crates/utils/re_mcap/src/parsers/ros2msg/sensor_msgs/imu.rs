@@ -10,6 +10,7 @@ use re_types::{
     reflection::ComponentDescriptorExt as _,
 };
 
+use super::super::Ros2MessageParser;
 use crate::{
     Error,
     parsers::{MessageParser, ParserContext, cdr},
@@ -37,17 +38,6 @@ pub struct ImuMessageParser {
 impl ImuMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.Imu";
 
-    /// Create a new [`ImuMessageParser`]
-    pub fn new(num_rows: usize) -> Self {
-        Self {
-            orientation: fixed_size_list_builder(4, num_rows),
-            sensor_readings: fixed_size_list_builder(6, num_rows),
-            orientation_covariance: fixed_size_list_builder(9, num_rows),
-            angular_velocity_covariance: fixed_size_list_builder(9, num_rows),
-            linear_acceleration_covariance: fixed_size_list_builder(9, num_rows),
-        }
-    }
-
     /// Helper function to create a metadata chunk for the Imu messages.
     fn metadata_chunk(entity_path: EntityPath) -> ChunkResult<Chunk> {
         Chunk::builder(entity_path)
@@ -64,6 +54,18 @@ impl ImuMessageParser {
                 ]),
             )
             .build()
+    }
+}
+
+impl Ros2MessageParser for ImuMessageParser {
+    fn new(num_rows: usize) -> Self {
+        Self {
+            orientation: fixed_size_list_builder(4, num_rows),
+            sensor_readings: fixed_size_list_builder(6, num_rows),
+            orientation_covariance: fixed_size_list_builder(9, num_rows),
+            angular_velocity_covariance: fixed_size_list_builder(9, num_rows),
+            linear_acceleration_covariance: fixed_size_list_builder(9, num_rows),
+        }
     }
 }
 

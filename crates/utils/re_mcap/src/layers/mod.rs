@@ -80,6 +80,13 @@ pub trait MessageLayer {
         Ok(())
     }
 
+    /// Returns `true` if this layer can handle the given channel.
+    ///
+    /// This method is used to determine which channels should be processed by which layers,
+    /// particularly for implementing fallback behavior where one layer handles channels
+    /// that other layers cannot process.
+    fn supports_channel(&self, channel: &mcap::Channel<'_>) -> bool;
+
     /// Instantites a new [`MessageParser`] that expects `num_rows` if it is interested in the current channel.
     ///
     /// Otherwise returns `None`.
@@ -247,13 +254,32 @@ impl LayerRegistry {
 
     /// Creates a registry with all builtin layers.
     pub fn all() -> Self {
-        Self::empty()
+        Self::all_with_raw_fallback(true)
+    }
+
+    /// Creates a registry with all builtin layers with configurable raw fallback.
+    pub fn all_with_raw_fallback(raw_fallback_enabled: bool) -> Self {
+        let mut registry = Self::empty()
             .register::<McapProtobufLayer>()
-            .register::<McapRawLayer>()
             .register::<McapRecordingInfoLayer>()
             .register::<McapRos2Layer>()
             .register::<McapSchemaLayer>()
-            .register::<McapStatisticLayer>()
+            .register::<McapStatisticLayer>();
+
+        // Add raw layer based on fallback setting
+        if raw_fallback_enabled {
+            registry = registry
+                .register_with_factory(<McapRawLayer as Layer>::identifier(), || {
+                    Box::new(McapRawLayer::default().with_fallback_enabled(true)) as Box<dyn Layer>
+                });
+        } else {
+            registry = registry
+                .register_with_factory(<McapRawLayer as Layer>::identifier(), || {
+                    Box::new(McapRawLayer::default().with_fallback_enabled(false)) as Box<dyn Layer>
+                });
+        }
+
+        registry
     }
 
     /// Adds an additional layer to the registry.
@@ -264,6 +290,19 @@ impl LayerRegistry {
             .is_some()
         {
             re_log::warn_once!("Inserted layer {} twice.", L::identifier());
+        }
+        self
+    }
+
+    /// Adds a layer to the registry with a custom factory function.
+    pub fn register_with_factory<S: Into<LayerIdentifier>>(
+        mut self,
+        identifier: S,
+        factory: fn() -> Box<dyn Layer>,
+    ) -> Self {
+        let identifier = identifier.into();
+        if self.factories.insert(identifier.clone(), factory).is_some() {
+            re_log::warn_once!("Inserted layer {} twice.", identifier);
         }
         self
     }

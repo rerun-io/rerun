@@ -10,6 +10,7 @@ use re_chunk::{
 use re_log_types::TimeCell;
 use re_types::{ComponentDescriptor, archetypes::Pinhole, reflection::ComponentDescriptorExt as _};
 
+use super::super::Ros2MessageParser;
 use crate::{
     Error,
     parsers::{
@@ -41,8 +42,10 @@ pub struct CameraInfoMessageParser {
 
 impl CameraInfoMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.CameraInfo";
+}
 
-    pub fn new(num_rows: usize) -> Self {
+impl Ros2MessageParser for CameraInfoMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             distortion_models: fixed_size_list_builder(1, num_rows),
             k_matrices: fixed_size_list_builder(9, num_rows),

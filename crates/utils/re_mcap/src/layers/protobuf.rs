@@ -345,6 +345,18 @@ impl MessageLayer for McapProtobufLayer {
         Ok(())
     }
 
+    fn supports_channel(&self, channel: &mcap::Channel<'_>) -> bool {
+        let Some(schema) = channel.schema.as_ref() else {
+            return false;
+        };
+
+        if schema.encoding.as_str() != "protobuf" {
+            return false;
+        }
+
+        self.descrs_per_topic.contains_key(&channel.topic)
+    }
+
     fn message_parser(
         &self,
         channel: &mcap::Channel<'_>,

@@ -17,6 +17,7 @@ use re_types::{
 };
 use std::collections::HashMap;
 
+use super::super::Ros2MessageParser;
 use crate::{
     Error,
     parsers::{
@@ -45,8 +46,10 @@ pub struct PointCloud2MessageParser {
 
 impl PointCloud2MessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.PointCloud2";
+}
 
-    pub fn new(num_rows: usize) -> Self {
+impl Ros2MessageParser for PointCloud2MessageParser {
+    fn new(num_rows: usize) -> Self {
         let fields = FixedSizeListBuilder::with_capacity(
             ListBuilder::new(StructBuilder::new(
                 Fields::from(vec![
