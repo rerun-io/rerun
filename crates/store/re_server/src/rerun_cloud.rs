@@ -22,6 +22,7 @@ use re_protos::cloud::v1alpha1::{
     GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
     QueryDatasetResponse, ScanPartitionTableResponse,
 };
+use re_protos::headers::RerunHeadersExtractorExt as _;
 use re_protos::{cloud::v1alpha1::RegisterWithDatasetResponse, common::v1alpha1::ext::PartitionId};
 use re_protos::{
     cloud::v1alpha1::ext,
@@ -357,16 +358,16 @@ impl RerunCloudService for RerunCloudHandler {
         tonic::Response<re_protos::cloud::v1alpha1::RegisterWithDatasetResponse>,
         tonic::Status,
     > {
-        let re_protos::cloud::v1alpha1::ext::RegisterWithDatasetRequest {
-            dataset_id,
-            data_sources,
-            on_duplicate,
-        } = request.into_inner().try_into()?;
-
         let mut store = self.store.write().await;
+        let dataset_id = get_entry_id_from_headers(&store, &request)?;
         let dataset = store.dataset_mut(dataset_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Dataset with ID {dataset_id} not found"))
         })?;
+
+        let re_protos::cloud::v1alpha1::ext::RegisterWithDatasetRequest {
+            data_sources,
+            on_duplicate,
+        } = request.into_inner().try_into()?;
 
         let mut partition_ids: Vec<String> = vec![];
         let mut partition_layers: Vec<String> = vec![];
@@ -524,15 +525,16 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ScanPartitionTableRequest>,
     ) -> Result<tonic::Response<Self::ScanPartitionTableStream>, tonic::Status> {
+        let store = self.store.read().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+
         let request: ScanPartitionTableRequest = request.into_inner().try_into()?;
         if request.scan_parameters.is_some() {
             return Err(tonic::Status::unimplemented(
                 "scan_partition_table: scan_parameters not implemented",
             ));
         }
-        let entry_id = request.dataset_id;
 
-        let store = self.store.read().await;
         let dataset = store.dataset(entry_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
         })?;
@@ -562,9 +564,9 @@ impl RerunCloudService for RerunCloudHandler {
         tonic::Response<re_protos::cloud::v1alpha1::GetDatasetSchemaResponse>,
         tonic::Status,
     > {
-        let entry_id = request.into_inner().try_into()?;
-
         let store = self.store.read().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+
         let dataset = store.dataset(entry_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
         })?;
@@ -621,25 +623,19 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
     ) -> std::result::Result<tonic::Response<Self::QueryDatasetStream>, tonic::Status> {
-        let re_protos::cloud::v1alpha1::QueryDatasetRequest {
-            dataset_id,
-            partition_ids,
-            chunk_ids,
-            entity_paths,
-            ..
-        } = request.into_inner();
-
-        if !chunk_ids.is_empty() {
+        if !request.get_ref().chunk_ids.is_empty() {
             return Err(tonic::Status::unimplemented(
                 "query_dataset: querying specific chunk ids is not implemented",
             ));
         }
 
-        let dataset_id = dataset_id
-            .ok_or(tonic::Status::unimplemented(
-                "query_dataset: dataset must be specified",
-            ))?
-            .try_into()?;
+        let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
+
+        let re_protos::cloud::v1alpha1::QueryDatasetRequest {
+            partition_ids,
+            entity_paths,
+            ..
+        } = request.into_inner();
 
         let entity_paths: IntSet<EntityPath> = entity_paths
             .into_iter()
@@ -651,7 +647,7 @@ impl RerunCloudService for RerunCloudHandler {
             .map(PartitionId::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let storage_engines = self.get_storage_engines(dataset_id, partition_ids).await?;
+        let storage_engines = self.get_storage_engines(entry_id, partition_ids).await?;
 
         let stream = futures::stream::iter(storage_engines.into_iter().map(
             move |(partition_id, storage_engine)| {
@@ -968,19 +964,9 @@ fn get_entry_id_from_headers<T>(
     store: &InMemoryStore,
     req: &tonic::Request<T>,
 ) -> Result<EntryId, tonic::Status> {
-    if let Some(entry_id) = re_protos::headers::RerunHeadersExtractor(req).entry_id()? {
-        const HEADER: &str = re_protos::headers::RERUN_HTTP_HEADER_ENTRY_ID;
-
-        let entry_id: EntryId = entry_id.parse().map_err(|err| {
-            tonic::Status::invalid_argument(format!(
-                "'{entry_id:?}' is not a valid value for `{HEADER}`: {err:#}"
-            ))
-        })?;
-
+    if let Some(entry_id) = req.entry_id()? {
         Ok(entry_id)
-    } else if let Some(dataset_name) =
-        re_protos::headers::RerunHeadersExtractor(req).entry_name()?
-    {
+    } else if let Some(dataset_name) = req.entry_name()? {
         Ok(store
             .dataset_by_name(&dataset_name)
             .ok_or_else(|| {

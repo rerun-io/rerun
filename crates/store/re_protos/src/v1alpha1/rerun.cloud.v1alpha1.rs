@@ -75,8 +75,6 @@ impl ::prost::Name for DataSource {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterWithDatasetRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(message, repeated, tag = "2")]
     pub data_sources: ::prost::alloc::vec::Vec<DataSource>,
     #[prost(
@@ -166,8 +164,6 @@ impl ::prost::Name for GetPartitionTableSchemaResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScanPartitionTableRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(message, optional, tag = "2")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
 }
@@ -198,10 +194,7 @@ impl ::prost::Name for ScanPartitionTableResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct GetDatasetSchemaRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-}
+pub struct GetDatasetSchemaRequest {}
 impl ::prost::Name for GetDatasetSchemaRequest {
     const NAME: &'static str = "GetDatasetSchemaRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
@@ -229,8 +222,6 @@ impl ::prost::Name for GetDatasetSchemaResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateIndexRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// List of specific partitions that will be indexed (all if left empty).
     #[prost(message, repeated, tag = "2")]
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
@@ -274,10 +265,7 @@ impl ::prost::Name for CreateIndexResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ReIndexRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-}
+pub struct ReIndexRequest {}
 impl ::prost::Name for ReIndexRequest {
     const NAME: &'static str = "ReIndexRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
@@ -426,8 +414,6 @@ impl ::prost::Name for BTreeIndex {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SearchDatasetRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Index column that is queried
     #[prost(message, optional, tag = "2")]
     pub column: ::core::option::Option<IndexColumn>,
@@ -542,8 +528,6 @@ impl ::prost::Name for BTreeIndexQuery {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryDatasetRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Client can specify what partitions are queried. If left unspecified (empty list),
     /// all partitions will be queried.
     #[prost(message, repeated, tag = "2")]

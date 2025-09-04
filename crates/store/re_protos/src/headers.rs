@@ -12,74 +12,82 @@ pub const RERUN_HTTP_HEADER_ENTRY_ID: &str = "x-rerun-entry-id";
 /// while HTTP2 headers only support ASCII.
 pub const RERUN_HTTP_HEADER_ENTRY_NAME: &str = "x-rerun-entry-name-bin";
 
-/// Helper struct to inject Rerun Data Protocol headers into gRPC requests.
+/// Extension trait for [`tonic::Request`] to inject Rerun Data Protocol headers into gRPC requests.
 ///
 /// Example:
 /// ```
-/// # use re_protos::headers::RerunHeadersInjector;
-/// let mut req = tonic::Request::new(());
-/// RerunHeadersInjector(&mut req).with_entry_name("droid:sample2k").unwrap();
+/// # use re_protos::headers::RerunHeadersInjectorExt as _;
+/// let mut req = tonic::Request::new(()).with_entry_name("droid:sample2k").unwrap();
 /// ```
-pub struct RerunHeadersInjector<'a, T>(pub &'a mut tonic::Request<T>);
+pub trait RerunHeadersInjectorExt: Sized {
+    fn with_entry_id(self, entry_id: re_log_types::EntryId) -> Result<Self, tonic::Status>;
 
-impl<T> RerunHeadersInjector<'_, T> {
-    pub fn with_entry_id(&mut self, entry_id: impl AsRef<str>) -> Result<(), tonic::Status> {
+    fn with_entry_name(self, entry_name: impl AsRef<str>) -> Result<Self, tonic::Status>;
+
+    fn with_metadata(self, md: &tonic::metadata::MetadataMap) -> Self;
+}
+
+impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
+    fn with_entry_id(mut self, entry_id: re_log_types::EntryId) -> Result<Self, tonic::Status> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_ID;
 
-        let entry_id = entry_id.as_ref();
+        let entry_id = entry_id.to_string();
         let entry_id = entry_id.parse().map_err(|err| {
             tonic::Status::invalid_argument(format!(
                 "'{entry_id}' is not a valid value for '{HEADER}': {err:#}"
             ))
         })?;
 
-        self.0.metadata_mut().insert(HEADER, entry_id);
+        self.metadata_mut().insert(HEADER, entry_id);
 
-        Ok(())
+        Ok(self)
     }
 
-    #[expect(clippy::unnecessary_wraps)] // for consistency / future-proofing
-    pub fn with_entry_name(&mut self, entry_name: impl AsRef<str>) -> Result<(), tonic::Status> {
+    fn with_entry_name(mut self, entry_name: impl AsRef<str>) -> Result<Self, tonic::Status> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_NAME;
 
         let entry_name = entry_name.as_ref();
         let entry_name = tonic::metadata::BinaryMetadataValue::from_bytes(entry_name.as_bytes());
 
-        self.0.metadata_mut().insert_bin(HEADER, entry_name);
+        self.metadata_mut().insert_bin(HEADER, entry_name);
 
-        Ok(())
+        Ok(self)
     }
 
-    pub fn with_metadata(&mut self, md: &tonic::metadata::MetadataMap) {
+    fn with_metadata(mut self, md: &tonic::metadata::MetadataMap) -> Self {
         if let Some(entry_id) = md.get(RERUN_HTTP_HEADER_ENTRY_ID).cloned() {
-            self.0
-                .metadata_mut()
+            self.metadata_mut()
                 .insert(RERUN_HTTP_HEADER_ENTRY_ID, entry_id);
         }
 
         if let Some(entry_name) = md.get_bin(RERUN_HTTP_HEADER_ENTRY_NAME).cloned() {
-            self.0
-                .metadata_mut()
+            self.metadata_mut()
                 .insert_bin(RERUN_HTTP_HEADER_ENTRY_NAME, entry_name);
         }
+
+        self
     }
 }
 
-/// Helper struct to extract Rerun Data Protocol headers from gRPC requests.
+/// Extension trait for [`tonic::Request`] to extract Rerun Data Protocol headers from gRPC requests.
 ///
 /// Example:
 /// ```
-/// # use re_protos::headers::RerunHeadersExtractor;
+/// # use re_protos::headers::RerunHeadersExtractorExt as _;
 /// # let req = tonic::Request::new(());
-/// let entry_id = RerunHeadersExtractor(&req).entry_id().unwrap();
+/// let entry_id = req.entry_id().unwrap();
 /// ```
-pub struct RerunHeadersExtractor<'a, T>(pub &'a tonic::Request<T>);
+pub trait RerunHeadersExtractorExt {
+    fn entry_id(&self) -> Result<Option<re_log_types::EntryId>, tonic::Status>;
 
-impl<'a, T> RerunHeadersExtractor<'a, T> {
-    pub fn entry_id(&self) -> Result<Option<&'a str>, tonic::Status> {
+    fn entry_name(&self) -> Result<Option<String>, tonic::Status>;
+}
+
+impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
+    fn entry_id(&self) -> Result<Option<re_log_types::EntryId>, tonic::Status> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_ID;
 
-        let Some(entry_id) = self.0.metadata().get(HEADER) else {
+        let Some(entry_id) = self.metadata().get(HEADER) else {
             return Ok(None);
         };
 
@@ -88,14 +96,19 @@ impl<'a, T> RerunHeadersExtractor<'a, T> {
                 "'{entry_id:?}' is not a valid value for '{HEADER}': {err:#}"
             ))
         })?;
+        let entry_id = entry_id.parse().map_err(|err| {
+            tonic::Status::invalid_argument(format!(
+                "'{entry_id:?}' is not a valid value for '{HEADER}': {err:#}"
+            ))
+        })?;
 
         Ok(Some(entry_id))
     }
 
-    pub fn entry_name(&self) -> Result<Option<String>, tonic::Status> {
+    fn entry_name(&self) -> Result<Option<String>, tonic::Status> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_NAME;
 
-        let Some(entry_name) = self.0.metadata().get_bin(HEADER) else {
+        let Some(entry_name) = self.metadata().get_bin(HEADER) else {
             return Ok(None);
         };
 

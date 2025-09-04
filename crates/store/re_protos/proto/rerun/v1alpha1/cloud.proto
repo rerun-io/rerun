@@ -206,9 +206,11 @@ enum DataSourceKind {
 }
 
 message RegisterWithDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
   repeated DataSource data_sources = 2;
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message RegisterWithDatasetResponse {
@@ -233,8 +235,10 @@ message GetPartitionTableSchemaResponse {
 }
 
 message ScanPartitionTableRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
   rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message ScanPartitionTableResponse {
@@ -243,7 +247,8 @@ message ScanPartitionTableResponse {
 }
 
 message GetDatasetSchemaRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message GetDatasetSchemaResponse {
@@ -253,8 +258,6 @@ message GetDatasetSchemaResponse {
 /* Indexing */
 
 message CreateIndexRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // List of specific partitions that will be indexed (all if left empty).
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
@@ -267,6 +270,9 @@ message CreateIndexRequest {
 
   // Specify behavior when index for a partition was already created.
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message CreateIndexResponse {
@@ -274,7 +280,8 @@ message CreateIndexResponse {
 }
 
 message ReIndexRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message ReIndexResponse {
@@ -338,8 +345,6 @@ message BTreeIndex {
 /* Queries */
 
 message SearchDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // Index column that is queried
   IndexColumn column = 2;
 
@@ -354,6 +359,9 @@ message SearchDatasetRequest {
 
   // Scan parameters
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message SearchDatasetResponse {
@@ -383,8 +391,6 @@ message BTreeIndexQuery {
 }
 
 message QueryDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // Client can specify what partitions are queried. If left unspecified (empty list),
   // all partitions will be queried.
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
@@ -432,6 +438,9 @@ message QueryDatasetRequest {
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
 
   Query query = 6;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message QueryDatasetResponse {

@@ -29,6 +29,7 @@ use re_protos::{
         TaskId,
         ext::{IfDuplicateBehavior, IfMissingBehavior, PartitionId, ScanParameters},
     },
+    headers::RerunHeadersInjectorExt as _,
     missing_field,
 };
 
@@ -147,12 +148,11 @@ where
         &mut self,
         entry_id: EntryId,
     ) -> Result<DatasetEntry, StreamError> {
-        let mut req = tonic::Request::new(ReadDatasetEntryRequest {});
-        re_protos::headers::RerunHeadersInjector(&mut req).with_entry_id(entry_id.to_string())?;
-
         let response: ReadDatasetEntryResponse = self
             .inner()
-            .read_dataset_entry(req)
+            .read_dataset_entry(
+                tonic::Request::new(ReadDatasetEntryRequest {}).with_entry_id(entry_id)?,
+            )
             .await?
             .into_inner()
             .try_into()?;
@@ -206,17 +206,19 @@ where
 
         let mut stream = self
             .inner()
-            .scan_partition_table(tonic::Request::new(
-                ScanPartitionTableRequest {
-                    dataset_id: entry_id,
-                    scan_parameters: Some(ScanParameters {
-                        columns: vec![COLUMN_NAME.to_owned()],
-                        on_missing_columns: IfMissingBehavior::Error,
-                        ..Default::default()
-                    }),
-                }
-                .into(),
-            ))
+            .scan_partition_table(
+                tonic::Request::new(
+                    ScanPartitionTableRequest {
+                        scan_parameters: Some(ScanParameters {
+                            columns: vec![COLUMN_NAME.to_owned()],
+                            on_missing_columns: IfMissingBehavior::Error,
+                            ..Default::default()
+                        }),
+                    }
+                    .into(),
+                )
+                .with_entry_id(entry_id)?,
+            )
             .await?
             .into_inner();
 
@@ -253,16 +255,15 @@ where
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<Vec<RegisterWithDatasetTaskDescriptor>, StreamError> {
+        let req = tonic::Request::new(RegisterWithDatasetRequest {
+            data_sources,
+            on_duplicate,
+        })
+        .with_entry_id(dataset_id)?;
+
         let response = self
             .inner()
-            .register_with_dataset(tonic::Request::new(
-                RegisterWithDatasetRequest {
-                    dataset_id,
-                    data_sources,
-                    on_duplicate,
-                }
-                .into(),
-            ))
+            .register_with_dataset(req.map(Into::into))
             .await?
             .into_inner()
             .data
