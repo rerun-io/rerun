@@ -17,3 +17,8 @@ uint16
  * 🦀 [Rust API docs for `UInt16`](https://docs.rs/rerun/latest/rerun/datatypes/struct.UInt16.html)
 
 
+## Used by
+
+* [`ChannelCountPair`](../datatypes/channel_count_pair.md?speculative-link)
+* [`ChannelId`](../components/channel_id.md?speculative-link)
+* [`SchemaId`](../components/schema_id.md?speculative-link)
