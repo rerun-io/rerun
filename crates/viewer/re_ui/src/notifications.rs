@@ -105,6 +105,12 @@ impl Notification {
         self.link = Some(link);
         self
     }
+
+    // Show no toast - only show when clicking the notification panel!
+    pub fn no_toast(mut self) -> Self {
+        self.toast_ttl = Duration::ZERO;
+        self
+    }
 }
 
 pub struct NotificationUi {
@@ -328,11 +334,7 @@ impl Toasts {
                 .response;
 
             if !response.hovered() {
-                if notification.toast_ttl < dt {
-                    notification.toast_ttl = Duration::ZERO;
-                } else {
-                    notification.toast_ttl -= dt;
-                }
+                notification.toast_ttl = notification.toast_ttl.saturating_sub(dt);
             }
 
             let response = response.on_hover_text("Click to close and copy contents");

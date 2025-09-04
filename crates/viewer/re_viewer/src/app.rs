@@ -2004,7 +2004,7 @@ impl App {
                                     text: "Install…".into(),
                                     url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
                                 }
-                            );
+                            ).no_toast();
                             self.command_sender
                                 .send_system(SystemCommand::ShowNotification(notification));
                         });
