@@ -204,7 +204,7 @@ jobs:
                 - [ ] Delete the GH release draft
             - [ ] Merge or close the release PR
               - **IFF** the release job succeeds and the link checker is happy, you may merge the PR.
-              - Otherwise, close the PR without merging and cherrypick to `main` as required.
+              - Otherwise, close the PR without merging. Cherrypick any interesting commit to `main`, but *not* the version bump one (it would introduce bad links).
           - For non-alpha releases:
             - For any added commits, run the release workflow in 'rc' mode again
             - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'release' mode
