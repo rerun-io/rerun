@@ -106,9 +106,13 @@ fn maybe_apply<M: Migration>(
 /// Migrate a sorbet record batch of unknown version to the latest version.
 #[tracing::instrument(level = "debug", skip_all)]
 pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
-    // TODO(emilk): early-out if the schema has the latest version already.
-    use self::make_list_arrays::make_all_data_columns_list_arrays;
+    batch = migrate_record_batch_impl(batch);
 
+    // TODO(emilk): only call make_all_data_columns_list_arrays for chunk batches?
+    make_list_arrays::make_all_data_columns_list_arrays(&batch)
+}
+
+fn migrate_record_batch_impl(mut batch: RecordBatch) -> RecordBatch {
     re_tracing::profile_function!();
 
     batch = match get_or_guess_version(&batch) {
@@ -147,8 +151,6 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
         }
     };
 
-    batch = make_all_data_columns_list_arrays(&batch);
-
     batch
 }
 
@@ -156,6 +158,5 @@ pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
 #[tracing::instrument(level = "debug", skip_all)]
 pub fn migrate_schema_ref(schema: SchemaRef) -> SchemaRef {
     re_tracing::profile_function!();
-    // TODO(emilk): early-out if the schema has the latest version already.
-    migrate_record_batch(RecordBatch::new_empty(schema)).schema()
+    migrate_record_batch_impl(RecordBatch::new_empty(schema)).schema()
 }
