@@ -2,7 +2,7 @@
 /// RerunChunk is arrow IPC encoded RecordBatch that has
 /// rerun-specific semantic constraints and can be directly
 /// converted to a Rerun Chunk (`re_chunk::Chunk`)
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RerunChunk {
     /// encoder version used to encode the data
     #[prost(enumeration = "EncoderVersion", tag = "1")]
@@ -23,7 +23,7 @@ impl ::prost::Name for RerunChunk {
     }
 }
 /// uniquely identifies a table
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TableId {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
@@ -39,7 +39,7 @@ impl ::prost::Name for TableId {
     }
 }
 /// A recording can have multiple timelines, each is identified by a name, for example `log_tick`, `log_time`, etc.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Timeline {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
@@ -56,7 +56,7 @@ impl ::prost::Name for Timeline {
 }
 /// A time range between start and end time points. Each 64 bit number can represent different time point data
 /// depending on the timeline it is associated with. Time range is inclusive for both start and end time points.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TimeRange {
     #[prost(int64, tag = "1")]
     pub start: i64,
@@ -74,7 +74,7 @@ impl ::prost::Name for TimeRange {
     }
 }
 /// arrow IPC serialized schema
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Schema {
     #[prost(bytes = "bytes", optional, tag = "1")]
     pub arrow_schema: ::core::option::Option<::prost::bytes::Bytes>,
@@ -89,7 +89,7 @@ impl ::prost::Name for Schema {
         "/rerun.common.v1alpha1.Schema".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct IndexColumnSelector {
     /// TODO(zehiko) we need to add support for other types of index selectors
     #[prost(message, optional, tag = "1")]
@@ -105,7 +105,7 @@ impl ::prost::Name for IndexColumnSelector {
         "/rerun.common.v1alpha1.IndexColumnSelector".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct IndexRange {
     /// TODO(zehiko) support for other ranges for other index selectors
     #[prost(message, optional, tag = "1")]
@@ -123,7 +123,7 @@ impl ::prost::Name for IndexRange {
 }
 /// The unique identifier of an entity, e.g. `camera/3/points`
 /// See <<https://www.rerun.io/docs/concepts/entity-path>> for more on entity paths.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EntityPath {
     #[prost(string, tag = "1")]
     pub path: ::prost::alloc::string::String,
@@ -138,7 +138,7 @@ impl ::prost::Name for EntityPath {
         "/rerun.common.v1alpha1.EntityPath".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ApplicationId {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
@@ -153,7 +153,7 @@ impl ::prost::Name for ApplicationId {
         "/rerun.common.v1alpha1.ApplicationId".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct StoreId {
     /// The kind of the store.
     #[prost(enumeration = "StoreKind", tag = "1")]
@@ -176,7 +176,7 @@ impl ::prost::Name for StoreId {
         "/rerun.common.v1alpha1.StoreId".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
     #[prost(fixed64, optional, tag = "1")]
@@ -196,7 +196,7 @@ impl ::prost::Name for Tuid {
         "/rerun.common.v1alpha1.Tuid".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EntryId {
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<Tuid>,
@@ -212,7 +212,7 @@ impl ::prost::Name for EntryId {
     }
 }
 /// Entry point for all ManifestRegistryService APIs
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DatasetHandle {
     /// Unique entry identifier (for debug purposes)
     #[prost(message, optional, tag = "1")]
@@ -235,7 +235,7 @@ impl ::prost::Name for DatasetHandle {
     }
 }
 /// DataframePart is arrow IPC encoded RecordBatch
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DataframePart {
     /// encoder version used to encode the data
     #[prost(enumeration = "EncoderVersion", tag = "1")]
@@ -310,7 +310,7 @@ impl ::prost::Name for ScanParameters {
         "/rerun.common.v1alpha1.ScanParameters".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ScanParametersOrderClause {
     #[prost(bool, tag = "1")]
     pub descending: bool,
@@ -332,7 +332,7 @@ impl ::prost::Name for ScanParametersOrderClause {
 /// Unique identifier for a partition. Can be user defined
 /// which means it can be of any type. For simplicity we start
 /// with a string, but we will probably revisit this.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PartitionId {
     #[prost(string, optional, tag = "1")]
     pub id: ::core::option::Option<::prost::alloc::string::String>,
@@ -347,7 +347,7 @@ impl ::prost::Name for PartitionId {
         "/rerun.common.v1alpha1.PartitionId".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ComponentDescriptor {
     /// Optional name of the `Archetype` associated with this data.
     #[prost(string, optional, tag = "4")]
@@ -371,7 +371,7 @@ impl ::prost::Name for ComponentDescriptor {
 }
 /// Unique identifier of a task submitted in the redap
 /// tasks subsystem
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TaskId {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
@@ -387,7 +387,7 @@ impl ::prost::Name for TaskId {
     }
 }
 /// Mirrors `re_build_info::BuildInfo`.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BuildInfo {
     /// `CARGO_PKG_NAME`.
     #[prost(string, optional, tag = "1")]
@@ -434,7 +434,7 @@ impl ::prost::Name for BuildInfo {
     }
 }
 /// Mirrors `re_build_info::CrateVersion`.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SemanticVersion {
     #[prost(fixed32, optional, tag = "1")]
     pub major: ::core::option::Option<u32>,
@@ -447,7 +447,7 @@ pub struct SemanticVersion {
 }
 /// Nested message and enum types in `SemanticVersion`.
 pub mod semantic_version {
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Meta {
         #[prost(fixed32, tag = "4")]
         Rc(u32),
@@ -468,7 +468,7 @@ impl ::prost::Name for SemanticVersion {
     }
 }
 /// Mirrors `re_build_info::DevAlpha`.
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DevAlpha {
     #[prost(fixed32, optional, tag = "1")]
     pub alpha: ::core::option::Option<u32>,
