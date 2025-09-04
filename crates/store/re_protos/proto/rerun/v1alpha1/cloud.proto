@@ -44,15 +44,17 @@ service RerunCloudService {
 
   /* Query schemas */
 
-  // Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
+  // Returns the schema of the partition table.
   //
-  // * To inspect the data of the partition table, use `ScanPartitionTable`.
-  // * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+  // This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
+  //
+  // To inspect the data of the partition table, which is guaranteed to match the schema returned by
+  // this endpoint, check out `ScanPartitionTable`.
   rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (GetPartitionTableSchemaResponse) {}
 
-  // Inspect the contents of the partition table (i.e. the dataset manifest).
+  // Inspect the contents of the partition table.
   //
-  // The returned data will follow the schema specified by `GetPartitionTableSchema`.
+  // The data will follow the schema returned by `GetPartitionTableSchema`.
   rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
 
   // Returns the schema of the dataset.
@@ -217,7 +219,9 @@ message GetPartitionTableSchemaResponse {
 
 message ScanPartitionTableRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+
+  reserved 2;
+  reserved "scan_parameters";
 }
 
 message ScanPartitionTableResponse {

@@ -78,7 +78,6 @@ impl GrpcStreamToTable for PartitionTableProvider {
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
         let request = ScanPartitionTableRequest {
             dataset_id: Some(self.dataset_id.into()),
-            scan_parameters: None,
         };
 
         let mut client = self.client.clone();

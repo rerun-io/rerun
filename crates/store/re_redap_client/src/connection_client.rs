@@ -27,7 +27,7 @@ use re_protos::{
     },
     common::v1alpha1::{
         TaskId,
-        ext::{IfDuplicateBehavior, IfMissingBehavior, PartitionId, ScanParameters},
+        ext::{IfDuplicateBehavior, PartitionId},
     },
     missing_field,
 };
@@ -208,11 +208,12 @@ where
             .scan_partition_table(tonic::Request::new(
                 ScanPartitionTableRequest {
                     dataset_id: entry_id,
-                    scan_parameters: Some(ScanParameters {
-                        columns: vec![COLUMN_NAME.to_owned()],
-                        on_missing_columns: IfMissingBehavior::Error,
-                        ..Default::default()
-                    }),
+                    // TODO: we need to be able to project server-side still though
+                    // scan_parameters: Some(ScanParameters {
+                    //     columns: vec![COLUMN_NAME.to_owned()],
+                    //     on_missing_columns: IfMissingBehavior::Error,
+                    //     ..Default::default()
+                    // }),
                 }
                 .into(),
             ))

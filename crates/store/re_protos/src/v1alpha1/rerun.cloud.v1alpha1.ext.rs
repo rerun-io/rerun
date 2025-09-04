@@ -16,9 +16,7 @@ use crate::cloud::v1alpha1::{
     GetDatasetSchemaResponse, RegisterWithDatasetResponse, ScanPartitionTableResponse,
     VectorDistanceMetric,
 };
-use crate::common::v1alpha1::ext::{
-    DatasetHandle, IfDuplicateBehavior, PartitionId, ScanParameters,
-};
+use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId};
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
 use crate::{TypeConversionError, missing_field};
 
@@ -44,7 +42,6 @@ impl TryFrom<crate::cloud::v1alpha1::GetPartitionTableSchemaRequest> for re_log_
 
 pub struct ScanPartitionTableRequest {
     pub dataset_id: EntryId,
-    pub scan_parameters: Option<ScanParameters>,
 }
 
 impl TryFrom<crate::cloud::v1alpha1::ScanPartitionTableRequest> for ScanPartitionTableRequest {
@@ -61,7 +58,6 @@ impl TryFrom<crate::cloud::v1alpha1::ScanPartitionTableRequest> for ScanPartitio
                     "dataset_id"
                 ))?
                 .try_into()?,
-            scan_parameters: value.scan_parameters.map(TryInto::try_into).transpose()?,
         })
     }
 }
@@ -70,7 +66,6 @@ impl From<ScanPartitionTableRequest> for crate::cloud::v1alpha1::ScanPartitionTa
     fn from(value: ScanPartitionTableRequest) -> Self {
         Self {
             dataset_id: Some(value.dataset_id.into()),
-            scan_parameters: value.scan_parameters.map(Into::into),
         }
     }
 }
