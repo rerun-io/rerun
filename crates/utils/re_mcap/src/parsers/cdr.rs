@@ -23,7 +23,7 @@
 //! # }
 //! ```
 
-use std::io::Write;
+use std::io::Write as _;
 
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
