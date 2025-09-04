@@ -1,6 +1,7 @@
 use ahash::HashSet;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::{Button, Color32, Context, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style};
+
 use re_ui::{UiExt as _, design_tokens_of, icons};
 
 /// This applies some fixes so that the column resize bar is correctly displayed.
