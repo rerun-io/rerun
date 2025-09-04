@@ -33,7 +33,7 @@ namespace rerun {
         /// Prioritize the newest arriving messages,
         /// replaying the history later, starting with the newest.
         NewestFirst,
-    }
+    };
 
     /// A `RecordingStream` handles everything related to logging data into Rerun.
     ///
