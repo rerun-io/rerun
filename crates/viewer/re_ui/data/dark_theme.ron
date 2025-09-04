@@ -3,6 +3,7 @@
   "large_button_icon_size": 12,
   "large_button_corner_radius": 6,
   "small_icon_size": 14,
+  "modal_button_width": 50,
 
   "Alias": {
     "native_frame_stroke": {
@@ -269,6 +270,28 @@
     "list_item_collapse_default": {
       "color": "{Gray.700}"
     },
+
+    "code_index": {
+      "color": "#D176BF"
+    },
+    "code_primitive": {
+      "color": "#4ACB94"
+    },
+    "code_string": {
+      "color": "#818EF8"
+    },
+
+    // TODO(ab, katya): review these
+    "table_filter_frame_stroke": {
+      "color": "{Gray.400}",
+      "width": 1
+    },
+    "table_filter_operator_text_color": {
+      "color": "#818EF8",
+    },
+    "table_filter_rhs_text_color": {
+      "color": "#4ACB94",
+    }
   },
 
   "alert_success": {

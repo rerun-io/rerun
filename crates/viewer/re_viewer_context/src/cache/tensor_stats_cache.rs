@@ -6,7 +6,7 @@ use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::{archetypes::Tensor, datatypes::TensorData};
 
-use crate::{Cache, TensorStats};
+use crate::{Cache, CacheMemoryReport, TensorStats};
 
 /// Caches tensor stats.
 ///
@@ -31,8 +31,16 @@ impl Cache for TensorStatsCache {
         // Purging the tensor stats is not worth it - these are very small objects!
     }
 
-    fn bytes_used(&self) -> u64 {
-        self.0.total_size_bytes()
+    fn memory_report(&self) -> CacheMemoryReport {
+        CacheMemoryReport {
+            bytes_cpu: self.0.total_size_bytes(),
+            bytes_gpu: None,
+            per_cache_item_info: Vec::new(),
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        "Tensor Stats"
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {

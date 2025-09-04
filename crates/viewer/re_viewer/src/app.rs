@@ -7,8 +7,8 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{FileContents, LogDataSource};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
-use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
+use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
@@ -26,7 +26,7 @@ use crate::{
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     event::ViewerEventDispatcher,
-    open_url::ViewerImportUrl,
+    open_url::ViewerOpenUrl,
     startup_options::StartupOptions,
 };
 
@@ -188,7 +188,7 @@ impl App {
         re_tracing::profile_function!();
 
         let connection_registry =
-            connection_registry.unwrap_or_else(re_grpc_client::ConnectionRegistry::new);
+            connection_registry.unwrap_or_else(re_redap_client::ConnectionRegistry::new);
 
         if let Some(storage) = creation_context.storage
             && let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY)
@@ -420,7 +420,7 @@ impl App {
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
 
-        if let Ok(url) = crate::open_url::ViewerImportUrl::from_str(url) {
+        if let Ok(url) = crate::open_url::ViewerOpenUrl::from_str(url) {
             url.open(
                 &self.egui_ctx,
                 follow_if_http,
@@ -979,7 +979,7 @@ impl App {
         let on_ui_cmd = {
             let command_sender = self.command_sender.clone();
             Box::new(move |cmd| match cmd {
-                re_grpc_client::UiCommand::SetLoopSelection {
+                re_redap_client::UiCommand::SetLoopSelection {
                     recording_id,
                     timeline,
                     time_range,
@@ -1200,6 +1200,10 @@ impl App {
                     force_store_info,
                     promise,
                 });
+            }
+
+            UICommand::OpenUrl => {
+                self.state.open_url_modal.open();
             }
 
             UICommand::CloseCurrentRecording => {
@@ -1579,7 +1583,7 @@ impl App {
             base_url = None;
         };
 
-        match crate::open_url::ViewerImportUrl::from_display_mode(
+        match crate::open_url::ViewerOpenUrl::from_display_mode(
             storage_context.hub,
             display_mode.clone(),
         )
@@ -2754,7 +2758,7 @@ impl eframe::App for App {
 
             if let Some(cmd) = self
                 .cmd_palette
-                .show(egui_ctx, &ViewerImportUrl::command_palette_parse_url)
+                .show(egui_ctx, &ViewerOpenUrl::command_palette_parse_url)
             {
                 match cmd {
                     re_ui::CommandPaletteAction::UiCommand(cmd) => {
@@ -2764,7 +2768,7 @@ impl eframe::App for App {
                         let follow_if_http = false;
                         let select_redap_source_when_loaded = true;
 
-                        match url_desc.url.parse::<ViewerImportUrl>() {
+                        match url_desc.url.parse::<ViewerOpenUrl>() {
                             Ok(url) => {
                                 url.open(
                                     egui_ctx,
@@ -3177,7 +3181,7 @@ fn update_web_address_bar(
         return None;
     }
     let Ok(url) =
-        crate::open_url::ViewerImportUrl::from_display_mode(store_hub, display_mode.clone())
+        crate::open_url::ViewerOpenUrl::from_display_mode(store_hub, display_mode.clone())
             // History entries expect the url parameter, not the full url, therefore don't pass a base url.
             .and_then(|url| url.sharable_url(None))
     else {

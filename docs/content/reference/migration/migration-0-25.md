@@ -30,13 +30,11 @@ In the C++ and Python APIs, negative timeouts used to have special meaning. Now 
 
 The Python flush calls now raises an error if the flushing did not complete successfully.
 
+## ❗ Deprecations
 
-## Changed arrow encoding of blobs
-We used to encode blobs as `List<uint8>`, which was rather unidiomatic.
-Now they are instead encoded as `Binary`.
-Old data will be migrated on ingestion (zero-copy).
+### Python 3.9
 
-Affects the following components:
-- [`Blob`](https://rerun.io/docs/reference/types/components/blob)
-- [`ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer)
-- [`VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)
+Support for Python 3.9 is being deprecated. Python 3.9 is past end-of-life. See: https://devguide.python.org/versions/
+In the next release, we will fully drop support and switch to Python 3.10 as the minimum supported version.
+
+See an overview for supported python versions [here](https://ref.rerun.io/docs/python/main/common#supported-python-versions).

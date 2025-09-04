@@ -272,19 +272,13 @@ class ImageExt:
                 f"Converting image with pixel_format {image_format.pixel_format} into PIL is not yet supported"
             )
 
-        buffer = self.buffer.as_arrow_array()
-
-        if len(buffer) != 1:
-            raise ValueError(f"Expected exactly 1 buffer, got {len(buffer)}")
-
-        blob_bytes = buffer[0].as_py()
-        array = np.frombuffer(blob_bytes, dtype=image_format.channel_datatype.to_np_dtype())
+        buf = self.buffer.as_arrow_array().values.to_numpy().view(image_format.channel_datatype.to_np_dtype())
 
         # Note: np array shape is always (height, width, channels)
         if image_format.color_model == ColorModel.L:
-            image = array.reshape(image_format.height, image_format.width)  # type: ignore[assignment]
+            image = buf.reshape(image_format.height, image_format.width)
         else:
-            image = array.reshape(image_format.height, image_format.width, image_format.color_model.num_channels())  # type: ignore[assignment]
+            image = buf.reshape(image_format.height, image_format.width, image_format.color_model.num_channels())
 
         # PIL assumes L or RGB[A]:
         if image_format.color_model == ColorModel.BGR:

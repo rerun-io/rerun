@@ -21,6 +21,8 @@ use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::datafusion_adapter::DataFusionAdapter;
 use crate::display_record_batch::DisplayColumn;
+use crate::filter_ui::FilterState;
+use crate::filters::{Filter, FilterOperation};
 use crate::header_tooltip::column_header_tooltip_ui;
 use crate::table_blueprint::{
     ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
@@ -83,7 +85,7 @@ impl<'a> Columns<'a> {
 }
 
 impl Columns<'_> {
-    fn iter(&self) -> impl Iterator<Item = &Column<'_>> {
+    fn iter(&self) -> impl Iterator<Item = &Column<'_>> + use<'_> {
         self.columns.iter()
     }
 
@@ -195,8 +197,8 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    pub fn filter(mut self, filter: datafusion::prelude::Expr) -> Self {
-        self.initial_blueprint.filter = Some(filter);
+    pub fn prefilter(mut self, expression: datafusion::prelude::Expr) -> Self {
+        self.initial_blueprint.prefilter = Some(expression);
         self
     }
 
@@ -256,9 +258,14 @@ impl<'a> DataFusionTableWidget<'a> {
             session_id,
             initial_blueprint,
         );
+        let mut new_blueprint = table_state.blueprint().clone();
+
+        let mut filter_state =
+            FilterState::load_or_init_from_blueprint(ui.ctx(), session_id, table_state.blueprint());
 
         let requested_sorbet_batches = table_state.requested_sorbet_batches.lock();
 
+        let mut should_show_spinner = false;
         let (sorbet_batches, fields) = match (
             requested_sorbet_batches.try_as_ref(),
             &table_state.last_sorbet_batches,
@@ -285,7 +292,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
             (None, Some(last_dataframe)) => {
                 // The new dataframe is still processing, but we have the previous one to display for now.
-                //TODO(ab): add a progress indicator
+                should_show_spinner = true;
                 last_dataframe
             }
 
@@ -296,11 +303,22 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
+        // TODO(ab): significant code duplication here. This could possible be addressed by allowing
+        // the rest of this function to run over a schema and empty dataframe.
         let (sorbet_schema, migrated_fields) = {
+            // TODO(ab): We need to deal better with empty vec of sorbet batches. In that case, we
+            // do have a schema, so we should be able to display an empty table.
             let Some(sorbet_batch) = sorbet_batches.first() else {
                 if let Some(title) = title {
-                    title_ui(ui, None, &title, url.as_ref());
+                    title_ui(ui, None, &title, url.as_ref(), should_show_spinner);
                 }
+
+                drop(requested_sorbet_batches);
+                filter_state.filter_bar_ui(ui, &mut new_blueprint);
+                if table_state.blueprint() != &new_blueprint {
+                    table_state.update_query(runtime, ui, new_blueprint);
+                }
+                filter_state.store(ui.ctx(), session_id);
 
                 Frame::new()
                     .inner_margin(egui::vec2(16.0, 0.0))
@@ -357,12 +375,18 @@ impl<'a> DataFusionTableWidget<'a> {
         );
 
         if let Some(title) = title {
-            title_ui(ui, Some(&mut table_config), &title, url.as_ref());
+            title_ui(
+                ui,
+                Some(&mut table_config),
+                &title,
+                url.as_ref(),
+                should_show_spinner,
+            );
         }
 
-        apply_table_style_fixes(ui.style_mut());
+        filter_state.filter_bar_ui(ui, &mut new_blueprint);
 
-        let mut new_blueprint = table_state.blueprint().clone();
+        apply_table_style_fixes(ui.style_mut());
 
         let mut row_height = viewer_ctx.tokens().table_row_height(table_style);
 
@@ -387,6 +411,7 @@ impl<'a> DataFusionTableWidget<'a> {
             blueprint: table_state.blueprint(),
             new_blueprint: &mut new_blueprint,
             table_config,
+            filter_state,
             row_height,
         };
 
@@ -449,6 +474,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .show(ui, &mut table_delegate);
 
         table_delegate.table_config.store(ui.ctx());
+        table_delegate.filter_state.store(ui.ctx(), session_id);
         drop(requested_sorbet_batches);
         if table_state.blueprint() != &new_blueprint {
             table_state.update_query(runtime, ui, new_blueprint);
@@ -534,6 +560,7 @@ fn title_ui(
     table_config: Option<&mut TableConfig>,
     title: &str,
     url: Option<&String>,
+    should_show_spinner: bool,
 ) {
     Frame::new()
         .inner_margin(Margin {
@@ -554,6 +581,10 @@ fn title_ui(
                             .clicked()
                     {
                         ui.ctx().copy_text(url.clone());
+                    }
+
+                    if should_show_spinner {
+                        ui.spinner();
                     }
                 },
                 |ui| {
@@ -579,6 +610,7 @@ struct DataFusionTableDelegate<'a> {
     blueprint: &'a TableBlueprint,
     new_blueprint: &'a mut TableBlueprint,
     table_config: TableConfig,
+    filter_state: FilterState,
     row_height: f32,
 }
 
@@ -644,7 +676,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
                                         if ui
                                             .add_enabled_ui(!already_sorted, |ui| {
-                                                sort_direction.menu_button(ui)
+                                                sort_direction.menu_item_ui(ui)
                                             })
                                             .inner
                                             .clicked()
@@ -655,6 +687,23 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                                 direction: sort_direction,
                                             });
                                             ui.close();
+                                        }
+                                    }
+
+                                    if let Some(filter_op) = FilterOperation::default_for_datatype(
+                                        column_field.data_type(),
+                                    ) {
+                                        if ui
+                                            .icon_and_text_menu_item(
+                                                &re_ui::icons::FILTER,
+                                                "Filter",
+                                            )
+                                            .clicked()
+                                        {
+                                            self.filter_state.push_new_filter(Filter::new(
+                                                column_physical_name.clone(),
+                                                filter_op,
+                                            ));
                                         }
                                     }
                                 });

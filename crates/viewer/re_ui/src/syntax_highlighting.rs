@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use re_entity_db::InstancePath;
 use re_log_types::{
     ComponentPath, EntityPath, EntityPathPart, Instance,
@@ -8,6 +6,7 @@ use re_log_types::{
     },
 };
 
+use crate::DesignTokens;
 use egui::{Color32, Style, TextFormat, text::LayoutJob};
 
 // ----------------------------------------------------------------------------
@@ -24,24 +23,65 @@ pub trait SyntaxHighlighting {
 // ----------------------------------------------------------------------------
 
 /// Easily build syntax-highlighted text.
-pub struct SyntaxHighlightedBuilder {
-    pub style: Arc<Style>,
+pub struct SyntaxHighlightedBuilder<'a> {
+    pub style: &'a Style,
+    pub tokens: &'a DesignTokens,
     pub job: LayoutJob,
 }
 
-/// Easilut build
-impl SyntaxHighlightedBuilder {
-    pub fn new(style: Arc<Style>) -> Self {
+/// Easily build syntax-highlighted [`LayoutJob`]s.
+impl<'a> SyntaxHighlightedBuilder<'a> {
+    pub fn new(style: &'a Style) -> Self {
         Self {
             style,
+            tokens: crate::design_tokens_of_visuals(&style.visuals),
             job: LayoutJob::default(),
         }
     }
 
     #[inline]
     pub fn append(mut self, portion: &dyn SyntaxHighlighting) -> Self {
-        portion.syntax_highlight_into(&self.style, &mut self.job);
+        portion.syntax_highlight_into(self.style, &mut self.job);
         self
+    }
+
+    /// Some string data. Will be quoted.
+    pub fn code_string_value(&mut self, portion: &str) {
+        let mut format = monospace_text_format(self.style);
+        format.color = self.tokens.code_string;
+        self.job.append("\"", 0.0, format.clone());
+        self.job.append(portion, 0.0, format.clone());
+        self.job.append("\"", 0.0, format);
+    }
+
+    /// A string identifier.
+    ///
+    /// E.g. a variable name, field name, etc. Won't be quoted.
+    pub fn code_identifier(&mut self, portion: &str) {
+        let mut format = monospace_text_format(self.style);
+        format.color = self.tokens.text_default;
+        self.job.append(portion, 0.0, format);
+    }
+
+    /// An index number, e.g. an array index.
+    pub fn code_index(&mut self, portion: &str) {
+        let mut format = monospace_text_format(self.style);
+        format.color = self.tokens.code_index;
+        self.job.append(portion, 0.0, format);
+    }
+
+    /// Some primitive value, e.g. a number or bool.
+    pub fn code_primitive(&mut self, portion: &str) {
+        let mut format = monospace_text_format(self.style);
+        format.color = self.tokens.code_primitive;
+        self.job.append(portion, 0.0, format);
+    }
+
+    /// Some syntax, e.g. brackets, commas, colons, etc.
+    pub fn code_syntax(&mut self, portion: &str) {
+        let mut format = monospace_text_format(self.style);
+        format.color = self.tokens.text_strong;
+        self.job.append(portion, 0.0, format);
     }
 
     #[inline]
@@ -55,14 +95,14 @@ impl SyntaxHighlightedBuilder {
     }
 }
 
-impl From<SyntaxHighlightedBuilder> for LayoutJob {
-    fn from(builder: SyntaxHighlightedBuilder) -> Self {
+impl From<SyntaxHighlightedBuilder<'_>> for LayoutJob {
+    fn from(builder: SyntaxHighlightedBuilder<'_>) -> Self {
         builder.into_job()
     }
 }
 
-impl From<SyntaxHighlightedBuilder> for egui::WidgetText {
-    fn from(builder: SyntaxHighlightedBuilder) -> Self {
+impl From<SyntaxHighlightedBuilder<'_>> for egui::WidgetText {
+    fn from(builder: SyntaxHighlightedBuilder<'_>) -> Self {
         builder.into_widget_text()
     }
 }
@@ -85,6 +125,14 @@ fn faint_text_format(style: &Style) -> TextFormat {
     TextFormat {
         color: style.visuals.strong_text_color(),
         ..text_format(style)
+    }
+}
+
+fn monospace_text_format(style: &Style) -> TextFormat {
+    TextFormat {
+        font_id: egui::TextStyle::Monospace.resolve(style),
+        color: style.visuals.text_color(),
+        ..Default::default()
     }
 }
 

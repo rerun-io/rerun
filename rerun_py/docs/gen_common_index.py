@@ -462,8 +462,6 @@ with mkdocs_gen_files.open(index_path, "w") as index_file:
     index_file.write(
         """
 ## Getting Started
-Rerun needs at least Python 3.9 to run.
-
 * [Quick start](https://www.rerun.io/docs/getting-started/quick-start/python)
 * [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
@@ -475,6 +473,22 @@ or even as a separate web application.
 
 Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk/operating-modes) for an
 overview of what's possible and how.
+
+## Supported Python Versions
+
+Rerun will typically support Python version up until their end-of-life. If you are using an older version
+of Python, you can use the table below to make sure you choose the proper Rerun version for your Python installation.
+
+| **Rerun Version** | **Release Date** | **Supported Python Version** |
+|-------------------|------------------|------------------------------|
+| 0.25              | Sep./Oct. 2025   | 3.10+                        |
+| 0.24              | Jul. 17, 2025    | 3.9+                         |
+| 0.23              | Apr. 24, 2025    | 3.9+                         |
+| 0.22              | Feb. 6, 2025     | 3.9+                         |
+| 0.21              | Dec. 18. 2024    | 3.9+                         |
+| 0.20              | Nov. 14, 2024    | 3.9+                         |
+| 0.19              | Oct. 17, 2024    | 3.8+                         |
+
 
 ## APIs
 """,

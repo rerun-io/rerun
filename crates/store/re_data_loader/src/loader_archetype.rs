@@ -60,7 +60,11 @@ impl DataLoader for ArchetypeLoader {
 
         re_tracing::profile_function!(filepath.display().to_string());
 
-        let entity_path = EntityPath::from_file_path(&filepath);
+        let entity_path = settings
+            .entity_path_prefix
+            .clone()
+            .map(|prefix| prefix / EntityPath::from_file_path(&filepath))
+            .unwrap_or_else(|| EntityPath::from_file_path(&filepath));
 
         let mut timepoint = TimePoint::default();
         // TODO(cmc): log these once heuristics (I think?) are fixed

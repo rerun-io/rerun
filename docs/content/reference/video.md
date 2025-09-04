@@ -59,7 +59,7 @@ TODO(#10090): fix above if ticket is outdated.
 TODO(#10422): fix above if ticket is outdated.
 -->
 
-### Remuxing video streams
+### Export MP4 from RRD (remuxing)
 
 Sample data from [`VideoStream`](../reference/types/archetypes/video_stream.md) can be queried
 and remuxed to mp4 without re-encoding the video as demonstrated in [this sample](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/archetypes/video_stream_query_and_mux.py#speculative-link).
