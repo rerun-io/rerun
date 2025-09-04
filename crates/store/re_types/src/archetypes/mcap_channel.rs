@@ -40,15 +40,16 @@ pub struct McapChannel {
 
     /// The topic name that this channel publishes to.
     ///
-    /// Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
-    /// categorize and organize different data streams within the system.
+    /// Topics are hierarchical paths from the original robotics system (e.g., "/sensors/camera/image")
+    /// that categorize and organize different data streams.
+    /// Topics are separate from Rerun's entity paths, but they often can be mapped to them.
     pub topic: Option<SerializedComponentBatch>,
 
     /// The encoding format used for messages in this channel.
     ///
     /// Common encodings include:
     /// * `ros1` - ROS1 message format
-    /// * `cdr` - Common Data Representation (CDR) message format
+    /// * `cdr` - Common Data Representation (CDR) message format, used by ROS2
     /// * `protobuf` - Protocol Buffers
     /// * `json` - JSON encoding
     pub message_encoding: Option<SerializedComponentBatch>,
@@ -349,8 +350,9 @@ impl McapChannel {
 
     /// The topic name that this channel publishes to.
     ///
-    /// Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
-    /// categorize and organize different data streams within the system.
+    /// Topics are hierarchical paths from the original robotics system (e.g., "/sensors/camera/image")
+    /// that categorize and organize different data streams.
+    /// Topics are separate from Rerun's entity paths, but they often can be mapped to them.
     #[inline]
     pub fn with_topic(mut self, topic: impl Into<crate::components::Text>) -> Self {
         self.topic = try_serialize_field(Self::descriptor_topic(), [topic]);
@@ -374,7 +376,7 @@ impl McapChannel {
     ///
     /// Common encodings include:
     /// * `ros1` - ROS1 message format
-    /// * `cdr` - Common Data Representation (CDR) message format
+    /// * `cdr` - Common Data Representation (CDR) message format, used by ROS2
     /// * `protobuf` - Protocol Buffers
     /// * `json` - JSON encoding
     #[inline]

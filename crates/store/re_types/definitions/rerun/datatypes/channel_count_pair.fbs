@@ -3,6 +3,8 @@ namespace rerun.datatypes;
 /// A pair representing a channel ID and its associated message count.
 table ChannelCountPair (
   "attr.python.aliases": "Tuple[datatypes.UInt16Like, datatypes.UInt64Like]",
+
+  /// TODO(#11107): Stabilize
   "attr.docs.unreleased",
   "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord"
 ) {

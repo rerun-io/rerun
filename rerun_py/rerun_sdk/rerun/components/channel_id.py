@@ -14,7 +14,7 @@ from .._baseclasses import (
 __all__ = ["ChannelId", "ChannelIdBatch"]
 
 
-class ChannelId(datatypes.ChannelId, ComponentMixin):
+class ChannelId(datatypes.UInt16, ComponentMixin):
     """
     **Component**: A 16-bit ID representing an MCAP channel.
 
@@ -24,10 +24,10 @@ class ChannelId(datatypes.ChannelId, ComponentMixin):
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ChannelIdExt in channel_id_ext.py
 
-    # Note: there are no fields here because ChannelId delegates to datatypes.ChannelId
+    # Note: there are no fields here because ChannelId delegates to datatypes.UInt16
 
 
-class ChannelIdBatch(datatypes.ChannelIdBatch, ComponentBatchMixin):
+class ChannelIdBatch(datatypes.UInt16Batch, ComponentBatchMixin):
     _COMPONENT_TYPE: str = "rerun.components.ChannelId"
 
 

@@ -2,10 +2,8 @@ namespace rerun.components;
 
 // ---
 
-/// A 16-bit ID representing an MCAP channel.
-///
-/// Used to identify specific channels within an MCAP file.
-table ChannelId (
+/// A 16-bit unique identifier for a schema within the MCAP file.
+table SchemaId (
   "attr.arrow.transparent",
 
   /// TODO(#11107): Stabilize

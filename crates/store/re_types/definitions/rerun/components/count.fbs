@@ -9,6 +9,8 @@ table Count (
   "attr.python.array_aliases": "int, npt.NDArray[np.uint64]",
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.repr": "transparent",
+
+  /// TODO(#11107): Stabilize
   "attr.docs.unreleased",
   "attr.rerun.state": "unstable"
 ) {

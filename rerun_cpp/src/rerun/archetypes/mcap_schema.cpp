@@ -9,7 +9,7 @@ namespace rerun::archetypes {
     McapSchema McapSchema::clear_fields() {
         auto archetype = McapSchema();
         archetype.id =
-            ComponentBatch::empty<rerun::components::ChannelId>(Descriptor_id).value_or_throw();
+            ComponentBatch::empty<rerun::components::SchemaId>(Descriptor_id).value_or_throw();
         archetype.name =
             ComponentBatch::empty<rerun::components::Text>(Descriptor_name).value_or_throw();
         archetype.encoding =

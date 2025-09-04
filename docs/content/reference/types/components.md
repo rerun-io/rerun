@@ -70,6 +70,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`RotationQuat`](components/rotation_quat.md): A 3D rotation expressed as a quaternion.
 * [`Scalar`](components/scalar.md): A scalar value, encoded as a 64-bit floating point.
 * [`Scale3D`](components/scale3d.md): A 3D scale factor.
+* [`SchemaId`](components/schema_id.md): A 16-bit unique identifier for a schema within the MCAP file.
 * [`SeriesVisible`](components/series_visible.md): Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible), but for time series.
 * [`ShowLabels`](components/show_labels.md): Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.
 * [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.

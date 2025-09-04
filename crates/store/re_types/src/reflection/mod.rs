@@ -1001,6 +1001,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SchemaId as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A 16-bit unique identifier for a schema within the MCAP file.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: SchemaId::arrow_datatype(),
+                verify_arrow_array: SchemaId::verify_arrow_array,
+            },
+        ),
+        (
             <SeriesVisible as Component>::name(),
             ComponentReflection {
                 docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible), but for time series.\n\nTODO(#10632): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible) since it would conflict with the entity-wide visibility state.",
@@ -1970,11 +1980,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { name : "topic",
                     display_name : "Topic", component_type : "rerun.components.Text"
                     .into(), docstring_md :
-                    "The topic name that this channel publishes to.\n\nTopics are typically hierarchical paths (e.g., \"/sensors/camera/image\") that\ncategorize and organize different data streams within the system.",
+                    "The topic name that this channel publishes to.\n\nTopics are hierarchical paths from the original robotics system (e.g., \"/sensors/camera/image\")\nthat categorize and organize different data streams.\nTopics are separate from Rerun's entity paths, but they often can be mapped to them.",
                     is_required : true, }, ArchetypeFieldReflection { name :
                     "message_encoding", display_name : "Message encoding", component_type
                     : "rerun.components.Text".into(), docstring_md :
-                    "The encoding format used for messages in this channel.\n\nCommon encodings include:\n* `ros1` - ROS1 message format\n* `cdr` - Common Data Representation (CDR) message format\n* `protobuf` - Protocol Buffers\n* `json` - JSON encoding",
+                    "The encoding format used for messages in this channel.\n\nCommon encodings include:\n* `ros1` - ROS1 message format\n* `cdr` - Common Data Representation (CDR) message format, used by ROS2\n* `protobuf` - Protocol Buffers\n* `json` - JSON encoding",
                     is_required : true, }, ArchetypeFieldReflection { name : "metadata",
                     display_name : "Metadata", component_type :
                     "rerun.components.KeyValuePairs".into(), docstring_md :
@@ -2007,8 +2017,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { name : "id", display_name : "Id",
-                    component_type : "rerun.components.ChannelId".into(), docstring_md :
-                    "Unique identifier for this schema within the MCAP file.\n\nSchema IDs must be unique within a single MCAP file and are used by channels\nto reference the schema that defines their message structure.",
+                    component_type : "rerun.components.SchemaId".into(), docstring_md :
+                    "Unique identifier for this schema within the MCAP file.\n\nSchema IDs must be unique within an MCAP file and are referenced by channels\nto specify their message structure. A single schema can be shared across multiple channels.",
                     is_required : true, }, ArchetypeFieldReflection { name : "name",
                     display_name : "Name", component_type : "rerun.components.Text"
                     .into(), docstring_md :

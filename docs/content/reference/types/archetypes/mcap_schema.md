@@ -17,7 +17,7 @@ See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archet
 
 ## Fields
 ### Required
-* `id`: [`ChannelId`](../components/channel_id.md)
+* `id`: [`SchemaId`](../components/schema_id.md)
 * `name`: [`Text`](../components/text.md)
 * `encoding`: [`Text`](../components/text.md)
 * `data`: [`Blob`](../components/blob.md)

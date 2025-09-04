@@ -15,6 +15,8 @@ namespace rerun.archetypes;
 /// \example archetypes/mcap_schema_simple !api title="Simple MCAP schema"
 table McapSchema (
   "attr.docs.category": "MCAP",
+
+  /// TODO(#11107): Stabilize
   "attr.rerun.state": "unstable",
   "attr.rust.derive": "PartialEq",
   "attr.docs.unreleased"
@@ -23,9 +25,9 @@ table McapSchema (
 
   /// Unique identifier for this schema within the MCAP file.
   ///
-  /// Schema IDs must be unique within a single MCAP file and are used by channels
-  /// to reference the schema that defines their message structure.
-  id: rerun.components.ChannelId ("attr.rerun.component_required", order: 1000);
+  /// Schema IDs must be unique within an MCAP file and are referenced by channels
+  /// to specify their message structure. A single schema can be shared across multiple channels.
+  id: rerun.components.SchemaId ("attr.rerun.component_required", order: 1000);
 
   /// Human-readable name identifying this schema.
   ///

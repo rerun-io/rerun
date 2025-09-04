@@ -35,8 +35,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct McapSchema {
     /// Unique identifier for this schema within the MCAP file.
     ///
-    /// Schema IDs must be unique within a single MCAP file and are used by channels
-    /// to reference the schema that defines their message structure.
+    /// Schema IDs must be unique within an MCAP file and are referenced by channels
+    /// to specify their message structure. A single schema can be shared across multiple channels.
     pub id: Option<SerializedComponentBatch>,
 
     /// Human-readable name identifying this schema.
@@ -67,13 +67,13 @@ pub struct McapSchema {
 impl McapSchema {
     /// Returns the [`ComponentDescriptor`] for [`Self::id`].
     ///
-    /// The corresponding component is [`crate::components::ChannelId`].
+    /// The corresponding component is [`crate::components::SchemaId`].
     #[inline]
     pub fn descriptor_id() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.McapSchema".into()),
             component: "McapSchema:id".into(),
-            component_type: Some("rerun.components.ChannelId".into()),
+            component_type: Some("rerun.components.SchemaId".into()),
         }
     }
 
@@ -226,7 +226,7 @@ impl McapSchema {
     /// Create a new `McapSchema`.
     #[inline]
     pub fn new(
-        id: impl Into<crate::components::ChannelId>,
+        id: impl Into<crate::components::SchemaId>,
         name: impl Into<crate::components::Text>,
         encoding: impl Into<crate::components::Text>,
         data: impl Into<crate::components::Blob>,
@@ -251,7 +251,7 @@ impl McapSchema {
         use ::re_types_core::Loggable as _;
         Self {
             id: Some(SerializedComponentBatch::new(
-                crate::components::ChannelId::arrow_empty(),
+                crate::components::SchemaId::arrow_empty(),
                 Self::descriptor_id(),
             )),
             name: Some(SerializedComponentBatch::new(
@@ -327,22 +327,22 @@ impl McapSchema {
 
     /// Unique identifier for this schema within the MCAP file.
     ///
-    /// Schema IDs must be unique within a single MCAP file and are used by channels
-    /// to reference the schema that defines their message structure.
+    /// Schema IDs must be unique within an MCAP file and are referenced by channels
+    /// to specify their message structure. A single schema can be shared across multiple channels.
     #[inline]
-    pub fn with_id(mut self, id: impl Into<crate::components::ChannelId>) -> Self {
+    pub fn with_id(mut self, id: impl Into<crate::components::SchemaId>) -> Self {
         self.id = try_serialize_field(Self::descriptor_id(), [id]);
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::components::ChannelId`] in a single component batch.
+    /// This method makes it possible to pack multiple [`crate::components::SchemaId`] in a single component batch.
     ///
     /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_id`] should
     /// be used when logging a single row's worth of data.
     #[inline]
     pub fn with_many_id(
         mut self,
-        id: impl IntoIterator<Item = impl Into<crate::components::ChannelId>>,
+        id: impl IntoIterator<Item = impl Into<crate::components::SchemaId>>,
     ) -> Self {
         self.id = try_serialize_field(Self::descriptor_id(), id);
         self

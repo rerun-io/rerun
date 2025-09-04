@@ -39,7 +39,7 @@ class McapChannel(Archetype):
 
     def __init__(
         self: Any,
-        id: datatypes.ChannelIdLike,
+        id: datatypes.UInt16Like,
         topic: datatypes.Utf8Like,
         message_encoding: datatypes.Utf8Like,
         *,
@@ -58,14 +58,15 @@ class McapChannel(Archetype):
         topic:
             The topic name that this channel publishes to.
 
-            Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
-            categorize and organize different data streams within the system.
+            Topics are hierarchical paths from the original robotics system (e.g., "/sensors/camera/image")
+            that categorize and organize different data streams.
+            Topics are separate from Rerun's entity paths, but they often can be mapped to them.
         message_encoding:
             The encoding format used for messages in this channel.
 
             Common encodings include:
             * `ros1` - ROS1 message format
-            * `cdr` - Common Data Representation (CDR) message format
+            * `cdr` - Common Data Representation (CDR) message format, used by ROS2
             * `protobuf` - Protocol Buffers
             * `json` - JSON encoding
         metadata:
@@ -103,7 +104,7 @@ class McapChannel(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        id: datatypes.ChannelIdLike | None = None,
+        id: datatypes.UInt16Like | None = None,
         topic: datatypes.Utf8Like | None = None,
         message_encoding: datatypes.Utf8Like | None = None,
         metadata: components.KeyValuePairsLike | None = None,
@@ -123,14 +124,15 @@ class McapChannel(Archetype):
         topic:
             The topic name that this channel publishes to.
 
-            Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
-            categorize and organize different data streams within the system.
+            Topics are hierarchical paths from the original robotics system (e.g., "/sensors/camera/image")
+            that categorize and organize different data streams.
+            Topics are separate from Rerun's entity paths, but they often can be mapped to them.
         message_encoding:
             The encoding format used for messages in this channel.
 
             Common encodings include:
             * `ros1` - ROS1 message format
-            * `cdr` - Common Data Representation (CDR) message format
+            * `cdr` - Common Data Representation (CDR) message format, used by ROS2
             * `protobuf` - Protocol Buffers
             * `json` - JSON encoding
         metadata:
@@ -168,7 +170,7 @@ class McapChannel(Archetype):
     def columns(
         cls,
         *,
-        id: datatypes.ChannelIdArrayLike | None = None,
+        id: datatypes.UInt16ArrayLike | None = None,
         topic: datatypes.Utf8ArrayLike | None = None,
         message_encoding: datatypes.Utf8ArrayLike | None = None,
         metadata: components.KeyValuePairsArrayLike | None = None,
@@ -191,14 +193,15 @@ class McapChannel(Archetype):
         topic:
             The topic name that this channel publishes to.
 
-            Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
-            categorize and organize different data streams within the system.
+            Topics are hierarchical paths from the original robotics system (e.g., "/sensors/camera/image")
+            that categorize and organize different data streams.
+            Topics are separate from Rerun's entity paths, but they often can be mapped to them.
         message_encoding:
             The encoding format used for messages in this channel.
 
             Common encodings include:
             * `ros1` - ROS1 message format
-            * `cdr` - Common Data Representation (CDR) message format
+            * `cdr` - Common Data Representation (CDR) message format, used by ROS2
             * `protobuf` - Protocol Buffers
             * `json` - JSON encoding
         metadata:
@@ -276,8 +279,9 @@ class McapChannel(Archetype):
     )
     # The topic name that this channel publishes to.
     #
-    # Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
-    # categorize and organize different data streams within the system.
+    # Topics are hierarchical paths from the original robotics system (e.g., "/sensors/camera/image")
+    # that categorize and organize different data streams.
+    # Topics are separate from Rerun's entity paths, but they often can be mapped to them.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -290,7 +294,7 @@ class McapChannel(Archetype):
     #
     # Common encodings include:
     # * `ros1` - ROS1 message format
-    # * `cdr` - Common Data Representation (CDR) message format
+    # * `cdr` - Common Data Representation (CDR) message format, used by ROS2
     # * `protobuf` - Protocol Buffers
     # * `json` - JSON encoding
     #

@@ -6,6 +6,8 @@ namespace rerun.components;
 table ChannelMessageCounts (
   "attr.python.aliases": "dict[int, int]",
   "attr.python.array_aliases": "dict[int, int], Sequence[dict[int, int]]",
+
+  /// TODO(#11107): Stabilize
   "attr.rerun.state": "unstable",
   "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.docs.unreleased"

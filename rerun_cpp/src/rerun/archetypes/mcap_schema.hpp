@@ -7,7 +7,7 @@
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/blob.hpp"
-#include "../components/channel_id.hpp"
+#include "../components/schema_id.hpp"
 #include "../components/text.hpp"
 #include "../result.hpp"
 
@@ -33,8 +33,8 @@ namespace rerun::archetypes {
     struct McapSchema {
         /// Unique identifier for this schema within the MCAP file.
         ///
-        /// Schema IDs must be unique within a single MCAP file and are used by channels
-        /// to reference the schema that defines their message structure.
+        /// Schema IDs must be unique within an MCAP file and are referenced by channels
+        /// to specify their message structure. A single schema can be shared across multiple channels.
         std::optional<ComponentBatch> id;
 
         /// Human-readable name identifying this schema.
@@ -67,7 +67,7 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `id` field.
         static constexpr auto Descriptor_id = ComponentDescriptor(
-            ArchetypeName, "McapSchema:id", Loggable<rerun::components::ChannelId>::ComponentType
+            ArchetypeName, "McapSchema:id", Loggable<rerun::components::SchemaId>::ComponentType
         );
         /// `ComponentDescriptor` for the `name` field.
         static constexpr auto Descriptor_name = ComponentDescriptor(
@@ -90,7 +90,7 @@ namespace rerun::archetypes {
         McapSchema& operator=(McapSchema&& other) = default;
 
         explicit McapSchema(
-            rerun::components::ChannelId _id, rerun::components::Text _name,
+            rerun::components::SchemaId _id, rerun::components::Text _name,
             rerun::components::Text _encoding, rerun::components::Blob _data
         )
             : id(ComponentBatch::from_loggable(std::move(_id), Descriptor_id).value_or_throw()),
@@ -111,9 +111,9 @@ namespace rerun::archetypes {
 
         /// Unique identifier for this schema within the MCAP file.
         ///
-        /// Schema IDs must be unique within a single MCAP file and are used by channels
-        /// to reference the schema that defines their message structure.
-        McapSchema with_id(const rerun::components::ChannelId& _id) && {
+        /// Schema IDs must be unique within an MCAP file and are referenced by channels
+        /// to specify their message structure. A single schema can be shared across multiple channels.
+        McapSchema with_id(const rerun::components::SchemaId& _id) && {
             id = ComponentBatch::from_loggable(_id, Descriptor_id).value_or_throw();
             return std::move(*this);
         }
@@ -122,7 +122,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_id` should
         /// be used when logging a single row's worth of data.
-        McapSchema with_many_id(const Collection<rerun::components::ChannelId>& _id) && {
+        McapSchema with_many_id(const Collection<rerun::components::SchemaId>& _id) && {
             id = ComponentBatch::from_loggable(_id, Descriptor_id).value_or_throw();
             return std::move(*this);
         }

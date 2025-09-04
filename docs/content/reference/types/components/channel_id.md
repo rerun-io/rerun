@@ -8,7 +8,7 @@ A 16-bit ID representing an MCAP channel.
 Used to identify specific channels within an MCAP file.
 
 ## Rerun datatype
-[`ChannelId`](../datatypes/channel_id.md)
+[`UInt16`](../datatypes/uint16.md)
 
 
 ## Arrow datatype
@@ -25,4 +25,3 @@ uint16
 ## Used by
 
 * [`McapChannel`](../archetypes/mcap_channel.md?speculative-link)
-* [`McapSchema`](../archetypes/mcap_schema.md?speculative-link)

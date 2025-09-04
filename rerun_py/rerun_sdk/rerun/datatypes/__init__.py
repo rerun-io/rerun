@@ -8,7 +8,6 @@ from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike
 from .bool import Bool, BoolArrayLike, BoolBatch, BoolLike
 from .channel_count_pair import ChannelCountPair, ChannelCountPairArrayLike, ChannelCountPairBatch, ChannelCountPairLike
 from .channel_datatype import ChannelDatatype, ChannelDatatypeArrayLike, ChannelDatatypeBatch, ChannelDatatypeLike
-from .channel_id import ChannelId, ChannelIdArrayLike, ChannelIdBatch, ChannelIdLike
 from .class_description import ClassDescription, ClassDescriptionArrayLike, ClassDescriptionBatch, ClassDescriptionLike
 from .class_description_map_elem import (
     ClassDescriptionMapElem,
@@ -102,10 +101,6 @@ __all__ = [
     "ChannelDatatypeArrayLike",
     "ChannelDatatypeBatch",
     "ChannelDatatypeLike",
-    "ChannelId",
-    "ChannelIdArrayLike",
-    "ChannelIdBatch",
-    "ChannelIdLike",
     "ClassDescription",
     "ClassDescriptionArrayLike",
     "ClassDescriptionBatch",

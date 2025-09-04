@@ -14,6 +14,8 @@ namespace rerun.archetypes;
 /// \example archetypes/mcap_statistics_simple !api title="Simple MCAP statistics"
 table McapStatistics (
   "attr.docs.category": "MCAP",
+
+  /// TODO(#11107): Stabilize
   "attr.rerun.state": "unstable",
   "attr.rust.derive": "PartialEq",
   "attr.docs.unreleased"

@@ -8,7 +8,6 @@
 #include "datatypes/bool.hpp"
 #include "datatypes/channel_count_pair.hpp"
 #include "datatypes/channel_datatype.hpp"
-#include "datatypes/channel_id.hpp"
 #include "datatypes/class_description.hpp"
 #include "datatypes/class_description_map_elem.hpp"
 #include "datatypes/class_id.hpp"

@@ -38,15 +38,16 @@ namespace rerun::archetypes {
 
         /// The topic name that this channel publishes to.
         ///
-        /// Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
-        /// categorize and organize different data streams within the system.
+        /// Topics are hierarchical paths from the original robotics system (e.g., "/sensors/camera/image")
+        /// that categorize and organize different data streams.
+        /// Topics are separate from Rerun's entity paths, but they often can be mapped to them.
         std::optional<ComponentBatch> topic;
 
         /// The encoding format used for messages in this channel.
         ///
         /// Common encodings include:
         /// * `ros1` - ROS1 message format
-        /// * `cdr` - Common Data Representation (CDR) message format
+        /// * `cdr` - Common Data Representation (CDR) message format, used by ROS2
         /// * `protobuf` - Protocol Buffers
         /// * `json` - JSON encoding
         std::optional<ComponentBatch> message_encoding;
@@ -127,8 +128,9 @@ namespace rerun::archetypes {
 
         /// The topic name that this channel publishes to.
         ///
-        /// Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
-        /// categorize and organize different data streams within the system.
+        /// Topics are hierarchical paths from the original robotics system (e.g., "/sensors/camera/image")
+        /// that categorize and organize different data streams.
+        /// Topics are separate from Rerun's entity paths, but they often can be mapped to them.
         McapChannel with_topic(const rerun::components::Text& _topic) && {
             topic = ComponentBatch::from_loggable(_topic, Descriptor_topic).value_or_throw();
             return std::move(*this);
@@ -147,7 +149,7 @@ namespace rerun::archetypes {
         ///
         /// Common encodings include:
         /// * `ros1` - ROS1 message format
-        /// * `cdr` - Common Data Representation (CDR) message format
+        /// * `cdr` - Common Data Representation (CDR) message format, used by ROS2
         /// * `protobuf` - Protocol Buffers
         /// * `json` - JSON encoding
         McapChannel with_message_encoding(const rerun::components::Text& _message_encoding) && {

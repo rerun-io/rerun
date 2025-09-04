@@ -16,6 +16,8 @@ namespace rerun.archetypes;
 /// \example archetypes/mcap_message_simple !api title="Simple MCAP message"
 table McapMessage (
   "attr.docs.category": "MCAP",
+
+  /// TODO(#11107): Stabilize
   "attr.rerun.state": "unstable",
   "attr.rust.derive": "PartialEq",
   "attr.docs.unreleased"

@@ -9,6 +9,8 @@ namespace rerun.components;
 table KeyValuePairs (
   "attr.python.aliases": "dict[str, str]",
   "attr.python.array_aliases": "dict[str, str], Sequence[dict[str, str]]",
+
+  /// TODO(#11107): Stabilize
   "attr.rerun.state": "unstable",
   "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.docs.unreleased"

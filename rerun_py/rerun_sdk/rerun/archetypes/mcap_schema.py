@@ -40,7 +40,7 @@ class McapSchema(Archetype):
 
     def __init__(
         self: Any,
-        id: datatypes.ChannelIdLike,
+        id: datatypes.UInt16Like,
         name: datatypes.Utf8Like,
         encoding: datatypes.Utf8Like,
         data: datatypes.BlobLike,
@@ -53,8 +53,8 @@ class McapSchema(Archetype):
         id:
             Unique identifier for this schema within the MCAP file.
 
-            Schema IDs must be unique within a single MCAP file and are used by channels
-            to reference the schema that defines their message structure.
+            Schema IDs must be unique within an MCAP file and are referenced by channels
+            to specify their message structure. A single schema can be shared across multiple channels.
         name:
             Human-readable name identifying this schema.
 
@@ -106,7 +106,7 @@ class McapSchema(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        id: datatypes.ChannelIdLike | None = None,
+        id: datatypes.UInt16Like | None = None,
         name: datatypes.Utf8Like | None = None,
         encoding: datatypes.Utf8Like | None = None,
         data: datatypes.BlobLike | None = None,
@@ -121,8 +121,8 @@ class McapSchema(Archetype):
         id:
             Unique identifier for this schema within the MCAP file.
 
-            Schema IDs must be unique within a single MCAP file and are used by channels
-            to reference the schema that defines their message structure.
+            Schema IDs must be unique within an MCAP file and are referenced by channels
+            to specify their message structure. A single schema can be shared across multiple channels.
         name:
             Human-readable name identifying this schema.
 
@@ -174,7 +174,7 @@ class McapSchema(Archetype):
     def columns(
         cls,
         *,
-        id: datatypes.ChannelIdArrayLike | None = None,
+        id: datatypes.UInt16ArrayLike | None = None,
         name: datatypes.Utf8ArrayLike | None = None,
         encoding: datatypes.Utf8ArrayLike | None = None,
         data: datatypes.BlobArrayLike | None = None,
@@ -192,8 +192,8 @@ class McapSchema(Archetype):
         id:
             Unique identifier for this schema within the MCAP file.
 
-            Schema IDs must be unique within a single MCAP file and are used by channels
-            to reference the schema that defines their message structure.
+            Schema IDs must be unique within an MCAP file and are referenced by channels
+            to specify their message structure. A single schema can be shared across multiple channels.
         name:
             Human-readable name identifying this schema.
 
@@ -266,15 +266,15 @@ class McapSchema(Archetype):
 
         return ComponentColumnList(columns)
 
-    id: components.ChannelIdBatch | None = field(
+    id: components.SchemaIdBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.ChannelIdBatch._converter,  # type: ignore[misc]
+        converter=components.SchemaIdBatch._converter,  # type: ignore[misc]
     )
     # Unique identifier for this schema within the MCAP file.
     #
-    # Schema IDs must be unique within a single MCAP file and are used by channels
-    # to reference the schema that defines their message structure.
+    # Schema IDs must be unique within an MCAP file and are referenced by channels
+    # to specify their message structure. A single schema can be shared across multiple channels.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

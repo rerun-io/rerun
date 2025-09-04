@@ -14,6 +14,8 @@ namespace rerun.archetypes;
 /// \example archetypes/mcap_channel_simple !api title="Simple MCAP channel"
 table McapChannel (
   "attr.docs.category": "MCAP",
+
+  /// TODO(#11107): Stabilize
   "attr.rerun.state": "unstable",
   "attr.rust.derive": "PartialEq",
   "attr.docs.unreleased"
@@ -28,15 +30,16 @@ table McapChannel (
 
   /// The topic name that this channel publishes to.
   ///
-  /// Topics are typically hierarchical paths (e.g., "/sensors/camera/image") that
-  /// categorize and organize different data streams within the system.
+  /// Topics are hierarchical paths from the original robotics system (e.g., "/sensors/camera/image")
+  /// that categorize and organize different data streams.
+  /// Topics are separate from Rerun's entity paths, but they often can be mapped to them.
   topic: rerun.components.Text ("attr.rerun.component_required", order: 2000);
 
   /// The encoding format used for messages in this channel.
   ///
   /// Common encodings include:
   /// * `ros1` - ROS1 message format
-  /// * `cdr` - Common Data Representation (CDR) message format
+  /// * `cdr` - Common Data Representation (CDR) message format, used by ROS2
   /// * `protobuf` - Protocol Buffers
   /// * `json` - JSON encoding
   message_encoding: rerun.components.Text ("attr.rerun.component_required", order: 3000);
