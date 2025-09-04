@@ -46,7 +46,6 @@ const unpublished = all_packages.filter((pkg) => {
 
 if (unpublished.length === 0) {
   console.log("nothing to publish");
-  process.exit(0);
 }
 
 $(`yarn install`, { cwd: root_dir });
