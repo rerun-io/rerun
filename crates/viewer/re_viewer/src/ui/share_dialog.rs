@@ -1,11 +1,10 @@
-use re_chunk::TimelineName;
-use re_log_types::TimeCell;
+use re_log_types::{AbsoluteTimeRange, TimeCell};
 use re_redap_browser::EXAMPLES_ORIGIN;
 
-use egui::NumExt as _;
+use egui::{AtomExt, NumExt as _};
 use re_ui::{UiExt as _, icons, list_item::PropertyContent};
 use re_uri::Fragment;
-use re_viewer_context::{DisplayMode, Item, StoreHub};
+use re_viewer_context::{DisplayMode, Item, RecordingConfig, StoreHub};
 
 use crate::{app::web_viewer_base_url, open_url::ViewerOpenUrl};
 
@@ -32,9 +31,8 @@ impl ShareDialog {
         store_hub: &StoreHub,
         display_mode: &DisplayMode,
         timestamp_format: re_log_types::TimestampFormat,
+        active_recording_config: Option<&RecordingConfig>,
         current_selection: Option<&Item>,
-        current_time_cursor: Option<(TimelineName, TimeCell)>,
-        current_time_range_selection: Option<re_uri::TimeSelection>,
     ) {
         re_tracing::profile_function!();
 
@@ -76,8 +74,7 @@ impl ShareDialog {
                         &mut self.create_web_viewer_url,
                         timestamp_format,
                         current_selection,
-                        current_time_cursor,
-                        current_time_range_selection,
+                        active_recording_config,
                     );
                 });
         }
@@ -90,8 +87,7 @@ fn popup_contents(
     create_web_viewer_url: &mut bool,
     timestamp_format: re_log_types::TimestampFormat,
     current_selection: Option<&Item>,
-    current_time_cursor: Option<(TimelineName, TimeCell)>,
-    current_time_range_selection: Option<re_uri::TimeSelection>,
+    active_recording_config: Option<&RecordingConfig>,
 ) {
     let panel_width = 400.0;
     let panel_max_height = (ui.ctx().screen_rect().height() - 100.0)
@@ -146,19 +142,41 @@ fn popup_contents(
         // TODO: feedback. via popup?
     }
 
+    fn style_extra_info(info: String) -> egui::Atom<'static> {
+        egui::RichText::new(info).weak().atom_max_width(120.0)
+    }
+
     ui.list_item_scope("url_selection_settings", |ui| {
         ui.list_item_flat_noninteractive(
             PropertyContent::new("Web viewer URL").value_bool_mut(create_web_viewer_url),
         );
 
         if let Some(url_time_range) = url.time_range_mut() {
+            let current_time_range_selection = active_recording_config.and_then(|config| {
+                let time_ctrl = config.time_ctrl.read();
+                let range = time_ctrl.loop_selection()?;
+                Some(re_uri::TimeSelection {
+                    timeline: *time_ctrl.timeline(),
+                    range: AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
+                })
+            });
+
             let mut entire_range = url_time_range.is_none();
             ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_fn(
                 |ui, _| {
                     ui.selectable_toggle(|ui| {
                         ui.selectable_value(&mut entire_range, true, "Entire recording");
                         ui.add_enabled_ui(current_time_range_selection.is_some(), |ui| {
-                            ui.selectable_value(&mut entire_range, false, "Trim to selection")
+                            let mut label = egui::Atoms::new("Selection");
+                            if let Some(range) = &current_time_range_selection {
+                                let min = TimeCell::new(range.timeline.typ(), range.range.min())
+                                    .format_compact(timestamp_format);
+                                let max = TimeCell::new(range.timeline.typ(), range.range.max())
+                                    .format_compact(timestamp_format);
+                                label.push_right(style_extra_info(format!("{min}..{max}")));
+                            }
+
+                            ui.selectable_value(&mut entire_range, false, label)
                                 .on_disabled_hover_text("No time range selected.");
                         });
                     });
@@ -186,9 +204,9 @@ fn popup_contents(
                             ui.add_enabled_ui(current_selection.is_some(), |ui| {
                                 let mut label = egui::Atoms::new("Active");
                                 if let Some(current_selection) = &current_selection {
-                                    label.push_right(
-                                        egui::RichText::new(current_selection.to_string()).weak(),
-                                    );
+                                    label.push_right(style_extra_info(
+                                        current_selection.to_string(),
+                                    ));
                                 };
 
                                 ui.selectable_value(&mut any_focus, true, label)
@@ -205,6 +223,12 @@ fn popup_contents(
                     *focus = None;
                 }
 
+                let current_time_cursor = active_recording_config.and_then(|config| {
+                    let time_ctrl = config.time_ctrl.read();
+                    time_ctrl
+                        .time_cell()
+                        .map(|cell| (*time_ctrl.timeline().name(), cell))
+                });
                 let mut any_time = when.is_some();
                 ui.list_item_flat_noninteractive(PropertyContent::new("Selected time").value_fn(
                     |ui, _| {
@@ -213,13 +237,10 @@ fn popup_contents(
                             ui.add_enabled_ui(current_time_cursor.is_some(), |ui| {
                                 let mut label = egui::Atoms::new("Current");
                                 if let Some((_, time_cell)) = current_time_cursor {
-                                    label.push_right(
-                                        egui::RichText::new(
-                                            time_cell.format_compact(timestamp_format),
-                                        )
-                                        .weak(),
-                                    );
-                                };
+                                    label.push_right(style_extra_info(
+                                        time_cell.format_compact(timestamp_format),
+                                    ));
+                                }
 
                                 ui.selectable_value(&mut any_time, true, label)
                                     .on_disabled_hover_text("No time selected.");
