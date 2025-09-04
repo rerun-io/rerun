@@ -3,6 +3,7 @@
 use egui_kittest::kittest::Queryable as _;
 
 use re_viewer::viewer_test_utils;
+use re_viewer::viewer_test_utils::StepUntil;
 
 /// Navigates from welcome to settings screen and snapshots it.
 #[tokio::test]
@@ -12,19 +13,12 @@ async fn settings_screen() {
     harness.run_ok();
     harness.get_by_label_contains("Settings…").click();
     // Wait for the FFmpeg-check loading spinner to disappear.
-    viewer_test_utils::step_until(
-        "Settings screen shows up with FFMpeg binary not found error",
-        &mut harness,
-        |harness| {
-            harness
-                .query_by_label_contains(
-                    "The specified FFmpeg binary path does not exist or is not a file.",
-                )
-                .is_some()
-        },
-        tokio::time::Duration::from_millis(100),
-        tokio::time::Duration::from_secs(5),
-    )
-    .await;
+    StepUntil::new("Settings screen shows up with FFMpeg binary not found error")
+        .run(&mut harness, |harness| {
+            harness.query_by_label_contains(
+                "The specified FFmpeg binary path does not exist or is not a file.",
+            )
+        })
+        .await;
     harness.snapshot("settings_screen");
 }
