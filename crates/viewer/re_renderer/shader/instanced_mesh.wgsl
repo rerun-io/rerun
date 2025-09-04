@@ -6,9 +6,14 @@
 @group(1) @binding(0)
 var albedo_texture: texture_2d<f32>;
 
-// Keep in sync with gpu_data::MaterialUniformBuffer in mesh.rs
+// Keep in sync with `gpu_data::TextureFormat` in mesh.rs
+const FORMAT_RGBA: u32 = 0;
+const FORMAT_GRAYSCALE: u32 = 1;
+
+// Keep in sync with `gpu_data::MaterialUniformBuffer` in mesh.rs
 struct MaterialUniformBuffer {
     albedo_factor: vec4f,
+    texture_format: u32,
 };
 
 @group(1) @binding(1)
@@ -64,7 +69,14 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
 
 @fragment
 fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
-    let texture = linear_from_srgb(textureSample(albedo_texture, trilinear_sampler_repeat, in.texcoord).rgb);
+    let sample = textureSample(albedo_texture, trilinear_sampler_repeat, in.texcoord);
+    var texture: vec3f;
+    switch material.texture_format {
+        case FORMAT_RGBA: { texture = linear_from_srgb(sample.rgb); }
+        case FORMAT_GRAYSCALE: { texture = linear_from_srgb(sample.rrr); }
+        default: { texture = vec3f(0.0); }
+    }
+
     let albedo = texture
                  * in.color.rgb
                  * material.albedo_factor.rgb
