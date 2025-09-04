@@ -296,11 +296,10 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::ReadDatasetEntryRequest>,
     ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::ReadDatasetEntryResponse>, tonic::Status>
     {
-        let entry_id = request.into_inner().try_into()?;
-
         let store = self.store.read().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
         let dataset = store.dataset(entry_id).ok_or_else(|| {
-            tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
+            tonic::Status::not_found(format!("entry with ID '{entry_id}' not found"))
         })?;
 
         Ok(tonic::Response::new(
@@ -429,26 +428,7 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<tonic::Streaming<re_protos::cloud::v1alpha1::WriteChunksRequest>>,
     ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::WriteChunksResponse>, tonic::Status>
     {
-        // TODO(ab): add a helper somewhere for this conversion
-        let dataset_id = request
-            .metadata()
-            .get("x-rerun-dataset-id")
-            .cloned()
-            .ok_or_else(|| {
-                tonic::Status::not_found("'x-rerun-dataset-id' not provided in the headers")
-            })?;
-
-        let dataset_id: re_tuid::Tuid = dataset_id
-            .to_str()
-            .map_err(|_err| {
-                tonic::Status::unknown("could not convert dataset id header to string")
-            })?
-            .parse()
-            .map_err(|err| {
-                tonic::Status::invalid_argument(format!("could not parse dataset id: {err:#}"))
-            })?;
-
-        let entry_id: EntryId = EntryId::from(dataset_id);
+        let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
 
         let mut request = request.into_inner();
 
@@ -486,7 +466,7 @@ impl RerunCloudService for RerunCloudHandler {
                 .or_insert_with(|| {
                     EntityDb::new(StoreId::new(
                         StoreKind::Recording,
-                        dataset_id.to_string(),
+                        entry_id.to_string(),
                         partition_id.id,
                     ))
                 })
@@ -520,14 +500,10 @@ impl RerunCloudService for RerunCloudHandler {
         tonic::Response<re_protos::cloud::v1alpha1::GetPartitionTableSchemaResponse>,
         tonic::Status,
     > {
-        let entry_id = request.into_inner().try_into()?;
-
         let store = self.store.read().await;
 
         // check that the dataset exists before returning
-        store.dataset(entry_id).ok_or_else(|| {
-            tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
-        })?;
+        _ = get_entry_id_from_headers(&store, &request)?;
 
         Ok(tonic::Response::new(GetPartitionTableSchemaResponse {
             schema: Some(
@@ -535,7 +511,7 @@ impl RerunCloudService for RerunCloudHandler {
                     .try_into()
                     .map_err(|err| {
                         tonic::Status::internal(format!(
-                            "Unable to serialize Arrow schema: {err:#}"
+                            "unable to serialize Arrow schema: {err:#}"
                         ))
                     })?,
             ),
@@ -983,6 +959,42 @@ impl RerunCloudService for RerunCloudHandler {
         Err(tonic::Status::unimplemented(
             "do_maintenance not implemented",
         ))
+    }
+}
+
+/// Retrieves the entry ID based on HTTP headers.
+#[expect(clippy::result_large_err)] // it's just a tonic::Status
+fn get_entry_id_from_headers<T>(
+    store: &InMemoryStore,
+    req: &tonic::Request<T>,
+) -> Result<EntryId, tonic::Status> {
+    if let Some(entry_id) = re_protos::headers::RerunHeadersExtractor(req).entry_id()? {
+        const HEADER: &str = re_protos::headers::RERUN_HTTP_HEADER_ENTRY_ID;
+
+        let entry_id: EntryId = entry_id.parse().map_err(|err| {
+            tonic::Status::invalid_argument(format!(
+                "'{entry_id:?}' is not a valid value for `{HEADER}`: {err:#}"
+            ))
+        })?;
+
+        Ok(entry_id)
+    } else if let Some(dataset_name) =
+        re_protos::headers::RerunHeadersExtractor(req).entry_name()?
+    {
+        Ok(store
+            .dataset_by_name(&dataset_name)
+            .ok_or_else(|| {
+                tonic::Status::not_found(format!("entry with name '{dataset_name}' not found"))
+            })?
+            .id())
+    } else {
+        const HEADERS: &[&str] = &[
+            re_protos::headers::RERUN_HTTP_HEADER_ENTRY_ID,
+            re_protos::headers::RERUN_HTTP_HEADER_ENTRY_NAME,
+        ];
+        Err(tonic::Status::invalid_argument(format!(
+            "missing mandatory {HEADERS:?} HTTP headers"
+        )))
     }
 }
 

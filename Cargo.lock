@@ -8355,7 +8355,6 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_protos",
- "re_tuid",
  "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
