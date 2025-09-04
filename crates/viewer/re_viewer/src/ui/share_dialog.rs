@@ -5,7 +5,7 @@ use re_redap_browser::EXAMPLES_ORIGIN;
 use egui::NumExt as _;
 use re_ui::{UiExt as _, icons, list_item::PropertyContent};
 use re_uri::Fragment;
-use re_viewer_context::{DisplayMode, StoreHub};
+use re_viewer_context::{DisplayMode, Item, StoreHub};
 
 use crate::{app::web_viewer_base_url, open_url::ViewerOpenUrl};
 
@@ -31,7 +31,9 @@ impl ShareDialog {
         ui: &mut egui::Ui,
         store_hub: &StoreHub,
         display_mode: &DisplayMode,
-        current_time_selection: re_uri::TimeSelection,
+        current_selection: Option<&Item>,
+        current_time_cursor: Option<(TimelineName, TimeCell)>,
+        current_time_range_selection: Option<re_uri::TimeSelection>,
     ) {
         re_tracing::profile_function!();
 
@@ -71,7 +73,9 @@ impl ShareDialog {
                         ui,
                         url,
                         &mut self.create_web_viewer_url,
-                        current_time_selection,
+                        current_selection,
+                        current_time_cursor,
+                        current_time_range_selection,
                     );
                 });
         }
@@ -82,7 +86,9 @@ fn popup_contents(
     ui: &mut egui::Ui,
     url: &mut ViewerOpenUrl,
     create_web_viewer_url: &mut bool,
-    current_time_selection: re_uri::TimeSelection,
+    current_selection: Option<&Item>,
+    current_time_cursor: Option<(TimelineName, TimeCell)>,
+    current_time_range_selection: Option<re_uri::TimeSelection>,
 ) {
     let panel_width = 400.0;
     let panel_max_height = (ui.ctx().screen_rect().height() - 100.0)
@@ -137,86 +143,70 @@ fn popup_contents(
         // TODO: feedback. via popup?
     }
 
-    ui.re_checkbox(create_web_viewer_url, "Web viewer URL")
-        .on_hover_text("Create a link that can be opened directly in the browser.");
-
     ui.list_item_scope("url_selection_settings", |ui| {
-        if let Some(fragments) = url.fragments_mut() {
-            ui.list_item_collapsible_noninteractive_label("Customize selection", false, |ui| {
-                let Fragment { focus, when } = fragments;
-
-                let mut data_path = focus
-                    .as_ref()
-                    .map_or(String::new(), |path| path.to_string());
-                ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Focused entity").value_text_mut(&mut data_path),
-                );
-                if data_path.is_empty() {
-                    *focus = None;
-                } else {
-                    // TODO: handle parsing failure.
-                    *focus = data_path.parse().ok();
-                }
-
-                let mut timeline = when.map_or(String::new(), |(timeline, _)| timeline.to_string());
-                ui.list_item_flat_noninteractive(
-                    PropertyContent::new("timeline").value_text_mut(&mut timeline),
-                );
-                if timeline.is_empty() {
-                    *when = None;
-                } else {
-                    // TODO: handle parsing failure.
-                    // TODO: time range selection != time cursor
-                    let timeline = TimelineName::from(timeline);
-                    let time = when.map_or_else(
-                        || {
-                            TimeCell::new(
-                                current_time_selection.timeline.typ(),
-                                current_time_selection.range.min,
-                            )
-                        },
-                        |(_, time)| time,
-                    );
-                    *when = Some((timeline, time));
-                }
-
-                // TODO: timeline selector
-
-                let mut time = when.map_or(String::new(), |(_, time)| time.to_string());
-                ui.list_item_flat_noninteractive(
-                    // TODO: time selector
-                    PropertyContent::new("Time").value_text_mut(&mut time),
-                );
-                if time.is_empty() {
-                    fragments.when = None;
-                } else if let Ok(time) = time.parse() {
-                    // TODO: handle parsing failure.
-                    let timeline = when
-                        .map_or(*current_time_selection.timeline.name(), |(timeline, _)| {
-                            timeline
-                        });
-                    *when = Some((timeline, time));
-                }
-            });
-        }
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new("Web viewer URL").value_bool_mut(create_web_viewer_url),
+        );
 
         if let Some(url_time_range) = url.time_range_mut() {
             let mut entire_range = url_time_range.is_none();
             ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_fn(
                 |ui, _| {
                     ui.selectable_value(&mut entire_range, true, "Entire recording");
-                    ui.selectable_value(&mut entire_range, false, "Trim to selection");
+                    ui.add_enabled_ui(current_time_range_selection.is_some(), |ui| {
+                        ui.selectable_value(&mut entire_range, false, "Trim to selection")
+                            .on_disabled_hover_text("No time range selected.");
+                    });
                 },
             ));
 
             if entire_range {
                 *url_time_range = None;
             } else {
-                *url_time_range = Some(current_time_selection);
-
-                // TODO: controls.
-                // TODO: snapshot control.
+                *url_time_range = current_time_range_selection;
             }
+        }
+
+        if let Some(fragments) = url.fragments_mut() {
+            ui.list_item_collapsible_noninteractive_label("Customize selection", false, |ui| {
+                let Fragment { focus, when } = fragments;
+
+                let mut any_focus = focus.is_some();
+                let current_selection =
+                    current_selection.and_then(|selection| selection.to_data_path());
+                ui.list_item_flat_noninteractive(PropertyContent::new("Focus").value_fn(
+                    |ui, _| {
+                        ui.selectable_value(&mut any_focus, false, "None");
+                        ui.add_enabled_ui(current_selection.is_some(), |ui| {
+                            ui.selectable_value(&mut any_focus, true, "Active selection")
+                                .on_disabled_hover_text(
+                                    "Current selection can't be embedded in the URL.",
+                                )
+                        });
+                    },
+                ));
+                if any_focus {
+                    *focus = current_selection;
+                } else {
+                    *focus = None;
+                }
+
+                let mut any_time = when.is_some();
+                ui.list_item_flat_noninteractive(PropertyContent::new("Selected time").value_fn(
+                    |ui, _| {
+                        ui.selectable_value(&mut any_time, false, "None");
+                        ui.add_enabled_ui(current_time_cursor.is_some(), |ui| {
+                            ui.selectable_value(&mut any_time, true, "Current")
+                                .on_disabled_hover_text("No time selected.");
+                        });
+                    },
+                ));
+                if any_time {
+                    *when = current_time_cursor;
+                } else {
+                    *when = None;
+                }
+            });
         }
     });
 }
