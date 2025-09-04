@@ -5,7 +5,7 @@ use jiff::Timestamp;
 
 pub use re_log::Level;
 
-use crate::{UiExt, icons};
+use crate::{UiExt as _, icons};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NotificationLevel {
