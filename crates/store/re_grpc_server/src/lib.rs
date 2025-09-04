@@ -1467,9 +1467,9 @@ mod tests {
         let store_id = StoreId::random(StoreKind::Recording, "test_app");
 
         let set_store_info = vec![set_store_info_msg(&store_id)];
-        let first_static = generate_log_messages(&store_id, 1, Temporalness::Static);
-        let first_temporal = generate_log_messages(&store_id, 1, Temporalness::Temporal);
-        let second_static = generate_log_messages(&store_id, 1, Temporalness::Static);
+        let first_static = generate_log_messages(&store_id, 3, Temporalness::Static);
+        let first_temporal = generate_log_messages(&store_id, 3, Temporalness::Temporal);
+        let second_static = generate_log_messages(&store_id, 3, Temporalness::Static);
 
         write_messages(&mut client, set_store_info.clone()).await;
         write_messages(&mut client, first_static.clone()).await;
@@ -1480,6 +1480,44 @@ mod tests {
         let expected =
             itertools::chain!(set_store_info, first_static, second_static, first_temporal)
                 .collect_vec();
+
+        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
+        let actual = read_log_stream(&mut log_stream, expected.len()).await;
+
+        assert_eq!(actual, expected);
+
+        completion.finish();
+    }
+
+    #[tokio::test]
+    async fn playback_newest_first() {
+        let (completion, addr) = setup_opt(ServerOptions {
+            playback_behavior: PlaybackBehavior::NewestFirst, // this is what we want to test
+            memory_limit: MemoryLimit::UNLIMITED,
+        })
+        .await;
+        let mut client = make_client(addr).await;
+
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
+
+        let set_store_info = vec![set_store_info_msg(&store_id)];
+        let first_statics = generate_log_messages(&store_id, 3, Temporalness::Static);
+        let temporals = generate_log_messages(&store_id, 3, Temporalness::Temporal);
+        let second_statics = generate_log_messages(&store_id, 3, Temporalness::Static);
+
+        write_messages(&mut client, set_store_info.clone()).await;
+        write_messages(&mut client, first_statics.clone()).await;
+        write_messages(&mut client, temporals.clone()).await;
+        write_messages(&mut client, second_statics.clone()).await;
+
+        // All static data should always come before temporal data:
+        let expected = itertools::chain!(
+            set_store_info.into_iter().rev(),
+            second_statics.into_iter().rev(),
+            first_statics.into_iter().rev(),
+            temporals.into_iter().rev()
+        )
+        .collect_vec();
 
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
         let actual = read_log_stream(&mut log_stream, expected.len()).await;
