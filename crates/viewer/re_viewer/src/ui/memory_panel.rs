@@ -4,7 +4,7 @@ use re_memory::{MemoryLimit, MemoryUse, util::sec_since_start};
 use re_query::{QueryCacheStats, QueryCachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
-use re_viewer_context::store_hub::StoreHubStats;
+use re_viewer_context::{CacheMemoryReport, store_hub::StoreHubStats};
 
 use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 
@@ -82,20 +82,94 @@ impl MemoryPanel {
 
         if let Some(store_stats) = store_stats {
             ui.separator();
+            ui.collapsing("Store Stats", |ui| {
+                for (store_id, store_stats) in &store_stats.store_stats {
+                    let title = format!("{} {}", store_id.kind(), store_id.recording_id());
+                    ui.collapsing_header(&title, false, |ui| {
+                        ui.collapsing("Datastore Resources", |ui| {
+                            Self::store_stats(
+                                ui,
+                                &store_stats.store_config,
+                                &store_stats.store_stats,
+                            );
+                        });
 
-            for (store_id, store_stats) in &store_stats.store_stats {
-                let title = format!("{} {}", store_id.kind(), store_id.recording_id());
-                ui.collapsing_header(&title, false, |ui| {
-                    ui.collapsing("Datastore Resources", |ui| {
-                        Self::store_stats(ui, &store_stats.store_config, &store_stats.store_stats);
-                    });
+                        ui.separator();
+                        ui.collapsing("Primary Query Caches", |ui| {
+                            Self::caches_stats(ui, &store_stats.query_cache_stats);
+                        });
 
-                    ui.separator();
-                    ui.collapsing("Primary Query Caches", |ui| {
-                        Self::caches_stats(ui, &store_stats.query_cache_stats);
+                        ui.separator();
+                        ui.collapsing("Viewer Caches", |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label(format!(
+                                    "CPU Memory: {}",
+                                    format_bytes(store_stats.viewer_cache_size as f64)
+                                ));
+                                let gpu_memory = store_stats
+                                    .cache_memory_reports
+                                    .values()
+                                    .map(|report| report.bytes_gpu.unwrap_or_default())
+                                    .sum::<u64>();
+                                if gpu_memory > 0 {
+                                    ui.label(format!(
+                                        "GPU Memory: {}",
+                                        format_bytes(gpu_memory as f64)
+                                    ));
+                                }
+                            });
+                            let mut display_caches =
+                                store_stats.cache_memory_reports.iter().collect::<Vec<_>>();
+
+                            // Iterating a hash map doesn't give us a consistent ordering so we sort by name here.
+                            display_caches.sort_by_key(|(name, _)| *name);
+
+                            for (name, report) in display_caches {
+                                ui.collapsing(*name, |ui| {
+                                    Self::cache_memory_report(ui, name, report);
+                                });
+                            }
+                        });
                     });
-                });
+                }
+            });
+        }
+    }
+
+    fn cache_memory_report(ui: &mut egui::Ui, name: &str, report: &CacheMemoryReport) {
+        ui.horizontal(|ui| {
+            ui.label(format!(
+                "CPU Memory: {}",
+                format_bytes(report.bytes_cpu as f64)
+            ));
+            if let Some(bytes_gpu) = report.bytes_gpu {
+                ui.label(format!("GPU Memory: {}", format_bytes(bytes_gpu as f64)));
             }
+        });
+
+        if !report.per_cache_item_info.is_empty() {
+            egui::ScrollArea::vertical()
+                .max_height(200.0)
+                .id_salt(name)
+                .show(ui, |ui| {
+                    egui::Grid::new(format!("{name} grid"))
+                        .num_columns(3)
+                        .show(ui, |ui| {
+                            ui.label(egui::RichText::new("Name").underline());
+                            ui.label(egui::RichText::new("Memory (CPU)").underline());
+                            ui.label(egui::RichText::new("Memory (GPU)").underline());
+                            ui.end_row();
+
+                            for item in &report.per_cache_item_info {
+                                ui.label(&item.item_name);
+                                ui.label(format_bytes(item.bytes_cpu as f64));
+                                if let Some(bytes_gpu) = item.bytes_gpu {
+                                    ui.label(format_bytes(bytes_gpu as f64));
+                                }
+                                ui.end_row();
+                            }
+                        })
+                });
         }
     }
 

@@ -397,7 +397,12 @@ Rerun has you covered:
 
 You can also save a recording (or a portion of it) as you're visualizing it, directly from the viewer.
 
-⚠️ [RRD files are not yet stable across different versions!](https://github.com/rerun-io/rerun/issues/6410) ⚠️
+### RRD file backwards compatibility
+
+RRD files saved with Rerun 0.23 or later can be opened with a newer Rerun version.
+For more details and potential limitations, please refer to [our blog post](https://rerun.io/blog/release-0.23).
+
+⚠️ At the moment, we only guarantee compatibility across adjacent minor versions (e.g. Rerun 0.24 can open RRDs from 0.23).
 
 ### Closing
 

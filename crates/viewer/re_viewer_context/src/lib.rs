@@ -43,8 +43,9 @@ pub use self::{
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
     cache::{
-        Cache, Caches, ImageDecodeCache, ImageStatsCache, SharablePlayableVideoStream,
-        TensorStatsCache, VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
+        Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
+        SharablePlayableVideoStream, TensorStatsCache, VideoAssetCache, VideoStreamCache,
+        VideoStreamProcessingError,
     },
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     component_fallbacks::{

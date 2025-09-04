@@ -71,6 +71,7 @@ re_dataframe = { path = "crates/store/re_dataframe", version = "=0.25.0-alpha.1"
 re_datafusion = { path = "crates/store/re_datafusion", version = "=0.25.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.25.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.25.0-alpha.1", default-features = false }
+re_redap_client = { path = "crates/store/re_redap_client", version = "=0.25.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.25.0-alpha.1", default-features = false }
 re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.25.0-alpha.1", default-features = false }
 re_protos = { path = "crates/store/re_protos", version = "=0.25.0-alpha.1", default-features = false }
@@ -112,6 +113,7 @@ re_uri = { path = "crates/utils/re_uri", version = "=0.25.0-alpha.1", default-fe
 re_video = { path = "crates/utils/re_video", version = "=0.25.0-alpha.1", default-features = false }
 
 # crates/viewer:
+re_arrow_ui = { path = "crates/viewer/re_arrow_ui", version = "=0.25.0-alpha.1", default-features = false }
 re_blueprint_tree = { path = "crates/viewer/re_blueprint_tree", version = "=0.25.0-alpha.1", default-features = false }
 re_redap_browser = { path = "crates/viewer/re_redap_browser", version = "=0.25.0-alpha.1", default-features = false }
 re_component_ui = { path = "crates/viewer/re_component_ui", version = "=0.25.0-alpha.1", default-features = false }
@@ -216,7 +218,9 @@ convert_case = "0.6"
 criterion = "0.5"
 cros-codecs = "0.0.6"
 crossbeam = "0.8"
-datafusion = { version = "47", default-features = false }
+datafusion = { version = "47", default-features = false, features = [
+  "nested_expressions",
+] }
 datafusion-ffi = "47"
 directories = "5"
 document-features = "0.2.8"
@@ -427,6 +431,7 @@ debug = false
 
 [profile.dev.package]
 "re_analytics".debug = true
+"re_arrow_ui".debug = true
 "re_arrow_util".debug = true
 "re_auth".debug = true
 "re_blueprint_tree".debug = true
@@ -452,7 +457,7 @@ debug = false
 "re_error".debug = true
 "re_format".debug = true
 "re_format_arrow".debug = true
-"re_grpc_client".debug = true
+"re_redap_client".debug = true
 "re_grpc_server".debug = true
 "re_int_histogram".debug = true
 "re_log".debug = true

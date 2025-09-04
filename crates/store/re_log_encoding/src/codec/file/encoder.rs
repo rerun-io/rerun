@@ -25,11 +25,18 @@ pub(crate) fn encode(
             header.encode(buf)?;
             set_store_info.encode(buf)?;
         }
-        LogMsg::ArrowMsg(store_id, arrow_msg) => {
-            let payload = encode_arrow(&arrow_msg.batch, compression)?;
+        LogMsg::ArrowMsg(
+            store_id,
+            re_log_types::ArrowMsg {
+                chunk_id,
+                batch,
+                on_release: _,
+            },
+        ) => {
+            let payload = encode_arrow(batch, compression)?;
             let arrow_msg = ArrowMsg {
                 store_id: Some(store_id.clone().into()),
-                chunk_id: Some(arrow_msg.chunk_id.into()),
+                chunk_id: Some((*chunk_id).into()),
                 compression: match compression {
                     Compression::Off => proto::Compression::None as i32,
                     Compression::LZ4 => proto::Compression::Lz4 as i32,
@@ -37,6 +44,7 @@ pub(crate) fn encode(
                 uncompressed_size: payload.uncompressed_size as i32,
                 encoding: Encoding::ArrowIpc as i32,
                 payload: payload.data.into(),
+                is_static: re_sorbet::is_static_chunk(batch),
             };
             let header = MessageHeader {
                 kind: MessageKind::ArrowMsg,

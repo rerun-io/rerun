@@ -65,6 +65,9 @@ message ArrowMsg {
 
   // Arrow-IPC encoded schema and chunk, compressed according to the `compression` field.
   bytes payload = 5;
+
+  // If true, this is guaranteed to be a chunk containing only static data.
+  optional bool is_static = 7;
 }
 
 // Corresponds to `LogMsg::BlueprintActivationCommand`.

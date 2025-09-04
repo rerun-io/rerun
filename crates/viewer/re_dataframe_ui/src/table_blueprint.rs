@@ -3,6 +3,8 @@ use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::UiExt as _;
 use re_viewer_context::VariantName;
 
+use crate::filters::Filter;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortDirection {
     Ascending,
@@ -25,18 +27,14 @@ impl SortDirection {
         }
     }
 
-    pub fn menu_button(&self, ui: &mut egui::Ui) -> egui::Response {
-        let tokens = ui.tokens();
-        ui.add(egui::Button::image_and_text(
-            self.icon()
-                .as_image()
-                .tint(tokens.label_button_icon_color)
-                .fit_to_exact_size(tokens.small_icon_size),
+    pub fn menu_item_ui(&self, ui: &mut egui::Ui) -> egui::Response {
+        ui.icon_and_text_menu_item(
+            self.icon(),
             match self {
                 Self::Ascending => "Ascending",
                 Self::Descending => "Descending",
             },
-        ))
+        )
     }
 }
 
@@ -81,7 +79,14 @@ pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
     pub partition_links: Option<PartitionLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
-    pub filter: Option<datafusion::prelude::Expr>,
+
+    /// Always-on filter specified by calling code.
+    ///
+    /// For example, exclude blueprint dataset from the entries table.
+    pub prefilter: Option<datafusion::logical_expr::Expr>,
+
+    /// Filters specified by the user in the UI.
+    pub filters: Vec<Filter>,
 }
 
 /// The blueprint for a specific column.

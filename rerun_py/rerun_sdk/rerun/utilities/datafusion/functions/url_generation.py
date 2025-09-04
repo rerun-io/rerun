@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pyarrow as pa
 import pyarrow.compute
 
-from rerun.error_utils import RerunOptionalDependencyError
+from rerun.error_utils import RerunMissingDependencyError
 
 if TYPE_CHECKING:
     from rerun_bindings import DatasetEntry
@@ -49,7 +49,7 @@ def partition_url(
 
     """
     if not HAS_DATAFUSION:
-        raise RerunOptionalDependencyError("datafusion", "datafusion")
+        raise RerunMissingDependencyError("datafusion", "datafusion")
     if partition_id_col is None:
         partition_id_col = col("rerun_partition_id")
     if isinstance(partition_id_col, str):
@@ -77,7 +77,7 @@ def partition_url_udf(dataset: DatasetEntry) -> ScalarUDF:
     a string containing the Partition ID.
     """
     if not HAS_DATAFUSION:
-        raise RerunOptionalDependencyError("datafusion", "datafusion")
+        raise RerunMissingDependencyError("datafusion", "datafusion")
 
     def inner_udf(partition_id_arr: pa.Array) -> pa.Array:
         return pa.compute.binary_join_element_wise(
@@ -97,7 +97,7 @@ def partition_url_with_timeref_udf(dataset: DatasetEntry, timeline_name: str) ->
     a string containing the Partition ID and the timestamp in nanoseconds.
     """
     if not HAS_DATAFUSION:
-        raise RerunOptionalDependencyError("datafusion", "datafusion")
+        raise RerunMissingDependencyError("datafusion", "datafusion")
 
     def inner_udf(partition_id_arr: pa.Array, timestamp_arr: pa.Array) -> pa.Array:
         # The choice of `ceil_temporal` is important since this timestamp drives a cursor

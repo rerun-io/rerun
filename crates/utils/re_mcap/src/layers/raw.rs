@@ -1,24 +1,20 @@
-use arrow::array::LargeBinaryBuilder;
+use arrow::array::{ListBuilder, UInt8Builder};
 use re_chunk::{ChunkId, external::arrow::array::FixedSizeListBuilder};
-use re_types::{
-    Component as _, ComponentDescriptor, components, reflection::ComponentDescriptorExt as _,
-};
+use re_types::archetypes::McapMessage;
 
 use crate::{
     Error, LayerIdentifier, MessageLayer,
-    parsers::{MessageParser, ParserContext, util::fixed_size_list_builder},
+    parsers::{MessageParser, ParserContext, util::blob_list_builder},
 };
 
 struct RawMcapMessageParser {
-    data: FixedSizeListBuilder<LargeBinaryBuilder>,
+    data: FixedSizeListBuilder<ListBuilder<UInt8Builder>>,
 }
 
 impl RawMcapMessageParser {
-    const ARCHETYPE_NAME: &str = "rerun.mcap.Message";
-
     fn new(num_rows: usize) -> Self {
         Self {
-            data: fixed_size_list_builder(1, num_rows),
+            data: blob_list_builder(num_rows),
         }
     }
 }
@@ -30,7 +26,8 @@ impl MessageParser for RawMcapMessageParser {
         msg: &::mcap::Message<'_>,
     ) -> anyhow::Result<()> {
         re_tracing::profile_function!();
-        self.data.values().append_value(&msg.data);
+        self.data.values().values().append_slice(&msg.data);
+        self.data.values().append(true);
         self.data.append(true);
         Ok(())
     }
@@ -46,13 +43,7 @@ impl MessageParser for RawMcapMessageParser {
             ChunkId::new(),
             entity_path.clone(),
             timelines,
-            std::iter::once((
-                ComponentDescriptor::partial("data")
-                    .with_builtin_archetype(Self::ARCHETYPE_NAME)
-                    .with_component_type(components::Blob::name()),
-                data.finish().into(),
-            ))
-            .collect(),
+            std::iter::once((McapMessage::descriptor_data(), data.finish().into())).collect(),
         )
         .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 

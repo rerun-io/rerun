@@ -365,7 +365,7 @@ impl TensorElement {
             Self::I16(val) => re_format::format_int(*val),
             Self::I32(val) => re_format::format_int(*val),
             Self::I64(val) => re_format::format_int(*val),
-            Self::F16(val) => re_format::format_f32(val.to_f32()),
+            Self::F16(val) => re_format::format_f16(*val),
             Self::F32(val) => re_format::format_f32(*val),
             Self::F64(val) => re_format::format_f64(*val),
         }
