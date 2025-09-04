@@ -136,14 +136,13 @@ impl RerunArgs {
 
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
-                use re_grpc_server::PlaybackBehavior;
+                let server_options = re_sdk::ServerOptions {
+                    playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(
+                        self.newest_first,
+                    ),
 
-                let server_memory_limit = re_memory::MemoryLimit::parse(&self.server_memory_limit)
-                    .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
-
-                let server_options = re_grpc_server::ServerOptions {
-                    memory_limit: server_memory_limit,
-                    playback_behavior: PlaybackBehavior::from_newest_first(self.newest_first),
+                    memory_limit: re_sdk::MemoryLimit::parse(&self.server_memory_limit)
+                        .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?,
                 };
 
                 let rec = RecordingStreamBuilder::new("rerun_example_minimal_serve")

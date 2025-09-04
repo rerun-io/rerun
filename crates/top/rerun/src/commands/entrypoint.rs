@@ -2,7 +2,6 @@ use std::{net::IpAddr, time::Duration};
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use re_sdk::ServerOptions;
 use tokio::runtime::Runtime;
 
 use re_data_source::LogDataSource;
@@ -731,27 +730,27 @@ fn run_impl(
     let connection_registry = re_redap_client::ConnectionRegistry::new();
 
     let server_addr = std::net::SocketAddr::new(args.bind, args.port);
-    let server_memory_limit = {
-        re_log::debug!("Parsing --server-memory-limit (for gRPC server)");
-        let value = match &args.server_memory_limit {
-            Some(v) => v.as_str(),
-            None => {
-                // When spawning just a server, we don't want the memory limit to be 0.
-                if args.serve_web || args.serve_grpc {
-                    "25%"
-                } else {
-                    "0B"
-                }
-            }
-        };
-        re_log::debug!("Server memory limit: {value}");
-        re_memory::MemoryLimit::parse(value)
-            .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
-    };
 
-    let server_options = ServerOptions {
-        memory_limit: server_memory_limit,
+    let server_options = re_sdk::ServerOptions {
         playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(args.newest_first),
+
+        memory_limit: {
+            re_log::debug!("Parsing --server-memory-limit (for gRPC server)");
+            let value = match &args.server_memory_limit {
+                Some(v) => v.as_str(),
+                None => {
+                    // When spawning just a server, we don't want the memory limit to be 0.
+                    if args.serve_web || args.serve_grpc {
+                        "25%"
+                    } else {
+                        "0B"
+                    }
+                }
+            };
+            re_log::debug!("Server memory limit: {value}");
+            re_memory::MemoryLimit::parse(value)
+                .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
+        },
     };
 
     // All URLs that we want to process.

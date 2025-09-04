@@ -584,23 +584,22 @@ impl MessageBuffer {
             persistent,
         } = self;
 
+        // Note: we ALWAYS send the persistent and static data before the disposable,
+        // regardless of PlaybackBehavior!
+
         match playback_behavior {
             PlaybackBehavior::OldestFirst => {
                 itertools::chain!(persistent.iter(), static_.iter(), disposable.iter())
                     .cloned()
                     .collect()
             }
-            PlaybackBehavior::NewestFirst => {
-                // Note: we always send the persistenty and static data before the disposable,
-                // but we reverse the order of each thing internally:
-                itertools::chain!(
-                    persistent.iter().rev(),
-                    static_.iter().rev(),
-                    disposable.iter().rev()
-                )
-                .cloned()
-                .collect()
-            }
+            PlaybackBehavior::NewestFirst => itertools::chain!(
+                persistent.iter().rev(),
+                static_.iter().rev(),
+                disposable.iter().rev()
+            )
+            .cloned()
+            .collect(),
         }
     }
 
