@@ -12,6 +12,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
+from packaging import version
+IS_NUMPY_2 = True if version.parse(np.__version__) >= version.parse("2.0.0") else False
 from rerun._baseclasses import (
     BaseBatch,
 )
@@ -34,7 +36,13 @@ class AffixFuzzer22:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer22Ext in affix_fuzzer22_ext.py
-        return np.asarray(self.fixed_sized_native, dtype=dtype, copy=copy)
+        if IS_NUMPY_2:
+            return np.asarray(self.fixed_sized_native, dtype=dtype, copy=copy)
+        else:
+            if copy:
+                return np.array(self.fixed_sized_native, dtype=dtype, copy=copy)
+            else:
+                return np.asarray(self.fixed_sized_native, dtype=dtype)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of AffixFuzzer22Ext in affix_fuzzer22_ext.py

@@ -12,6 +12,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
+from packaging import version
+IS_NUMPY_2 = True if version.parse(np.__version__) >= version.parse("2.0.0") else False
 from rerun._baseclasses import (
     BaseBatch,
 )
@@ -31,7 +33,13 @@ class FlattenedScalar:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of FlattenedScalarExt in flattened_scalar_ext.py
-        return np.asarray(self.value, dtype=dtype, copy=copy)
+        if IS_NUMPY_2:
+            return np.asarray(self.value, dtype=dtype, copy=copy)
+        else:
+            if copy:
+                return np.array(self.value, dtype=dtype, copy=copy)
+            else:
+                return np.asarray(self.value, dtype=dtype)
 
     def __float__(self) -> float:
         return float(self.value)
