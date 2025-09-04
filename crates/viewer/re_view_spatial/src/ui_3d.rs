@@ -196,7 +196,7 @@ impl View3DState {
         }
 
         if view_eye.update(response, view_eye_drag_threshold, view_ctx, eye_property)
-            && !(self.tracked_entity.is_some() && view_eye.get_track_ignore_input_pressed())
+            && !(self.tracked_entity.is_some() && view_eye.ignore_input())
         {
             self.last_eye_interaction = Some(Instant::now());
             self.eye_interpolation = None;
@@ -412,7 +412,13 @@ pub fn help(os: egui::os::OperatingSystem) -> Help {
         .control("Focus", ("double", icons::LEFT_MOUSE_CLICK, "object"))
         .control(
             "Track",
-            ("alt", "+", "double", icons::LEFT_MOUSE_CLICK, "object"),
+            (
+                IconText::from_modifiers(os, RuntimeModifiers::slow_down(&os)),
+                "+",
+                "double",
+                icons::LEFT_MOUSE_CLICK,
+                "object",
+            ),
         )
         .control(
             "Reset view",
