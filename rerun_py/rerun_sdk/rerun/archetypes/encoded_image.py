@@ -94,7 +94,7 @@ class EncodedImage(EncodedImageExt, Archetype):
             If omitted, the viewer will try to guess from the data blob.
             If it cannot guess, it won't be able to render the asset.
         opacity:
-            Opacity of the image, useful for layering several images.
+            Opacity of the image, useful for layering several media.
 
             Defaults to 1.0 (fully opaque).
         draw_order:
@@ -158,7 +158,7 @@ class EncodedImage(EncodedImageExt, Archetype):
             If omitted, the viewer will try to guess from the data blob.
             If it cannot guess, it won't be able to render the asset.
         opacity:
-            Opacity of the image, useful for layering several images.
+            Opacity of the image, useful for layering several media.
 
             Defaults to 1.0 (fully opaque).
         draw_order:
@@ -246,7 +246,7 @@ class EncodedImage(EncodedImageExt, Archetype):
         default=None,
         converter=components.OpacityBatch._converter,  # type: ignore[misc]
     )
-    # Opacity of the image, useful for layering several images.
+    # Opacity of the image, useful for layering several media.
     #
     # Defaults to 1.0 (fully opaque).
     #

@@ -35,7 +35,7 @@ table EncodedImage (
 
   // --- Optional ---
 
-  /// Opacity of the image, useful for layering several images.
+  /// Opacity of the image, useful for layering several media.
   ///
   /// Defaults to 1.0 (fully opaque).
   opacity: rerun.components.Opacity ("attr.rerun.component_optional", nullable, order: 3000);
