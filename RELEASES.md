@@ -46,6 +46,24 @@ We tag all data files (`.rrd` files) and communication protocols with the Rerun 
 Release builds of the Python Wheels are triggered by pushing a release tag to GitHub in the form `0.2.0`.
 If we are doing a patch release, we do a branch off of the latest release tag (e.g. `0.3.0`) and cherry-pick any fixes we want into that branch.
 
+## Alpha vs. final releases
+
+The overall process slightly differs between alphas and final releases.
+
+For alpha releases, the process is essentially fully-automated and throw-away. Specifically:
+- We do not update `CHANGELOG.md` (though we may have a raw changelog in the GH release)
+- When failing, it's fine to just start over with a new alpha.
+- The release branch typically has no content other than the automatically generated version bump.
+- The release branch doesn't need to be merged to `main` (and shouldn't, unless the workflow fully succeeds).
+
+For final releases with a minor or minor version bump, the process is typically more involved:
+- At least `CHANGELOG.md` must be updated on the branch.
+- Typically more commits are pushed or cherry-picked for last-minute fixes.
+- One or more RCs are triggered before the final release.
+- The release branch _must_ be merged to `main`.
+
+The same applies for final releases with a patch version bump, except the branch starts from the previous major/minor release instead of `main`. Also, special care is required with `docs-latest` (see below).
+
 # Release process
 
 ### 1. Check the root [`Cargo.toml`](./Cargo.toml) to see what version we are currently on.
