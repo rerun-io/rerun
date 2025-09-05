@@ -161,7 +161,7 @@ macro_rules! impl_style_fns {
         #[doc = $docs]
         #[inline]
         pub fn $with(mut self, portion: &str) -> Self {
-            self.$append(portion, $($extra_name),*);
+            self.$append(portion);
             self
         }
 
@@ -175,7 +175,7 @@ macro_rules! impl_style_fns {
         #[doc = $docs]
         #[inline]
         pub fn $pure(portion: &str) -> Self {
-            Self::new().$with(portion, $($extra_name),*)
+            Self::new().$with(portion)
         }
     };
 }
