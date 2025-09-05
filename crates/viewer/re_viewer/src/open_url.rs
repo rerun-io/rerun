@@ -572,6 +572,7 @@ impl ViewerOpenUrl {
         match self {
             Self::IntraRecordingSelection(..) => None,
             Self::RrdHttpUrl(..) => None,
+            #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(..) => None,
             Self::RedapDatasetPartition(uri) => Some(&mut uri.fragment),
             Self::RedapProxy(..) => None,
@@ -597,6 +598,7 @@ impl ViewerOpenUrl {
         match self {
             Self::IntraRecordingSelection(..) => None,
             Self::RrdHttpUrl(..) => None,
+            #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(..) => None,
             Self::RedapDatasetPartition(uri) => Some(&mut uri.time_range),
             Self::RedapProxy(..) => None,

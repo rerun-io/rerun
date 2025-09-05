@@ -699,6 +699,11 @@ impl AppState {
         self.focused_item = None;
     }
 
+    #[allow(dead_code)] // Only used on wasm.
+    pub fn recording_config(&self, rec_id: &StoreId) -> Option<&RecordingConfig> {
+        self.recording_configs.get(rec_id)
+    }
+
     pub fn recording_config_mut(&mut self, entity_db: &EntityDb) -> &mut RecordingConfig {
         recording_config_entry(&mut self.recording_configs, entity_db)
     }

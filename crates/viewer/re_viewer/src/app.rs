@@ -3241,8 +3241,7 @@ fn update_web_address_bar(
 pub fn web_viewer_base_url() -> Option<url::Url> {
     #[cfg(target_arch = "wasm32")]
     {
-        use crate::web_tools::JsResultExt as _;
-        current_base_url().ok()
+        crate::web_tools::current_base_url().ok()
     }
 
     #[cfg(not(target_arch = "wasm32"))]
