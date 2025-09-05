@@ -5,13 +5,16 @@ mod tests {
     use re_mcap::{
         cdr::try_encode_message,
         layers::SelectedLayers,
-        parsers::{dds::RepresentationIdentifier, ros2msg::{
-            self,
-            definitions::{
-                geometry_msgs::{Quaternion, Vector3},
-                sensor_msgs::{PointField, PointFieldDatatype},
+        parsers::{
+            dds::RepresentationIdentifier,
+            ros2msg::{
+                self,
+                definitions::{
+                    geometry_msgs::{Quaternion, Vector3},
+                    sensor_msgs::{PointField, PointFieldDatatype},
+                },
             },
-        }},
+        },
     };
     use serde::Serialize;
 
