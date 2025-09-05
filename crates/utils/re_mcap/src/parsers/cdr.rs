@@ -24,7 +24,7 @@
 //! ```
 
 use anyhow::anyhow;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::dds::RepresentationIdentifier;
@@ -60,6 +60,38 @@ pub fn try_decode_message<'d, T: Deserialize<'d>>(msg: &'d [u8]) -> Result<T, Cd
             .map(|(v, _)| v)
             .map_err(CdrError::CdrEncoding)
     }
+}
+
+/// Encode a serializable message into a writer with the given CDR representation.
+pub fn encode_message_into<T, W>(
+    msg: &T,
+    mut out: W,
+    representation: RepresentationIdentifier,
+) -> Result<(), CdrError>
+where
+    T: Serialize,
+    W: std::io::Write,
+{
+    let id = representation.to_bytes();
+    out.write_all(&[id[0], id[1], 0, 0])
+        .map_err(|err| CdrError::Other(anyhow::Error::from(err)))?;
+
+    if representation.is_big_endian() {
+        cdr_encoding::to_writer::<_, byteorder::BigEndian, _>(&mut out, msg)?;
+    } else {
+        cdr_encoding::to_writer::<_, byteorder::LittleEndian, _>(&mut out, msg)?;
+    }
+    Ok(())
+}
+
+/// Encode a serializable message into a new buffer with the provided CDR representation.
+pub fn try_encode_message<T: Serialize>(
+    msg: &T,
+    representation: RepresentationIdentifier,
+) -> Result<Vec<u8>, CdrError> {
+    let mut buf = Vec::new();
+    encode_message_into(msg, &mut buf, representation)?;
+    Ok(buf)
 }
 
 /// Errors from CDR decoding.

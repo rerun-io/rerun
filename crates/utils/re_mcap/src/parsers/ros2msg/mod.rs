@@ -1,4 +1,4 @@
-mod definitions;
+pub mod definitions;
 
 pub mod rcl_interfaces;
 pub mod scalar_parser;

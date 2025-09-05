@@ -7483,6 +7483,7 @@ dependencies = [
  "crossbeam",
  "image",
  "indexmap 2.10.0",
+ "insta",
  "itertools 0.14.0",
  "mcap",
  "memmap2 0.9.5",

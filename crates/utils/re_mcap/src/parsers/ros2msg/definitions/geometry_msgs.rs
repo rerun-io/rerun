@@ -16,6 +16,12 @@ pub struct Vector3 {
     pub z: f64,
 }
 
+impl Vector3 {
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Self { x, y, z }
+    }
+}
+
 /// This represents an orientation in free space in quaternion form.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Quaternion {
@@ -25,12 +31,24 @@ pub struct Quaternion {
     pub w: f64,
 }
 
+impl Quaternion {
+    pub fn new(x: f64, y: f64, z: f64, w: f64) -> Self {
+        Self { x, y, z, w }
+    }
+}
+
 /// This contains the position of a point in free space
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Point {
     pub x: f64,
     pub y: f64,
     pub z: f64,
+}
+
+impl Point {
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Self { x, y, z }
+    }
 }
 
 /// A representation of pose in free space, composed of position and orientation.

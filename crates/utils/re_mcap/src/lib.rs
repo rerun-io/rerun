@@ -3,8 +3,8 @@
 mod error;
 pub mod layers;
 
-pub(crate) mod parsers;
-pub(crate) mod util;
+pub mod parsers;
+pub mod util;
 
 pub use error::Error;
 pub use layers::{Layer, LayerIdentifier, LayerRegistry, MessageLayer, SelectedLayers};

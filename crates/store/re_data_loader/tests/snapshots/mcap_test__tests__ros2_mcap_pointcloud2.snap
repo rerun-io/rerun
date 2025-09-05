@@ -1,0 +1,778 @@
+---
+source: crates/store/re_data_loader/tests/mcap_test.rs
+expression: chunks
+---
+[
+    Chunk {
+        id: ChunkId(
+            0000000000661EFDf2e3b19f7c045f15,
+        ),
+        entity_path: /test/imu,
+        heap_size_bytes: 1616,
+        is_sorted: true,
+        row_ids: FixedSizeBinaryArray<16>
+        [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        ],
+        timelines: {
+            "log_time": TimeColumn {
+                timeline: Timeline {
+                    name: "log_time",
+                    typ: TimestampNs,
+                },
+                times: ScalarBuffer(
+                    [
+                        1000000000,
+                    ],
+                ),
+                is_sorted: true,
+                time_range: AbsoluteTimeRange {
+                    min: TimeInt(1 000 000 000),
+                    max: TimeInt(1 000 000 000),
+                },
+            },
+            "publish_time": TimeColumn {
+                timeline: Timeline {
+                    name: "publish_time",
+                    typ: TimestampNs,
+                },
+                times: ScalarBuffer(
+                    [
+                        1000000000,
+                    ],
+                ),
+                is_sorted: true,
+                time_range: AbsoluteTimeRange {
+                    min: TimeInt(1 000 000 000),
+                    max: TimeInt(1 000 000 000),
+                },
+            },
+        },
+        components: ChunkComponents(
+            {
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapMessage",
+                    ),
+                    component: "McapMessage:data",
+                    component_type: Some(
+                        "rerun.components.Blob",
+                    ),
+                }: ListArray
+                [
+                  ListArray
+                [
+                  PrimitiveArray<UInt8>
+                [
+                  0,
+                  1,
+                  0,
+                  0,
+                  123,
+                  0,
+                  0,
+                  0,
+                  45,
+                  0,
+                  ...469 elements...,
+                  0,
+                  9,
+                  0,
+                  0,
+                  0,
+                  4,
+                  0,
+                  0,
+                  0,
+                  1,
+                ],
+                ],
+                ],
+            },
+        ),
+    },
+    Chunk {
+        id: ChunkId(
+            0000000000661EFDf2e3b19f7c045f16,
+        ),
+        entity_path: /__properties,
+        heap_size_bytes: 384,
+        is_sorted: true,
+        row_ids: FixedSizeBinaryArray<16>
+        [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        ],
+        timelines: {},
+        components: ChunkComponents(
+            {
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.RecordingInfo",
+                    ),
+                    component: "RecordingInfo:start_time",
+                    component_type: Some(
+                        "rerun.components.Timestamp",
+                    ),
+                }: ListArray
+                [
+                  PrimitiveArray<Int64>
+                [
+                  1000000000,
+                ],
+                ],
+            },
+        ),
+    },
+    Chunk {
+        id: ChunkId(
+            0000000000661EFDf2e3b19f7c045f17,
+        ),
+        entity_path: /test/imu,
+        heap_size_bytes: 34200,
+        is_sorted: true,
+        row_ids: FixedSizeBinaryArray<16>
+        [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        ],
+        timelines: {
+            "log_time": TimeColumn {
+                timeline: Timeline {
+                    name: "log_time",
+                    typ: TimestampNs,
+                },
+                times: ScalarBuffer(
+                    [
+                        1000000000,
+                    ],
+                ),
+                is_sorted: true,
+                time_range: AbsoluteTimeRange {
+                    min: TimeInt(1 000 000 000),
+                    max: TimeInt(1 000 000 000),
+                },
+            },
+            "publish_time": TimeColumn {
+                timeline: Timeline {
+                    name: "publish_time",
+                    typ: TimestampNs,
+                },
+                times: ScalarBuffer(
+                    [
+                        1000000000,
+                    ],
+                ),
+                is_sorted: true,
+                time_range: AbsoluteTimeRange {
+                    min: TimeInt(1 000 000 000),
+                    max: TimeInt(1 000 000 000),
+                },
+            },
+            "timestamp": TimeColumn {
+                timeline: Timeline {
+                    name: "timestamp",
+                    typ: TimestampNs,
+                },
+                times: ScalarBuffer(
+                    [
+                        123000000045,
+                    ],
+                ),
+                is_sorted: true,
+                time_range: AbsoluteTimeRange {
+                    min: TimeInt(123 000 000 045),
+                    max: TimeInt(123 000 000 045),
+                },
+            },
+        },
+        components: ChunkComponents(
+            {
+                ComponentDescriptor {
+                    archetype: Some(
+                        "sensor_msgs.msg.PointCloud2",
+                    ),
+                    component: "sensor_msgs.msg.PointCloud2:is_bigendian",
+                    component_type: None,
+                }: ListArray
+                [
+                  BooleanArray
+                [
+                  false,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "sensor_msgs.msg.PointCloud2",
+                    ),
+                    component: "sensor_msgs.msg.PointCloud2:point_step",
+                    component_type: None,
+                }: ListArray
+                [
+                  PrimitiveArray<UInt32>
+                [
+                  8,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "sensor_msgs.msg.PointCloud2",
+                    ),
+                    component: "sensor_msgs.msg.PointCloud2:data",
+                    component_type: Some(
+                        "rerun.components.Blob",
+                    ),
+                }: ListArray
+                [
+                  ListArray
+                [
+                  PrimitiveArray<UInt8>
+                [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  ...380 elements...,
+                  0,
+                  0,
+                  9,
+                  0,
+                  0,
+                  0,
+                  4,
+                  0,
+                  0,
+                  0,
+                ],
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "sensor_msgs.msg.PointCloud2",
+                    ),
+                    component: "sensor_msgs.msg.PointCloud2:height",
+                    component_type: None,
+                }: ListArray
+                [
+                  PrimitiveArray<UInt32>
+                [
+                  5,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "sensor_msgs.msg.PointCloud2",
+                    ),
+                    component: "sensor_msgs.msg.PointCloud2:width",
+                    component_type: None,
+                }: ListArray
+                [
+                  PrimitiveArray<UInt32>
+                [
+                  10,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "sensor_msgs.msg.PointCloud2",
+                    ),
+                    component: "sensor_msgs.msg.PointCloud2:is_dense",
+                    component_type: None,
+                }: ListArray
+                [
+                  BooleanArray
+                [
+                  true,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "sensor_msgs.msg.PointCloud2",
+                    ),
+                    component: "sensor_msgs.msg.PointCloud2:fields",
+                    component_type: None,
+                }: ListArray
+                [
+                  ListArray
+                [
+                  StructArray
+                -- validity:
+                [
+                  valid,
+                  valid,
+                ]
+                [
+                -- child 0: "name" (Utf8)
+                StringArray
+                [
+                  "x",
+                  "y",
+                ]
+                -- child 1: "offset" (UInt32)
+                PrimitiveArray<UInt32>
+                [
+                  0,
+                  4,
+                ]
+                -- child 2: "datatype" (UInt8)
+                PrimitiveArray<UInt8>
+                [
+                  6,
+                  6,
+                ]
+                -- child 3: "count" (UInt32)
+                PrimitiveArray<UInt32>
+                [
+                  1,
+                  1,
+                ]
+                ],
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "sensor_msgs.msg.PointCloud2",
+                    ),
+                    component: "sensor_msgs.msg.PointCloud2:row_step",
+                    component_type: None,
+                }: ListArray
+                [
+                  PrimitiveArray<UInt32>
+                [
+                  80,
+                ],
+                ],
+            },
+        ),
+    },
+    Chunk {
+        id: ChunkId(
+            0000000000661EFDf2e3b19f7c045f18,
+        ),
+        entity_path: /test/imu,
+        heap_size_bytes: 2482,
+        is_sorted: true,
+        row_ids: FixedSizeBinaryArray<16>
+        [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        ],
+        timelines: {},
+        components: ChunkComponents(
+            {
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapSchema",
+                    ),
+                    component: "McapSchema:encoding",
+                    component_type: Some(
+                        "rerun.components.Text",
+                    ),
+                }: ListArray
+                [
+                  StringArray
+                [
+                  "ros2msg",
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapChannel",
+                    ),
+                    component: "McapChannel:metadata",
+                    component_type: Some(
+                        "rerun.components.KeyValuePairs",
+                    ),
+                }: ListArray
+                [
+                  ListArray
+                [
+                  StructArray
+                -- validity:
+                [
+                ]
+                [
+                -- child 0: "first" (Utf8)
+                StringArray
+                [
+                ]
+                -- child 1: "second" (Utf8)
+                StringArray
+                [
+                ]
+                ],
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapSchema",
+                    ),
+                    component: "McapSchema:name",
+                    component_type: Some(
+                        "rerun.components.Text",
+                    ),
+                }: ListArray
+                [
+                  StringArray
+                [
+                  "sensor_msgs/msg/PointCloud2",
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapChannel",
+                    ),
+                    component: "McapChannel:message_encoding",
+                    component_type: Some(
+                        "rerun.components.Text",
+                    ),
+                }: ListArray
+                [
+                  StringArray
+                [
+                  "cdr",
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapSchema",
+                    ),
+                    component: "McapSchema:data",
+                    component_type: Some(
+                        "rerun.components.Blob",
+                    ),
+                }: ListArray
+                [
+                  ListArray
+                [
+                  PrimitiveArray<UInt8>
+                [
+                  105,
+                  103,
+                  110,
+                  111,
+                  114,
+                  101,
+                  100,
+                  95,
+                  115,
+                  99,
+                  ...6 elements...,
+                  101,
+                  115,
+                  99,
+                  114,
+                  105,
+                  112,
+                  116,
+                  105,
+                  111,
+                  110,
+                ],
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapChannel",
+                    ),
+                    component: "McapChannel:topic",
+                    component_type: Some(
+                        "rerun.components.Text",
+                    ),
+                }: ListArray
+                [
+                  StringArray
+                [
+                  "/test/imu",
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapSchema",
+                    ),
+                    component: "McapSchema:id",
+                    component_type: Some(
+                        "rerun.components.SchemaId",
+                    ),
+                }: ListArray
+                [
+                  PrimitiveArray<UInt16>
+                [
+                  1,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapChannel",
+                    ),
+                    component: "McapChannel:id",
+                    component_type: Some(
+                        "rerun.components.ChannelId",
+                    ),
+                }: ListArray
+                [
+                  PrimitiveArray<UInt16>
+                [
+                  1,
+                ],
+                ],
+            },
+        ),
+    },
+    Chunk {
+        id: ChunkId(
+            0000000000661EFDf2e3b19f7c045f19,
+        ),
+        entity_path: /__properties,
+        heap_size_bytes: 2968,
+        is_sorted: true,
+        row_ids: FixedSizeBinaryArray<16>
+        [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        ],
+        timelines: {},
+        components: ChunkComponents(
+            {
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapStatistics",
+                    ),
+                    component: "McapStatistics:message_count",
+                    component_type: Some(
+                        "rerun.components.Count",
+                    ),
+                }: ListArray
+                [
+                  PrimitiveArray<UInt64>
+                [
+                  1,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapStatistics",
+                    ),
+                    component: "McapStatistics:message_end_time",
+                    component_type: Some(
+                        "rerun.components.Timestamp",
+                    ),
+                }: ListArray
+                [
+                  PrimitiveArray<Int64>
+                [
+                  1000000000,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapStatistics",
+                    ),
+                    component: "McapStatistics:metadata_count",
+                    component_type: Some(
+                        "rerun.components.Count",
+                    ),
+                }: ListArray
+                [
+                  PrimitiveArray<UInt64>
+                [
+                  0,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapStatistics",
+                    ),
+                    component: "McapStatistics:channel_message_counts",
+                    component_type: Some(
+                        "rerun.components.ChannelMessageCounts",
+                    ),
+                }: ListArray
+                [
+                  ListArray
+                [
+                  StructArray
+                -- validity:
+                [
+                  valid,
+                ]
+                [
+                -- child 0: "channel_id" (UInt16)
+                PrimitiveArray<UInt16>
+                [
+                  1,
+                ]
+                -- child 1: "message_count" (UInt64)
+                PrimitiveArray<UInt64>
+                [
+                  1,
+                ]
+                ],
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapStatistics",
+                    ),
+                    component: "McapStatistics:channel_count",
+                    component_type: Some(
+                        "rerun.components.Count",
+                    ),
+                }: ListArray
+                [
+                  PrimitiveArray<UInt64>
+                [
+                  1,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapStatistics",
+                    ),
+                    component: "McapStatistics:chunk_count",
+                    component_type: Some(
+                        "rerun.components.Count",
+                    ),
+                }: ListArray
+                [
+                  PrimitiveArray<UInt64>
+                [
+                  1,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapStatistics",
+                    ),
+                    component: "McapStatistics:attachment_count",
+                    component_type: Some(
+                        "rerun.components.Count",
+                    ),
+                }: ListArray
+                [
+                  PrimitiveArray<UInt64>
+                [
+                  0,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapStatistics",
+                    ),
+                    component: "McapStatistics:message_start_time",
+                    component_type: Some(
+                        "rerun.components.Timestamp",
+                    ),
+                }: ListArray
+                [
+                  PrimitiveArray<Int64>
+                [
+                  1000000000,
+                ],
+                ],
+                ComponentDescriptor {
+                    archetype: Some(
+                        "rerun.archetypes.McapStatistics",
+                    ),
+                    component: "McapStatistics:schema_count",
+                    component_type: Some(
+                        "rerun.components.Count",
+                    ),
+                }: ListArray
+                [
+                  PrimitiveArray<UInt64>
+                [
+                  1,
+                ],
+                ],
+            },
+        ),
+    },
+]
