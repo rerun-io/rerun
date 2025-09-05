@@ -20,33 +20,6 @@ use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, Partition
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
 use crate::{TypeConversionError, missing_field};
 
-// --- ScanPartitionTableRequest ---
-
-// TODO: this is useless now
-pub struct ScanPartitionTableRequest {
-    pub columns: Vec<String>,
-}
-
-impl TryFrom<crate::cloud::v1alpha1::ScanPartitionTableRequest> for ScanPartitionTableRequest {
-    type Error = TypeConversionError;
-
-    fn try_from(
-        value: crate::cloud::v1alpha1::ScanPartitionTableRequest,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            columns: value.columns,
-        })
-    }
-}
-
-impl From<ScanPartitionTableRequest> for crate::cloud::v1alpha1::ScanPartitionTableRequest {
-    fn from(value: ScanPartitionTableRequest) -> Self {
-        Self {
-            columns: value.columns,
-        }
-    }
-}
-
 // --- RegisterWithDatasetRequest ---
 
 #[derive(Debug)]

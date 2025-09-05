@@ -22,7 +22,7 @@ use re_protos::{
         ext::{DataSource, DataSourceKind, RegisterWithDatasetTaskDescriptor},
     },
     cloud::v1alpha1::{
-        ext::{RegisterWithDatasetRequest, ScanPartitionTableRequest},
+        ScanPartitionTableRequest, ext::RegisterWithDatasetRequest,
         rerun_cloud_service_client::RerunCloudServiceClient,
     },
     common::v1alpha1::{
@@ -207,12 +207,9 @@ where
         let mut stream = self
             .inner()
             .scan_partition_table(
-                tonic::Request::new(
-                    ScanPartitionTableRequest {
-                        columns: vec![COLUMN_NAME.to_owned()],
-                    }
-                    .into(),
-                )
+                tonic::Request::new(ScanPartitionTableRequest {
+                    columns: vec![COLUMN_NAME.to_owned()],
+                })
                 .with_entry_id(entry_id)?,
             )
             .await?
