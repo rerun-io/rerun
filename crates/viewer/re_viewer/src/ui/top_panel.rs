@@ -405,18 +405,9 @@ fn panel_buttons_r2l(
 
     app.notifications.notification_toggle_button(ui);
 
-    let active_recording_config = store_hub
-        .active_recording()
-        .and_then(|recording| app.state.recording_config(recording.store_id()));
-    let selection = app.state.selection_state.selected_items().first_item();
-    app.share_dialog.ui(
-        ui,
-        store_hub,
-        app.state.navigation.peek(),
-        app.app_options().timestamp_format,
-        active_recording_config,
-        selection,
-    );
+    app.state
+        .share_modal
+        .button_ui(ui, store_hub, app.state.navigation.peek());
 }
 
 /// Shows clickable website link as an image (text doesn't look as nice)

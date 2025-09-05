@@ -61,6 +61,8 @@ pub struct AppState {
 
     #[serde(skip)]
     pub(crate) open_url_modal: crate::ui::OpenUrlModal,
+    #[serde(skip)]
+    pub(crate) share_modal: crate::ui::ShareModal,
 
     /// A stack of display modes that represents tab-like navigation of the user.
     #[serde(skip)]
@@ -106,6 +108,7 @@ impl Default for AppState {
             datastore_ui: Default::default(),
             redap_servers: Default::default(),
             open_url_modal: Default::default(),
+            share_modal: Default::default(),
             navigation: Default::default(),
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -654,6 +657,12 @@ impl AppState {
 
                 self.redap_servers.modals_ui(&ctx.global_context, ui);
                 self.open_url_modal.ui(ui);
+                self.share_modal.ui(
+                    ui,
+                    ctx.app_options().timestamp_format,
+                    ctx.selection().first_item(),
+                    ctx.rec_cfg,
+                );
             }
         }
 
@@ -688,10 +697,6 @@ impl AppState {
 
         // Reset the focused item.
         self.focused_item = None;
-    }
-
-    pub fn recording_config(&self, rec_id: &StoreId) -> Option<&RecordingConfig> {
-        self.recording_configs.get(rec_id)
     }
 
     pub fn recording_config_mut(&mut self, entity_db: &EntityDb) -> &mut RecordingConfig {

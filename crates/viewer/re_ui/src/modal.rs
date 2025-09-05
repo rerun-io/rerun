@@ -60,6 +60,11 @@ impl ModalHandler {
             None
         }
     }
+
+    /// Whet
+    pub fn is_open(&self) -> bool {
+        self.modal.is_some()
+    }
 }
 
 /// Show a modal window with Rerun style using [`egui::Modal`].
