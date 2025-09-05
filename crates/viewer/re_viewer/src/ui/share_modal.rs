@@ -248,8 +248,13 @@ fn fragments_ui(
                         label.push_right(format_extra_toggle_info(current_selection.to_string()));
                     }
 
+                    let disabled_reason = if current_selection.is_none() {
+                        "No selection."
+                    } else {
+                        "Current selection can't be embedded in the URL."
+                    };
                     ui.selectable_value(&mut any_focus, true, label)
-                        .on_disabled_hover_text("Current selection can't be embedded in the URL.")
+                        .on_disabled_hover_text(disabled_reason)
                 });
             });
         }));
