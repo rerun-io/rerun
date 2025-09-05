@@ -35,34 +35,47 @@ enum SyntaxHighlightedStyle {
     CustomClosure(Box<dyn Fn(&Style) -> TextFormat>),
 }
 
+impl std::fmt::Debug for SyntaxHighlightedStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::StringValue => write!(f, "StringValue"),
+            Self::Identifier => write!(f, "Identifier"),
+            Self::Keyword => write!(f, "Keyword"),
+            Self::Index => write!(f, "Index"),
+            Self::Primitive => write!(f, "Primitive"),
+            Self::Syntax => write!(f, "Syntax"),
+            Self::Body => write!(f, "Body"),
+            Self::BodyItalics => write!(f, "BodyItalics"),
+            Self::Custom(_) => write!(f, "Custom(...)"),
+            Self::CustomClosure(_) => write!(f, "CustomClosure(...)"),
+        }
+    }
+}
+
+#[derive(Debug)]
 struct SyntaxHighlightedPart {
     byte_range: std::ops::Range<usize>,
     style: SyntaxHighlightedStyle,
 }
 
 /// Easily build syntax-highlighted text.
+#[derive(Debug, Default)]
 pub struct SyntaxHighlightedBuilder {
     text: String,
-    parts: Vec<SyntaxHighlightedPart>,
+    parts: smallvec::SmallVec<[SyntaxHighlightedPart; 1]>,
 }
 
 /// Easily build syntax-highlighted [`LayoutJob`]s.
-impl Default for SyntaxHighlightedBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl SyntaxHighlightedBuilder {
     pub const QUOTE_CHAR: char = '"';
 
     pub fn new() -> Self {
-        Self {
-            text: String::new(),
-            parts: Vec::new(),
-        }
+        Self::default()
     }
 
+    /// Construct [`Self`] from an existing [`LayoutJob`].
+    ///
+    /// Some information (the `leading_space`) will be lost.
     pub fn from(job: impl Into<LayoutJob>) -> Self {
         let job = job.into();
         Self {

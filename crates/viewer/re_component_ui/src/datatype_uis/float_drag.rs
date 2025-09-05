@@ -78,7 +78,6 @@ pub fn edit_f32_float_raw_with_speed_impl(
                 .suffix(suffix),
         )
     } else {
-        // UiLayout::List.data_label(ui, format!("{}{}", re_format::format_f32(**value), suffix))
         UiLayout::List.data_label(
             ui,
             SyntaxHighlightedBuilder::new()
