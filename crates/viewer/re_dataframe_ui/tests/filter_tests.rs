@@ -189,13 +189,13 @@ async fn test_string_contains() {
     filter_snapshot!(
         Filter::new("string", FilterOperation::StringContains("A".to_owned())),
         TestColumn::strings(false),
-        "A"
+        "a_uppercase"
     );
 
     filter_snapshot!(
         Filter::new("string", FilterOperation::StringContains("A".to_owned())),
         TestColumn::strings(true),
-        "nullable_A"
+        "nullable_a_uppercase"
     );
 
     filter_snapshot!(
