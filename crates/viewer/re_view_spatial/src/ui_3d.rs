@@ -1,4 +1,4 @@
-use egui::{NumExt as _, emath::RectTransform};
+use egui::{Modifiers, NumExt as _, emath::RectTransform};
 use glam::{Affine3A, Quat, Vec3};
 use web_time::Instant;
 
@@ -151,10 +151,10 @@ impl View3DState {
                 // If we're tracking a camera right now, we want to make it slightly sticky,
                 // so that a click on some entity doesn't immediately break the tracked state.
                 // (Threshold is in amount of ui points the mouse was moved.)
-                view_eye_drag_threshold = 4.0
+                view_eye_drag_threshold = 4.0;
             } else {
                 // For other entities we keep interpolating, so when the entity jumps, we follow smoothly.
-                self.interpolate_eye_to_entity(&tracked_entity, bounding_boxes, space_cameras);
+                self.interpolate_eye_to_entity(&tracked_entity, bounding_boxes);
             }
         }
 
@@ -232,7 +232,6 @@ impl View3DState {
         &mut self,
         entity_path: &EntityPath,
         bounding_boxes: &SceneBoundingBoxes,
-        space_cameras: &[SpaceCamera3D],
     ) {
         // Note that we may want to focus on an _instance_ instead in the future:
         // The problem with that is that there may be **many** instances (think point cloud)
@@ -248,9 +247,7 @@ impl View3DState {
         //     ..
         // }) = ctx.selection_state().hovered_space_context()
 
-        if let Some(tracked_camera) = find_camera(space_cameras, entity_path) {
-            self.interpolate_to_eye(tracked_camera);
-        } else if let Some(entity_bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
+        if let Some(entity_bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
             let Some(mut new_view_eye) = self.view_eye else {
                 // Happens only the first frame when there's no eye set up yet.
                 return;
@@ -312,12 +309,7 @@ impl View3DState {
         }
     }
 
-    fn track_entity(
-        &mut self,
-        entity_path: &EntityPath,
-        bounding_boxes: &SceneBoundingBoxes,
-        space_cameras: &[SpaceCamera3D],
-    ) {
+    fn track_entity(&mut self, entity_path: &EntityPath, bounding_boxes: &SceneBoundingBoxes) {
         if self.tracked_entity == Some(entity_path.clone()) {
             return; // already tracking this entity.
         }
@@ -326,7 +318,7 @@ impl View3DState {
         self.tracked_entity = Some(entity_path.clone());
         self.camera_before_tracked_entity = self.view_eye.map(|eye| eye.to_eye());
 
-        self.interpolate_eye_to_entity(entity_path, bounding_boxes, space_cameras);
+        self.interpolate_eye_to_entity(entity_path, bounding_boxes);
     }
 
     pub fn spin(&self) -> bool {
@@ -409,11 +401,11 @@ pub fn help(os: egui::os::OperatingSystem) -> Help {
                 IconText::from_modifiers(os, SPEED_UP_3D_MODIFIER),
             ),
         )
-        .control("Focus", ("double", icons::LEFT_MOUSE_CLICK, "object"))
+        .control("Track", ("double", icons::LEFT_MOUSE_CLICK, "object"))
         .control(
-            "Track",
+            "Focus",
             (
-                IconText::from_modifiers(os, RuntimeModifiers::slow_down(&os)),
+                IconText::from_modifiers(os, Modifiers::ALT),
                 "+",
                 "double",
                 icons::LEFT_MOUSE_CLICK,
@@ -600,19 +592,19 @@ impl SpatialView3D {
             if let Some(entity_path) = focused_entity {
                 state.state_3d.last_eye_interaction = Some(Instant::now());
 
-                if find_camera(space_cameras, entity_path).is_some()
-                    || (response.ctx.input(|i| i.modifiers.alt)
-                        && ctx.recording().is_logged_entity(entity_path))
+                if response.ctx.input(|i| i.modifiers.alt)
+                    && ctx.recording().is_logged_entity(entity_path)
                 {
                     state
                         .state_3d
-                        .track_entity(entity_path, &state.bounding_boxes, space_cameras);
+                        .interpolate_eye_to_entity(entity_path, &state.bounding_boxes);
                 } else {
-                    state.state_3d.interpolate_eye_to_entity(
-                        entity_path,
-                        &state.bounding_boxes,
-                        space_cameras,
-                    );
+                    state
+                        .state_3d
+                        .track_entity(entity_path, &state.bounding_boxes);
+                    if let Some(tracked_camera) = find_camera(space_cameras, &entity_path) {
+                        state.state_3d.interpolate_to_eye(tracked_camera);
+                    }
                 }
             }
 

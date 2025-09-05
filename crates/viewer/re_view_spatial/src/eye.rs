@@ -193,6 +193,7 @@ pub struct ViewEye {
 
     velocity: Vec3,
 
+    /// Tracks if any user input happened that shouldn't interrupt the entity tracking behavioure.
     ignore_input: bool,
 }
 
@@ -244,7 +245,6 @@ impl ViewEye {
         }
     }
 
-    /// If we are tracking an entity we don't want it to be interrupted by some of the user inputs.
     pub fn ignore_input(&self) -> bool {
         self.ignore_input
     }
@@ -415,7 +415,7 @@ impl ViewEye {
                 self.ignore_input = true
             } else if response.dragged_by(ROTATE3D_BUTTON) {
                 self.rotate(response.drag_delta());
-                self.ignore_input = true
+                self.ignore_input = true;
             } else if response.dragged_by(DRAG_PAN3D_BUTTON) {
                 // The pan speed is selected to make the panning feel natural for orbit mode,
                 // but it should probably take FOV and screen size into account
