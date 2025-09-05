@@ -95,7 +95,9 @@ impl UiLayout {
     /// Show data while respecting the given UI layout.
     ///
     /// Import: for data only, labels should use [`UiLayout::label`] instead.
-    /// Make sure to use the right syntax highlighting.
+    ///
+    /// Make sure to use the right syntax highlighting. Check [`SyntaxHighlightedBuilder`] docs
+    /// for details.
     // TODO(#6315): must be merged with `Self::label` and have an improved API
     pub fn data_label(
         self,
