@@ -94,7 +94,7 @@ impl Drawable {
     /// Within a single draw data, it puts near objects first so that the GPU can use early-z
     /// to discard objects that are further away.
     #[inline]
-    fn sort_for_opaque_phase(drawables: &mut Vec<Self>) {
+    fn sort_for_opaque_phase(drawables: &mut [Self]) {
         // Unstable sort is faster, but there's a chance we avoid flickering this way.
         drawables.sort_by_key(|drawable| {
             ((drawable.draw_data_plus_rendering_key.0 as u64) << 32)
@@ -109,7 +109,7 @@ impl Drawable {
     /// sorting by draw data index or renderer type at all since two [`Drawable::distance_sort_key`]
     /// are almost certainly going to be different.
     #[inline]
-    fn sort_for_transparent_phase(drawables: &mut Vec<Self>) {
+    fn sort_for_transparent_phase(drawables: &mut [Self]) {
         // Unstable sort is faster, but there's a chance we avoid flickering this way.
         drawables.sort_by_key(|drawable| !drawable.distance_sort_key.to_bits());
     }
