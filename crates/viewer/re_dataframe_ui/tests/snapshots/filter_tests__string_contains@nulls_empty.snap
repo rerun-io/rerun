@@ -1,6 +1,5 @@
 ---
 source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
-assertion_line: 177
 expression: "(filter, result)"
 ---
 (
@@ -16,7 +15,7 @@ expression: "(filter, result)"
                 Field {
                     name: "string",
                     data_type: Utf8,
-                    nullable: false,
+                    nullable: true,
                     dict_id: 0,
                     dict_is_ordered: false,
                     metadata: {},
@@ -29,7 +28,7 @@ expression: "(filter, result)"
             [
               "a",
               "b",
-              "c",
+              null,
               "ab",
               "A B",
               "aBc",

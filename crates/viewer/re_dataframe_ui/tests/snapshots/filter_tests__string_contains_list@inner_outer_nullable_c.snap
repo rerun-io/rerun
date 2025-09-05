@@ -1,6 +1,5 @@
 ---
 source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
-assertion_line: 216
 expression: "(filter, result)"
 ---
 (

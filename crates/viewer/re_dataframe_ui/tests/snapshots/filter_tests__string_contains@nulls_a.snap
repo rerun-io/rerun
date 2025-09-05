@@ -1,13 +1,12 @@
 ---
 source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
-assertion_line: 201
 expression: "(filter, result)"
 ---
 (
     Filter {
         column_name: "string",
         operation: StringContains(
-            "",
+            "a",
         ),
     },
     RecordBatch {
@@ -28,13 +27,11 @@ expression: "(filter, result)"
             StringArray
             [
               "a",
-              "b",
-              null,
               "ab",
               "A B",
               "aBc",
             ],
         ],
-        row_count: 6,
+        row_count: 4,
     },
 )
