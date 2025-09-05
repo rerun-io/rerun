@@ -145,7 +145,7 @@ impl ShareDialog {
         } else {
             (
                 egui::Atom::grow(),
-                &icons::INTERNAL_LINK, // TODO: different icon.
+                &icons::URL,
                 "Copy link",
                 egui::Atom::grow(),
             )
@@ -220,6 +220,8 @@ fn time_range_ui(
             range: AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
         })
     });
+
+    // TODO(#10814): still missing snapshot handling.
 
     let mut entire_range = url_time_range.is_none();
     ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_fn(|ui, _| {
