@@ -436,7 +436,7 @@ impl SpatialView3D {
             &ctx.current_query(),
         );
 
-        let (ui_rect, mut response) =
+        let (ui_rect, response) =
             ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
         if !ui_rect.is_positive() {
@@ -466,28 +466,6 @@ impl SpatialView3D {
             return Ok(());
         }
 
-        let target_config = TargetConfiguration {
-            name: query.space_origin.to_string().into(),
-
-            resolution_in_pixel,
-
-            view_from_world: eye.world_from_rub_view.inverse(),
-            projection_from_view: Projection::Perspective {
-                vertical_fov: eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y),
-                near_plane_distance: eye.near(),
-                aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
-            },
-            viewport_transformation: re_renderer::RectTransform::IDENTITY,
-
-            pixels_per_point: ui.ctx().pixels_per_point(),
-
-            outline_config: query
-                .highlights
-                .any_outlines()
-                .then(|| re_view::outline_config(ui.ctx())),
-            blend_with_background: false,
-        };
-
         // Various ui interactions draw additional lines.
         let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
@@ -515,8 +493,6 @@ impl SpatialView3D {
             state.bounding_boxes.current.extend(glam::Vec3::ZERO);
         }
 
-        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config);
-
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
             collect_ui_labels(&system_output.view_systems),
@@ -527,7 +503,7 @@ impl SpatialView3D {
             SpatialViewKind::ThreeD,
         );
 
-        if let Some(pointer_pos_ui) = response.hover_pos() {
+        let (response, picking_config) = if let Some(pointer_pos_ui) = response.hover_pos() {
             // There's no panning & zooming, so this is an identity transform.
             let ui_pan_and_zoom_from_ui = RectTransform::from_to(ui_rect, ui_rect);
 
@@ -537,21 +513,46 @@ impl SpatialView3D {
                 ui.ctx().pixels_per_point(),
                 &eye,
             );
-            response = crate::picking_ui::picking(
+            crate::picking_ui::picking(
                 ctx,
                 &picking_context,
                 ui,
                 response,
-                &mut view_builder,
                 state,
                 &system_output,
                 &ui_rects,
                 query,
                 SpatialViewKind::ThreeD,
-            )?;
+            )?
         } else {
             state.previous_picking_result = None;
-        }
+            (response, None)
+        };
+
+        let target_config = TargetConfiguration {
+            name: query.space_origin.to_string().into(),
+
+            resolution_in_pixel,
+
+            view_from_world: eye.world_from_rub_view.inverse(),
+            projection_from_view: Projection::Perspective {
+                vertical_fov: eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y),
+                near_plane_distance: eye.near(),
+                aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
+            },
+            viewport_transformation: re_renderer::RectTransform::IDENTITY,
+
+            pixels_per_point: ui.ctx().pixels_per_point(),
+
+            outline_config: query
+                .highlights
+                .any_outlines()
+                .then(|| re_view::outline_config(ui.ctx())),
+            blend_with_background: false,
+            picking_config,
+        };
+
+        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
 
         // Track focused entity if any.
         if let Some(focused_item) = ctx.focused_item {

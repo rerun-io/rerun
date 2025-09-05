@@ -127,7 +127,7 @@ impl RenderDepthClouds {
                 pixels_per_point,
                 ..Default::default()
             },
-        );
+        )?;
 
         let command_buffer = view_builder
             .queue_draw(GenericSkyboxDrawData::new(re_ctx, Default::default()))
@@ -205,7 +205,7 @@ impl RenderDepthClouds {
                 pixels_per_point,
                 ..Default::default()
             },
-        );
+        )?;
 
         let command_buffer = view_builder
             .queue_draw(GenericSkyboxDrawData::new(re_ctx, Default::default()))

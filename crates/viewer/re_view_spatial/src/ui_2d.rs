@@ -3,7 +3,10 @@ use macaw::IsoTransform;
 
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
-use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
+use re_renderer::{
+    ViewPickingConfiguration,
+    view_builder::{TargetConfiguration, ViewBuilder},
+};
 use re_types::blueprint::{
     archetypes::{Background, NearClipPlane, VisualBounds2D},
     components as blueprint_components,
@@ -208,18 +211,6 @@ impl SpatialView2D {
         // Don't let clipping plane become zero
         let near_clip_plane = f32::max(f32::MIN_POSITIVE, *near_clip_plane.0);
 
-        let scene_bounds = *scene_from_ui.to();
-        let Ok(target_config) = setup_target_config(
-            &painter,
-            scene_bounds,
-            near_clip_plane,
-            &query.space_origin.to_string(),
-            query.highlights.any_outlines(),
-            &state.pinhole_at_origin,
-        ) else {
-            return Ok(());
-        };
-
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
             collect_ui_labels(&system_output.view_systems),
@@ -230,30 +221,44 @@ impl SpatialView2D {
             SpatialViewKind::TwoD,
         );
 
-        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config);
-
-        if let Some(pointer_pos_ui) = response.hover_pos() {
+        let picking_config = if let Some(pointer_pos_ui) = response.hover_pos() {
             let picking_context = crate::picking::PickingContext::new(
                 pointer_pos_ui,
                 scene_from_ui,
                 ui.ctx().pixels_per_point(),
                 &eye,
             );
-            crate::picking_ui::picking(
+            let (_response, picking_config) = crate::picking_ui::picking(
                 ctx,
                 &picking_context,
                 ui,
                 response,
-                &mut view_builder,
                 state,
                 &system_output,
                 &ui_rects,
                 query,
                 SpatialViewKind::TwoD,
             )?;
+            picking_config
         } else {
             state.previous_picking_result = None;
-        }
+            None
+        };
+
+        let scene_bounds = *scene_from_ui.to();
+        let Ok(target_config) = setup_target_config(
+            &painter,
+            scene_bounds,
+            near_clip_plane,
+            &query.space_origin.to_string(),
+            query.highlights.any_outlines(),
+            &state.pinhole_at_origin,
+            picking_config,
+        ) else {
+            return Ok(());
+        };
+        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
+
         let view_ctx = self.view_context(ctx, query.view_id, state); // Recreate view state to handle context editing during picking.
 
         for draw_data in system_output.draw_data {
@@ -318,6 +323,7 @@ fn setup_target_config(
     space_name: &str,
     any_outlines: bool,
     scene_pinhole: &Option<Pinhole>,
+    picking_config: Option<ViewPickingConfiguration>,
 ) -> anyhow::Result<TargetConfiguration> {
     // ⚠️ When changing this code, make sure to run `tests/rust/test_pinhole_projection`.
 
@@ -411,6 +417,7 @@ fn setup_target_config(
             pixels_per_point,
             outline_config: any_outlines.then(|| re_view::outline_config(egui_painter.ctx())),
             blend_with_background: false,
+            picking_config,
         }
     })
 }

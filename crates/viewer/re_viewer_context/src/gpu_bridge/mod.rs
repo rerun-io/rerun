@@ -149,11 +149,10 @@ pub fn render_image(
         },
         viewport_transformation: re_renderer::RectTransform::IDENTITY,
         pixels_per_point,
-        outline_config: None,
-        blend_with_background: false,
+        ..Default::default()
     };
 
-    let mut view_builder = ViewBuilder::new(render_ctx, target_config);
+    let mut view_builder = ViewBuilder::new(render_ctx, target_config)?;
 
     view_builder.queue_draw(re_renderer::renderer::RectangleDrawData::new(
         render_ctx,

@@ -29,10 +29,7 @@ use parking_lot::Mutex;
 use smallvec::smallvec;
 
 /// GPU retrieved & processed picking data result.
-pub struct PickingResult<T: 'static + Send + Sync> {
-    /// User data supplied on picking request.
-    pub user_data: T,
-
+pub struct PickingResult {
     /// Picking rect supplied on picking request.
     /// Describes the area of the picking layer that was read back.
     pub rect: RectInt,
@@ -55,7 +52,7 @@ pub struct PickingResult<T: 'static + Send + Sync> {
     world_from_cropped_projection: glam::Mat4,
 }
 
-impl<T: 'static + Send + Sync> PickingResult<T> {
+impl PickingResult {
     /// Returns the picked world position.
     ///
     /// Panics if the position is outside of the picking rect.
@@ -82,10 +79,9 @@ impl<T: 'static + Send + Sync> PickingResult<T> {
 }
 
 /// Type used as user data on the gpu readback belt.
-struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
+struct ReadbackBeltMetadata {
     picking_rect: RectInt,
     world_from_cropped_projection: glam::Mat4,
-    user_data: T,
 
     depth_readback_workaround_in_use: bool,
 }
@@ -174,7 +170,7 @@ impl PickingLayerProcessor {
     /// `enable_picking_target_sampling` should be enabled only for debugging purposes.
     /// It allows to sample the picking layer texture in a shader.
     #[allow(clippy::too_many_arguments)]
-    pub fn new<T: 'static + Send + Sync>(
+    pub fn new(
         ctx: &RenderContext,
         view_name: &DebugLabel,
         screen_resolution: glam::UVec2,
@@ -182,7 +178,6 @@ impl PickingLayerProcessor {
         frame_uniform_buffer_content: &FrameUniformBuffer,
         enable_picking_target_sampling: bool,
         readback_identifier: GpuReadbackIdentifier,
-        readback_user_data: T,
     ) -> Self {
         let mut picking_target_usage =
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC;
@@ -290,7 +285,6 @@ impl PickingLayerProcessor {
             readback_identifier,
             Box::new(ReadbackBeltMetadata {
                 picking_rect,
-                user_data: readback_user_data,
                 world_from_cropped_projection: cropped_projection_from_world.inverse(),
                 depth_readback_workaround_in_use: depth_readback_workaround.is_some(),
             }),
@@ -388,18 +382,18 @@ impl PickingLayerProcessor {
         Ok(())
     }
 
-    /// Returns the latest available picking result for a given identifier and user data type.
+    /// Returns the latest available picking result for a given identifier.
     ///
     /// Ready data that hasn't been retrieved for more than a frame will be discarded.
     ///
-    /// See also [`crate::view_builder::ViewBuilder::schedule_picking_rect`]
-    pub fn readback_result<T: 'static + Send + Sync>(
+    /// See also [`crate::view_builder::ViewPickingConfiguration`]
+    pub fn readback_result(
         ctx: &RenderContext,
         identifier: GpuReadbackIdentifier,
-    ) -> Option<PickingResult<T>> {
-        ctx.gpu_readback_belt.lock().readback_newest_available(
-            identifier,
-            |data, metadata: Box<ReadbackBeltMetadata<T>>| {
+    ) -> Option<PickingResult> {
+        ctx.gpu_readback_belt
+            .lock()
+            .readback_newest_available(identifier, |data, metadata: Box<ReadbackBeltMetadata>| {
                 // Assert that our texture data reinterpretation works out from a pixel size point of view.
                 debug_assert_eq!(
                     Self::PICKING_LAYER_DEPTH_FORMAT
@@ -442,15 +436,14 @@ impl PickingLayerProcessor {
                     picking_depth_data = picking_depth_data.into_iter().step_by(4).collect();
                 }
 
-                PickingResult {
+                Some(PickingResult {
                     picking_id_data,
                     picking_depth_data,
-                    user_data: metadata.user_data,
                     rect: metadata.picking_rect,
                     world_from_cropped_projection: metadata.world_from_cropped_projection,
-                }
-            },
-        )
+                })
+            })
+            .flatten()
     }
 }
 

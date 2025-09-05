@@ -194,7 +194,7 @@ fn picking_gpu(
     re_tracing::profile_function!();
 
     let gpu_picking_result =
-        PickingLayerProcessor::readback_result::<()>(render_ctx, gpu_readback_identifier);
+        PickingLayerProcessor::readback_result(render_ctx, gpu_readback_identifier);
 
     if let Some(gpu_picking_result) = gpu_picking_result {
         // First, figure out where on the rect the cursor is by now.

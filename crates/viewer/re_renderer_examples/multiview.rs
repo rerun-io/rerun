@@ -219,7 +219,7 @@ impl Multiview {
         draw_data: D,
         index: u32,
     ) -> anyhow::Result<(ViewBuilder, wgpu::CommandBuffer)> {
-        let mut view_builder = ViewBuilder::new(re_ctx, target_cfg);
+        let mut view_builder = ViewBuilder::new(re_ctx, target_cfg)?;
 
         if self
             .take_screenshot_next_frame_for_view
