@@ -193,7 +193,7 @@ pub struct ViewEye {
 
     velocity: Vec3,
 
-    /// Tracks if any user input happened that shouldn't interrupt the entity tracking behavioure.
+    /// Tracks if any user input happened that shouldn't interrupt the entity tracking behavior.
     ignore_input: bool,
 }
 
