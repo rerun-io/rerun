@@ -123,6 +123,9 @@ pub enum SystemCommand {
     /// Just like selection highlighting, the exact behavior of focusing is up to the receiving views.
     SetFocus(crate::Item),
 
+    /// Show a notification to the user
+    ShowNotification(re_ui::notifications::Notification),
+
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
