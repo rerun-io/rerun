@@ -22,42 +22,6 @@ pub trait SyntaxHighlighting {
 
 // ----------------------------------------------------------------------------
 
-enum SyntaxHighlightedStyle {
-    StringValue,
-    Identifier,
-    Keyword,
-    Index,
-    Primitive,
-    Syntax,
-    Body,
-    BodyItalics,
-    Custom(Box<TextFormat>),
-    CustomClosure(Box<dyn Fn(&Style) -> TextFormat>),
-}
-
-impl std::fmt::Debug for SyntaxHighlightedStyle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::StringValue => write!(f, "StringValue"),
-            Self::Identifier => write!(f, "Identifier"),
-            Self::Keyword => write!(f, "Keyword"),
-            Self::Index => write!(f, "Index"),
-            Self::Primitive => write!(f, "Primitive"),
-            Self::Syntax => write!(f, "Syntax"),
-            Self::Body => write!(f, "Body"),
-            Self::BodyItalics => write!(f, "BodyItalics"),
-            Self::Custom(_) => write!(f, "Custom(…)"),
-            Self::CustomClosure(_) => write!(f, "CustomClosure(…)"),
-        }
-    }
-}
-
-#[derive(Debug)]
-struct SyntaxHighlightedPart {
-    byte_range: std::ops::Range<usize>,
-    style: SyntaxHighlightedStyle,
-}
-
 /// Easily build syntax-highlighted text.
 #[derive(Debug, Default)]
 pub struct SyntaxHighlightedBuilder {
@@ -124,59 +88,106 @@ impl SyntaxHighlightedBuilder {
         });
         self
     }
+}
 
-    /// Some string data. Will be quoted.
-    pub fn append_string_value(&mut self, portion: &str) -> &mut Self {
-        let quote = Self::QUOTE_CHAR.to_string();
-        self.append_kind(SyntaxHighlightedStyle::StringValue, &quote);
-        self.append_kind(SyntaxHighlightedStyle::StringValue, portion);
-        self.append_kind(SyntaxHighlightedStyle::StringValue, &quote);
-        self
-    }
+macro_rules! impl_style_fns {
+    ($docs:literal, $pure:ident, $with:ident, $append:ident, $style:ident) => {
+        impl_style_fns!($docs, $pure, $with, $append, (self, portion) {
+            self.append_kind(SyntaxHighlightedStyle::$style, portion);
+        });
+    };
+    ($docs:literal, $pure:ident, $with:ident, $append:ident, ($self:ident, $portion:ident) $content:expr) => {
+        #[doc = $docs]
+        #[inline]
+        pub fn $with(mut self, portion: &str) -> Self {
+            self.$append(portion);
+            self
+        }
 
-    /// A string identifier.
-    ///
-    /// E.g. a variable name, field name, etc. Won't be quoted.
-    pub fn append_identifier(&mut self, portion: &str) -> &mut Self {
-        self.append_kind(SyntaxHighlightedStyle::Identifier, portion);
-        self
-    }
+        #[doc = $docs]
+        #[inline]
+        pub fn $append(&mut $self, $portion: &str) -> &mut Self {
+            $content
+            $self
+        }
 
-    /// A keyword, e.g. a filter operator, like `and` or `all`
-    pub fn append_keyword(&mut self, portion: &str) -> &mut Self {
-        self.append_kind(SyntaxHighlightedStyle::Keyword, portion);
-        self
-    }
+        #[doc = $docs]
+        #[inline]
+        pub fn $pure(portion: &str) -> Self {
+            Self::new().$with(portion)
+        }
+    };
+}
 
-    /// An index number, e.g. an array index.
-    pub fn append_index(&mut self, portion: &str) -> &mut Self {
-        self.append_kind(SyntaxHighlightedStyle::Index, portion);
-        self
-    }
+impl SyntaxHighlightedBuilder {
+    impl_style_fns!(
+        "Some primitive value, e.g. a number or bool.",
+        primitive,
+        with_primitive,
+        append_primitive,
+        Primitive
+    );
 
-    /// Some primitive value, e.g. a number or bool.
-    pub fn append_primitive(&mut self, portion: &str) -> &mut Self {
-        self.append_kind(SyntaxHighlightedStyle::Primitive, portion);
-        self
-    }
+    impl_style_fns!(
+        "A string identifier.\n\nE.g. a variable name, field name, etc. Won't be quoted.",
+        identifier,
+        with_identifier,
+        append_identifier,
+        Identifier
+    );
 
-    /// Some syntax, e.g. brackets, commas, colons, etc.
-    pub fn append_syntax(&mut self, portion: &str) -> &mut Self {
-        self.append_kind(SyntaxHighlightedStyle::Syntax, portion);
-        self
-    }
+    impl_style_fns!(
+        "Some string data. Will be quoted.",
+        string_value,
+        with_string_value,
+        append_string_value,
+        (self, portion) {
+            let quote = Self::QUOTE_CHAR.to_string();
+            self.append_kind(SyntaxHighlightedStyle::StringValue, &quote);
+            self.append_kind(SyntaxHighlightedStyle::StringValue, portion);
+            self.append_kind(SyntaxHighlightedStyle::StringValue, &quote);
+        }
+    );
 
-    /// Append regular body text.
-    pub fn append_body(&mut self, portion: &str) -> &mut Self {
-        self.append_kind(SyntaxHighlightedStyle::Body, portion);
-        self
-    }
+    impl_style_fns!(
+        "A keyword, e.g. a filter operator, like `and` or `all`",
+        keyword,
+        with_keyword,
+        append_keyword,
+        Keyword
+    );
 
-    /// Append _italic_ body text.
-    pub fn append_body_italics(&mut self, portion: &str) -> &mut Self {
-        self.append_kind(SyntaxHighlightedStyle::BodyItalics, portion);
-        self
-    }
+    impl_style_fns!(
+        "An index number, e.g. an array index.",
+        index,
+        with_index,
+        append_index,
+        Index
+    );
+
+    impl_style_fns!(
+        "Some syntax, e.g. brackets, commas, colons, etc.",
+        syntax,
+        with_syntax,
+        append_syntax,
+        Syntax
+    );
+
+    impl_style_fns!(
+        "Body text, e.g. normal text.",
+        body,
+        with_body,
+        append_body,
+        Body
+    );
+
+    impl_style_fns!(
+        "Body text in italics, e.g. for emphasis.",
+        body_italics,
+        with_body_italics,
+        append_body_italics,
+        BodyItalics
+    );
 
     /// Append text with a custom format.
     #[inline]
@@ -195,48 +206,27 @@ impl SyntaxHighlightedBuilder {
         self
     }
 
+    /// With a custom format.
     #[inline]
-    pub fn with_string_value(mut self, portion: &str) -> Self {
-        self.append_string_value(portion);
+    pub fn with_format(mut self, text: &str, format: TextFormat) -> Self {
+        self.append_with_format(text, format);
         self
     }
 
+    /// With a custom format closure.
     #[inline]
-    pub fn with_keyword(mut self, portion: &str) -> Self {
-        self.append_keyword(portion);
+    pub fn with_format_closure<F>(mut self, text: &str, f: F) -> Self
+    where
+        F: 'static + Fn(&Style) -> TextFormat,
+    {
+        self.append_with_format_closure(text, f);
         self
     }
+}
 
-    #[inline]
-    pub fn with_syntax(mut self, portion: &str) -> Self {
-        self.append_syntax(portion);
-        self
-    }
+// ----------------------------------------------------------------------------
 
-    #[inline]
-    pub fn with_body(mut self, portion: &str) -> Self {
-        self.append_body(portion);
-        self
-    }
-
-    #[inline]
-    pub fn with_index(mut self, portion: &str) -> Self {
-        self.append_index(portion);
-        self
-    }
-
-    #[inline]
-    pub fn with_identifier(mut self, portion: &str) -> Self {
-        self.append_identifier(portion);
-        self
-    }
-
-    #[inline]
-    pub fn with_primitive(mut self, portion: &str) -> Self {
-        self.append_primitive(portion);
-        self
-    }
-
+impl SyntaxHighlightedBuilder {
     #[inline]
     pub fn into_job(self, style: &Style) -> LayoutJob {
         let mut job = LayoutJob {
@@ -261,6 +251,44 @@ impl SyntaxHighlightedBuilder {
     pub fn into_widget_text(self, style: &Style) -> egui::WidgetText {
         self.into_job(style).into()
     }
+}
+
+// ----------------------------------------------------------------------------
+
+enum SyntaxHighlightedStyle {
+    StringValue,
+    Identifier,
+    Keyword,
+    Index,
+    Primitive,
+    Syntax,
+    Body,
+    BodyItalics,
+    Custom(Box<TextFormat>),
+    CustomClosure(Box<dyn Fn(&Style) -> TextFormat>),
+}
+
+impl std::fmt::Debug for SyntaxHighlightedStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::StringValue => write!(f, "StringValue"),
+            Self::Identifier => write!(f, "Identifier"),
+            Self::Keyword => write!(f, "Keyword"),
+            Self::Index => write!(f, "Index"),
+            Self::Primitive => write!(f, "Primitive"),
+            Self::Syntax => write!(f, "Syntax"),
+            Self::Body => write!(f, "Body"),
+            Self::BodyItalics => write!(f, "BodyItalics"),
+            Self::Custom(_) => write!(f, "Custom(…)"),
+            Self::CustomClosure(_) => write!(f, "CustomClosure(…)"),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct SyntaxHighlightedPart {
+    byte_range: std::ops::Range<usize>,
+    style: SyntaxHighlightedStyle,
 }
 
 impl SyntaxHighlightedStyle {
