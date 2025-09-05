@@ -12,12 +12,12 @@ use egui::{Color32, Style, TextFormat, text::LayoutJob};
 // ----------------------------------------------------------------------------
 pub trait SyntaxHighlighting {
     fn syntax_highlighted(&self, style: &Style) -> LayoutJob {
-        let mut job = LayoutJob::default();
-        self.syntax_highlight_into(style, &mut job);
-        job
+        let mut builder = SyntaxHighlightedBuilder::new(style);
+        self.syntax_highlight_into(&mut builder);
+        builder.job
     }
 
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob);
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>);
 }
 
 // ----------------------------------------------------------------------------
@@ -40,48 +40,64 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
     }
 
     #[inline]
-    pub fn append(mut self, portion: &dyn SyntaxHighlighting) -> Self {
-        portion.syntax_highlight_into(self.style, &mut self.job);
+    pub fn with(mut self, portion: &dyn SyntaxHighlighting) -> Self {
+        portion.syntax_highlight_into(&mut self);
+        self
+    }
+
+    #[inline]
+    pub fn append(&mut self, portion: &dyn SyntaxHighlighting) -> &mut Self {
+        portion.syntax_highlight_into(self);
         self
     }
 
     /// Some string data. Will be quoted.
-    pub fn code_string_value(&mut self, portion: &str) {
-        let mut format = monospace_text_format(self.style);
-        format.color = self.tokens.code_string;
+    pub fn append_string_value(&mut self, portion: &str) -> &mut Self {
+        let format = monospace_with_color(self.style, self.tokens.code_string);
         self.job.append("\"", 0.0, format.clone());
         self.job.append(portion, 0.0, format.clone());
         self.job.append("\"", 0.0, format);
+        self
     }
 
     /// A string identifier.
     ///
     /// E.g. a variable name, field name, etc. Won't be quoted.
-    pub fn code_identifier(&mut self, portion: &str) {
-        let mut format = monospace_text_format(self.style);
-        format.color = self.tokens.text_default;
+    pub fn append_identifier(&mut self, portion: &str) -> &mut Self {
+        let format = monospace_with_color(self.style, self.tokens.text_default);
         self.job.append(portion, 0.0, format);
+        self
     }
 
     /// An index number, e.g. an array index.
-    pub fn code_index(&mut self, portion: &str) {
-        let mut format = monospace_text_format(self.style);
-        format.color = self.tokens.code_index;
+    pub fn append_index(&mut self, portion: &str) -> &mut Self {
+        let format = monospace_with_color(self.style, self.tokens.code_index);
         self.job.append(portion, 0.0, format);
+        self
     }
 
     /// Some primitive value, e.g. a number or bool.
-    pub fn code_primitive(&mut self, portion: &str) {
-        let mut format = monospace_text_format(self.style);
-        format.color = self.tokens.code_primitive;
+    pub fn append_primitive(&mut self, portion: &str) -> &mut Self {
+        let format = monospace_with_color(self.style, self.tokens.code_primitive);
         self.job.append(portion, 0.0, format);
+        self
     }
 
     /// Some syntax, e.g. brackets, commas, colons, etc.
-    pub fn code_syntax(&mut self, portion: &str) {
-        let mut format = monospace_text_format(self.style);
-        format.color = self.tokens.text_strong;
+    pub fn append_syntax(&mut self, portion: &str) -> &mut Self {
+        let format = monospace_with_color(self.style, self.tokens.text_strong);
         self.job.append(portion, 0.0, format);
+        self
+    }
+
+    #[inline]
+    pub fn append_with_format(
+        &mut self,
+        text: &str,
+        format: impl Fn(&'a Style) -> TextFormat,
+    ) -> &mut Self {
+        self.job.append(text, 0.0, format(self.style));
+        self
     }
 
     #[inline]
@@ -121,104 +137,99 @@ fn text_format(style: &Style) -> TextFormat {
     }
 }
 
-fn faint_text_format(style: &Style) -> TextFormat {
-    TextFormat {
-        color: style.visuals.strong_text_color(),
-        ..text_format(style)
-    }
-}
-
-fn monospace_text_format(style: &Style) -> TextFormat {
+/// Monospace text format with a specific color (that may be overridden by the style).
+fn monospace_with_color(style: &Style, color: Color32) -> TextFormat {
     TextFormat {
         font_id: egui::TextStyle::Monospace.resolve(style),
-        color: style.visuals.text_color(),
+        color: style.visuals.override_text_color.unwrap_or(color),
         ..Default::default()
     }
 }
 
 impl SyntaxHighlighting for &'_ str {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        job.append(self.to_owned(), 0.0, text_format(style));
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+        builder.append_with_format(self, text_format);
     }
 }
 
 impl SyntaxHighlighting for String {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        job.append(self, 0.0, text_format(style));
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+        builder.append_with_format(self, text_format);
     }
 }
 
 impl SyntaxHighlighting for EntityPathPart {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        job.append(&self.ui_string(), 0.0, text_format(style));
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+        builder.append_identifier(&self.ui_string());
     }
 }
 
 impl SyntaxHighlighting for Instance {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         if self.is_all() {
-            job.append("all", 0.0, text_format(style));
+            builder.append_primitive("all");
         } else {
-            job.append(&re_format::format_uint(self.get()), 0.0, text_format(style));
+            builder.append_index(&re_format::format_uint(self.get()));
         }
     }
 }
 
 impl SyntaxHighlighting for EntityPath {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        job.append("/", 0.0, faint_text_format(style));
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+        builder.append_syntax("/");
 
         for (i, part) in self.iter().enumerate() {
             if i != 0 {
-                job.append("/", 0.0, faint_text_format(style));
+                builder.append_syntax("/");
             }
-            part.syntax_highlight_into(style, job);
+            builder.append(part);
         }
     }
 }
 
 impl SyntaxHighlighting for InstancePath {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        self.entity_path.syntax_highlight_into(style, job);
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+        builder.append(&self.entity_path);
         if self.instance.is_specific() {
-            InstanceInBrackets(self.instance).syntax_highlight_into(style, job);
+            builder.append(&InstanceInBrackets(self.instance));
         }
     }
 }
 
 impl SyntaxHighlighting for ComponentType {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        self.short_name().syntax_highlight_into(style, job);
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+        builder.append_identifier(self.short_name());
     }
 }
 
 impl SyntaxHighlighting for ArchetypeName {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        self.short_name().syntax_highlight_into(style, job);
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+        builder.append_identifier(self.as_str());
     }
 }
 
 impl SyntaxHighlighting for ComponentIdentifier {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        self.as_str().syntax_highlight_into(style, job);
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+        builder.append_identifier(self.as_ref());
     }
 }
 
 impl SyntaxHighlighting for ComponentDescriptor {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        self.display_name().syntax_highlight_into(style, job);
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+        builder.append_identifier(self.display_name());
     }
 }
 
 impl SyntaxHighlighting for ComponentPath {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
         let Self {
             entity_path,
             component_descriptor,
         } = self;
-        entity_path.syntax_highlight_into(style, job);
-        job.append(":", 0.0, faint_text_format(style));
-        component_descriptor.syntax_highlight_into(style, job);
+        builder
+            .append(entity_path)
+            .append_syntax(":")
+            .append(component_descriptor);
     }
 }
 
@@ -226,9 +237,10 @@ impl SyntaxHighlighting for ComponentPath {
 pub struct InstanceInBrackets(pub Instance);
 
 impl SyntaxHighlighting for InstanceInBrackets {
-    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
-        job.append("[", 0.0, faint_text_format(style));
-        self.0.syntax_highlight_into(style, job);
-        job.append("]", 0.0, faint_text_format(style));
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+        builder
+            .append_syntax("[")
+            .append(&self.0)
+            .append_syntax("]");
     }
 }

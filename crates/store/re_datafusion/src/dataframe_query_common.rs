@@ -29,6 +29,7 @@ use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest};
 use re_protos::common::v1alpha1::ext::ScanParameters;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_tuid::Tuid;
@@ -72,9 +73,11 @@ impl DataframeQueryTableProvider {
 
         let schema = client
             .inner()
-            .get_dataset_schema(GetDatasetSchemaRequest {
-                dataset_id: Some(dataset_id.into()),
-            })
+            .get_dataset_schema(
+                tonic::Request::new(GetDatasetSchemaRequest {})
+                    .with_entry_id(dataset_id)
+                    .map_err(|err| exec_datafusion_err!("{err}"))?,
+            )
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?
             .into_inner()
@@ -135,7 +138,6 @@ impl DataframeQueryTableProvider {
         };
 
         let dataset_query = QueryDatasetRequest {
-            dataset_id: Some(dataset_id.into()),
             partition_ids: partition_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
@@ -161,7 +163,11 @@ impl DataframeQueryTableProvider {
 
         let response_stream = client
             .inner()
-            .query_dataset(dataset_query)
+            .query_dataset(
+                tonic::Request::new(dataset_query)
+                    .with_entry_id(dataset_id)
+                    .map_err(|err| exec_datafusion_err!("{err}"))?,
+            )
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?
             .into_inner();

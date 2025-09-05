@@ -24,6 +24,10 @@ from .image import Image
 from .instance_poses3d import InstancePoses3D
 from .line_strips2d import LineStrips2D
 from .line_strips3d import LineStrips3D
+from .mcap_channel import McapChannel
+from .mcap_message import McapMessage
+from .mcap_schema import McapSchema
+from .mcap_statistics import McapStatistics
 from .mesh3d import Mesh3D
 from .pinhole import Pinhole
 from .points2d import Points2D
@@ -64,6 +68,10 @@ __all__ = [
     "InstancePoses3D",
     "LineStrips2D",
     "LineStrips3D",
+    "McapChannel",
+    "McapMessage",
+    "McapSchema",
+    "McapStatistics",
     "Mesh3D",
     "Pinhole",
     "Points2D",

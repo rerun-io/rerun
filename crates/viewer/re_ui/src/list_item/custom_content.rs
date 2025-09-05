@@ -152,6 +152,11 @@ impl ListItemContent for CustomContent<'_> {
                 .max_rect(content_rect)
                 .layout(egui::Layout::left_to_right(egui::Align::Center)),
             |ui| {
+                // When selected we override the text color so e.g. syntax highlighted code
+                // doesn't become unreadable
+                if context.visuals.selected {
+                    ui.visuals_mut().override_text_color = Some(context.visuals.text_color());
+                }
                 content_ui(ui, context);
             },
         );

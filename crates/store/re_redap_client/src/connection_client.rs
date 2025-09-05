@@ -29,6 +29,7 @@ use re_protos::{
         TaskId,
         ext::{IfDuplicateBehavior, PartitionId},
     },
+    headers::RerunHeadersInjectorExt as _,
     missing_field,
 };
 
@@ -149,9 +150,9 @@ where
     ) -> Result<DatasetEntry, StreamError> {
         let response: ReadDatasetEntryResponse = self
             .inner()
-            .read_dataset_entry(ReadDatasetEntryRequest {
-                id: Some(entry_id.into()),
-            })
+            .read_dataset_entry(
+                tonic::Request::new(ReadDatasetEntryRequest {}).with_entry_id(entry_id)?,
+            )
             .await?
             .into_inner()
             .try_into()?;
@@ -205,13 +206,15 @@ where
 
         let mut stream = self
             .inner()
-            .scan_partition_table(tonic::Request::new(
-                ScanPartitionTableRequest {
-                    dataset_id: entry_id,
-                    columns: vec![COLUMN_NAME.to_owned()],
-                }
-                .into(),
-            ))
+            .scan_partition_table(
+                tonic::Request::new(
+                    ScanPartitionTableRequest {
+                        columns: vec![COLUMN_NAME.to_owned()],
+                    }
+                    .into(),
+                )
+                .with_entry_id(entry_id)?,
+            )
             .await?
             .into_inner();
 
@@ -248,16 +251,15 @@ where
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<Vec<RegisterWithDatasetTaskDescriptor>, StreamError> {
+        let req = tonic::Request::new(RegisterWithDatasetRequest {
+            data_sources,
+            on_duplicate,
+        })
+        .with_entry_id(dataset_id)?;
+
         let response = self
             .inner()
-            .register_with_dataset(tonic::Request::new(
-                RegisterWithDatasetRequest {
-                    dataset_id,
-                    data_sources,
-                    on_duplicate,
-                }
-                .into(),
-            ))
+            .register_with_dataset(req.map(Into::into))
             .await?
             .into_inner()
             .data

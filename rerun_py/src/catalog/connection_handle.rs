@@ -13,6 +13,7 @@ use re_dataframe::ChunkStoreHandle;
 use re_datafusion::query_from_query_expression;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
     cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
     cloud::v1alpha1::{
@@ -234,9 +235,11 @@ impl ConnectionHandle {
                 self.client()
                     .await?
                     .inner()
-                    .get_dataset_schema(GetDatasetSchemaRequest {
-                        dataset_id: Some(entry_id.into()),
-                    })
+                    .get_dataset_schema(
+                        tonic::Request::new(GetDatasetSchemaRequest {})
+                            .with_entry_id(entry_id)
+                            .map_err(to_py_err)?,
+                    )
                     .await
                     .map_err(to_py_err)?
                     .into_inner()
@@ -735,6 +738,30 @@ impl ConnectionHandle {
 
         let query = query_from_query_expression(query_expression);
 
+        let request = QueryDatasetRequest {
+            partition_ids: partition_ids
+                .iter()
+                .map(|id| id.as_ref().to_owned().into())
+                .collect(),
+            chunk_ids: vec![],
+            entity_paths: entity_paths
+                .into_iter()
+                .map(|p| (*p).clone().into())
+                .collect(),
+            select_all_entity_paths,
+            fuzzy_descriptors,
+            exclude_static_data: false,
+            exclude_temporal_data: false,
+            query: Some(query.into()),
+            scan_parameters: Some(
+                ScanParameters {
+                    columns: vec!["chunk_partition_id".to_owned(), "chunk_id".to_owned()],
+                    ..Default::default()
+                }
+                .into(),
+            ),
+        };
+
         wait_for_future(
             py,
             async {
@@ -742,33 +769,11 @@ impl ConnectionHandle {
                     .client()
                     .await?
                     .inner()
-                    .query_dataset(QueryDatasetRequest {
-                        dataset_id: Some(dataset_id.into()),
-                        partition_ids: partition_ids
-                            .iter()
-                            .map(|id| id.as_ref().to_owned().into())
-                            .collect(),
-                        chunk_ids: vec![],
-                        entity_paths: entity_paths
-                            .into_iter()
-                            .map(|p| (*p).clone().into())
-                            .collect(),
-                        select_all_entity_paths,
-                        fuzzy_descriptors,
-                        exclude_static_data: false,
-                        exclude_temporal_data: false,
-                        query: Some(query.into()),
-                        scan_parameters: Some(
-                            ScanParameters {
-                                columns: vec![
-                                    "chunk_partition_id".to_owned(),
-                                    "chunk_id".to_owned(),
-                                ],
-                                ..Default::default()
-                            }
-                            .into(),
-                        ),
-                    })
+                    .query_dataset(
+                        tonic::Request::new(request)
+                            .with_entry_id(dataset_id)
+                            .map_err(to_py_err)?,
+                    )
                     .await
                     .map_err(to_py_err)?
                     .into_inner();
