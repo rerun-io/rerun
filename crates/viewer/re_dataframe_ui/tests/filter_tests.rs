@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, BooleanArray, ListArray};
+use arrow::array::{Array, ArrayRef, BooleanArray, ListArray, StringArray};
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::record_batch::RecordBatch;
@@ -23,6 +23,43 @@ impl TestColumn {
         let field = Field::new(name, array.data_type().clone(), nullable);
 
         Self { array, field }
+    }
+
+    fn strings(nullable: bool) -> Self {
+        Self::new(
+            "string",
+            StringArray::from(vec!["a", "b", "c", "ab", "A B", "aBc"]),
+            nullable,
+        )
+    }
+
+    fn strings_nulls() -> Self {
+        Self::new(
+            "string",
+            StringArray::from(vec![
+                Some("a"),
+                Some("b"),
+                None,
+                Some("ab"),
+                Some("A B"),
+                Some("aBc"),
+            ]),
+            true,
+        )
+    }
+
+    fn strings_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
+        let values = StringArray::from(vec!["a", "b", "c", "ab", "A B", "aBc"]);
+        let offsets = OffsetBuffer::new(vec![0i32, 2, 4, 6].into());
+        let strings_lists = ListArray::try_new(
+            Arc::new(Field::new("item", DataType::Utf8, inner_nullable)),
+            offsets,
+            Arc::new(values),
+            None,
+        )
+        .expect("failed to create a string list array");
+
+        Self::new("string_list", strings_lists, outer_nullable)
     }
 
     fn bools(nullable: bool) -> Self {
@@ -135,7 +172,83 @@ macro_rules! filter_snapshot {
     };
 }
 
-//TODO(ab): add tests for string stuff
+#[tokio::test]
+async fn test_string_contains() {
+    filter_snapshot!(
+        Filter::new("string", FilterOperation::StringContains(String::new())),
+        TestColumn::strings(false),
+        "empty"
+    );
+
+    filter_snapshot!(
+        Filter::new("string", FilterOperation::StringContains("a".to_owned())),
+        TestColumn::strings(false),
+        "a"
+    );
+
+    filter_snapshot!(
+        Filter::new("string", FilterOperation::StringContains("A".to_owned())),
+        TestColumn::strings(false),
+        "A"
+    );
+
+    filter_snapshot!(
+        Filter::new("string", FilterOperation::StringContains("A".to_owned())),
+        TestColumn::strings(true),
+        "nullable_A"
+    );
+
+    filter_snapshot!(
+        Filter::new("string", FilterOperation::StringContains(String::new())),
+        TestColumn::strings_nulls(),
+        "nulls_empty"
+    );
+
+    filter_snapshot!(
+        Filter::new("string", FilterOperation::StringContains("a".to_owned())),
+        TestColumn::strings_nulls(),
+        "nulls_a"
+    );
+}
+
+#[tokio::test]
+async fn test_string_contains_list() {
+    filter_snapshot!(
+        Filter::new(
+            "string_list",
+            FilterOperation::StringContains("c".to_owned())
+        ),
+        TestColumn::strings_lists(true, true),
+        "inner_outer_nullable_c"
+    );
+
+    filter_snapshot!(
+        Filter::new(
+            "string_list",
+            FilterOperation::StringContains("c".to_owned())
+        ),
+        TestColumn::strings_lists(true, false),
+        "inner_nullable_c"
+    );
+
+    filter_snapshot!(
+        Filter::new(
+            "string_list",
+            FilterOperation::StringContains("c".to_owned())
+        ),
+        TestColumn::strings_lists(false, true),
+        "outer_nullable_c"
+    );
+
+    filter_snapshot!(
+        Filter::new(
+            "string_list",
+            FilterOperation::StringContains("c".to_owned())
+        ),
+        TestColumn::strings_lists(false, false),
+        "c"
+    );
+}
 
 #[tokio::test]
 async fn test_boolean_equals() {
@@ -196,5 +309,3 @@ async fn test_boolean_equals_list() {
         "true"
     );
 }
-
-//TODO(ab): bool lists with nulls
