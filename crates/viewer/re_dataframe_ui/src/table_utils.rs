@@ -1,5 +1,7 @@
 use ahash::HashSet;
-use egui::{Color32, Context, Frame, Id, RichText, Stroke, Style};
+use egui::containers::menu::{MenuButton, MenuConfig};
+use egui::{Button, Color32, Context, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style};
+
 use re_ui::{UiExt as _, design_tokens_of, icons};
 
 /// This applies some fixes so that the column resize bar is correctly displayed.
@@ -201,7 +203,7 @@ impl TableConfig {
                     ui,
                     |ui| {
                         handle.ui(ui, |ui| {
-                            ui.small_icon(&icons::DND_HANDLE, None);
+                            ui.small_icon(&icons::DND_HANDLE, Some(ui.visuals().text_color()));
                         });
                         let mut label = RichText::new(&column.name);
                         if visible {
@@ -230,7 +232,12 @@ impl TableConfig {
     }
 
     pub fn button_ui(&mut self, ui: &mut egui::Ui) {
-        ui.menu_image_text_button(icons::SETTINGS.as_image(), "Columns", |ui| {
+        MenuButton::from_button(Button::image_and_text(
+            icons::SETTINGS.as_image(),
+            "Columns",
+        ))
+        .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
+        .ui(ui, |ui| {
             self.ui(ui);
         });
     }

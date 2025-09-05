@@ -27,6 +27,7 @@ pub fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecor
         .iter()
         .filter(is_component_column)
         .any(|field| !matches!(field.data_type(), arrow::datatypes::DataType::List(_)));
+
     if !needs_migration {
         return batch.clone();
     }

@@ -35,7 +35,6 @@ re_log = { workspace = true, features = ["setup"] }
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
-re_tuid.workspace = true
 
 # External
 anyhow.workspace = true

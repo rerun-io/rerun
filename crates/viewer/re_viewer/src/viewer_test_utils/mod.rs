@@ -32,12 +32,13 @@ pub fn viewer_harness() -> Harness<'static, App> {
 }
 
 /// Steps through the harness until the `predicate` closure returns `true`.
-pub async fn step_until<'app, 'harness, Predicate>(
+#[track_caller]
+pub fn step_until<'app, 'harness, Predicate>(
     test_description: &'static str,
     harness: &'harness mut egui_kittest::Harness<'app, App>,
     mut predicate: Predicate,
-    step_duration: tokio::time::Duration,
-    max_duration: tokio::time::Duration,
+    step_duration: std::time::Duration,
+    max_duration: std::time::Duration,
 ) where
     Predicate: for<'a> FnMut(&'a egui_kittest::Harness<'app, App>) -> bool,
 {
@@ -45,7 +46,7 @@ pub async fn step_until<'app, 'harness, Predicate>(
     let mut success = predicate(harness);
     while !success && start_time.elapsed() <= max_duration {
         harness.step();
-        tokio::time::sleep(step_duration).await;
+        std::thread::sleep(step_duration);
         harness.step();
         success = predicate(harness);
     }

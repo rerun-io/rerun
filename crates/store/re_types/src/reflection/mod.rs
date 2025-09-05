@@ -481,6 +481,26 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ChannelId as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A 16-bit ID representing an MCAP channel.\n\nUsed to identify specific channels within an MCAP file.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: ChannelId::arrow_datatype(),
+                verify_arrow_array: ChannelId::verify_arrow_array,
+            },
+        ),
+        (
+            <ChannelMessageCounts as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A mapping of channel IDs to their respective message counts.\n\nUsed in MCAP statistics to track how many messages were recorded per channel.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ChannelMessageCounts::default().to_arrow()?),
+                datatype: ChannelMessageCounts::arrow_datatype(),
+                verify_arrow_array: ChannelMessageCounts::verify_arrow_array,
+            },
+        ),
+        (
             <ClassId as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
@@ -518,6 +538,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(Colormap::default().to_arrow()?),
                 datatype: Colormap::arrow_datatype(),
                 verify_arrow_array: Colormap::verify_arrow_array,
+            },
+        ),
+        (
+            <Count as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A generic count value.\n\nUsed for counting various entities like messages, schemas, channels, etc.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: Count::arrow_datatype(),
+                verify_arrow_array: Count::verify_arrow_array,
             },
         ),
         (
@@ -678,6 +708,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(Interactive::default().to_arrow()?),
                 datatype: Interactive::arrow_datatype(),
                 verify_arrow_array: Interactive::verify_arrow_array,
+            },
+        ),
+        (
+            <KeyValuePairs as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A map of string keys to string values.\n\nThis component can be used to attach arbitrary metadata or annotations to entities.\nEach key-value pair is stored as a UTF-8 string mapping.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(KeyValuePairs::default().to_arrow()?),
+                datatype: KeyValuePairs::arrow_datatype(),
+                verify_arrow_array: KeyValuePairs::verify_arrow_array,
             },
         ),
         (
@@ -958,6 +998,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(Scale3D::default().to_arrow()?),
                 datatype: Scale3D::arrow_datatype(),
                 verify_arrow_array: Scale3D::verify_arrow_array,
+            },
+        ),
+        (
+            <SchemaId as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A 16-bit unique identifier for a schema within the MCAP file.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: SchemaId::arrow_datatype(),
+                verify_arrow_array: SchemaId::verify_arrow_array,
             },
         ),
         (
@@ -1683,7 +1733,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name : "opacity",
                     display_name : "Opacity", component_type : "rerun.components.Opacity"
                     .into(), docstring_md :
-                    "Opacity of the image, useful for layering several images.\n\nDefaults to 1.0 (fully opaque).",
+                    "Opacity of the image, useful for layering several media.\n\nDefaults to 1.0 (fully opaque).",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_type :
                     "rerun.components.DrawOrder".into(), docstring_md :
@@ -1809,7 +1859,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "opacity", display_name :
                     "Opacity", component_type : "rerun.components.Opacity".into(),
                     docstring_md :
-                    "Opacity of the image, useful for layering several images.\n\nDefaults to 1.0 (fully opaque).",
+                    "Opacity of the image, useful for layering several media.\n\nDefaults to 1.0 (fully opaque).",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_type :
                     "rerun.components.DrawOrder".into(), docstring_md :
@@ -1912,6 +1962,123 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "class_ids", display_name : "Class ids", component_type :
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the lines.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.McapChannel"),
+            ArchetypeReflection {
+                display_name: "Mcap channel",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "id", display_name : "Id",
+                    component_type : "rerun.components.ChannelId".into(), docstring_md :
+                    "Unique identifier for this channel within the MCAP file.\n\nChannel IDs must be unique within a single MCAP file and are used to associate\nmessages with their corresponding channel definition.",
+                    is_required : true, }, ArchetypeFieldReflection { name : "topic",
+                    display_name : "Topic", component_type : "rerun.components.Text"
+                    .into(), docstring_md :
+                    "The topic name that this channel publishes to.\n\nTopics are hierarchical paths from the original robotics system (e.g., \"/sensors/camera/image\")\nthat categorize and organize different data streams.\nTopics are separate from Rerun's entity paths, but they often can be mapped to them.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "message_encoding", display_name : "Message encoding", component_type
+                    : "rerun.components.Text".into(), docstring_md :
+                    "The encoding format used for messages in this channel.\n\nCommon encodings include:\n* `ros1` - ROS1 message format\n* `cdr` - Common Data Representation (CDR) message format, used by ROS2\n* `protobuf` - Protocol Buffers\n* `json` - JSON encoding",
+                    is_required : true, }, ArchetypeFieldReflection { name : "metadata",
+                    display_name : "Metadata", component_type :
+                    "rerun.components.KeyValuePairs".into(), docstring_md :
+                    "Additional metadata for this channel stored as key-value pairs.\n\nThis can include channel-specific configuration, description, units, coordinate frames,\nor any other contextual information that helps interpret the data in this channel.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.McapMessage"),
+            ArchetypeReflection {
+                display_name: "Mcap message",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "data", display_name : "Data",
+                    component_type : "rerun.components.Blob".into(), docstring_md :
+                    "The raw message payload as a binary blob.\n\nThis contains the actual message data encoded according to the format specified\nby the associated channel's `message_encoding` field. The structure and interpretation\nof this binary data depends on the encoding format (e.g., ros1, cdr, protobuf)\nand the message schema defined for the channel.",
+                    is_required : true, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.McapSchema"),
+            ArchetypeReflection {
+                display_name: "Mcap schema",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "id", display_name : "Id",
+                    component_type : "rerun.components.SchemaId".into(), docstring_md :
+                    "Unique identifier for this schema within the MCAP file.\n\nSchema IDs must be unique within an MCAP file and are referenced by channels\nto specify their message structure. A single schema can be shared across multiple channels.",
+                    is_required : true, }, ArchetypeFieldReflection { name : "name",
+                    display_name : "Name", component_type : "rerun.components.Text"
+                    .into(), docstring_md :
+                    "Human-readable name identifying this schema.\n\nSchema names typically describe the message type or data structure\n(e.g., `\"geometry_msgs/msg/Twist\"`, `\"sensor_msgs/msg/Image\"`, `\"MyCustomMessage\"`).",
+                    is_required : true, }, ArchetypeFieldReflection { name : "encoding",
+                    display_name : "Encoding", component_type : "rerun.components.Text"
+                    .into(), docstring_md :
+                    "The schema definition format used to describe the message structure.\n\nCommon schema encodings include:\n* `protobuf` - [Protocol Buffers](https://mcap.dev/spec/registry#protobuf-1) schema definition\n* `ros1msg` - [ROS1](https://mcap.dev/spec/registry#ros1msg) message definition format\n* `ros2msg` - [ROS2](https://mcap.dev/spec/registry#ros2msg) message definition format\n* `jsonschema` - [JSON Schema](https://mcap.dev/spec/registry#jsonschema) specification\n* `flatbuffer` - [FlatBuffers](https://mcap.dev/spec/registry#flatbuffer) schema definition",
+                    is_required : true, }, ArchetypeFieldReflection { name : "data",
+                    display_name : "Data", component_type : "rerun.components.Blob"
+                    .into(), docstring_md :
+                    "The schema definition content as binary data.\n\nThis contains the actual schema specification in the format indicated by the\n`encoding` field. For text-based schemas (like ROS message definitions or JSON Schema),\nthis is typically UTF-8 encoded text. For binary schema formats, this contains\nthe serialized schema data.",
+                    is_required : true, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.McapStatistics"),
+            ArchetypeReflection {
+                display_name: "Mcap statistics",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "message_count", display_name :
+                    "Message count", component_type : "rerun.components.Count".into(),
+                    docstring_md :
+                    "Total number of data messages contained in the MCAP recording.\n\nThis count includes all timestamped data messages but excludes metadata records,\nschema definitions, and other non-message records.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "schema_count", display_name : "Schema count", component_type :
+                    "rerun.components.Count".into(), docstring_md :
+                    "Number of unique schema definitions in the recording.\n\nEach schema defines the structure for one or more message types used by channels.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "channel_count", display_name : "Channel count", component_type :
+                    "rerun.components.Count".into(), docstring_md :
+                    "Number of channels defined in the recording.\n\nEach channel represents a unique topic and encoding combination for publishing messages.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "attachment_count", display_name : "Attachment count", component_type
+                    : "rerun.components.Count".into(), docstring_md :
+                    "Number of file attachments embedded in the recording.\n\nAttachments can include calibration files, configuration data, or other auxiliary files.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "metadata_count", display_name : "Metadata count", component_type :
+                    "rerun.components.Count".into(), docstring_md :
+                    "Number of metadata records providing additional context about the recording.\n\nMetadata records contain key-value pairs with information about the recording environment,\nsystem configuration, or other contextual data.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "chunk_count", display_name : "Chunk count", component_type :
+                    "rerun.components.Count".into(), docstring_md :
+                    "Number of data chunks used to organize messages in the file.\n\nChunks group related messages together for efficient storage and indexed access.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "message_start_time", display_name : "Message start time",
+                    component_type : "rerun.components.Timestamp".into(), docstring_md :
+                    "Timestamp of the earliest message in the recording.\n\nThis marks the beginning of the recorded data timeline.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "message_end_time", display_name : "Message end time", component_type
+                    : "rerun.components.Timestamp".into(), docstring_md :
+                    "Timestamp of the latest message in the recording.\n\nTogether with `message_start_time`, this defines the total duration of the recording.",
+                    is_required : true, }, ArchetypeFieldReflection { name :
+                    "channel_message_counts", display_name : "Channel message counts",
+                    component_type : "rerun.components.ChannelMessageCounts".into(),
+                    docstring_md : "Detailed breakdown of message counts per channel.",
                     is_required : false, },
                 ],
             },
@@ -2314,6 +2481,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "video_reference", display_name : "Video reference", component_type :
                     "rerun.components.EntityPath".into(), docstring_md :
                     "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "opacity",
+                    display_name : "Opacity", component_type : "rerun.components.Opacity"
+                    .into(), docstring_md :
+                    "Opacity of the video, useful for layering several media.\n\nDefaults to 1.0 (fully opaque).",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_type :
                     "rerun.components.DrawOrder".into(), docstring_md :
@@ -2337,6 +2508,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name : "Sample", component_type :
                     "rerun.components.VideoSample".into(), docstring_md :
                     "Video sample data (also known as \"video chunk\").\n\nThe current timestamp is used as presentation timestamp (PTS) for all data in this sample.\nThere is currently no way to log differing decoding timestamps, meaning\nthat there is no support for B-frames.\nSee <https://github.com/rerun-io/rerun/issues/10090> for more details.\n\nUnlike any other data in Rerun, video samples are not allowed to be logged out of order,\nas this may break live video playback.\nI.e. any appended sample should have a timestamp greater than all previously logged samples.\n\nThe samples are expected to be encoded using the `codec` field.\nEach video sample must contain enough data for exactly one video frame\n(this restriction may be relaxed in the future for some codecs).\n\nUnless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image))\nnever log this component as static data as this means that you loose all information of\nprevious samples which may be required to decode an image.\n\nSee [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec) for codec specific requirements.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "opacity",
+                    display_name : "Opacity", component_type : "rerun.components.Opacity"
+                    .into(), docstring_md :
+                    "Opacity of the video stream, useful for layering several media.\n\nDefaults to 1.0 (fully opaque).",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_type :
                     "rerun.components.DrawOrder".into(), docstring_md :

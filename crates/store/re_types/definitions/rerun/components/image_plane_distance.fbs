@@ -3,9 +3,9 @@ namespace rerun.components;
 
 // ---
 
-  /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
-  ///
-  /// This is only used for visualization purposes, and does not affect the projection itself.
+/// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+///
+/// This is only used for visualization purposes, and does not affect the projection itself.
 struct ImagePlaneDistance (
   "attr.rust.derive": "Copy, PartialEq, PartialOrd"
 ) {

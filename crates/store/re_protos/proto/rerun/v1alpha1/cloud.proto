@@ -9,6 +9,17 @@ import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/log_msg.proto";
 
 // The Rerun Cloud public API.
+//
+// ## Headers
+//
+// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+//
+// The so-called "standard dataset headers" correspond to at least one of the following headers:
+// * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.
+// * x-rerun-entry-name-bin: Name of the entry of interest, e.g. `droid:sample2k`.
+//
+// Headers with a -bin suffix must be base64-encoded (HTTP only supports ASCII values, UTF8 strings must
+// binary encoded).
 service RerunCloudService {
   rpc Version(VersionRequest) returns (VersionResponse) {}
 
@@ -22,6 +33,9 @@ service RerunCloudService {
 
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
 
+  // Fetch metadata about a specific dataset.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
 
   rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
@@ -37,22 +51,26 @@ service RerunCloudService {
 
   // Write chunks to one or more partitions.
   //
-  // The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+  // The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
   //
-  // The destination dataset must be provided in the `x-rerun-dataset-id` header.
+  // This endpoint requires the standard dataset headers.
   rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
   /* Query schemas */
 
-  // Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
+  // Returns the schema of the partition table.
   //
-  // * To inspect the data of the partition table, use `ScanPartitionTable`.
-  // * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+  // This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
+  //
+  // To inspect the data of the partition table, which is guaranteed to match the schema returned by
+  // this endpoint, check out `ScanPartitionTable`.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (GetPartitionTableSchemaResponse) {}
 
-  // Inspect the contents of the partition table (i.e. the dataset manifest).
+  // Inspect the contents of the partition table.
   //
-  // The returned data will follow the schema specified by `GetPartitionTableSchema`.
+  // The data will follow the schema returned by `GetPartitionTableSchema`.
   rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
 
   // Returns the schema of the dataset.
@@ -190,9 +208,11 @@ enum DataSourceKind {
 }
 
 message RegisterWithDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
   repeated DataSource data_sources = 2;
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message RegisterWithDatasetResponse {
@@ -208,7 +228,8 @@ message WriteChunksResponse {}
 /* Query schemas */
 
 message GetPartitionTableSchemaRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message GetPartitionTableSchemaResponse {
@@ -216,8 +237,16 @@ message GetPartitionTableSchemaResponse {
 }
 
 message ScanPartitionTableRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+  // A list of column names to be projected server-side.
+  //
+  // All of them if left empty.
+  repeated string columns = 3;
+
+  reserved 1;
+  reserved "dataset_id";
+
+  reserved 2;
+  reserved "scan_parameters";
 }
 
 message ScanPartitionTableResponse {
@@ -226,7 +255,8 @@ message ScanPartitionTableResponse {
 }
 
 message GetDatasetSchemaRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message GetDatasetSchemaResponse {
@@ -236,8 +266,6 @@ message GetDatasetSchemaResponse {
 /* Indexing */
 
 message CreateIndexRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // List of specific partitions that will be indexed (all if left empty).
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
@@ -250,6 +278,9 @@ message CreateIndexRequest {
 
   // Specify behavior when index for a partition was already created.
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message CreateIndexResponse {
@@ -257,7 +288,8 @@ message CreateIndexResponse {
 }
 
 message ReIndexRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message ReIndexResponse {
@@ -321,8 +353,6 @@ message BTreeIndex {
 /* Queries */
 
 message SearchDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // Index column that is queried
   IndexColumn column = 2;
 
@@ -337,6 +367,9 @@ message SearchDatasetRequest {
 
   // Scan parameters
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message SearchDatasetResponse {
@@ -366,8 +399,6 @@ message BTreeIndexQuery {
 }
 
 message QueryDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // Client can specify what partitions are queried. If left unspecified (empty list),
   // all partitions will be queried.
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
@@ -415,6 +446,9 @@ message QueryDatasetRequest {
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
 
   Query query = 6;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message QueryDatasetResponse {
@@ -733,7 +767,8 @@ message CreateDatasetEntryResponse {
 // ReadDatasetEntry
 
 message ReadDatasetEntryRequest {
-  rerun.common.v1alpha1.EntryId id = 1;
+  reserved 1;
+  reserved "id";
 }
 
 message ReadDatasetEntryResponse {

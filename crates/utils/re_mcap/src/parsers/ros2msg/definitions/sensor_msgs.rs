@@ -381,3 +381,301 @@ pub struct NavSatFix {
     /// estimate an approximate covariance from that.
     pub position_covariance_type: CovarianceType,
 }
+
+/// A single temperature reading.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Temperature {
+    /// Timestamp is the time the temperature was measured.
+    /// `frame_id` is the location of the temperature reading.
+    pub header: Header,
+
+    /// Measurement of the Temperature in Degrees Celsius.
+    pub temperature: f64,
+
+    /// 0 is interpreted as variance unknown.
+    pub variance: f64,
+}
+
+/// Single pressure reading for fluids (air, water, etc).
+///
+/// This message is appropriate for measuring the pressure inside of a fluid (air, water, etc).
+/// This also includes atmospheric or barometric pressure.
+/// This message is not appropriate for force/pressure contact sensors.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FluidPressure {
+    /// Timestamp of the measurement.
+    /// `frame_id` is the location of the pressure sensor.
+    pub header: Header,
+
+    /// Absolute pressure reading in Pascals.
+    pub fluid_pressure: f64,
+
+    /// 0 is interpreted as variance unknown.
+    pub variance: f64,
+}
+
+/// Single reading from a relative humidity sensor.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RelativeHumidity {
+    /// Timestamp is the time the humidity was measured.
+    /// `frame_id` is the location of the humidity sensor.
+    pub header: Header,
+
+    /// Expression of the relative humidity from `0.0` to `1.0`.
+    ///
+    /// - `0.0` is no partial pressure of water vapor
+    /// - `1.0` represents partial pressure of saturation
+    pub humidity: f64,
+
+    /// 0 is interpreted as variance unknown.
+    pub variance: f64,
+}
+
+/// Single photometric illuminance measurement.
+///
+/// Light should be assumed to be measured along the sensor's x-axis (the area of detection is the y-z plane).
+/// The illuminance should have a 0 or positive value and be received with
+/// the sensor's +X axis pointing toward the light source.
+///
+/// Photometric illuminance is the measure of the human eye's sensitivity of the
+/// intensity of light encountering or passing through a surface.
+///
+/// All other Photometric and Radiometric measurements should not use this message.
+///
+/// This message cannot represent:
+///  - Luminous intensity (candela/light source output)
+///  - Luminance (nits/light output per area)
+///  - Irradiance (watt/area), etc.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Illuminance {
+    /// Timestamp is the time the illuminance was measured.
+    /// `frame_id` is the location of the illuminance sensor.
+    pub header: Header,
+
+    /// Measurement of the Photometric Illuminance in Lux.
+    pub illuminance: f64,
+
+    /// 0 is interpreted as variance unknown.
+    pub variance: f64,
+}
+
+/// Radiation type for range sensors.
+/// 0 = ULTRASOUND, 1 = INFRARED
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(from = "u8", into = "u8")]
+#[repr(u8)]
+pub enum RadiationType {
+    Ultrasound = 0,
+    Infrared = 1,
+}
+
+impl From<u8> for RadiationType {
+    fn from(value: u8) -> Self {
+        match value {
+            1 => Self::Infrared,
+            _ => Self::Ultrasound,
+        }
+    }
+}
+
+impl From<RadiationType> for u8 {
+    fn from(radiation_type: RadiationType) -> Self {
+        radiation_type as Self
+    }
+}
+
+/// Single range reading from an active ranger that emits energy and reports
+/// one range reading that is valid along an arc at the distance measured.
+///
+/// This message is not appropriate for laser scanners.
+///
+/// Supports both modern and legacy formats - the variance field is optional for backward compatibility.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Range {
+    pub header: Header,
+
+    /// The type of radiation used by the sensor.
+    pub radiation_type: RadiationType,
+
+    /// The size of the arc that the distance reading is valid for (rad).
+    pub field_of_view: f32,
+
+    /// Minimum range value (m).
+    pub min_range: f32,
+
+    /// Maximum range value (m).
+    pub max_range: f32,
+
+    /// Range data (m).
+    ///
+    /// ### Note
+    ///
+    /// This message can also represent a binary sensor that will output -Inf
+    /// if the object is detected and +Inf if the object is outside of detection range).
+    pub range: f32,
+}
+
+/// Power supply status values.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(from = "u8", into = "u8")]
+#[repr(u8)]
+pub enum PowerSupplyStatus {
+    Unknown = 0,
+    Charging = 1,
+    Discharging = 2,
+    NotCharging = 3,
+    Full = 4,
+}
+
+impl From<u8> for PowerSupplyStatus {
+    fn from(value: u8) -> Self {
+        match value {
+            1 => Self::Charging,
+            2 => Self::Discharging,
+            3 => Self::NotCharging,
+            4 => Self::Full,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+impl From<PowerSupplyStatus> for u8 {
+    fn from(status: PowerSupplyStatus) -> Self {
+        status as Self
+    }
+}
+
+/// Power supply health values.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(from = "u8", into = "u8")]
+#[repr(u8)]
+pub enum PowerSupplyHealth {
+    Unknown = 0,
+    Good = 1,
+    Overheat = 2,
+    Dead = 3,
+    Overvoltage = 4,
+    UnspecFailure = 5,
+    Cold = 6,
+    WatchdogTimerExpire = 7,
+    SafetyTimerExpire = 8,
+}
+
+impl From<u8> for PowerSupplyHealth {
+    fn from(value: u8) -> Self {
+        match value {
+            1 => Self::Good,
+            2 => Self::Overheat,
+            3 => Self::Dead,
+            4 => Self::Overvoltage,
+            5 => Self::UnspecFailure,
+            6 => Self::Cold,
+            7 => Self::WatchdogTimerExpire,
+            8 => Self::SafetyTimerExpire,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+impl From<PowerSupplyHealth> for u8 {
+    fn from(health: PowerSupplyHealth) -> Self {
+        health as Self
+    }
+}
+
+/// Power supply technology values.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(from = "u8", into = "u8")]
+#[repr(u8)]
+pub enum PowerSupplyTechnology {
+    Unknown = 0,
+    Nimh = 1,
+    Lion = 2,
+    Lipo = 3,
+    Life = 4,
+    Nicd = 5,
+    Limn = 6,
+    Ternary = 7,
+    Vrla = 8,
+}
+
+impl From<u8> for PowerSupplyTechnology {
+    fn from(value: u8) -> Self {
+        match value {
+            1 => Self::Nimh,
+            2 => Self::Lion,
+            3 => Self::Lipo,
+            4 => Self::Life,
+            5 => Self::Nicd,
+            6 => Self::Limn,
+            7 => Self::Ternary,
+            8 => Self::Vrla,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+impl From<PowerSupplyTechnology> for u8 {
+    fn from(tech: PowerSupplyTechnology) -> Self {
+        tech as Self
+    }
+}
+
+/// Describes the power state of the battery.
+///
+/// Constants are chosen to match the enums in the linux kernel
+/// defined in `include/linux/power_supply.h` as of version 3.7
+///
+/// The percentage value should not be trusted if it is exactly 0 or 100.
+/// Only use as a hint for UI applications.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BatteryState {
+    pub header: Header,
+
+    /// Voltage in Volts (Mandatory).
+    pub voltage: f32,
+
+    /// Temperature in Degrees Celsius (If unmeasured NaN).
+    pub temperature: f32,
+
+    /// Negative when discharging (A).
+    pub current: f32,
+
+    /// Current charge in Ah (If unmeasured NaN).
+    pub charge: f32,
+
+    /// Capacity in Ah (last full capacity) (If unmeasured NaN).
+    pub capacity: f32,
+
+    /// Capacity in Ah (design capacity) (If unmeasured NaN).
+    pub design_capacity: f32,
+
+    /// Charge percentage on 0 to 1 range (If unmeasured NaN).
+    pub percentage: f32,
+
+    /// The charging status as reported. Values defined above.
+    pub power_supply_status: PowerSupplyStatus,
+
+    /// The battery health metric. Values defined above.
+    pub power_supply_health: PowerSupplyHealth,
+
+    /// The battery chemistry. Values defined above.
+    pub power_supply_technology: PowerSupplyTechnology,
+
+    /// True if the battery is present.
+    pub present: bool,
+
+    /// An array of individual cell voltages for each cell in the pack
+    /// If individual voltages unknown but number of cells known set each to NaN.
+    pub cell_voltage: Vec<f32>,
+
+    /// An array of individual cell temperatures for each cell in the pack
+    /// If individual temperatures unknown but number of cells known set each to NaN.
+    pub cell_temperature: Vec<f32>,
+
+    /// The location into which the battery is inserted. (slot number or plug).
+    pub location: String,
+
+    /// The best approximation of the battery serial number.
+    pub serial_number: String,
+}
