@@ -66,6 +66,15 @@ pub struct SyntaxHighlightedBuilder {
 }
 
 /// Easily build syntax-highlighted [`LayoutJob`]s.
+///
+/// Try to use one of the `append_*` or `with_*` methods that semantically matches
+/// what you are trying to highlight. Check the docs of the `append_*` methods for examples
+/// of what they should be used with.
+///
+/// The `with_*` methods are builder-style, taking `self` and returning `Self`.
+/// The `append_*` methods take `&mut self` and return `&mut Self`.
+///
+/// Use the `with_*` methods when building something inline.
 impl SyntaxHighlightedBuilder {
     pub const QUOTE_CHAR: char = '"';
 
@@ -91,12 +100,14 @@ impl SyntaxHighlightedBuilder {
         }
     }
 
+    /// Append anything that implements [`SyntaxHighlighting`].
     #[inline]
     pub fn with(mut self, portion: &dyn SyntaxHighlighting) -> Self {
         portion.syntax_highlight_into(&mut self);
         self
     }
 
+    /// Append anything that implements [`SyntaxHighlighting`].
     #[inline]
     pub fn append(&mut self, portion: &dyn SyntaxHighlighting) -> &mut Self {
         portion.syntax_highlight_into(self);
@@ -155,22 +166,26 @@ impl SyntaxHighlightedBuilder {
         self
     }
 
+    /// Append regular body text.
     pub fn append_body(&mut self, portion: &str) -> &mut Self {
         self.append_kind(SyntaxHighlightedStyle::Body, portion);
         self
     }
 
+    /// Append _italic_ body text.
     pub fn append_body_italics(&mut self, portion: &str) -> &mut Self {
         self.append_kind(SyntaxHighlightedStyle::BodyItalics, portion);
         self
     }
 
+    /// Append text with a custom format.
     #[inline]
     pub fn append_with_format(&mut self, text: &str, format: TextFormat) -> &mut Self {
         self.append_kind(SyntaxHighlightedStyle::Custom(Box::new(format)), text);
         self
     }
 
+    /// Append text with a custom format closure.
     #[inline]
     pub fn append_with_format_closure<F>(&mut self, text: &str, f: F) -> &mut Self
     where
