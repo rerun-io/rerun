@@ -55,7 +55,6 @@ pub fn picking(
             glam::uvec2(picking_rect_size, picking_rect_size),
         ),
         readback_identifier: query.view_id.gpu_readback_id(),
-        readback_user_data: Box::new(()),
         show_debug_view: ctx.app_options().show_picking_debug_overlay,
     };
 

@@ -457,7 +457,6 @@ fn handle_picking_and_ui_interactions(
                 glam::uvec2(picking_rect_size, picking_rect_size),
             ),
             readback_identifier: picking_readback_identifier,
-            readback_user_data: Box::new(()),
             show_debug_view: ctx.app_options().show_picking_debug_overlay,
         })
     } else {
@@ -584,10 +583,8 @@ fn picking_gpu(
 ) -> Option<InstancePathHash> {
     re_tracing::profile_function!();
 
-    let gpu_picking_result = re_renderer::PickingLayerProcessor::readback_result::<()>(
-        render_ctx,
-        gpu_readback_identifier,
-    );
+    let gpu_picking_result =
+        re_renderer::PickingLayerProcessor::readback_result(render_ctx, gpu_readback_identifier);
 
     if let Some(gpu_picking_result) = gpu_picking_result {
         // TODO(ab, andreas): the block inside this particular branch is so reusable, it should probably live on re_renderer! (on picking result?)

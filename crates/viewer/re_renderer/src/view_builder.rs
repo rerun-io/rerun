@@ -266,9 +266,6 @@ pub struct ViewPickingConfiguration {
     /// Identifier to be passed to the readback result.
     pub readback_identifier: GpuReadbackIdentifier,
 
-    /// User data to be passed to the readback result.
-    pub readback_user_data: Box<dyn std::any::Any + Send + Sync>,
-
     /// Whether to draw a debug view of the picking layer when compositing the final view.
     pub show_debug_view: bool,
 }
@@ -561,7 +558,6 @@ impl ViewBuilder {
                 &frame_uniform_buffer_content,
                 picking_config.show_debug_view,
                 picking_config.readback_identifier,
-                picking_config.readback_user_data,
             );
 
             if picking_config.show_debug_view {
