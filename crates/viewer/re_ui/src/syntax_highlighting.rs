@@ -22,42 +22,6 @@ pub trait SyntaxHighlighting {
 
 // ----------------------------------------------------------------------------
 
-enum SyntaxHighlightedStyle {
-    StringValue,
-    Identifier,
-    Keyword,
-    Index,
-    Primitive,
-    Syntax,
-    Body,
-    BodyItalics,
-    Custom(Box<TextFormat>),
-    CustomClosure(Box<dyn Fn(&Style) -> TextFormat>),
-}
-
-impl std::fmt::Debug for SyntaxHighlightedStyle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::StringValue => write!(f, "StringValue"),
-            Self::Identifier => write!(f, "Identifier"),
-            Self::Keyword => write!(f, "Keyword"),
-            Self::Index => write!(f, "Index"),
-            Self::Primitive => write!(f, "Primitive"),
-            Self::Syntax => write!(f, "Syntax"),
-            Self::Body => write!(f, "Body"),
-            Self::BodyItalics => write!(f, "BodyItalics"),
-            Self::Custom(_) => write!(f, "Custom(…)"),
-            Self::CustomClosure(_) => write!(f, "CustomClosure(…)"),
-        }
-    }
-}
-
-#[derive(Debug)]
-struct SyntaxHighlightedPart {
-    byte_range: std::ops::Range<usize>,
-    style: SyntaxHighlightedStyle,
-}
-
 /// Easily build syntax-highlighted text.
 #[derive(Debug, Default)]
 pub struct SyntaxHighlightedBuilder {
@@ -260,6 +224,8 @@ impl SyntaxHighlightedBuilder {
     }
 }
 
+// ----------------------------------------------------------------------------
+
 impl SyntaxHighlightedBuilder {
     #[inline]
     pub fn into_job(self, style: &Style) -> LayoutJob {
@@ -285,6 +251,44 @@ impl SyntaxHighlightedBuilder {
     pub fn into_widget_text(self, style: &Style) -> egui::WidgetText {
         self.into_job(style).into()
     }
+}
+
+// ----------------------------------------------------------------------------
+
+enum SyntaxHighlightedStyle {
+    StringValue,
+    Identifier,
+    Keyword,
+    Index,
+    Primitive,
+    Syntax,
+    Body,
+    BodyItalics,
+    Custom(Box<TextFormat>),
+    CustomClosure(Box<dyn Fn(&Style) -> TextFormat>),
+}
+
+impl std::fmt::Debug for SyntaxHighlightedStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::StringValue => write!(f, "StringValue"),
+            Self::Identifier => write!(f, "Identifier"),
+            Self::Keyword => write!(f, "Keyword"),
+            Self::Index => write!(f, "Index"),
+            Self::Primitive => write!(f, "Primitive"),
+            Self::Syntax => write!(f, "Syntax"),
+            Self::Body => write!(f, "Body"),
+            Self::BodyItalics => write!(f, "BodyItalics"),
+            Self::Custom(_) => write!(f, "Custom(…)"),
+            Self::CustomClosure(_) => write!(f, "CustomClosure(…)"),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct SyntaxHighlightedPart {
+    byte_range: std::ops::Range<usize>,
+    style: SyntaxHighlightedStyle,
 }
 
 impl SyntaxHighlightedStyle {
