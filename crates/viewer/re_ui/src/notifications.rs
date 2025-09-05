@@ -25,6 +25,21 @@ impl NotificationLevel {
             Self::Success => ui.tokens().success_text_color,
         }
     }
+
+    fn icon(&self) -> &icons::Icon {
+        match self {
+            Self::Tip | Self::Info => &icons::INFO,
+            Self::Success => &icons::SUCCESS,
+            Self::Warning => &icons::WARNING,
+            Self::Error => &icons::ERROR,
+        }
+    }
+
+    fn image(&self, ui: &egui::Ui) -> egui::Image<'_> {
+        let color = self.color(ui);
+        let icon = self.icon();
+        icon.as_image().tint(color)
+    }
 }
 
 impl From<re_log::Level> for NotificationLevel {
@@ -431,7 +446,8 @@ fn show_notification(
         .show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.horizontal_top(|ui| {
-                    log_level_icon(ui, *level);
+                    ui.add(level.image(ui));
+
                     ui.horizontal_top(|ui| {
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                         ui.set_width(270.0);
@@ -504,11 +520,4 @@ fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
                 .on_hover_text(created_at.to_string());
         });
     });
-}
-
-fn log_level_icon(ui: &mut egui::Ui, level: NotificationLevel) {
-    let color = level.color(ui);
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(10.0, 10.0), egui::Sense::hover());
-    ui.painter()
-        .circle_filled(rect.center() + egui::vec2(0.0, 2.0), 5.0, color);
 }
