@@ -115,7 +115,7 @@ impl UiLayout {
             let stripped = text.trim_matches(SyntaxHighlightedBuilder::QUOTE_CHAR);
             if url::Url::parse(stripped).is_ok() {
                 // This is a general link and should not open a new tab unless desired by the user.
-                return ui.re_hyperlink(text, text, false);
+                return ui.re_hyperlink(galley.clone(), stripped, false);
             }
         }
         ui.label(galley)
