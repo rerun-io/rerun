@@ -12,13 +12,14 @@ Finally, copy-paste the output into `CHANGELOG.md` and add a high-level summary 
 from __future__ import annotations
 
 import argparse
+import json
 import multiprocessing
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from typing import Any
 
-import requests
 from git import Repo  # pip install GitPython
 from tqdm import tqdm
 
@@ -64,25 +65,6 @@ class CommitInfo:
     pr_number: int | None
 
 
-def get_github_token() -> str:
-    import os
-
-    token = os.environ.get("GH_ACCESS_TOKEN", "")
-    if token != "":
-        return token
-
-    home_dir = os.path.expanduser("~")
-    token_file = os.path.join(home_dir, ".githubtoken")
-
-    try:
-        with open(token_file, encoding="utf8") as f:
-            token = f.read().strip()
-        return token
-    except Exception:
-        pass
-
-    eprint("ERROR: expected a GitHub token in the environment variable GH_ACCESS_TOKEN or in ~/.githubtoken")
-    sys.exit(1)
 
 
 # Slow
@@ -95,19 +77,25 @@ def fetch_pr_info_from_commit_info(commit_info: CommitInfo) -> PrInfo | None:
 
 # Slow
 def fetch_pr_info(pr_number: int) -> PrInfo | None:
-    url = f"https://api.github.com/repos/{OWNER}/{REPO}/pulls/{pr_number}"
-    gh_access_token = get_github_token()
-    headers = {"Authorization": f"Token {gh_access_token}"}
-    response = requests.get(url, headers=headers)
-    json = response.json()
-
-    # Check if the request was successful (status code 200)
-    if response.status_code == 200:
-        labels = [label["name"] for label in json["labels"]]
-        gh_user_name = json["user"]["login"]
-        return PrInfo(gh_user_name=gh_user_name, pr_title=json["title"], labels=labels)
-    else:
-        eprint(f"ERROR {url}: {response.status_code} - {json['message']}")
+    try:
+        # Use gh CLI to fetch PR info
+        result = subprocess.run(
+            ["gh", "pr", "view", str(pr_number), "--repo", f"{OWNER}/{REPO}", "--json", "title,labels,author"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        pr_data = json.loads(result.stdout)
+        labels = [label["name"] for label in pr_data["labels"]]
+        gh_user_name = pr_data["author"]["login"]
+        return PrInfo(gh_user_name=gh_user_name, pr_title=pr_data["title"], labels=labels)
+    
+    except subprocess.CalledProcessError as e:
+        eprint(f"ERROR fetching PR #{pr_number}: {e.stderr.strip()}")
+        return None
+    except (json.JSONDecodeError, KeyError) as e:
+        eprint(f"ERROR parsing PR #{pr_number} data: {e}")
         return None
 
 
