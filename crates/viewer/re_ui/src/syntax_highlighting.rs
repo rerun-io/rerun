@@ -46,8 +46,8 @@ impl std::fmt::Debug for SyntaxHighlightedStyle {
             Self::Syntax => write!(f, "Syntax"),
             Self::Body => write!(f, "Body"),
             Self::BodyItalics => write!(f, "BodyItalics"),
-            Self::Custom(_) => write!(f, "Custom(...)"),
-            Self::CustomClosure(_) => write!(f, "CustomClosure(...)"),
+            Self::Custom(_) => write!(f, "Custom(…)"),
+            Self::CustomClosure(_) => write!(f, "CustomClosure(…)"),
         }
     }
 }
