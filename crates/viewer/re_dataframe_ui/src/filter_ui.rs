@@ -1,7 +1,6 @@
-use egui::{Frame, Margin, TextFormat, TextStyle};
+use egui::{Frame, Margin};
 
-use re_ui::{HasDesignTokens as _, SyntaxHighlighting, UiExt as _,
-    syntax_highlighting::SyntaxHighlightedBuilder};
+use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
 use crate::TableBlueprint;
 use crate::filters::{Filter, FilterOperation};
@@ -164,8 +163,8 @@ impl Filter {
             .corner_radius(2.0)
             .show(ui, |ui| {
                 let widget_text = SyntaxHighlightedBuilder::new()
-                    .with_identifier(&self.column_name)
-                    .with_identifier(" ")
+                    .with_body(&self.column_name)
+                    .with_keyword(" ")
                     .with(&self.operation)
                     .into_widget_text(ui.style());
 
@@ -248,9 +247,9 @@ impl Filter {
 }
 
 impl SyntaxHighlighting for FilterOperation {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
-        builder.append_filter_operator(self.operator_text());
-        builder.append(&" ");
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        builder.append_keyword(self.operator_text());
+        builder.append_keyword(" ");
 
         match self {
             Self::StringContains(query) => builder.append_string_value(query),
@@ -270,11 +269,11 @@ impl FilterOperation {
     ) -> FilterUiAction {
         let mut action = FilterUiAction::None;
 
-        let mut top_text_builder = SyntaxHighlightedBuilder::new(ui.style());
-        top_text_builder.append(&column_name);
-        top_text_builder.append(&" ");
-        top_text_builder.append_filter_operator(self.operator_text());
-        let top_text = top_text_builder.into_widget_text();
+        let mut top_text_builder = SyntaxHighlightedBuilder::new();
+        top_text_builder.append_body(column_name);
+        top_text_builder.append_keyword(" ");
+        top_text_builder.append_keyword(self.operator_text());
+        let top_text = top_text_builder.into_widget_text(ui.style());
 
         match self {
             Self::StringContains(query) => {

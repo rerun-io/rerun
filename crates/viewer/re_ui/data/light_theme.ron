@@ -281,8 +281,8 @@
     },
 
     // TODO(ab, katya): review these
-    "filter_operator_color": {
-              "color": "#D176BF",
+    "code_keyword_color": {
+      "color": "#D176BF",
     },
     "table_filter_frame_stroke": {
       "color": "{Gray.400}",

@@ -25,6 +25,7 @@ pub trait SyntaxHighlighting {
 enum SyntaxHighlightedStyle {
     StringValue,
     Identifier,
+    Keyword,
     Index,
     Primitive,
     Syntax,
@@ -117,6 +118,12 @@ impl SyntaxHighlightedBuilder {
         self
     }
 
+    /// A keyword, e.g. a filter operator, like `and` or `all`
+    pub fn append_keyword(&mut self, portion: &str) -> &mut Self {
+        self.append_kind(SyntaxHighlightedStyle::Keyword, portion);
+        self
+    }
+
     /// An index number, e.g. an array index.
     pub fn append_index(&mut self, portion: &str) -> &mut Self {
         self.append_kind(SyntaxHighlightedStyle::Index, portion);
@@ -160,16 +167,15 @@ impl SyntaxHighlightedBuilder {
         self
     }
 
-    /// A filter operator
-    pub fn append_filter_operator(&mut self, portion: &str) -> &mut Self {
-        let format = body_text_with_color(self.style, self.tokens.filter_operator_color);
-        self.job.append(portion, 0.0, format);
+    #[inline]
+    pub fn with_string_value(mut self, portion: &str) -> Self {
+        self.append_string_value(portion);
         self
     }
 
     #[inline]
-    pub fn with_string_value(mut self, portion: &str) -> Self {
-        self.append_string_value(portion);
+    pub fn with_keyword(mut self, portion: &str) -> Self {
+        self.append_keyword(portion);
         self
     }
 
@@ -253,10 +259,16 @@ impl SyntaxHighlightedStyle {
 
     pub fn into_format(self, style: &Style) -> TextFormat {
         match self {
-            Self::StringValue => Self::monospace_with_color(style, style.tokens().code_string),
+            Self::StringValue => {
+                Self::monospace_with_color(style, style.tokens().code_string_color)
+            }
             Self::Identifier => Self::monospace_with_color(style, style.tokens().text_default),
-            Self::Index => Self::monospace_with_color(style, style.tokens().code_index),
-            Self::Primitive => Self::monospace_with_color(style, style.tokens().code_primitive),
+            // TODO(lucas): Find a better way to deal with body / monospace style
+            Self::Keyword => Self::body_with_color(style, style.tokens().code_keyword_color),
+            Self::Index => Self::monospace_with_color(style, style.tokens().code_index_color),
+            Self::Primitive => {
+                Self::monospace_with_color(style, style.tokens().code_primitive_color)
+            }
             Self::Syntax => Self::monospace_with_color(style, style.tokens().text_strong),
             Self::Body => Self::body(style),
             Self::BodyItalics => {

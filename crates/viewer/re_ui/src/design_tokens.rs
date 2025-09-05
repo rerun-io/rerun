@@ -213,7 +213,7 @@ pub struct DesignTokens {
     pub code_index_color: Color32,
     pub code_string_color: Color32,
     pub code_primitive_color: Color32,
-    pub filter_operator_color: Color32,
+    pub code_keyword_color: Color32,
 
     // Table filter UI
     pub table_filter_frame_stroke: Stroke,
@@ -356,7 +356,7 @@ impl DesignTokens {
             code_string_color: get_color("code_string_color"),
             code_primitive_color: get_color("code_primitive_color"),
 
-            filter_operator_color: get_color("filter_operator_color"),
+            code_keyword_color: get_color("code_keyword_color"),
             table_filter_frame_stroke: get_stroke("table_filter_frame_stroke"),
         })
     }
