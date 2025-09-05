@@ -475,10 +475,10 @@ pub fn default_backends() -> wgpu::Backends {
         // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
         wgpu::Backends::from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL)
-    } else if is_safari_browser() {
-        wgpu::Backends::GL // TODO(#8559): Fix WebGPU on Safari
-    } else if is_firefox_browser() {
-        wgpu::Backends::GL // TODO(#11009): Fix videos on WebGPU firefox
+    } else if is_safari_browser() || is_firefox_browser() {
+        // TODO(#8559): Fix WebGPU on Safari
+        // TODO(#11009): Fix videos on WebGPU firefox
+        wgpu::Backends::GL
     } else {
         wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
     }
