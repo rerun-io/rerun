@@ -22,12 +22,12 @@ use re_protos::{
         ext::{DataSource, DataSourceKind, RegisterWithDatasetTaskDescriptor},
     },
     cloud::v1alpha1::{
-        ext::{RegisterWithDatasetRequest, ScanPartitionTableRequest},
+        ScanPartitionTableRequest, ext::RegisterWithDatasetRequest,
         rerun_cloud_service_client::RerunCloudServiceClient,
     },
     common::v1alpha1::{
         TaskId,
-        ext::{IfDuplicateBehavior, IfMissingBehavior, PartitionId, ScanParameters},
+        ext::{IfDuplicateBehavior, PartitionId},
     },
     headers::RerunHeadersInjectorExt as _,
     missing_field,
@@ -207,16 +207,9 @@ where
         let mut stream = self
             .inner()
             .scan_partition_table(
-                tonic::Request::new(
-                    ScanPartitionTableRequest {
-                        scan_parameters: Some(ScanParameters {
-                            columns: vec![COLUMN_NAME.to_owned()],
-                            on_missing_columns: IfMissingBehavior::Error,
-                            ..Default::default()
-                        }),
-                    }
-                    .into(),
-                )
+                tonic::Request::new(ScanPartitionTableRequest {
+                    columns: vec![COLUMN_NAME.to_owned()],
+                })
                 .with_entry_id(entry_id)?,
             )
             .await?

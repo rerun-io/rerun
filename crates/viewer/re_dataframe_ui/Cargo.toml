@@ -49,5 +49,7 @@ thiserror.workspace = true
 
 [dev-dependencies]
 egui_kittest.workspace = true
+insta.workspace = true
 itertools.workspace = true
 static_assertions.workspace = true
+tokio.workspace = true

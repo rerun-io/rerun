@@ -78,7 +78,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
         let request = tonic::Request::new(ScanPartitionTableRequest {
-            scan_parameters: None,
+            columns: vec![], // all of them
         })
         .with_entry_id(self.dataset_id)
         .map_err(|err| DataFusionError::External(Box::new(err)))?;

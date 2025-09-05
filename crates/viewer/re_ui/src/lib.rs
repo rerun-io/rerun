@@ -100,6 +100,28 @@ pub fn design_tokens_of_visuals(visuals: &egui::Visuals) -> &'static DesignToken
     }
 }
 
+pub trait HasDesignTokens {
+    fn tokens(&self) -> &'static DesignTokens;
+}
+
+impl HasDesignTokens for egui::Context {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of(self.theme())
+    }
+}
+
+impl HasDesignTokens for egui::Style {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of_visuals(&self.visuals)
+    }
+}
+
+impl HasDesignTokens for egui::Visuals {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of_visuals(self)
+    }
+}
+
 /// Apply the Rerun design tokens to the given egui context and install image loaders.
 pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     re_tracing::profile_function!();

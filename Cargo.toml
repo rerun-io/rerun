@@ -805,6 +805,7 @@ unnecessary_debug_formatting = "allow"
 # egui_kittest = { path = "../../egui/crates/egui_kittest" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
+# wgpu = { path = "../../wgpu/wgpu" }
 
 # egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
