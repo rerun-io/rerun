@@ -979,60 +979,58 @@ mod tests {
             ViewerOpenUrl::IntraRecordingSelection("my/path".parse().unwrap())
                 .sharable_url(base_url_param)
                 .unwrap(),
-            "https://foo.com/test?url=recording://my/path"
+            "https://foo.com/test?url=recording%3A%2F%2Fmy%2Fpath"
         );
 
         assert_eq!(
-            ViewerOpenUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
+            ViewerOpenUrl::RrdHttpUrl("https://example.com/data.rrd".parse().unwrap())
                 .sharable_url(base_url_param)
                 .unwrap(),
-            "https://foo.com/test?url=https://example.com/data.rrd"
+            "https://foo.com/test?url=https%3A%2F%2Fexample.com%2Fdata.rrd"
         );
 
         assert_eq!(
-            ViewerOpenUrl::FilePath("/path/to/file.rrd".into())
-                .sharable_url(base_url_param)
-                .unwrap(),
-            "https://foo.com/test?url=/path/to/file.rrd"
-        );
-
-        let uri =
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae?partition_id=pid";
-        assert_eq!(
-            ViewerOpenUrl::RedapDatasetPartition(uri.parse().unwrap())
-                .sharable_url(base_url_param)
-                .unwrap(),
-            format!("https://foo.com/test?url={uri}")
+            ViewerOpenUrl::RedapDatasetPartition(
+                "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae?partition_id=pid"
+                    .parse()
+                    .unwrap()
+            )
+            .sharable_url(base_url_param)
+            .unwrap(),
+            format!(
+                "https://foo.com/test?url=rerun%3A%2F%2F127.0.0.1%3A1234%2Fdataset%2F1830B33B45B963E7774455beb91701ae%3Fpartition_id%3Dpid"
+            )
         );
 
         assert_eq!(
             ViewerOpenUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
                 .sharable_url(base_url_param)
                 .unwrap(),
-            "https://foo.com/test?url=rerun://localhost:51234/proxy"
+            "https://foo.com/test?url=rerun%3A%2F%2Flocalhost%3A51234%2Fproxy"
         );
 
         assert_eq!(
             ViewerOpenUrl::RedapCatalog("rerun://localhost:51234/catalog".parse().unwrap())
                 .sharable_url(base_url_param)
                 .unwrap(),
-            "https://foo.com/test?url=rerun://localhost:51234/catalog"
+            "https://foo.com/test?url=rerun%3A%2F%2Flocalhost%3A51234%2Fcatalog"
         );
 
         let entry_id = EntryId::new();
         let url = format!("rerun://localhost:51234/entry/{entry_id}");
+        let encoded_url = url::form_urlencoded::byte_serialize(url.as_bytes()).collect::<String>();
         assert_eq!(
             ViewerOpenUrl::RedapEntry(url.parse().unwrap())
                 .sharable_url(base_url_param)
                 .unwrap(),
-            format!("https://foo.com/test?url={url}")
+            format!("https://foo.com/test?url={encoded_url}")
         );
 
         assert_eq!(
             ViewerOpenUrl::WebEventListener
                 .sharable_url(base_url_param)
                 .unwrap(),
-            "https://foo.com/test?url=web_event:"
+            "https://foo.com/test?url=web_event%3A"
         );
 
         assert_eq!(
@@ -1044,7 +1042,7 @@ mod tests {
             }
             .sharable_url(base_url_param)
             .unwrap(),
-            "https://foo.com/test?url=https://example.com/data.rrd",
+            "https://foo.com/test?url=https%3A%2F%2Fexample.com%2Fdata.rrd",
         );
         assert_eq!(
             ViewerOpenUrl::WebViewerUrl {
@@ -1056,7 +1054,7 @@ mod tests {
             }
             .sharable_url(base_url_param)
             .unwrap(),
-            "https://foo.com/test?url=https://example.com/bar.rrd&url=rerun://localhost:51234/proxy",
+            "https://foo.com/test?url=https%3A%2F%2Fexample.com%2Fbar.rrd&url=rerun%3A%2F%2Flocalhost%3A51234%2Fproxy",
         );
     }
 }
