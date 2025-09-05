@@ -36,14 +36,23 @@ impl McapRos2Layer {
     /// Creates a new [`McapRos2Layer`] with all supported message types pre-registered
     pub fn new() -> Self {
         Self::empty()
+            // rcl_interfaces
             .register_parser::<LogMessageParser>("rcl_interfaces/msg/Log")
+            // sensor_msgs
+            .register_parser::<BatteryStateMessageParser>("sensor_msgs/msg/BatteryState")
             .register_parser::<CameraInfoMessageParser>("sensor_msgs/msg/CameraInfo")
             .register_parser::<CompressedImageMessageParser>("sensor_msgs/msg/CompressedImage")
+            .register_parser::<FluidPressureMessageParser>("sensor_msgs/msg/FluidPressure")
+            .register_parser::<IlluminanceMessageParser>("sensor_msgs/msg/Illuminance")
             .register_parser::<ImageMessageParser>("sensor_msgs/msg/Image")
             .register_parser::<ImuMessageParser>("sensor_msgs/msg/Imu")
             .register_parser::<JointStateMessageParser>("sensor_msgs/msg/JointState")
             .register_parser::<NavSatFixMessageParser>("sensor_msgs/msg/NavSatFix")
             .register_parser::<PointCloud2MessageParser>("sensor_msgs/msg/PointCloud2")
+            .register_parser::<RangeMessageParser>("sensor_msgs/msg/Range")
+            .register_parser::<RelativeHumidityMessageParser>("sensor_msgs/msg/RelativeHumidity")
+            .register_parser::<TemperatureMessageParser>("sensor_msgs/msg/Temperature")
+            // std_msgs
             .register_parser::<StringMessageParser>("std_msgs/msg/String")
     }
 

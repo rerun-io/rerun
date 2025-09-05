@@ -7,7 +7,7 @@ use re_types::archetypes::{Scalars, SeriesLines};
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
-    ros2msg::definitions::std_msgs::Header,
+    ros2msg::{Ros2MessageParser, definitions::std_msgs::Header},
     util::fixed_size_list_builder,
 };
 
@@ -38,17 +38,6 @@ pub struct ScalarMessageParser<T: ScalarExtractor> {
 }
 
 impl<T: ScalarExtractor> ScalarMessageParser<T> {
-    /// Create a new [`ScalarMessageParser`] for the given message type.
-    pub fn new(num_rows: usize) -> Self {
-        // We'll determine the number of fields from the first message
-        Self {
-            scalars: fixed_size_list_builder(1, num_rows), // Start with 1, will be recreated if needed
-            field_names: Vec::new(),
-            num_rows,
-            _marker: std::marker::PhantomData,
-        }
-    }
-
     fn init_field_names(&mut self, scalar_values: &Vec<(&str, f64)>) {
         self.field_names = scalar_values
             .iter()
@@ -70,6 +59,19 @@ impl<T: ScalarExtractor> ScalarMessageParser<T> {
                 &SeriesLines::new().with_names(field_names.to_vec()),
             )
             .build()
+    }
+}
+
+impl<T: ScalarExtractor> Ros2MessageParser for ScalarMessageParser<T> {
+    /// Create a new [`ScalarMessageParser`] for the given message type.
+    fn new(num_rows: usize) -> Self {
+        // We'll determine the number of fields from the first message
+        Self {
+            scalars: fixed_size_list_builder(1, num_rows), // Start with 1, will be recreated if needed
+            field_names: Vec::new(),
+            num_rows,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 
