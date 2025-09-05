@@ -4,13 +4,10 @@ use re_log_types::{
     BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind,
     StoreSource,
 };
-use re_protos::cloud::v1alpha1::ReadDatasetEntryRequest;
+use re_protos::cloud::v1alpha1::GetChunksRequest;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::PartitionId;
-use re_protos::{
-    cloud::v1alpha1::GetChunksRequest, cloud::v1alpha1::ext::ReadDatasetEntryResponse,
-};
 use re_uri::{DatasetPartitionUri, Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
@@ -329,19 +326,12 @@ pub async fn stream_blueprint_and_partition_from_server(
 ) -> Result<(), StreamError> {
     re_log::debug!("Loading {uri}…");
 
-    let response: ReadDatasetEntryResponse = client
-        .inner()
-        .read_dataset_entry(ReadDatasetEntryRequest {
-            id: Some(uri.dataset_id.into()),
-        })
-        .await?
-        .into_inner()
-        .try_into()?;
+    let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
 
     let recording_store_id = uri.store_id();
 
     if let Some((blueprint_dataset, blueprint_partition)) =
-        response.dataset_entry.dataset_details.default_bluprint()
+        dataset_entry.dataset_details.default_bluprint()
     {
         re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
