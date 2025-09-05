@@ -9,6 +9,8 @@ pub mod external {
     pub use prost;
 }
 
+pub mod headers;
+
 // This extra module is needed, because of how imports from different packages are resolved.
 // For example, `rerun.remote_store.v1alpha1.EncoderVersion` is resolved to `super::super::remote_store::v1alpha1::EncoderVersion`.
 // We need an extra module in the path to `common` to make that work.
