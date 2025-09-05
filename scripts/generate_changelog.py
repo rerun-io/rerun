@@ -65,8 +65,6 @@ class CommitInfo:
     pr_number: int | None
 
 
-
-
 # Slow
 def fetch_pr_info_from_commit_info(commit_info: CommitInfo) -> PrInfo | None:
     if commit_info.pr_number is None:
@@ -83,7 +81,7 @@ def fetch_pr_info(pr_number: int) -> PrInfo | None:
             ["gh", "pr", "view", str(pr_number), "--repo", f"{OWNER}/{REPO}", "--json", "title,labels,author"],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
 
         pr_data = json.loads(result.stdout)
