@@ -183,8 +183,8 @@ def test_component_filtering(server_instance: tuple[subprocess.Popen[str], Datas
 
     filter_on_dataframe = (
         dataset.dataframe_query_view(index="time_1", contents="/**")
-        .filter_is_not_null(component_path)
         .df()
+        .filter(col(component_path).is_not_null())
         .collect_partitioned()
     )
 
