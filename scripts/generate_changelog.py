@@ -85,12 +85,12 @@ def fetch_pr_info(pr_number: int) -> PrInfo | None:
             text=True,
             check=True
         )
-        
+
         pr_data = json.loads(result.stdout)
         labels = [label["name"] for label in pr_data["labels"]]
         gh_user_name = pr_data["author"]["login"]
         return PrInfo(gh_user_name=gh_user_name, pr_title=pr_data["title"], labels=labels)
-    
+
     except subprocess.CalledProcessError as e:
         eprint(f"ERROR fetching PR #{pr_number}: {e.stderr.strip()}")
         return None
