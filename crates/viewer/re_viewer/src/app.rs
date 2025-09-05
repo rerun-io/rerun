@@ -420,7 +420,7 @@ impl App {
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
 
-        if let Ok(url) = crate::open_url::ViewerOpenUrl::from_str(url) {
+        if let Ok(url) = ViewerOpenUrl::from_str(url) {
             url.open(
                 &self.egui_ctx,
                 follow_if_http,
@@ -1414,6 +1414,15 @@ impl App {
                 re_ui::apply_style_and_install_loaders(egui_ctx);
             }
 
+            UICommand::Share => {
+                if let Ok(url_for_current_screen) =
+                    ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode.clone())
+                {
+                    self.state.share_modal.open(url_for_current_screen);
+                } else {
+                    re_log::error!("Cannot share link to current screen.");
+                }
+            }
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(storage_context, display_mode);
             }
@@ -1587,11 +1596,8 @@ impl App {
             base_url = None;
         };
 
-        match crate::open_url::ViewerOpenUrl::from_display_mode(
-            storage_context.hub,
-            display_mode.clone(),
-        )
-        .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
+        match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode.clone())
+            .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
         {
             Ok(url) => {
                 self.egui_ctx.copy_text(url.clone());
@@ -3210,10 +3216,9 @@ fn update_web_address_bar(
     if !enable_history {
         return None;
     }
-    let Ok(url) =
-        crate::open_url::ViewerOpenUrl::from_display_mode(store_hub, display_mode.clone())
-            // History entries expect the url parameter, not the full url, therefore don't pass a base url.
-            .and_then(|url| url.sharable_url(None))
+    let Ok(url) = ViewerOpenUrl::from_display_mode(store_hub, display_mode.clone())
+        // History entries expect the url parameter, not the full url, therefore don't pass a base url.
+        .and_then(|url| url.sharable_url(None))
     else {
         return None;
     };
