@@ -19,7 +19,6 @@ use arrow::array::{
 use arrow::datatypes::{ArrowNativeType as _, DataType, Field, UnionMode};
 use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
-use egui::text::LayoutJob;
 use egui::{RichText, Ui};
 
 use re_ui::list_item::{CustomContent, LabelContent};
