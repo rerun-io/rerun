@@ -6,57 +6,131 @@ use re_log_types::{
     },
 };
 
-use crate::DesignTokens;
-use egui::{Color32, Style, TextFormat, text::LayoutJob};
+use crate::HasDesignTokens as _;
+use egui::{Color32, Style, TextFormat, TextStyle, text::LayoutJob};
 
 // ----------------------------------------------------------------------------
 pub trait SyntaxHighlighting {
     fn syntax_highlighted(&self, style: &Style) -> LayoutJob {
-        let mut builder = SyntaxHighlightedBuilder::new(style);
+        let mut builder = SyntaxHighlightedBuilder::new();
         self.syntax_highlight_into(&mut builder);
-        builder.job
+        builder.into_job(style)
     }
 
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>);
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder);
 }
 
 // ----------------------------------------------------------------------------
 
+enum SyntaxHighlightedStyle {
+    StringValue,
+    Identifier,
+    Keyword,
+    Index,
+    Primitive,
+    Syntax,
+    Body,
+    BodyItalics,
+    Custom(Box<TextFormat>),
+    CustomClosure(Box<dyn Fn(&Style) -> TextFormat>),
+}
+
+impl std::fmt::Debug for SyntaxHighlightedStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::StringValue => write!(f, "StringValue"),
+            Self::Identifier => write!(f, "Identifier"),
+            Self::Keyword => write!(f, "Keyword"),
+            Self::Index => write!(f, "Index"),
+            Self::Primitive => write!(f, "Primitive"),
+            Self::Syntax => write!(f, "Syntax"),
+            Self::Body => write!(f, "Body"),
+            Self::BodyItalics => write!(f, "BodyItalics"),
+            Self::Custom(_) => write!(f, "Custom(…)"),
+            Self::CustomClosure(_) => write!(f, "CustomClosure(…)"),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct SyntaxHighlightedPart {
+    byte_range: std::ops::Range<usize>,
+    style: SyntaxHighlightedStyle,
+}
+
 /// Easily build syntax-highlighted text.
-pub struct SyntaxHighlightedBuilder<'a> {
-    pub style: &'a Style,
-    pub tokens: &'a DesignTokens,
-    pub job: LayoutJob,
+#[derive(Debug, Default)]
+pub struct SyntaxHighlightedBuilder {
+    text: String,
+    parts: smallvec::SmallVec<[SyntaxHighlightedPart; 1]>,
 }
 
 /// Easily build syntax-highlighted [`LayoutJob`]s.
-impl<'a> SyntaxHighlightedBuilder<'a> {
-    pub fn new(style: &'a Style) -> Self {
+///
+/// Try to use one of the `append_*` or `with_*` methods that semantically matches
+/// what you are trying to highlight. Check the docs of the `append_*` methods for examples
+/// of what they should be used with.
+///
+/// The `with_*` methods are builder-style, taking `self` and returning `Self`.
+/// The `append_*` methods take `&mut self` and return `&mut Self`.
+///
+/// Use the `with_*` methods when building something inline.
+impl SyntaxHighlightedBuilder {
+    pub const QUOTE_CHAR: char = '"';
+
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Construct [`Self`] from an existing [`LayoutJob`].
+    ///
+    /// Some information (the `leading_space`) will be lost.
+    pub fn from(job: impl Into<LayoutJob>) -> Self {
+        let job = job.into();
         Self {
-            style,
-            tokens: crate::design_tokens_of_visuals(&style.visuals),
-            job: LayoutJob::default(),
+            text: job.text,
+            parts: job
+                .sections
+                .into_iter()
+                .map(|s| SyntaxHighlightedPart {
+                    style: SyntaxHighlightedStyle::Custom(Box::new(s.format)),
+                    byte_range: s.byte_range,
+                })
+                .collect(),
         }
     }
 
+    /// Append anything that implements [`SyntaxHighlighting`].
     #[inline]
     pub fn with(mut self, portion: &dyn SyntaxHighlighting) -> Self {
         portion.syntax_highlight_into(&mut self);
         self
     }
 
+    /// Append anything that implements [`SyntaxHighlighting`].
     #[inline]
     pub fn append(&mut self, portion: &dyn SyntaxHighlighting) -> &mut Self {
         portion.syntax_highlight_into(self);
         self
     }
 
+    fn append_kind(&mut self, style: SyntaxHighlightedStyle, portion: &str) -> &mut Self {
+        let start = self.text.len();
+        self.text.push_str(portion);
+        let end = self.text.len();
+        self.parts.push(SyntaxHighlightedPart {
+            byte_range: start..end,
+            style,
+        });
+        self
+    }
+
     /// Some string data. Will be quoted.
     pub fn append_string_value(&mut self, portion: &str) -> &mut Self {
-        let format = monospace_with_color(self.style, self.tokens.code_string_color);
-        self.job.append("\"", 0.0, format.clone());
-        self.job.append(portion, 0.0, format.clone());
-        self.job.append("\"", 0.0, format);
+        let quote = Self::QUOTE_CHAR.to_string();
+        self.append_kind(SyntaxHighlightedStyle::StringValue, &quote);
+        self.append_kind(SyntaxHighlightedStyle::StringValue, portion);
+        self.append_kind(SyntaxHighlightedStyle::StringValue, &quote);
         self
     }
 
@@ -64,124 +138,188 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
     ///
     /// E.g. a variable name, field name, etc. Won't be quoted.
     pub fn append_identifier(&mut self, portion: &str) -> &mut Self {
-        let format = monospace_with_color(self.style, self.tokens.text_default);
-        self.job.append(portion, 0.0, format);
+        self.append_kind(SyntaxHighlightedStyle::Identifier, portion);
+        self
+    }
+
+    /// A keyword, e.g. a filter operator, like `and` or `all`
+    pub fn append_keyword(&mut self, portion: &str) -> &mut Self {
+        self.append_kind(SyntaxHighlightedStyle::Keyword, portion);
         self
     }
 
     /// An index number, e.g. an array index.
     pub fn append_index(&mut self, portion: &str) -> &mut Self {
-        let format = monospace_with_color(self.style, self.tokens.code_index_color);
-        self.job.append(portion, 0.0, format);
+        self.append_kind(SyntaxHighlightedStyle::Index, portion);
         self
     }
 
     /// Some primitive value, e.g. a number or bool.
     pub fn append_primitive(&mut self, portion: &str) -> &mut Self {
-        let format = monospace_with_color(self.style, self.tokens.code_primitive_color);
-        self.job.append(portion, 0.0, format);
+        self.append_kind(SyntaxHighlightedStyle::Primitive, portion);
         self
     }
 
     /// Some syntax, e.g. brackets, commas, colons, etc.
     pub fn append_syntax(&mut self, portion: &str) -> &mut Self {
-        let format = monospace_with_color(self.style, self.tokens.text_strong);
-        self.job.append(portion, 0.0, format);
+        self.append_kind(SyntaxHighlightedStyle::Syntax, portion);
         self
     }
 
-    /// A filter operator
-    pub fn append_filter_operator(&mut self, portion: &str) -> &mut Self {
-        let format = body_text_with_color(self.style, self.tokens.filter_operator_color);
-        self.job.append(portion, 0.0, format);
+    /// Append regular body text.
+    pub fn append_body(&mut self, portion: &str) -> &mut Self {
+        self.append_kind(SyntaxHighlightedStyle::Body, portion);
+        self
+    }
+
+    /// Append _italic_ body text.
+    pub fn append_body_italics(&mut self, portion: &str) -> &mut Self {
+        self.append_kind(SyntaxHighlightedStyle::BodyItalics, portion);
+        self
+    }
+
+    /// Append text with a custom format.
+    #[inline]
+    pub fn append_with_format(&mut self, text: &str, format: TextFormat) -> &mut Self {
+        self.append_kind(SyntaxHighlightedStyle::Custom(Box::new(format)), text);
+        self
+    }
+
+    /// Append text with a custom format closure.
+    #[inline]
+    pub fn append_with_format_closure<F>(&mut self, text: &str, f: F) -> &mut Self
+    where
+        F: 'static + Fn(&Style) -> TextFormat,
+    {
+        self.append_kind(SyntaxHighlightedStyle::CustomClosure(Box::new(f)), text);
         self
     }
 
     #[inline]
-    pub fn append_with_format(
-        &mut self,
-        text: &str,
-        format: impl Fn(&'a Style) -> TextFormat,
-    ) -> &mut Self {
-        self.job.append(text, 0.0, format(self.style));
+    pub fn with_string_value(mut self, portion: &str) -> Self {
+        self.append_string_value(portion);
         self
     }
 
     #[inline]
-    pub fn into_job(self) -> LayoutJob {
-        self.job
+    pub fn with_keyword(mut self, portion: &str) -> Self {
+        self.append_keyword(portion);
+        self
     }
 
     #[inline]
-    pub fn into_widget_text(self) -> egui::WidgetText {
-        self.into_job().into()
+    pub fn with_syntax(mut self, portion: &str) -> Self {
+        self.append_syntax(portion);
+        self
+    }
+
+    #[inline]
+    pub fn with_body(mut self, portion: &str) -> Self {
+        self.append_body(portion);
+        self
+    }
+
+    #[inline]
+    pub fn with_index(mut self, portion: &str) -> Self {
+        self.append_index(portion);
+        self
+    }
+
+    #[inline]
+    pub fn with_identifier(mut self, portion: &str) -> Self {
+        self.append_identifier(portion);
+        self
+    }
+
+    #[inline]
+    pub fn with_primitive(mut self, portion: &str) -> Self {
+        self.append_primitive(portion);
+        self
+    }
+
+    #[inline]
+    pub fn into_job(self, style: &Style) -> LayoutJob {
+        let mut job = LayoutJob {
+            text: self.text,
+            sections: Vec::with_capacity(self.parts.len()),
+            ..Default::default()
+        };
+
+        for part in self.parts {
+            let format = part.style.into_format(style);
+            job.sections.push(egui::text::LayoutSection {
+                byte_range: part.byte_range,
+                format,
+                leading_space: 0.0,
+            });
+        }
+
+        job
+    }
+
+    #[inline]
+    pub fn into_widget_text(self, style: &Style) -> egui::WidgetText {
+        self.into_job(style).into()
     }
 }
 
-impl From<SyntaxHighlightedBuilder<'_>> for LayoutJob {
-    fn from(builder: SyntaxHighlightedBuilder<'_>) -> Self {
-        builder.into_job()
+impl SyntaxHighlightedStyle {
+    /// Monospace text format with a specific color (that may be overridden by the style).
+    pub fn monospace_with_color(style: &Style, color: Color32) -> TextFormat {
+        TextFormat {
+            font_id: TextStyle::Monospace.resolve(style),
+            color: style.visuals.override_text_color.unwrap_or(color),
+            ..Default::default()
+        }
     }
-}
 
-impl From<SyntaxHighlightedBuilder<'_>> for egui::WidgetText {
-    fn from(builder: SyntaxHighlightedBuilder<'_>) -> Self {
-        builder.into_widget_text()
+    pub fn body_with_color(style: &Style, color: Color32) -> TextFormat {
+        TextFormat {
+            font_id: TextStyle::Body.resolve(style),
+            color: style.visuals.override_text_color.unwrap_or(color),
+            ..Default::default()
+        }
+    }
+
+    pub fn body(style: &Style) -> TextFormat {
+        Self::body_with_color(style, Color32::PLACEHOLDER)
+    }
+
+    pub fn into_format(self, style: &Style) -> TextFormat {
+        match self {
+            Self::StringValue => {
+                Self::monospace_with_color(style, style.tokens().code_string_color)
+            }
+            Self::Identifier => Self::monospace_with_color(style, style.tokens().text_default),
+            // TODO(lucas): Find a better way to deal with body / monospace style
+            Self::Keyword => Self::body_with_color(style, style.tokens().code_keyword_color),
+            Self::Index => Self::monospace_with_color(style, style.tokens().code_index_color),
+            Self::Primitive => {
+                Self::monospace_with_color(style, style.tokens().code_primitive_color)
+            }
+            Self::Syntax => Self::monospace_with_color(style, style.tokens().text_strong),
+            Self::Body => Self::body(style),
+            Self::BodyItalics => {
+                let mut format = Self::body(style);
+                format.italics = true;
+                format
+            }
+            Self::Custom(format) => *format,
+            Self::CustomClosure(f) => f(style),
+        }
     }
 }
 
 // ----------------------------------------------------------------------------
 
-fn text_format(style: &Style) -> TextFormat {
-    TextFormat {
-        font_id: egui::TextStyle::Body.resolve(style),
-
-        // This color be replaced with appropriate color based on widget,
-        // and whether the widget is hovered, etc
-        color: Color32::PLACEHOLDER,
-
-        ..Default::default()
-    }
-}
-
-/// Body text with a specific color (that may be overridden by the style).
-fn body_text_with_color(style: &Style, color: Color32) -> TextFormat {
-    TextFormat {
-        font_id: egui::TextStyle::Body.resolve(style),
-        color: style.visuals.override_text_color.unwrap_or(color),
-        ..Default::default()
-    }
-}
-
-/// Monospace text format with a specific color (that may be overridden by the style).
-fn monospace_with_color(style: &Style, color: Color32) -> TextFormat {
-    TextFormat {
-        font_id: egui::TextStyle::Monospace.resolve(style),
-        color: style.visuals.override_text_color.unwrap_or(color),
-        ..Default::default()
-    }
-}
-
-impl SyntaxHighlighting for &'_ str {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
-        builder.append_with_format(self, text_format);
-    }
-}
-
-impl SyntaxHighlighting for String {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
-        builder.append_with_format(self, text_format);
-    }
-}
-
 impl SyntaxHighlighting for EntityPathPart {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         builder.append_identifier(&self.ui_string());
     }
 }
 
 impl SyntaxHighlighting for Instance {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         if self.is_all() {
             builder.append_primitive("all");
         } else {
@@ -191,7 +329,7 @@ impl SyntaxHighlighting for Instance {
 }
 
 impl SyntaxHighlighting for EntityPath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         builder.append_syntax("/");
 
         for (i, part) in self.iter().enumerate() {
@@ -204,7 +342,7 @@ impl SyntaxHighlighting for EntityPath {
 }
 
 impl SyntaxHighlighting for InstancePath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         builder.append(&self.entity_path);
         if self.instance.is_specific() {
             builder.append(&InstanceInBrackets(self.instance));
@@ -213,31 +351,31 @@ impl SyntaxHighlighting for InstancePath {
 }
 
 impl SyntaxHighlighting for ComponentType {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         builder.append_identifier(self.short_name());
     }
 }
 
 impl SyntaxHighlighting for ArchetypeName {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         builder.append_identifier(self.as_str());
     }
 }
 
 impl SyntaxHighlighting for ComponentIdentifier {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         builder.append_identifier(self.as_ref());
     }
 }
 
 impl SyntaxHighlighting for ComponentDescriptor {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         builder.append_identifier(self.display_name());
     }
 }
 
 impl SyntaxHighlighting for ComponentPath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         let Self {
             entity_path,
             component_descriptor,
@@ -253,10 +391,51 @@ impl SyntaxHighlighting for ComponentPath {
 pub struct InstanceInBrackets(pub Instance);
 
 impl SyntaxHighlighting for InstanceInBrackets {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
         builder
             .append_syntax("[")
             .append(&self.0)
             .append_syntax("]");
+    }
+}
+
+macro_rules! impl_sh_primitive {
+    ($t:ty, $to_string:path) => {
+        impl SyntaxHighlighting for $t {
+            fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+                builder.append_primitive(&$to_string(*self));
+            }
+        }
+    };
+    ($t:ty) => {
+        impl SyntaxHighlighting for $t {
+            fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+                builder.append_primitive(&self.to_string());
+            }
+        }
+    };
+}
+
+impl_sh_primitive!(f32, re_format::format_f32);
+impl_sh_primitive!(f64, re_format::format_f64);
+
+impl_sh_primitive!(i8, re_format::format_int);
+impl_sh_primitive!(i16, re_format::format_int);
+impl_sh_primitive!(i32, re_format::format_int);
+impl_sh_primitive!(i64, re_format::format_int);
+impl_sh_primitive!(isize, re_format::format_int);
+impl_sh_primitive!(u8, re_format::format_uint);
+impl_sh_primitive!(u16, re_format::format_uint);
+impl_sh_primitive!(u32, re_format::format_uint);
+impl_sh_primitive!(u64, re_format::format_uint);
+impl_sh_primitive!(usize, re_format::format_uint);
+
+impl_sh_primitive!(bool);
+
+impl<T: SyntaxHighlighting> From<T> for SyntaxHighlightedBuilder {
+    fn from(portion: T) -> Self {
+        let mut builder = Self::new();
+        portion.syntax_highlight_into(&mut builder);
+        builder
     }
 }

@@ -162,11 +162,11 @@ impl Filter {
             .stroke(ui.tokens().table_filter_frame_stroke)
             .corner_radius(2.0)
             .show(ui, |ui| {
-                let widget_text = SyntaxHighlightedBuilder::new(ui.style())
-                    .with(&self.column_name)
-                    .with(&" ")
+                let widget_text = SyntaxHighlightedBuilder::new()
+                    .with_body(&self.column_name)
+                    .with_keyword(" ")
                     .with(&self.operation)
-                    .into_widget_text();
+                    .into_widget_text(ui.style());
 
                 let text_response = ui.add(
                     egui::Label::new(widget_text)
@@ -247,9 +247,9 @@ impl Filter {
 }
 
 impl SyntaxHighlighting for FilterOperation {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
-        builder.append_filter_operator(self.operator_text());
-        builder.append(&" ");
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        builder.append_keyword(self.operator_text());
+        builder.append_keyword(" ");
 
         match self {
             Self::StringContains(query) => builder.append_string_value(query),
@@ -269,11 +269,11 @@ impl FilterOperation {
     ) -> FilterUiAction {
         let mut action = FilterUiAction::None;
 
-        let mut top_text_builder = SyntaxHighlightedBuilder::new(ui.style());
-        top_text_builder.append(&column_name);
-        top_text_builder.append(&" ");
-        top_text_builder.append_filter_operator(self.operator_text());
-        let top_text = top_text_builder.into_widget_text();
+        let mut top_text_builder = SyntaxHighlightedBuilder::new();
+        top_text_builder.append_body(column_name);
+        top_text_builder.append_keyword(" ");
+        top_text_builder.append_keyword(self.operator_text());
+        let top_text = top_text_builder.into_widget_text(ui.style());
 
         match self {
             Self::StringContains(query) => {
