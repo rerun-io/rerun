@@ -721,7 +721,7 @@ where
 fn run_impl(
     _main_thread_token: crate::MainThreadToken,
     _build_info: re_build_info::BuildInfo,
-    call_source: CallSource,
+    _call_source: CallSource,
     args: Args,
     tokio_runtime_handle: &tokio::runtime::Handle,
     #[cfg(feature = "native_viewer")] profiler: re_tracing::Profiler,
@@ -833,7 +833,7 @@ fn run_impl(
                     url_or_paths,
                     _main_thread_token,
                     _build_info,
-                    call_source,
+                    _call_source,
                     tokio_runtime_handle,
                     profiler,
                     connection_registry,
