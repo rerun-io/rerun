@@ -100,7 +100,7 @@ impl framework::Example for Picking {
         pixels_per_point: f32,
     ) -> anyhow::Result<Vec<framework::ViewDrawResult>> {
         if let Some(picking_result) =
-            PickingLayerProcessor::readback_result::<()>(re_ctx, READBACK_IDENTIFIER)
+            PickingLayerProcessor::readback_result(re_ctx, READBACK_IDENTIFIER)
         {
             // Grab the middle pixel. usually we'd want to do something clever that snaps the closest object of interest.
             let picked_id = picking_result.picked_id(picking_result.rect.extent / 2);
@@ -128,7 +128,6 @@ impl framework::Example for Picking {
                 glam::uvec2(picking_rect_size, picking_rect_size),
             ),
             readback_identifier: READBACK_IDENTIFIER,
-            readback_user_data: Box::new(()),
             show_debug_view: false,
         };
 
