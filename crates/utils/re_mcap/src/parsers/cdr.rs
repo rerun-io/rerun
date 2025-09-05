@@ -64,16 +64,36 @@ pub fn try_decode_message<'d, T: Deserialize<'d>>(msg: &'d [u8]) -> Result<T, Cd
     }
 }
 
-pub fn try_encode_message<T: Serialize>(msg: &T) -> Result<Vec<u8>, CdrError> {
-    let mut writer = std::io::Cursor::new(Vec::new());
-    let mut header = [0u8; 4];
-    header[0..2].copy_from_slice(&RepresentationIdentifier::CdrLittleEndian.to_bytes());
-    writer
-        .write_all(&header)
+/// Encode a serializable message into a writer with the given CDR representation.
+pub fn encode_message_into<T, W>(
+    msg: &T,
+    mut out: W,
+    representation: RepresentationIdentifier,
+) -> Result<(), CdrError>
+where
+    T: Serialize,
+    W: std::io::Write,
+{
+    let id = representation.to_bytes();
+    out.write_all(&[id[0], id[1], 0, 0])
         .map_err(|err| CdrError::Other(anyhow::Error::from(err)))?;
 
-    cdr_encoding::to_writer::<_, byteorder::LittleEndian, _>(&mut writer, msg)?;
-    Ok(writer.into_inner())
+    if representation.is_big_endian() {
+        cdr_encoding::to_writer::<_, byteorder::BigEndian, _>(&mut out, msg)?;
+    } else {
+        cdr_encoding::to_writer::<_, byteorder::LittleEndian, _>(&mut out, msg)?;
+    }
+    Ok(())
+}
+
+/// Encode a serializable message into a new buffer with the provided CDR representation.
+pub fn try_encode_message<T: Serialize>(
+    msg: &T,
+    representation: RepresentationIdentifier,
+) -> Result<Vec<u8>, CdrError> {
+    let mut buf = Vec::new();
+    encode_message_into(msg, &mut buf, representation)?;
+    Ok(buf)
 }
 
 /// Errors from CDR decoding.
