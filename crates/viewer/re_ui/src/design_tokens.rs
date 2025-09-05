@@ -210,14 +210,13 @@ pub struct DesignTokens {
     pub list_item_active_bg: Color32,
     pub list_item_collapse_default: Color32,
 
-    pub code_index: Color32,
-    pub code_string: Color32,
-    pub code_primitive: Color32,
+    pub code_index_color: Color32,
+    pub code_string_color: Color32,
+    pub code_primitive_color: Color32,
+    pub filter_operator_color: Color32,
 
     // Table filter UI
     pub table_filter_frame_stroke: Stroke,
-    pub table_filter_operator_text_color: Color32,
-    pub table_filter_rhs_text_color: Color32,
 }
 
 impl DesignTokens {
@@ -353,13 +352,12 @@ impl DesignTokens {
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
 
-            code_index: get_color("code_index"),
-            code_string: get_color("code_string"),
-            code_primitive: get_color("code_primitive"),
+            code_index_color: get_color("code_index_color"),
+            code_string_color: get_color("code_string_color"),
+            code_primitive_color: get_color("code_primitive_color"),
 
+            filter_operator_color: get_color("filter_operator_color"),
             table_filter_frame_stroke: get_stroke("table_filter_frame_stroke"),
-            table_filter_operator_text_color: get_color("table_filter_operator_text_color"),
-            table_filter_rhs_text_color: get_color("table_filter_rhs_text_color"),
         })
     }
 
