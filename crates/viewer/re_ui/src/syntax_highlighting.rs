@@ -124,31 +124,6 @@ impl SyntaxHighlightedBuilder {
         });
         self
     }
-
-    #[inline]
-    pub fn into_job(self, style: &Style) -> LayoutJob {
-        let mut job = LayoutJob {
-            text: self.text,
-            sections: Vec::with_capacity(self.parts.len()),
-            ..Default::default()
-        };
-
-        for part in self.parts {
-            let format = part.style.into_format(style);
-            job.sections.push(egui::text::LayoutSection {
-                byte_range: part.byte_range,
-                format,
-                leading_space: 0.0,
-            });
-        }
-
-        job
-    }
-
-    #[inline]
-    pub fn into_widget_text(self, style: &Style) -> egui::WidgetText {
-        self.into_job(style).into()
-    }
 }
 
 macro_rules! impl_style_fns {
@@ -282,6 +257,33 @@ impl SyntaxHighlightedBuilder {
     {
         self.append_with_format_closure(text, f);
         self
+    }
+}
+
+impl SyntaxHighlightedBuilder {
+    #[inline]
+    pub fn into_job(self, style: &Style) -> LayoutJob {
+        let mut job = LayoutJob {
+            text: self.text,
+            sections: Vec::with_capacity(self.parts.len()),
+            ..Default::default()
+        };
+
+        for part in self.parts {
+            let format = part.style.into_format(style);
+            job.sections.push(egui::text::LayoutSection {
+                byte_range: part.byte_range,
+                format,
+                leading_space: 0.0,
+            });
+        }
+
+        job
+    }
+
+    #[inline]
+    pub fn into_widget_text(self, style: &Style) -> egui::WidgetText {
+        self.into_job(style).into()
     }
 }
 
