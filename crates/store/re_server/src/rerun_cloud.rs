@@ -17,7 +17,7 @@ use re_entity_db::external::re_query::StorageEngine;
 use re_log_encoding::codec::wire::{decoder::Decode as _, encoder::Encode as _};
 use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::{GetChunksRequest, ScanPartitionTableRequest};
+use re_protos::cloud::v1alpha1::ext::GetChunksRequest;
 use re_protos::cloud::v1alpha1::{
     GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
     QueryDatasetResponse, ScanPartitionTableResponse,
@@ -528,10 +528,10 @@ impl RerunCloudService for RerunCloudHandler {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
-        let request: ScanPartitionTableRequest = request.into_inner().try_into()?;
-        if request.scan_parameters.is_some() {
+        let request = request.into_inner();
+        if !request.columns.is_empty() {
             return Err(tonic::Status::unimplemented(
-                "scan_partition_table: scan_parameters not implemented",
+                "scan_partition_table: column projection not implemented",
             ));
         }
 
