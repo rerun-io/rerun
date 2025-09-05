@@ -370,13 +370,14 @@ impl ViewerOpenUrl {
         // Combine the URL(s) with the web viewer base URL if provided.
         if let Some(web_viewer_base_url) = web_viewer_base_url {
             let mut share_url = web_viewer_base_url.clone();
-            share_url.set_query(Some(
-                &urls
-                    .into_iter()
-                    .map(|url| format!("url={url}"))
-                    .collect::<Vec<_>>()
-                    .join("&"),
-            ));
+
+            // Use the form_urlencoded::Serializer to build the query string with multiple "url" parameters.
+            // It's important to not just append the strings, since we have to take care of correctly escaping.
+            let mut serializer = url::form_urlencoded::Serializer::new(String::new());
+            for url in &urls {
+                serializer.append_pair("url", url);
+            }
+            share_url.set_query(Some(&serializer.finish()));
 
             Ok(share_url.to_string())
         } else if urls.len() == 1 {
