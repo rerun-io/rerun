@@ -164,8 +164,11 @@ impl ::prost::Name for GetPartitionTableSchemaResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScanPartitionTableRequest {
-    #[prost(message, optional, tag = "2")]
-    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
+    /// A list of column names to be projected server-side.
+    ///
+    /// All of them if left empty.
+    #[prost(string, repeated, tag = "3")]
+    pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for ScanPartitionTableRequest {
     const NAME: &'static str = "ScanPartitionTableRequest";
@@ -1967,10 +1970,12 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.client_streaming(req, path, codec).await
         }
-        /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
+        /// Returns the schema of the partition table.
         ///
-        /// * To inspect the data of the partition table, use `ScanPartitionTable`.
-        /// * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+        /// This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
+        ///
+        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanPartitionTable`.
         ///
         /// This endpoint requires the standard dataset headers.
         pub async fn get_partition_table_schema(
@@ -1994,9 +1999,9 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Inspect the contents of the partition table (i.e. the dataset manifest).
+        /// Inspect the contents of the partition table.
         ///
-        /// The returned data will follow the schema specified by `GetPartitionTableSchema`.
+        /// The data will follow the schema returned by `GetPartitionTableSchema`.
         pub async fn scan_partition_table(
             &mut self,
             request: impl tonic::IntoRequest<super::ScanPartitionTableRequest>,
@@ -2398,10 +2403,12 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
         ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>;
-        /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
+        /// Returns the schema of the partition table.
         ///
-        /// * To inspect the data of the partition table, use `ScanPartitionTable`.
-        /// * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+        /// This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
+        ///
+        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanPartitionTable`.
         ///
         /// This endpoint requires the standard dataset headers.
         async fn get_partition_table_schema(
@@ -2416,9 +2423,9 @@ pub mod rerun_cloud_service_server {
                 Item = std::result::Result<super::ScanPartitionTableResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Inspect the contents of the partition table (i.e. the dataset manifest).
+        /// Inspect the contents of the partition table.
         ///
-        /// The returned data will follow the schema specified by `GetPartitionTableSchema`.
+        /// The data will follow the schema returned by `GetPartitionTableSchema`.
         async fn scan_partition_table(
             &self,
             request: tonic::Request<super::ScanPartitionTableRequest>,

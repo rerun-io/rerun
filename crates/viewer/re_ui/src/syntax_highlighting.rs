@@ -160,6 +160,13 @@ impl SyntaxHighlightedBuilder {
         self
     }
 
+    /// A filter operator
+    pub fn append_filter_operator(&mut self, portion: &str) -> &mut Self {
+        let format = body_text_with_color(self.style, self.tokens.filter_operator_color);
+        self.job.append(portion, 0.0, format);
+        self
+    }
+
     #[inline]
     pub fn with_string_value(mut self, portion: &str) -> Self {
         self.append_string_value(portion);

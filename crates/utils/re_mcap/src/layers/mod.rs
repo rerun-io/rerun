@@ -123,8 +123,9 @@ impl McapChunkDecoder {
         ]);
 
         if let Some((ctx, parser)) = self.parsers.get_mut(&channel_id) {
-            ctx.add_timepoint(timepoint.clone());
+            // If the parser fails, we should _not_ append the timepoint
             parser.append(ctx, msg)?;
+            ctx.add_timepoint(timepoint.clone());
         } else {
             // TODO(#10867): If we encounter a message that we can't parse at all we should emit a warning.
             // Note that this quite easy to achieve when using layers and only selecting a subset.
