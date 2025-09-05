@@ -11,6 +11,6 @@ pub fn edit_or_view_view_coordinates(
     // Its overrides are likely not always correctly queried.
     UiLayout::List.data_label(
         ui,
-        SyntaxHighlightedBuilder::new(ui.style()).with_body(&value.as_ref().describe()),
+        SyntaxHighlightedBuilder::new().with_body(&value.as_ref().describe()),
     )
 }

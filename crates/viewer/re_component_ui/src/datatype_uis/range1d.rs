@@ -44,7 +44,7 @@ fn edit_view_range1d_impl(
         let [min, max] = value.0;
         UiLayout::List.data_label(
             ui,
-            SyntaxHighlightedBuilder::new(ui.style())
+            SyntaxHighlightedBuilder::new()
                 .with(&min)
                 .with_syntax(" - ")
                 .with(&max),

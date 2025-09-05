@@ -63,25 +63,11 @@ impl<'a> ArrayUi<'a> {
         list_ui(ui, 0..self.array.len(), &*self.format);
     }
 
-    /// Returns a [`LayoutJob`] that displays the data.
-    ///
-    /// Arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
-    pub fn job(&self, ui: &Ui) -> Result<LayoutJob, ArrowError> {
-        Ok(self.highlighted(ui)?.into_job())
-    }
-
-    /// Returns a [`LayoutJob`] that displays a single value at `idx`.
-    ///
-    /// Nested arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
-    pub fn value_job(&self, ui: &Ui, idx: usize) -> Result<LayoutJob, ArrowError> {
-        Ok(self.value_highlighted(ui, idx)?.into_job())
-    }
-
     /// Returns a [`SyntaxHighlightedBuilder`] that displays the entire array.
     ///
     /// Arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
-    pub fn highlighted(&self, ui: &Ui) -> Result<SyntaxHighlightedBuilder, ArrowError> {
-        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
+    pub fn highlighted(&self) -> Result<SyntaxHighlightedBuilder, ArrowError> {
+        let mut highlighted = SyntaxHighlightedBuilder::new();
         write_list(&mut highlighted, 0..self.array.len(), &*self.format)?;
         Ok(highlighted)
     }
@@ -89,12 +75,8 @@ impl<'a> ArrayUi<'a> {
     /// Returns a [`SyntaxHighlightedBuilder`] that displays a single value at `idx`.
     ///
     /// Nested arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
-    pub fn value_highlighted(
-        &self,
-        ui: &Ui,
-        idx: usize,
-    ) -> Result<SyntaxHighlightedBuilder, ArrowError> {
-        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
+    pub fn value_highlighted(&self, idx: usize) -> Result<SyntaxHighlightedBuilder, ArrowError> {
+        let mut highlighted = SyntaxHighlightedBuilder::new();
         self.format.write(idx, &mut highlighted)?;
         Ok(highlighted)
     }
@@ -210,13 +192,13 @@ pub(crate) trait ShowIndex {
 
     /// Show the item at `idx` as a rerun `list_item`.
     fn show(&self, idx: usize, ui: &mut Ui) {
-        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
+        let mut highlighted = SyntaxHighlightedBuilder::new();
         let result = self.write(idx, &mut highlighted);
         match result {
             Ok(()) => {
                 ui.list_item().show_hierarchical(
                     ui,
-                    CustomContent::new(|ui, context| {
+                    CustomContent::new(|ui, _context| {
                         UiLayout::List.data_label(ui, highlighted);
                     }),
                 );
@@ -253,12 +235,14 @@ trait ShowIndexState<'a> {
     ) -> EmptyArrowResult;
 
     fn show(&self, state: &Self::State, idx: usize, ui: &mut Ui) {
-        let mut highlighted = SyntaxHighlightedBuilder::new(ui.style());
+        let mut highlighted = SyntaxHighlightedBuilder::new();
         let result = self.write(state, idx, &mut highlighted);
         match result {
             Ok(()) => {
-                ui.list_item()
-                    .show_hierarchical(ui, LabelContent::new(highlighted.into_widget_text()));
+                ui.list_item().show_hierarchical(
+                    ui,
+                    LabelContent::new(highlighted.into_widget_text(ui.style())),
+                );
             }
             Err(err) => {
                 ui.error_label(err.to_string());
@@ -619,14 +603,14 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
         let iter = start..end;
 
         for idx in iter {
-            let mut key_string = SyntaxHighlightedBuilder::new(ui.style());
+            let mut key_string = SyntaxHighlightedBuilder::new();
             let result = keys.write(idx, &mut key_string);
             let text = if result.is_err() {
                 RichText::new("cannot display key")
                     .color(ui.tokens().error_fg_color)
                     .into()
             } else {
-                key_string.into_widget_text()
+                key_string.into_widget_text(ui.style())
             };
 
             ArrowNode::custom(text, values.as_ref()).show(ui, idx);

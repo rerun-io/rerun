@@ -63,7 +63,7 @@ pub fn edit_or_view_vec2d_raw(
     } else {
         UiLayout::List.data_label(
             ui,
-            SyntaxHighlightedBuilder::new(ui.style())
+            SyntaxHighlightedBuilder::new()
                 .with_syntax("[")
                 .with(&x)
                 .with_syntax(", ")
@@ -101,7 +101,7 @@ pub fn edit_or_view_vec3d_raw(
     } else {
         UiLayout::List.data_label(
             ui,
-            SyntaxHighlightedBuilder::new(ui.style())
+            SyntaxHighlightedBuilder::new()
                 .with_syntax("[")
                 .with(&x)
                 .with_syntax(", ")

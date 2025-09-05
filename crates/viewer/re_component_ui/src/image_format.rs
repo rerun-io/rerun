@@ -10,6 +10,6 @@ pub fn edit_or_view_image_format(
     // TODO(#7100): need a ui for editing this!
     UiLayout::List.data_label(
         ui,
-        SyntaxHighlightedBuilder::new(ui.style()).with_identifier(&format.as_ref().to_string()),
+        SyntaxHighlightedBuilder::new().with_identifier(&format.as_ref().to_string()),
     )
 }

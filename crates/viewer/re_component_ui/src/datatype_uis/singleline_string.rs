@@ -30,10 +30,7 @@ fn edit_singleline_string_impl(
         *value = edit_name.into();
         response
     } else {
-        UiLayout::List.data_label(
-            ui,
-            SyntaxHighlightedBuilder::new(ui.style()).with_string_value(value),
-        )
+        UiLayout::List.data_label(ui, SyntaxHighlightedBuilder::new().with_string_value(value))
     }
 }
 
@@ -61,9 +58,7 @@ fn edit_multiline_string_impl(
         *value = edit_name.into();
         response
     } else {
-        UiLayout::SelectionPanel.data_label(
-            ui,
-            SyntaxHighlightedBuilder::new(ui.style()).with_string_value(value),
-        )
+        UiLayout::SelectionPanel
+            .data_label(ui, SyntaxHighlightedBuilder::new().with_string_value(value))
     }
 }

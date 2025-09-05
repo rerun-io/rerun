@@ -1,7 +1,7 @@
-use egui::{Frame, Margin};
+use egui::{Frame, Margin, TextFormat, TextStyle};
 
 use re_ui::{
-    SyntaxHighlighting, UiExt as _, design_tokens_of_visuals,
+    HasDesignTokens as _, SyntaxHighlighting, UiExt as _,
     syntax_highlighting::SyntaxHighlightedBuilder,
 };
 
@@ -165,11 +165,11 @@ impl Filter {
             .stroke(ui.tokens().table_filter_frame_stroke)
             .corner_radius(2.0)
             .show(ui, |ui| {
-                let widget_text = SyntaxHighlightedBuilder::new(ui.style())
+                let widget_text = SyntaxHighlightedBuilder::new()
                     .with_identifier(&self.column_name)
-                    .with_identifier(&" ")
+                    .with_identifier(" ")
                     .with(&self.operation)
-                    .into_widget_text();
+                    .into_widget_text(ui.style());
 
                 let text_response = ui.add(
                     egui::Label::new(widget_text)
@@ -249,23 +249,26 @@ impl Filter {
 
 impl SyntaxHighlighting for FilterOperation {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        let operator_text_format =
-            builder.monospace_with_color(builder.tokens.table_filter_operator_text_color);
-        let rhs_text_format =
-            builder.monospace_with_color(builder.tokens.table_filter_rhs_text_color);
+        let monospace_with_color = |style: &egui::Style, color| TextFormat {
+            font_id: TextStyle::Monospace.resolve(style),
+            color: style.visuals.override_text_color.unwrap_or(color),
+            ..Default::default()
+        };
 
         builder
-            .append_with_format(self.operator_text(), operator_text_format)
+            .append_with_format_closure(self.operator_text(), move |style| {
+                monospace_with_color(style, style.tokens().table_filter_operator_text_color)
+            })
             .append_body(" ");
 
         let rhs_text = self.rhs_text();
-        builder.append_with_format(
+        builder.append_with_format_closure(
             if rhs_text.is_empty() {
                 "…"
             } else {
                 &rhs_text
             },
-            rhs_text_format,
+            move |style| monospace_with_color(style, style.tokens().table_filter_rhs_text_color),
         );
     }
 }

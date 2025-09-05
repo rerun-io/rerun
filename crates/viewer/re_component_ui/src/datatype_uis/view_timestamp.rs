@@ -12,7 +12,7 @@ pub fn view_timestamp(
     let value: &datatypes::TimeInt = value;
     UiLayout::List.data_label(
         ui,
-        SyntaxHighlightedBuilder::new(ui.style())
+        SyntaxHighlightedBuilder::new()
             .with_primitive(&Timestamp::from(*value).format(ctx.app_options().timestamp_format)),
     )
 }

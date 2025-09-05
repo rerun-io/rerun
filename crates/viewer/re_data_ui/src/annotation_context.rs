@@ -1,6 +1,5 @@
 use egui::{NumExt as _, Vec2, color_picker};
 use itertools::Itertools as _;
-use re_format::format_uint;
 use re_log_types::EntityPath;
 use re_types::{
     Component as _, ComponentDescriptor, RowId,
@@ -78,7 +77,7 @@ impl crate::EntityDataUi for components::KeypointId {
             ui.horizontal(|ui| {
                 // Color first, to keep subsequent rows of the same things aligned
                 small_color_ui(ui, &info);
-                let mut builder = SyntaxHighlightedBuilder::new(ui.style());
+                let mut builder = SyntaxHighlightedBuilder::new();
                 builder.append_index(&self.0.to_string());
                 if let Some(label) = &info.label {
                     builder.append_string_value(label);
@@ -89,7 +88,7 @@ impl crate::EntityDataUi for components::KeypointId {
         } else {
             ui_layout.data_label(
                 ui,
-                SyntaxHighlightedBuilder::new(ui.style()).with_index(&self.0.to_string()),
+                SyntaxHighlightedBuilder::new().with_index(&self.0.to_string()),
             );
         }
     }

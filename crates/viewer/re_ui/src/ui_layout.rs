@@ -1,6 +1,5 @@
+use crate::UiExt as _;
 use crate::syntax_highlighting::SyntaxHighlightedBuilder;
-use crate::{SyntaxHighlighting, UiExt as _};
-use egui::WidgetText;
 use egui::text::{LayoutJob, TextWrapping};
 use std::sync::Arc;
 
@@ -103,7 +102,7 @@ impl UiLayout {
         ui: &mut egui::Ui,
         data: impl Into<SyntaxHighlightedBuilder>,
     ) -> egui::Response {
-        self.data_label_impl(ui, data.into().into_job())
+        self.data_label_impl(ui, data.into().into_job(ui.style()))
     }
 
     fn decorate_url(ui: &mut egui::Ui, galley: Arc<egui::Galley>) -> egui::Response {

@@ -1,5 +1,4 @@
-use egui::{Align, FontSelection, Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
-use std::sync::Arc;
+use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
 
 use re_format::format_uint;
 use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
@@ -61,14 +60,14 @@ impl<'a> ArrowNode<'a> {
     pub fn show(self, ui: &mut Ui, index: usize) {
         let label = match self.label {
             NodeLabel::Index(idx) => {
-                let mut builder = SyntaxHighlightedBuilder::new(ui.style());
+                let mut builder = SyntaxHighlightedBuilder::new();
                 builder.append_index(&format_uint(idx));
-                builder.into_widget_text()
+                builder.into_widget_text(ui.style())
             }
             NodeLabel::Name(name) => {
-                let mut builder = SyntaxHighlightedBuilder::new(ui.style());
+                let mut builder = SyntaxHighlightedBuilder::new();
                 builder.append_identifier(&name);
-                builder.into_widget_text()
+                builder.into_widget_text(ui.style())
             }
             NodeLabel::Custom(name) => name,
         };
@@ -93,7 +92,7 @@ impl<'a> ArrowNode<'a> {
                                 }
                                 ui.set_opacity(1.0 - visuals.openness());
                             }
-                            let mut value = SyntaxHighlightedBuilder::new(ui.style());
+                            let mut value = SyntaxHighlightedBuilder::new();
                             let result = self.values.write(index, &mut value);
 
                             match result {

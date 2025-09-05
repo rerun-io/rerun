@@ -1,5 +1,4 @@
 use arrow::{array::Array, error::ArrowError, util::display::FormatOptions};
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_ui::list_item::list_item_scope;
 use re_ui::{UiExt as _, UiLayout};
 
@@ -8,8 +7,6 @@ use crate::show_index::ArrayUi;
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
     re_tracing::profile_function!();
-
-    use arrow::array::{LargeStringArray, StringArray};
 
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
@@ -32,9 +29,9 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
                 }
                 UiLayout::Tooltip | UiLayout::List => {
                     let highlighted = if array.len() == 1 {
-                        array_formatter.value_highlighted(ui, 0)
+                        array_formatter.value_highlighted(0)
                     } else {
-                        array_formatter.highlighted(ui)
+                        array_formatter.highlighted()
                     };
                     match highlighted {
                         Ok(job) => {

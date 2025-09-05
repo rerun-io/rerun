@@ -1,4 +1,3 @@
-use re_format::format_f32;
 use re_types::components::Resolution;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
@@ -12,7 +11,7 @@ pub fn edit_or_view_resolution(
     let [x, y] = value.as_ref().0.0;
     UiLayout::List.data_label(
         ui,
-        SyntaxHighlightedBuilder::new(ui.style())
+        SyntaxHighlightedBuilder::new()
             .with(&x)
             .with_syntax(" × ")
             .with(&y),

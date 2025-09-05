@@ -49,7 +49,7 @@ pub fn edit_u64_raw_with_speed_impl(
     } else {
         UiLayout::List.data_label(
             ui,
-            SyntaxHighlightedBuilder::new(ui.style())
+            SyntaxHighlightedBuilder::new()
                 .with(&**value)
                 .with_primitive(suffix),
         )

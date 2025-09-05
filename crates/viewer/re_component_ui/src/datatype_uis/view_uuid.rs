@@ -9,6 +9,6 @@ pub fn view_uuid(
 ) -> egui::Response {
     UiLayout::List.data_label(
         ui,
-        SyntaxHighlightedBuilder::new(ui.style()).with_primitive(&value.as_ref().to_string()),
+        SyntaxHighlightedBuilder::new().with_primitive(&value.as_ref().to_string()),
     )
 }
