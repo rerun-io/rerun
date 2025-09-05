@@ -199,7 +199,7 @@ impl Renderers {
     /// For this to succeed, the renderer must have been initialized prior.
     /// (there would be no key otherwise anyways!)
     /// The returned type is the type erased [`RendererExt`] rather than a concrete renderer type.
-    pub fn get_by_key(&self, key: RendererTypeId) -> Option<&dyn RendererExt> {
+    pub(crate) fn get_by_key(&self, key: RendererTypeId) -> Option<&dyn RendererExt> {
         self.renderers_by_key.get(key as usize).map(|r| r.as_ref())
     }
 }

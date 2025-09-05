@@ -358,7 +358,8 @@ impl DrawData for YuvFormatConversionTask {
         _view_info: &DrawableCollectionViewInfo,
         _collector: &mut DrawableCollector<'_>,
     ) {
-        // Doesn't participate in regular rendering.
+        // Doesn't participate in regular rendering.\
+        // TODO(andreas): Maybe this shouldn't miss-use the `DrawData`/`Renderer` interface?
     }
 }
 

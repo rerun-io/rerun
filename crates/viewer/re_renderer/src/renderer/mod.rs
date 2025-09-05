@@ -42,13 +42,14 @@ use crate::{
     wgpu_resources::{GpuRenderPipelinePoolAccessor, PoolError},
 };
 
-pub type DrawDataPayload = u32;
+/// [`DrawData`] specific payload that is injected into the otherwise type agnostic [`crate::Drawable`].
+pub type DrawDataDrawablePayload = u32;
 
 /// Unique identifier for a [`Renderer`] type.
 ///
-/// The way the system is set up we don't expect many different distinct types of renderers,
+/// We generally don't expect many different distinct types of renderers,
 /// therefore 255 should be more than enough.
-/// Keeping this down makes drawable sorting more efficient.
+/// This limitation simplifies sorting of drawables a bit.
 pub type RendererTypeId = u8;
 
 /// A single drawable item within a given [`DrawData`].
@@ -59,19 +60,18 @@ pub type RendererTypeId = u8;
 pub struct DrawDataDrawable {
     /// Used for sorting drawables within a [`DrawPhase`].
     ///
-    /// Low values mean closer, high values mean further away from the camera, with 0.0 being at the camera.
-    /// (negative values are allowed but reserved for special cases)
+    /// Low values mean closer, high values mean further away from the camera.
     /// This is typically simply the squared scene space distance to the observer,
     /// but may also be a 2D layer index or similar.
     ///
     /// Sorting for NaN is considered undefined.
     pub distance_sort_key: f32,
 
-    /// Key for identifying the drawable within a given draw data.
+    /// Key for identifying the drawable within the [`DrawData`] that produced it..
     ///
     /// This is effectively an arbitrary payload whose meaning is dependent on the drawable type
     /// but typically refers to instances or instance ranges within the draw data.
-    pub draw_data_payload: DrawDataPayload,
+    pub draw_data_payload: DrawDataDrawablePayload,
 }
 
 impl DrawDataDrawable {
@@ -79,7 +79,7 @@ impl DrawDataDrawable {
     pub fn from_affine(
         view_info: &DrawableCollectionViewInfo,
         world_from_rdf: &glam::Affine3A,
-        draw_data_payload: DrawDataPayload,
+        draw_data_payload: DrawDataDrawablePayload,
     ) -> Self {
         Self::from_world_position(view_info, world_from_rdf.translation, draw_data_payload)
     }
@@ -88,7 +88,7 @@ impl DrawDataDrawable {
     pub fn from_world_position(
         view_info: &DrawableCollectionViewInfo,
         world_position: glam::Vec3A,
-        draw_data_payload: DrawDataPayload,
+        draw_data_payload: DrawDataDrawablePayload,
     ) -> Self {
         Self {
             distance_sort_key: world_position.distance_squared(view_info.camera_world_position),
@@ -106,13 +106,9 @@ pub struct DrawableCollectionViewInfo {
 /// GPU sided data used by a [`Renderer`] to draw things to the screen.
 ///
 /// Each [`DrawData`] produces one or more [`DrawDataDrawable`]s for each view & phase.
-///
-/// Valid only for the frame in which it was created (may use temp allocations!).
 //
-// TODO(andreas): As of writing we don't actually use temp allocations. We should either drop
-//               the single-frame validity assumption or enforce it!
-// TODO(andreas): Architecturally we're not far from re-using draw across several views.
-//                Only `QueueableDrawData` consuming draw data right now is preventing this.
+// TODO(andreas): We're currently not re-using draw across several views & frames.
+// Architecturally there's not much preventing this except for `QueueableDrawData` consuming `DrawData` right now.
 pub trait DrawData {
     type Renderer: Renderer<RendererDrawData = Self> + Send + Sync;
 
@@ -138,7 +134,13 @@ pub enum DrawError {
 
 /// A draw instruction specifies which drawables of a given [`DrawData`] should be rendered.
 pub struct DrawInstruction<'a, D> {
+    /// The draw data that produced the [`Self::drawables`].
     pub draw_data: &'a D,
+
+    /// The drawables to render.
+    ///
+    /// It's guaranteed that all drawables originated from a single call to [`DrawData::collect_drawables`]
+    /// of [`Self::draw_data`] but there are no guarantees on ordering.
     pub drawables: &'a [Drawable],
 }
 
@@ -152,7 +154,7 @@ pub trait Renderer {
 
     fn create_renderer(ctx: &RenderContext) -> Self;
 
-    /// Called once per phase given by [`Renderer::participated_phases`].
+    /// Called once per phase if there are any drawables for that phase.
     ///
     /// For each draw data reference, there's at most one [`DrawInstruction`].
     fn draw(
@@ -165,7 +167,7 @@ pub trait Renderer {
 }
 
 /// Extension trait for [`Renderer`] that allows running draw instructions with type erased draw data.
-pub trait RendererExt: Send + Sync {
+pub(crate) trait RendererExt: Send + Sync {
     fn run_draw_instructions(
         &self,
         gpu_resources: &GpuRenderPipelinePoolAccessor<'_>,
