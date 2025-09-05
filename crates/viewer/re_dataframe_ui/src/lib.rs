@@ -2,6 +2,7 @@
 
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
+mod convert_to_recording;
 mod datafusion_adapter;
 mod datafusion_table_widget;
 mod display_record_batch;

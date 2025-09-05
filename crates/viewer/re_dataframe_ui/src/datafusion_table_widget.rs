@@ -418,7 +418,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let visible_columns = table_delegate.table_config.visible_columns().count();
         let total_columns = columns.columns.len();
 
-        let action = Self::bottom_bar_ui(
+        let actions = Self::bottom_bar_ui(
             ui,
             viewer_ctx,
             session_id,
@@ -428,11 +428,18 @@ impl<'a> DataFusionTableWidget<'a> {
             table_state.queried_at,
         );
 
-        match action {
-            Some(BottomBarAction::Refresh) => {
-                Self::refresh(ui.ctx(), &session_ctx, table_ref);
+        for action in actions {
+            match action {
+                BottomBarAction::Refresh => {
+                    Self::refresh(ui.ctx(), &session_ctx, table_ref.clone());
+                }
+                BottomBarAction::ConvertToRecording => {
+                    crate::convert_to_recording::send_sorbet_batches_as_recording(
+                        viewer_ctx,
+                        sorbet_batches.as_slice(),
+                    );
+                }
             }
-            None => {}
         }
 
         // Calculate the maximum width of the row number column. Since we use monospace text,
@@ -493,8 +500,9 @@ impl<'a> DataFusionTableWidget<'a> {
         visible_columns: usize,
         total_columns: usize,
         queried_at: Timestamp,
-    ) -> Option<BottomBarAction> {
-        let mut action = None;
+    ) -> smallvec::SmallVec<[BottomBarAction; 1]> {
+        let mut left_action = None;
+        let mut right_action = None;
 
         let frame = Frame::new()
             .fill(ui.tokens().table_header_bg_fill)
@@ -525,11 +533,15 @@ impl<'a> DataFusionTableWidget<'a> {
                                 format_uint(visible_columns),
                                 format_uint(total_columns),
                             ));
+
+                            if ui.button("Convert to recording").clicked() {
+                                left_action = Some(BottomBarAction::ConvertToRecording);
+                            }
                         },
                         |ui| {
                             ui.set_height(height);
                             if icons::RESET.as_button().ui(ui).clicked() {
-                                action = Some(BottomBarAction::Refresh);
+                                right_action = Some(BottomBarAction::Refresh);
                             }
 
                             re_ui::time::short_duration_ui(
@@ -544,7 +556,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 });
             });
 
-        action
+        [left_action, right_action].into_iter().flatten().collect()
     }
 }
 
@@ -598,6 +610,7 @@ fn title_ui(
 
 enum BottomBarAction {
     Refresh,
+    ConvertToRecording,
 }
 
 struct DataFusionTableDelegate<'a> {
