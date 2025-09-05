@@ -4,7 +4,7 @@ mod error;
 pub mod layers;
 
 pub mod parsers;
-pub(crate) mod util;
+pub mod util;
 
 pub use error::Error;
 pub use layers::{Layer, LayerIdentifier, LayerRegistry, MessageLayer, SelectedLayers};

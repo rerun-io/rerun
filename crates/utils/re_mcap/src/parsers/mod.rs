@@ -1,5 +1,5 @@
 pub mod cdr;
-pub(crate) mod dds;
+pub mod dds;
 mod decode;
 pub mod ros2msg;
 

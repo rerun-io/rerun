@@ -5,13 +5,13 @@ mod tests {
     use re_mcap::{
         cdr::try_encode_message,
         layers::SelectedLayers,
-        parsers::ros2msg::{
+        parsers::{dds::RepresentationIdentifier, ros2msg::{
             self,
             definitions::{
                 geometry_msgs::{Quaternion, Vector3},
                 sensor_msgs::{PointField, PointFieldDatatype},
             },
-        },
+        }},
     };
     use serde::Serialize;
 
@@ -49,7 +49,9 @@ mod tests {
                 )
                 .expect("Failed to add channel");
 
-            let message_data = try_encode_message(&ros2_object).expect("Failed to encode message");
+            let message_data =
+                try_encode_message(&ros2_object, RepresentationIdentifier::CdrLittleEndian)
+                    .expect("Failed to encode message");
 
             let timestamp = 1000000000;
             let message_header = mcap::records::MessageHeader {

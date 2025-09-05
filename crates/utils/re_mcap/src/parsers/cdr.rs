@@ -23,8 +23,6 @@
 //! # }
 //! ```
 
-use std::io::Write as _;
-
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
