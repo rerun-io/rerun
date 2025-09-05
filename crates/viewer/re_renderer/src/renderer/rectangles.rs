@@ -410,7 +410,7 @@ impl DrawData for RectangleDrawData {
         collector: &mut DrawableCollector<'_>,
     ) {
         // TODO(#1025, #4787): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
-        // This is extra hacky here since we actually have transparent objects, but putting them on that layer messes with the
+        // This is extra hacky here since we actually have transparent objects, but putting them on the transparency layer messes with the
         // 2D setup we have so far.
 
         for (index, instance) in self.instances.iter().enumerate() {

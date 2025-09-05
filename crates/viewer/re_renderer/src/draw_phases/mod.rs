@@ -41,7 +41,7 @@ pub enum DrawPhase {
 
     /// Everything that can be picked with GPU based picking.
     ///
-    /// This typically contains everything in the `Opaque` phase.
+    /// Typically this contains everything from both the `Opaque` and `Transparent` phases drawn with z-test enabled.
     PickingLayer,
 
     /// Render mask for things that should get outlines.

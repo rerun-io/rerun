@@ -1,13 +1,13 @@
 use super::DrawPhase;
 
-use enumset::__internal::EnumSetTypePrivate as _; // TODO: sounds fishy
+use enumset::__internal::EnumSetTypePrivate as _;
 use enumset::EnumSet;
 
 use crate::{
     GpuRenderPipelinePoolAccessor, QueueableDrawData, RenderContext,
     context::Renderers,
     renderer::{
-        DrawDataDrawable, DrawDataPayload, DrawInstruction, DrawableCollectionViewInfo,
+        DrawDataDrawable, DrawDataDrawablePayload, DrawInstruction, DrawableCollectionViewInfo,
         RendererTypeId,
     },
 };
@@ -59,7 +59,7 @@ impl std::fmt::Debug for PackedRenderingKeyAndDrawDataIndex {
     }
 }
 
-/// A single drawable item within a given [`DrawData`].
+/// A single drawable item within a given [`crate::renderer::DrawData`].
 ///
 /// For more details see [`DrawDataDrawable`].
 /// This is an expanded version used for processing/sorting.
@@ -74,7 +74,7 @@ pub struct Drawable {
     draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex,
 
     /// See [`DrawDataDrawable::draw_data_payload`].
-    pub draw_data_payload: DrawDataPayload,
+    pub draw_data_payload: DrawDataDrawablePayload,
 }
 
 impl Drawable {

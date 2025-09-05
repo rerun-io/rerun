@@ -146,7 +146,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             },
         )?;
 
-        // TODO(#702): draw order is translated to depth offset, which works fine for opaque images,
+        // TODO(#1025): draw order is translated to depth offset, which works fine for opaque images,
         // but for everything with transparency, actual drawing order is still important.
         // We mitigate this a bit by at least sorting the segmentation images within each other.
         // Sorting of Images vs DepthImage vs SegmentationImage uses the fact that
