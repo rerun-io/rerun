@@ -177,7 +177,7 @@ codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/stor
 
 # NOTE: must be --all-features, otherwise we might miss some optional commands.
 man = { cmd = "cargo --quiet run --package rerun-cli --all-features -- man > docs/content/reference/cli.md", depends-on = [
-  "rerun-build-web" # Must have web-viewer to build `rerun-cli` with --all-features
+  "rerun-build-web", # Must have web-viewer to build `rerun-cli` with --all-features
 ] }
 
 # Compile and run the rerun viewer.
