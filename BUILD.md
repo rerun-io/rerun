@@ -65,7 +65,7 @@ git push --no-verify
 git push origin $(git branch --show-current) && git push --no-verify && git push origin --delete $(git branch --show-current)
 ```
 
-See also [this section in the egui docs](https://github.com/emilk/egui/blob/main/CONTRIBUTING.md#working-with-git-lfs).
+See also [this section in the egui docs](https://github.com/emilk/egui/blob/eceb0b11c9f8e68d96c33c1f4af0335b3e66376d/CONTRIBUTING.md#working-with-git-lfs).
 
 ## Validating your environment
 You can validate your environment is set up correctly by running:
