@@ -12,8 +12,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
-from packaging import version
-IS_NUMPY_2 = True if version.parse(np.__version__) >= version.parse("2.0.0") else False
+from ... import IS_NUMPY_2
 
 from ..._baseclasses import (
     BaseBatch,
