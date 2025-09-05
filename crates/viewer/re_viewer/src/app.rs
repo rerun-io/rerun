@@ -28,7 +28,6 @@ use crate::{
     event::ViewerEventDispatcher,
     open_url::ViewerOpenUrl,
     startup_options::StartupOptions,
-    ui::ShareDialog,
 };
 
 // ----------------------------------------------------------------------------
@@ -107,9 +106,7 @@ pub struct App {
     pub(crate) store_hub: Option<StoreHub>,
 
     /// Notification panel.
-    // TODO: make this part of the top panel.
     pub(crate) notifications: notifications::NotificationUi,
-    pub(crate) share_dialog: ShareDialog,
 
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
@@ -360,7 +357,6 @@ impl App {
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
-            share_dialog: Default::default(),
 
             memory_panel: Default::default(),
             memory_panel_open: false,
