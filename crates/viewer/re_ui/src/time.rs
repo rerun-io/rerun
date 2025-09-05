@@ -49,6 +49,18 @@ pub fn short_duration_ui(
     format: TimestampFormat,
     show: impl FnOnce(&mut egui::Ui, String) -> egui::Response,
 ) -> egui::Response {
+    // Remember to update the ui so it doesn't say "just now" forever:
+    let age = timestamp.elsapsed().as_secs_f64();
+    let repaint_in_sec = if age < 60.0 {
+        1
+    } else if age < 3600.0 {
+        60
+    } else {
+        3600
+    };
+    ui.ctx()
+        .request_repaint_after(std::time::Duration::from_secs(repaint_in_sec));
+
     let short = format_duration_short(timestamp, format);
     show(ui, short).on_hover_text(timestamp.format(format))
 }

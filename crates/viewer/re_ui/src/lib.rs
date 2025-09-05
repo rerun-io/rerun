@@ -36,6 +36,7 @@ pub use self::{
     icon_text::*,
     icons::Icon,
     markdown_utils::*,
+    notifications::Link,
     section_collapsing_header::SectionCollapsingHeader,
     syntax_highlighting::SyntaxHighlighting,
     time_drag_value::TimeDragValue,
