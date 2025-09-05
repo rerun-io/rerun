@@ -3,7 +3,7 @@ use egui::{Frame, Margin};
 use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
 use crate::TableBlueprint;
-use crate::filters::{Filter, FilterOperation};
+use crate::filters::{ComparisonOperator, Filter, FilterOperation};
 
 /// Action to take based on the user interaction.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -157,7 +157,7 @@ impl Filter {
         let mut should_delete_filter = false;
         let mut action_due_to_filter_deletion = FilterUiAction::None;
 
-        let mut response = Frame::new()
+        let response = Frame::new()
             .inner_margin(Margin::symmetric(4, 4))
             .stroke(ui.tokens().table_filter_frame_stroke)
             .corner_radius(2.0)
@@ -187,9 +187,9 @@ impl Filter {
 
         let popup_was_closed = !egui::Popup::is_id_open(ui.ctx(), filter_id);
 
-        response.inner.interact_rect = response.response.interact_rect.expand(3.0);
-        let mut popup = egui::Popup::menu(&response.inner)
+        let mut popup = egui::Popup::menu(&response.response)
             .id(filter_id)
+            .gap(3.0)
             .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside);
 
         if activate_filter {
@@ -252,11 +252,29 @@ impl SyntaxHighlighting for FilterOperation {
         builder.append_keyword(" ");
 
         match self {
+            Self::IntCompares { value, operator: _ } => {
+                builder.append_primitive(&re_format::format_int(*value))
+            }
+            Self::FloatCompares { value, operator: _ } => {
+                builder.append_primitive(&re_format::format_f64(*value))
+            }
             Self::StringContains(query) => builder.append_string_value(query),
-
             Self::BooleanEquals(query) => builder.append_primitive(&format!("{query}")),
         };
     }
+}
+
+//todo
+fn comparison_op_ui(ui: &mut egui::Ui, op: &mut ComparisonOperator) {
+    egui::ComboBox::new("comp_op", "")
+        .selected_text(op.operator_text())
+        .show_ui(ui, |ui| {
+            for possible_op in crate::filters::ComparisonOperator::ALL {
+                if ui.button(possible_op.operator_text()).clicked() {
+                    *op = *possible_op;
+                }
+            }
+        });
 }
 
 impl FilterOperation {
@@ -276,6 +294,18 @@ impl FilterOperation {
         let top_text = top_text_builder.into_widget_text(ui.style());
 
         match self {
+            Self::IntCompares { operator, value } => {
+                ui.label(top_text);
+                comparison_op_ui(ui, operator);
+                ui.add(egui::DragValue::new(value));
+            }
+
+            Self::FloatCompares { operator, value } => {
+                ui.label(top_text);
+                comparison_op_ui(ui, operator);
+                ui.add(egui::DragValue::new(value));
+            }
+
             Self::StringContains(query) => {
                 ui.label(top_text);
                 let response = ui.text_edit_singleline(query);
@@ -301,7 +331,8 @@ impl FilterOperation {
                 if ui.re_radio_value(query, true, "true").clicked()
                     || ui.re_radio_value(query, false, "false").clicked()
                 {
-                    action = FilterUiAction::CommitStateToBlueprint;
+                    //TODO?
+                    //action = FilterUiAction::CommitStateToBlueprint;
                 }
             }
         }
@@ -312,8 +343,10 @@ impl FilterOperation {
     /// Display text of the operator.
     fn operator_text(&self) -> &'static str {
         match self {
+            Self::IntCompares { operator, .. } | Self::FloatCompares { operator, .. } => {
+                operator.operator_text()
+            }
             Self::StringContains(_) => "contains",
-
             Self::BooleanEquals(_) => "is",
         }
     }
@@ -327,13 +360,18 @@ mod tests {
         // Let's remember to update this test when adding new filter operations.
         #[cfg(debug_assertions)]
         let _: () = {
-            let _op = FilterOperation::StringContains(String::new());
+            use FilterOperation::*;
+            let _op = StringContains(String::new());
             match _op {
-                FilterOperation::StringContains(_) | FilterOperation::BooleanEquals(_) => {}
+                IntCompares { .. }
+                | FloatCompares { .. }
+                | StringContains(_)
+                | BooleanEquals(_) => {}
             }
         };
 
         [
+            //TODO: int/float compares
             (
                 FilterOperation::StringContains("query".to_owned()),
                 "string_contains",

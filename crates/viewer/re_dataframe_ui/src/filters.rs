@@ -1,6 +1,8 @@
 use arrow::datatypes::{DataType, Field};
 use datafusion::common::DFSchema;
-use datafusion::prelude::{Column, Expr, array_has, array_to_string, col, lit, lower};
+use datafusion::prelude::{
+    Column, Expr, array_element, array_has, array_to_string, col, lit, lower,
+};
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum FilterError {
@@ -12,7 +14,7 @@ pub enum FilterError {
 }
 
 /// A filter applied to a table.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct Filter {
     pub column_name: String,
     pub operation: FilterOperation,
@@ -39,9 +41,62 @@ impl Filter {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub enum ComparisonOperator {
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+}
+
+impl ComparisonOperator {
+    pub const ALL: &'static [Self] = &[Self::Eq, Self::Ne, Self::Lt, Self::Le, Self::Gt, Self::Ge];
+
+    pub fn operator_text(&self) -> &'static str {
+        match self {
+            Self::Eq => "==",
+            Self::Ne => "!=",
+            Self::Lt => "<",
+            Self::Le => "<=",
+            Self::Gt => ">",
+            Self::Ge => ">=",
+        }
+    }
+
+    pub fn apply(&self, expr: Expr, value: impl datafusion::logical_expr::Literal) -> Expr {
+        match self {
+            Self::Eq => expr.eq(lit(value)),
+            Self::Ne => expr.not_eq(lit(value)),
+            Self::Lt => expr.lt(lit(value)),
+            Self::Le => expr.lt_eq(lit(value)),
+            Self::Gt => expr.gt(lit(value)),
+            Self::Ge => expr.gt_eq(lit(value)),
+        }
+    }
+}
+
 /// The kind of filter operation
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub enum FilterOperation {
+    /// Compare an integer value to a constant.
+    ///
+    /// For columns of lists of integers, only the first value is considered.
+    IntCompares {
+        operator: ComparisonOperator,
+        value: i64, //TODO: should these be Option?
+    },
+
+    /// Compare a floating point value to a constant.
+    ///
+    /// For columns of lists of floats, only the first value is considered.
+    FloatCompares {
+        operator: ComparisonOperator,
+        value: f64,
+    },
+
+    /// Ch
     //TODO(ab): parameterise that over multiple string ops, e.g. "contains", "starts with", etc.
     StringContains(String),
 
@@ -51,6 +106,17 @@ pub enum FilterOperation {
 impl FilterOperation {
     pub fn default_for_datatype(data_type: &DataType) -> Option<Self> {
         match data_type {
+            data_type if data_type.is_integer() => Some(Self::IntCompares {
+                operator: ComparisonOperator::Eq,
+                value: 0,
+            }),
+            DataType::List(field) | DataType::ListView(field) if field.data_type().is_integer() => {
+                Some(Self::IntCompares {
+                    operator: ComparisonOperator::Eq,
+                    value: 0,
+                })
+            }
+
             DataType::Utf8 | DataType::Utf8View => Some(Self::StringContains(String::new())),
             DataType::List(field) | DataType::ListView(field)
                 if field.data_type() == &DataType::Utf8
@@ -66,6 +132,13 @@ impl FilterOperation {
                 Some(Self::BooleanEquals(true))
             }
 
+            DataType::Float16 | DataType::Float32 | DataType::Float64 => {
+                Some(Self::FloatCompares {
+                    operator: ComparisonOperator::Eq,
+                    value: 0.0,
+                })
+            }
+
             _ => None,
         }
     }
@@ -79,6 +152,42 @@ impl FilterOperation {
         field: &Field,
     ) -> Result<Expr, FilterError> {
         match self {
+            Self::IntCompares { operator, value } => match field.data_type() {
+                data_type if data_type.is_integer() => {
+                    Ok(operator.apply(col(column.clone()), *value))
+                }
+
+                DataType::List(field) | DataType::ListView(field)
+                    if field.data_type().is_integer() =>
+                {
+                    Ok(dbg!(
+                        operator.apply(array_element(col(column.clone()), lit(1)), *value)
+                    ))
+                }
+
+                _ => Err(FilterError::InvalidFilterOperation(
+                    self.clone(),
+                    field.clone().into(),
+                )),
+            },
+
+            Self::FloatCompares { operator, value } => match field.data_type() {
+                data_type if data_type.is_floating() => {
+                    Ok(operator.apply(col(column.clone()), *value))
+                }
+
+                DataType::List(field) | DataType::ListView(field)
+                    if field.data_type().is_floating() =>
+                {
+                    Ok(operator.apply(array_element(col(column.clone()), lit(0)), *value))
+                }
+
+                _ => Err(FilterError::InvalidFilterOperation(
+                    self.clone(),
+                    field.clone().into(),
+                )),
+            },
+
             Self::StringContains(query_string) => {
                 if query_string.is_empty() {
                     return Ok(lit(true));
