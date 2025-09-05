@@ -49,14 +49,6 @@ impl<'a> ArrayUi<'a> {
         })
     }
 
-    /// Show a single value at `idx`.
-    ///
-    /// This will create a list item that might have some nested children.
-    /// The list item will _not_ display the index.
-    pub fn show_value(&self, idx: usize, ui: &mut Ui) {
-        self.format.show(idx, ui);
-    }
-
     /// Show a `list_item` based tree view of the data.
     pub fn show(&self, ui: &mut Ui) {
         list_ui(ui, 0..self.array.len(), &*self.format);
@@ -68,15 +60,6 @@ impl<'a> ArrayUi<'a> {
     pub fn highlighted(&self) -> Result<SyntaxHighlightedBuilder, ArrowError> {
         let mut highlighted = SyntaxHighlightedBuilder::new();
         write_list(&mut highlighted, 0..self.array.len(), &*self.format)?;
-        Ok(highlighted)
-    }
-
-    /// Returns a [`SyntaxHighlightedBuilder`] that displays a single value at `idx`.
-    ///
-    /// Nested arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
-    pub fn value_highlighted(&self, idx: usize) -> Result<SyntaxHighlightedBuilder, ArrowError> {
-        let mut highlighted = SyntaxHighlightedBuilder::new();
-        self.format.write(idx, &mut highlighted)?;
         Ok(highlighted)
     }
 }
