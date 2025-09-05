@@ -1,6 +1,6 @@
 use arrow::datatypes::{DataType, Field};
 use datafusion::common::DFSchema;
-use datafusion::prelude::{Column, Expr, col, lit, lower};
+use datafusion::prelude::{Column, Expr, array_has, array_to_string, col, lit, lower};
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum FilterError {
@@ -12,16 +12,16 @@ pub enum FilterError {
 }
 
 /// A filter applied to a table.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct Filter {
     pub column_name: String,
     pub operation: FilterOperation,
 }
 
 impl Filter {
-    pub fn new(column_name: String, operation: FilterOperation) -> Self {
+    pub fn new(column_name: impl Into<String>, operation: FilterOperation) -> Self {
         Self {
-            column_name,
+            column_name: column_name.into(),
             operation,
         }
     }
@@ -40,22 +40,30 @@ impl Filter {
 }
 
 /// The kind of filter operation
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub enum FilterOperation {
     //TODO(ab): parameterise that over multiple string ops, e.g. "contains", "starts with", etc.
     StringContains(String),
+
+    BooleanEquals(bool),
 }
 
 impl FilterOperation {
     pub fn default_for_datatype(data_type: &DataType) -> Option<Self> {
         match data_type {
             DataType::Utf8 | DataType::Utf8View => Some(Self::StringContains(String::new())),
-
             DataType::List(field) | DataType::ListView(field)
                 if field.data_type() == &DataType::Utf8
                     || field.data_type() == &DataType::Utf8View =>
             {
                 Some(Self::StringContains(String::new()))
+            }
+
+            DataType::Boolean => Some(Self::BooleanEquals(true)),
+            DataType::List(fields) | DataType::ListView(fields)
+                if fields.data_type() == &DataType::Boolean =>
+            {
+                Some(Self::BooleanEquals(true))
             }
 
             _ => None,
@@ -85,7 +93,7 @@ impl FilterOperation {
                     {
                         // for List[Utf8], we concatenate all the instances into a single logical
                         // string
-                        datafusion::prelude::array_to_string(col(column.clone()), lit(" "))
+                        array_to_string(col(column.clone()), lit(" "))
                     }
 
                     _ => {
@@ -98,6 +106,22 @@ impl FilterOperation {
 
                 Ok(contains_patch(lower(operand), lower(lit(query_string))))
             }
+
+            Self::BooleanEquals(value) => match field.data_type() {
+                DataType::Boolean => Ok(col(column.clone()).eq(lit(*value))),
+
+                DataType::List(field) | DataType::ListView(field)
+                    if field.data_type() == &DataType::Boolean =>
+                {
+                    // all instances must be equal to the filter value
+                    Ok(!array_has(col(column.clone()), lit(!*value)))
+                }
+
+                _ => Err(FilterError::InvalidFilterOperation(
+                    self.clone(),
+                    field.clone().into(),
+                )),
+            },
         }
     }
 }

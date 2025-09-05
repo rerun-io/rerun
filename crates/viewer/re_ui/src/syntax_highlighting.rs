@@ -53,7 +53,7 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
 
     /// Some string data. Will be quoted.
     pub fn append_string_value(&mut self, portion: &str) -> &mut Self {
-        let format = monospace_with_color(self.style, self.tokens.code_string);
+        let format = monospace_with_color(self.style, self.tokens.code_string_color);
         self.job.append("\"", 0.0, format.clone());
         self.job.append(portion, 0.0, format.clone());
         self.job.append("\"", 0.0, format);
@@ -71,14 +71,14 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
 
     /// An index number, e.g. an array index.
     pub fn append_index(&mut self, portion: &str) -> &mut Self {
-        let format = monospace_with_color(self.style, self.tokens.code_index);
+        let format = monospace_with_color(self.style, self.tokens.code_index_color);
         self.job.append(portion, 0.0, format);
         self
     }
 
     /// Some primitive value, e.g. a number or bool.
     pub fn append_primitive(&mut self, portion: &str) -> &mut Self {
-        let format = monospace_with_color(self.style, self.tokens.code_primitive);
+        let format = monospace_with_color(self.style, self.tokens.code_primitive_color);
         self.job.append(portion, 0.0, format);
         self
     }
@@ -86,6 +86,13 @@ impl<'a> SyntaxHighlightedBuilder<'a> {
     /// Some syntax, e.g. brackets, commas, colons, etc.
     pub fn append_syntax(&mut self, portion: &str) -> &mut Self {
         let format = monospace_with_color(self.style, self.tokens.text_strong);
+        self.job.append(portion, 0.0, format);
+        self
+    }
+
+    /// A filter operator
+    pub fn append_filter_operator(&mut self, portion: &str) -> &mut Self {
+        let format = body_text_with_color(self.style, self.tokens.filter_operator_color);
         self.job.append(portion, 0.0, format);
         self
     }
@@ -133,6 +140,15 @@ fn text_format(style: &Style) -> TextFormat {
         // and whether the widget is hovered, etc
         color: Color32::PLACEHOLDER,
 
+        ..Default::default()
+    }
+}
+
+/// Body text with a specific color (that may be overridden by the style).
+fn body_text_with_color(style: &Style, color: Color32) -> TextFormat {
+    TextFormat {
+        font_id: egui::TextStyle::Body.resolve(style),
+        color: style.visuals.override_text_color.unwrap_or(color),
         ..Default::default()
     }
 }

@@ -1,9 +1,6 @@
 use egui::{Frame, Margin};
 
-use re_ui::{
-    SyntaxHighlighting, UiExt as _, design_tokens_of_visuals,
-    syntax_highlighting::SyntaxHighlightedBuilder,
-};
+use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
 use crate::TableBlueprint;
 use crate::filters::{Filter, FilterOperation};
@@ -200,7 +197,9 @@ impl Filter {
         }
 
         let popup_response = popup.show(|ui| {
-            let action = self.operation.popup_ui(ui, popup_was_closed);
+            let action = self
+                .operation
+                .popup_ui(ui, self.column_name.as_ref(), popup_was_closed);
 
             // Ensure we close the popup if the popup ui decided on an action.
             if action != FilterUiAction::None {
@@ -249,48 +248,36 @@ impl Filter {
 
 impl SyntaxHighlighting for FilterOperation {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder<'_>) {
-        let normal_text_format = |style| {
-            egui::TextFormat::simple(
-                egui::TextStyle::Body.resolve(style),
-                egui::Color32::PLACEHOLDER,
-            )
-        };
-        let operator_text_format = |style| {
-            egui::TextFormat::simple(
-                egui::TextStyle::Body.resolve(style),
-                design_tokens_of_visuals(&style.visuals).table_filter_operator_text_color,
-            )
-        };
-        let rhs_text_format = |style| {
-            egui::TextFormat::simple(
-                egui::TextStyle::Body.resolve(style),
-                design_tokens_of_visuals(&style.visuals).table_filter_rhs_text_color,
-            )
-        };
+        builder.append_filter_operator(self.operator_text());
+        builder.append(&" ");
 
-        builder.append_with_format(self.operator_text(), operator_text_format);
+        match self {
+            Self::StringContains(query) => builder.append_string_value(query),
 
-        builder.append_with_format(" ", normal_text_format);
-        let rhs_text = self.rhs_text();
-        builder.append_with_format(
-            if rhs_text.is_empty() {
-                "…"
-            } else {
-                &rhs_text
-            },
-            rhs_text_format,
-        );
+            Self::BooleanEquals(query) => builder.append_primitive(&format!("{query}")),
+        };
     }
 }
 
 impl FilterOperation {
     /// Returns true if the filter must be committed.
-    fn popup_ui(&mut self, ui: &mut egui::Ui, popup_just_opened: bool) -> FilterUiAction {
+    fn popup_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        column_name: &str,
+        popup_just_opened: bool,
+    ) -> FilterUiAction {
         let mut action = FilterUiAction::None;
+
+        let mut top_text_builder = SyntaxHighlightedBuilder::new(ui.style());
+        top_text_builder.append(&column_name);
+        top_text_builder.append(&" ");
+        top_text_builder.append_filter_operator(self.operator_text());
+        let top_text = top_text_builder.into_widget_text();
 
         match self {
             Self::StringContains(query) => {
-                ui.label("contains");
+                ui.label(top_text);
                 let response = ui.text_edit_singleline(query);
                 if popup_just_opened {
                     response.request_focus();
@@ -308,6 +295,15 @@ impl FilterOperation {
                     });
                 }
             }
+
+            Self::BooleanEquals(query) => {
+                ui.label(top_text);
+                if ui.re_radio_value(query, true, "true").clicked()
+                    || ui.re_radio_value(query, false, "false").clicked()
+                {
+                    action = FilterUiAction::CommitStateToBlueprint;
+                }
+            }
         }
 
         action
@@ -317,13 +313,8 @@ impl FilterOperation {
     fn operator_text(&self) -> &'static str {
         match self {
             Self::StringContains(_) => "contains",
-        }
-    }
 
-    /// Display text of the right-hand side operand (aka the user-provided query data).
-    fn rhs_text(&self) -> String {
-        match self {
-            Self::StringContains(query) => query.clone(),
+            Self::BooleanEquals(_) => "is",
         }
     }
 }
@@ -338,7 +329,7 @@ mod tests {
         let _: () = {
             let _op = FilterOperation::StringContains(String::new());
             match _op {
-                FilterOperation::StringContains(_) => {}
+                FilterOperation::StringContains(_) | FilterOperation::BooleanEquals(_) => {}
             }
         };
 
@@ -350,6 +341,11 @@ mod tests {
             (
                 FilterOperation::StringContains(String::new()),
                 "string_contains_empty",
+            ),
+            (FilterOperation::BooleanEquals(true), "boolean_equals_true"),
+            (
+                FilterOperation::BooleanEquals(false),
+                "boolean_equals_false",
             ),
         ]
         .into_iter()
@@ -386,7 +382,7 @@ mod tests {
                 .build_ui(|ui| {
                     re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                    let _res = filter_op.popup_ui(ui, true);
+                    let _res = filter_op.popup_ui(ui, "column:name", true);
                 });
 
             harness.run();
