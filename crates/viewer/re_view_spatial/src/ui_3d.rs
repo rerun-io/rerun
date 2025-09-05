@@ -591,19 +591,19 @@ impl SpatialView3D {
             };
             if let Some(entity_path) = focused_entity {
                 state.state_3d.last_eye_interaction = Some(Instant::now());
+                state.state_3d.tracked_entity = None;
 
-                if response.ctx.input(|i| i.modifiers.alt)
-                    && ctx.recording().is_logged_entity(entity_path)
-                {
+                if ctx.recording().is_logged_entity(entity_path) {
                     state
                         .state_3d
                         .interpolate_eye_to_entity(entity_path, &state.bounding_boxes);
-                } else {
-                    state
-                        .state_3d
-                        .track_entity(entity_path, &state.bounding_boxes);
-                    if let Some(tracked_camera) = find_camera(space_cameras, &entity_path) {
-                        state.state_3d.interpolate_to_eye(tracked_camera);
+
+                    // Additionally track the entity if `alt` is NOT pressed.
+                    // (Note that this means slightly different things for cameras & regular entities)
+                    if !response.ctx.input(|i| i.modifiers.alt) {
+                        state
+                            .state_3d
+                            .track_entity(entity_path, &state.bounding_boxes);
                     }
                 }
             }
