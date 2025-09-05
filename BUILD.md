@@ -45,6 +45,27 @@ See the many resources available online more details.
 You can ensure that everything is correctly installed by running `git lfs ls-files` from the repository root.
 It should list some test snapshot files.
 
+### Useful git-lfs commands
+```
+# Install git-lfs in the repo (installs git hooks)
+git lfs install
+
+# Move a file to git lfs
+git lfs track "path/to/file/or/pattern" # OR manually edit .gitattributes
+git add --renormalize . # Moves already added files to lfs (according to .gitattributes)
+
+# Move a file from lfs to regular git
+git lfs untrack "path/to/file/or/pattern" # OR manually edit .gitattributes
+git add --renormalize . # Moves already added files to regular git (according to .gitattributes)
+
+# Push to a contributor remote (see https://github.com/cli/cli/discussions/8794#discussioncomment-8695076)
+git push --no-verify
+
+# Push git lfs files to contributor remote:
+git push origin $(git branch --show-current) && git push --no-verify && git push origin --delete $(git branch --show-current)
+```
+
+See also [this section in the egui docs](https://github.com/emilk/egui/blob/main/CONTRIBUTING.md#working-with-git-lfs).
 
 ## Validating your environment
 You can validate your environment is set up correctly by running:
