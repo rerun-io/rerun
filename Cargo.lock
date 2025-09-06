@@ -9349,6 +9349,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "camino",
+ "cfg-if",
  "clap",
  "crossbeam",
  "document-features",

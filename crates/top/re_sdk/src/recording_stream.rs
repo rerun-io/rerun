@@ -457,18 +457,23 @@ impl RecordingStreamBuilder {
     /// To configure the gRPC server's IP and port, use [`Self::serve_grpc_opts`] instead.
     ///
     /// The gRPC server will buffer in memory so that late connecting viewers will still get all the data.
-    /// You can limit the amount of data buffered by the gRPC server using [`Self::serve_grpc_opts`],
-    /// with the `server_memory_limit` argument. Once the memory limit is reached, the earliest logged data
+    /// You can limit the amount of data buffered by the gRPC server using [`Self::serve_grpc_opts`].
+    /// Once the memory limit is reached, the earliest logged data
     /// will be dropped. Static data is never dropped.
     ///
     /// It is highly recommended that you use [`Self::serve_grpc_opts`] and set the memory limit to `0B`
     /// if both the server and client are running on the same machine, otherwise you're potentially
     /// doubling your memory usage!
     pub fn serve_grpc(self) -> RecordingStreamResult<RecordingStream> {
+        use re_grpc_server::ServerOptions;
+
         self.serve_grpc_opts(
             "0.0.0.0",
             crate::DEFAULT_SERVER_PORT,
-            re_memory::MemoryLimit::from_fraction_of_total(0.25),
+            ServerOptions {
+                memory_limit: re_memory::MemoryLimit::from_fraction_of_total(0.25),
+                ..Default::default()
+            },
         )
     }
 
@@ -482,7 +487,7 @@ impl RecordingStreamBuilder {
     /// `0.0.0.0` is a good default for `bind_ip`.
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
     /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
@@ -491,7 +496,7 @@ impl RecordingStreamBuilder {
         self,
         bind_ip: impl AsRef<str>,
         port: u16,
-        server_memory_limit: re_memory::MemoryLimit,
+        server_options: re_grpc_server::ServerOptions,
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
         if enabled {
@@ -503,7 +508,7 @@ impl RecordingStreamBuilder {
                 Box::new(crate::grpc_server::GrpcServerSink::new(
                     bind_ip.as_ref(),
                     port,
-                    server_memory_limit,
+                    server_options,
                 )?),
             )
         } else {
@@ -651,7 +656,7 @@ impl RecordingStreamBuilder {
     /// and then one gRPC server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
     /// Calling `serve_web` is equivalent to calling [`Self::serve_grpc`] followed by [`crate::serve_web_viewer`].
@@ -680,7 +685,7 @@ impl RecordingStreamBuilder {
         bind_ip: &str,
         web_port: WebViewerServerPort,
         grpc_port: u16,
-        server_memory_limit: re_memory::MemoryLimit,
+        server_options: re_grpc_server::ServerOptions,
         open_browser: bool,
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, recording_info, batcher_config, batcher_hooks) = self.into_args();
@@ -690,7 +695,7 @@ impl RecordingStreamBuilder {
                 bind_ip,
                 web_port,
                 grpc_port,
-                server_memory_limit,
+                server_options,
             )?;
             RecordingStream::new(
                 store_info,
@@ -2069,13 +2074,13 @@ impl RecordingStream {
     /// You can connect a viewer to it with `rerun --connect`.
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     pub fn serve_grpc(
         &self,
-        server_memory_limit: re_memory::MemoryLimit,
+        server_options: re_grpc_server::ServerOptions,
     ) -> RecordingStreamResult<()> {
-        self.serve_grpc_opts("0.0.0.0", crate::DEFAULT_SERVER_PORT, server_memory_limit)
+        self.serve_grpc_opts("0.0.0.0", crate::DEFAULT_SERVER_PORT, server_options)
     }
 
     #[cfg(feature = "server")]
@@ -2085,21 +2090,20 @@ impl RecordingStream {
     /// `0.0.0.0` is a good default for `bind_ip`.
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     pub fn serve_grpc_opts(
         &self,
         bind_ip: impl AsRef<str>,
         port: u16,
-        server_memory_limit: re_memory::MemoryLimit,
+        server_options: re_grpc_server::ServerOptions,
     ) -> RecordingStreamResult<()> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting GrpcServerSink since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 
-        let sink =
-            crate::grpc_server::GrpcServerSink::new(bind_ip.as_ref(), port, server_memory_limit)?;
+        let sink = crate::grpc_server::GrpcServerSink::new(bind_ip.as_ref(), port, server_options)?;
 
         self.set_sink(Box::new(sink));
         Ok(())

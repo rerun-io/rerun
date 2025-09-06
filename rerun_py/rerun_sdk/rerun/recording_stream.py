@@ -665,6 +665,7 @@ class RecordingStream:
         grpc_port: int | None = None,
         default_blueprint: BlueprintLike | None = None,
         server_memory_limit: str = "25%",
+        newest_first: bool = False,
     ) -> str:
         """
         Serve log-data over gRPC.
@@ -694,6 +695,9 @@ class RecordingStream:
         server_memory_limit:
             Maximum amount of memory to use for buffering log data for clients that connect late.
             This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
+        newest_first:
+            If `True`, the server will start sending back the newest messages _first_.
+            If `False`, the messages will be played back in the order they arrived.
 
         """
 
