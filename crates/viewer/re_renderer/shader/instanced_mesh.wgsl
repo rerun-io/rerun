@@ -19,7 +19,7 @@ struct VertexOut {
     position: vec4f,
 
     @location(0)
-    color: vec4f, // 0-1 linear space with unmultiplied/separate alpha
+    color: vec3f, // 0-1 linear space with unmultiplied/separate alpha
 
     @location(1)
     texcoord: vec2f,
@@ -52,7 +52,7 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
 
     var out: VertexOut;
     out.position = frame.projection_from_world * vec4f(world_position, 1.0);
-    out.color = linear_from_srgba(in_vertex.color);
+    out.color = linear_from_srgb(in_vertex.color.rgb);
     out.texcoord = in_vertex.texcoord;
     out.normal_world_space = world_normal;
     out.additive_tint_rgba = linear_from_srgba(in_instance.additive_tint_srgba);
@@ -64,8 +64,9 @@ fn vs_main(in_vertex: VertexIn, in_instance: InstanceIn) -> VertexOut {
 
 @fragment
 fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
-    let texture = linear_from_srgba(textureSample(albedo_texture, trilinear_sampler_repeat, in.texcoord));
-    var albedo = texture * in.color * material.albedo_factor;
+    // Ignore alpha from texture & vertex color since we don't detect it yet on the CPU side.
+    let texture = linear_from_srgb(textureSample(albedo_texture, trilinear_sampler_repeat, in.texcoord).rgb);
+    var albedo = vec4f(texture * in.color, 1.0) * material.albedo_factor;
 
     // The additive tint is encoded as pre-multiplied alpha.
     albedo *= in.additive_tint_rgba.a;
