@@ -234,6 +234,14 @@ impl DrawPhaseManager {
             }
         }
     }
+
+    /// Returns the drawables for the given phase.
+    ///
+    /// Used only for testing.
+    #[cfg(test)]
+    pub fn drawables_for_phase(&self, phase: DrawPhase) -> &[Drawable] {
+        &self.drawables[phase as usize]
+    }
 }
 
 /// Collector injected into [`crate::renderer::DrawData::collect_drawables`] in order to build up drawable list.

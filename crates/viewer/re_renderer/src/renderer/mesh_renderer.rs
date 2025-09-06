@@ -133,6 +133,7 @@ impl DrawData for MeshDrawData {
     }
 }
 
+#[derive(Clone)]
 pub struct GpuMeshInstance {
     /// Gpu mesh used by this instance
     pub gpu_mesh: Arc<GpuMesh>,
@@ -650,4 +651,246 @@ fn instance_draw_phases(
     phases
 }
 
-// TODO: add tests for drawable generation
+#[cfg(test)]
+mod tests {
+    use smallvec::SmallVec;
+
+    use super::*;
+    use crate::{
+        Color32, DrawPhaseManager, PickingLayerId, RenderContext, Rgba32Unmul,
+        mesh::{CpuMesh, GpuMesh, Material},
+    };
+
+    fn test_view_info() -> DrawableCollectionViewInfo {
+        DrawableCollectionViewInfo {
+            camera_world_position: glam::Vec3A::ZERO,
+        }
+    }
+
+    fn test_mesh(ctx: &RenderContext, materials: SmallVec<[Material; 1]>) -> GpuMesh {
+        let cpu_mesh = CpuMesh {
+            label: "test_mesh".into(),
+            triangle_indices: vec![glam::UVec3::new(0, 1, 2)],
+            vertex_positions: vec![
+                glam::Vec3::new(0.0, 1.0, 0.0),
+                glam::Vec3::new(-1.0, -1.0, 0.0),
+                glam::Vec3::new(1.0, -1.0, 0.0),
+            ],
+            vertex_colors: vec![Rgba32Unmul::WHITE; 3],
+            vertex_normals: vec![glam::Vec3::new(0.0, 0.0, 1.0); 3],
+            vertex_texcoords: vec![glam::Vec2::ZERO; 3],
+            materials,
+        };
+
+        GpuMesh::new(ctx, &cpu_mesh).unwrap()
+    }
+
+    fn opaque_test_mesh(ctx: &RenderContext) -> GpuMesh {
+        test_mesh(
+            ctx,
+            smallvec![Material {
+                label: "opaque_material".into(),
+                index_range: 0..3,
+                albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
+                albedo_factor: crate::Rgba::WHITE
+            }],
+        )
+    }
+
+    fn opaque_and_transparent_test_mesh(ctx: &RenderContext) -> GpuMesh {
+        test_mesh(
+            ctx,
+            smallvec![
+                Material {
+                    label: "opaque_material".into(),
+                    index_range: 0..3,
+                    albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
+                    albedo_factor: crate::Rgba::WHITE
+                },
+                Material {
+                    label: "opaque_material".into(),
+                    index_range: 0..3,
+                    albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
+                    albedo_factor: crate::Rgba::TRANSPARENT
+                }
+            ],
+        )
+    }
+
+    fn mesh_instance(gpu_mesh: Arc<GpuMesh>) -> GpuMeshInstance {
+        GpuMeshInstance {
+            gpu_mesh,
+            world_from_mesh: glam::Affine3A::IDENTITY,
+            additive_tint: Color32::WHITE,
+            outline_mask_ids: OutlineMaskPreference::NONE,
+            picking_layer_id: PickingLayerId::default(),
+        }
+    }
+
+    #[test]
+    fn test_simple_opaque() {
+        let ctx = RenderContext::new_test();
+        let mesh = Arc::new(opaque_test_mesh(&ctx));
+
+        let instance_no_tint_no_outline = mesh_instance(mesh.clone());
+        let instances = vec![
+            instance_no_tint_no_outline.clone(),
+            instance_no_tint_no_outline.clone(),
+        ];
+
+        // This should create one bach each for the two active layers (picking & opaque).
+        let draw_data = MeshDrawData::new(&ctx, &instances).unwrap();
+        assert_eq!(draw_data.batches.len(), 2);
+        assert_eq!(draw_data.batches[0].instance_range.len(), 2);
+        assert_eq!(draw_data.batches[0].draw_phase, DrawPhase::Opaque);
+        assert_eq!(draw_data.batches[1].instance_range.len(), 2);
+        assert_eq!(draw_data.batches[1].draw_phase, DrawPhase::PickingLayer);
+
+        let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
+        draw_phase_manager.add_draw_data(&ctx, draw_data.into(), &test_view_info());
+
+        let opaque_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::Opaque);
+        assert_eq!(opaque_drawables.len(), 1);
+        assert_eq!(opaque_drawables[0].draw_data_payload, 0);
+
+        let picking_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::PickingLayer);
+        assert_eq!(picking_drawables.len(), 1);
+        assert_eq!(picking_drawables[0].draw_data_payload, 1);
+    }
+
+    #[test]
+    fn test_transparent_tint() {
+        let ctx = RenderContext::new_test();
+        let mesh = Arc::new(opaque_test_mesh(&ctx));
+
+        // Middle meshes have transparent tint, rest not.
+        let instance_no_tint_no_outline = mesh_instance(mesh.clone());
+        let instance_transparent_tint_no_outline = GpuMeshInstance {
+            additive_tint: Color32::TRANSPARENT,
+            ..instance_no_tint_no_outline.clone()
+        };
+        let instances = vec![
+            instance_no_tint_no_outline.clone(),
+            instance_transparent_tint_no_outline.clone(),
+            instance_transparent_tint_no_outline.clone(),
+            instance_no_tint_no_outline.clone(),
+        ];
+
+        // This should still create only one batch for picking & opaque,
+        // but two additional ones for the ones with transparent tint (these never batch).
+        let draw_data = MeshDrawData::new(&ctx, &instances).unwrap();
+        assert_eq!(draw_data.batches.len(), 4);
+        assert_eq!(draw_data.batches[0].instance_range.len(), 1);
+        assert_eq!(draw_data.batches[0].draw_phase, DrawPhase::Transparent);
+        assert!(draw_data.batches[1].has_transparent_tint);
+        assert_eq!(draw_data.batches[1].instance_range.len(), 1);
+        assert_eq!(draw_data.batches[1].draw_phase, DrawPhase::Transparent);
+        assert!(draw_data.batches[1].has_transparent_tint);
+        assert_eq!(draw_data.batches[2].instance_range.len(), 2);
+        assert_eq!(draw_data.batches[2].draw_phase, DrawPhase::Opaque);
+        assert_eq!(draw_data.batches[3].instance_range.len(), 4);
+        assert_eq!(draw_data.batches[3].draw_phase, DrawPhase::PickingLayer);
+
+        let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
+        draw_phase_manager.add_draw_data(&ctx, draw_data.into(), &test_view_info());
+
+        let opaque_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::Opaque);
+        assert_eq!(opaque_drawables.len(), 1);
+        assert_eq!(opaque_drawables[0].draw_data_payload, 2);
+
+        let transparent_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::Transparent);
+        assert_eq!(transparent_drawables.len(), 2);
+        assert_eq!(transparent_drawables[0].draw_data_payload, 0);
+        assert_eq!(transparent_drawables[1].draw_data_payload, 1);
+
+        let picking_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::PickingLayer);
+        assert_eq!(picking_drawables.len(), 1);
+        assert_eq!(picking_drawables[0].draw_data_payload, 3);
+    }
+
+    #[test]
+    fn test_outlines() {
+        let ctx = RenderContext::new_test();
+        let mesh = Arc::new(opaque_test_mesh(&ctx));
+
+        // Some meshes have outlines, some don't.
+        let instance_no_tint_no_outline = mesh_instance(mesh.clone());
+        let instance_no_tint_outlines = GpuMeshInstance {
+            outline_mask_ids: OutlineMaskPreference::some(1, 2),
+            ..instance_no_tint_no_outline.clone()
+        };
+        let instances = vec![
+            instance_no_tint_outlines.clone(),
+            instance_no_tint_no_outline.clone(),
+            instance_no_tint_outlines.clone(),
+            instance_no_tint_no_outline.clone(),
+        ];
+
+        // This should still create only one batch for picking & opaque,
+        // but additional outline for the instance with outlines..
+        let draw_data = MeshDrawData::new(&ctx, &instances).unwrap();
+        assert_eq!(draw_data.batches.len(), 3);
+        assert_eq!(draw_data.batches[0].instance_range.len(), 4); // All draw outlines.
+        assert_eq!(draw_data.batches[0].draw_phase, DrawPhase::Opaque);
+        assert_eq!(draw_data.batches[1].instance_range.len(), 2); // Two outlines, batched together.
+        assert_eq!(draw_data.batches[1].draw_phase, DrawPhase::OutlineMask);
+        assert_eq!(draw_data.batches[2].instance_range.len(), 4); // All draw picking.
+        assert_eq!(draw_data.batches[2].draw_phase, DrawPhase::PickingLayer);
+
+        let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
+        draw_phase_manager.add_draw_data(&ctx, draw_data.into(), &test_view_info());
+
+        let opaque_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::Opaque);
+        assert_eq!(opaque_drawables.len(), 1);
+        assert_eq!(opaque_drawables[0].draw_data_payload, 0);
+
+        let outline_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::OutlineMask);
+        assert_eq!(outline_drawables.len(), 1);
+        assert_eq!(outline_drawables[0].draw_data_payload, 1);
+
+        let picking_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::PickingLayer);
+        assert_eq!(picking_drawables.len(), 1);
+        assert_eq!(picking_drawables[0].draw_data_payload, 2);
+    }
+
+    #[test]
+    fn test_opaque_and_transparent_materials() {
+        let ctx = RenderContext::new_test();
+        let mesh = Arc::new(opaque_and_transparent_test_mesh(&ctx));
+
+        // Each instance has both an opaque and a transparent material.
+        let instance_no_tint_no_outline = mesh_instance(mesh.clone());
+        let instances = vec![
+            instance_no_tint_no_outline.clone(),
+            instance_no_tint_no_outline.clone(),
+        ];
+
+        // Transparent instances can't be batched!
+        let draw_data = MeshDrawData::new(&ctx, &instances).unwrap();
+        assert_eq!(draw_data.batches.len(), 4);
+        assert_eq!(draw_data.batches[0].instance_range.len(), 1);
+        assert_eq!(draw_data.batches[0].draw_phase, DrawPhase::Transparent);
+        assert_eq!(draw_data.batches[1].instance_range.len(), 1);
+        assert_eq!(draw_data.batches[1].draw_phase, DrawPhase::Transparent);
+        assert_eq!(draw_data.batches[2].instance_range.len(), 2);
+        assert_eq!(draw_data.batches[2].draw_phase, DrawPhase::Opaque);
+        assert_eq!(draw_data.batches[3].instance_range.len(), 2);
+        assert_eq!(draw_data.batches[3].draw_phase, DrawPhase::PickingLayer);
+
+        let mut draw_phase_manager = DrawPhaseManager::new(EnumSet::all());
+        draw_phase_manager.add_draw_data(&ctx, draw_data.into(), &test_view_info());
+
+        let opaque_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::Opaque);
+        assert_eq!(opaque_drawables.len(), 1);
+        assert_eq!(opaque_drawables[0].draw_data_payload, 2);
+
+        let transparent_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::Transparent);
+        assert_eq!(transparent_drawables.len(), 2);
+        assert_eq!(transparent_drawables[0].draw_data_payload, 0);
+        assert_eq!(transparent_drawables[1].draw_data_payload, 1);
+
+        let picking_drawables = draw_phase_manager.drawables_for_phase(DrawPhase::PickingLayer);
+        assert_eq!(picking_drawables.len(), 1);
+        assert_eq!(picking_drawables[0].draw_data_payload, 3);
+    }
+}
