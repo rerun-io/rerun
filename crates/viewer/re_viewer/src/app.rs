@@ -356,7 +356,7 @@ impl App {
                 blueprint_loader(),
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
-            notifications: notifications::NotificationUi::new(),
+            notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
 
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -842,6 +842,10 @@ impl App {
 
             SystemCommand::SetFocus(item) => {
                 self.state.focused_item = Some(item);
+            }
+
+            SystemCommand::ShowNotification(notification) => {
+                self.notifications.add(notification);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1964,6 +1968,8 @@ impl App {
                 }
             }
 
+            let is_example = entity_db.store_class().is_example();
+
             match &msg {
                 LogMsg::SetStoreInfo(_) => {
                     if channel_source.select_when_loaded() {
@@ -1982,6 +1988,28 @@ impl App {
                                 // the blueprint won't be activated until the whole _recording_ has finished loading.
                             }
                         }
+                    }
+
+                    if cfg!(target_arch = "wasm32")
+                        && !self.startup_options.is_in_notebook
+                        && !is_example
+                    {
+                        use std::sync::Once;
+                        static ONCE: Once = Once::new();
+                        ONCE.call_once(|| {
+                            // Tell the user there is a faster native viewer they can use instead of the web viewer:
+                            let notification = re_ui::notifications::Notification::new(
+                                    re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
+                                    re_ui::Link {
+                                        text: "Install…".into(),
+                                        url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
+                                    }
+                                )
+                                .no_toast()
+                                .permanent_dismiss_id(egui::Id::new("install_native_viewer_prompt"));
+                            self.command_sender
+                                .send_system(SystemCommand::ShowNotification(notification));
+                        });
                     }
                 }
 
