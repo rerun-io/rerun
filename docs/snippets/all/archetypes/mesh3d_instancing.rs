@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             [-1.0, 1.0, -1.0],
             [1.0, -1.0, -1.0],
         ])
-        .with_triangle_indices([[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]])
+        .with_triangle_indices([[0, 2, 1], [0, 3, 1], [0, 3, 2], [1, 3, 2]])
         .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x00000FFFF, 0xFFFF00FF]),
     )?;
     // This box will not be affected by its parent's instance poses!
