@@ -102,6 +102,8 @@ pub struct Ellipsoids3D {
     pub quaternions: Option<SerializedComponentBatch>,
 
     /// Optional colors for the ellipsoids.
+    ///
+    /// Alpha channel is used for transparency for solid fill-mode.
     pub colors: Option<SerializedComponentBatch>,
 
     /// Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
@@ -630,6 +632,8 @@ impl Ellipsoids3D {
     }
 
     /// Optional colors for the ellipsoids.
+    ///
+    /// Alpha channel is used for transparency for solid fill-mode.
     #[inline]
     pub fn with_colors(
         mut self,

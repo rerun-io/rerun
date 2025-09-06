@@ -9,6 +9,9 @@ namespace rerun.archetypes;
 /// If there are multiple [archetypes.InstancePoses3D] instances logged to the same entity as a mesh,
 /// an instance of the mesh will be drawn for each transform.
 ///
+/// The viewer draws meshes always two-sided. However, for transparency ordering
+/// front faces are assumed to those with counter clockwise triangle winding order (this is the same as in the GLTF specification).
+///
 /// \example archetypes/mesh3d_indexed title="Simple indexed 3D mesh" image="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1200w.png"
 /// \example archetypes/mesh3d_instancing title="3D mesh with instancing" image="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png"
 /// \example archetypes/mesh3d_partial_updates !api title="Update specific parts of a 3D mesh over time" image="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1200w.png"
@@ -36,12 +39,16 @@ table Mesh3D (
   // --- Optional ---
 
   /// An optional color for each vertex.
+  ///
+  /// The alpha channel is ignored.
   vertex_colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// An optional uv texture coordinate for each vertex.
   vertex_texcoords: [rerun.components.Texcoord2D] ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// A color multiplier applied to the whole mesh.
+  ///
+  /// Alpha channel governs the overall mesh transparency.
   albedo_factor: rerun.components.AlbedoFactor ("attr.rerun.component_optional", nullable, order: 3300);
 
   /// Optional albedo texture.
@@ -50,6 +57,8 @@ table Mesh3D (
   ///
   /// Currently supports only sRGB(A) textures, ignoring alpha.
   /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+  ///
+  /// The alpha channel is ignored.
   albedo_texture_buffer: rerun.components.ImageBuffer ("attr.rerun.component_optional", nullable, order: 3400);
 
   /// The format of the `albedo_texture_buffer`, if any.

@@ -99,6 +99,8 @@ pub struct Cylinders3D {
     pub quaternions: Option<SerializedComponentBatch>,
 
     /// Optional colors for the cylinders.
+    ///
+    /// Alpha channel is used for transparency for solid fill-mode.
     pub colors: Option<SerializedComponentBatch>,
 
     /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
@@ -667,6 +669,8 @@ impl Cylinders3D {
     }
 
     /// Optional colors for the cylinders.
+    ///
+    /// Alpha channel is used for transparency for solid fill-mode.
     #[inline]
     pub fn with_colors(
         mut self,

@@ -40,6 +40,8 @@ table Boxes3D (
   quaternions: [rerun.components.PoseRotationQuat] ("attr.rerun.component_optional", nullable, order: 2200);
 
   /// Optional colors for the boxes.
+  ///
+  /// Alpha channel is used for transparency for solid fill-mode.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2300);
 
   // --- Optional ---

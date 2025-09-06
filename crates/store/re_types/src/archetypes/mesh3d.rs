@@ -26,6 +26,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// If there are multiple [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D] instances logged to the same entity as a mesh,
 /// an instance of the mesh will be drawn for each transform.
 ///
+/// The viewer draws meshes always two-sided. However, for transparency ordering
+/// front faces are assumed to those with counter clockwise triangle winding order (this is the same as in the GLTF specification).
+///
 /// ## Examples
 ///
 /// ### Simple indexed 3D mesh
@@ -121,12 +124,16 @@ pub struct Mesh3D {
     pub vertex_normals: Option<SerializedComponentBatch>,
 
     /// An optional color for each vertex.
+    ///
+    /// The alpha channel is ignored.
     pub vertex_colors: Option<SerializedComponentBatch>,
 
     /// An optional uv texture coordinate for each vertex.
     pub vertex_texcoords: Option<SerializedComponentBatch>,
 
     /// A color multiplier applied to the whole mesh.
+    ///
+    /// Alpha channel governs the overall mesh transparency.
     pub albedo_factor: Option<SerializedComponentBatch>,
 
     /// Optional albedo texture.
@@ -135,6 +142,8 @@ pub struct Mesh3D {
     ///
     /// Currently supports only sRGB(A) textures, ignoring alpha.
     /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    ///
+    /// The alpha channel is ignored.
     pub albedo_texture_buffer: Option<SerializedComponentBatch>,
 
     /// The format of the `albedo_texture_buffer`, if any.
@@ -614,6 +623,8 @@ impl Mesh3D {
     }
 
     /// An optional color for each vertex.
+    ///
+    /// The alpha channel is ignored.
     #[inline]
     pub fn with_vertex_colors(
         mut self,
@@ -635,6 +646,8 @@ impl Mesh3D {
     }
 
     /// A color multiplier applied to the whole mesh.
+    ///
+    /// Alpha channel governs the overall mesh transparency.
     #[inline]
     pub fn with_albedo_factor(
         mut self,
@@ -663,6 +676,8 @@ impl Mesh3D {
     ///
     /// Currently supports only sRGB(A) textures, ignoring alpha.
     /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    ///
+    /// The alpha channel is ignored.
     #[inline]
     pub fn with_albedo_texture_buffer(
         mut self,

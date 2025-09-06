@@ -10,6 +10,9 @@ See also [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes
 If there are multiple [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,
 an instance of the mesh will be drawn for each transform.
 
+The viewer draws meshes always two-sided. However, for transparency ordering
+front faces are assumed to those with counter clockwise triangle winding order (this is the same as in the GLTF specification).
+
 ## Fields
 ### Required
 * `vertex_positions`: [`Position3D`](../components/position3d.md)

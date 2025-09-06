@@ -30,6 +30,9 @@ class Mesh3D(Mesh3DExt, Archetype):
     If there are multiple [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D] instances logged to the same entity as a mesh,
     an instance of the mesh will be drawn for each transform.
 
+    The viewer draws meshes always two-sided. However, for transparency ordering
+    front faces are assumed to those with counter clockwise triangle winding order (this is the same as in the GLTF specification).
+
     Examples
     --------
     ### Simple indexed 3D mesh:
@@ -156,10 +159,14 @@ class Mesh3D(Mesh3DExt, Archetype):
             An optional normal for each vertex.
         vertex_colors:
             An optional color for each vertex.
+
+            The alpha channel is ignored.
         vertex_texcoords:
             An optional uv texture coordinate for each vertex.
         albedo_factor:
             A color multiplier applied to the whole mesh.
+
+            Alpha channel governs the overall mesh transparency.
         albedo_texture_buffer:
             Optional albedo texture.
 
@@ -167,6 +174,8 @@ class Mesh3D(Mesh3DExt, Archetype):
 
             Currently supports only sRGB(A) textures, ignoring alpha.
             (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+
+            The alpha channel is ignored.
         albedo_texture_format:
             The format of the `albedo_texture_buffer`, if any.
         class_ids:
@@ -238,10 +247,14 @@ class Mesh3D(Mesh3DExt, Archetype):
             An optional normal for each vertex.
         vertex_colors:
             An optional color for each vertex.
+
+            The alpha channel is ignored.
         vertex_texcoords:
             An optional uv texture coordinate for each vertex.
         albedo_factor:
             A color multiplier applied to the whole mesh.
+
+            Alpha channel governs the overall mesh transparency.
         albedo_texture_buffer:
             Optional albedo texture.
 
@@ -249,6 +262,8 @@ class Mesh3D(Mesh3DExt, Archetype):
 
             Currently supports only sRGB(A) textures, ignoring alpha.
             (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+
+            The alpha channel is ignored.
         albedo_texture_format:
             The format of the `albedo_texture_buffer`, if any.
         class_ids:
@@ -352,6 +367,8 @@ class Mesh3D(Mesh3DExt, Archetype):
     )
     # An optional color for each vertex.
     #
+    # The alpha channel is ignored.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     vertex_texcoords: components.Texcoord2DBatch | None = field(
@@ -370,6 +387,8 @@ class Mesh3D(Mesh3DExt, Archetype):
     )
     # A color multiplier applied to the whole mesh.
     #
+    # Alpha channel governs the overall mesh transparency.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     albedo_texture_buffer: components.ImageBufferBatch | None = field(
@@ -383,6 +402,8 @@ class Mesh3D(Mesh3DExt, Archetype):
     #
     # Currently supports only sRGB(A) textures, ignoring alpha.
     # (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    #
+    # The alpha channel is ignored.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
