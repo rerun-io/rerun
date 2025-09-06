@@ -44,7 +44,13 @@ class Plane3D(Plane3DExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Plane3DExt in plane3d_ext.py
-        return np.asarray(self.xyzd, dtype=dtype, copy=copy)
+        if IS_NUMPY_2:
+            return np.asarray(self.xyzd, dtype=dtype, copy=copy)
+        else:
+            if copy:
+                return np.array(self.xyzd, dtype=dtype, copy=copy)
+            else:
+                return np.asarray(self.xyzd, dtype=dtype)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of Plane3DExt in plane3d_ext.py

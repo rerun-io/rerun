@@ -12,6 +12,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
+from .. import IS_NUMPY_2
 
 from .._baseclasses import (
     BaseBatch,
@@ -37,7 +38,13 @@ class UVec4D:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UVec4DExt in uvec4d_ext.py
-        return np.asarray(self.xyzw, dtype=dtype, copy=copy)
+        if IS_NUMPY_2:
+            return np.asarray(self.xyzw, dtype=dtype, copy=copy)
+        else:
+            if copy:
+                return np.array(self.xyzw, dtype=dtype, copy=copy)
+            else:
+                return np.asarray(self.xyzw, dtype=dtype)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of UVec4DExt in uvec4d_ext.py

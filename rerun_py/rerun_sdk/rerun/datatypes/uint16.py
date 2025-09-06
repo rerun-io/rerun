@@ -12,6 +12,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
+from .. import IS_NUMPY_2
 
 from .._baseclasses import (
     BaseBatch,
@@ -34,7 +35,13 @@ class UInt16:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UInt16Ext in uint16_ext.py
-        return np.asarray(self.value, dtype=dtype, copy=copy)
+        if IS_NUMPY_2:
+            return np.asarray(self.value, dtype=dtype, copy=copy)
+        else:
+            if copy:
+                return np.array(self.value, dtype=dtype, copy=copy)
+            else:
+                return np.asarray(self.value, dtype=dtype)
 
     def __int__(self) -> int:
         return int(self.value)
