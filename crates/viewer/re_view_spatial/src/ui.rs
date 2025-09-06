@@ -162,13 +162,13 @@ impl SpatialViewState {
 
         ui.horizontal(|ui| {
             if let Some(tracked_entity) = self.state_3d.tracked_entity.clone() {
-                let (latest_at_querry, _) =
+                let (latest_at_query, _) =
                     item_ui::guess_query_and_db_for_selected_entity(ctx, &tracked_entity);
 
                 ui.label("Tracked entity:");
                 item_ui::entity_path_button(
                     ctx,
-                    &latest_at_querry,
+                    &latest_at_query,
                     ctx.recording(),
                     ui,
                     Some(view_id),

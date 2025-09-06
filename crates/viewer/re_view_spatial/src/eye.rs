@@ -412,7 +412,7 @@ impl ViewEye {
                 if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
                     self.roll(&response.rect, pointer_pos, response.drag_delta());
                 }
-                self.ignore_input = true
+                self.ignore_input = true;
             } else if response.dragged_by(ROTATE3D_BUTTON) {
                 self.rotate(response.drag_delta());
                 self.ignore_input = true;
