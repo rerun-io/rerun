@@ -1,10 +1,12 @@
 // TODO(andreas): The concept of DrawPhase implementers is very much in progress!
 // Need to start to formalize this further and create implementers for all DrawPhases to build up our render graph.
 
+mod draw_phase_manager;
 mod outlines;
 mod picking_layer;
 mod screenshot;
 
+pub use draw_phase_manager::{DrawPhaseManager, Drawable, DrawableCollector};
 pub use outlines::{OutlineConfig, OutlineMaskPreference, OutlineMaskProcessor};
 pub use picking_layer::{
     PickingLayerError, PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId,

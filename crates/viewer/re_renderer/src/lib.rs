@@ -45,7 +45,6 @@ mod colormap;
 mod context;
 mod debug_label;
 mod depth_offset;
-mod draw_phase_manager;
 mod draw_phases;
 mod error_handling;
 mod file_resolver;
@@ -87,10 +86,10 @@ pub use context::{
 };
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
-pub use draw_phase_manager::{DrawPhaseManager, Drawable, DrawableCollector};
 pub use draw_phases::{
-    DrawPhase, OutlineConfig, OutlineMaskPreference, OutlineMaskProcessor, PickingLayerId,
-    PickingLayerInstanceId, PickingLayerObjectId, PickingLayerProcessor, ScreenshotProcessor,
+    DrawPhase, DrawPhaseManager, Drawable, DrawableCollector, OutlineConfig, OutlineMaskPreference,
+    OutlineMaskProcessor, PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId,
+    PickingLayerProcessor, ScreenshotProcessor,
 };
 pub use global_bindings::GlobalBindings;
 pub use importer::{CpuMeshInstance, CpuModel, CpuModelMeshKey};
