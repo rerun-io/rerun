@@ -617,11 +617,9 @@ impl AppState {
 
                             DisplayMode::LocalRecordings => {
                                 // If we are here and the "default" app id is selected,
-                                // or the selection is empty we should instead switch to
-                                // the welcome screen.
-                                if ctx.store_context.recording_store_id().is_empty_recording()
-                                    || ctx.store_context.application_id()
-                                        == &StoreHub::welcome_screen_app_id()
+                                // we should instead switch to the welcome screen.
+                                if ctx.store_context.application_id()
+                                    == &StoreHub::welcome_screen_app_id()
                                 {
                                     ctx.command_sender().send_system(
                                         SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(

@@ -614,6 +614,7 @@ impl App {
 
             SystemCommand::CloseAllEntries => {
                 store_hub.clear_entries();
+                self.state.navigation.clear();
 
                 // Stop receiving into the old recordings.
                 // This is most important when going back to the example screen by using the "Back"
@@ -2721,6 +2722,7 @@ impl eframe::App for App {
         // Make sure some app is active
         // Must be called before `read_context` below.
         if store_hub.active_app().is_none() {
+            self.state.navigation.clear();
             let apps: std::collections::BTreeSet<&ApplicationId> = store_hub
                 .store_bundle()
                 .entity_dbs()

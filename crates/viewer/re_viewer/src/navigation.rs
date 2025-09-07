@@ -47,4 +47,8 @@ impl Navigation {
     pub fn peek(&self) -> &DisplayMode {
         self.history.last().unwrap_or(&self.default)
     }
+
+    pub fn clear(&mut self) {
+        *self = Self::default();
+    }
 }
