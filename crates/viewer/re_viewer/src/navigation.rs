@@ -27,6 +27,10 @@ impl Navigation {
         self.history.push(display_mode);
     }
 
+    pub fn push_default(&mut self) {
+        self.push(self.default.clone());
+    }
+
     pub fn replace(&mut self, new_mode: DisplayMode) -> Option<DisplayMode> {
         let previous = self.history.pop();
 
@@ -46,9 +50,5 @@ impl Navigation {
 
     pub fn peek(&self) -> &DisplayMode {
         self.history.last().unwrap_or(&self.default)
-    }
-
-    pub fn clear(&mut self) {
-        *self = Self::default();
     }
 }
