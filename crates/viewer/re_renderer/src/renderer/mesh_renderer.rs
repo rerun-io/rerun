@@ -94,7 +94,7 @@ struct MeshBatch {
     instance_start_index: u32,
     instance_end_index: u32,
 
-    /// Last index for meshes with with outlines
+    /// Last index for meshes with outlines
     ///
     /// We put all instances with outlines at the start of the instance buffer range, so this is always
     /// smaller or equal to `instance_end_index`.
