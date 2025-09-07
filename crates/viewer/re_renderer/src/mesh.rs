@@ -68,6 +68,9 @@ pub struct CpuMesh {
     pub vertex_texcoords: Vec<glam::Vec2>,
 
     pub materials: SmallVec<[Material; 1]>,
+
+    /// Object space bounding box.
+    pub bbox: macaw::BoundingBox,
 }
 
 impl CpuMesh {
@@ -83,6 +86,7 @@ impl CpuMesh {
             vertex_normals,
             vertex_texcoords,
             materials: _,
+            bbox,
         } = self;
 
         let num_pos = vertex_positions.len();
@@ -111,6 +115,10 @@ impl CpuMesh {
 
         if self.triangle_indices.is_empty() {
             return Err(MeshError::ZeroIndices);
+        }
+
+        if bbox.is_nan() || !bbox.is_finite() || bbox.is_nothing() {
+            return Err(MeshError::InvalidBbox(*bbox));
         }
 
         for indices in triangle_indices {
@@ -152,6 +160,9 @@ pub enum MeshError {
 
     #[error("Mesh has no triangle indices.")]
     ZeroIndices,
+
+    #[error("Mesh has an invalid bounding box {0:?}")]
+    InvalidBbox(macaw::BoundingBox),
 
     #[error("Index {index} was out of bounds for {num_pos} vertex positions")]
     IndexOutOfBounds { num_pos: usize, index: u32 },
@@ -198,6 +209,11 @@ pub struct GpuMesh {
 
     /// Every mesh has at least one material.
     pub materials: SmallVec<[GpuMaterial; 1]>,
+
+    /// Object space bounding box.
+    ///
+    /// Needed for distance sorting.
+    pub bbox: macaw::BoundingBox,
 }
 
 impl GpuMesh {
@@ -395,6 +411,7 @@ impl GpuMesh {
             vertex_buffer_texcoord_range: vb_texcoord_start..vb_combined_size,
             index_buffer_range: 0..index_buffer_size,
             materials,
+            bbox: data.bbox,
         })
     }
 }

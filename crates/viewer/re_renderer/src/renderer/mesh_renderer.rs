@@ -232,6 +232,7 @@ impl MeshDrawData {
                 };
                 let first_instance = first_instance.0;
                 let mesh = first_instance.gpu_mesh.clone();
+                let mesh_center = glam::Vec3A::from(mesh.bbox.center());
 
                 // TODO(andreas): precompute these two.
                 let any_material_transparent = mesh
@@ -298,7 +299,7 @@ impl MeshDrawData {
                             instance_range: instance_idx..(instance_idx + 1),
                             draw_phase: DrawPhase::Transparent,
                             has_transparent_tint: !instance.additive_tint.is_opaque(),
-                            position: instance.world_from_mesh.translation,
+                            position: instance.world_from_mesh.transform_point3a(mesh_center),
                         });
                     }
                 }
@@ -325,7 +326,7 @@ impl MeshDrawData {
                             draw_phase: phase,
                             has_transparent_tint: false,
                             // Ordering isn't super important, so for many instances just pick the first as representative.
-                            position: chunk[0].0.world_from_mesh.translation,
+                            position: chunk[0].0.world_from_mesh.transform_point3a(mesh_center),
                         });
                     }
                 }
@@ -339,7 +340,9 @@ impl MeshDrawData {
                     draw_phase: DrawPhase::PickingLayer,
                     has_transparent_tint: false,
                     // Ordering isn't super important, so for many instances just pick the first as representative.
-                    position: first_instance.world_from_mesh.translation,
+                    position: first_instance
+                        .world_from_mesh
+                        .transform_point3a(mesh_center),
                 });
 
                 num_processed_instances += instances.len() as u32;
@@ -668,18 +671,21 @@ mod tests {
     }
 
     fn test_mesh(ctx: &RenderContext, materials: SmallVec<[Material; 1]>) -> GpuMesh {
+        let vertex_positions = vec![
+            glam::Vec3::new(0.0, 1.0, 0.0),
+            glam::Vec3::new(-1.0, -1.0, 0.0),
+            glam::Vec3::new(1.0, -1.0, 0.0),
+        ];
+        let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
         let cpu_mesh = CpuMesh {
             label: "test_mesh".into(),
             triangle_indices: vec![glam::UVec3::new(0, 1, 2)],
-            vertex_positions: vec![
-                glam::Vec3::new(0.0, 1.0, 0.0),
-                glam::Vec3::new(-1.0, -1.0, 0.0),
-                glam::Vec3::new(1.0, -1.0, 0.0),
-            ],
+            vertex_positions,
             vertex_colors: vec![Rgba32Unmul::WHITE; 3],
             vertex_normals: vec![glam::Vec3::new(0.0, 0.0, 1.0); 3],
             vertex_texcoords: vec![glam::Vec2::ZERO; 3],
             materials,
+            bbox,
         };
 
         GpuMesh::new(ctx, &cpu_mesh).unwrap()
