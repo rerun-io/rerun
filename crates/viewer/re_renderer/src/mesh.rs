@@ -251,7 +251,7 @@ pub(crate) mod gpu_data {
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct MaterialUniformBuffer {
-        albedo_factor: wgpu_buffer_types::Vec4,
+        albedo_factor: ecolor::Rgba,
         texture_format: wgpu_buffer_types::U32RowPadded,
         end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
     }
@@ -259,7 +259,7 @@ pub(crate) mod gpu_data {
     impl MaterialUniformBuffer {
         pub fn new(albedo_factor: ecolor::Rgba, texture_format: TextureFormat) -> Self {
             Self {
-                albedo_factor: albedo_factor.into(),
+                albedo_factor,
                 texture_format: (texture_format as u32).into(),
                 end_padding: Default::default(),
             }
