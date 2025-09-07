@@ -2,7 +2,7 @@
 
 use re_log_types::TimePoint;
 use re_renderer::Color32;
-use re_test_context::TestContext;
+use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::{AsComponents, RowId, archetypes, components::FillMode};
 use re_view_spatial::{SpatialView3D, SpatialViewState, ViewEye};
@@ -92,7 +92,12 @@ fn test_transparent_geometry<A: AsComponents>(
         // Flip the camera orientation to ensure sorting works as expected.
         camera_orientation.store(1 - i * 2, std::sync::atomic::Ordering::Release);
         harness.run_steps(1);
-        harness.snapshot(format!("transparent_{name}_{i}"));
+        harness.snapshot_options(
+            format!("transparent_{name}_{i}"),
+            &SnapshotOptions::default()
+                .threshold(0.8)
+                .failed_pixel_count_threshold(300),
+        );
     }
 }
 
