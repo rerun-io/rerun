@@ -28,11 +28,6 @@ use re_ui::{UiExt as _, UiLayout};
 use crate::arrow_node::ArrowNode;
 use crate::list_item_ranges::list_item_ranges;
 
-/// The maximum number of items when formatting an array to string.
-///
-/// If an array has more items, it will be truncated with `…`.
-pub const MAX_ARROW_LIST_ITEMS: usize = 10;
-
 /// Arrow display options.
 ///
 /// Max item limits will not affect the `list_item` based ui, that will always show all items.
@@ -133,8 +128,6 @@ impl<'a> ArrayUi<'a> {
     }
 
     /// Returns a [`SyntaxHighlightedBuilder`] that displays the entire array.
-    ///
-    /// Arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
     pub fn highlighted(&self) -> Result<SyntaxHighlightedBuilder, ArrowError> {
         let mut highlighted = SyntaxHighlightedBuilder::new();
         write_list(
@@ -147,8 +140,6 @@ impl<'a> ArrayUi<'a> {
     }
 
     /// Returns a [`SyntaxHighlightedBuilder`] that displays a single value at `idx`.
-    ///
-    /// Nested arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
     pub fn value_highlighted(&self, idx: usize) -> Result<SyntaxHighlightedBuilder, ArrowError> {
         let mut highlighted = SyntaxHighlightedBuilder::new();
         self.show_index.write(idx, &mut highlighted)?;
