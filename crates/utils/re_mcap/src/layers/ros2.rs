@@ -5,7 +5,7 @@ use crate::{
         sensor_msgs::{
             BatteryStateMessageParser, CameraInfoMessageParser, CompressedImageMessageParser,
             FluidPressureMessageParser, IlluminanceMessageParser, ImageMessageParser,
-            ImuMessageParser, JointStateMessageParser, NavSatFixMessageParser,
+            ImuMessageParser, JointStateMessageParser, MagneticFieldMessageParser, NavSatFixMessageParser,
             PointCloud2MessageParser, RangeMessageParser, RelativeHumidityMessageParser,
             TemperatureMessageParser,
         },
@@ -56,6 +56,7 @@ impl MessageLayer for McapRos2Layer {
             "sensor_msgs/msg/Image" => Box::new(ImageMessageParser::new(num_rows)),
             "sensor_msgs/msg/Imu" => Box::new(ImuMessageParser::new(num_rows)),
             "sensor_msgs/msg/JointState" => Box::new(JointStateMessageParser::new(num_rows)),
+            "sensor_msgs/msg/MagneticField" => Box::new(MagneticFieldMessageParser::new(num_rows)),
             "sensor_msgs/msg/NavSatFix" => Box::new(NavSatFixMessageParser::new(num_rows)),
             "sensor_msgs/msg/PointCloud2" => Box::new(PointCloud2MessageParser::new(num_rows)),
             "sensor_msgs/msg/Range" => Box::new(RangeMessageParser::new(num_rows)),
