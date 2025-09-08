@@ -13,8 +13,8 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .. import IS_NUMPY_2
 from .._baseclasses import (
+    IS_NUMPY_2,
     BaseBatch,
 )
 from .._converters import (

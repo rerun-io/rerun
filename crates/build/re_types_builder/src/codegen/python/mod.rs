@@ -411,14 +411,6 @@ impl PythonCodeGenerator {
                 ".."
             };
 
-            let numpy_rerun_path = if obj.is_testing() {
-                "rerun"
-            } else if obj.scope().is_some() {
-                "..." // NOLINT
-            } else {
-                ".."
-            };
-
             code.push_unindented(
                 format!(
                     "
@@ -434,7 +426,6 @@ impl PythonCodeGenerator {
             import pyarrow as pa
             import uuid
 
-            from {numpy_rerun_path} import IS_NUMPY_2
             from {rerun_path}error_utils import catch_and_log_exceptions
             from {rerun_path}_baseclasses import (
                 Archetype,
@@ -445,6 +436,7 @@ impl PythonCodeGenerator {
                 ComponentDescriptor,
                 ComponentMixin,
                 DescribedComponentBatch,
+                IS_NUMPY_2
             )
             from {rerun_path}_converters import (
                 int_or_none,

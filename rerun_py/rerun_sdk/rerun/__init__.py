@@ -204,15 +204,6 @@ from .time import (
 )
 from .web import serve_web_viewer as serve_web_viewer
 
-IS_NUMPY_2 = int(np.__version__.split(".")[0]) >= 2
-
-if not IS_NUMPY_2:
-    warnings.warn(
-        "numpy 1 detected. Rerun has only been tested with numpy 2.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
 if TYPE_CHECKING:
     from uuid import UUID
 

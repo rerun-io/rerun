@@ -12,8 +12,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
-from rerun import IS_NUMPY_2
 from rerun._baseclasses import (
+    IS_NUMPY_2,
     BaseBatch,
 )
 from rerun._converters import (
