@@ -64,7 +64,7 @@ impl From<&TableBlueprint> for DataFusionQueryData {
 /// Result of the async datafusion query process.
 #[derive(Debug, Clone)]
 pub struct DataFusionQueryResult {
-    /// The resulting [`SorbetBatch`]s.
+    /// The record batches to display.
     pub record_batches: Vec<RecordBatch>,
 
     /// The schema of the record batches (useful if none is returned).
@@ -96,8 +96,7 @@ impl DataFusionQuery {
         }
     }
 
-    /// Execute the query and produce a vector of [`SorbetBatch`]s along with physical columns
-    /// names.
+    /// Execute the query to produce the data to display.
     ///
     /// Note: the future returned by this function must be `'static`, so it takes `self`. Use
     /// `clone()` as required.
