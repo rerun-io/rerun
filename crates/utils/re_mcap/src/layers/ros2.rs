@@ -5,9 +5,9 @@ use crate::{
         sensor_msgs::{
             BatteryStateMessageParser, CameraInfoMessageParser, CompressedImageMessageParser,
             FluidPressureMessageParser, IlluminanceMessageParser, ImageMessageParser,
-            ImuMessageParser, JointStateMessageParser, MagneticFieldMessageParser, NavSatFixMessageParser,
-            PointCloud2MessageParser, RangeMessageParser, RelativeHumidityMessageParser,
-            TemperatureMessageParser,
+            ImuMessageParser, JointStateMessageParser, MagneticFieldMessageParser,
+            NavSatFixMessageParser, PointCloud2MessageParser, RangeMessageParser,
+            RelativeHumidityMessageParser, TemperatureMessageParser,
         },
         std_msgs::StringMessageParser,
     },
