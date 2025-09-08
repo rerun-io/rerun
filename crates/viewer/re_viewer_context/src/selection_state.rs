@@ -127,7 +127,7 @@ impl ApplicationSelectionState {
         self.selection_this_frame = items.into();
     }
 
-    /// Extend the selection with the provided items.
+    /// Sends a command to select the current selection + `items`.
     pub fn extend_selection(
         &self,
         items: impl Into<ItemCollection>,
@@ -153,7 +153,7 @@ impl ApplicationSelectionState {
         *self.hovered_this_frame.lock() = hovered.into();
     }
 
-    /// Select passed objects unless already selected in which case they get unselected.
+    /// Sends a command to select passed objects unless already selected in which case they get unselected.
     /// If however an object is already selected but now gets passed a *different* item context, it stays selected after all
     /// but with an updated context!
     pub fn toggle_selection(&self, toggle_items: ItemCollection, command_sender: &CommandSender) {
