@@ -69,7 +69,7 @@ impl ShareModal {
                     self.open(url);
                 }
             }
-        };
+        }
     }
 
     pub fn ui(

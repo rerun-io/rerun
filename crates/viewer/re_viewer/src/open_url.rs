@@ -568,7 +568,6 @@ impl ViewerOpenUrl {
 
     /// Fragments of the URL if supported.
     pub fn fragments_mut(&mut self) -> Option<&mut re_uri::Fragment> {
-        #[expect(clippy::match_same_arms)]
         match self {
             Self::IntraRecordingSelection(..) => None,
             Self::RrdHttpUrl(..) => None,
@@ -594,7 +593,6 @@ impl ViewerOpenUrl {
 
     /// Time selection embedded in the URL if supported.
     pub fn time_range_mut(&mut self) -> Option<&mut Option<re_uri::TimeSelection>> {
-        #[expect(clippy::match_same_arms)]
         match self {
             Self::IntraRecordingSelection(..) => None,
             Self::RrdHttpUrl(..) => None,
