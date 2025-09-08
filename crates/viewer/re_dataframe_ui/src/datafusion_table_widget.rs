@@ -1,7 +1,7 @@
 use std::iter;
 use std::sync::Arc;
 
-use arrow::datatypes::Fields;
+use arrow::datatypes::Field;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
@@ -19,7 +19,7 @@ use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
-use crate::datafusion_adapter::DataFusionAdapter;
+use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
 use crate::display_record_batch::DisplayColumn;
 use crate::filter_ui::FilterState;
 use crate::filters::{Filter, FilterOperation};
@@ -263,18 +263,18 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut filter_state =
             FilterState::load_or_init_from_blueprint(ui.ctx(), session_id, table_state.blueprint());
 
-        let requested_sorbet_batches = table_state.requested_sorbet_batches.lock();
+        let requested_query_result = table_state.requested_query_result.lock();
 
         let mut should_show_spinner = false;
-        let (sorbet_batches, fields) = match (
-            requested_sorbet_batches.try_as_ref(),
-            &table_state.last_sorbet_batches,
+        let query_result = match (
+            requested_query_result.try_as_ref(),
+            &table_state.last_query_results,
         ) {
-            (Some(Ok(dataframe)), _) => dataframe,
+            (Some(Ok(query_result)), _) => query_result,
 
             (Some(Err(err)), _) => {
                 let error = format!("Could not load table: {err}");
-                drop(requested_sorbet_batches);
+                drop(requested_query_result);
 
                 ui.horizontal(|ui| {
                     ui.error_label(error);
@@ -290,64 +290,67 @@ impl<'a> DataFusionTableWidget<'a> {
                 return;
             }
 
-            (None, Some(last_dataframe)) => {
+            (None, Some(last_query_result)) => {
                 // The new dataframe is still processing, but we have the previous one to display for now.
                 should_show_spinner = true;
-                last_dataframe
+                last_query_result
             }
 
             (None, None) => {
                 // still processing, nothing yet to show
+                //TODO(ab): it can happen that we're stuck in the state. We should detect it and
+                //produce an error
                 Self::loading_ui(ui);
                 return;
             }
         };
 
-        // TODO(ab): significant code duplication here. This could possible be addressed by allowing
-        // the rest of this function to run over a schema and empty dataframe.
-        let (sorbet_schema, migrated_fields) = {
-            // TODO(ab): We need to deal better with empty vec of sorbet batches. In that case, we
-            // do have a schema, so we should be able to display an empty table.
-            let Some(sorbet_batch) = sorbet_batches.first() else {
-                if let Some(title) = title {
-                    title_ui(ui, None, &title, url.as_ref(), should_show_spinner);
-                }
+        // // TODO(ab): significant code duplication here. This could possible be addressed by allowing
+        // // the rest of this function to run over a schema and empty dataframe.
+        // let (sorbet_schema, migrated_fields) = {
+        //     // TODO(ab): We need to deal better with empty vec of sorbet batches. In that case, we
+        //     // do have a schema, so we should be able to display an empty table.
+        //     let Some(sorbet_batch) = sorbet_batches.first() else {
+        //         if let Some(title) = title {
+        //             title_ui(ui, None, &title, url.as_ref(), should_show_spinner);
+        //         }
+        //
+        //         drop(requested_query_result);
+        //         filter_state.filter_bar_ui(ui, &mut new_blueprint);
+        //         if table_state.blueprint() != &new_blueprint {
+        //             table_state.update_query(runtime, ui, new_blueprint);
+        //         }
+        //         filter_state.store(ui.ctx(), session_id);
+        //
+        //         Frame::new()
+        //             .inner_margin(egui::vec2(16.0, 0.0))
+        //             .show(ui, |ui| {
+        //                 ui.label(egui::RichText::new("Empty table").italics());
+        //             });
+        //
+        //         return;
+        //     };
+        //
+        //     (sorbet_batch.sorbet_schema(), sorbet_batch.fields())
+        // };
 
-                drop(requested_sorbet_batches);
-                filter_state.filter_bar_ui(ui, &mut new_blueprint);
-                if table_state.blueprint() != &new_blueprint {
-                    table_state.update_query(runtime, ui, new_blueprint);
-                }
-                filter_state.store(ui.ctx(), session_id);
-
-                Frame::new()
-                    .inner_margin(egui::vec2(16.0, 0.0))
-                    .show(ui, |ui| {
-                        ui.label(egui::RichText::new("Empty table").italics());
-                    });
-
-                return;
-            };
-
-            (sorbet_batch.sorbet_schema(), sorbet_batch.fields())
-        };
-
-        let num_rows = sorbet_batches
+        let num_rows = query_result
+            .record_batches
             .iter()
             .map(|record_batch| record_batch.num_rows() as u64)
             .sum();
 
-        let columns = Columns::from(sorbet_schema, &column_blueprint_fn);
+        let columns = Columns::from(&query_result.sorbet_schema, &column_blueprint_fn);
 
-        let display_record_batches = sorbet_batches
+        let display_record_batches = query_result
+            .record_batches
             .iter()
-            .map(|sorbet_batch| {
-                DisplayRecordBatch::try_new(
-                    sorbet_batch
-                        .all_columns_ref()
-                        .zip(columns.iter())
-                        .map(|((desc, array), column)| (desc, &column.blueprint, array.clone())),
-                )
+            .map(|record_batch| {
+                DisplayRecordBatch::try_new(itertools::izip!(
+                    query_result.sorbet_schema.columns.iter().map(|x| x.into()),
+                    columns.iter().map(|column| &column.blueprint),
+                    record_batch.columns().iter().map(Arc::clone)
+                ))
             })
             .collect::<Result<Vec<_>, _>>();
 
@@ -401,11 +404,16 @@ impl<'a> DataFusionTableWidget<'a> {
             row_height *= 3.0;
         }
 
+        let migrated_fields = query_result
+            .sorbet_schema
+            .columns
+            .arrow_fields(re_sorbet::BatchType::Dataframe);
+
         let mut table_delegate = DataFusionTableDelegate {
             ctx: viewer_ctx,
             table_style,
-            fields,
-            migrated_fields,
+            query_result,
+            migrated_fields: &migrated_fields,
             display_record_batches: &display_record_batches,
             columns: &columns,
             blueprint: table_state.blueprint(),
@@ -475,7 +483,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         table_delegate.table_config.store(ui.ctx());
         table_delegate.filter_state.store(ui.ctx(), session_id);
-        drop(requested_sorbet_batches);
+        drop(requested_query_result);
         if table_state.blueprint() != &new_blueprint {
             table_state.update_query(runtime, ui, new_blueprint);
         }
@@ -603,8 +611,8 @@ enum BottomBarAction {
 struct DataFusionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     table_style: re_ui::TableStyle,
-    fields: &'a Fields,
-    migrated_fields: &'a Fields,
+    query_result: &'a DataFusionQueryResult,
+    migrated_fields: &'a Vec<Field>,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
     blueprint: &'a TableBlueprint,
@@ -629,7 +637,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             let id = self.table_config.visible_column_ids().nth(column_index);
 
             if let Some((index, column)) = self.columns.index_and_column_from_id(id) {
-                let column_field = &self.fields[index];
+                let column_field = &self.query_result.schema.fields[index];
                 let column_physical_name = column_field.name();
                 let column_display_name = column.display_name();
 
