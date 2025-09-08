@@ -21,6 +21,8 @@ pub struct ShareModal {
     url: Option<ViewerOpenUrl>,
     create_web_viewer_url: bool,
     last_time_copied: Option<Instant>,
+
+    default_expanded: bool,
 }
 
 #[expect(clippy::derivable_impls)] // False positive.
@@ -32,6 +34,7 @@ impl Default for ShareModal {
             url: None,
             create_web_viewer_url: cfg!(target_arch = "wasm32"),
             last_time_copied: None,
+            default_expanded: false,
         }
     }
 }
@@ -168,6 +171,7 @@ impl ShareModal {
                         &mut self.create_web_viewer_url,
                         timestamp_format,
                         current_selection,
+                        self.default_expanded,
                         rec_cfg,
                     );
                 });
@@ -182,6 +186,7 @@ fn url_settings_ui(
     create_web_viewer_url: &mut bool,
     timestamp_format: re_log_types::TimestampFormat,
     current_selection: Option<&Item>,
+    default_expanded: bool,
     rec_cfg: &RecordingConfig,
 ) {
     ui.list_item_flat_noninteractive(
@@ -193,7 +198,14 @@ fn url_settings_ui(
     }
 
     if let Some(fragments) = url.fragments_mut() {
-        fragments_ui(ui, fragments, timestamp_format, current_selection, rec_cfg);
+        fragments_ui(
+            ui,
+            fragments,
+            timestamp_format,
+            current_selection,
+            default_expanded,
+            rec_cfg,
+        );
     }
 }
 
@@ -247,9 +259,10 @@ fn fragments_ui(
     fragments: &mut Fragment,
     timestamp_format: re_log_types::TimestampFormat,
     current_selection: Option<&Item>,
+    default_expanded: bool,
     rec_cfg: &RecordingConfig,
 ) {
-    ui.list_item_collapsible_noninteractive_label("Selection", false, |ui| {
+    ui.list_item_collapsible_noninteractive_label("Selection", default_expanded, |ui| {
         let Fragment { focus, when } = fragments;
 
         let mut any_focus = focus.is_some();
@@ -312,4 +325,84 @@ fn fragments_ui(
 
 fn format_extra_toggle_info(info: String) -> egui::Atom<'static> {
     egui::RichText::new(info).weak().atom_max_width(120.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{str::FromStr as _, sync::Arc};
+
+    use parking_lot::Mutex;
+    use re_chunk::EntityPath;
+    use re_log_types::{AbsoluteTimeRangeF, TimeCell, external::re_tuid};
+    use re_test_context::TestContext;
+    use re_viewer_context::Item;
+
+    use crate::{open_url::ViewerOpenUrl, ui::ShareModal};
+
+    #[test]
+    fn test_share_modal() {
+        let test_ctx = TestContext::new();
+
+        let timeline = re_log_types::Timeline::new_timestamp("pictime");
+
+        let selection = Item::from(EntityPath::parse_forgiving("entity/path"));
+        let origin = re_uri::Origin::from_str("rerun+http://example.com").unwrap();
+        let dataset_id = re_tuid::Tuid::from_u128(0x182342300c5f8c327a7b4a6e5a379ac4);
+
+        let modal = Arc::new(Mutex::new(ShareModal::default()));
+        modal.lock().default_expanded = true;
+
+        let mut harness = egui_kittest::Harness::builder()
+            .with_size(egui::Vec2::new(500.0, 300.0))
+            .build_ui(|ui| {
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+
+                modal.lock().ui(
+                    ui,
+                    re_log_types::TimestampFormat::Utc,
+                    Some(&selection),
+                    &test_ctx.recording_config,
+                );
+            });
+
+        let url = ViewerOpenUrl::RedapCatalog(re_uri::CatalogUri::new(origin.clone()));
+        modal.lock().open(url.clone());
+        harness.run();
+        harness.snapshot("share_modal__server_url");
+
+        let url = ViewerOpenUrl::RedapDatasetPartition(re_uri::DatasetPartitionUri {
+            origin: origin.clone(),
+            dataset_id,
+            partition_id: "partition_id".to_owned(),
+            time_range: None,
+            fragment: re_uri::Fragment::default(),
+        });
+        modal.lock().open(url.clone());
+        harness.run_steps(2); // Force running two steps to ensure relayouting happens. TODO(andreas): Why is this needed?
+        harness.snapshot("share_modal__dataset_partition_url");
+
+        // Set the timeline so it shows up on the dialog.
+        {
+            test_ctx.set_active_timeline(timeline);
+            let mut time_ctrl = test_ctx.recording_config.time_ctrl.write();
+            time_ctrl.set_loop_selection(AbsoluteTimeRangeF::new(0.0, 1000.0));
+        }
+
+        let url = ViewerOpenUrl::RedapDatasetPartition(re_uri::DatasetPartitionUri {
+            origin: origin.clone(),
+            dataset_id,
+            partition_id: "partition_id".to_owned(),
+            time_range: Some(re_uri::TimeSelection {
+                timeline,
+                range: re_log_types::AbsoluteTimeRange::new(0, 1000),
+            }),
+            fragment: re_uri::Fragment {
+                focus: selection.to_data_path(),
+                when: Some((*timeline.name(), TimeCell::new(timeline.typ(), 234))),
+            },
+        });
+        modal.lock().open(url.clone());
+        harness.run();
+        harness.snapshot("share_modal__dataset_partition_url_with_time_range");
+    }
 }
