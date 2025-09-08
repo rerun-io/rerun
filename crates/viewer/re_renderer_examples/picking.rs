@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use rand::Rng as _;
 use re_renderer::{
     Color32, GpuReadbackIdentifier, PickingLayerId, PickingLayerInstanceId, PickingLayerProcessor,
-    PointCloudBuilder, RectInt, Size,
+    PointCloudBuilder, RectInt, Size, ViewPickingConfiguration,
     renderer::GpuMeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
 };
@@ -100,7 +100,7 @@ impl framework::Example for Picking {
         pixels_per_point: f32,
     ) -> anyhow::Result<Vec<framework::ViewDrawResult>> {
         if let Some(picking_result) =
-            PickingLayerProcessor::readback_result::<()>(re_ctx, READBACK_IDENTIFIER)
+            PickingLayerProcessor::readback_result(re_ctx, READBACK_IDENTIFIER)
         {
             // Grab the middle pixel. usually we'd want to do something clever that snaps the closest object of interest.
             let picked_id = picking_result.picked_id(picking_result.rect.extent / 2);
@@ -118,6 +118,18 @@ impl framework::Example for Picking {
 
         // TODO(#1426): unify camera logic between examples.
         let camera_position = glam::vec3(1.0, 3.5, 7.0);
+
+        // Use an uneven number of pixels for the picking rect so that there is a clearly defined middle-pixel.
+        // (for this sample a size of 1 would be sufficient, but for a real application you'd want to use a larger size to allow snapping)
+        let picking_rect_size = 31;
+        let picking_config = ViewPickingConfiguration {
+            picking_rect: RectInt::from_middle_and_extent(
+                self.picking_position.as_ivec2(),
+                glam::uvec2(picking_rect_size, picking_rect_size),
+            ),
+            readback_identifier: READBACK_IDENTIFIER,
+            show_debug_view: false,
+        };
 
         let mut view_builder = ViewBuilder::new(
             re_ctx,
@@ -137,18 +149,10 @@ impl framework::Example for Picking {
                 },
                 pixels_per_point,
                 outline_config: None,
+                picking_config: Some(picking_config),
                 ..Default::default()
             },
-        );
-
-        // Use an uneven number of pixels for the picking rect so that there is a clearly defined middle-pixel.
-        // (for this sample a size of 1 would be sufficient, but for a real application you'd want to use a larger size to allow snapping)
-        let picking_rect_size = 31;
-        let picking_rect = RectInt::from_middle_and_extent(
-            self.picking_position.as_ivec2(),
-            glam::uvec2(picking_rect_size, picking_rect_size),
-        );
-        view_builder.schedule_picking_rect(re_ctx, picking_rect, READBACK_IDENTIFIER, (), false)?;
+        )?;
 
         let mut point_builder = PointCloudBuilder::new(re_ctx);
         point_builder.reserve(self.point_sets.iter().map(|set| set.positions.len()).sum())?;
