@@ -55,7 +55,7 @@ enum ComponentData {
 }
 
 impl ComponentData {
-    fn try_new(column_data: &ArrowArrayRef) -> Self {
+    fn new(column_data: &ArrowArrayRef) -> Self {
         match column_data.data_type() {
             ArrowDataType::Null => Self::Null,
             ArrowDataType::List(_) => Self::ListArray(
@@ -341,7 +341,7 @@ impl DisplayColumn {
                 Ok(Self::Component(Box::new(DisplayComponentColumn {
                     entity_path: desc.entity_path.clone(),
                     component_descr: desc.component_descriptor(),
-                    component_data: ComponentData::try_new(column_data),
+                    component_data: ComponentData::new(column_data),
                     row_ids: None,
                     variant_name: column_blueprint.variant_ui,
                 })))
