@@ -160,5 +160,18 @@ fn migrate_record_batch_impl(mut batch: RecordBatch) -> RecordBatch {
 #[tracing::instrument(level = "debug", skip_all)]
 pub fn migrate_schema_ref(schema: SchemaRef) -> SchemaRef {
     re_tracing::profile_function!();
-    migrate_record_batch_impl(RecordBatch::new_empty(schema)).schema()
+
+    let _field_count = schema.fields().len();
+
+    let result = migrate_record_batch_impl(RecordBatch::new_empty(schema)).schema();
+
+    // At least in the Datafusion table widget, we currently rely on the migrated schema having the
+    // 1:1 matching columns.
+    debug_assert_eq!(
+        _field_count,
+        result.fields().len(),
+        "migrated schema has a different number of fields than the original schema"
+    );
+
+    result
 }

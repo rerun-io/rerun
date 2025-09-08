@@ -1,14 +1,12 @@
 //! Helpers for working with arrow
 
+mod array_cell_ext;
 mod arrays;
 mod batches;
 mod compare;
 mod format_data_type;
 
-pub use self::arrays::*;
-pub use self::batches::*;
-pub use self::compare::*;
-pub use self::format_data_type::*;
+pub use self::{array_cell_ext::*, arrays::*, batches::*, compare::*, format_data_type::*};
 
 // ----------------------------------------------------------------
 

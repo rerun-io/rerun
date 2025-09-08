@@ -4,16 +4,13 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{
-        Array as _, ArrayRef as ArrowArrayRef, Int32DictionaryArray as ArrowInt32DictionaryArray,
-        ListArray as ArrowListArray,
-    },
+    array::{Array as _, ArrayRef as ArrowArrayRef},
     buffer::NullBuffer as ArrowNullBuffer,
     buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::DataType as ArrowDataType,
 };
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_arrow_util::{ArrayCell, ArrayCellExt as _};
 use re_chunk_store::LatestAtQuery;
 use re_component_ui::REDAP_THUMBNAIL_VARIANT;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
@@ -38,99 +35,6 @@ pub enum DisplayRecordBatchError {
 
     #[error(transparent)]
     DeserializationError(#[from] DeserializationError),
-}
-
-/// Wrapper over the arrow data of a component column.
-///
-/// Abstracts over the different possible arrow representations of component data.
-#[derive(Debug)]
-enum ComponentData {
-    Null,
-    ListArray(ArrowListArray),
-    DictionaryArray {
-        dict: ArrowInt32DictionaryArray,
-        values: ArrowListArray,
-    },
-    Scalar(ArrowArrayRef),
-}
-
-impl ComponentData {
-    fn new(column_data: &ArrowArrayRef) -> Self {
-        match column_data.data_type() {
-            ArrowDataType::Null => Self::Null,
-            ArrowDataType::List(_) => Self::ListArray(
-                column_data
-                    .downcast_array_ref::<ArrowListArray>()
-                    .expect("`data_type` checked, failure is a bug in re_dataframe")
-                    .clone(),
-            ),
-            ArrowDataType::Dictionary(_, _) => {
-                let dict = column_data
-                    .downcast_array_ref::<ArrowInt32DictionaryArray>()
-                    .expect("`data_type` checked, failure is a bug in re_dataframe")
-                    .clone();
-                let values = dict
-                    .values()
-                    .downcast_array_ref::<ArrowListArray>()
-                    .expect("`data_type` checked, failure is a bug in re_dataframe")
-                    .clone();
-                Self::DictionaryArray { dict, values }
-            }
-            _ => Self::Scalar(Arc::clone(column_data)),
-        }
-    }
-
-    /// Returns the number of instances for the given row index.
-    ///
-    /// For [`Self::Null`] columns, or for invalid `row_index`, this will return 0.
-    fn instance_count(&self, row_index: usize) -> u64 {
-        match self {
-            Self::Null => 0,
-            Self::ListArray(list_array) => {
-                if list_array.is_valid(row_index) {
-                    list_array.value(row_index).len() as u64
-                } else {
-                    0
-                }
-            }
-            Self::DictionaryArray { dict, values } => {
-                if let Some(key) = dict.key(row_index) {
-                    values.value(key).len() as u64
-                } else {
-                    0
-                }
-            }
-            Self::Scalar(_) => 1,
-        }
-    }
-
-    /// Is this as [`ArrowDataType::Null`] column?
-    fn is_null(&self) -> bool {
-        matches!(self, Self::Null)
-    }
-
-    /// Returns the content at the given row index.
-    fn row_data(&self, row_index: usize) -> Option<ArrowArrayRef> {
-        match self {
-            Self::Null => None,
-
-            Self::ListArray(list_array) => list_array
-                .is_valid(row_index)
-                .then(|| list_array.value(row_index)),
-
-            Self::DictionaryArray { dict, values } => {
-                dict.key(row_index).map(|key| values.value(key))
-            }
-
-            Self::Scalar(scalar_array) => {
-                if row_index < scalar_array.len() {
-                    Some(scalar_array.slice(row_index, 1))
-                } else {
-                    None
-                }
-            }
-        }
-    }
 }
 
 /// Compute a quick partial hash of an image data buffer, capping the max amount of hashed data to
@@ -170,7 +74,7 @@ fn quick_partial_hash(data: &[u8], section_length: usize) -> Hash64 {
 pub struct DisplayComponentColumn {
     entity_path: EntityPath,
     component_descr: ComponentDescriptor,
-    component_data: ComponentData,
+    component_data: ArrowArrayRef,
 
     // if available, used to pass a row id to the component UI (e.g. to cache image)
     row_ids: Option<Arc<Vec<RowId>>>,
@@ -180,15 +84,13 @@ pub struct DisplayComponentColumn {
 }
 
 impl DisplayComponentColumn {
-    fn blobs(&self, row: usize) -> Option<Vec<Blob>> {
+    fn blobs(&self, row_index: usize) -> Option<Vec<Blob>> {
         if self.component_descr.component_type != Some(re_types::components::Blob::name()) {
             return None;
         }
 
-        self.component_data
-            .row_data(row)
-            .as_ref()
-            .and_then(|data| Blob::from_arrow(data).ok())
+        let cell = self.component_data.get(row_index)?;
+        Blob::from_arrow(cell.inner()).ok()
     }
 
     fn is_blob_image(blob: &Blob) -> bool {
@@ -213,7 +115,7 @@ impl DisplayComponentColumn {
         instance_index: Option<u64>,
     ) {
         // handle null columns
-        if self.component_data.is_null() {
+        if self.component_data.data_type() == &ArrowDataType::Null {
             // don't repeat the null value when expanding instances
             if instance_index.is_none() {
                 ui.label("null");
@@ -221,76 +123,84 @@ impl DisplayComponentColumn {
             return;
         }
 
-        let data = self.component_data.row_data(row_index);
+        let data_to_display = match (self.component_data.get(row_index), instance_index) {
+            (Some(cell), Some(instance_index)) => cell.get(instance_index as _),
+            (Some(cell), None) => Some(cell),
+            (None, _) => None,
+        };
 
-        if let Some(data) = data {
-            let data_to_display = if let Some(instance_index) = instance_index {
-                // Panics if the instance index is out of bound. This is checked in
-                // `DisplayColumn::data_ui`.
-                data.slice(instance_index as usize, 1)
-            } else {
-                data
-            };
+        let Some(data_to_display) = data_to_display else {
+            ui.label("-");
+            return;
+        };
 
-            let mut row_id = self
-                .row_ids
-                .as_deref()
-                .and_then(|row_ids| row_ids.get(row_index))
-                .copied();
+        match data_to_display {
+            ArrayCell::Array(array) => {
+                let mut row_id = self
+                    .row_ids
+                    .as_deref()
+                    .and_then(|row_ids| row_ids.get(row_index))
+                    .copied();
 
-            let mut variant_name = self.variant_name;
+                let mut variant_name = self.variant_name;
 
-            let blob = Blob::from_arrow(&data_to_display).ok();
+                let blob = self.blobs(row_index);
 
-            if let Some(blob) = blob.as_ref().and_then(|b| b.first())
-                && Self::is_blob_image(blob)
-            {
-                variant_name = Some(VariantName::from(REDAP_THUMBNAIL_VARIANT));
+                if let Some(blob) = blob.as_ref().and_then(|b| b.first())
+                    && Self::is_blob_image(blob)
+                {
+                    variant_name = Some(VariantName::from(REDAP_THUMBNAIL_VARIANT));
 
-                // TODO(ab): we should find an alternative to using content-hashing to generate cache
-                // keys.
-                //
-                // Generate a content-based cache key if we don't have one already. This is needed
-                // because without cache key, the image thumbnail will no be displayed by the component
-                // ui.
-                if row_id.is_none() {
-                    re_tracing::profile_scope!("Blob hash");
+                    // TODO(ab): we should find an alternative to using content-hashing to generate cache
+                    // keys.
+                    //
+                    // Generate a content-based cache key if we don't have one already. This is needed
+                    // because without cache key, the image thumbnail will no be displayed by the component
+                    // ui.
+                    if row_id.is_none() {
+                        re_tracing::profile_scope!("Blob hash");
 
-                    // cap the max amount of data to hash to 9 KiB
-                    const SECTION_LENGTH: usize = 3 * 1024;
+                        // cap the max amount of data to hash to 9 KiB
+                        const SECTION_LENGTH: usize = 3 * 1024;
 
-                    // TODO(andreas, ab): This is a hack to create a pretend-row-id from the content hash.
-                    row_id = Some(RowId::from_u128(
-                        quick_partial_hash(blob.as_ref(), SECTION_LENGTH).hash64() as _,
-                    ));
+                        // TODO(andreas, ab): This is a hack to create a pretend-row-id from the content hash.
+                        row_id = Some(RowId::from_u128(
+                            quick_partial_hash(blob.as_ref(), SECTION_LENGTH).hash64() as _,
+                        ));
+                    }
+                }
+
+                if let Some(variant_name) = variant_name {
+                    ctx.component_ui_registry().variant_ui_raw(
+                        ctx,
+                        ui,
+                        UiLayout::List,
+                        variant_name,
+                        &self.component_descr,
+                        row_id,
+                        array.as_ref(),
+                    );
+                } else {
+                    ctx.component_ui_registry().component_ui_raw(
+                        ctx,
+                        ui,
+                        UiLayout::List,
+                        latest_at_query,
+                        ctx.recording(),
+                        &self.entity_path,
+                        &self.component_descr,
+                        row_id,
+                        array.as_ref(),
+                    );
                 }
             }
 
-            if let Some(variant_name) = variant_name {
-                ctx.component_ui_registry().variant_ui_raw(
-                    ctx,
-                    ui,
-                    UiLayout::List,
-                    variant_name,
-                    &self.component_descr,
-                    row_id,
-                    data_to_display.as_ref(),
-                );
-            } else {
-                ctx.component_ui_registry().component_ui_raw(
-                    ctx,
-                    ui,
-                    UiLayout::List,
-                    latest_at_query,
-                    ctx.recording(),
-                    &self.entity_path,
-                    &self.component_descr,
-                    row_id,
-                    data_to_display.as_ref(),
-                );
+            ArrayCell::Scalar(_) => {
+                ui.horizontal(|ui| {
+                    ui.label("s");
+                    re_arrow_ui::arrow_ui(ui, UiLayout::List, &data_to_display);
+                });
             }
-        } else {
-            ui.label("-");
         }
     }
 }
@@ -341,7 +251,7 @@ impl DisplayColumn {
                 Ok(Self::Component(Box::new(DisplayComponentColumn {
                     entity_path: desc.entity_path.clone(),
                     component_descr: desc.component_descriptor(),
-                    component_data: ComponentData::new(column_data),
+                    component_data: Arc::clone(column_data),
                     row_ids: None,
                     variant_name: column_blueprint.variant_ui,
                 })))
@@ -352,9 +262,11 @@ impl DisplayColumn {
     pub fn instance_count(&self, row_index: usize) -> u64 {
         match self {
             Self::RowId { .. } | Self::Timeline { .. } => 1,
-            Self::Component(component_column) => {
-                component_column.component_data.instance_count(row_index)
-            }
+            Self::Component(component_column) => component_column
+                .component_data
+                .get(row_index)
+                .map(|cell| cell.len())
+                .unwrap_or_default() as _,
         }
     }
 
