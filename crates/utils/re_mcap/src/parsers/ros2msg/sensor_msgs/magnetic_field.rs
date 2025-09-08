@@ -9,19 +9,12 @@ use re_types::{
 
 use crate::{
     Error,
-    parsers::{MessageParser, ParserContext, cdr},
+    parsers::{MessageParser, ParserContext, cdr, util::fixed_size_list_builder},
 };
 
 /// Plugin that parses `sensor_msgs/msg/MagneticField` messages.
 #[derive(Default)]
 pub struct MagneticFieldSchemaPlugin;
-
-fn fixed_size_list_builder(
-    value_length: i32,
-    capacity: usize,
-) -> FixedSizeListBuilder<Float64Builder> {
-    FixedSizeListBuilder::with_capacity(Float64Builder::new(), value_length, capacity)
-}
 
 pub struct MagneticFieldMessageParser {
     vectors: Vec<Vec3D>,
