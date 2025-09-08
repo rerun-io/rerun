@@ -1,8 +1,10 @@
 use re_types::{
     Archetype as _,
     archetypes::VideoStream,
-    components::{self},
+    components::{self, Opacity},
+    image::ImageKind,
 };
+use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider,
     VideoStreamCache, VideoStreamProcessingError, ViewClass as _, ViewContext,
@@ -11,7 +13,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    PickableTexturedRect, SpatialView2D,
+    PickableTexturedRect, SpatialView2D, SpatialViewState,
     contexts::{EntityDepthOffsets, TransformTreeContext},
     view_kind::SpatialViewKind,
     visualizers::{
@@ -91,6 +93,20 @@ impl VisualizerSystem for VideoStreamVisualizer {
             // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
             let mut video_resolution = glam::vec2(1280.0, 720.0);
 
+            let opacity_result = data_result.latest_at_with_blueprint_resolved_data_for_component(
+                ctx,
+                &latest_at,
+                &VideoStream::descriptor_opacity(),
+            );
+            let all_opacities =
+                opacity_result.iter_as(view_query.timeline, VideoStream::descriptor_opacity());
+            let opacity = all_opacities
+                .slice::<f32>()
+                .next()
+                .and_then(|((_time, _row_id), opacity)| opacity.first())
+                .copied()
+                .map(Opacity::from);
+
             let video = match viewer_ctx
                 .store_context
                 .caches
@@ -158,6 +174,17 @@ impl VisualizerSystem for VideoStreamVisualizer {
                         .get(&(Self::identifier(), entity_path.hash()))
                         .copied()
                         .unwrap_or_default();
+                    let opacity = opacity.unwrap_or_else(|| {
+                        self.fallback_for(&re_viewer_context::QueryContext {
+                            view_ctx: ctx,
+                            target_entity_path: entity_path,
+                            archetype_name: Some(VideoStream::name()),
+                            query: &latest_at,
+                        })
+                    });
+                    #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
+                    let multiplicative_tint =
+                        egui::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
                     visualize_video_frame_texture(
                         ctx,
                         &mut self.data,
@@ -167,6 +194,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                         world_from_entity,
                         highlight,
                         video_resolution,
+                        multiplicative_tint,
                     );
                 }
 
@@ -221,4 +249,21 @@ impl TypedComponentFallbackProvider<components::DrawOrder> for VideoStreamVisual
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(VideoStreamVisualizer => [components::DrawOrder]);
+impl TypedComponentFallbackProvider<components::Opacity> for VideoStreamVisualizer {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> components::Opacity {
+        // Streams should be transparent whenever they're on top of other media,
+        // But fully opaque if there is no other media in the scene.
+        let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
+            return 1.0.into();
+        };
+
+        // Video streams are basically color images.
+        //
+        // Check [`crates/viewer/re_view_spatial/src/visualizers/images.rs`] for possible issues with this approach.
+        view_state
+            .fallback_opacity_for_image_kind(ImageKind::Color)
+            .into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(VideoStreamVisualizer => [components::DrawOrder, Opacity]);

@@ -40,7 +40,7 @@ pub struct WebHandle {
     tx_channels: HashMap<String, Channel>,
 
     /// The connection registry to use for the viewer.
-    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: re_redap_client::ConnectionRegistryHandle,
 
     app_options: AppOptions,
 }
@@ -54,7 +54,7 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
-        let connection_registry = re_grpc_client::ConnectionRegistry::new();
+        let connection_registry = re_redap_client::ConnectionRegistry::new();
 
         Ok(Self {
             runner: eframe::WebRunner::new(),
@@ -206,7 +206,7 @@ impl WebHandle {
         let follow_if_http = follow_if_http.unwrap_or(false);
         let select_redap_source_when_loaded = true;
 
-        match url.parse::<open_url::ViewerImportUrl>() {
+        match url.parse::<open_url::ViewerOpenUrl>() {
             Ok(url) => {
                 url.open(
                     &app.egui_ctx,
@@ -710,7 +710,7 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 fn create_app(
     main_thread_token: crate::MainThreadToken,
     cc: &eframe::CreationContext<'_>,
-    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: re_redap_client::ConnectionRegistryHandle,
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
@@ -808,7 +808,7 @@ fn create_app(
         let select_redap_source_when_loaded = true;
 
         for url in urls.into_inner() {
-            match url.parse::<open_url::ViewerImportUrl>() {
+            match url.parse::<open_url::ViewerOpenUrl>() {
                 Ok(url) => {
                     url.open(
                         &app.egui_ctx,

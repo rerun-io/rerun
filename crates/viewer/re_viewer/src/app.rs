@@ -7,8 +7,8 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{FileContents, LogDataSource};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
-use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
+use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
@@ -26,7 +26,7 @@ use crate::{
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     event::ViewerEventDispatcher,
-    open_url::ViewerImportUrl,
+    open_url::ViewerOpenUrl,
     startup_options::StartupOptions,
 };
 
@@ -188,7 +188,7 @@ impl App {
         re_tracing::profile_function!();
 
         let connection_registry =
-            connection_registry.unwrap_or_else(re_grpc_client::ConnectionRegistry::new);
+            connection_registry.unwrap_or_else(re_redap_client::ConnectionRegistry::new);
 
         if let Some(storage) = creation_context.storage
             && let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY)
@@ -356,7 +356,7 @@ impl App {
                 blueprint_loader(),
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
-            notifications: notifications::NotificationUi::new(),
+            notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
 
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -420,7 +420,7 @@ impl App {
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
 
-        if let Ok(url) = crate::open_url::ViewerImportUrl::from_str(url) {
+        if let Ok(url) = crate::open_url::ViewerOpenUrl::from_str(url) {
             url.open(
                 &self.egui_ctx,
                 follow_if_http,
@@ -844,6 +844,10 @@ impl App {
                 self.state.focused_item = Some(item);
             }
 
+            SystemCommand::ShowNotification(notification) => {
+                self.notifications.add(notification);
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             SystemCommand::FileSaver(file_saver) => {
                 if let Err(err) = self.background_tasks.spawn_file_saver(file_saver) {
@@ -979,7 +983,7 @@ impl App {
         let on_ui_cmd = {
             let command_sender = self.command_sender.clone();
             Box::new(move |cmd| match cmd {
-                re_grpc_client::UiCommand::SetLoopSelection {
+                re_redap_client::UiCommand::SetLoopSelection {
                     recording_id,
                     timeline,
                     time_range,
@@ -1200,6 +1204,10 @@ impl App {
                     force_store_info,
                     promise,
                 });
+            }
+
+            UICommand::OpenUrl => {
+                self.state.open_url_modal.open();
             }
 
             UICommand::CloseCurrentRecording => {
@@ -1579,7 +1587,7 @@ impl App {
             base_url = None;
         };
 
-        match crate::open_url::ViewerImportUrl::from_display_mode(
+        match crate::open_url::ViewerOpenUrl::from_display_mode(
             storage_context.hub,
             display_mode.clone(),
         )
@@ -1960,6 +1968,8 @@ impl App {
                 }
             }
 
+            let is_example = entity_db.store_class().is_example();
+
             match &msg {
                 LogMsg::SetStoreInfo(_) => {
                     if channel_source.select_when_loaded() {
@@ -1978,6 +1988,28 @@ impl App {
                                 // the blueprint won't be activated until the whole _recording_ has finished loading.
                             }
                         }
+                    }
+
+                    if cfg!(target_arch = "wasm32")
+                        && !self.startup_options.is_in_notebook
+                        && !is_example
+                    {
+                        use std::sync::Once;
+                        static ONCE: Once = Once::new();
+                        ONCE.call_once(|| {
+                            // Tell the user there is a faster native viewer they can use instead of the web viewer:
+                            let notification = re_ui::notifications::Notification::new(
+                                    re_ui::notifications::NotificationLevel::Tip, "For better performance, try the native Rerun Viewer!").with_link(
+                                    re_ui::Link {
+                                        text: "Install…".into(),
+                                        url: "https://rerun.io/docs/getting-started/installing-viewer#installing-the-viewer".into(),
+                                    }
+                                )
+                                .no_toast()
+                                .permanent_dismiss_id(egui::Id::new("install_native_viewer_prompt"));
+                            self.command_sender
+                                .send_system(SystemCommand::ShowNotification(notification));
+                        });
                     }
                 }
 
@@ -2754,7 +2786,7 @@ impl eframe::App for App {
 
             if let Some(cmd) = self
                 .cmd_palette
-                .show(egui_ctx, &ViewerImportUrl::command_palette_parse_url)
+                .show(egui_ctx, &ViewerOpenUrl::command_palette_parse_url)
             {
                 match cmd {
                     re_ui::CommandPaletteAction::UiCommand(cmd) => {
@@ -2764,7 +2796,7 @@ impl eframe::App for App {
                         let follow_if_http = false;
                         let select_redap_source_when_loaded = true;
 
-                        match url_desc.url.parse::<ViewerImportUrl>() {
+                        match url_desc.url.parse::<ViewerOpenUrl>() {
                             Ok(url) => {
                                 url.open(
                                     egui_ctx,
@@ -3177,7 +3209,7 @@ fn update_web_address_bar(
         return None;
     }
     let Ok(url) =
-        crate::open_url::ViewerImportUrl::from_display_mode(store_hub, display_mode.clone())
+        crate::open_url::ViewerOpenUrl::from_display_mode(store_hub, display_mode.clone())
             // History entries expect the url parameter, not the full url, therefore don't pass a base url.
             .and_then(|url| url.sharable_url(None))
     else {

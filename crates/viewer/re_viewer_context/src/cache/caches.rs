@@ -20,6 +20,13 @@ impl Caches {
         }
     }
 
+    /// Call a function with a reference to the caches map.
+    pub fn with_caches<R>(&self, f: impl FnOnce(&HashMap<TypeId, Box<dyn Cache>>) -> R) -> R {
+        let guard = self.caches.lock();
+
+        f(&guard)
+    }
+
     /// Call once per frame to potentially flush the cache(s).
     pub fn begin_frame(&self) {
         re_tracing::profile_function!();
@@ -30,13 +37,12 @@ impl Caches {
         }
     }
 
-    pub fn total_size_bytes(&self) -> u64 {
-        re_tracing::profile_function!();
+    pub fn memory_reports(&self) -> HashMap<&'static str, CacheMemoryReport> {
         self.caches
             .lock()
             .values()
-            .map(|cache| cache.bytes_used())
-            .sum()
+            .map(|cache| (cache.name(), cache.memory_report()))
+            .collect()
     }
 
     /// Attempt to free up memory.
@@ -85,6 +91,23 @@ impl Caches {
     }
 }
 
+/// Memory usage information of a single cache-item.
+pub struct CacheMemoryReportItem {
+    pub item_name: String,
+    pub bytes_cpu: u64,
+    pub bytes_gpu: Option<u64>,
+}
+
+/// A report of how much memory a certain cache is using, used for
+/// debugging memory usage in the memory panel.
+pub struct CacheMemoryReport {
+    pub bytes_cpu: u64,
+    pub bytes_gpu: Option<u64>,
+
+    /// Memory information per cache-item.
+    pub per_cache_item_info: Vec<CacheMemoryReportItem>,
+}
+
 /// A cache for memoizing things in order to speed up immediate mode UI & other immediate mode style things.
 ///
 /// See also egus's cache system, in [`egui::cache`] (<https://docs.rs/egui/latest/egui/cache/index.html>).
@@ -92,11 +115,13 @@ pub trait Cache: std::any::Any + Send + Sync {
     /// Called once per frame to potentially flush the cache.
     fn begin_frame(&mut self) {}
 
-    /// Total memory used by this cache, in bytes.
-    fn bytes_used(&self) -> u64;
-
     /// Attempt to free up memory.
     fn purge_memory(&mut self);
+
+    fn name(&self) -> &'static str;
+
+    /// Construct a [`CacheMemoryReport`] for this cache.
+    fn memory_report(&self) -> CacheMemoryReport;
 
     /// React to the chunk store's changelog, if needed.
     ///

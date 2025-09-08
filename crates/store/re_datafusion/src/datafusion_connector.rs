@@ -3,11 +3,9 @@ use std::sync::Arc;
 use datafusion::{catalog::TableProvider, error::DataFusionError};
 use tracing::instrument;
 
-use re_grpc_client::ConnectionClient;
-use re_log_types::{EntryId, external::re_tuid::Tuid};
-use re_protos::cloud::v1alpha1::{
-    DatasetEntry, EntryFilter, ReadDatasetEntryRequest, ext::EntryDetails,
-};
+use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::{EntryFilter, ext::EntryDetails};
+use re_redap_client::ConnectionClient;
 
 use crate::partition_table::PartitionTableProvider;
 use crate::table_entry_provider::TableEntryTableProvider;
@@ -49,24 +47,6 @@ impl DataFusionConnector {
         TableEntryTableProvider::new(self.client.clone(), entry.id)
             .into_provider()
             .await
-    }
-
-    #[instrument(skip(self), err)]
-    pub async fn get_dataset_entry(
-        &mut self,
-        id: Tuid,
-    ) -> Result<Option<DatasetEntry>, tonic::Status> {
-        let entry = self
-            .client
-            .inner()
-            .read_dataset_entry(ReadDatasetEntryRequest {
-                id: Some(id.into()),
-            })
-            .await?
-            .into_inner()
-            .dataset;
-
-        Ok(entry)
     }
 
     #[instrument(skip(self), err)]

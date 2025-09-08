@@ -378,7 +378,19 @@ impl ListItemContent for PropertyContent<'_> {
                     .max_rect(value_rect)
                     .layout(egui::Layout::left_to_right(egui::Align::Center)),
             );
-            child_ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
+            // This sets the default text color for e.g. ui.label, but syntax highlighted
+            // text won't be overridden
+            child_ui
+                .visuals_mut()
+                .widgets
+                .noninteractive
+                .fg_stroke
+                .color = visuals_for_value.text_color();
+            // When selected we override the text color so e.g. syntax highlighted code
+            // doesn't become unreadable
+            if context.visuals.selected {
+                child_ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
+            }
             value_fn(&mut child_ui, visuals_for_value);
 
             context.layout_info.register_property_content_max_width(

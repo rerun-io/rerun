@@ -124,10 +124,11 @@ cpp = ["base", "cpp"]
 # Just the deps for running snippet comparisons.
 wheel-test-min = [
   "base",
-  "wheel-test",
-  "wheel-build",
+  "cpp",
   "py-test-deps",
   "python-pypi",
+  "wheel-build",
+  "wheel-test",
 ]
 
 # The full deps for running all examples
@@ -313,7 +314,7 @@ pb-lint = "buf lint --error-format=json"
 #   "pb-snapshot-main",
 # ]}
 
-pb-breaking = "buf breaking --error-format=json --against '.git#branch=origin/main'"
+pb-breaking = "echo 'ℹ️ If this CI step is failing even though you did not modify any Protobuf files, that means that somebody purposefully published breaking Protobuf changes onto the main branch in the meantime.\nℹ️ For that reason, the Protobuf definitions on your local branch are now incompatible with those on main.\nℹ️ When that happens, simply rebase your branch on latest main, and the errors will go away.' ; buf breaking --error-format=json --against '.git#branch=origin/main'"
 
 pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 
@@ -478,7 +479,7 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 
 # Run the Python tests.
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends-on = [
-  "py-build",
+  "py-build-release",
 ] }
 
 snapshots = "python scripts/snapshots.py"
@@ -699,7 +700,7 @@ numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi d
 # This is very similar to `pixi run py-build`, and dispatches to maturin by way of PEP621.
 # However, pixi doesn't know how to track the rust dependencies of the python package, so
 # you still need to `pixi run py-build` in the correct environment if you change the rust code.
-rerun-sdk = { path = "rerun_py", editable = true, extras = ["all"] }
+rerun-sdk = { path = "rerun_py", editable = true }
 
 # The same applies to the notebook.
 # However, in order to build rerun-notebook and thus to even activate environments with the
@@ -710,6 +711,7 @@ rerun-sdk = { path = "rerun_py", editable = true, extras = ["all"] }
 
 [feature.python-docs.pypi-dependencies]
 griffe = "==1.4.1"
+griffe-warnings-deprecated = "==1.1.0"
 mkdocs = "==1.6.1"
 mkdocs-gen-files = "==0.5.0"
 mkdocs-literate-nav = "==0.6.1"
@@ -735,7 +737,7 @@ av = "==14.2.0"
 # during the wheel-test task itself is otherwise painful.
 torch = "==2.8.0" # This must match the torch version in any package we install during `wheel-test`
 # DataFusion is needed to run integration tests, but it is an optional dependency for rerun sdk
-datafusion = "==47.0.0"
+datafusion = "==48.0.0"
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
@@ -775,7 +777,7 @@ umap-learn = "==0.5.7"
 [feature.examples-common.pypi-dependencies]
 # External deps
 av = "==14.2.0"
-datafusion = "==47.0.0"
+datafusion = "==48.0.0"
 jupyter = ">=1.0"
 polars = ">=0.12.0"
 

@@ -36,7 +36,7 @@ which can be translated to the column-oriented `send_columns` API as such:
 
 snippet: archetypes/scalars_column_updates
 
-<picture data-inline-viewer="snippets/scalar_column_updates">
+<picture data-inline-viewer="snippets/scalars_column_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1024w.png">

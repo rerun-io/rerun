@@ -80,7 +80,7 @@ pub use rect::{RectF32, RectInt};
 pub use size::Size;
 pub use texture_info::Texture2DBufferInfo;
 pub use transform::RectTransform;
-pub use view_builder::ViewBuilder;
+pub use view_builder::{ViewBuilder, ViewPickingConfiguration};
 pub use wgpu_resources::{
     BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
     GpuPipelineLayoutPool, GpuRenderPipelineHandle, GpuRenderPipelinePool,

@@ -723,57 +723,11 @@ fn run_impl(
     #[cfg(feature = "native_viewer")] profiler: re_tracing::Profiler,
 ) -> anyhow::Result<()> {
     //TODO(#10068): populate token passed with `--token`
-    let connection_registry = re_grpc_client::ConnectionRegistry::new();
-
-    #[cfg(feature = "native_viewer")]
-    let startup_options = {
-        re_tracing::profile_scope!("StartupOptions");
-
-        let video_decoder_hw_acceleration =
-            args.video_decoder.as_ref().and_then(|s| match s.parse() {
-                Err(()) => {
-                    re_log::warn_once!("Failed to parse --video-decoder value: {s}. Ignoring.");
-                    None
-                }
-                Ok(hw_accell) => Some(hw_accell),
-            });
-
-        re_viewer::StartupOptions {
-            hide_welcome_screen: args.hide_welcome_screen,
-            detach_process: args.detach_process,
-            memory_limit: {
-                re_log::debug!("Parsing memory limit for Viewer");
-                re_memory::MemoryLimit::parse(&args.memory_limit)
-                    .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?
-            },
-            persist_state: args.persist_state,
-            is_in_notebook: false,
-            screenshot_to_path_then_quit: args.screenshot_to.clone(),
-
-            expect_data_soon: if args.expect_data_soon {
-                Some(true)
-            } else {
-                None
-            },
-
-            // TODO(emilk): make it easy to set this on eframe instead
-            resolution_in_points: if let Some(size) = &args.window_size {
-                Some(parse_size(size)?)
-            } else {
-                None
-            },
-            force_wgpu_backend: args.renderer.clone(),
-            video_decoder_hw_acceleration,
-
-            on_event: None,
-
-            panel_state_overrides: Default::default(),
-        }
-    };
+    let connection_registry = re_redap_client::ConnectionRegistry::new();
 
     let server_addr = std::net::SocketAddr::new(args.bind, args.port);
     let server_memory_limit = {
-        re_log::debug!("Parsing memory limit for gRPC server");
+        re_log::debug!("Parsing --server-memory-limit (for gRPC server)");
         let value = match &args.server_memory_limit {
             Some(v) => v.as_str(),
             None => {
@@ -792,7 +746,7 @@ fn run_impl(
 
     // All URLs that we want to process.
     #[allow(unused_mut)]
-    let mut url_or_paths = args.url_or_paths;
+    let mut url_or_paths = args.url_or_paths.clone();
 
     // Passing `--connect` accounts to adding a proxy URL to the list of URLs that we want to process.
     #[cfg(feature = "server")]
@@ -850,16 +804,14 @@ fn run_impl(
 
         #[cfg(feature = "native_viewer")]
         start_native_viewer(
+            &args,
             url_or_paths,
-            args.connect.is_some(),
-            args.renderer.as_deref(),
             _main_thread_token,
             _build_info,
             call_source,
             tokio_runtime_handle,
             profiler,
             connection_registry,
-            startup_options,
             server_addr,
             server_memory_limit,
         )
@@ -870,19 +822,22 @@ fn run_impl(
 #[expect(clippy::too_many_arguments)]
 #[allow(unused_variables)]
 fn start_native_viewer(
+    args: &Args,
     url_or_paths: Vec<String>,
-    connect: bool,
-    renderer: Option<&str>,
     _main_thread_token: re_viewer::MainThreadToken,
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     tokio_runtime_handle: &tokio::runtime::Handle,
     profiler: re_tracing::Profiler,
-    connection_registry: re_grpc_client::ConnectionRegistryHandle,
-    startup_options: re_viewer::StartupOptions,
+    connection_registry: re_redap_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
     server_memory_limit: re_sdk::MemoryLimit,
 ) -> anyhow::Result<()> {
+    let startup_options = native_startup_options_from_args(args)?;
+
+    let connect = args.connect.is_some();
+    let renderer = args.renderer.as_deref();
+
     #[allow(unused_mut)]
     let ReceiversFromUrlParams {
         mut log_receivers,
@@ -954,9 +909,54 @@ fn start_native_viewer(
     .map_err(|err| err.into())
 }
 
+#[cfg(feature = "native_viewer")]
+fn native_startup_options_from_args(args: &Args) -> anyhow::Result<re_viewer::StartupOptions> {
+    re_tracing::profile_function!();
+
+    let video_decoder_hw_acceleration = args.video_decoder.as_ref().and_then(|s| match s.parse() {
+        Err(()) => {
+            re_log::warn_once!("Failed to parse --video-decoder value: {s}. Ignoring.");
+            None
+        }
+        Ok(hw_accell) => Some(hw_accell),
+    });
+
+    Ok(re_viewer::StartupOptions {
+        hide_welcome_screen: args.hide_welcome_screen,
+        detach_process: args.detach_process,
+        memory_limit: {
+            re_log::debug!("Parsing --memory-limit (for Viewer)");
+            re_memory::MemoryLimit::parse(&args.memory_limit)
+                .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?
+        },
+        persist_state: args.persist_state,
+        is_in_notebook: false,
+        screenshot_to_path_then_quit: args.screenshot_to.clone(),
+
+        expect_data_soon: if args.expect_data_soon {
+            Some(true)
+        } else {
+            None
+        },
+
+        // TODO(emilk): make it easy to set this on eframe instead
+        resolution_in_points: if let Some(size) = &args.window_size {
+            Some(parse_size(size)?)
+        } else {
+            None
+        },
+        force_wgpu_backend: args.renderer.clone(),
+        video_decoder_hw_acceleration,
+
+        on_event: None,
+
+        panel_state_overrides: Default::default(),
+    })
+}
+
 fn connect_to_existing_server(
     url_or_paths: Vec<String>,
-    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: &re_redap_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
 ) -> anyhow::Result<()> {
     use re_sdk::sink::LogSink as _;
@@ -994,7 +994,7 @@ fn connect_to_existing_server(
 fn serve_web(
     url_or_paths: Vec<String>,
     call_source: &CallSource,
-    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: &re_redap_client::ConnectionRegistryHandle,
     web_viewer_port: u16,
     force_wgpu_backend: Option<String>,
     video_decoder: Option<String>,
@@ -1079,7 +1079,7 @@ fn serve_grpc(
     url_or_paths: Vec<String>,
     call_source: &CallSource,
     tokio_runtime_handle: &tokio::runtime::Handle,
-    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: &re_redap_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
     server_memory_limit: re_sdk::MemoryLimit,
 ) -> anyhow::Result<()> {
@@ -1117,7 +1117,7 @@ fn serve_grpc(
 fn save_or_test_receive(
     save: Option<String>,
     url_or_paths: Vec<String>,
-    connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: &re_redap_client::ConnectionRegistryHandle,
     _server_addr: std::net::SocketAddr,
     _server_memory_limit: re_sdk::MemoryLimit,
 ) -> anyhow::Result<()> {
@@ -1388,7 +1388,7 @@ impl ReceiversFromUrlParams {
     fn new(
         input_urls: Vec<String>,
         config: &UrlParamProcessingConfig,
-        connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+        connection_registry: &re_redap_client::ConnectionRegistryHandle,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
         let mut urls_to_pass_on_to_viewer = Vec::new();

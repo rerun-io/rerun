@@ -1,12 +1,15 @@
 use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
 
 use macaw::BoundingBox;
+use re_data_ui::item_ui;
 use re_format::format_f32;
 use re_types::{
     blueprint::components::VisualBounds2D, components::ViewCoordinates, image::ImageKind,
 };
 use re_ui::UiExt as _;
-use re_viewer_context::{HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewState};
+use re_viewer_context::{
+    HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewId, ViewState, ViewerContext,
+};
 
 use crate::{
     Pinhole,
@@ -93,18 +96,19 @@ impl SpatialViewState {
 
         for data in view_systems.iter_visualizer_data::<SpatialViewVisualizerData>() {
             for pickable_rect in &data.pickable_rects {
-                let PickableRectSourceData::Image {
-                    image: ImageInfo { kind, .. },
-                    ..
-                } = &pickable_rect.source_data
-                else {
-                    continue;
-                };
-
-                match kind {
-                    ImageKind::Segmentation => self.image_counts_last_frame.segmentation += 1,
-                    ImageKind::Color => self.image_counts_last_frame.color += 1,
-                    ImageKind::Depth => self.image_counts_last_frame.depth += 1,
+                match &pickable_rect.source_data {
+                    PickableRectSourceData::Image {
+                        image: ImageInfo { kind, .. },
+                        ..
+                    } => match kind {
+                        ImageKind::Segmentation => self.image_counts_last_frame.segmentation += 1,
+                        ImageKind::Color => self.image_counts_last_frame.color += 1,
+                        ImageKind::Depth => self.image_counts_last_frame.depth += 1,
+                    },
+                    PickableRectSourceData::Video => {
+                        self.image_counts_last_frame.color += 1;
+                    }
+                    PickableRectSourceData::Placeholder => {}
                 }
             }
         }
@@ -129,7 +133,9 @@ impl SpatialViewState {
     pub fn view_eye_ui(
         &mut self,
         ui: &mut egui::Ui,
+        ctx: &ViewerContext<'_>,
         scene_view_coordinates: Option<ViewCoordinates>,
+        view_id: ViewId,
     ) {
         if ui
             .button("Reset")
@@ -153,6 +159,25 @@ impl SpatialViewState {
                 self.state_3d.set_spin(spin);
             }
         }
+
+        ui.horizontal(|ui| {
+            if let Some(tracked_entity) = self.state_3d.tracked_entity.clone() {
+                let (latest_at_query, _) =
+                    item_ui::guess_query_and_db_for_selected_entity(ctx, &tracked_entity);
+
+                ui.label("Tracked entity:");
+                item_ui::entity_path_button(
+                    ctx,
+                    &latest_at_query,
+                    ctx.recording(),
+                    ui,
+                    Some(view_id),
+                    &tracked_entity,
+                );
+            } else {
+                ui.label("Tracked entity: None");
+            }
+        });
     }
 
     pub fn fallback_opacity_for_image_kind(&self, kind: ImageKind) -> f32 {
@@ -169,7 +194,7 @@ impl SpatialViewState {
         match kind {
             ImageKind::Segmentation => {
                 if counts.color + counts.depth > 0 {
-                    // Segmentation images should always be opaque if there was more than one image in the view,
+                    // Segmentation images should always be transparent if there was more than one image in the view,
                     // excluding other segmentation images.
                     0.5
                 } else {

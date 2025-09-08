@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 import rerun.utilities.datafusion.functions.url_generation
-from rerun.error_utils import RerunOptionalDependencyError
+from rerun.error_utils import RerunMissingDependencyError
 
 
 def test_smoke() -> None:
@@ -31,5 +31,5 @@ def test_partition_url_without_datafusion() -> None:
         mock_dataset = Mock()
 
         # But calling the function should raise an error
-        with pytest.raises(RerunOptionalDependencyError, match="'datafusion' could not be imported"):
+        with pytest.raises(RerunMissingDependencyError, match="'datafusion' could not be imported"):
             partition_url(mock_dataset)

@@ -1,5 +1,7 @@
 #![cfg(feature = "testing")]
 
+use std::time::Duration;
+
 use egui_kittest::kittest::Queryable as _;
 
 use re_viewer::viewer_test_utils;
@@ -22,9 +24,8 @@ async fn settings_screen() {
                 )
                 .is_some()
         },
-        tokio::time::Duration::from_millis(100),
-        tokio::time::Duration::from_secs(5),
-    )
-    .await;
+        Duration::from_millis(100),
+        Duration::from_secs(5),
+    );
     harness.snapshot("settings_screen");
 }

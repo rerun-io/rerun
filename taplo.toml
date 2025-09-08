@@ -13,4 +13,4 @@ include = [
 ]
 
 [formatting]
-indent_string = "  "
+indent_string = "  " # keep in sync with `.editorconfig`

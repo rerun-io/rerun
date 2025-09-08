@@ -70,6 +70,9 @@ pub struct ArrowMsg {
     /// Arrow-IPC encoded schema and chunk, compressed according to the `compression` field.
     #[prost(bytes = "bytes", tag = "5")]
     pub payload: ::prost::bytes::Bytes,
+    /// If true, this is guaranteed to be a chunk containing only static data.
+    #[prost(bool, optional, tag = "7")]
+    pub is_static: ::core::option::Option<bool>,
 }
 impl ::prost::Name for ArrowMsg {
     const NAME: &'static str = "ArrowMsg";

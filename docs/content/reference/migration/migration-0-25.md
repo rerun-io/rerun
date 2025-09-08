@@ -40,7 +40,16 @@ Affects the following components:
 -   [`ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer)
 -   [`VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)
 
-## Deprecated `archetype` specification in `AnyValues`
+## ❗ Deprecations
+
+### Python 3.9
+
+Support for Python 3.9 is being deprecated. Python 3.9 is past end-of-life. See: https://devguide.python.org/versions/
+In the next release, we will fully drop support and switch to Python 3.10 as the minimum supported version.
+
+See an overview for supported python versions [here](https://ref.rerun.io/docs/python/main/common#supported-python-versions).
+
+### `archetype` specification in `AnyValues`
 
 If `AnyValues` had the same `field_name` but unique `archetypes` then the view would disambiguate them but the `dataframe` api wouldn't.
 We split `AnyValues` into `AnyValues` with no archetype and `ArchetypeBuilder` requiring an `archetype` where the name in the `dataframe` api is made unique by combining

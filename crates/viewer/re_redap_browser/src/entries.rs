@@ -11,9 +11,6 @@ use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 
 use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
-use re_grpc_client::{
-    ClientConnectionError, ConnectionClient, ConnectionRegistryHandle, StreamError,
-};
 use re_log_encoding::codec::CodecError;
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
@@ -21,6 +18,9 @@ use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
 use re_protos::external::prost;
 use re_protos::external::prost::Name as _;
+use re_redap_client::{
+    ClientConnectionError, ConnectionClient, ConnectionRegistryHandle, StreamError,
+};
 use re_sorbet::SorbetError;
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;
@@ -67,19 +67,13 @@ impl EntryError {
             Self::ClientConnectionError(err)
             | Self::StreamError(StreamError::ClientConnectionError(err)) => Some(err),
 
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::StreamError(StreamError::Transport(_)) => None,
-
             Self::StreamError(
                 StreamError::Tokio(_)
                 | StreamError::CodecError(_)
                 | StreamError::ChunkError(_)
                 | StreamError::DecodeError(_)
-                | StreamError::InvalidUri(_)
-                | StreamError::InvalidSorbetSchema(_)
                 | StreamError::TonicStatus(_)
                 | StreamError::TypeConversionError(_)
-                | StreamError::MissingChunkData
                 | StreamError::MissingDataframeColumn(_)
                 | StreamError::MissingData(_)
                 | StreamError::ArrowError(_),
