@@ -3,7 +3,7 @@ use re_ui::list_item::list_item_scope;
 use re_ui::{UiExt as _, UiLayout};
 
 use crate::datatype_ui::DataTypeUi;
-use crate::show_index::ArrayUi;
+use crate::show_index::{ArrayUi, DisplayOptions};
 
 pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
     re_tracing::profile_function!();
@@ -51,9 +51,6 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
 }
 
 pub(crate) fn make_ui(array: &dyn Array) -> Result<ArrayUi<'_>, ArrowError> {
-    let options = FormatOptions::default()
-        .with_null("null")
-        .with_display_error(true);
-    let array_ui = ArrayUi::try_new(array, &options)?;
+    let array_ui = ArrayUi::try_new(array, &DisplayOptions::default())?;
     Ok(array_ui)
 }
