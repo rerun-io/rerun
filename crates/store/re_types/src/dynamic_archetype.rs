@@ -60,19 +60,19 @@ impl DynamicArchetype {
 
     /// Adds an existing Rerun [`Component`] to this archetype.
     #[inline]
-    pub fn with_component<C: Component>(
+    pub fn with_field_from_component<C: Component>(
         self,
         field: impl AsRef<str>,
         loggable: impl IntoIterator<Item = impl Into<C>>,
     ) -> Self {
-        self.with_loggable(field, C::name(), loggable)
+        self.with_field_from_data(field, C::name(), loggable)
     }
 
     /// Adds an existing Rerun [`Component`] to this archetype.
     ///
     /// This method can be used to override the component type.
     #[inline]
-    pub fn with_loggable<L: Loggable>(
+    pub fn with_field_from_data<L: Loggable>(
         mut self,
         field: impl AsRef<str>,
         component_type: impl Into<ComponentType>,
