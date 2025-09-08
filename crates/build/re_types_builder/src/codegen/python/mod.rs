@@ -1431,7 +1431,7 @@ fn quote_array_method_from_obj(
         "
         def __array__(self, dtype: npt.DTypeLike=None, copy: bool|None=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
-                return asarray(self.{field_name}, dtype=dtype, copy=copy)
+            return asarray(self.{field_name}, dtype=dtype, copy=copy)
         ",
         ext_class.name, ext_class.file_name
     ))
