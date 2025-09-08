@@ -1,8 +1,17 @@
+use arrow::array::{ArrayRef, BooleanArray, ListArray, as_list_array};
 use arrow::datatypes::{DataType, Field};
-use datafusion::common::DFSchema;
+use datafusion::common::cast::as_int64_array;
+use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err};
+use datafusion::logical_expr::{
+    ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
+    ScalarUDFImpl, Signature, TypeSignature, Volatility,
+};
 use datafusion::prelude::{
     Column, Expr, array_element, array_has, array_to_string, col, lit, lower,
 };
+use re_types_core::datatypes::Bool;
+use std::any::Any;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum FilterError {
@@ -152,24 +161,12 @@ impl FilterOperation {
         field: &Field,
     ) -> Result<Expr, FilterError> {
         match self {
-            Self::IntCompares { operator, value } => match field.data_type() {
-                data_type if data_type.is_integer() => {
-                    Ok(operator.apply(col(column.clone()), *value))
-                }
+            Self::IntCompares { operator, value } => {
+                let udf = FilterOperationUdf::new(self.clone());
+                let udf = ScalarUDF::new_from_impl(udf);
 
-                DataType::List(field) | DataType::ListView(field)
-                    if field.data_type().is_integer() =>
-                {
-                    Ok(dbg!(
-                        operator.apply(array_element(col(column.clone()), lit(1)), *value)
-                    ))
-                }
-
-                _ => Err(FilterError::InvalidFilterOperation(
-                    self.clone(),
-                    field.clone().into(),
-                )),
-            },
+                Ok(udf.call(vec![col(column.clone())]))
+            }
 
             Self::FloatCompares { operator, value } => match field.data_type() {
                 data_type if data_type.is_floating() => {
@@ -231,6 +228,180 @@ impl FilterOperation {
                     field.clone().into(),
                 )),
             },
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct FilterOperationUdf {
+    op: FilterOperation,
+    signature: Signature,
+}
+
+impl FilterOperationUdf {
+    fn new(op: FilterOperation) -> Self {
+        // TODO we can be more explicit here.
+        let type_signature = match &op {
+            FilterOperation::IntCompares { .. } => TypeSignature::Numeric(1),
+            FilterOperation::StringContains(_) => TypeSignature::String(1),
+            FilterOperation::BooleanEquals(_) => TypeSignature::Exact(vec![DataType::Boolean]),
+            FilterOperation::FloatCompares { .. } => TypeSignature::Numeric(1),
+        };
+
+        let signature = Signature::one_of(
+            vec![
+                type_signature,
+                TypeSignature::ArraySignature(ArrayFunctionSignature::Array {
+                    arguments: vec![ArrayFunctionArgument::Array],
+                    array_coercion: None,
+                }),
+            ],
+            Volatility::Immutable,
+        );
+
+        Self { op, signature }
+    }
+
+    fn is_valid_input_type(&self, data_type: &DataType) -> bool {
+        match data_type {
+            DataType::List(field) | DataType::ListView(field) => {
+                return self.is_valid_input_type(field.data_type());
+            }
+
+            _data_type if data_type.is_integer() => {
+                if let FilterOperation::IntCompares { .. } = &self.op {
+                    return true;
+                }
+            }
+
+            DataType::Utf8 | DataType::Utf8View | DataType::LargeUtf8 => {
+                if let FilterOperation::StringContains(_) = &self.op {
+                    return true;
+                }
+            }
+
+            DataType::Boolean => {
+                if let FilterOperation::BooleanEquals(_) = &self.op {
+                    return true;
+                }
+            }
+
+            DataType::Float16 | DataType::Float32 | DataType::Float64 => {
+                if let FilterOperation::FloatCompares { .. } = &self.op {
+                    return true;
+                }
+            }
+
+            _ => {}
+        }
+
+        false
+    }
+
+    fn invoke_primitive_array(&self, array: &ArrayRef) -> DataFusionResult<BooleanArray> {
+        match array.data_type() {
+            DataType::Int64 => {
+                let FilterOperation::IntCompares { operator, value } = &self.op else {
+                    return exec_err!(
+                        "Incompatible operation and data types {:?} - {}",
+                        self.op,
+                        array.data_type()
+                    );
+                };
+                let array = as_int64_array(array)?;
+                let result: BooleanArray = array
+                    .iter()
+                    .map(|x| {
+                        x.map(|v| match operator {
+                            ComparisonOperator::Eq => &v == value,
+                            ComparisonOperator::Ge => &v >= value,
+                            ComparisonOperator::Ne => &v != value,
+                            ComparisonOperator::Lt => &v < value,
+                            ComparisonOperator::Le => &v <= value,
+                            ComparisonOperator::Gt => &v > value,
+                        })
+                    })
+                    .collect();
+
+                Ok(result)
+            }
+            _ => {
+                exec_err!("Unsupported data type {}", array.data_type())
+            }
+        }
+    }
+
+    fn invoke_list_array(&self, array: &ListArray) -> DataFusionResult<BooleanArray> {
+        array
+            .iter()
+            .map(|maybe_row| {
+                maybe_row.map(|row| {
+                    let element_results = self.invoke_primitive_array(&row)?;
+                    Ok(element_results
+                        .iter()
+                        .map(|x| x.unwrap_or(false))
+                        .find(|x| *x)
+                        .unwrap_or(false))
+                })
+            })
+            .map(|x| x.transpose())
+            .collect::<DataFusionResult<BooleanArray>>()
+    }
+}
+
+impl ScalarUDFImpl for FilterOperationUdf {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn name(&self) -> &str {
+        "filter_operation"
+    }
+
+    fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    fn return_type(&self, arg_types: &[DataType]) -> DataFusionResult<DataType> {
+        if arg_types.len() != 1 {
+            return exec_err!(
+                "FilterOperation expected a single column of input, received {}",
+                arg_types.len()
+            );
+        }
+
+        if self.is_valid_input_type(&arg_types[0]) {
+            Ok(DataType::Boolean)
+        } else {
+            exec_err!(
+                "FilterOperation input data type {} not supported for operation {:?}",
+                arg_types[0],
+                self.op
+            )
+        }
+    }
+
+    fn invoke_with_args(&self, args: ScalarFunctionArgs) -> DataFusionResult<ColumnarValue> {
+        let ColumnarValue::Array(input_array) = &args.args[0] else {
+            return exec_err!("FilterOperation expected array inputs, not scalar values");
+        };
+        match input_array.data_type() {
+            DataType::List(field) => {
+                let array = as_list_array(input_array);
+                let results = self.invoke_list_array(&array)?;
+
+                Ok(ColumnarValue::Array(Arc::new(results)))
+            }
+            DataType::Int64 => {
+                let results = self.invoke_primitive_array(input_array)?;
+                Ok(ColumnarValue::Array(Arc::new(results)))
+            }
+            _ => {
+                exec_err!(
+                    "DataType not implemented for FilterOperationUdf: {}",
+                    input_array.data_type()
+                )
+            }
         }
     }
 }
