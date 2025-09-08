@@ -345,10 +345,9 @@ impl ConnectionRegistryHandle {
             if let Some(fallback_token) = tokens
                 .fallback_token
                 .and_then(|token| Jwt::try_from(token).ok())
+                && inner.fallback_token.is_none()
             {
-                if inner.fallback_token.is_none() {
-                    inner.fallback_token = Some(fallback_token);
-                }
+                inner.fallback_token = Some(fallback_token);
             }
         });
     }

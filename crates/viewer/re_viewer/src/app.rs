@@ -613,6 +613,7 @@ impl App {
             }
 
             SystemCommand::CloseAllEntries => {
+                self.state.navigation.push_start_mode();
                 store_hub.clear_entries();
 
                 // Stop receiving into the old recordings.
@@ -2746,6 +2747,7 @@ impl eframe::App for App {
                     None => {}
                 }
             } else {
+                self.state.navigation.push_start_mode();
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }
         }
