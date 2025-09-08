@@ -71,9 +71,6 @@ from .any_value import (
     AnyBatchValue as AnyBatchValue,
     AnyValues as AnyValues,
 )
-from .archetype_builder import (
-    ArchetypeBuilder as ArchetypeBuilder,
-)
 from .archetypes import (
     AnnotationContext as AnnotationContext,
     Arrows2D as Arrows2D,
@@ -147,6 +144,9 @@ from .datatypes import (
     TimeRange as TimeRange,
     TimeRangeBoundary as TimeRangeBoundary,
     VisibleTimeRange as VisibleTimeRange,
+)
+from .dynamic_archetype import (
+    DynamicArchetype as DynamicArchetype,
 )
 from .error_utils import (
     set_strict_mode as set_strict_mode,

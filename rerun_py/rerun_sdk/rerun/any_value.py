@@ -7,7 +7,7 @@ from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentColumn, ComponentColumnList, DescribedComponentBatch
 from ._log import AsComponents
-from .archetype_builder import AnyBatchValue as AnyBatchValue, ArchetypeBuilder
+from .dynamic_archetype import AnyBatchValue as AnyBatchValue, DynamicArchetype
 
 
 class AnyValues(AsComponents):
@@ -75,7 +75,7 @@ class AnyValues(AsComponents):
             The components to be logged.
 
         """
-        self._builder = ArchetypeBuilder._default_without_archetype(drop_untyped_nones, **kwargs)
+        self._builder = DynamicArchetype._default_without_archetype(drop_untyped_nones, **kwargs)
         self._builder._with_name(self.__class__.__name__)
 
     def with_field(
@@ -86,7 +86,7 @@ class AnyValues(AsComponents):
         if isinstance(descriptor, ComponentDescriptor):
             warnings.warn(
                 "`rr.AnyValues.with_field` using a component descriptor is deprecated, "
-                "use ArchetypeBuilder if trying to specify archetype grouping of values.",
+                "use DynamicArchetype if trying to specify archetype grouping of values.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -96,7 +96,7 @@ class AnyValues(AsComponents):
         return self
 
     def with_component(self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True) -> AnyValues:
-        """Adds an `Batch` to this `ArchetypeBuilder` bundle with name and component type."""
+        """Adds an `Batch` to this `DynamicArchetype` bundle with name and component type."""
         self._builder.with_component(field, component_type, value, drop_untyped_nones=drop_untyped_nones)
         return self
 

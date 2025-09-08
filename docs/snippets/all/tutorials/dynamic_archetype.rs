@@ -7,7 +7,7 @@ use rerun::external::arrow;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_any_values").spawn()?;
 
-    let new_archetype = rerun::ArchetypeBuilder::new("MyArchetype")
+    let new_archetype = rerun::DynamicArchetype::new("MyArchetype")
         // Using arbitrary Arrow data.
         .with_field(
             "homepage",

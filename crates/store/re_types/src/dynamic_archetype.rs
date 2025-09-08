@@ -11,12 +11,12 @@ use re_types_core::{try_serialize_field, AsComponents, ComponentType, Loggable};
 /// A helper for logging a dynamically defined archetype to Rerun.
 /// component names will be modified in a way similar to Rerun
 /// internal types to avoid name collisions.
-pub struct ArchetypeBuilder {
+pub struct DynamicArchetype {
     archetype_name: Option<ArchetypeName>,
     batches: IntMap<ComponentIdentifier, SerializedComponentBatch>,
 }
 
-impl ArchetypeBuilder {
+impl DynamicArchetype {
     /// Specifies an archetype name for this dynamically generated archetype.
     #[inline]
     pub fn new(archetype_name: impl Into<ArchetypeName>) -> Self {
@@ -92,7 +92,7 @@ impl ArchetypeBuilder {
     }
 }
 
-impl AsComponents for ArchetypeBuilder {
+impl AsComponents for DynamicArchetype {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         self.batches.values().cloned().collect()
     }
@@ -110,7 +110,7 @@ mod test {
 
     #[test]
     fn with_archetype() {
-        let values = ArchetypeBuilder::new("MyExample")
+        let values = DynamicArchetype::new("MyExample")
             .with_component::<components::Scalar>("confidence", [1.2f64, 3.4, 5.6])
             .with_loggable::<Utf8>("homepage", "user.url", vec!["https://www.rerun.io"])
             .with_field(

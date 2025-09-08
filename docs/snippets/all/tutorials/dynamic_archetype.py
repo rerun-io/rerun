@@ -6,7 +6,7 @@ rr.init("rerun_example_any_values", spawn=True)
 
 rr.log(
     "any_values",
-    rr.ArchetypeBuilder(
+    rr.DynamicArchetype(
         archetype="MySoftwareArchetype",
         components={
             # Using arbitrary Arrow data.

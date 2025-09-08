@@ -52,6 +52,6 @@ See an overview for supported python versions [here](https://ref.rerun.io/docs/p
 ### `archetype` specification in `AnyValues`
 
 If `AnyValues` had the same `field_name` but unique `archetypes` then the view would disambiguate them but the `dataframe` api wouldn't.
-We split `AnyValues` into `AnyValues` with no archetype and `ArchetypeBuilder` requiring an `archetype` where the name in the `dataframe` api is made unique by combining
+We split `AnyValues` into `AnyValues` with no archetype and `DynamicArchetype` requiring an `archetype` where the name in the `dataframe` api is made unique by combining
 the archetype with the field name similar to how built-in components are handled.
 In the next release we will remove the ability to specify an `archetype` when creating `AnyValues` to finalize the split.

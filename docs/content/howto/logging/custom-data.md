@@ -47,17 +47,17 @@ let any_values = rerun::AnyValues::default()
 rec.log("my_entity", &any_values)?;
 ```
 
-If your values should be grouped together and that grouping isn't referred to from many places that need to stay aligned we have a helpers for this called, `ArchetypeBuilder` which adds some structural grouping to multiple values.
+If your values should be grouped together and that grouping isn't referred to from many places that need to stay aligned we have a helpers for this called, `DynamicArchetype` which adds some structural grouping to multiple values.
 
 You find the documentation for these helpers here:
 
--   [`ArchetypeBuilder` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/)
--   [`ArchetypeBuilder` in Rust](https://docs.rs/rerun/latest/rerun/struct.ArchetypeBuilder.html)
+-   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/)
+-   [`DynamicArchetype` in Rust](https://docs.rs/rerun/latest/rerun/struct.DynamicArchetype.html)
 
 ```python
 rr.log(
     "my_entity",
-    rr.ArchetypeBuilder(
+    rr.DynamicArchetype(
         archetype="MySoftwareArchetype"
         components = {
             homepage="https://www.rerun.io",
@@ -70,7 +70,7 @@ rr.log(
 You can achieve the same thing in Rust:
 
 ```rs
-let some_archetype = rerun::ArchetypeBuilder::new("MySoftwareArchetype")
+let some_archetype = rerun::DynamicArchetype::new("MySoftwareArchetype")
     // Using arbitrary Arrow data.
     .with_field(
         "homepage",

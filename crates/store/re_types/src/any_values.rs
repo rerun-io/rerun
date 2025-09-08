@@ -1,20 +1,20 @@
 //! Utilities to log arbitrary data to Rerun.
 
 use crate::{
-    archetype_builder::ArchetypeBuilder, ArchetypeName, Component, SerializedComponentBatch,
+    dynamic_archetype::DynamicArchetype, ArchetypeName, Component, SerializedComponentBatch,
 };
 use re_types_core::{AsComponents, ComponentType, Loggable};
 
 /// A helper for logging arbitrary data to Rerun.
 pub struct AnyValues {
-    builder: ArchetypeBuilder,
+    builder: DynamicArchetype,
 }
 
 impl Default for AnyValues {
     /// Creates an empty `AnyValues` container.
     fn default() -> Self {
         Self {
-            builder: ArchetypeBuilder::new_without_archetype(),
+            builder: DynamicArchetype::new_without_archetype(),
         }
     }
 }
@@ -24,12 +24,12 @@ impl AnyValues {
     /// Assigns an (archetype) name to this set of any values.
     #[deprecated(
         since = "0.25.0",
-        note = "Use of archetype leads to ambiguity whether provided field names should be prefixed to be unique. Refer to archetype_builder instead for an unambiguous usage."
+        note = "Use of archetype leads to ambiguity whether provided field names should be prefixed to be unique. Refer to dynamic_archetype instead for an unambiguous usage."
     )]
     #[inline]
     pub fn new(archetype_name: impl Into<ArchetypeName>) -> Self {
         Self {
-            builder: ArchetypeBuilder::new(archetype_name),
+            builder: DynamicArchetype::new(archetype_name),
         }
     }
 
