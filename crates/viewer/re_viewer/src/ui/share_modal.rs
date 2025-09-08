@@ -4,7 +4,7 @@ use web_time::{Duration, Instant};
 use re_log_types::{AbsoluteTimeRange, TimeCell};
 use re_redap_browser::EXAMPLES_ORIGIN;
 use re_ui::{
-    HasDesignTokens, UiExt as _, icons,
+    UiExt as _, icons,
     list_item::PropertyContent,
     modal::{ModalHandler, ModalWrapper},
 };
@@ -216,7 +216,7 @@ fn time_range_ui(
     // TODO(#10814): still missing snapshot handling.
 
     let mut entire_range = url_time_range.is_none();
-    ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_fn(|ui, _| {
+    ui.list_item_flat_noninteractive(PropertyContent::new("Trim time range").value_fn(|ui, _| {
         ui.selectable_toggle(|ui| {
             ui.selectable_value(&mut entire_range, true, "Entire recording");
             ui.add_enabled_ui(current_time_range_selection.is_some(), |ui| {
@@ -286,24 +286,22 @@ fn fragments_ui(
                 .map(|cell| (*time_ctrl.timeline().name(), cell))
         };
         let mut any_time = when.is_some();
-        ui.list_item_flat_noninteractive(PropertyContent::new("Selected time").value_fn(
-            |ui, _| {
-                ui.selectable_toggle(|ui| {
-                    ui.selectable_value(&mut any_time, false, "None");
-                    ui.add_enabled_ui(current_time_cursor.is_some(), |ui| {
-                        let mut label = egui::Atoms::new("Current");
-                        if let Some((_, time_cell)) = current_time_cursor {
-                            label.push_right(format_extra_toggle_info(
-                                time_cell.format_compact(timestamp_format),
-                            ));
-                        }
+        ui.list_item_flat_noninteractive(PropertyContent::new("Time").value_fn(|ui, _| {
+            ui.selectable_toggle(|ui| {
+                ui.selectable_value(&mut any_time, false, "None");
+                ui.add_enabled_ui(current_time_cursor.is_some(), |ui| {
+                    let mut label = egui::Atoms::new("Current");
+                    if let Some((_, time_cell)) = current_time_cursor {
+                        label.push_right(format_extra_toggle_info(
+                            time_cell.format_compact(timestamp_format),
+                        ));
+                    }
 
-                        ui.selectable_value(&mut any_time, true, label)
-                            .on_disabled_hover_text("No time selected.");
-                    });
+                    ui.selectable_value(&mut any_time, true, label)
+                        .on_disabled_hover_text("No time selected.");
                 });
-            },
-        ));
+            });
+        }));
         if any_time {
             *when = current_time_cursor;
         } else {
