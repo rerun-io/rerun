@@ -1,4 +1,4 @@
-use egui::{NumExt as _, emath::RectTransform};
+use egui::{Modifiers, NumExt as _, emath::RectTransform};
 use glam::{Affine3A, Quat, Vec3};
 use web_time::Instant;
 
@@ -136,6 +136,8 @@ impl View3DState {
         }
         self.scene_view_coordinates = scene_view_coordinates;
 
+        let mut view_eye_drag_threshold = 0.0;
+
         // Follow tracked object.
         if let Some(tracked_entity) = self.tracked_entity.clone() {
             if let Some(target_eye) = find_camera(space_cameras, &tracked_entity) {
@@ -146,9 +148,13 @@ impl View3DState {
                 } else if let Some(view_eye) = &mut self.view_eye {
                     view_eye.copy_from_eye(&target_eye);
                 }
+                // If we're tracking a camera right now, we want to make it slightly sticky,
+                // so that a click on some entity doesn't immediately break the tracked state.
+                // (Threshold is in amount of ui points the mouse was moved.)
+                view_eye_drag_threshold = 4.0;
             } else {
                 // For other entities we keep interpolating, so when the entity jumps, we follow smoothly.
-                self.interpolate_eye_to_entity(&tracked_entity, bounding_boxes, space_cameras);
+                self.interpolate_eye_to_entity(&tracked_entity, bounding_boxes);
             }
         }
 
@@ -189,16 +195,9 @@ impl View3DState {
             }
         }
 
-        // If we're tracking a camera right now, we want to make it slightly sticky,
-        // so that a click on some entity doesn't immediately break the tracked state.
-        // (Threshold is in amount of ui points the mouse was moved.)
-        let view_eye_drag_threshold = if self.tracked_entity.is_some() {
-            4.0
-        } else {
-            0.0
-        };
-
-        if view_eye.update(response, view_eye_drag_threshold, view_ctx, eye_property) {
+        if view_eye.update(response, view_eye_drag_threshold, view_ctx, eye_property)
+            && !(self.tracked_entity.is_some() && view_eye.ignore_input())
+        {
             self.last_eye_interaction = Some(Instant::now());
             self.eye_interpolation = None;
             self.tracked_entity = None;
@@ -233,7 +232,6 @@ impl View3DState {
         &mut self,
         entity_path: &EntityPath,
         bounding_boxes: &SceneBoundingBoxes,
-        space_cameras: &[SpaceCamera3D],
     ) {
         // Note that we may want to focus on an _instance_ instead in the future:
         // The problem with that is that there may be **many** instances (think point cloud)
@@ -249,9 +247,7 @@ impl View3DState {
         //     ..
         // }) = ctx.selection_state().hovered_space_context()
 
-        if let Some(tracked_camera) = find_camera(space_cameras, entity_path) {
-            self.interpolate_to_eye(tracked_camera);
-        } else if let Some(entity_bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
+        if let Some(entity_bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
             let Some(mut new_view_eye) = self.view_eye else {
                 // Happens only the first frame when there's no eye set up yet.
                 return;
@@ -261,6 +257,8 @@ impl View3DState {
             let orbit_radius = if radius < 0.0001 {
                 // Handle zero-sized bounding boxes:
                 (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5).at_least(0.01)
+            } else if self.tracked_entity.is_some() {
+                new_view_eye.orbit_radius().unwrap_or(radius)
             } else {
                 radius
             };
@@ -271,7 +269,7 @@ impl View3DState {
         }
     }
 
-    /// The taregt mode will be ignored, and the mode of the current eye will be kept unchanged.
+    /// The target mode will be ignored, and the mode of the current eye will be kept unchanged.
     fn interpolate_to_view_eye(&mut self, mut target: ViewEye) {
         if let Some(view_eye) = &self.view_eye {
             target.set_kind(view_eye.kind());
@@ -292,9 +290,10 @@ impl View3DState {
         }
 
         if let Some(start) = self.view_eye {
-            if let Some(target_time) =
-                EyeInterpolation::target_time(&start.to_eye(), &target.to_eye())
-            {
+            if let (Some(target_time), false) = (
+                EyeInterpolation::target_time(&start.to_eye(), &target.to_eye()),
+                self.tracked_entity.is_some(),
+            ) {
                 self.eye_interpolation = Some(EyeInterpolation {
                     elapsed_time: 0.0,
                     target_time,
@@ -310,12 +309,7 @@ impl View3DState {
         }
     }
 
-    fn track_entity(
-        &mut self,
-        entity_path: &EntityPath,
-        bounding_boxes: &SceneBoundingBoxes,
-        space_cameras: &[SpaceCamera3D],
-    ) {
+    fn track_entity(&mut self, entity_path: &EntityPath, bounding_boxes: &SceneBoundingBoxes) {
         if self.tracked_entity == Some(entity_path.clone()) {
             return; // already tracking this entity.
         }
@@ -324,7 +318,7 @@ impl View3DState {
         self.tracked_entity = Some(entity_path.clone());
         self.camera_before_tracked_entity = self.view_eye.map(|eye| eye.to_eye());
 
-        self.interpolate_eye_to_entity(entity_path, bounding_boxes, space_cameras);
+        self.interpolate_eye_to_entity(entity_path, bounding_boxes);
     }
 
     pub fn spin(&self) -> bool {
@@ -407,7 +401,17 @@ pub fn help(os: egui::os::OperatingSystem) -> Help {
                 IconText::from_modifiers(os, SPEED_UP_3D_MODIFIER),
             ),
         )
-        .control("Focus", ("double", icons::LEFT_MOUSE_CLICK, "object"))
+        .control("Track", ("double", icons::LEFT_MOUSE_CLICK, "object"))
+        .control(
+            "Focus",
+            (
+                IconText::from_modifiers(os, Modifiers::ALT),
+                "+",
+                "double",
+                icons::LEFT_MOUSE_CLICK,
+                "object",
+            ),
+        )
         .control(
             "Reset view",
             ("double", icons::LEFT_MOUSE_CLICK, "background"),
@@ -587,18 +591,20 @@ impl SpatialView3D {
             };
             if let Some(entity_path) = focused_entity {
                 state.state_3d.last_eye_interaction = Some(Instant::now());
+                state.state_3d.tracked_entity = None;
 
-                // TODO(#4812): We currently only track cameras on double click since tracking arbitrary entities was deemed too surprising.
-                if find_camera(space_cameras, entity_path).is_some() {
+                if ctx.recording().is_logged_entity(entity_path) {
                     state
                         .state_3d
-                        .track_entity(entity_path, &state.bounding_boxes, space_cameras);
-                } else {
-                    state.state_3d.interpolate_eye_to_entity(
-                        entity_path,
-                        &state.bounding_boxes,
-                        space_cameras,
-                    );
+                        .interpolate_eye_to_entity(entity_path, &state.bounding_boxes);
+
+                    // Additionally track the entity if `alt` is NOT pressed.
+                    // (Note that this means slightly different things for cameras & regular entities)
+                    if !response.ctx.input(|i| i.modifiers.alt) {
+                        state
+                            .state_3d
+                            .track_entity(entity_path, &state.bounding_boxes);
+                    }
                 }
             }
 
