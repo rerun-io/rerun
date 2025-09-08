@@ -156,14 +156,14 @@ dav1d = { package = "re_rav1d", version = "0.1.3", default-features = false }
 # dav1d = { version = "0.10.3" } # Requires separate install of `dav1d` library. Fast in debug builds. Useful for development.
 
 # egui-crates:
-ecolor = "0.32.1"
-eframe = { version = "0.32.1", default-features = false, features = [
+ecolor = "0.32.2"
+eframe = { version = "0.32.2", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.32.1", features = [
+egui = { version = "0.32.2", features = [
   "callstack",
   "color-hex",
   "log",
@@ -171,18 +171,18 @@ egui = { version = "0.32.1", features = [
 ] }
 egui_commonmark = { version = "0.21", default-features = false }
 egui_dnd = { version = "0.13" }
-egui_extras = { version = "0.32.1", features = [
+egui_extras = { version = "0.32.2", features = [
   "http",
   "image",
   "serde",
   "svg",
 ] }
-egui_kittest = { version = "0.32.1", features = ["wgpu", "snapshot", "eframe"] }
+egui_kittest = { version = "0.32.2", features = ["wgpu", "snapshot", "eframe"] }
 egui_plot = "0.33" # https://github.com/emilk/egui_plot
 egui_table = "0.4" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.13" # https://github.com/rerun-io/egui_tiles
-egui-wgpu = "0.32.1"
-emath = "0.32.1"
+egui-wgpu = "0.32.2"
+emath = "0.32.2"
 walkers = "0.43"
 
 # All of our direct external dependencies should be found here:
@@ -805,6 +805,7 @@ unnecessary_debug_formatting = "allow"
 # egui_kittest = { path = "../../egui/crates/egui_kittest" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
+# wgpu = { path = "../../wgpu/wgpu" }
 
 # egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }

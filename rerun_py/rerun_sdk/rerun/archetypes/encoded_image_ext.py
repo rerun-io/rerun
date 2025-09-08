@@ -64,7 +64,7 @@ class EncodedImageExt:
             If the media type cannot be guessed, the viewer won't be able to render the asset.
 
         opacity:
-            Opacity of the image, useful for layering several images.
+            Opacity of the image, useful for layering several media.
             Defaults to 1.0 (fully opaque).
 
         draw_order:

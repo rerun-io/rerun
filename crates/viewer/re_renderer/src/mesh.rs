@@ -218,12 +218,33 @@ pub struct GpuMaterial {
 pub(crate) mod gpu_data {
     use crate::wgpu_buffer_types;
 
+    /// Internally supported texture formats for our textures.
+    ///
+    /// Keep in sync with the `FORMAT_` constants in `instanced_mesh.wgsl`
+    #[repr(u32)]
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum TextureFormat {
+        Rgba = 0,
+        Grayscale = 1,
+    }
+
     /// Keep in sync with [`MaterialUniformBuffer`] in `instanced_mesh.wgsl`
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct MaterialUniformBuffer {
-        pub albedo_factor: wgpu_buffer_types::Vec4,
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+        albedo_factor: wgpu_buffer_types::Vec4,
+        texture_format: wgpu_buffer_types::U32RowPadded,
+        end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
+    }
+
+    impl MaterialUniformBuffer {
+        pub fn new(albedo_factor: ecolor::Rgba, texture_format: TextureFormat) -> Self {
+            Self {
+                albedo_factor: albedo_factor.into(),
+                texture_format: (texture_format as u32).into(),
+                end_padding: Default::default(),
+            }
+        }
     }
 }
 
@@ -311,12 +332,16 @@ impl GpuMesh {
             let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
                 ctx,
                 format!("{} - material uniforms", data.label).into(),
-                data.materials
-                    .iter()
-                    .map(|material| gpu_data::MaterialUniformBuffer {
-                        albedo_factor: material.albedo_factor.into(),
-                        end_padding: Default::default(),
-                    }),
+                data.materials.iter().map(|material| {
+                    gpu_data::MaterialUniformBuffer::new(
+                        material.albedo_factor,
+                        if material.albedo.texture.format().components() == 1 {
+                            gpu_data::TextureFormat::Grayscale
+                        } else {
+                            gpu_data::TextureFormat::Rgba
+                        },
+                    )
+                }),
             );
 
             let mut materials = SmallVec::with_capacity(data.materials.len());

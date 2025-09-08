@@ -85,7 +85,7 @@ impl framework::Example for Outlines {
                 outline_config: None,
                 ..Default::default()
             },
-        );
+        )?;
 
         view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
             re_ctx,

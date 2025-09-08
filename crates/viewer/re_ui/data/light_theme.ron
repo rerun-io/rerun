@@ -270,28 +270,24 @@
       "color": "{Gray.250}"
     },
 
-    // TODO(ab, lucas, katya): review these
-    "code_index": {
+    "code_index_color": {
       "color": "#BF68AF"
     },
-    "code_primitive": {
+    "code_primitive_color": {
       "color": "#32AA79"
     },
-    "code_string": {
+    "code_string_color": {
       "color": "#7782EA"
     },
 
     // TODO(ab, katya): review these
+    "code_keyword_color": {
+      "color": "#D176BF",
+    },
     "table_filter_frame_stroke": {
       "color": "{Gray.400}",
       "width": 1
     },
-    "table_filter_operator_text_color": {
-      "color": "#7782EA",
-    },
-    "table_filter_rhs_text_color": {
-      "color": "#32AA79",
-    }
   },
 
   "alert_success": {

@@ -1,9 +1,9 @@
 use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
 
 use re_format::format_uint;
-use re_ui::UiExt as _;
 use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::{UiExt as _, UiLayout};
 
 use crate::datatype_ui::DataTypeUi;
 use crate::show_index::ShowIndex;
@@ -60,25 +60,16 @@ impl<'a> ArrowNode<'a> {
     pub fn show(self, ui: &mut Ui, index: usize) {
         let label = match self.label {
             NodeLabel::Index(idx) => {
-                let mut builder = SyntaxHighlightedBuilder::new(ui.style());
-                builder.code_index(&format_uint(idx));
-                builder.into_widget_text()
+                let mut builder = SyntaxHighlightedBuilder::new();
+                builder.append_index(&format_uint(idx));
+                builder.into_widget_text(ui.style())
             }
             NodeLabel::Name(name) => {
-                let mut builder = SyntaxHighlightedBuilder::new(ui.style());
-                builder.code_identifier(&name);
-                builder.into_widget_text()
+                let mut builder = SyntaxHighlightedBuilder::new();
+                builder.append_identifier(&name);
+                builder.into_widget_text(ui.style())
             }
             NodeLabel::Custom(name) => name,
-        };
-
-        let mut value = SyntaxHighlightedBuilder::new(ui.style());
-        let result = self.values.write(index, &mut value);
-        let value = match result {
-            Ok(()) => value.into_widget_text(),
-            Err(err) => RichText::new(format!("Error: {err}"))
-                .color(ui.tokens().error_fg_color)
-                .into(),
         };
 
         let nested = self.values.is_item_nested();
@@ -101,7 +92,13 @@ impl<'a> ArrowNode<'a> {
                                 }
                                 ui.set_opacity(1.0 - visuals.openness());
                             }
-                            ui.label(value);
+                            let mut value = SyntaxHighlightedBuilder::new();
+                            let result = self.values.write(index, &mut value);
+
+                            match result {
+                                Ok(()) => UiLayout::List.data_label(ui, value),
+                                Err(err) => ui.error_label(format!("Error: {err}")),
+                            };
                         },
                         |ui| {
                             let tooltip_open =

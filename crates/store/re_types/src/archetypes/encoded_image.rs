@@ -56,7 +56,7 @@ pub struct EncodedImage {
     /// If it cannot guess, it won't be able to render the asset.
     pub media_type: Option<SerializedComponentBatch>,
 
-    /// Opacity of the image, useful for layering several images.
+    /// Opacity of the image, useful for layering several media.
     ///
     /// Defaults to 1.0 (fully opaque).
     pub opacity: Option<SerializedComponentBatch>,
@@ -372,7 +372,7 @@ impl EncodedImage {
         self
     }
 
-    /// Opacity of the image, useful for layering several images.
+    /// Opacity of the image, useful for layering several media.
     ///
     /// Defaults to 1.0 (fully opaque).
     #[inline]

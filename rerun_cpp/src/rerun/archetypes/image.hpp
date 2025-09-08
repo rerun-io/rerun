@@ -147,7 +147,7 @@ namespace rerun::archetypes {
         /// The format of the image.
         std::optional<ComponentBatch> format;
 
-        /// Opacity of the image, useful for layering several images.
+        /// Opacity of the image, useful for layering several media.
         ///
         /// Defaults to 1.0 (fully opaque).
         std::optional<ComponentBatch> opacity;
@@ -373,7 +373,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Opacity of the image, useful for layering several images.
+        /// Opacity of the image, useful for layering several media.
         ///
         /// Defaults to 1.0 (fully opaque).
         Image with_opacity(const rerun::components::Opacity& _opacity) && {

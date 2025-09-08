@@ -1,8 +1,6 @@
 use arrow::array::{ListBuilder, UInt8Builder};
 use re_chunk::{ChunkId, external::arrow::array::FixedSizeListBuilder};
-use re_types::{
-    Component as _, ComponentDescriptor, components, reflection::ComponentDescriptorExt as _,
-};
+use re_types::archetypes::McapMessage;
 
 use crate::{
     Error, LayerIdentifier, MessageLayer,
@@ -14,8 +12,6 @@ struct RawMcapMessageParser {
 }
 
 impl RawMcapMessageParser {
-    const ARCHETYPE_NAME: &str = "rerun.mcap.Message";
-
     fn new(num_rows: usize) -> Self {
         Self {
             data: blob_list_builder(num_rows),
@@ -47,13 +43,7 @@ impl MessageParser for RawMcapMessageParser {
             ChunkId::new(),
             entity_path.clone(),
             timelines,
-            std::iter::once((
-                ComponentDescriptor::partial("data")
-                    .with_builtin_archetype(Self::ARCHETYPE_NAME)
-                    .with_component_type(components::Blob::name()),
-                data.finish().into(),
-            ))
-            .collect(),
+            std::iter::once((McapMessage::descriptor_data(), data.finish().into())).collect(),
         )
         .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 

@@ -770,7 +770,7 @@ mod tests {
         re_log::PanicOnWarnScope::new();
 
         RenderContext::new_test().execute_test_frame(|ctx| {
-            let mut view = ViewBuilder::new(ctx, TargetConfiguration::default());
+            let mut view = ViewBuilder::new(ctx, TargetConfiguration::default()).unwrap();
 
             let empty = LineDrawableBuilder::new(ctx);
             view.queue_draw(empty.into_draw_data().unwrap());
