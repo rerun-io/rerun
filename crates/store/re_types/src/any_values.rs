@@ -35,7 +35,7 @@ impl AnyValues {
 
     /// Adds a component generated from arbitrary data to this collection.
     ///
-    /// In many cases, it might be more convenient to use [`Self::with_field_from_component`] to log an existing Rerun component instead.
+    /// In many cases, it might be more convenient to use [`Self::with_component`] to log an existing Rerun component instead.
     #[inline]
     pub fn with_component_from_data(
         self,
@@ -50,7 +50,7 @@ impl AnyValues {
     //TODO(#10908): Prune this method in 0.26.0
     /// Adds a field of arbitrary data to this collection.
     ///
-    /// In many cases, it might be more convenient to use [`Self::with_field_from_component`] to log an existing Rerun component instead.
+    /// In many cases, it might be more convenient to use [`Self::with_component`] to log an existing Rerun component instead.
     #[deprecated(since = "0.25.0", note = "Use with_component_from_data instead.")]
     #[inline]
     pub fn with_field(self, field: impl AsRef<str>, array: arrow::array::ArrayRef) -> Self {
@@ -130,8 +130,8 @@ mod test {
     fn without_archetype() {
         let values = AnyValues::default()
             .with_component::<components::Scalar>("confidence", [1.2f64, 3.4, 5.6])
-            .with_loggable::<Utf8>("homepage", "user.url", vec!["https://www.rerun.io"])
-            .with_field(
+            .with_component_override::<Utf8>("homepage", "user.url", vec!["https://www.rerun.io"])
+            .with_component_from_data(
                 "description",
                 std::sync::Arc::new(arrow::array::StringArray::from(vec!["Bla bla bla…"])),
             );
