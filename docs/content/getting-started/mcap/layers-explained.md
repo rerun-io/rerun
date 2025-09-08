@@ -25,7 +25,7 @@ The `stats` layer computes file-level metrics and statistics, creating entities 
 
 ### ROS2 semantic interpretation
 
-The `ros2msg` layer provides semantic interpretation and visualization of standard ROS2 message types, creating meaningful Rerun visualization components from robotics data. Unlike the protobuf layer, this layer understands the semantics of ROS2 messages and creates appropriate visualizations: images become Image components, point clouds become Point3D components, IMU data becomes Transform3D components, and so on.
+The `ros2msg` layer provides semantic interpretation and visualization of standard ROS2 message types, creating meaningful Rerun visualization components from robotics data. Unlike the protobuf layer, this layer understands the semantics of ROS2 messages and creates appropriate visualizations: images become Image components, point clouds become [Points3D](../../reference/types/archetypes/points3d.md) archetypes, IMU messages become [SeriesLine](../../reference/types/archetypes/series_line.md) archetypes with the data plotted over time, and so on.
 
 This layer supports standard ROS2 packages including `sensor_msgs`, `geometry_msgs`, `std_msgs`, and `builtin_interfaces`. This layer provides visualization of sensor data like cameras and LiDAR with minimal setup required.
 
