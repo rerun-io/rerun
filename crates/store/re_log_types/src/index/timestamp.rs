@@ -38,7 +38,7 @@ impl Timestamp {
     }
 
     #[inline]
-    pub fn elsapsed(self) -> Duration {
+    pub fn elapsed(self) -> Duration {
         Self::now() - self
     }
 }
