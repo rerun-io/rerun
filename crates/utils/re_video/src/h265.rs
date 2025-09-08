@@ -158,14 +158,14 @@ pub fn write_hevc_chunk_to_nalu_stream(
         let mut hvcc_ps: Vec<Vec<u8>> = Vec::new();
 
         for arr in &hvcc.hvcc.arrays {
-            if let Ok(nalu_type) = NaluType::try_from(arr.nal_unit_type as u32) {
-                if matches!(
+            if let Ok(nalu_type) = NaluType::try_from(arr.nal_unit_type as u32)
+                && matches!(
                     nalu_type,
                     NaluType::VpsNut | NaluType::SpsNut | NaluType::PpsNut
-                ) {
-                    for nalu in &arr.nalus {
-                        hvcc_ps.push(nalu.data.clone());
-                    }
+                )
+            {
+                for nalu in &arr.nalus {
+                    hvcc_ps.push(nalu.data.clone());
                 }
             }
         }

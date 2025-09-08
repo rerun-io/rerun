@@ -68,31 +68,29 @@ impl DataLoader for ArchetypeLoader {
 
         let mut timepoint = TimePoint::default();
         // TODO(cmc): log these once heuristics (I think?) are fixed
-        if false {
-            if let Ok(metadata) = filepath.metadata() {
-                use re_log_types::TimeCell;
+        if false && let Ok(metadata) = filepath.metadata() {
+            use re_log_types::TimeCell;
 
-                if let Some(created) = metadata
-                    .created()
-                    .ok()
-                    .and_then(|t| TimeCell::try_from(t).ok())
-                {
-                    timepoint.insert_cell("created_at", created);
-                }
-                if let Some(modified) = metadata
-                    .modified()
-                    .ok()
-                    .and_then(|t| TimeCell::try_from(t).ok())
-                {
-                    timepoint.insert_cell("modified_at", modified);
-                }
-                if let Some(accessed) = metadata
-                    .accessed()
-                    .ok()
-                    .and_then(|t| TimeCell::try_from(t).ok())
-                {
-                    timepoint.insert_cell("accessed_at", accessed);
-                }
+            if let Some(created) = metadata
+                .created()
+                .ok()
+                .and_then(|t| TimeCell::try_from(t).ok())
+            {
+                timepoint.insert_cell("created_at", created);
+            }
+            if let Some(modified) = metadata
+                .modified()
+                .ok()
+                .and_then(|t| TimeCell::try_from(t).ok())
+            {
+                timepoint.insert_cell("modified_at", modified);
+            }
+            if let Some(accessed) = metadata
+                .accessed()
+                .ok()
+                .and_then(|t| TimeCell::try_from(t).ok())
+            {
+                timepoint.insert_cell("accessed_at", accessed);
             }
         }
 
