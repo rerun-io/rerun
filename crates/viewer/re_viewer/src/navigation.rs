@@ -6,14 +6,14 @@ use re_viewer_context::DisplayMode;
 /// we retrieve the display mode and pass that around.
 pub(crate) struct Navigation {
     history: Vec<DisplayMode>,
-    default: DisplayMode,
+    start_mode: DisplayMode,
 }
 
 impl Default for Navigation {
     fn default() -> Self {
         Self {
             history: Default::default(),
-            default: DisplayMode::RedapServer(re_redap_browser::EXAMPLES_ORIGIN.clone()),
+            start_mode: DisplayMode::RedapServer(re_redap_browser::EXAMPLES_ORIGIN.clone()),
         }
     }
 }
@@ -27,8 +27,12 @@ impl Navigation {
         self.history.push(display_mode);
     }
 
-    pub fn push_default(&mut self) {
-        self.push(self.default.clone());
+    /// Pushes the start display mode to history which is also the fallback mode for
+    /// navigation.
+    ///
+    /// This is defined in the default implementation for [`Navigation`]
+    pub fn push_start_mode(&mut self) {
+        self.push(self.start_mode.clone());
     }
 
     pub fn replace(&mut self, new_mode: DisplayMode) -> Option<DisplayMode> {
@@ -49,6 +53,6 @@ impl Navigation {
     }
 
     pub fn peek(&self) -> &DisplayMode {
-        self.history.last().unwrap_or(&self.default)
+        self.history.last().unwrap_or(&self.start_mode)
     }
 }
