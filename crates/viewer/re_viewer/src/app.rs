@@ -3214,6 +3214,7 @@ fn update_web_address_bar(
     enable_history: bool,
     store_hub: &StoreHub,
     display_mode: &DisplayMode,
+    // TODO(#10866): Use this to add the current selection to the url.
     _selection: &ApplicationSelectionState,
 ) -> Option<()> {
     if !enable_history {
