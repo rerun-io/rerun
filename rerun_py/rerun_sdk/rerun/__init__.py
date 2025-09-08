@@ -7,7 +7,7 @@ import warnings
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import numpy as np
-IS_NUMPY_2 = True if int(np.__version__.split('.')[0]) >= 2 else False
+
 __version__ = "0.25.0-alpha.1+dev"
 __version_info__ = (0, 25, 0, "alpha.1")
 
@@ -203,6 +203,9 @@ from .time import (
     set_time_sequence as set_time_sequence,
 )
 from .web import serve_web_viewer as serve_web_viewer
+
+IS_NUMPY_2 = int(np.__version__.split(".")[0]) >= 2
+
 
 if TYPE_CHECKING:
     from uuid import UUID
