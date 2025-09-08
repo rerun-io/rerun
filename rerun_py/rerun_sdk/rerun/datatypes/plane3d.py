@@ -13,6 +13,7 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
+from .. import IS_NUMPY_2
 from .._baseclasses import (
     BaseBatch,
 )
@@ -47,7 +48,7 @@ class Plane3D(Plane3DExt):
         if IS_NUMPY_2:
             return np.asarray(self.xyzd, dtype=dtype, copy=copy)
         else:
-            if copy:
+            if copy is not None:
                 return np.array(self.xyzd, dtype=dtype, copy=copy)
             else:
                 return np.asarray(self.xyzd, dtype=dtype)

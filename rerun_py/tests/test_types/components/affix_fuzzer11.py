@@ -12,7 +12,7 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
-from rerun_sdk.rerun import IS_NUMPY_2
+from rerun import IS_NUMPY_2
 from rerun._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
@@ -42,7 +42,7 @@ class AffixFuzzer11(ComponentMixin):
         if IS_NUMPY_2:
             return np.asarray(self.many_floats_optional, dtype=dtype, copy=copy)
         else:
-            if copy:
+            if copy is not None:
                 return np.array(self.many_floats_optional, dtype=dtype, copy=copy)
             else:
                 return np.asarray(self.many_floats_optional, dtype=dtype)

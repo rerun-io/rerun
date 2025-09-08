@@ -12,8 +12,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
-from .. import IS_NUMPY_2
 
+from .. import IS_NUMPY_2
 from .._baseclasses import (
     BaseBatch,
 )
@@ -42,7 +42,7 @@ class UVec3D(UVec3DExt):
         if IS_NUMPY_2:
             return np.asarray(self.xyz, dtype=dtype, copy=copy)
         else:
-            if copy:
+            if copy is not None:
                 return np.array(self.xyz, dtype=dtype, copy=copy)
             else:
                 return np.asarray(self.xyz, dtype=dtype)

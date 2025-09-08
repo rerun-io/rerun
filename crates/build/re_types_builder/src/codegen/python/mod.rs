@@ -411,6 +411,14 @@ impl PythonCodeGenerator {
                 ".."
             };
 
+            let numpy_rerun_path = if obj.is_testing() {
+                "rerun"
+            } else if obj.scope().is_some() {
+                "..." // NOLINT
+            } else {
+                ".."
+            };
+
             code.push_unindented(
                 format!(
                     "
@@ -426,6 +434,7 @@ impl PythonCodeGenerator {
             import pyarrow as pa
             import uuid
 
+            from {numpy_rerun_path} import IS_NUMPY_2
             from {rerun_path}error_utils import catch_and_log_exceptions
             from {rerun_path}_baseclasses import (
                 Archetype,
@@ -1430,7 +1439,13 @@ fn quote_array_method_from_obj(
         "
         def __array__(self, dtype: npt.DTypeLike=None, copy: bool|None=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
-            return np.asarray(self.{field_name}, dtype=dtype, copy=copy)
+            if IS_NUMPY_2:
+                return np.asarray(self.{field_name}, dtype=dtype, copy=copy)
+            else:
+                if copy is not None:
+                    return np.array(self.{field_name}, dtype=dtype, copy=copy)
+                else:
+                    return np.asarray(self.{field_name}, dtype=dtype)
         ",
         ext_class.name, ext_class.file_name
     ))

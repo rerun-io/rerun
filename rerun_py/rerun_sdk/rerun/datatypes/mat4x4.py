@@ -12,8 +12,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
-from .. import IS_NUMPY_2
 
+from .. import IS_NUMPY_2
 from .._baseclasses import (
     BaseBatch,
 )
@@ -76,7 +76,7 @@ class Mat4x4(Mat4x4Ext):
         if IS_NUMPY_2:
             return np.asarray(self.flat_columns, dtype=dtype, copy=copy)
         else:
-            if copy:
+            if copy is not None:
                 return np.array(self.flat_columns, dtype=dtype, copy=copy)
             else:
                 return np.asarray(self.flat_columns, dtype=dtype)
