@@ -18,7 +18,9 @@ The simplest way to get started is to load an MCAP file directly:
 rerun your_data.mcap
 ```
 
-You can also drag and drop MCAP files into the Rerun Viewer
+You can also drag and drop MCAP files into the Rerun Viewer or load them using the SDK:
+
+snippet: howto/load_mcap
 
 ### Basic conversion
 
