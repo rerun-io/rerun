@@ -343,7 +343,7 @@ impl<'a> DataFusionTableWidget<'a> {
             FilterState::load_or_init_from_blueprint(ui.ctx(), session_id, table_blueprint);
 
         let num_rows = query_result
-            .record_batches
+            .sorbet_batches
             .iter()
             .map(|record_batch| record_batch.num_rows() as u64)
             .sum();
@@ -351,7 +351,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let columns = Columns::from(&query_result.sorbet_schema, column_blueprint_fn);
 
         let display_record_batches = query_result
-            .record_batches
+            .sorbet_batches
             .iter()
             .map(|record_batch| {
                 DisplayRecordBatch::try_new(itertools::izip!(

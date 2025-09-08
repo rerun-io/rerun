@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use arrow::datatypes::{DataType, SchemaRef};
-use arrow::record_batch::RecordBatch;
 use datafusion::common::{DataFusionError, TableReference};
 use datafusion::functions::expr_fn::concat;
 use datafusion::logical_expr::{binary_expr, col as datafusion_col, lit};
@@ -9,6 +8,7 @@ use datafusion::prelude::{SessionContext, cast, encode};
 use parking_lot::Mutex;
 
 use re_log_types::Timestamp;
+use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::RequestedObject;
@@ -65,7 +65,7 @@ impl From<&TableBlueprint> for DataFusionQueryData {
 #[derive(Debug, Clone)]
 pub struct DataFusionQueryResult {
     /// The record batches to display.
-    pub record_batches: Vec<RecordBatch>,
+    pub sorbet_batches: Vec<SorbetBatch>,
 
     /// The schema of the record batches (useful if none is returned).
     pub schema: SchemaRef,
@@ -194,17 +194,38 @@ impl DataFusionQuery {
         }
 
         //
-        // Collect
+        // Collect record batches
         //
 
         let schema = Arc::clone(dataframe.schema().inner());
-        let sorbet_schema = re_sorbet::SorbetSchema::try_from_raw_arrow_schema(Arc::clone(&schema))
-            .map_err(|err| DataFusionError::External(err.into()))?;
-
         let record_batches = dataframe.collect().await?;
 
+        //
+        // Convert to `SorbetBatch`
+        //
+
+        let sorbet_batches = record_batches
+            .iter()
+            .map(|record_batch| {
+                SorbetBatch::try_from_record_batch(record_batch, BatchType::Dataframe)
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| DataFusionError::External(err.into()))?;
+
+        //
+        // Get (or create) `SorbetSchema`
+        //
+
+        let sorbet_schema = sorbet_batches
+            .first()
+            .map(|batch| Ok(batch.sorbet_schema().clone()))
+            .unwrap_or_else(|| {
+                re_sorbet::SorbetSchema::try_from_raw_arrow_schema(Arc::clone(&schema))
+                    .map_err(|err| DataFusionError::External(err.into()))
+            })?;
+
         Ok(DataFusionQueryResult {
-            record_batches,
+            sorbet_batches,
             schema,
             sorbet_schema,
         })
