@@ -95,8 +95,8 @@ fn test_transparent_geometry<A: AsComponents>(
         harness.snapshot_options(
             format!("transparent_{name}_{i}"),
             &SnapshotOptions::default()
-                .threshold(0.8)
-                .failed_pixel_count_threshold(300),
+                .threshold(1.3) // Transparent overlaps has some numerical inaccuracies which causes differences for a lot of pixels.
+                .failed_pixel_count_threshold(400),
         );
     }
 }
