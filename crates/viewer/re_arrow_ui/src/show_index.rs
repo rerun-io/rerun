@@ -33,9 +33,21 @@ use crate::list_item_ranges::list_item_ranges;
 /// If an array has more items, it will be truncated with `…`.
 pub const MAX_ARROW_LIST_ITEMS: usize = 10;
 
+/// Arrow display options.
+///
+/// Max item limits will not affect the list_item based ui, that will always show all items.
 pub struct DisplayOptions<'a> {
+    /// Format options for items formatted with arrows built-in formatter.
     pub format_options: FormatOptions<'a>,
-    pub max_nested_items: usize,
+    /// How many items should be shown for arrays that have nested items?
+    pub max_nested_array_items: usize,
+    /// How many items should be shown for arrays that do not have nested items?
+    pub max_array_items: usize,
+    /// How many items should be shown for maps?
+    pub max_map_items: usize,
+    /// How many items should be shown for structs?
+    pub max_struct_items: usize,
+    /// Each nested level, by how much should the number of shown items decrease?
     pub decrease_nested_items_per_nested_level: usize,
 }
 
@@ -45,7 +57,10 @@ impl<'a> Default for DisplayOptions<'a> {
             format_options: FormatOptions::default()
                 .with_null("null")
                 .with_display_error(true),
-            max_nested_items: 3,
+            max_nested_array_items: 3,
+            max_array_items: 6,
+            max_map_items: 3,
+            max_struct_items: 6,
             decrease_nested_items_per_nested_level: 1,
         }
     }
@@ -55,17 +70,34 @@ impl<'a> DisplayOptions<'a> {
     fn nested(&self) -> Self {
         Self {
             format_options: self.format_options.clone(),
-            max_nested_items: self
-                .max_nested_items
+            max_nested_array_items: self
+                .max_nested_array_items
+                .saturating_sub(self.decrease_nested_items_per_nested_level),
+            max_array_items: self
+                .max_array_items
+                .saturating_sub(self.decrease_nested_items_per_nested_level),
+            max_map_items: self
+                .max_map_items
+                .saturating_sub(self.decrease_nested_items_per_nested_level),
+            max_struct_items: self
+                .max_struct_items
                 .saturating_sub(self.decrease_nested_items_per_nested_level),
             decrease_nested_items_per_nested_level: self.decrease_nested_items_per_nested_level,
+        }
+    }
+
+    fn max_array_items(&self, nested: bool) -> usize {
+        if nested {
+            self.max_nested_array_items
+        } else {
+            self.max_array_items
         }
     }
 }
 
 pub struct ArrayUi<'a> {
     array: &'a dyn Array,
-    format: Box<dyn ShowIndex + 'a>,
+    show_index: Box<dyn ShowIndex + 'a>,
     max_items: usize,
 }
 
@@ -74,10 +106,11 @@ impl<'a> ArrayUi<'a> {
     ///
     /// This returns an error if an array of the given data type cannot be formatted/shown.
     pub fn try_new(array: &'a dyn Array, options: &DisplayOptions<'a>) -> Result<Self, ArrowError> {
+        let show = make_ui(array, options)?;
         Ok(Self {
             array,
-            format: make_ui(array, options)?,
-            max_items: options.max_nested_items,
+            max_items: options.max_array_items(show.is_item_nested()),
+            show_index: show,
         })
     }
 
@@ -86,12 +119,12 @@ impl<'a> ArrayUi<'a> {
     /// This will create a list item that might have some nested children.
     /// The list item will _not_ display the index.
     pub fn show_value(&self, idx: usize, ui: &mut Ui) {
-        self.format.show(idx, ui);
+        self.show_index.show(idx, ui);
     }
 
     /// Show a `list_item` based tree view of the data.
     pub fn show(&self, ui: &mut Ui) {
-        list_ui(ui, 0..self.array.len(), &*self.format);
+        list_ui(ui, 0..self.array.len(), &*self.show_index);
     }
 
     /// Returns a [`SyntaxHighlightedBuilder`] that displays the entire array.
@@ -103,7 +136,7 @@ impl<'a> ArrayUi<'a> {
             &mut highlighted,
             0..self.array.len(),
             self.max_items,
-            &*self.format,
+            &*self.show_index,
         )?;
         Ok(highlighted)
     }
@@ -113,7 +146,7 @@ impl<'a> ArrayUi<'a> {
     /// Nested arrays will be limited to a sane number of items ([`MAX_ARROW_LIST_ITEMS`]).
     pub fn value_highlighted(&self, idx: usize) -> Result<SyntaxHighlightedBuilder, ArrowError> {
         let mut highlighted = SyntaxHighlightedBuilder::new();
-        self.format.write(idx, &mut highlighted)?;
+        self.show_index.write(idx, &mut highlighted)?;
         Ok(highlighted)
     }
 }
@@ -487,10 +520,9 @@ impl<'a, O: OffsetSizeTrait> ShowIndexState<'a> for &'a GenericListArray<O> {
     type State = (Box<dyn ShowIndex + 'a>, usize);
 
     fn prepare(&self, options: &DisplayOptions<'a>) -> Result<Self::State, ArrowError> {
-        Ok((
-            make_ui(self.values().as_ref(), &options.nested())?,
-            options.max_nested_items,
-        ))
+        let show = make_ui(self.values().as_ref(), &options.nested())?;
+        let max_items = options.max_array_items(show.is_item_nested());
+        Ok((show, max_items))
     }
 
     fn write(
@@ -531,8 +563,8 @@ impl<'a> ShowIndexState<'a> for &'a FixedSizeListArray {
         let length = self.value_length();
         Ok(FixedSizeListArrayState {
             value_length: length as usize,
+            max_items: options.max_array_items(values.is_item_nested()),
             values,
-            max_items: options.max_nested_items,
         })
     }
 
@@ -596,7 +628,7 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
             .collect::<Result<_, ArrowError>>()?;
         Ok(FieldDisplayState {
             items,
-            max_items: options.max_nested_items,
+            max_items: options.max_struct_items,
         })
     }
 
@@ -661,7 +693,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
         Ok(MapArrayState {
             keys,
             values,
-            max_items: options.max_nested_items,
+            max_items: options.max_map_items,
         })
     }
 
