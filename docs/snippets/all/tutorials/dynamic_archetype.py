@@ -15,6 +15,6 @@ rr.log(
         },
     )
     # Using Rerun's builtin components.
-    .with_component("confidence", rr.components.ScalarBatch._COMPONENT_TYPE, [1.2, 3.4, 5.6])
-    .with_component("description", rr.components.TextBatch._COMPONENT_TYPE, "Bla bla bla…"),
+    .with_component_override("confidence", rr.components.ScalarBatch._COMPONENT_TYPE, [1.2, 3.4, 5.6])
+    .with_component_override("description", rr.components.TextBatch._COMPONENT_TYPE, "Bla bla bla…"),
 )

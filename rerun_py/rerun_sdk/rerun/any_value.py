@@ -80,7 +80,15 @@ class AnyValues(AsComponents):
         self._builder = DynamicArchetype._default_without_archetype(drop_untyped_nones, **kwargs)
         self._builder._with_name(self.__class__.__name__)
 
+    @deprecated(
+        "`rr.AnyValues.with_field` is deprecated, use `rr.AnyValues.with_component_from_data` instead.",
+    )
     def with_field(
+        self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
+    ) -> AnyValues:
+        return self.with_component_from_data(descriptor, value, drop_untyped_nones)
+
+    def with_component_from_data(
         self, descriptor: str | ComponentDescriptor, value: Any, drop_untyped_nones: bool = True
     ) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle."""
@@ -94,22 +102,22 @@ class AnyValues(AsComponents):
             )
             self._builder._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         else:
-            self._builder.with_field(descriptor, value, drop_untyped_nones=drop_untyped_nones)
+            self._builder.with_component_from_data(descriptor, value, drop_untyped_nones=drop_untyped_nones)
         return self
 
     @deprecated(
-        "`rr.AnyValues.with_component` is deprecated, use `rr.AnyValues.with_field_from_data` instead.",
+        "`rr.AnyValues.with_component` is deprecated, use `rr.AnyValues.with_component_override` instead.",
     )
     def with_component(self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle with name and component type."""
-        self._builder.with_field_from_data(field, component_type, value, drop_untyped_nones=drop_untyped_nones)
+        self._builder.with_component_override(field, component_type, value, drop_untyped_nones=drop_untyped_nones)
         return self
 
-    def with_field_from_data(
+    def with_component_override(
         self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True
     ) -> AnyValues:
         """Adds an `AnyValueBatch` to this `AnyValues` bundle with name and component type."""
-        self._builder.with_field_from_data(field, component_type, value, drop_untyped_nones=drop_untyped_nones)
+        self._builder.with_component_override(field, component_type, value, drop_untyped_nones=drop_untyped_nones)
         return self
 
     def as_component_batches(self) -> list[DescribedComponentBatch]:

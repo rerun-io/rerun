@@ -8,7 +8,7 @@ def test_archetype_builder() -> None:
     # Archetype builder and any_values share common conversion so variants are only checked for any values
     archetype = "new_custom_type"
     values = rr.DynamicArchetype(archetype=archetype, components={"foo": [1.0, 2.0, 3.0], "bar": "hello"})
-    values.with_component("baz", rr.components.ScalarBatch._COMPONENT_TYPE, [1.2, 3.4, 5.6])
+    values.with_component_override("baz", rr.components.ScalarBatch._COMPONENT_TYPE, [1.2, 3.4, 5.6])
 
     batches = list(values.as_component_batches())
 

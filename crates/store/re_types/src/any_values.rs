@@ -33,31 +33,33 @@ impl AnyValues {
         }
     }
 
-    /// Adds a field of arbitrary data to this collection.
+    /// Adds a component generated from arbitrary data to this collection.
     ///
     /// In many cases, it might be more convenient to use [`Self::with_field_from_component`] to log an existing Rerun component instead.
     #[inline]
-    pub fn with_field(self, field: impl AsRef<str>, array: arrow::array::ArrayRef) -> Self {
-        Self {
-            builder: self.builder.with_field(field, array),
-        }
-    }
-
-    /// Adds an existing Rerun [`Component`] to this collection.
-    #[inline]
-    pub fn with_field_from_component<C: Component>(
+    pub fn with_component_from_data(
         self,
         field: impl AsRef<str>,
-        loggable: impl IntoIterator<Item = impl Into<C>>,
+        array: arrow::array::ArrayRef,
     ) -> Self {
         Self {
-            builder: self.builder.with_field_from_component(field, loggable),
+            builder: self.builder.with_component_from_data(field, array),
         }
     }
 
     //TODO(#10908): Prune this method in 0.26.0
+    /// Adds a field of arbitrary data to this collection.
+    ///
+    /// In many cases, it might be more convenient to use [`Self::with_field_from_component`] to log an existing Rerun component instead.
+    #[deprecated(since = "0.25.0", note = "Use with_component_from_data instead.")]
+    #[inline]
+    pub fn with_field(self, field: impl AsRef<str>, array: arrow::array::ArrayRef) -> Self {
+        Self {
+            builder: self.builder.with_component_from_data(field, array),
+        }
+    }
+
     /// Adds an existing Rerun [`Component`] to this collection.
-    #[deprecated(since = "0.25.0", note = "Use with_field_from_component instead.")]
     #[inline]
     pub fn with_component<C: Component>(
         self,
@@ -65,7 +67,7 @@ impl AnyValues {
         loggable: impl IntoIterator<Item = impl Into<C>>,
     ) -> Self {
         Self {
-            builder: self.builder.with_field_from_component(field, loggable),
+            builder: self.builder.with_component(field, loggable),
         }
     }
 
@@ -73,7 +75,7 @@ impl AnyValues {
     ///
     /// This method can be used to override the component type.
     #[inline]
-    pub fn with_field_from_data<L: Loggable>(
+    pub fn with_component_override<L: Loggable>(
         self,
         field: impl AsRef<str>,
         component_type: impl Into<ComponentType>,
@@ -82,7 +84,7 @@ impl AnyValues {
         Self {
             builder: self
                 .builder
-                .with_field_from_data(field, component_type, loggable),
+                .with_component_override(field, component_type, loggable),
         }
     }
 
@@ -90,7 +92,7 @@ impl AnyValues {
     /// Adds an existing Rerun [`Component`] to this collection.
     ///
     /// This method can be used to override the component type.
-    #[deprecated(since = "0.25.0", note = "Use with_field_from_data instead.")]
+    #[deprecated(since = "0.25.0", note = "Use with_component_override instead.")]
     #[inline]
     pub fn with_loggable<L: Loggable>(
         self,
@@ -101,7 +103,7 @@ impl AnyValues {
         Self {
             builder: self
                 .builder
-                .with_field_from_data(field, component_type, loggable),
+                .with_component_override(field, component_type, loggable),
         }
     }
 }

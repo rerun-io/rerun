@@ -165,7 +165,7 @@ def test_any_values_numpy() -> None:
 
 def test_any_values_with_field() -> None:
     with pytest.warns(DeprecationWarning, match="`rr.AnyValues.with_field` using a component descriptor is deprecated"):
-        values = rr.AnyValues().with_field(
+        values = rr.AnyValues().with_component_from_data(
             descriptor=rr.ComponentDescriptor("value"),
             value=np.array([5], dtype=np.int64),
         )

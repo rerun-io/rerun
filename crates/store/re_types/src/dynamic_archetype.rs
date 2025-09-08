@@ -38,7 +38,11 @@ impl DynamicArchetype {
     ///
     /// In many cases, it might be more convenient to use [`Self::with_component`] to log an existing Rerun component instead.
     #[inline]
-    pub fn with_field(mut self, field: impl AsRef<str>, array: arrow::array::ArrayRef) -> Self {
+    pub fn with_component_from_data(
+        mut self,
+        field: impl AsRef<str>,
+        array: arrow::array::ArrayRef,
+    ) -> Self {
         let field = field.as_ref();
         let component = field.into();
 
@@ -60,19 +64,19 @@ impl DynamicArchetype {
 
     /// Adds an existing Rerun [`Component`] to this archetype.
     #[inline]
-    pub fn with_field_from_component<C: Component>(
+    pub fn with_component<C: Component>(
         self,
         field: impl AsRef<str>,
         loggable: impl IntoIterator<Item = impl Into<C>>,
     ) -> Self {
-        self.with_field_from_data(field, C::name(), loggable)
+        self.with_component_override(field, C::name(), loggable)
     }
 
     /// Adds an existing Rerun [`Component`] to this archetype.
     ///
     /// This method can be used to override the component type.
     #[inline]
-    pub fn with_field_from_data<L: Loggable>(
+    pub fn with_component_override<L: Loggable>(
         mut self,
         field: impl AsRef<str>,
         component_type: impl Into<ComponentType>,
