@@ -15,10 +15,10 @@ use re_types::{
 };
 use re_ui::{Help, IconText, icons, list_item};
 use re_viewer_context::{
-    IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext, gpu_bridge,
+    IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
+    SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
+    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -492,15 +492,18 @@ fn handle_ui_interactions(
         // double click selects the entire entity
         if map_response.double_clicked() {
             // Select the entire entity
-            ctx.selection_state().set_selection(Item::DataResult(
-                query.view_id,
-                instance_path.entity_path.clone().into(),
-            ));
+            ctx.command_sender()
+                .send_system(SystemCommand::SetSelection(
+                    Item::DataResult(query.view_id, instance_path.entity_path.clone().into())
+                        .into(),
+                ));
         }
     } else if map_response.clicked() {
         // clicked elsewhere, select the view
-        ctx.selection_state()
-            .set_selection(Item::View(query.view_id));
+        ctx.command_sender()
+            .send_system(SystemCommand::SetSelection(
+                Item::View(query.view_id).into(),
+            ));
     } else if map_response.hovered() {
         ctx.selection_state().set_hovered(Item::View(query.view_id));
     }

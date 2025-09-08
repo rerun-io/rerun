@@ -50,6 +50,8 @@ rfd.workspace = true
 serde.workspace = true
 strum_macros.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
+indexmap = { workspace = true, features = ["std", "serde"] }
+itertools.workspace = true
 
 
 # Native dependencies:

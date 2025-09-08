@@ -5,7 +5,7 @@ use parking_lot::RwLock;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
-use re_global_context::DisplayMode;
+use re_global_context::{DisplayMode, SystemCommand};
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
 use re_ui::ContextExt as _;
@@ -217,7 +217,9 @@ impl ViewerContext<'_> {
         interacted_items: impl Into<ItemCollection>,
         draggable: bool,
     ) {
-        let mut interacted_items = interacted_items.into().into_mono_instance_path_items(self);
+        let mut interacted_items = interacted_items
+            .into()
+            .into_mono_instance_path_items(self.recording(), &self.current_query());
         let selection_state = self.selection_state();
 
         if response.hovered() {
@@ -235,7 +237,8 @@ impl ViewerContext<'_> {
             // see semantics description in the docstring
             let dragged_items = if !is_already_selected && is_cmd_held {
                 selected_items.extend(interacted_items);
-                selection_state.set_selection(selected_items.clone());
+                self.command_sender()
+                    .send_system(SystemCommand::SetSelection(selected_items.clone()));
                 selected_items
             } else if !is_already_selected {
                 interacted_items
@@ -283,9 +286,10 @@ impl ViewerContext<'_> {
             // so we don't handle it here.
             if !modifiers.shift {
                 if modifiers.command {
-                    selection_state.toggle_selection(interacted_items);
+                    selection_state.toggle_selection(interacted_items, self.command_sender());
                 } else {
-                    selection_state.set_selection(interacted_items);
+                    self.command_sender()
+                        .send_system(SystemCommand::SetSelection(interacted_items));
                 }
             }
         }

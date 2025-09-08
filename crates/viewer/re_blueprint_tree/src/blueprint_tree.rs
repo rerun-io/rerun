@@ -13,8 +13,8 @@ use re_ui::{
 };
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
-    Item, ItemCollection, ItemContext, SystemCommandSender as _, ViewId, ViewerContext,
-    VisitorControlFlow, contents_name_style, icon_for_container_kind,
+    Item, ItemCollection, ItemContext, SystemCommand, SystemCommandSender as _, ViewId,
+    ViewerContext, VisitorControlFlow, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
@@ -165,7 +165,8 @@ impl BlueprintTree {
 
                     // clear selection upon clicking on empty space
                     if empty_space_response.clicked() {
-                        ctx.selection_state().clear_selection();
+                        ctx.command_sender()
+                            .send_system(SystemCommand::clear_selection());
                     }
 
                     // handle drag and drop interaction on empty space
@@ -554,7 +555,8 @@ impl BlueprintTree {
                     )
                     .clicked()
                 {
-                    ctx.selection_state().set_selection(item);
+                    ctx.command_sender()
+                        .send_system(SystemCommand::SetSelection(item.into()));
                 }
 
                 return;
@@ -724,7 +726,8 @@ impl BlueprintTree {
             });
 
             if let ControlFlow::Break(Some(item)) = result {
-                ctx.selection_state().set_selection(item.clone());
+                ctx.command_sender()
+                    .send_system(SystemCommand::SetSelection(item.clone().into()));
                 self.scroll_to_me_item = Some(item.clone());
                 self.range_selection_anchor_item = Some(item);
             }
@@ -753,7 +756,8 @@ impl BlueprintTree {
             });
 
             if let ControlFlow::Break(Some(item)) = result {
-                ctx.selection_state().set_selection(item.clone());
+                ctx.command_sender()
+                    .send_system(SystemCommand::SetSelection(item.clone().into()));
                 self.scroll_to_me_item = Some(item.clone());
                 self.range_selection_anchor_item = Some(item);
             }
@@ -802,9 +806,11 @@ impl BlueprintTree {
                     );
 
                     if modifiers.command {
-                        ctx.selection_state.extend_selection(items);
+                        ctx.selection_state
+                            .extend_selection(items, ctx.command_sender());
                     } else {
-                        ctx.selection_state.set_selection(items);
+                        ctx.command_sender()
+                            .send_system(SystemCommand::SetSelection(items));
                     }
                 }
             }
