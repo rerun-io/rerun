@@ -50,6 +50,7 @@ pub enum ItemContext {
         filter_session_id: Option<egui::Id>,
     },
 }
+
 /// An ordered collection of [`Item`] and optional associated context objects.
 ///
 /// Used to store what is currently selected and/or hovered.

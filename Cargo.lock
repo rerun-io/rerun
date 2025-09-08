@@ -9078,7 +9078,6 @@ dependencies = [
  "half",
  "home",
  "image",
- "indexmap 2.10.0",
  "itertools 0.14.0",
  "linked-hash-map",
  "macaw",
