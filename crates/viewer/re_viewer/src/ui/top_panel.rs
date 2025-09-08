@@ -9,8 +9,6 @@ use re_viewer_context::{StoreContext, StoreHub};
 
 use crate::{App, app_blueprint::AppBlueprint};
 
-// TODO: make this a stateful struct.
-
 pub fn top_panel(
     frame: &eframe::Frame,
     app: &mut App,

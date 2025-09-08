@@ -1610,7 +1610,7 @@ impl App {
         }
     }
 
-    // TODO: this method is a mess. reconciliate it with the new link unification.
+    // TODO(andreas): this method is a mess. reconciliate it with the new link unification.
     fn run_copy_time_range_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
             re_log::warn!("Could not copy time range link: No active recording");
