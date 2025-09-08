@@ -3,9 +3,17 @@ title: MCAP Layers Explained
 order: 300
 ---
 
-MCAP processing in Rerun uses a layer-based architecture where each layer represents a different way to interpret and extract data from the same MCAP file. You can specify which layers to use during conversion, allowing you to extract exactly the information you need for your analysis.
+MCAP processing in Rerun uses a layered architecture where each layer represents a different way to interpret and extract data from the same MCAP source. You can specify which layers to use during conversion, allowing you to extract exactly the information you need for your analysis.
 
-When multiple layers are enabled, they each filter and process only the messages they're designed to handle based on encoding and schema compatibility, creating different components and archetypes on the same entity paths (derived from MCAP channel topics). This can result in data duplication when layers have overlapping interests—for example, enabling both `raw` and `protobuf` layers will store protobuf messages in two forms: once as structured field data and once as raw binary blobs.
+## Understanding layers with an example
+
+When multiple layers are enabled, they each process the same messages independently, creating different component types on identical entity paths. This can result in data duplication—for instance, enabling both `raw` and `protobuf` layers stores the same message as both structured field data and raw binary blobs.
+
+Consider an MCAP file from a ROS2 robot containing sensor data on the topic `/robot/camera/image_raw` with ROS2 `sensor_msgs/msg/Image` messages:
+
+- With only the `ros2msg` layer: Creates an [Image](../../reference/types/archetypes/image.md) archetype for direct visualization in Rerun's viewer
+- With only the `raw` layer: Creates an [McapMessage](../../reference/types/archetypes/mcap_message.md) containing the original CDR-encoded message bytes
+- With both layers enabled: All representations coexist on the same entity path `/robot/camera/image_raw`
 
 ## Schema and statistics layers
 

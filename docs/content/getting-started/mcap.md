@@ -36,16 +36,16 @@ rerun output.rrd
 
 ## Layered architecture
 
-Rerun uses a _layered architecture_ to process MCAP files at different levels of abstraction. This design allows the same MCAP file to be processed in multiple ways simultaneously, from raw bytes to semantically meaningful visualizations.
+Rerun uses a _layered architecture_ to process MCAP files at different levels of abstraction. This design allows the same MCAP file to be ingested in multiple ways simultaneously, from raw bytes to semantically meaningful visualizations.
 
-Each layer extracts different types of information from the same MCAP data:
+Each layer extracts different types of information from the MCAP source:
 
 - **`raw`**: Logs the unprocessed message bytes as Rerun blobs without any interpretation
 - **`schema`**: Extracts metadata about channels, topics, and schemas
 - **`stats`**: Extracts file-level metrics like message counts, time ranges, and channel statistics
 - **`protobuf`**: Automatically decodes protobuf-encoded messages using reflection
 - **`ros2msg`**: Provides semantic conversion of common ROS2 message types into Rerun's visualization components
-- **`recording_info`**: Extracts recording metadata and session information
+- **`recording_info`**: Extracts recording metadata such as message counts, start time, and session information
 
 By default, Rerun processes MCAP files with all layers active to provide the most comprehensive view of your data. You can also choose to activate only specific layers that are relevant to your use case.
 
