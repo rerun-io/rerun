@@ -278,11 +278,14 @@ impl TableProvider for DataframeQueryTableProvider {
         let mut query_expression = self.query_expression.clone();
 
         // Find the first column selection that is a component
-        let filters = filters.iter().collect::<Vec<_>>();
-        query_expression.filtered_is_not_null = Self::compute_column_is_neq_null_filter(&filters)
-            .into_iter()
-            .flatten()
-            .next();
+        if query_expression.filtered_is_not_null.is_none() {
+            let filters = filters.iter().collect::<Vec<_>>();
+            query_expression.filtered_is_not_null =
+                Self::compute_column_is_neq_null_filter(&filters)
+                    .into_iter()
+                    .flatten()
+                    .next();
+        }
 
         crate::PartitionStreamExec::try_new(
             &self.schema,
