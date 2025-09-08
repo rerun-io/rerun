@@ -35,23 +35,28 @@ pub const MAX_ARROW_LIST_ITEMS: usize = 10;
 
 /// Arrow display options.
 ///
-/// Max item limits will not affect the list_item based ui, that will always show all items.
+/// Max item limits will not affect the `list_item` based ui, that will always show all items.
 pub struct DisplayOptions<'a> {
     /// Format options for items formatted with arrows built-in formatter.
     pub format_options: FormatOptions<'a>,
+
     /// How many items should be shown for arrays that have nested items?
     pub max_nested_array_items: usize,
+
     /// How many items should be shown for arrays that do not have nested items?
     pub max_array_items: usize,
+
     /// How many items should be shown for maps?
     pub max_map_items: usize,
+
     /// How many items should be shown for structs?
     pub max_struct_items: usize,
+
     /// Each nested level, by how much should the number of shown items decrease?
     pub decrease_nested_items_per_nested_level: usize,
 }
 
-impl<'a> Default for DisplayOptions<'a> {
+impl Default for DisplayOptions<'_> {
     fn default() -> Self {
         Self {
             format_options: FormatOptions::default()
@@ -66,7 +71,7 @@ impl<'a> Default for DisplayOptions<'a> {
     }
 }
 
-impl<'a> DisplayOptions<'a> {
+impl DisplayOptions<'_> {
     fn nested(&self) -> Self {
         Self {
             format_options: self.format_options.clone(),
@@ -473,7 +478,7 @@ fn write_list(
     values: &dyn ShowIndex,
 ) -> EmptyArrowResult {
     f.append_syntax("[");
-    if max_items == 0 && range.len() > 0 {
+    if max_items == 0 && !range.is_empty() {
         f.append_syntax("…");
     } else {
         if let Some(idx) = range.next() {
@@ -605,6 +610,7 @@ impl<'a> ShowIndexState<'a> for &'a FixedSizeListArray {
 
 /// Pairs a boxed [`ShowIndex`] with its field name
 type FieldDisplay<'a> = (&'a Field, Box<dyn ShowIndex + 'a>);
+
 struct FieldDisplayState<'a> {
     items: Vec<FieldDisplay<'a>>,
     max_items: usize,
@@ -713,7 +719,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
         let mut iter = start..end;
 
         f.append_syntax("{");
-        if *max_items == 0 && iter.len() > 0 {
+        if *max_items == 0 && !iter.is_empty() {
             f.append_syntax("…");
         } else {
             if let Some(idx) = iter.next() {
