@@ -8,19 +8,21 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Union
 
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import (
-    IS_NUMPY_2,
     BaseBatch,
 )
 from .._converters import (
     to_np_float32,
 )
+from .._numpy_compatibility import asarray
 from .mat4x4_ext import Mat4x4Ext
+
+if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
 
 __all__ = ["Mat4x4", "Mat4x4ArrayLike", "Mat4x4Batch", "Mat4x4Like"]
 
@@ -73,13 +75,7 @@ class Mat4x4(Mat4x4Ext):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Mat4x4Ext in mat4x4_ext.py
-        if IS_NUMPY_2:
-            return np.asarray(self.flat_columns, dtype=dtype, copy=copy)
-        else:
-            if copy is not None:
-                return np.array(self.flat_columns, dtype=dtype, copy=copy)
-            else:
-                return np.asarray(self.flat_columns, dtype=dtype)
+        return asarray(self.flat_columns, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of Mat4x4Ext in mat4x4_ext.py

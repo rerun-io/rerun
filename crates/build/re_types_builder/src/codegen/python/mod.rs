@@ -426,6 +426,7 @@ impl PythonCodeGenerator {
             import pyarrow as pa
             import uuid
 
+            from {rerun_path}_numpy_compatibility import asarray
             from {rerun_path}error_utils import catch_and_log_exceptions
             from {rerun_path}_baseclasses import (
                 Archetype,
@@ -436,7 +437,6 @@ impl PythonCodeGenerator {
                 ComponentDescriptor,
                 ComponentMixin,
                 DescribedComponentBatch,
-                IS_NUMPY_2
             )
             from {rerun_path}_converters import (
                 int_or_none,
@@ -1431,13 +1431,7 @@ fn quote_array_method_from_obj(
         "
         def __array__(self, dtype: npt.DTypeLike=None, copy: bool|None=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
-            if IS_NUMPY_2:
-                return np.asarray(self.{field_name}, dtype=dtype, copy=copy)
-            else:
-                if copy is not None:
-                    return np.array(self.{field_name}, dtype=dtype, copy=copy)
-                else:
-                    return np.asarray(self.{field_name}, dtype=dtype)
+                return asarray(self.{field_name}, dtype=dtype, copy=copy)
         ",
         ext_class.name, ext_class.file_name
     ))

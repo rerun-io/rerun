@@ -14,12 +14,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import (
-    IS_NUMPY_2,
     BaseBatch,
 )
 from .._converters import (
     to_np_float32,
 )
+from .._numpy_compatibility import asarray
 from .plane3d_ext import Plane3DExt
 
 __all__ = ["Plane3D", "Plane3DArrayLike", "Plane3DBatch", "Plane3DLike"]
@@ -45,13 +45,7 @@ class Plane3D(Plane3DExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Plane3DExt in plane3d_ext.py
-        if IS_NUMPY_2:
-            return np.asarray(self.xyzd, dtype=dtype, copy=copy)
-        else:
-            if copy is not None:
-                return np.array(self.xyzd, dtype=dtype, copy=copy)
-            else:
-                return np.asarray(self.xyzd, dtype=dtype)
+        return asarray(self.xyzd, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of Plane3DExt in plane3d_ext.py

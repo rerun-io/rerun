@@ -12,16 +12,6 @@ from rerun_bindings import ComponentDescriptor
 
 from .error_utils import catch_and_log_exceptions
 
-IS_NUMPY_2 = int(np.__version__.split(".")[0]) >= 2
-
-if not IS_NUMPY_2:
-    import warnings
-    warnings.warn(
-        "numpy 1 detected. Rerun has only been tested with numpy 2.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
 T = TypeVar("T")
 
 

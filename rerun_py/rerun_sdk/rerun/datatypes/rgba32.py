@@ -14,9 +14,9 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import (
-    IS_NUMPY_2,
     BaseBatch,
 )
+from .._numpy_compatibility import asarray
 from .rgba32_ext import Rgba32Ext
 
 __all__ = ["Rgba32", "Rgba32ArrayLike", "Rgba32Batch", "Rgba32Like"]
@@ -47,13 +47,7 @@ class Rgba32(Rgba32Ext):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Rgba32Ext in rgba32_ext.py
-        if IS_NUMPY_2:
-            return np.asarray(self.rgba, dtype=dtype, copy=copy)
-        else:
-            if copy is not None:
-                return np.array(self.rgba, dtype=dtype, copy=copy)
-            else:
-                return np.asarray(self.rgba, dtype=dtype)
+        return asarray(self.rgba, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.rgba)

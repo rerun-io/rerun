@@ -14,12 +14,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import (
-    IS_NUMPY_2,
     BaseBatch,
 )
 from .._converters import (
     to_np_uint8,
 )
+from .._numpy_compatibility import asarray
 from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = ["ViewCoordinates", "ViewCoordinatesArrayLike", "ViewCoordinatesBatch", "ViewCoordinatesLike"]
@@ -71,13 +71,7 @@ class ViewCoordinates(ViewCoordinatesExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
-        if IS_NUMPY_2:
-            return np.asarray(self.coordinates, dtype=dtype, copy=copy)
-        else:
-            if copy is not None:
-                return np.array(self.coordinates, dtype=dtype, copy=copy)
-            else:
-                return np.asarray(self.coordinates, dtype=dtype)
+        return asarray(self.coordinates, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py

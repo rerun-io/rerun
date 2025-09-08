@@ -13,12 +13,12 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
-    IS_NUMPY_2,
     BaseBatch,
 )
 from rerun._converters import (
     float_or_none,
 )
+from rerun._numpy_compatibility import asarray
 
 __all__ = ["AffixFuzzer2", "AffixFuzzer2ArrayLike", "AffixFuzzer2Batch", "AffixFuzzer2Like"]
 
@@ -35,13 +35,7 @@ class AffixFuzzer2:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer2Ext in affix_fuzzer2_ext.py
-        if IS_NUMPY_2:
-            return np.asarray(self.single_float_optional, dtype=dtype, copy=copy)
-        else:
-            if copy is not None:
-                return np.array(self.single_float_optional, dtype=dtype, copy=copy)
-            else:
-                return np.asarray(self.single_float_optional, dtype=dtype)
+        return asarray(self.single_float_optional, dtype=dtype, copy=copy)
 
 
 AffixFuzzer2Like = AffixFuzzer2

@@ -14,9 +14,9 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import (
-    IS_NUMPY_2,
     BaseBatch,
 )
+from .._numpy_compatibility import asarray
 
 __all__ = ["Float32", "Float32ArrayLike", "Float32Batch", "Float32Like"]
 
@@ -35,13 +35,7 @@ class Float32:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Float32Ext in float32_ext.py
-        if IS_NUMPY_2:
-            return np.asarray(self.value, dtype=dtype, copy=copy)
-        else:
-            if copy is not None:
-                return np.array(self.value, dtype=dtype, copy=copy)
-            else:
-                return np.asarray(self.value, dtype=dtype)
+        return asarray(self.value, dtype=dtype, copy=copy)
 
     def __float__(self) -> float:
         return float(self.value)

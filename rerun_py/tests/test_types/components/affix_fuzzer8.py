@@ -13,7 +13,6 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
-    IS_NUMPY_2,
     BaseBatch,
     ComponentBatchMixin,
     ComponentMixin,
@@ -21,6 +20,7 @@ from rerun._baseclasses import (
 from rerun._converters import (
     float_or_none,
 )
+from rerun._numpy_compatibility import asarray
 
 __all__ = ["AffixFuzzer8", "AffixFuzzer8ArrayLike", "AffixFuzzer8Batch", "AffixFuzzer8Like"]
 
@@ -39,13 +39,7 @@ class AffixFuzzer8(ComponentMixin):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer8Ext in affix_fuzzer8_ext.py
-        if IS_NUMPY_2:
-            return np.asarray(self.single_float_optional, dtype=dtype, copy=copy)
-        else:
-            if copy is not None:
-                return np.array(self.single_float_optional, dtype=dtype, copy=copy)
-            else:
-                return np.asarray(self.single_float_optional, dtype=dtype)
+        return asarray(self.single_float_optional, dtype=dtype, copy=copy)
 
 
 AffixFuzzer8Like = AffixFuzzer8

@@ -14,12 +14,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import (
-    IS_NUMPY_2,
     BaseBatch,
 )
 from .._converters import (
     to_np_float64,
 )
+from .._numpy_compatibility import asarray
 from .dvec2d_ext import DVec2DExt
 
 __all__ = ["DVec2D", "DVec2DArrayLike", "DVec2DBatch", "DVec2DLike"]
@@ -39,13 +39,7 @@ class DVec2D(DVec2DExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of DVec2DExt in dvec2d_ext.py
-        if IS_NUMPY_2:
-            return np.asarray(self.xy, dtype=dtype, copy=copy)
-        else:
-            if copy is not None:
-                return np.array(self.xy, dtype=dtype, copy=copy)
-            else:
-                return np.asarray(self.xy, dtype=dtype)
+        return asarray(self.xy, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of DVec2DExt in dvec2d_ext.py

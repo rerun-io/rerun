@@ -14,9 +14,9 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import (
-    IS_NUMPY_2,
     BaseBatch,
 )
+from .._numpy_compatibility import asarray
 
 __all__ = ["KeypointId", "KeypointIdArrayLike", "KeypointIdBatch", "KeypointIdLike"]
 
@@ -42,13 +42,7 @@ class KeypointId:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of KeypointIdExt in keypoint_id_ext.py
-        if IS_NUMPY_2:
-            return np.asarray(self.id, dtype=dtype, copy=copy)
-        else:
-            if copy is not None:
-                return np.array(self.id, dtype=dtype, copy=copy)
-            else:
-                return np.asarray(self.id, dtype=dtype)
+        return asarray(self.id, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.id)

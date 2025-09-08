@@ -14,9 +14,9 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import (
-    IS_NUMPY_2,
     BaseBatch,
 )
+from .._numpy_compatibility import asarray
 from .time_int_ext import TimeIntExt
 
 __all__ = ["TimeInt", "TimeIntArrayLike", "TimeIntBatch", "TimeIntLike"]
@@ -32,13 +32,7 @@ class TimeInt(TimeIntExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of TimeIntExt in time_int_ext.py
-        if IS_NUMPY_2:
-            return np.asarray(self.value, dtype=dtype, copy=copy)
-        else:
-            if copy is not None:
-                return np.array(self.value, dtype=dtype, copy=copy)
-            else:
-                return np.asarray(self.value, dtype=dtype)
+        return asarray(self.value, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.value)
