@@ -4,7 +4,7 @@ use web_time::{Duration, Instant};
 use re_log_types::{AbsoluteTimeRange, TimeCell};
 use re_redap_browser::EXAMPLES_ORIGIN;
 use re_ui::{
-    UiExt as _, icons,
+    HasDesignTokens, UiExt as _, icons,
     list_item::PropertyContent,
     modal::{ModalHandler, ModalWrapper},
 };
@@ -130,17 +130,32 @@ impl ShareModal {
                 } else {
                     (
                         egui::Atom::grow(),
-                        &icons::URL,
+                        icons::URL.as_image().tint(ui.tokens().icon_inverse),
                         "Copy link",
                         egui::Atom::grow(),
                     )
                         .into_atoms()
                 };
-                let copy_link_response = ui.add(
-                    egui::Button::new(copy_link_label)
-                        .fill(ui.tokens().highlight_color)
-                        .min_size(egui::vec2(ui.available_width(), 20.0)),
-                );
+                let copy_link_response = ui
+                    .scope(|ui| {
+                        let tokens = ui.tokens();
+                        let visuals = &mut ui.style_mut().visuals;
+                        visuals.override_text_color = Some(tokens.text_inverse);
+
+                        let response = ui.ctx().read_response(ui.next_auto_id());
+                        let fill_color = if response.is_some_and(|r| r.hovered()) {
+                            tokens.bg_fill_inverse_hover
+                        } else {
+                            tokens.bg_fill_inverse
+                        };
+
+                        ui.add(
+                            egui::Button::new(copy_link_label)
+                                .fill(fill_color)
+                                .min_size(egui::vec2(ui.available_width(), 20.0)),
+                        )
+                    })
+                    .inner;
                 if copy_link_response.clicked() {
                     ui.ctx().copy_text(url_string.clone());
                     self.last_time_copied = Some(Instant::now());

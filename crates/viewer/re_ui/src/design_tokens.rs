@@ -217,6 +217,11 @@ pub struct DesignTokens {
 
     // Table filter UI
     pub table_filter_frame_stroke: Stroke,
+
+    pub bg_fill_inverse: Color32,
+    pub bg_fill_inverse_hover: Color32,
+    pub text_inverse: Color32,
+    pub icon_inverse: Color32,
 }
 
 impl DesignTokens {
@@ -358,6 +363,11 @@ impl DesignTokens {
 
             code_keyword_color: get_color("code_keyword_color"),
             table_filter_frame_stroke: get_stroke("table_filter_frame_stroke"),
+
+            bg_fill_inverse: get_color("bg_fill_inverse"),
+            bg_fill_inverse_hover: get_color("bg_fill_inverse-hover"),
+            text_inverse: get_color("text_inverse"),
+            icon_inverse: get_color("icon_inverse"),
         })
     }
 

@@ -288,6 +288,19 @@
       "color": "{Gray.400}",
       "width": 1
     },
+
+    "bg_fill_inverse": {
+      "color": "{Gray.250}"
+    },
+    "bg_fill_inverse-hover": {
+      "color": "{Gray.150}"
+    },
+    "text_inverse": {
+      "color": "{Gray.1000}"
+    },
+    "icon_inverse": {
+      "color": "{Gray.1000}"
+    },
   },
 
   "alert_success": {
