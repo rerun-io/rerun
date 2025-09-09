@@ -9,7 +9,7 @@ use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
     ScalarUDFImpl, Signature, TypeSignature, Volatility,
 };
-use datafusion::prelude::{Column, Expr, array_has, array_to_string, col, lit, lower};
+use datafusion::prelude::{Column, Expr, array_has, array_to_string, col, contains, lit, lower};
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum FilterError {
@@ -208,7 +208,7 @@ impl FilterOperation {
                     }
                 };
 
-                Ok(contains_patch(lower(operand), lower(lit(query_string))))
+                Ok(contains(lower(operand), lower(lit(query_string))))
             }
 
             Self::BooleanEquals(value) => match field.data_type() {
@@ -424,15 +424,4 @@ impl ScalarUDFImpl for FilterOperationUdf {
             }
         }
     }
-}
-
-// TODO(ab): this is a workaround for https://github.com/apache/datafusion/pull/16046. Next time we
-// update datafusion, this should break compilation. Remove this function and replace
-// `contains_patch` by `datafusion::prelude::contains` in the method above.
-fn contains_patch(arg1: Expr, arg2: Expr) -> Expr {
-    // make sure we break compilation when we update datafusion
-    #[cfg(debug_assertions)]
-    let _ = datafusion::prelude::contains();
-
-    datafusion::functions::string::contains().call(<[_]>::into_vec(Box::new([arg1, arg2])))
 }

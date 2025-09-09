@@ -223,8 +223,8 @@ impl DataframeQueryTableProvider {
             }
             Expr::BinaryExpr(binary) => {
                 if binary.op == Operator::NotEq
-                    && let (Expr::Column(col), Expr::Literal(sv))
-                    | (Expr::Literal(sv), Expr::Column(col)) =
+                    && let (Expr::Column(col), Expr::Literal(sv, _))
+                    | (Expr::Literal(sv, _), Expr::Column(col)) =
                         (binary.left.as_ref(), binary.right.as_ref())
                     && sv.is_null()
                 {
