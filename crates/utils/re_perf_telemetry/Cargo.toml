@@ -52,6 +52,7 @@ axum.workspace = true
 base64.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 http.workspace = true
+memory-stats = { workspace = true, features = ["always_use_statm"] }
 opentelemetry = { workspace = true, features = ["metrics"] }
 opentelemetry-appender-tracing = { workspace = true, features = [
   "experimental_use_tracing_span_context",
@@ -76,6 +77,7 @@ tracing-subscriber = { workspace = true, features = [
 ] }
 prometheus-client.workspace = true
 tokio.workspace = true
+
 
 # External (optional)
 tracing-tracy = { workspace = true, optional = true }

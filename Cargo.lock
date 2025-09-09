@@ -8009,6 +8009,7 @@ dependencies = [
  "base64 0.22.1",
  "clap",
  "http",
+ "memory-stats",
  "opentelemetry",
  "opentelemetry-appender-tracing",
  "opentelemetry-otlp",
