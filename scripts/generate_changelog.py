@@ -49,6 +49,40 @@ class CommitInfo:
     pr_number: int | None
 
 
+def get_rerun_org_members() -> set[str]:
+    """Fetch all members of the rerun-io GitHub organization."""
+    global _org_members_cache
+
+    if _org_members_cache is not None:
+        return _org_members_cache
+
+    try:
+        # Use gh CLI to fetch organization members
+        result = subprocess.run(
+            ["gh", "api", f"/orgs/{OWNER}/members", "--paginate", "--jq", ".[].login"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        members = set()
+        for line in result.stdout.strip().split("\n"):
+            if line.strip():  # Skip empty lines
+                members.add(line.strip())
+
+        _org_members_cache = members
+        eprint(f"Fetched {len(members)} members from rerun-io organization")
+        return members
+
+    except subprocess.CalledProcessError as e:
+        eprint(
+            f"ERROR fetching org members: {e.stderr.strip()}. You need to install the GitHub CLI tools: https://cli.github.com/ and authenticate with github."
+        )
+        # Return empty set as fallback to avoid breaking the script
+        _org_members_cache = set()
+        return _org_members_cache
+
+
 # Slow
 def fetch_pr_info_from_commit_info(commit_info: CommitInfo) -> PrInfo | None:
     if commit_info.pr_number is None:
