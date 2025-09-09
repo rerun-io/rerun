@@ -51,6 +51,9 @@ def is_valid_todo_part(part: str) -> bool:
     if re.match(r"^[a-z][a-z0-9_]+$", part):
         return True  # user-name
 
+    if re.match(r"^RR-\d+$", part):
+        return True  # linear issue
+
     return False
 
 
