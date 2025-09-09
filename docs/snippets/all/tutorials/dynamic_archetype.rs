@@ -5,7 +5,7 @@ use std::sync::Arc;
 use rerun::external::arrow;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_any_values").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dynamic_archetype").spawn()?;
 
     let new_archetype = rerun::DynamicArchetype::new("MyArchetype")
         // Using arbitrary Arrow data.

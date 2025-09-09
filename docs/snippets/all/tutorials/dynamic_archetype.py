@@ -2,12 +2,12 @@
 
 import rerun as rr
 
-rr.init("rerun_example_any_values", spawn=True)
+rr.init("rerun_example_dynamic_archetype", spawn=True)
 
 rr.log(
-    "any_values",
+    "new_archetype",
     rr.DynamicArchetype(
-        archetype="MySoftwareArchetype",
+        archetype="MyArchetype",
         components={
             # Using arbitrary Arrow data.
             "homepage": "https://www.rerun.io",
