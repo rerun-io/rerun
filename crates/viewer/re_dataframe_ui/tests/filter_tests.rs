@@ -1,13 +1,16 @@
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, BooleanArray, ListArray, StringArray};
+use arrow::array::{
+    Array, ArrayRef, BooleanArray, Float64Array, Int64Array, Int64Builder, ListArray, ListBuilder,
+    StringArray,
+};
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::record_batch::RecordBatch;
 use datafusion::catalog::MemTable;
 use datafusion::prelude::{DataFrame, SessionContext};
 
-use re_dataframe_ui::{Filter, FilterOperation};
+use re_dataframe_ui::{ComparisonOperator, Filter, FilterOperation};
 use re_viewer_context::external::tokio;
 
 /// A single column of test data, with convenient constructors.
@@ -23,6 +26,86 @@ impl TestColumn {
         let field = Field::new(name, array.data_type().clone(), nullable);
 
         Self { array, field }
+    }
+
+    fn ints() -> Self {
+        Self::new("int", Int64Array::from(vec![1, 2, 3, 4, 5]), false)
+    }
+
+    fn ints_nulls() -> Self {
+        Self::new(
+            "int",
+            Int64Array::from(vec![Some(1), Some(2), None, Some(4), Some(5)]),
+            true,
+        )
+    }
+
+    fn int_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
+        let values_builder = Int64Builder::new();
+        let mut builder = ListBuilder::new(values_builder);
+
+        builder.values().append_value(1);
+        builder.append(true);
+
+        builder.values().append_value(2);
+        builder.append(true);
+
+        builder.append(true);
+
+        builder.values().append_value(3);
+        builder.values().append_value(4);
+        builder.values().append_value(5);
+        builder.append(true);
+
+        if outer_nullable {
+            builder.append(false);
+        }
+
+        if inner_nullable {
+            builder.values().append_null();
+            builder.append(true);
+
+            builder.values().append_null();
+            builder.values().append_value(6);
+            builder.append(true);
+
+            builder.values().append_value(7);
+            builder.values().append_null();
+            builder.append(true);
+        }
+        let int_lists = builder.finish();
+
+        Self::new("int_list", int_lists, outer_nullable)
+    }
+
+    fn floats(nullable: bool) -> Self {
+        Self::new(
+            "float",
+            Float64Array::from(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
+            nullable,
+        )
+    }
+
+    fn floats_nulls() -> Self {
+        Self::new(
+            "float",
+            Float64Array::from(vec![Some(1.0), Some(2.0), None, Some(4.0), Some(5.0)]),
+            true,
+        )
+    }
+
+    fn float_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
+        let values = Float64Array::from(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
+        let offsets = OffsetBuffer::new(vec![0i32, 2, 4, 6].into());
+        let float_lists = ListArray::try_new(
+            Arc::new(Field::new("item", DataType::Float64, inner_nullable)),
+            offsets,
+            Arc::new(values),
+            None,
+        )
+        .expect("failed to create a float list array");
+
+        Self::new("float_list", float_lists, outer_nullable)
     }
 
     fn strings(nullable: bool) -> Self {
@@ -157,7 +240,7 @@ impl TestSessionContext {
 }
 
 macro_rules! filter_snapshot {
-    ($filter:expr, $col:expr, $case:literal) => {
+    ($filter:expr, $col:expr, $case:expr) => {
         let filter = $filter;
         let result = TestSessionContext::new([$col])
             .to_filtered_record_batch(&filter)
@@ -170,6 +253,35 @@ macro_rules! filter_snapshot {
             insta::assert_debug_snapshot!((filter, result));
         });
     };
+}
+
+#[tokio::test]
+async fn test_int_compares() {
+    for op in ComparisonOperator::ALL {
+        filter_snapshot!(
+            Filter::new(
+                "int",
+                FilterOperation::IntCompares {
+                    operator: *op,
+                    value: 3
+                }
+            ),
+            TestColumn::ints(),
+            format!("{}3", op.operator_text())
+        );
+
+        filter_snapshot!(
+            Filter::new(
+                "int",
+                FilterOperation::IntCompares {
+                    operator: *op,
+                    value: 4
+                }
+            ),
+            TestColumn::ints_nulls(),
+            format!("nulls_{}4", op.operator_text())
+        );
+    }
 }
 
 #[tokio::test]
