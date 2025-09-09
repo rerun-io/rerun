@@ -16,10 +16,11 @@
 use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
-    DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
+    DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference, PointCloudBuilder,
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     include_shader_module,
+    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
     wgpu_resources::GpuRenderPipelinePoolAccessor,
 };
 use bitflags::bitflags;
@@ -112,6 +113,26 @@ pub struct PointCloudDrawData {
 
 impl DrawData for PointCloudDrawData {
     type Renderer = PointCloudRenderer;
+
+    fn collect_drawables(
+        &self,
+        _view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        // TODO(#1611): transparency, split drawables for some semblence of transparency ordering.
+        // TODO(#1025, #4787): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
+
+        for (batch_idx, batch) in self.batches.iter().enumerate() {
+            collector.add_drawable(
+                batch.active_phases,
+                DrawDataDrawable {
+                    // TODO(andreas): Don't have distance information yet. For now just always draw points last since they're quite expensive.
+                    distance_sort_key: f32::MAX,
+                    draw_data_payload: batch_idx as _,
+                },
+            );
+        }
+    }
 }
 
 /// Data that is valid for a batch of point cloud points.
@@ -421,14 +442,6 @@ impl PointCloudRenderer {
 impl Renderer for PointCloudRenderer {
     type RendererDrawData = PointCloudDrawData;
 
-    fn participated_phases() -> &'static [DrawPhase] {
-        &[
-            DrawPhase::OutlineMask,
-            DrawPhase::Opaque,
-            DrawPhase::PickingLayer,
-        ]
-    }
-
     fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
 
@@ -588,30 +601,39 @@ impl Renderer for PointCloudRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
-        let (pipeline_handle, bind_group_all_points) = match phase {
-            DrawPhase::OutlineMask => (
-                self.render_pipeline_outline_mask,
-                &draw_data.bind_group_all_points_outline_mask,
-            ),
-            DrawPhase::Opaque => (self.render_pipeline_color, &draw_data.bind_group_all_points),
-            DrawPhase::PickingLayer => (
-                self.render_pipeline_picking_layer,
-                &draw_data.bind_group_all_points,
-            ),
+        let pipeline_handle = match phase {
+            DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
+            DrawPhase::Opaque => self.render_pipeline_color,
+            DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
-        };
-        let Some(bind_group_all_points) = bind_group_all_points else {
-            return Ok(()); // No points submitted.
         };
         let pipeline = render_pipelines.get(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);
-        pass.set_bind_group(1, bind_group_all_points, &[]);
 
-        for batch in &draw_data.batches {
-            if batch.active_phases.contains(phase) {
+        for DrawInstruction {
+            draw_data,
+            drawables,
+        } in draw_instructions
+        {
+            let bind_group_all_points = match phase {
+                DrawPhase::OutlineMask => &draw_data.bind_group_all_points_outline_mask,
+                DrawPhase::Opaque | DrawPhase::PickingLayer => &draw_data.bind_group_all_points,
+                _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
+            };
+            let Some(bind_group_all_points) = bind_group_all_points else {
+                debug_assert!(
+                    false,
+                    "Point data bind group for draw phase {phase:?} was not set despite being submitted for drawing."
+                );
+                continue;
+            };
+            pass.set_bind_group(1, bind_group_all_points, &[]);
+
+            for drawable in *drawables {
+                let batch = &draw_data.batches[drawable.draw_data_payload as usize];
                 pass.set_bind_group(2, &batch.bind_group, &[]);
                 pass.draw(batch.vertex_range.clone(), 0..1);
             }

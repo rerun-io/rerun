@@ -937,6 +937,9 @@ class ComponentDescriptor:
     def or_with_overrides(self, archetype: str | None = None, component_type: str | None = None) -> ComponentDescriptor:
         """Sets `archetype` and `component_type` to the given one iff it's not already set."""
 
+    def with_builtin_archetype(self, archetype: str) -> ComponentDescriptor:
+        """Sets `archetype` in a format similar to built-in archetypes."""
+
 #
 # sinks
 #
@@ -1046,6 +1049,7 @@ def set_callback_sink_blueprint(
 def serve_grpc(
     grpc_port: int | None,
     server_memory_limit: str,
+    newest_first: bool = False,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
 ) -> str:

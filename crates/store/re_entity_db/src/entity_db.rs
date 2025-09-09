@@ -50,6 +50,12 @@ pub enum EntityDbClass<'a> {
     Blueprint,
 }
 
+impl EntityDbClass<'_> {
+    pub fn is_example(&self) -> bool {
+        matches!(self, EntityDbClass::ExampleRecording)
+    }
+}
+
 // ---
 
 /// An in-memory database built from a stream of [`LogMsg`]es.

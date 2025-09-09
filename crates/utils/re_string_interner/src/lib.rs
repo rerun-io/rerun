@@ -94,7 +94,7 @@ impl nohash_hasher::IsEnabled for InternedString {}
 impl std::cmp::PartialOrd for InternedString {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.string.cmp(other.string))
+        Some(self.cmp(other))
     }
 }
 

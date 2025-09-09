@@ -649,7 +649,7 @@ impl<'o> KnownObjects<'o> {
 
 /// Returns `true` if the given name has not been released yet.
 fn is_speculative(any_name: &str) -> anyhow::Result<bool> {
-    let is_pre_0_21_release = {
+    let is_pre_0_25_release = {
         // Reminder of what those look like:
         // env!("CARGO_PKG_VERSION") = "0.21.0-alpha.1+dev"
         // env!("CARGO_PKG_VERSION_MAJOR") = "0"
@@ -660,29 +660,19 @@ fn is_speculative(any_name: &str) -> anyhow::Result<bool> {
         let minor: u32 = env!("CARGO_PKG_VERSION_MINOR")
             .parse()
             .context("couldn't parse minor crate version")?;
+        let pre = env!("CARGO_PKG_VERSION_PRE");
 
-        minor < 21
+        minor < 25 || !pre.is_empty()
     };
 
-    const RELEASED_IN_0_21: &[&str] = &[
+    const RELEASED_IN_0_25: &[&str] = &[
         // archetypes & components
-        "GraphEdge",
-        "GraphEdges",
-        "GraphNode",
-        "GraphNodes",
-        "GraphView",
-        "Plane3D",
+        "DynamicArchetype",
         // snippets
-        "concepts/explicit_recording",
-        "descriptors/descr_builtin_archetype",
-        "descriptors/descr_builtin_component",
-        "descriptors/descr_custom_archetype",
-        "descriptors/descr_custom_component",
-        "howto/any_values_send_columns",
-        "views/graph",
+        "tutorials/dynamic_archetype",
     ];
 
-    let is_speculative = is_pre_0_21_release && RELEASED_IN_0_21.contains(&any_name);
+    let is_speculative = is_pre_0_25_release && RELEASED_IN_0_25.contains(&any_name);
 
     Ok(is_speculative)
 }

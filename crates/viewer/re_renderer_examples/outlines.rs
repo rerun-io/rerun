@@ -75,7 +75,7 @@ impl framework::Example for Outlines {
                 }),
                 ..Default::default()
             },
-        );
+        )?;
 
         let outline_mask_large_mesh = match ((secs_since_startup * 0.5) as u64) % 5 {
             0 => OutlineMaskPreference::NONE,
@@ -122,13 +122,14 @@ impl framework::Example for Outlines {
             })
             .collect_vec();
 
-        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
+        view_builder.queue_draw(
             re_ctx,
-            Default::default(),
-        ));
-        view_builder.queue_draw(re_renderer::renderer::MeshDrawData::new(
-            re_ctx, &instances,
-        )?);
+            re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx, Default::default()),
+        );
+        view_builder.queue_draw(
+            re_ctx,
+            re_renderer::renderer::MeshDrawData::new(re_ctx, &instances)?,
+        );
 
         let command_buffer = view_builder.draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 

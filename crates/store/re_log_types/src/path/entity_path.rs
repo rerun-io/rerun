@@ -608,7 +608,7 @@ impl std::cmp::Ord for EntityPath {
 impl std::cmp::PartialOrd for EntityPath {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.parts.cmp(&other.parts))
+        Some(self.cmp(other))
     }
 }
 

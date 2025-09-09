@@ -16,6 +16,7 @@ from attrs import define, field
 from .._baseclasses import (
     BaseBatch,
 )
+from .._numpy_compatibility import asarray
 
 __all__ = ["UInt64", "UInt64ArrayLike", "UInt64Batch", "UInt64Like"]
 
@@ -34,7 +35,7 @@ class UInt64:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UInt64Ext in uint64_ext.py
-        return np.asarray(self.value, dtype=dtype, copy=copy)
+        return asarray(self.value, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.value)

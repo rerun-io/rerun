@@ -25,25 +25,9 @@ from tqdm import tqdm
 OWNER = "rerun-io"
 REPO = "rerun"
 INCLUDE_LABELS = False  # It adds quite a bit of visual noise
-OFFICIAL_RERUN_DEVS = [
-    "abey79",
-    "aedm",
-    "andrea-reale",
-    "emilk",
-    "gavrelina",
-    "grtlr",
-    "jleibs",
-    "jprochazk",
-    "lucasmerlin",
-    "nikolausWest",
-    "ntjohnson1",
-    "oxkitsune",
-    "teh-cmc",
-    "thz",
-    "timsaucer",
-    "Wumpf",
-    "zehiko",
-]
+
+# Cache for organization members to avoid repeated API calls
+_org_members_cache: set[str] | None = None
 
 
 def eprint(*args: Any, **kwargs: Any) -> None:
@@ -83,6 +67,43 @@ def get_github_token() -> str:
 
     eprint("ERROR: expected a GitHub token in the environment variable GH_ACCESS_TOKEN or in ~/.githubtoken")
     sys.exit(1)
+
+
+def get_rerun_org_members() -> set[str]:
+    """Fetch all members of the rerun-io GitHub organization."""
+    global _org_members_cache
+
+    if _org_members_cache is not None:
+        return _org_members_cache
+
+    gh_access_token = get_github_token()
+    headers = {"Authorization": f"Token {gh_access_token}"}
+
+    members = set()
+    page = 1
+    per_page = 100
+
+    while True:
+        url = f"https://api.github.com/orgs/{OWNER}/members?page={page}&per_page={per_page}"
+        response = requests.get(url, headers=headers)
+
+        if response.status_code != 200:
+            raise Exception(
+                f"ERROR fetching org members {url}: {response.status_code} - {response.json().get('message', 'Unknown error')}"
+            )
+
+        json_data = response.json()
+        if not json_data:  # Empty response means we've reached the end
+            break
+
+        for member in json_data:
+            members.add(member["login"])
+
+        page += 1
+
+    _org_members_cache = members
+    eprint(f"Fetched {len(members)} members from rerun-io organization")
+    return members
 
 
 # Slow
@@ -240,7 +261,7 @@ def main() -> None:
 
             if pr_info is not None:
                 gh_user_name = pr_info.gh_user_name
-                if gh_user_name not in OFFICIAL_RERUN_DEVS:
+                if gh_user_name not in get_rerun_org_members():
                     summary += f" (thanks [@{gh_user_name}](https://github.com/{gh_user_name})!)"
 
             if labels == ["⛴ release"]:
