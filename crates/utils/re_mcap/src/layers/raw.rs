@@ -4,7 +4,6 @@ use re_types::archetypes::McapMessage;
 
 use crate::{
     Error, LayerIdentifier, MessageLayer,
-    layers::{McapProtobufLayer, McapRos2Layer},
     parsers::{MessageParser, ParserContext, util::blob_list_builder},
 };
 
@@ -56,38 +55,8 @@ impl MessageParser for RawMcapMessageParser {
 ///
 /// The result will be verbatim copies of the original messages without decoding
 /// or imposing any semantic meaning on the data.
-///
-/// When used as a fallback layer, it only processes channels that cannot be handled
-/// by other semantic layers (protobuf and ROS2).
-#[derive(Debug)]
-pub struct McapRawLayer {
-    /// Whether to act as a fallback layer for channels not handled by semantic layers.
-    fallback_enabled: bool,
-
-    /// Protobuf layer used to check channel support when in fallback mode.
-    protobuf_layer: McapProtobufLayer,
-
-    /// ROS2 layer used to check channel support when in fallback mode.
-    ros2_layer: McapRos2Layer,
-}
-
-impl Default for McapRawLayer {
-    fn default() -> Self {
-        Self {
-            fallback_enabled: true,
-            protobuf_layer: McapProtobufLayer::default(),
-            ros2_layer: McapRos2Layer::default(),
-        }
-    }
-}
-
-impl McapRawLayer {
-    /// Enables or disables fallback mode for the raw layer.
-    pub fn with_fallback_enabled(mut self, enabled: bool) -> Self {
-        self.fallback_enabled = enabled;
-        self
-    }
-}
+#[derive(Default, Debug)]
+pub struct McapRawLayer;
 
 impl MessageLayer for McapRawLayer {
     fn identifier() -> LayerIdentifier {
@@ -95,20 +64,14 @@ impl MessageLayer for McapRawLayer {
     }
 
     fn init(&mut self, summary: &::mcap::Summary) -> Result<(), Error> {
-        if self.fallback_enabled {
-            self.protobuf_layer.init(summary)?;
-            self.ros2_layer.init(summary)?;
-        }
+        let _ = summary; // nothing to do
         Ok(())
     }
 
     fn supports_channel(&self, channel: &mcap::Channel<'_>) -> bool {
-        if !self.fallback_enabled {
-            return true;
-        }
-
-        // In fallback mode, only handle channels that semantic layers cannot handle
-        !self.protobuf_layer.supports_channel(channel) && !self.ros2_layer.supports_channel(channel)
+        let _ = channel;
+        // Raw can capture any channel
+        true
     }
 
     fn message_parser(
@@ -116,10 +79,6 @@ impl MessageLayer for McapRawLayer {
         _channel: &mcap::Channel<'_>,
         num_rows: usize,
     ) -> Option<Box<dyn MessageParser>> {
-        if !self.supports_channel(_channel) {
-            return None;
-        }
-
         Some(Box::new(RawMcapMessageParser::new(num_rows)))
     }
 }

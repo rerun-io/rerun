@@ -84,7 +84,13 @@ impl DataLoader for McapLoader {
         std::thread::Builder::new()
             .name(format!("load_mcap({path:?}"))
             .spawn(move || {
-                match load_mcap_mmap(&path, &settings, &tx, selected_layers, raw_fallback_enabled) {
+                match load_mcap_mmap(
+                    &path,
+                    &settings,
+                    &tx,
+                    &selected_layers,
+                    raw_fallback_enabled,
+                ) {
                     Ok(_) => {}
                     Err(err) => {
                         re_log::error!("Failed to load MCAP file: {err}");
@@ -126,7 +132,7 @@ impl DataLoader for McapLoader {
                     &filepath,
                     &settings,
                     &tx,
-                    selected_layers,
+                    &selected_layers,
                     raw_fallback_enabled,
                 ) {
                     Ok(_) => {}
@@ -169,7 +175,7 @@ fn load_mcap_mmap(
     filepath: &std::path::PathBuf,
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
-    selected_layers: SelectedLayers,
+    selected_layers: &SelectedLayers,
     raw_fallback_enabled: bool,
 ) -> std::result::Result<(), DataLoaderError> {
     use std::fs::File;
@@ -186,7 +192,7 @@ fn load_mcap(
     mcap: &[u8],
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
-    selected_layers: SelectedLayers,
+    selected_layers: &SelectedLayers,
     raw_fallback_enabled: bool,
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!();
@@ -229,21 +235,13 @@ fn load_mcap(
     let summary = re_mcap::read_summary(reader)?
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
-    let registry = LayerRegistry::all_with_raw_fallback(raw_fallback_enabled);
-
     // TODO(#10862): Add warning for channel that miss semantic information.
-
-    let mut empty = true;
-    for mut layer in registry.layers(selected_layers) {
-        re_tracing::profile_scope!("process-layer");
-        empty = false;
-        layer
-            .process(mcap, &summary, &mut send_chunk)
-            .with_context(|| "processing layers")?;
-    }
-    if empty {
-        re_log::warn_once!("No layers were selected");
-    }
+    LayerRegistry::all_with_raw_fallback(raw_fallback_enabled)
+        .select(selected_layers)
+        .plan(&summary)
+        .with_context(|| "Failed to create layer plan")?
+        .run(mcap, &summary, &mut send_chunk)
+        .with_context(|| "Failed to run layer plan")?;
 
     Ok(())
 }

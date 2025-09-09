@@ -75,7 +75,8 @@ impl ConvertCommand {
             )
         };
 
-        let loader: &dyn DataLoader = &McapLoader::with_raw_fallback(selected_layers, !*disable_raw_fallback);
+        let loader: &dyn DataLoader =
+            &McapLoader::with_raw_fallback(selected_layers, !*disable_raw_fallback);
 
         // TODO(#10862): This currently loads the entire file into memory.
         let (tx, rx) = std::sync::mpsc::channel::<LoadedData>();
