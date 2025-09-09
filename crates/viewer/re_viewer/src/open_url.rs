@@ -558,7 +558,7 @@ impl ViewerOpenUrl {
                     url_parameters.first().open_description()
                 } else {
                     ViewerOpenUrlDescription {
-                        category: "Open several URLs",
+                        category: "Several URLs",
                         target_short: Some(format!("{} URLs", url_parameters.len())),
                     }
                 }
