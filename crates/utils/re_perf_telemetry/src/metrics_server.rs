@@ -53,6 +53,8 @@ pub(crate) async fn start_metrics_server(
         }
     });
 
+    tracing::info!("Metrics server started on http://{bound_addr}/metrics");
+
     Ok(bound_addr)
 }
 

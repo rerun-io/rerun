@@ -463,10 +463,8 @@ impl Telemetry {
         // Start the metrics server - this will bind synchronously and return an error
         // if binding fails (e.g., port already in use), but the actual serving happens
         // asynchronously in a spawned task
-        let bound_addr =
-            crate::metrics_server::start_metrics_server(addr, reader_for_server).await?;
+        crate::metrics_server::start_metrics_server(addr, reader_for_server).await?;
 
-        tracing::info!("Metrics server started on {}", bound_addr);
         Ok(())
     }
 }
