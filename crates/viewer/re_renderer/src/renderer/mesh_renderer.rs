@@ -98,7 +98,7 @@ struct MeshBatch {
     ///
     /// We put all instances with outlines at the start of the instance buffer range, so this is always
     /// smaller or equal to `instance_end_index`.
-    /// If it is equal to `instance_end_index`, there are no meshes with outlines in this batch.
+    /// If it is equal to `instance_start_index`, there are no meshes with outlines in this batch.
     instance_end_index_with_outlines: u32,
 }
 
@@ -447,7 +447,6 @@ impl Renderer for MeshRenderer {
 
         pass.set_pipeline(pipeline);
 
-        // TODO(andreas): use drawables to orchestrate drawing.
         for DrawInstruction {
             draw_data,
             drawables,

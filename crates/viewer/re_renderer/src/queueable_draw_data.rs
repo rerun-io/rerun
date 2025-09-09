@@ -66,7 +66,7 @@ impl std::ops::Deref for QueueableDrawData {
 }
 
 impl QueueableDrawData {
-    /// Panics if the type `T` is not the underlying type of this draw data.
+    /// Panics if the type `D` is not the underlying type of this draw data.
     #[inline]
     pub(crate) fn expect_downcast<D: DrawData + Any + 'static>(&self) -> &D {
         self.0
