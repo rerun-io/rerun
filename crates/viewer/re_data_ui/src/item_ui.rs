@@ -2,6 +2,7 @@
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
+use re_entity_db::entity_db::EntityDbClass;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
@@ -696,6 +697,8 @@ pub fn entity_db_button_ui(
         entity_db.recording_info_property::<Name>(&RecordingInfo::descriptor_name())
     {
         Some(recording_name.to_string())
+    } else if let EntityDbClass::DatasetPartition(url) = entity_db.store_class() {
+        Some(url.partition_id.clone())
     } else {
         entity_db
             .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
