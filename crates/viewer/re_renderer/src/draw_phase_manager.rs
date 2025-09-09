@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-/// Darw data id within the [`DrawPhaseManager`].
+/// Draw data id within the [`DrawPhaseManager`].
 type DrawDataIndex = u32;
 
 /// Combined draw data index and rendering key.
@@ -26,7 +26,7 @@ type DrawDataIndex = u32;
 /// [`DrawDataIndex`] are already grouped by renderer.
 /// However, using just the higher 8 bits for [`RendererTypeId`] makes the process a lot simpler.
 /// We may reconsider this if we change the design such that variations of renderers are
-/// expressed in the [`RendererTypeId`] such that 8bit are no longer sufficient.
+/// expressed in the [`RendererTypeId`] such that 8 bit are no longer sufficient.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct PackedRenderingKeyAndDrawDataIndex(u32);
 
