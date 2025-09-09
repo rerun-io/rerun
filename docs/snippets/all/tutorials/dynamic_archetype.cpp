@@ -40,8 +40,7 @@ arrow::Status run_main() {
     ARROW_RETURN_NOT_OK(homepage_builder.Finish(&arrow_array));
     auto homepage = rerun::ComponentBatch::from_arrow_array(
         std::move(arrow_array),
-        rerun::ComponentDescriptor("MyArchetype:homepage")
-            .with_archetype("MyArchetype")
+        rerun::ComponentDescriptor("MyArchetype:homepage").with_archetype("MyArchetype")
     );
 
     arrow::StringBuilder repository_builder;
@@ -49,8 +48,7 @@ arrow::Status run_main() {
     ARROW_RETURN_NOT_OK(repository_builder.Finish(&arrow_array));
     auto repository = rerun::ComponentBatch::from_arrow_array(
         std::move(arrow_array),
-        rerun::ComponentDescriptor("MyArchetype:repository")
-            .with_archetype("MyArchetype")
+        rerun::ComponentDescriptor("MyArchetype:repository").with_archetype("MyArchetype")
     );
 
     rec.log("new_archetype", confidences, description, homepage, repository);
