@@ -16,88 +16,14 @@ use crate::cloud::v1alpha1::{
     GetDatasetSchemaResponse, RegisterWithDatasetResponse, ScanPartitionTableResponse,
     VectorDistanceMetric,
 };
-use crate::common::v1alpha1::ext::{
-    DatasetHandle, IfDuplicateBehavior, PartitionId, ScanParameters,
-};
+use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId};
 use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
 use crate::{TypeConversionError, missing_field};
-
-// --- GetPartitionTableSchemaRequest ---
-
-impl TryFrom<crate::cloud::v1alpha1::GetPartitionTableSchemaRequest> for re_log_types::EntryId {
-    type Error = TypeConversionError;
-
-    fn try_from(
-        value: crate::cloud::v1alpha1::GetPartitionTableSchemaRequest,
-    ) -> Result<Self, Self::Error> {
-        Ok(value
-            .dataset_id
-            .ok_or(missing_field!(
-                crate::cloud::v1alpha1::GetPartitionTableSchemaRequest,
-                "dataset_id"
-            ))?
-            .try_into()?)
-    }
-}
-
-// --- ScanPartitionTableRequest ---
-
-pub struct ScanPartitionTableRequest {
-    pub dataset_id: EntryId,
-    pub scan_parameters: Option<ScanParameters>,
-}
-
-impl TryFrom<crate::cloud::v1alpha1::ScanPartitionTableRequest> for ScanPartitionTableRequest {
-    type Error = TypeConversionError;
-
-    fn try_from(
-        value: crate::cloud::v1alpha1::ScanPartitionTableRequest,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            dataset_id: value
-                .dataset_id
-                .ok_or(missing_field!(
-                    crate::cloud::v1alpha1::ScanPartitionTableRequest,
-                    "dataset_id"
-                ))?
-                .try_into()?,
-            scan_parameters: value.scan_parameters.map(TryInto::try_into).transpose()?,
-        })
-    }
-}
-
-impl From<ScanPartitionTableRequest> for crate::cloud::v1alpha1::ScanPartitionTableRequest {
-    fn from(value: ScanPartitionTableRequest) -> Self {
-        Self {
-            dataset_id: Some(value.dataset_id.into()),
-            scan_parameters: value.scan_parameters.map(Into::into),
-        }
-    }
-}
-
-// --- GetDatasetSchemaRequest ---
-
-impl TryFrom<crate::cloud::v1alpha1::GetDatasetSchemaRequest> for re_log_types::EntryId {
-    type Error = TypeConversionError;
-
-    fn try_from(
-        value: crate::cloud::v1alpha1::GetDatasetSchemaRequest,
-    ) -> Result<Self, Self::Error> {
-        Ok(value
-            .dataset_id
-            .ok_or(missing_field!(
-                crate::cloud::v1alpha1::GetDatasetSchemaRequest,
-                "dataset_id"
-            ))?
-            .try_into()?)
-    }
-}
 
 // --- RegisterWithDatasetRequest ---
 
 #[derive(Debug)]
 pub struct RegisterWithDatasetRequest {
-    pub dataset_id: EntryId,
     pub data_sources: Vec<DataSource>,
     pub on_duplicate: IfDuplicateBehavior,
 }
@@ -109,17 +35,11 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterWithDatasetRequest> for RegisterWit
         value: crate::cloud::v1alpha1::RegisterWithDatasetRequest,
     ) -> Result<Self, Self::Error> {
         let crate::cloud::v1alpha1::RegisterWithDatasetRequest {
-            dataset_id,
             data_sources,
             on_duplicate,
         } = value;
+
         Ok(Self {
-            dataset_id: dataset_id
-                .ok_or(missing_field!(
-                    crate::cloud::v1alpha1::RegisterWithDatasetRequest,
-                    "dataset_id"
-                ))?
-                .try_into()?,
             data_sources: data_sources
                 .into_iter()
                 .map(TryInto::try_into)
@@ -132,7 +52,6 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterWithDatasetRequest> for RegisterWit
 impl From<RegisterWithDatasetRequest> for crate::cloud::v1alpha1::RegisterWithDatasetRequest {
     fn from(value: RegisterWithDatasetRequest) -> Self {
         Self {
-            dataset_id: Some(value.dataset_id.into()),
             data_sources: value.data_sources.into_iter().map(Into::into).collect(),
             on_duplicate: crate::common::v1alpha1::IfDuplicateBehavior::from(value.on_duplicate)
                 as i32,
@@ -491,24 +410,6 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatas
                 ))?
                 .try_into()?,
         })
-    }
-}
-
-// --- ReadDatasetEntryRequest ---
-
-impl TryFrom<crate::cloud::v1alpha1::ReadDatasetEntryRequest> for re_log_types::EntryId {
-    type Error = TypeConversionError;
-
-    fn try_from(
-        value: crate::cloud::v1alpha1::ReadDatasetEntryRequest,
-    ) -> Result<Self, Self::Error> {
-        Ok(value
-            .id
-            .ok_or(missing_field!(
-                crate::cloud::v1alpha1::ReadDatasetEntryRequest,
-                "id"
-            ))?
-            .try_into()?)
     }
 }
 
@@ -1255,7 +1156,7 @@ impl ScanPartitionTableResponse {
 // --- DataSource --
 
 // NOTE: Match the values of the Protobuf definition to keep life simple.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum DataSourceKind {
     Rrd = 1,
 }

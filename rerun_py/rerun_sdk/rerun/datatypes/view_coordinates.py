@@ -19,6 +19,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_uint8,
 )
+from .._numpy_compatibility import asarray
 from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = ["ViewCoordinates", "ViewCoordinatesArrayLike", "ViewCoordinatesBatch", "ViewCoordinatesLike"]
@@ -70,7 +71,7 @@ class ViewCoordinates(ViewCoordinatesExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
-        return np.asarray(self.coordinates, dtype=dtype, copy=copy)
+        return asarray(self.coordinates, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py

@@ -214,14 +214,8 @@ pub struct TelemetryArgs {
 
     /// The HTTP OTLP endpoint to send the metrics to.
     ///
-    /// It's fine for the target endpoint to be down.
-    ///
     /// Part of the `OpenTelemetry` spec.
-    #[clap(
-        long,
-        env = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
-        default_value = "http://localhost:9090/api/v1/otlp/v1/metrics"
-    )]
+    #[clap(long, env = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", default_value = "")]
     pub metric_endpoint: String,
 
     /// The interval in milliseconds at which metrics are pushed to the collector.
@@ -229,4 +223,18 @@ pub struct TelemetryArgs {
     /// Part of the `OpenTelemetry` spec.
     #[clap(long, env = "OTEL_METRIC_EXPORT_INTERVAL", default_value = "10000")]
     pub metric_interval: String,
+
+    /// Listening address for dedicated HTTP /metrics endpoint for scraping.
+    ///
+    /// Setting this has no immediate effect. The actual listener has to be
+    /// started by calling `Telemetry::start_metrics_listener()`.
+    ///
+    /// Metrics are the same as those being pushed to the OTLP endpoint.
+    ///
+    /// Format: ":9091", "0.0.0.0:9091", or "127.0.0.1:9091"
+    /// Empty value means the listener is disabled.
+    ///
+    /// This has no effect if `TELEMETRY_ENABLED` or `OTEL_SDK_ENABLED` is false.
+    #[clap(long, env = "METRICS_LISTEN_ADDRESS", default_value = "")]
+    pub metrics_listen_address: String,
 }

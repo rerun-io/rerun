@@ -95,7 +95,7 @@ pub fn run_native_viewer_with_messages(
     app_env: crate::AppEnvironment,
     startup_options: crate::StartupOptions,
     log_messages: Vec<LogMsg>,
-    connection_registry: Option<re_grpc_client::ConnectionRegistryHandle>,
+    connection_registry: Option<re_redap_client::ConnectionRegistryHandle>,
     async_runtime: AsyncRuntimeHandle,
 ) -> eframe::Result {
     let (tx, rx) = re_smart_channel::smart_channel(

@@ -356,6 +356,7 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
             uncompressed_size,
             encoding: _,
             payload,
+            is_static: _,
         } = arrow_msg;
 
         let ipc_schema_size_bytes = {
@@ -401,17 +402,13 @@ fn compute_stats(app: bool, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
 
             // TODO(cmc): shortest and longest range covered per timeline would be welcome addition,
             // something like the following, but generic:
-            if false {
-                if let Some(log_tick) = decoded.batch.column_by_name("log_tick") {
-                    let log_tick = log_tick
-                        .as_any()
-                        .downcast_ref::<arrow::array::Int64Array>()
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("`log_tick` is not a Int64Array, somehow")
-                        })?;
-                    let _min = log_tick.values().iter().copied().min().unwrap_or_default();
-                    let _max = log_tick.values().iter().copied().max().unwrap_or_default();
-                }
+            if false && let Some(log_tick) = decoded.batch.column_by_name("log_tick") {
+                let log_tick = log_tick
+                    .as_any()
+                    .downcast_ref::<arrow::array::Int64Array>()
+                    .ok_or_else(|| anyhow::anyhow!("`log_tick` is not a Int64Array, somehow"))?;
+                let _min = log_tick.values().iter().copied().min().unwrap_or_default();
+                let _max = log_tick.values().iter().copied().max().unwrap_or_default();
             }
 
             let indexes = schema

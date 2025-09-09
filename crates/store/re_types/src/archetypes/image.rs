@@ -139,7 +139,7 @@ pub struct Image {
     /// The format of the image.
     pub format: Option<SerializedComponentBatch>,
 
-    /// Opacity of the image, useful for layering several images.
+    /// Opacity of the image, useful for layering several media.
     ///
     /// Defaults to 1.0 (fully opaque).
     pub opacity: Option<SerializedComponentBatch>,
@@ -445,7 +445,7 @@ impl Image {
         self
     }
 
-    /// Opacity of the image, useful for layering several images.
+    /// Opacity of the image, useful for layering several media.
     ///
     /// Defaults to 1.0 (fully opaque).
     #[inline]

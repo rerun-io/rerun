@@ -49,7 +49,6 @@ pub fn default_server_addr() -> std::net::SocketAddr {
 pub use re_log_types::{
     ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind, entity_path,
 };
-pub use re_memory::MemoryLimit;
 pub use re_types::archetypes::RecordingInfo;
 
 pub use global::cleanup_if_forked_child;
@@ -129,6 +128,9 @@ pub mod web_viewer;
 /// Method for spawning a gRPC server and streaming the SDK log stream to it.
 #[cfg(feature = "server")]
 pub mod grpc_server;
+
+#[cfg(feature = "server")]
+pub use re_grpc_server::{MemoryLimit, PlaybackBehavior, ServerOptions};
 
 /// Re-exports of other crates.
 pub mod external {

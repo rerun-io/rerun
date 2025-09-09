@@ -1046,6 +1046,7 @@ def set_callback_sink_blueprint(
 def serve_grpc(
     grpc_port: int | None,
     server_memory_limit: str,
+    newest_first: bool = False,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
 ) -> str:
@@ -1706,6 +1707,11 @@ class DataframeQueryView:
 # TODO(ab): internal object, we need auto-gen stubs for these.
 class CatalogClientInternal:
     def __init__(self, addr: str, token: str | None = None) -> None: ...
+
+    # ---
+
+    @staticmethod
+    def datafusion_major_version() -> int: ...
 
     # ---
 

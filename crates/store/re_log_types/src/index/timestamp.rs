@@ -36,6 +36,11 @@ impl Timestamp {
     pub fn nanos_since_epoch(self) -> i64 {
         self.0
     }
+
+    #[inline]
+    pub fn elapsed(self) -> Duration {
+        Self::now() - self
+    }
 }
 
 // ------------------------------------------

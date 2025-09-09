@@ -91,7 +91,7 @@ impl Objects {
                         }
                         ObjectKind::Archetype => {
                             if field_obj.kind != ObjectKind::Component {
-                                reporter.error(virtpath, field_type_fqname, "Is part of an archetypes but is not a component. Only components are allowed as fields on an archetype.");
+                                reporter.error(virtpath, field_type_fqname, "Is part of an archetype but is not a component. Only components are allowed as fields on an archetype.");
                             }
 
                             validate_archetype_field_attributes(reporter, obj);

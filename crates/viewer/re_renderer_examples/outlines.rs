@@ -75,7 +75,7 @@ impl framework::Example for Outlines {
                 }),
                 ..Default::default()
             },
-        );
+        )?;
 
         let outline_mask_large_mesh = match ((secs_since_startup * 0.5) as u64) % 5 {
             0 => OutlineMaskPreference::NONE,

@@ -319,6 +319,10 @@ pub fn texture_creation_desc_from_color_image<'a>(
         let datatype = image.format.datatype();
 
         match (color_model, datatype) {
+            (ColorModel::L, ChannelDatatype::U8) => (
+                cast_slice_to_cow(&image.buffer),
+                SourceImageDataFormat::WgpuCompatible(TextureFormat::R8Unorm),
+            ),
             // sRGB(A) handling is done by `ColormappedTexture`.
             // Why not use `Rgba8UnormSrgb`? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.

@@ -36,6 +36,7 @@ pub use self::{
     icon_text::*,
     icons::Icon,
     markdown_utils::*,
+    notifications::Link,
     section_collapsing_header::SectionCollapsingHeader,
     syntax_highlighting::SyntaxHighlighting,
     time_drag_value::TimeDragValue,
@@ -43,13 +44,8 @@ pub use self::{
     ui_layout::UiLayout,
 };
 
-#[cfg(feature = "arrow")]
-mod arrow_ui;
 pub mod menu;
 pub mod time;
-
-#[cfg(feature = "arrow")]
-pub use self::arrow_ui::arrow_ui;
 
 // ---------------------------------------------------------------------------
 
@@ -101,6 +97,28 @@ pub fn design_tokens_of_visuals(visuals: &egui::Visuals) -> &'static DesignToken
         design_tokens_of(egui::Theme::Dark)
     } else {
         design_tokens_of(egui::Theme::Light)
+    }
+}
+
+pub trait HasDesignTokens {
+    fn tokens(&self) -> &'static DesignTokens;
+}
+
+impl HasDesignTokens for egui::Context {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of(self.theme())
+    }
+}
+
+impl HasDesignTokens for egui::Style {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of_visuals(&self.visuals)
+    }
+}
+
+impl HasDesignTokens for egui::Visuals {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of_visuals(self)
     }
 }
 

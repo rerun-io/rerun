@@ -188,8 +188,8 @@ impl ImageVisualizer {
 
 impl TypedComponentFallbackProvider<Opacity> for ImageVisualizer {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
-        // Color images should be transparent whenever they're on top of other images,
-        // But fully opaque if there are no other images in the scene.
+        // Color images should be transparent whenever they're on top of other media,
+        // But fully opaque if there is no other media in the scene.
         let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
             return 1.0.into();
         };

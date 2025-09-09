@@ -3,6 +3,8 @@ use std::convert::{TryFrom, TryInto as _};
 use egui_tiles::TileId;
 
 use re_log_types::EntityPath;
+use re_ui::SyntaxHighlighting;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
 use crate::Item;
 use crate::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId};
@@ -128,4 +130,17 @@ impl AsRef<str> for ContentsName {
 #[inline]
 pub fn blueprint_id_to_tile_id<T: BlueprintIdRegistry>(id: &BlueprintId<T>) -> TileId {
     TileId::from_u64(id.hash())
+}
+
+impl SyntaxHighlighting for ContentsName {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        match self {
+            Self::Named(name) => {
+                builder.append_body(name);
+            }
+            Self::Placeholder(name) => {
+                builder.append_body_italics(name);
+            }
+        }
+    }
 }

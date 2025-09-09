@@ -19,6 +19,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
+from .._numpy_compatibility import asarray
 from .vec3d_ext import Vec3DExt
 
 __all__ = ["Vec3D", "Vec3DArrayLike", "Vec3DBatch", "Vec3DLike"]
@@ -38,7 +39,7 @@ class Vec3D(Vec3DExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Vec3DExt in vec3d_ext.py
-        return np.asarray(self.xyz, dtype=dtype, copy=copy)
+        return asarray(self.xyz, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of Vec3DExt in vec3d_ext.py

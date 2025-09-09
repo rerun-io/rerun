@@ -20,7 +20,7 @@ and display it on a [map view](https://www.rerun.io/docs/reference/types/views/m
 
 ## Run the code
 
-To run this example, make sure you have Python version at least 3.9, the Rerun repository checked out and the latest SDK installed:
+To run this example, make sure you have the [required Python version](https://ref.rerun.io/docs/python/main/common#supported-python-versions), the Rerun repository checked out and the latest SDK installed:
 ```bash
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository

@@ -46,9 +46,9 @@ accept = [
 exclude_path = [
   # Unfortunately lychee doesn't yet read .gitignore https://github.com/lycheeverse/lychee/issues/1331
   # The following entries are there because of that:
-  ".git",
   "__pycache__",
   "_deps/",
+  ".git",
   ".pixi",
   "build",
   "docs/python/",
@@ -59,8 +59,8 @@ exclude_path = [
   "rerun_js/node_modules/",
   "rerun_notebook/node_modules/",
   "rerun_py/site/",
-  "target_pixi",
   "target_pixi_wasm",
+  "target_pixi",
   "target_ra",
   "target_wasm",
   "target",
@@ -93,12 +93,13 @@ exclude = [
   'rerun:/.*',
 
   # Local links that require further setup.
+  '/examples',            # Relative link to our examples gallery.
+  'http://0.0.0.0:51234',
   'http://127.0.0.1',
   'http://localhost',
+  're_viewer.js',         # Build artifact that html is linking to.
   'recording:/',          # rrd recording link.
   'ws:/',
-  're_viewer.js',         # Build artifact that html is linking to.
-  'http://0.0.0.0:51234',
 
   # Api endpoints.
   'https://fonts.googleapis.com/',                                               # Font API entrypoint, not a link.
@@ -139,14 +140,15 @@ exclude = [
   # Not accessible from CI.
   '.github/workflows/.*.yml',                                          # GitHub action workflows cause issues on CI.
   'https://9p.io/sys/doc/lexnames.html',                               # Works locally but on CI we get: `Failed: Network error: error:0A000152:SSL routines:final_renegotiate:unsafe legacy renegotiation disabled:ssl/statem/extensions.c:946:`
+  'https://claude.site/artifacts/',                                    # Giving a 500, but only from CI
+  'https://fifteen-thirtyeight.rerun.io/script.js',                    # Gives 403 forbidden on CI.
+  'https://lib.rs/*',                                                  # Gives 403 forbidden on CI.
+  'https://math.stackexchange.com/',                                   # Gives 403 forbidden on CI.
   'https://pixabay.com/photos/brother-sister-girl-family-boy-977170/', # Gives 403 forbidden on CI.
   'https://stackoverflow.com/',                                        # Stackoverflow links are no longer accessible from CI.
-  'https://math.stackexchange.com/',                                   # Gives 403 forbidden on CI.
   'https://vimeo.com/',                                                # Gives 403 forbidden on CI.
   'https://www.reddit.com/',                                           # Gives 403 forbidden on CI.
   'https://www.tensorflow.org/',                                       # tensorflow.org apparently blocks CI.
-  'https://claude.site/artifacts/',                                    # Giving a 500, but only from CI
-  'https://fifteen-thirtyeight.rerun.io/script.js',                    # Gives 403 forbidden on CI.
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
