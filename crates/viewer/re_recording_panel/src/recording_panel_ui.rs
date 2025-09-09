@@ -221,7 +221,7 @@ fn server_section_ui(
     let content = list_item::LabelContent::header(origin.host.to_string())
         .always_show_buttons(true)
         .with_buttons(|ui| {
-            Box::new(ItemMenuButton::new(&icons::MORE, "Actions", move |ui| {
+            ItemMenuButton::new(&icons::MORE, "Actions", move |ui| {
                 if icons::RESET
                     .as_button_with_label(ui.tokens(), "Refresh")
                     .ui(ui)
@@ -243,8 +243,8 @@ fn server_section_ui(
                 {
                     servers.send_command(Command::RemoveServer(origin.clone()));
                 }
-            }))
-            .ui(ui)
+            })
+            .ui(ui);
         });
 
     let item_response = ui
@@ -358,8 +358,6 @@ fn dataset_entry_ui(
                         ));
                 }
             }
-
-            resp
         });
     }
 
@@ -498,7 +496,6 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
                 ctx.command_sender()
                     .send_system(SystemCommand::CloseApp(app_id.clone()));
             }
-            resp
         });
     }
 
@@ -565,8 +562,6 @@ fn receiver_ui(
         if resp.clicked() {
             ctx.connected_receivers.remove(receiver);
         }
-
-        resp
     });
 
     if show_hierarchal {

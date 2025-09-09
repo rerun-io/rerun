@@ -299,15 +299,12 @@ impl BlueprintTree {
             .label_style(contents_name_style(&container_data.name))
             .with_icon(icon_for_container_kind(&container_data.kind))
             .with_buttons(|ui| {
-                let vis_response = visibility_button_ui(ui, parent_visible, &mut visible);
+                visibility_button_ui(ui, parent_visible, &mut visible);
 
-                let remove_response = remove_button_ui(ui, "Remove container");
-                if remove_response.clicked() {
+                if remove_button_ui(ui, "Remove container").clicked() {
                     viewport_blueprint.mark_user_interaction(ctx);
                     viewport_blueprint.remove_contents(content);
                 }
-
-                remove_response | vis_response
             });
 
         // Globally unique id - should only be one of these in view at one time.
@@ -390,15 +387,12 @@ impl BlueprintTree {
             .with_icon(class.icon())
             .subdued(!view_visible)
             .with_buttons(|ui| {
-                let vis_response = visibility_button_ui(ui, container_visible, &mut visible);
+                visibility_button_ui(ui, container_visible, &mut visible);
 
-                let response = remove_button_ui(ui, "Remove view from the viewport");
-                if response.clicked() {
+                if remove_button_ui(ui, "Remove view from the viewport").clicked() {
                     viewport_blueprint.mark_user_interaction(ctx);
                     viewport_blueprint.remove_contents(Contents::View(view_data.id));
                 }
-
-                response | vis_response
             });
 
         // Globally unique id - should only be one of these in view at one time.
@@ -517,22 +511,20 @@ impl BlueprintTree {
                         .subdued(!view_visible || !data_result_data.visible)
                         .with_buttons(|ui: &mut egui::Ui| {
                             let mut visible_after = data_result_data.visible;
-                            let vis_response =
-                                visibility_button_ui(ui, view_visible, &mut visible_after);
+                            visibility_button_ui(ui, view_visible, &mut visible_after);
                             if visible_after != data_result_data.visible {
                                 data_result_data.update_visibility(ctx, visible_after);
                             }
 
-                            let response = remove_button_ui(
+                            if remove_button_ui(
                                 ui,
                                 "Remove this entity and all its children from the view",
-                            );
-                            if response.clicked() {
+                            )
+                            .clicked()
+                            {
                                 data_result_data
                                     .remove_data_result_from_view(ctx, viewport_blueprint);
                             }
-
-                            response | vis_response
                         })
                 }
             }

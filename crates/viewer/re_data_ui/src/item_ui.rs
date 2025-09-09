@@ -740,7 +740,6 @@ pub fn entity_db_button_ui(
                         store_id.clone().into(),
                     ));
             }
-            resp
         });
     }
 
@@ -812,7 +811,6 @@ pub fn table_id_button_ui(
                         table_id.clone().into(),
                     ));
             }
-            resp
         });
     }
 

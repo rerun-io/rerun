@@ -129,7 +129,9 @@ pub fn visualizer_ui_impl(
                             ),
                         )
                         .min_desired_width(150.0)
-                        .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
+                        .with_buttons(|ui| {
+                            remove_visualizer_button(ui, visualizer_id);
+                        })
                         .always_show_buttons(true),
                     );
                 visualizer_components(ctx, ui, data_result, visualizer);
@@ -138,7 +140,9 @@ pub fn visualizer_ui_impl(
                     list_item::LabelContent::new(format!("{visualizer_id} (unknown visualizer)"))
                         .weak(true)
                         .min_desired_width(150.0)
-                        .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
+                        .with_buttons(|ui| {
+                            remove_visualizer_button(ui, visualizer_id);
+                        })
                         .always_show_buttons(true),
                 );
             }

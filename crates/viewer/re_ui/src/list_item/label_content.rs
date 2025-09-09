@@ -1,7 +1,10 @@
 use egui::{Align, Align2, NumExt as _, RichText, Ui, text::TextWrapping};
 use std::sync::Arc;
 
-use super::{ContentContext, DesiredWidth, ListItemContent, ListVisuals};
+use super::{
+    ContentContext, DesiredWidth, ListItemContent, ListItemContentButtonsExt, ListVisuals,
+};
+use crate::list_item::item_buttons::ItemButtons;
 use crate::{DesignTokens, Icon, LabelStyle, UiExt as _};
 
 /// [`ListItemContent`] that displays a simple label with optional icon and buttons.
@@ -17,7 +20,7 @@ pub struct LabelContent<'a> {
 
     label_style: LabelStyle,
     icon_fn: Option<Box<dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a>>,
-    buttons_fn: Option<Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + 'a>>,
+    buttons: ItemButtons<'a>,
     always_show_buttons: bool,
 
     text_wrap_mode: Option<egui::TextWrapMode>,
@@ -36,7 +39,7 @@ impl<'a> LabelContent<'a> {
 
             label_style: Default::default(),
             icon_fn: None,
-            buttons_fn: None,
+            buttons: ItemButtons::default(),
             always_show_buttons: false,
 
             text_wrap_mode: None,
@@ -153,11 +156,8 @@ impl<'a> LabelContent<'a> {
     // TODO(#6191): This should reconciled this with the `ItemButton` abstraction by using something
     //              like `Vec<Box<dyn ItemButton>>` instead of a generic closure.
     #[inline]
-    pub fn with_buttons(
-        mut self,
-        buttons: impl FnOnce(&mut egui::Ui) -> egui::Response + 'a,
-    ) -> Self {
-        self.buttons_fn = Some(Box::new(buttons));
+    pub fn with_buttons(mut self, buttons: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
+        self.buttons.add_buttons(buttons);
         self
     }
 
@@ -194,7 +194,7 @@ impl ListItemContent for LabelContent<'_> {
             strong,
             label_style,
             icon_fn,
-            buttons_fn,
+            buttons,
             always_show_buttons,
             text_wrap_mode: _,
             min_desired_width: _,
@@ -233,52 +233,9 @@ impl ListItemContent for LabelContent<'_> {
             icon_fn(ui, icon_rect, visuals);
         }
 
-        // We can't use `.hovered()` or the buttons disappear just as the user clicks,
-        // so we use `contains_pointer` instead. That also means we need to check
-        // that we aren't dragging anything.
-        // By showing the buttons when selected, we allow users to find them on touch screens.
-        let should_show_buttons = (context.list_item.interactive
-            && ui.rect_contains_pointer(context.bg_rect)
-            && !egui::DragAndDrop::has_any_payload(ui.ctx()))
-            || context.list_item.selected
-            || always_show_buttons;
-        let button_response = if should_show_buttons {
-            if let Some(buttons) = buttons_fn {
-                let mut ui = ui.new_child(
-                    egui::UiBuilder::new()
-                        .max_rect(text_rect)
-                        .layout(egui::Layout::right_to_left(egui::Align::Center)),
-                );
-
-                if context.list_item.selected {
-                    // Icons and text get different colors when they are on a selected background:
-                    let visuals = ui.visuals_mut();
-
-                    visuals.widgets.noninteractive.weak_bg_fill = egui::Color32::TRANSPARENT;
-                    visuals.widgets.inactive.weak_bg_fill = egui::Color32::TRANSPARENT;
-                    visuals.widgets.active.weak_bg_fill = tokens.surface_on_primary_hovered;
-                    visuals.widgets.hovered.weak_bg_fill = tokens.surface_on_primary_hovered;
-
-                    visuals.widgets.noninteractive.fg_stroke.color = tokens.icon_color_on_primary;
-                    visuals.widgets.inactive.fg_stroke.color = tokens.icon_color_on_primary;
-                    visuals.widgets.active.fg_stroke.color = tokens.icon_color_on_primary_hovered;
-                    visuals.widgets.hovered.fg_stroke.color = tokens.icon_color_on_primary_hovered;
-                }
-
-                Some(buttons(&mut ui))
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+        buttons.show_and_shrink_rect(ui, context, always_show_buttons, &mut text_rect);
 
         // Draw text
-
-        if let Some(button_response) = &button_response {
-            text_rect.max.x -= button_response.rect.width() + tokens.text_to_icon_padding();
-        }
-
         let mut layout_job = Arc::unwrap_or_clone(text.into_layout_job(
             ui.style(),
             egui::FontSelection::Default,
@@ -346,5 +303,15 @@ impl ListItemContent for LabelContent<'_> {
                 .unwrap_or_else(|| measured_width.min(default_min_width));
             DesiredWidth::AtLeast(min_desired_width)
         }
+    }
+}
+
+impl<'a> ListItemContentButtonsExt<'a> for LabelContent<'a> {
+    fn buttons(&self) -> &ItemButtons<'a> {
+        &self.buttons
+    }
+
+    fn buttons_mut(&mut self) -> &mut ItemButtons<'a> {
+        &mut self.buttons
     }
 }

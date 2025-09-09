@@ -997,8 +997,6 @@ fn show_list_item_for_container_child(
                         if response.clicked() {
                             remove_contents = true;
                         }
-
-                        response
                     }),
             )
         }
@@ -1023,8 +1021,6 @@ fn show_list_item_for_container_child(
                         if response.clicked() {
                             remove_contents = true;
                         }
-
-                        response
                     }),
             )
         }
