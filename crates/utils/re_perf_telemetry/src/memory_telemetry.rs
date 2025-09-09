@@ -9,8 +9,6 @@ pub fn install_memory_use_meters() {
             let bytes_used = memory_stats::memory_stats().map(|usage| usage.physical_mem as i64);
             if let Some(bytes_used) = bytes_used {
                 observer.observe(bytes_used, &[]);
-            } else {
-                observer.observe(-666, &[]);
             }
         })
         .build();
