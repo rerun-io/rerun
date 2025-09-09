@@ -13,11 +13,10 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver,
-    CommandSender, ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig,
-    RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
-    TableStore, ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel,
-    santitize_file_name,
+    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
+    ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
+    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, TimeControl,
+    ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
@@ -546,26 +545,29 @@ impl App {
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
     ) {
+        let update_address_bar = |this: &Self, store_hub: &mut StoreHub| {
+            let rec_cfg = store_hub
+                .active_recording()
+                .and_then(|db| this.state.recording_config(db.store_id()));
+            let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
+            update_web_address_bar(
+                this.startup_options.web_history_enabled(),
+                store_hub,
+                this.state.navigation.peek(),
+                this.state.selection_state.new_selected_items().first_item(),
+                time_ctrl.as_deref(),
+            );
+        };
         match cmd {
             SystemCommand::ActivateApp(app_id) => {
                 self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
-                update_web_address_bar(
-                    self.startup_options.web_history_enabled(),
-                    store_hub,
-                    self.state.navigation.peek(),
-                    &self.state.selection_state,
-                );
+                update_address_bar(self, store_hub);
             }
 
             SystemCommand::CloseApp(app_id) => {
                 store_hub.close_app(&app_id);
-                update_web_address_bar(
-                    self.startup_options.web_history_enabled(),
-                    store_hub,
-                    self.state.navigation.peek(),
-                    &self.state.selection_state,
-                );
+                update_address_bar(self, store_hub);
             }
 
             SystemCommand::ActivateRecordingOrTable(entry) => {
@@ -580,12 +582,7 @@ impl App {
                             .replace(DisplayMode::LocalTable(table_id.clone()));
                     }
                 }
-                update_web_address_bar(
-                    self.startup_options.web_history_enabled(),
-                    store_hub,
-                    self.state.navigation.peek(),
-                    &self.state.selection_state,
-                );
+                update_address_bar(self, store_hub);
             }
 
             SystemCommand::CloseRecordingOrTable(entry) => {
@@ -626,12 +623,7 @@ impl App {
 
                 store_hub.remove(&entry);
 
-                update_web_address_bar(
-                    self.startup_options.web_history_enabled(),
-                    store_hub,
-                    self.state.navigation.peek(),
-                    &self.state.selection_state,
-                );
+                update_address_bar(self, store_hub);
             }
 
             SystemCommand::CloseAllEntries => {
@@ -672,12 +664,7 @@ impl App {
                 // _which_ recording is about to be selected.
                 // I.e. if we update navigation bar here, this would become order dependent.
                 if display_mode != DisplayMode::LocalRecordings {
-                    update_web_address_bar(
-                        self.startup_options.web_history_enabled(),
-                        store_hub,
-                        &display_mode,
-                        &self.state.selection_state,
-                    );
+                    update_address_bar(self, store_hub);
                 }
 
                 self.state.navigation.replace(display_mode);
@@ -819,12 +806,7 @@ impl App {
                 }
 
                 self.state.selection_state.set_selection(items);
-                update_web_address_bar(
-                    self.startup_options.web_history_enabled(),
-                    store_hub,
-                    self.state.navigation.peek(),
-                    &self.state.selection_state,
-                );
+                update_address_bar(self, store_hub);
                 egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
@@ -848,6 +830,7 @@ impl App {
                         "SystemCommand::SetActiveTime ignored: unknown store ID '{store_id:?}'"
                     );
                 }
+                update_address_bar(self, store_hub);
             }
 
             SystemCommand::SetLoopSelection {
@@ -868,6 +851,7 @@ impl App {
             }
 
             SystemCommand::SetFocus(item) => {
+                update_address_bar(self, store_hub);
                 self.state.focused_item = Some(item);
             }
 
@@ -1057,6 +1041,8 @@ impl App {
                 Item::from(entity_path)
             };
 
+            self.command_sender
+                .send_system(SystemCommand::SetSelection(item.clone().into()));
             self.command_sender
                 .send_system(SystemCommand::SetFocus(item));
         }
@@ -1389,19 +1375,39 @@ impl App {
             }
 
             UICommand::PlaybackTogglePlayPause => {
-                self.run_time_control_command(store_context, TimeControlCommand::TogglePlayPause);
+                self.run_time_control_command(
+                    store_context,
+                    storage_context,
+                    TimeControlCommand::TogglePlayPause,
+                );
             }
             UICommand::PlaybackFollow => {
-                self.run_time_control_command(store_context, TimeControlCommand::Follow);
+                self.run_time_control_command(
+                    store_context,
+                    storage_context,
+                    TimeControlCommand::Follow,
+                );
             }
             UICommand::PlaybackStepBack => {
-                self.run_time_control_command(store_context, TimeControlCommand::StepBack);
+                self.run_time_control_command(
+                    store_context,
+                    storage_context,
+                    TimeControlCommand::StepBack,
+                );
             }
             UICommand::PlaybackStepForward => {
-                self.run_time_control_command(store_context, TimeControlCommand::StepForward);
+                self.run_time_control_command(
+                    store_context,
+                    storage_context,
+                    TimeControlCommand::StepForward,
+                );
             }
             UICommand::PlaybackRestart => {
-                self.run_time_control_command(store_context, TimeControlCommand::Restart);
+                self.run_time_control_command(
+                    store_context,
+                    storage_context,
+                    TimeControlCommand::Restart,
+                );
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1538,6 +1544,7 @@ impl App {
     fn run_time_control_command(
         &mut self,
         store_context: Option<&StoreContext<'_>>,
+        storage_context: &StorageContext<'_>,
         command: TimeControlCommand,
     ) {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
@@ -1565,6 +1572,17 @@ impl App {
                 time_ctrl.restart(times_per_timeline);
             }
         }
+
+        let rec_cfg = self.state.recording_config(entity_db.store_id());
+        let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
+
+        update_web_address_bar(
+            self.startup_options.web_history_enabled(),
+            storage_context.hub,
+            self.state.navigation.peek(),
+            self.state.selection_state.selected_items().first_item(),
+            time_ctrl.as_deref(),
+        );
     }
 
     /// Retrieve the link to the current viewer.
@@ -1617,6 +1635,7 @@ impl App {
         match crate::open_url::ViewerOpenUrl::from_display_mode(
             storage_context.hub,
             display_mode.clone(),
+            &re_uri::Fragment::default(),
         )
         .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
         {
@@ -3223,7 +3242,8 @@ fn update_web_address_bar(
     _enable_history: bool,
     _store_hub: &StoreHub,
     _display_mode: &DisplayMode,
-    _selection: &ApplicationSelectionState,
+    _focus: Option<&Item>,
+    _when: Option<&TimeControl>,
 ) {
     // No-op on native.
 }
@@ -3233,24 +3253,39 @@ fn update_web_address_bar(
     enable_history: bool,
     store_hub: &StoreHub,
     display_mode: &DisplayMode,
-    // TODO(#10866): Use this to add the current selection to the url.
-    _selection: &ApplicationSelectionState,
+    focus: Option<&Item>,
+    when: Option<&TimeControl>,
 ) -> Option<()> {
+    use crate::history::{HistoryEntry, HistoryExt as _, history};
+    use crate::web_tools::JsResultExt as _;
+
     if !enable_history {
         return None;
     }
-    let Ok(url) =
-        crate::open_url::ViewerOpenUrl::from_display_mode(store_hub, display_mode.clone())
-            // History entries expect the url parameter, not the full url, therefore don't pass a base url.
-            .and_then(|url| url.sharable_url(None))
-    else {
+    let Ok(url) = crate::open_url::ViewerOpenUrl::from_display_mode(
+        store_hub,
+        display_mode.clone(),
+        &re_uri::Fragment {
+            focus: focus.and_then(|item| item.to_data_path()),
+            when: when
+                .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused))
+                .and_then(|when| {
+                    Some((
+                        *when.timeline().name(),
+                        re_log_types::TimeCell {
+                            typ: when.timeline().typ(),
+                            value: when.time_int()?.into(),
+                        },
+                    ))
+                }),
+        },
+    )
+    // History entries expect the url parameter, not the full url, therefore don't pass a base url.
+    .and_then(|url| url.sharable_url(None)) else {
         return None;
     };
 
     re_log::debug!("Updating navigation bar");
-
-    use crate::history::{HistoryEntry, HistoryExt as _, history};
-    use crate::web_tools::JsResultExt as _;
 
     if let Some(history) = history().ok_or_log_js_error() {
         // TODO(#10866): don't push if only the fragments change.

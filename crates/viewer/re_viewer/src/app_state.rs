@@ -686,11 +686,9 @@ impl AppState {
                 .copy_to_clipboard(ui.ctx());
         }
 
-        // Reset the focused item.
         self.focused_item = None;
     }
 
-    #[cfg(target_arch = "wasm32")] // Only used in Wasm
     pub fn recording_config(&self, rec_id: &StoreId) -> Option<&RecordingConfig> {
         self.recording_configs.get(rec_id)
     }

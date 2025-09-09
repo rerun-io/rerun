@@ -204,6 +204,7 @@ impl ViewerOpenUrl {
     pub fn from_display_mode(
         store_hub: &StoreHub,
         display_mode: DisplayMode,
+        fragment: &re_uri::Fragment,
     ) -> anyhow::Result<Self> {
         match display_mode {
             DisplayMode::Settings => {
@@ -262,7 +263,10 @@ impl ViewerOpenUrl {
                     SmartChannelSource::RedapGrpcStream {
                         uri,
                         select_when_loaded: _,
-                    } => Ok(Self::RedapDatasetPartition(uri.clone())),
+                    } => Ok(Self::RedapDatasetPartition(re_uri::DatasetPartitionUri {
+                        fragment: fragment.clone(),
+                        ..uri.clone()
+                    })),
 
                     SmartChannelSource::MessageProxy(proxy_uri) => {
                         Ok(Self::RedapProxy(proxy_uri.clone()))
@@ -300,7 +304,7 @@ impl ViewerOpenUrl {
     /// This is roughly the inverse of `Self::from_str`.
     #[allow(unused)] // TODO(rerun/dataplatform#1336): Only used on the web. About to change!
     pub fn sharable_url(&self, web_viewer_base_url: Option<&url::Url>) -> anyhow::Result<String> {
-        let urls: Vec1<String> = match self {
+        let urls = match self {
             Self::IntraRecordingSelection(item) => {
                 let data_path = item.to_data_path().ok_or_else(|| {
                     // See also `Item::from_str`
@@ -313,19 +317,14 @@ impl ViewerOpenUrl {
                 )]
             }
 
-            Self::RrdHttpUrl(url) => {
-                vec1![url.to_string()]
-            }
+            Self::RrdHttpUrl(url) => vec1![url.to_string()],
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(path_buf) => {
-                vec1![(*path_buf.to_string_lossy()).to_owned()]
-            }
+            Self::FilePath(path_buf) => vec1![(*path_buf.to_string_lossy()).to_owned()],
 
             Self::RedapDatasetPartition(dataset_partition_uri) => {
                 vec1![dataset_partition_uri.to_string()]
             }
-
             Self::RedapProxy(proxy_uri) => {
                 vec1![proxy_uri.to_string()]
             }
@@ -383,9 +382,9 @@ impl ViewerOpenUrl {
         } else if urls.len() == 1 {
             Ok(urls.split_off_first().0)
         } else {
-            Err(anyhow::anyhow!(
+            return Err(anyhow::anyhow!(
                 "Can't share more than one URL without a web viewer base URL"
-            ))
+            ));
         }
     }
 
@@ -624,6 +623,7 @@ mod tests {
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
     use re_smart_channel::SmartChannelSource;
+    use re_uri::Fragment;
     use re_viewer_context::{DisplayMode, Item, StoreHub};
     use url::Url;
 
@@ -744,13 +744,21 @@ mod tests {
         let store_hub = StoreHub::test_hub();
 
         // Settings
-        assert!(ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::Settings).is_err());
+        assert!(
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::Settings,
+                &Fragment::default(),
+            )
+            .is_err()
+        );
 
         // RedapServer
         assert_eq!(
             ViewerOpenUrl::from_display_mode(
                 &store_hub,
-                DisplayMode::RedapServer("rerun://localhost:51234".parse().unwrap(),)
+                DisplayMode::RedapServer("rerun://localhost:51234".parse().unwrap(),),
+                &Fragment::default(),
             )
             .unwrap(),
             ViewerOpenUrl::RedapCatalog("rerun://localhost:51234".parse().unwrap())
@@ -760,7 +768,8 @@ mod tests {
         assert!(
             ViewerOpenUrl::from_display_mode(
                 &store_hub,
-                DisplayMode::LocalTable(TableId::new("test_table".to_owned()))
+                DisplayMode::LocalTable(TableId::new("test_table".to_owned())),
+                &Fragment::default(),
             )
             .is_err()
         );
@@ -771,7 +780,8 @@ mod tests {
         assert_eq!(
             ViewerOpenUrl::from_display_mode(
                 &store_hub,
-                DisplayMode::RedapEntry(entry_uri.clone())
+                DisplayMode::RedapEntry(entry_uri.clone()),
+                &Fragment::default(),
             )
             .unwrap(),
             ViewerOpenUrl::RedapEntry(entry_uri)
@@ -779,7 +789,12 @@ mod tests {
 
         // ChunkStoreBrowser
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::ChunkStoreBrowser).is_err(),
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::ChunkStoreBrowser,
+                &Fragment::default(),
+            )
+            .is_err(),
             "ChunkStoreBrowser should not be convertible to ViewerOpenUrl"
         );
 
@@ -806,7 +821,12 @@ mod tests {
             ))),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::LocalRecordings,
+                &Fragment::default(),
+            )
+            .unwrap(),
             ViewerOpenUrl::FilePath(std::path::PathBuf::from("/path/to/test.rrd"))
         );
 
@@ -819,20 +839,35 @@ mod tests {
             }),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::LocalRecordings,
+                &Fragment::default(),
+            )
+            .unwrap(),
             ViewerOpenUrl::RrdHttpUrl("https://example.com/recording.rrd".parse().unwrap())
         );
 
         // originating from SDK (not possible).
         add_store(&mut store_hub, Some(SmartChannelSource::Sdk));
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).is_err(),
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::LocalRecordings,
+                &Fragment::default(),
+            )
+            .is_err(),
         );
 
         // originating from stdin (not possible).
         add_store(&mut store_hub, Some(SmartChannelSource::Stdin));
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).is_err(),
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::LocalRecordings,
+                &Fragment::default(),
+            )
+            .is_err(),
         );
 
         // originating from web event listener.
@@ -841,7 +876,12 @@ mod tests {
             Some(SmartChannelSource::RrdWebEventListener),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::LocalRecordings,
+                &Fragment::default(),
+            )
+            .unwrap(),
             ViewerOpenUrl::WebEventListener
         );
 
@@ -853,7 +893,12 @@ mod tests {
             }),
         );
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).is_err(),
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::LocalRecordings,
+                &Fragment::default(),
+            )
+            .is_err(),
         );
 
         // originating from Redap gRPC stream.
@@ -867,7 +912,12 @@ mod tests {
             }),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::LocalRecordings,
+                &Fragment::default(),
+            )
+            .unwrap(),
             ViewerOpenUrl::RedapDatasetPartition(uri.parse().unwrap())
         );
 
@@ -878,14 +928,24 @@ mod tests {
             Some(SmartChannelSource::MessageProxy(uri.parse().unwrap())),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).unwrap(),
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::LocalRecordings,
+                &Fragment::default(),
+            )
+            .unwrap(),
             ViewerOpenUrl::RedapProxy(uri.parse().unwrap())
         );
 
         // with no data source (not possible).
         add_store(&mut store_hub, None);
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings).is_err(),
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                DisplayMode::LocalRecordings,
+                &Fragment::default(),
+            )
+            .is_err(),
         );
     }
 
