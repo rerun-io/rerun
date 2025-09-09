@@ -336,11 +336,11 @@ impl App {
                     if !o.copied_text.is_empty() {
                         o.copied_text = re_format::remove_number_formatting(&o.copied_text);
                     }
-                    o.commands.iter_mut().for_each(|event| {
-                        if let egui::output::OutputCommand::CopyText(text) = event {
+                    for command in &mut o.commands {
+                        if let egui::output::OutputCommand::CopyText(text) = command {
                             *text = re_format::remove_number_formatting(text);
                         }
-                    });
+                    }
                 });
             }),
         );
