@@ -9,7 +9,7 @@ from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentColumn, ComponentColumnList, DescribedComponentBatch
 from ._log import AsComponents
-from .dynamic_archetype import AnyBatchValue as AnyBatchValue, DynamicArchetype
+from .dynamic_archetype import DynamicArchetype
 
 
 class AnyValues(AsComponents):

@@ -68,8 +68,10 @@ from ._send_columns import (
     TimeSequenceColumn as TimeSequenceColumn,
     send_columns as send_columns,
 )
-from .any_value import (
+from .any_batch_value import (
     AnyBatchValue as AnyBatchValue,
+)
+from .any_value import (
     AnyValues as AnyValues,
 )
 from .archetypes import (
