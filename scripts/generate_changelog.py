@@ -78,7 +78,16 @@ def fetch_pr_info(pr_number: int) -> PrInfo | None:
     try:
         # Use gh CLI to fetch PR info
         result = subprocess.run(
-            ["gh", "pr", "view", str(pr_number), "--repo", f"{OWNER}/{REPO}", "--json", "title,labels,author"],
+            [
+                "gh",
+                "pr",
+                "view",
+                str(pr_number),
+                "--repo",
+                f"{OWNER}/{REPO}",
+                "--json",
+                "title,labels,author",
+            ],
             capture_output=True,
             text=True,
             check=True,
@@ -87,13 +96,19 @@ def fetch_pr_info(pr_number: int) -> PrInfo | None:
         pr_data = json.loads(result.stdout)
         labels = [label["name"] for label in pr_data["labels"]]
         gh_user_name = pr_data["author"]["login"]
-        return PrInfo(gh_user_name=gh_user_name, pr_title=pr_data["title"], labels=labels)
+        return PrInfo(
+            gh_user_name=gh_user_name, pr_title=pr_data["title"], labels=labels
+        )
 
     except subprocess.CalledProcessError as e:
-        eprint(f"ERROR fetching PR #{pr_number}: {e.stderr.strip()}")
+        eprint(
+            f"ERROR fetching PR #{pr_number}: {e.stderr.strip()}. If none of these succeed, You need to install the GitHub CLI tools: https://cli.github.com/ and authenticate with github."
+        )
         return None
     except (json.JSONDecodeError, KeyError) as e:
-        eprint(f"ERROR parsing PR #{pr_number} data: {e}")
+        eprint(
+            f"ERROR parsing PR #{pr_number} data: {e}. If none of these succeed, You need to install the GitHub CLI tools: https://cli.github.com/ and authenticate with github."
+        )
         return None
 
 
@@ -147,7 +162,9 @@ def commit_range(new_version: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a changelog.")
-    parser.add_argument("--version", required=True, help="The version of the new release, e.g. 0.42.0")
+    parser.add_argument(
+        "--version", required=True, help="The version of the new release, e.g. 0.42.0"
+    )
     args = parser.parse_args()
 
     # Because how we branch, we sometimes get duplicate commits in the changelog unless we check for it
@@ -197,7 +214,9 @@ def main() -> None:
 
         if pr_number is None:
             # Someone committed straight to main:
-            summary = f"{title} [{hexsha}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
+            summary = (
+                f"{title} [{hexsha}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
+            )
             if f"[{hexsha}]" in previous_changelog:
                 print(f"Ignoring dup: {summary}")
                 continue
@@ -205,7 +224,9 @@ def main() -> None:
             chronological.append(summary)
             misc.append(summary)
         else:
-            title = pr_info.pr_title if pr_info else title  # We prefer the PR title if available
+            title = (
+                pr_info.pr_title if pr_info else title
+            )  # We prefer the PR title if available
             title = title.rstrip(".").strip()  # Some PR end with an unnecessary period
 
             labels = pr_info.labels if pr_info else []
@@ -256,7 +277,11 @@ def main() -> None:
             if not added:
                 if "examples" in labels:
                     examples.append(summary)
-                elif "🪳 bug" in labels or "💣 crash" in labels or "🦟 regression" in labels:
+                elif (
+                    "🪳 bug" in labels
+                    or "💣 crash" in labels
+                    or "🦟 regression" in labels
+                ):
                     bugs.append(summary)
                 elif "📉 performance" in labels:
                     performance.append(summary)
