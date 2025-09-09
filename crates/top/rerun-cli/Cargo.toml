@@ -114,7 +114,7 @@ rerun = { workspace = true, default-features = false, features = [
 ] }
 
 document-features.workspace = true
-mimalloc = "0.1.43"
+mimalloc.workspace = true
 
 
 [build-dependencies]
