@@ -135,10 +135,10 @@ impl LogSink for MultiSink {
     fn flush_blocking(&self, timeout: Duration) -> Result<(), SinkFlushError> {
         let mut worst_result = Ok(());
         for sink in self.0.lock().iter() {
-            if let Err(err) = sink.flush_blocking(timeout) {
-                if matches!(worst_result, Ok(()) | Err(SinkFlushError::Timeout)) {
-                    worst_result = Err(err);
-                }
+            if let Err(err) = sink.flush_blocking(timeout)
+                && matches!(worst_result, Ok(()) | Err(SinkFlushError::Timeout))
+            {
+                worst_result = Err(err);
             }
         }
         worst_result

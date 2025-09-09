@@ -50,7 +50,7 @@ pub fn short_duration_ui(
     show: impl FnOnce(&mut egui::Ui, String) -> egui::Response,
 ) -> egui::Response {
     // Remember to update the ui so it doesn't say "just now" forever:
-    let age = timestamp.elsapsed().as_secs_f64();
+    let age = timestamp.elapsed().as_secs_f64();
     let repaint_in_sec = if age < 60.0 {
         1
     } else if age < 3600.0 {

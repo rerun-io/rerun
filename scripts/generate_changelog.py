@@ -26,25 +26,9 @@ from tqdm import tqdm
 OWNER = "rerun-io"
 REPO = "rerun"
 INCLUDE_LABELS = False  # It adds quite a bit of visual noise
-OFFICIAL_RERUN_DEVS = [
-    "abey79",
-    "aedm",
-    "andrea-reale",
-    "emilk",
-    "gavrelina",
-    "grtlr",
-    "jleibs",
-    "jprochazk",
-    "lucasmerlin",
-    "nikolausWest",
-    "ntjohnson1",
-    "oxkitsune",
-    "teh-cmc",
-    "thz",
-    "timsaucer",
-    "Wumpf",
-    "zehiko",
-]
+
+# Cache for organization members to avoid repeated API calls
+_org_members_cache: set[str] | None = None
 
 
 def eprint(*args: Any, **kwargs: Any) -> None:
@@ -247,7 +231,7 @@ def main() -> None:
 
             if pr_info is not None:
                 gh_user_name = pr_info.gh_user_name
-                if gh_user_name not in OFFICIAL_RERUN_DEVS:
+                if gh_user_name not in get_rerun_org_members():
                     summary += f" (thanks [@{gh_user_name}](https://github.com/{gh_user_name})!)"
 
             if labels == ["⛴ release"]:

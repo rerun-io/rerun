@@ -328,6 +328,23 @@ impl App {
             command_sender.send_ui(UICommand::ExpandBlueprintPanel);
         }
 
+        creation_context.egui_ctx.on_end_pass(
+            "remove copied text formatting",
+            Arc::new(|ctx| {
+                ctx.output_mut(|o| {
+                    #[expect(deprecated)]
+                    if !o.copied_text.is_empty() {
+                        o.copied_text = re_format::remove_number_formatting(&o.copied_text);
+                    }
+                    for command in &mut o.commands {
+                        if let egui::output::OutputCommand::CopyText(text) = command {
+                            *text = re_format::remove_number_formatting(text);
+                        }
+                    }
+                });
+            }),
+        );
+
         Self {
             main_thread_token,
             build_info,
@@ -613,6 +630,7 @@ impl App {
             }
 
             SystemCommand::CloseAllEntries => {
+                self.state.navigation.push_start_mode();
                 store_hub.clear_entries();
 
                 // Stop receiving into the old recordings.
@@ -2746,6 +2764,7 @@ impl eframe::App for App {
                     None => {}
                 }
             } else {
+                self.state.navigation.push_start_mode();
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }
         }

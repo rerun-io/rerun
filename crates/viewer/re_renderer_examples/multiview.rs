@@ -219,7 +219,7 @@ impl Multiview {
         draw_data: D,
         index: u32,
     ) -> anyhow::Result<(ViewBuilder, wgpu::CommandBuffer)> {
-        let mut view_builder = ViewBuilder::new(re_ctx, target_cfg);
+        let mut view_builder = ViewBuilder::new(re_ctx, target_cfg)?;
 
         if self
             .take_screenshot_next_frame_for_view
@@ -230,8 +230,8 @@ impl Multiview {
         }
 
         let command_buffer = view_builder
-            .queue_draw(skybox)
-            .queue_draw(draw_data)
+            .queue_draw(re_ctx, skybox)
+            .queue_draw(re_ctx, draw_data)
             .draw(re_ctx, Rgba::TRANSPARENT)?;
 
         Ok((view_builder, command_buffer))

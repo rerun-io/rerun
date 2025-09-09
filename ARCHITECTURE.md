@@ -253,8 +253,8 @@ In order to get a dependency graph for our in-house crates and their docs, we re
 
 ```
 cargo install cargo-depgraph
-cargo depgraph --all-deps --workspace-only --all-features --dedup-transitive-deps | dot -Tpng > deps.png
-open deps.png
+cargo depgraph --all-deps --workspace-only --all-features --dedup-transitive-deps | dot -Tpng > /tmp/rerun-deps.png
+open /tmp/rerun-deps.png
 ```
 
 and:

@@ -16,6 +16,7 @@ from attrs import define, field
 from .._baseclasses import (
     BaseBatch,
 )
+from .._numpy_compatibility import asarray
 from .rgba32_ext import Rgba32Ext
 
 __all__ = ["Rgba32", "Rgba32ArrayLike", "Rgba32Batch", "Rgba32Like"]
@@ -46,7 +47,7 @@ class Rgba32(Rgba32Ext):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Rgba32Ext in rgba32_ext.py
-        return np.asarray(self.rgba, dtype=dtype, copy=copy)
+        return asarray(self.rgba, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.rgba)

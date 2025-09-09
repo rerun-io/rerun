@@ -770,3 +770,30 @@ fn test_parse_duration() {
     assert_eq!(parse_duration("250ms"), Ok(0.250));
     assert_eq!(parse_duration("3m"), Ok(3.0 * 60.0));
 }
+
+/// Remove the custom formatting
+///
+/// Removes the thin spaces and the special minus character. Useful when copying text.
+pub fn remove_number_formatting(copied_str: &str) -> String {
+    copied_str.replace('\u{2009}', "").replace('−', "-")
+}
+
+#[test]
+fn test_remove_number_formatting() {
+    assert_eq!(
+        remove_number_formatting(&format_f32(-123_456.78)),
+        "-123456.8"
+    );
+    assert_eq!(
+        remove_number_formatting(&format_f64(-123_456.78)),
+        "-123456.78"
+    );
+    assert_eq!(
+        remove_number_formatting(&format_int(-123_456_789_i32)),
+        "-123456789"
+    );
+    assert_eq!(
+        remove_number_formatting(&format_uint(123_456_789_u32)),
+        "123456789"
+    );
+}

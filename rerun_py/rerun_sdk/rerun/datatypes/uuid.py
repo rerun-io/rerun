@@ -19,6 +19,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_uint8,
 )
+from .._numpy_compatibility import asarray
 from .uuid_ext import UuidExt
 
 __all__ = ["Uuid", "UuidArrayLike", "UuidBatch", "UuidLike"]
@@ -49,7 +50,7 @@ class Uuid(UuidExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UuidExt in uuid_ext.py
-        return np.asarray(self.bytes, dtype=dtype, copy=copy)
+        return asarray(self.bytes, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of UuidExt in uuid_ext.py
