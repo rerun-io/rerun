@@ -95,7 +95,7 @@ oss_server = ["dep:re_server"]
 
 ## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
 ##
-## This only works on native.
+## This only works on native, and only with `TELEMETRY_ENABLED` set.
 perf_telemetry = [
   "dep:re_perf_telemetry",
   "re_redap_client/perf_telemetry",
