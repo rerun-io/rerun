@@ -805,17 +805,22 @@ fn rr_recording_stream_serve_grpc_impl(
     bind_ip: CStringView,
     port: u16,
     server_memory_limit: CStringView,
+    newest_first: bool,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
     let bind_ip = bind_ip.as_nonempty_str("bind_ip")?;
-    let server_memory_limit = server_memory_limit
-        .as_maybe_empty_str("server_memory_limit")?
-        .parse::<re_sdk::MemoryLimit>()
-        .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err))?;
+    let server_options = re_sdk::ServerOptions {
+        playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(newest_first),
+
+        memory_limit: server_memory_limit
+            .as_maybe_empty_str("server_memory_limit")?
+            .parse::<re_sdk::MemoryLimit>()
+            .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err))?,
+    };
 
     stream
-        .serve_grpc_opts(bind_ip, port, server_memory_limit)
+        .serve_grpc_opts(bind_ip, port, server_options)
         .map_err(|err| {
             CError::new(
                 CErrorCode::RecordingStreamServeGrpcFailure,
@@ -833,9 +838,12 @@ pub extern "C" fn rr_recording_stream_serve_grpc(
     bind_ip: CStringView,
     port: u16,
     server_memory_limit: CStringView,
+    newest_first: bool,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_serve_grpc_impl(id, bind_ip, port, server_memory_limit) {
+    if let Err(err) =
+        rr_recording_stream_serve_grpc_impl(id, bind_ip, port, server_memory_limit, newest_first)
+    {
         err.write_error(error);
     }
 }

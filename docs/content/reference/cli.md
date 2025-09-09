@@ -57,6 +57,11 @@ The Rerun command-line interface:
 > Example: `16GB` or `50%` (of system total).
 > Default is `0B`, or `25%` if any of the `--serve-*` flags are set.
 
+* `--newest-first <NEWEST_FIRST>`
+> If true, play back the most recent data first when new clients connect.
+>
+> [Default: `false`]
+
 * `--persist-state <PERSIST_STATE>`
 > Whether the Rerun Viewer should persist the state of the viewer to disk.
 > When persisted, the state will be stored at the following locations:

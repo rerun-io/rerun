@@ -19,6 +19,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_uint32,
 )
+from .._numpy_compatibility import asarray
 from .uvec2d_ext import UVec2DExt
 
 __all__ = ["UVec2D", "UVec2DArrayLike", "UVec2DBatch", "UVec2DLike"]
@@ -38,7 +39,7 @@ class UVec2D(UVec2DExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UVec2DExt in uvec2d_ext.py
-        return np.asarray(self.xy, dtype=dtype, copy=copy)
+        return asarray(self.xy, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of UVec2DExt in uvec2d_ext.py

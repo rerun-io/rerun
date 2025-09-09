@@ -55,6 +55,7 @@ from ._log import (
     log_file_from_path as log_file_from_path,
     new_entity_path as new_entity_path,
 )
+from ._numpy_compatibility import asarray as asarray
 from ._properties import (
     send_property as send_property,
     send_recording_name as send_recording_name,

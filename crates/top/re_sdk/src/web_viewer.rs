@@ -44,7 +44,7 @@ impl WebViewerSink {
         bind_ip: &str,
         web_port: WebViewerServerPort,
         grpc_port: u16,
-        server_memory_limit: re_memory::MemoryLimit,
+        server_options: re_grpc_server::ServerOptions,
     ) -> Result<Self, WebViewerSinkError> {
         let (server_shutdown_signal, shutdown) = re_grpc_server::shutdown::shutdown();
 
@@ -66,7 +66,7 @@ impl WebViewerSink {
 
                 rt.block_on(re_grpc_server::serve_from_channel(
                     grpc_server_addr,
-                    server_memory_limit,
+                    server_options,
                     shutdown,
                     channel_rx,
                 ));
@@ -269,14 +269,14 @@ pub fn new_sink(
     bind_ip: &str,
     web_port: WebViewerServerPort,
     grpc_port: u16,
-    server_memory_limit: re_memory::MemoryLimit,
+    server_options: re_grpc_server::ServerOptions,
 ) -> Result<Box<dyn crate::sink::LogSink>, WebViewerSinkError> {
     Ok(Box::new(WebViewerSink::new(
         open_browser,
         bind_ip,
         web_port,
         grpc_port,
-        server_memory_limit,
+        server_options,
     )?))
 }
 

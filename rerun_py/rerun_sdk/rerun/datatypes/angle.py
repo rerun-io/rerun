@@ -16,6 +16,7 @@ from attrs import define, field
 from .._baseclasses import (
     BaseBatch,
 )
+from .._numpy_compatibility import asarray
 from .angle_ext import AngleExt
 
 __all__ = ["Angle", "AngleArrayLike", "AngleBatch", "AngleLike"]
@@ -34,7 +35,7 @@ class Angle(AngleExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AngleExt in angle_ext.py
-        return np.asarray(self.radians, dtype=dtype, copy=copy)
+        return asarray(self.radians, dtype=dtype, copy=copy)
 
     def __float__(self) -> float:
         return float(self.radians)

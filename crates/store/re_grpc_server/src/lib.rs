@@ -2,29 +2,24 @@
 
 pub mod shutdown;
 
+use std::{collections::VecDeque, net::SocketAddr, pin::Pin};
+
+use tokio::{
+    net::TcpListener,
+    sync::{broadcast, mpsc, oneshot},
+};
+use tokio_stream::{Stream, StreamExt as _, wrappers::BroadcastStream};
+use tonic::transport::{Server, server::TcpIncoming};
+use tower_http::cors::CorsLayer;
+
 use re_byte_size::SizeBytes;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::TableMsg;
-use re_protos::sdk_comms::v1alpha1::ReadTablesRequest;
-use re_protos::sdk_comms::v1alpha1::ReadTablesResponse;
-use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
-use re_protos::sdk_comms::v1alpha1::WriteTableRequest;
-use re_protos::sdk_comms::v1alpha1::WriteTableResponse;
-use std::collections::VecDeque;
-use std::net::SocketAddr;
-use std::pin::Pin;
-use tokio::net::TcpListener;
-use tokio::sync::broadcast;
-use tokio::sync::mpsc;
-use tokio::sync::oneshot;
-use tokio_stream::Stream;
-use tokio_stream::StreamExt as _;
-use tokio_stream::wrappers::BroadcastStream;
-use tonic::transport::Server;
-use tonic::transport::server::TcpIncoming;
-use tower_http::cors::CorsLayer;
+use re_protos::sdk_comms::v1alpha1::{
+    ReadTablesRequest, ReadTablesResponse, WriteMessagesRequest, WriteTableRequest,
+    WriteTableResponse,
+};
 
-use re_memory::MemoryLimit;
 use re_protos::{
     common::v1alpha1::{
         DataframePart as DataframePartProto, StoreKind as StoreKindProto, TableId as TableIdProto,
@@ -36,9 +31,14 @@ use re_protos::{
     },
 };
 
+use crate::priority_stream::PriorityMerge;
+
+mod priority_stream;
+
+pub use re_memory::MemoryLimit;
+
 /// Default port of the OSS /proxy server.
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
-pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 
 pub const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 pub const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
@@ -47,6 +47,50 @@ pub const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
 // to handle bursts of messages. This is roughly 16 MiB of `Msg` (excluding their contents).
 const MESSAGE_QUEUE_CAPACITY: usize =
     (16 * 1024 * 1024 / std::mem::size_of::<LogOrTableMsgProto>()).next_power_of_two();
+
+/// Options for the gRPC Proxy Server
+#[derive(Clone, Copy, Debug)]
+pub struct ServerOptions {
+    /// When a client connect, should they be sent the oldest data first, or the newest?
+    pub playback_behavior: PlaybackBehavior,
+
+    /// Start garbage collecting old data when we reach this.
+    ///
+    /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
+    /// on the same machine, otherwise you're potentially doubling your memory usage!
+    pub memory_limit: MemoryLimit,
+}
+
+impl Default for ServerOptions {
+    fn default() -> Self {
+        Self {
+            playback_behavior: PlaybackBehavior::OldestFirst,
+            memory_limit: MemoryLimit::UNLIMITED,
+        }
+    }
+}
+
+/// What happens when a client connects to a gRPC server?
+#[derive(Clone, Copy, Debug)]
+pub enum PlaybackBehavior {
+    /// Start playing back all the old data first,
+    /// and only after start sending anything that happened since.
+    OldestFirst,
+
+    /// Prioritize the newest arriving messages,
+    /// replaying the history later, starting with the newest.
+    NewestFirst,
+}
+
+impl PlaybackBehavior {
+    pub fn from_newest_first(newest_first: bool) -> Self {
+        if newest_first {
+            Self::NewestFirst
+        } else {
+            Self::OldestFirst
+        }
+    }
+}
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]
@@ -102,10 +146,10 @@ impl From<tonic::Status> for TonicStatusError {
 /// to the open `ReadMessages` stream.
 pub async fn serve(
     addr: SocketAddr,
-    memory_limit: MemoryLimit,
+    options: ServerOptions,
     shutdown: shutdown::Shutdown,
 ) -> anyhow::Result<()> {
-    serve_impl(addr, MessageProxy::new(memory_limit), shutdown).await
+    serve_impl(addr, MessageProxy::new(options), shutdown).await
 }
 
 async fn serve_impl(
@@ -163,11 +207,11 @@ async fn serve_impl(
 /// See [`serve`] for more information about what a Rerun server is.
 pub async fn serve_from_channel(
     addr: SocketAddr,
-    memory_limit: MemoryLimit,
+    options: ServerOptions,
     shutdown: shutdown::Shutdown,
     channel_rx: re_smart_channel::Receiver<re_log_types::LogMsg>,
 ) {
-    let message_proxy = MessageProxy::new(memory_limit);
+    let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();
 
     tokio::task::spawn_blocking(move || {
@@ -228,11 +272,11 @@ pub async fn serve_from_channel(
 /// See [`serve`] for more information about what a Rerun server is.
 pub fn spawn_from_rx_set(
     addr: SocketAddr,
-    memory_limit: MemoryLimit,
+    options: ServerOptions,
     shutdown: shutdown::Shutdown,
     rxs: re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
 ) {
-    let message_proxy = MessageProxy::new(memory_limit);
+    let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();
 
     tokio::spawn(async move {
@@ -305,7 +349,7 @@ pub fn spawn_from_rx_set(
 /// See [`serve`] for more information about what a Rerun server is.
 pub fn spawn_with_recv(
     addr: SocketAddr,
-    memory_limit: MemoryLimit,
+    options: ServerOptions,
     shutdown: shutdown::Shutdown,
 ) -> (
     re_smart_channel::Receiver<re_log_types::LogMsg>,
@@ -321,7 +365,7 @@ pub fn spawn_with_recv(
     );
     let (channel_table_tx, channel_table_rx) = crossbeam::channel::unbounded();
     let (message_proxy, mut broadcast_log_rx, mut broadcast_table_rx) =
-        MessageProxy::new_with_recv(memory_limit);
+        MessageProxy::new_with_recv(options);
     tokio::spawn(async move {
         if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
             re_log::error!("message proxy server crashed: {err}");
@@ -470,7 +514,7 @@ struct MsgQueue {
 }
 
 impl MsgQueue {
-    pub fn iter(&self) -> impl Iterator<Item = &LogOrTableMsgProto> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &LogOrTableMsgProto> {
         self.queue.iter()
     }
 
@@ -531,7 +575,7 @@ impl MessageBuffer {
         disposable.size_bytes + static_.size_bytes + persistent.size_bytes
     }
 
-    fn all(&self) -> Vec<LogOrTableMsgProto> {
+    fn all(&self, playback_behavior: PlaybackBehavior) -> Vec<LogOrTableMsgProto> {
         re_tracing::profile_function!();
 
         let Self {
@@ -540,11 +584,23 @@ impl MessageBuffer {
             persistent,
         } = self;
 
-        // NOTE: the order here is important!
-        // TODO(#6523): make this behavior configurable
-        itertools::chain!(persistent.iter(), static_.iter(), disposable.iter(),)
+        // Note: we ALWAYS send the persistent and static data before the disposable,
+        // regardless of PlaybackBehavior!
+
+        match playback_behavior {
+            PlaybackBehavior::OldestFirst => {
+                itertools::chain!(persistent.iter(), static_.iter(), disposable.iter())
+                    .cloned()
+                    .collect()
+            }
+            PlaybackBehavior::NewestFirst => itertools::chain!(
+                persistent.iter().rev(),
+                static_.iter().rev(),
+                disposable.iter().rev()
+            )
             .cloned()
-            .collect()
+            .collect(),
+        }
     }
 
     fn add_table(&mut self, table: TableMsgProto) {
@@ -645,7 +701,7 @@ impl MessageBuffer {
 ///
 /// Handles message history, and broadcasts messages to clients.
 struct EventLoop {
-    server_memory_limit: MemoryLimit,
+    options: ServerOptions,
 
     /// New log messages are broadcast to all clients.
     broadcast_log_tx: broadcast::Sender<LogMsgProto>,
@@ -661,13 +717,13 @@ struct EventLoop {
 
 impl EventLoop {
     fn new(
-        server_memory_limit: MemoryLimit,
+        options: ServerOptions,
         event_rx: mpsc::Receiver<Event>,
         broadcast_log_tx: broadcast::Sender<LogMsgProto>,
         broadcast_table_tx: broadcast::Sender<TableMsgProto>,
     ) -> Self {
         Self {
-            server_memory_limit,
+            options,
             broadcast_log_tx,
             broadcast_table_tx,
             event_rx,
@@ -682,28 +738,19 @@ impl EventLoop {
             };
 
             match event {
-                Event::NewClient(channel) => self.handle_new_client(channel),
+                Event::NewClient(channel) => {
+                    channel
+                        .send((
+                            self.messages.all(self.options.playback_behavior),
+                            self.broadcast_log_tx.subscribe(),
+                            self.broadcast_table_tx.subscribe(),
+                        ))
+                        .ok();
+                }
                 Event::Message(msg) => self.handle_msg(msg),
                 Event::Table(table) => self.handle_table(table),
             }
         }
-    }
-
-    fn handle_new_client(
-        &self,
-        channel: oneshot::Sender<(
-            Vec<LogOrTableMsgProto>,
-            broadcast::Receiver<LogMsgProto>,
-            broadcast::Receiver<TableMsgProto>,
-        )>,
-    ) {
-        channel
-            .send((
-                self.messages.all(),
-                self.broadcast_log_tx.subscribe(),
-                self.broadcast_table_tx.subscribe(),
-            ))
-            .ok();
     }
 
     fn handle_msg(&mut self, msg: LogMsgProto) {
@@ -733,11 +780,11 @@ impl EventLoop {
     }
 
     fn is_history_disabled(&self) -> bool {
-        self.server_memory_limit.max_bytes.is_some_and(|b| b == 0)
+        self.options.memory_limit.max_bytes.is_some_and(|b| b == 0)
     }
 
     fn gc_if_using_too_much_ram(&mut self) {
-        let Some(max_bytes) = self.server_memory_limit.max_bytes else {
+        let Some(max_bytes) = self.options.memory_limit.max_bytes else {
             // Unlimited memory!
             return;
         };
@@ -754,17 +801,18 @@ impl SizeBytes for TableMsgProto {
 }
 
 pub struct MessageProxy {
+    options: ServerOptions,
     _queue_task_handle: tokio::task::JoinHandle<()>,
     event_tx: mpsc::Sender<Event>,
 }
 
 impl MessageProxy {
-    pub fn new(server_memory_limit: MemoryLimit) -> Self {
-        Self::new_with_recv(server_memory_limit).0
+    pub fn new(options: ServerOptions) -> Self {
+        Self::new_with_recv(options).0
     }
 
     fn new_with_recv(
-        server_memory_limit: MemoryLimit,
+        options: ServerOptions,
     ) -> (
         Self,
         broadcast::Receiver<LogMsgProto>,
@@ -775,18 +823,14 @@ impl MessageProxy {
         let (broadcast_table_tx, broadcast_table_rx) = broadcast::channel(MESSAGE_QUEUE_CAPACITY);
 
         let task_handle = tokio::spawn(async move {
-            EventLoop::new(
-                server_memory_limit,
-                event_rx,
-                broadcast_log_tx,
-                broadcast_table_tx,
-            )
-            .run_in_place()
-            .await;
+            EventLoop::new(options, event_rx, broadcast_log_tx, broadcast_table_tx)
+                .run_in_place()
+                .await;
         });
 
         (
             Self {
+                options,
                 _queue_task_handle: task_handle,
                 event_tx,
             },
@@ -842,7 +886,10 @@ impl MessageProxy {
                 })
         });
 
-        Box::pin(history.chain(channel))
+        match self.options.playback_behavior {
+            PlaybackBehavior::OldestFirst => Box::pin(history.chain(channel)),
+            PlaybackBehavior::NewestFirst => Box::pin(PriorityMerge::new(channel, history)),
+        }
     }
 
     async fn new_client_table_stream(&self) -> ReadTablesStream {
@@ -1113,10 +1160,22 @@ mod tests {
     }
 
     async fn setup() -> (Completion, SocketAddr) {
-        setup_with_memory_limit(MemoryLimit::UNLIMITED).await
+        setup_opt(ServerOptions {
+            playback_behavior: PlaybackBehavior::OldestFirst,
+            memory_limit: MemoryLimit::UNLIMITED,
+        })
+        .await
     }
 
     async fn setup_with_memory_limit(memory_limit: MemoryLimit) -> (Completion, SocketAddr) {
+        setup_opt(ServerOptions {
+            playback_behavior: PlaybackBehavior::OldestFirst,
+            memory_limit,
+        })
+        .await
+    }
+
+    async fn setup_opt(options: ServerOptions) -> (Completion, SocketAddr) {
         let completion = Completion::new();
 
         let tcp_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -1127,7 +1186,7 @@ mod tests {
             async move {
                 tonic::transport::Server::builder()
                     .add_service(
-                        MessageProxyServiceServer::new(super::MessageProxy::new(memory_limit))
+                        MessageProxyServiceServer::new(super::MessageProxy::new(options))
                             .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
                             .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
                     )
@@ -1407,9 +1466,9 @@ mod tests {
         let store_id = StoreId::random(StoreKind::Recording, "test_app");
 
         let set_store_info = vec![set_store_info_msg(&store_id)];
-        let first_static = generate_log_messages(&store_id, 1, Temporalness::Static);
-        let first_temporal = generate_log_messages(&store_id, 1, Temporalness::Temporal);
-        let second_static = generate_log_messages(&store_id, 1, Temporalness::Static);
+        let first_static = generate_log_messages(&store_id, 3, Temporalness::Static);
+        let first_temporal = generate_log_messages(&store_id, 3, Temporalness::Temporal);
+        let second_static = generate_log_messages(&store_id, 3, Temporalness::Static);
 
         write_messages(&mut client, set_store_info.clone()).await;
         write_messages(&mut client, first_static.clone()).await;
@@ -1420,6 +1479,44 @@ mod tests {
         let expected =
             itertools::chain!(set_store_info, first_static, second_static, first_temporal)
                 .collect_vec();
+
+        let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
+        let actual = read_log_stream(&mut log_stream, expected.len()).await;
+
+        assert_eq!(actual, expected);
+
+        completion.finish();
+    }
+
+    #[tokio::test]
+    async fn playback_newest_first() {
+        let (completion, addr) = setup_opt(ServerOptions {
+            playback_behavior: PlaybackBehavior::NewestFirst, // this is what we want to test
+            memory_limit: MemoryLimit::UNLIMITED,
+        })
+        .await;
+        let mut client = make_client(addr).await;
+
+        let store_id = StoreId::random(StoreKind::Recording, "test_app");
+
+        let set_store_info = vec![set_store_info_msg(&store_id)];
+        let first_statics = generate_log_messages(&store_id, 3, Temporalness::Static);
+        let temporals = generate_log_messages(&store_id, 3, Temporalness::Temporal);
+        let second_statics = generate_log_messages(&store_id, 3, Temporalness::Static);
+
+        write_messages(&mut client, set_store_info.clone()).await;
+        write_messages(&mut client, first_statics.clone()).await;
+        write_messages(&mut client, temporals.clone()).await;
+        write_messages(&mut client, second_statics.clone()).await;
+
+        // All static data should always come before temporal data:
+        let expected = itertools::chain!(
+            set_store_info.into_iter().rev(),
+            second_statics.into_iter().rev(),
+            first_statics.into_iter().rev(),
+            temporals.into_iter().rev()
+        )
+        .collect_vec();
 
         let mut log_stream = client.read_messages(ReadMessagesRequest {}).await.unwrap();
         let actual = read_log_stream(&mut log_stream, expected.len()).await;

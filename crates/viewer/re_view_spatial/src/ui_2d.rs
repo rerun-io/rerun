@@ -262,7 +262,7 @@ impl SpatialView2D {
         let view_ctx = self.view_context(ctx, query.view_id, state); // Recreate view state to handle context editing during picking.
 
         for draw_data in system_output.draw_data {
-            view_builder.queue_draw(draw_data);
+            view_builder.queue_draw(ctx.render_ctx(), draw_data);
         }
 
         let background = ViewProperty::from_archetype::<Background>(
@@ -273,7 +273,7 @@ impl SpatialView2D {
         let (background_drawable, clear_color) =
             crate::configure_background(&view_ctx, &background, self)?;
         if let Some(background_drawable) = background_drawable {
-            view_builder.queue_draw(background_drawable);
+            view_builder.queue_draw(ctx.render_ctx(), background_drawable);
         }
 
         // ------------------------------------------------------------------------

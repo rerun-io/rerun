@@ -130,10 +130,13 @@ impl RenderDepthClouds {
         )?;
 
         let command_buffer = view_builder
-            .queue_draw(GenericSkyboxDrawData::new(re_ctx, Default::default()))
-            .queue_draw(point_cloud_draw_data)
-            .queue_draw(frame_draw_data)
-            .queue_draw(image_draw_data)
+            .queue_draw(
+                re_ctx,
+                GenericSkyboxDrawData::new(re_ctx, Default::default()),
+            )
+            .queue_draw(re_ctx, point_cloud_draw_data)
+            .queue_draw(re_ctx, frame_draw_data)
+            .queue_draw(re_ctx, image_draw_data)
             .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 
         Ok(framework::ViewDrawResult {
@@ -208,10 +211,13 @@ impl RenderDepthClouds {
         )?;
 
         let command_buffer = view_builder
-            .queue_draw(GenericSkyboxDrawData::new(re_ctx, Default::default()))
-            .queue_draw(depth_cloud_draw_data)
-            .queue_draw(frame_draw_data)
-            .queue_draw(image_draw_data)
+            .queue_draw(
+                re_ctx,
+                GenericSkyboxDrawData::new(re_ctx, Default::default()),
+            )
+            .queue_draw(re_ctx, depth_cloud_draw_data)
+            .queue_draw(re_ctx, frame_draw_data)
+            .queue_draw(re_ctx, image_draw_data)
             .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 
         Ok(framework::ViewDrawResult {
