@@ -219,10 +219,10 @@ convert_case = "0.6"
 criterion = "0.5"
 cros-codecs = "0.0.6"
 crossbeam = "0.8"
-datafusion = { version = "47", default-features = false, features = [
+datafusion = { version = "49.0.2", default-features = false, features = [
   "nested_expressions",
 ] }
-datafusion-ffi = "47"
+datafusion-ffi = "49.0.2"
 directories = "5"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes

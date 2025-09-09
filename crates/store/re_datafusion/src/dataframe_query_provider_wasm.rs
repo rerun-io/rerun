@@ -232,10 +232,13 @@ impl PartitionStreamExec {
             ));
         }
 
-        let orderings = vec![LexOrdering::new(physical_ordering)];
+        let orderings = vec![
+            LexOrdering::new(physical_ordering)
+                .expect("LexOrdering should return Some when non-empty vec is passed"),
+        ];
 
         let eq_properties =
-            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), &orderings);
+            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
 
         let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
 
