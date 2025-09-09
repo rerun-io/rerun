@@ -25,14 +25,17 @@ pub struct ShareModal {
     default_expanded: bool,
 }
 
-#[expect(clippy::derivable_impls)] // False positive.
 impl Default for ShareModal {
     fn default() -> Self {
+        // Put this on an extra line, otherwise if this isn't wasm32, clippy
+        // thinks that this default impl is derivable.
+        let create_web_viewer_url = cfg!(target_arch = "wasm32");
+
         Self {
             modal: ModalHandler::default(),
 
             url: None,
-            create_web_viewer_url: cfg!(target_arch = "wasm32"),
+            create_web_viewer_url,
             last_time_copied: None,
             default_expanded: false,
         }
