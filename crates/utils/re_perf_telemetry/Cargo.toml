@@ -77,6 +77,10 @@ tracing-subscriber = { workspace = true, features = [
 prometheus-client.workspace = true
 tokio.workspace = true
 
+# native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+memory-stats = { workspace = true, features = ["always_use_statm"] }
+
 # External (optional)
 tracing-tracy = { workspace = true, optional = true }
 

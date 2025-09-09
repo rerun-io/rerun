@@ -409,6 +409,8 @@ impl Telemetry {
                 .try_init()?;
         }
 
+        crate::memory_telemetry::install_memory_use_meters();
+
         tracing::info!("Telemetry initialized");
 
         Ok(Self {
