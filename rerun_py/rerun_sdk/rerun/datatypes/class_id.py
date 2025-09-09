@@ -16,6 +16,7 @@ from attrs import define, field
 from .._baseclasses import (
     BaseBatch,
 )
+from .._numpy_compatibility import asarray
 
 __all__ = ["ClassId", "ClassIdArrayLike", "ClassIdBatch", "ClassIdLike"]
 
@@ -34,7 +35,7 @@ class ClassId:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of ClassIdExt in class_id_ext.py
-        return np.asarray(self.id, dtype=dtype, copy=copy)
+        return asarray(self.id, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.id)
