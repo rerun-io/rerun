@@ -911,6 +911,9 @@ mod tests {
                 select_when_loaded: false,
             }),
         );
+
+        let mut uri: re_uri::DatasetPartitionUri = uri.parse().unwrap();
+
         assert_eq!(
             ViewerOpenUrl::from_display_mode(
                 &store_hub,
@@ -918,7 +921,30 @@ mod tests {
                 &Fragment::default(),
             )
             .unwrap(),
-            ViewerOpenUrl::RedapDatasetPartition(uri.parse().unwrap())
+            ViewerOpenUrl::RedapDatasetPartition(uri.clone())
+        );
+
+        let fragment = Fragment {
+            focus: Some(re_log_types::DataPath {
+                entity_path: EntityPath::from_single_string("test/entity"),
+                instance: None,
+                component_descriptor: None,
+            }),
+            when: Some((
+                re_chunk::TimelineName::new("test"),
+                re_log_types::TimeCell {
+                    typ: re_log_types::TimeType::DurationNs,
+                    value: re_log_types::NonMinI64::ONE,
+                },
+            )),
+        };
+
+        uri.fragment = fragment.clone();
+
+        assert_eq!(
+            ViewerOpenUrl::from_display_mode(&store_hub, DisplayMode::LocalRecordings, &fragment)
+                .unwrap(),
+            ViewerOpenUrl::RedapDatasetPartition(uri),
         );
 
         // originating from message proxy.
