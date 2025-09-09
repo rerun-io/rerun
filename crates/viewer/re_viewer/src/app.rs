@@ -3256,9 +3256,6 @@ fn update_web_address_bar(
     focus: Option<&Item>,
     when: Option<&TimeControl>,
 ) -> Option<()> {
-    use crate::history::{HistoryEntry, HistoryExt as _, history};
-    use crate::web_tools::JsResultExt as _;
-
     if !enable_history {
         return None;
     }
@@ -3287,11 +3284,33 @@ fn update_web_address_bar(
 
     re_log::debug!("Updating navigation bar");
 
+    use crate::history::{HistoryEntry, HistoryExt as _, history};
+    use crate::web_tools::JsResultExt as _;
+
+    /// Returns the url without the fragment
+    fn strip_fragment(url: &str) -> &str {
+        // Split by url code for '#', which is used for fragments.
+        url.rsplit_once("%23").map_or(url, |(url, _)| url)
+    }
+
     if let Some(history) = history().ok_or_log_js_error() {
-        // TODO(#10866): don't push if only the fragments change.
-        history
-            .push_entry(HistoryEntry::new(url))
-            .ok_or_log_js_error();
+        let new_entry = HistoryEntry::new(url);
+        if history
+            .current_entry()
+            .ok_or_log_js_error()
+            .flatten()
+            .and_then(|entry| {
+                Some((
+                    entry.to_query_string().ok_or_log_js_error()?,
+                    new_entry.to_query_string().ok_or_log_js_error()?,
+                ))
+            })
+            .is_some_and(|(current, new)| strip_fragment(&current) == strip_fragment(&new))
+        {
+            history.replace_entry(new_entry).ok_or_log_js_error();
+        } else {
+            history.push_entry(new_entry).ok_or_log_js_error();
+        }
     }
 
     Some(())

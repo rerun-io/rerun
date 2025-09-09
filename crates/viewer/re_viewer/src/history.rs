@@ -263,7 +263,6 @@ pub trait HistoryExt: private::Sealed {
     ///
     /// Use this to update the current url with a new fragment (selection, time, etc.)
     /// to which browser history doesn't need to go back to.
-    #[allow(unused)]
     fn replace_entry(&self, entry: HistoryEntry) -> Result<(), JsValue>;
 
     /// Get the latest entry.

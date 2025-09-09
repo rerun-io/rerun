@@ -198,7 +198,6 @@ impl ViewerOpenUrl {
     /// To produce a sharable url, from this result, call [`Self::sharable_url`].
     ///
     /// Returns Err(reason) if the current state can't be shared with a url.
-    // TODO(#10866): Should have anchors for selection etc. when supported. Need to figure out how this works together with the "share editor".
     // Does this method merely provide the starting point?
     #[allow(unused)] // TODO(rerun/dataplatform#1336): Only used on the web. About to change!
     pub fn from_display_mode(
@@ -325,6 +324,7 @@ impl ViewerOpenUrl {
             Self::RedapDatasetPartition(dataset_partition_uri) => {
                 vec1![dataset_partition_uri.to_string()]
             }
+
             Self::RedapProxy(proxy_uri) => {
                 vec1![proxy_uri.to_string()]
             }
