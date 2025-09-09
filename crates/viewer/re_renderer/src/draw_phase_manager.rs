@@ -64,7 +64,11 @@ impl std::fmt::Debug for PackedRenderingKeyAndDrawDataIndex {
 /// This is an expanded version used for processing/sorting.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Drawable {
-    /// Distance sort key from near (0.0) to far (float max).
+    /// Distance sort key from near (low values) to far (high values).
+    ///
+    /// For draw phases that use camera distances, 0 is regarded as being at the camera
+    /// with values increasing towards infinity with squared (!!) distance.
+    /// However, all values from -INF to INF are valid.
     ///
     /// See also [`DrawDataDrawable::distance_sort_key`].
     pub distance_sort_key: f32,
