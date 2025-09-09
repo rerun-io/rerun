@@ -59,7 +59,7 @@ impl InteractionHighlight {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct ApplicationSelectionState {
-    /// The selected items. Write to this with [`SystemCommand::SetSelection`].
+    /// The selected items. Write to this with [`re_global_context::SystemCommand::SetSelection`].
     selection: ItemCollection,
 
     /// Has selection changed since the previous frame?
