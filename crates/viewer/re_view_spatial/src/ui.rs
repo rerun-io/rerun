@@ -1,15 +1,12 @@
 use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
 
 use macaw::BoundingBox;
-use re_data_ui::item_ui;
 use re_format::format_f32;
 use re_types::{
     blueprint::components::VisualBounds2D, components::ViewCoordinates, image::ImageKind,
 };
 use re_ui::UiExt as _;
-use re_viewer_context::{
-    HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewId, ViewState, ViewerContext,
-};
+use re_viewer_context::{HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewState};
 
 use crate::{
     Pinhole,
@@ -133,9 +130,7 @@ impl SpatialViewState {
     pub fn view_eye_ui(
         &mut self,
         ui: &mut egui::Ui,
-        ctx: &ViewerContext<'_>,
         scene_view_coordinates: Option<ViewCoordinates>,
-        view_id: ViewId,
     ) {
         if ui
             .button("Reset")
@@ -159,25 +154,6 @@ impl SpatialViewState {
                 self.state_3d.set_spin(spin);
             }
         }
-
-        ui.horizontal(|ui| {
-            if let Some(tracked_entity) = self.state_3d.tracked_entity.clone() {
-                let (latest_at_query, _) =
-                    item_ui::guess_query_and_db_for_selected_entity(ctx, &tracked_entity);
-
-                ui.label("Tracked entity:");
-                item_ui::entity_path_button(
-                    ctx,
-                    &latest_at_query,
-                    ctx.recording(),
-                    ui,
-                    Some(view_id),
-                    &tracked_entity,
-                );
-            } else {
-                ui.label("Tracked entity: None");
-            }
-        });
     }
 
     pub fn fallback_opacity_for_image_kind(&self, kind: ImageKind) -> f32 {
