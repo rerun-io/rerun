@@ -2,7 +2,7 @@ pub fn install_memory_use_meters() {
     let meter = opentelemetry::global::meter("memory-use");
 
     meter
-        .i64_observable_gauge("RSS")
+        .i64_observable_gauge("memory_resident_set_size_bytes")
         .with_description("Resident Set Size")
         .with_unit("B")
         .with_callback(|observer| {
