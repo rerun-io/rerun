@@ -47,6 +47,7 @@ impl McapRos2Layer {
             .register_parser::<ImageMessageParser>("sensor_msgs/msg/Image")
             .register_parser::<ImuMessageParser>("sensor_msgs/msg/Imu")
             .register_parser::<JointStateMessageParser>("sensor_msgs/msg/JointState")
+            .register_parser::<MagneticFieldMessageParser>("sensor_msgs/msg/MagneticField")
             .register_parser::<NavSatFixMessageParser>("sensor_msgs/msg/NavSatFix")
             .register_parser::<PointCloud2MessageParser>("sensor_msgs/msg/PointCloud2")
             .register_parser::<RangeMessageParser>("sensor_msgs/msg/Range")
