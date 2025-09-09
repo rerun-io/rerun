@@ -194,8 +194,9 @@ fn add_entities_line_ui(
     let entity_path = &entity_data.entity_path;
     let name = &entity_data.label;
 
-    #[allow(clippy::unwrap_used)]
-    let add_info = entities_add_info.get(entity_path).unwrap();
+    let add_info = entities_add_info
+        .get(entity_path)
+        .unwrap_or_else(|| panic!("HashMap should contain entry for {entity_path}"));
 
     let is_explicitly_excluded = entity_path_filter.is_explicitly_excluded(entity_path);
     let is_explicitly_included = entity_path_filter.is_explicitly_included(entity_path);
