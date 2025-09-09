@@ -319,8 +319,11 @@ class DynamicArchetype(AsComponents):
                 for name, value in components.items():
                     descriptor = ComponentDescriptor(
                         component=name,
-                        archetype=self._archetype,
                     )
+                    if self._archetype is not None:
+                        descriptor = descriptor.with_builtin_archetype(
+                            archetype=self._archetype,
+                        )
                     batch = AnyBatchValue(descriptor, value, drop_untyped_nones=drop_untyped_nones)
                     if batch.is_valid():
                         self._component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
@@ -351,14 +354,18 @@ class DynamicArchetype(AsComponents):
 
     def with_component_from_data(self, field: str, value: Any, drop_untyped_nones: bool = True) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle."""
-        descriptor = ComponentDescriptor(component=field, archetype=self._archetype)
+        descriptor = ComponentDescriptor(component=field)
+        if self._archetype is not None:
+            descriptor = descriptor.with_builtin_archetype(self._archetype)
         return self._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
 
     def with_component_override(
         self, field: str, component_type: str, value: Any, drop_untyped_nones: bool = True
     ) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle with name and component type."""
-        descriptor = ComponentDescriptor(component=field, archetype=self._archetype, component_type=component_type)
+        descriptor = ComponentDescriptor(component=field, component_type=component_type)
+        if self._archetype is not None:
+            descriptor = descriptor.with_builtin_archetype(self._archetype)
         return self._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
 
     def as_component_batches(self) -> list[DescribedComponentBatch]:

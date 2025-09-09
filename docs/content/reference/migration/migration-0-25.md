@@ -39,7 +39,54 @@ See an overview for supported python versions [here](https://ref.rerun.io/docs/p
 
 ### `archetype` specification in `AnyValues`
 
-If `AnyValues` had the same `field_name` but unique `archetypes` then the view would disambiguate them but the `dataframe` api wouldn't.
-We split `AnyValues` into `AnyValues` with no archetype and `DynamicArchetype` requiring an `archetype` where the name in the `dataframe` api is made unique by combining
-the archetype with the field name similar to how built-in components are handled.
-In the next release we will remove the ability to specify an `archetype` when creating `AnyValues` to finalize the split.
+Previously, logging two `AnyValues` with the same field name but different archetype name under the same entity would lead to an inconsistency where the viewer would disambiguate them, but not the dataframe API.
+
+```python
+arbitrary_int = 10
+example = AnyValues()
+example.with_field(
+    ComponentDescriptor("component_name", "archetype_name"), arbitrary_int
+)
+example.with_field(
+    ComponentDescriptor("component_name", "different_archetype"), arbitrary_int+1
+)
+rr.log("/path", example)
+```
+
+In the viewer we would see two `component_name` entries under different archetypes but they would not be uniquely queryable.
+
+```python
+from rerun.dataframe import load_recording
+rec = load_recording("<path_to_logs_above>.rrd")
+rec.view(index="log_time", contents="/path").select().schema
+# Only shows one `component_name` component
+```
+
+To address that, we split this functionality into two utilities:
+
+-   `AnyValues`, which has no archetype name
+-   `DynamicArchetype`, which requires an archetype name
+
+When using `DynamicArchetype`, the dataframe API will include the archetype the column names (similar to how built-in components are handled), which reduces the possibility for ambiguity.
+In the next release we will remove the ability to specify an `archetype` when creating `AnyValues` to finalize the transition.
+
+```python
+arbitrary_int = 10
+example = DynamicArchetype("archetype_name")
+example.with_component_from_data(
+    "component_name", arbitrary_int
+)
+another_example = DynamicArchetype("another_archetype")
+another_example.with_field(
+    "component_name", arbitrary_int+1
+)
+rr.log("/path", example)
+rr.log("/path", another_example)
+```
+
+```python
+from rerun.dataframe import load_recording
+rec = load_recording("<path_to_logs_above>.rrd")
+rec.view(index="log_time", contents="/path").select().schema
+# Only shows two `component_name` components deduplicated by archetype!
+```

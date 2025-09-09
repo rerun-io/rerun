@@ -16,11 +16,11 @@ def test_archetype_builder() -> None:
     bar_batch = batches[1]
     baz_batch = batches[2]
 
-    assert foo_batch.component_descriptor() == rr.ComponentDescriptor("foo", archetype=archetype)
-    assert bar_batch.component_descriptor() == rr.ComponentDescriptor("bar", archetype=archetype)
+    assert foo_batch.component_descriptor() == rr.ComponentDescriptor("foo").with_builtin_archetype(archetype)
+    assert bar_batch.component_descriptor() == rr.ComponentDescriptor("bar").with_builtin_archetype(archetype)
     assert baz_batch.component_descriptor() == rr.ComponentDescriptor(
-        "baz", archetype=archetype, component_type=rr.components.ScalarBatch._COMPONENT_TYPE
-    )
+        "baz", component_type=rr.components.ScalarBatch._COMPONENT_TYPE
+    ).with_builtin_archetype(archetype)
     assert len(foo_batch.as_arrow_array()) == 3
     assert len(bar_batch.as_arrow_array()) == 1
     assert len(baz_batch.as_arrow_array()) == 3
