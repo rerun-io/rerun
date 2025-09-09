@@ -45,13 +45,6 @@ use crate::{
 /// [`DrawData`] specific payload that is injected into the otherwise type agnostic [`crate::Drawable`].
 pub type DrawDataDrawablePayload = u32;
 
-/// Unique identifier for a [`Renderer`] type.
-///
-/// We generally don't expect many different distinct types of renderers,
-/// therefore 255 should be more than enough.
-/// This limitation simplifies sorting of drawables a bit.
-pub type RendererTypeId = u8;
-
 /// A single drawable item within a given [`DrawData`].
 ///
 /// The general expectation is that there's a rough one to one relationship between

@@ -12,7 +12,7 @@ use crate::{
     device_caps::DeviceCaps,
     error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
-    renderer::{Renderer, RendererExt, RendererTypeId},
+    renderer::{Renderer, RendererExt},
     resource_managers::TextureManager2D,
     wgpu_resources::WgpuResourcePools,
 };
@@ -142,6 +142,26 @@ pub struct Renderers {
     renderers_by_key: Vec<Arc<dyn RendererExt>>,
 }
 
+/// Unique identifier for a [`Renderer`] type.
+///
+/// We generally don't expect many different distinct types of renderers,
+/// therefore 255 should be more than enough.
+/// This limitation simplifies sorting of drawables a bit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RendererTypeId(u8);
+
+impl RendererTypeId {
+    #[inline]
+    pub const fn bits(&self) -> u8 {
+        self.0
+    }
+
+    #[inline]
+    pub const fn from_bits(bits: u8) -> Self {
+        Self(bits)
+    }
+}
+
 pub struct RendererWithKey<T: Renderer> {
     renderer: Arc<T>,
     key: RendererTypeId,
@@ -175,13 +195,12 @@ impl Renderers {
         self.renderers.entry().or_insert_with(|| {
             re_tracing::profile_scope!("create_renderer", std::any::type_name::<R>());
 
-            let key = RendererTypeId::try_from(self.renderers_by_key.len()).unwrap_or_else(|_| {
-                re_log::error!(
-                    "Supporting at most {} distinct renderer types.",
-                    RendererTypeId::MAX
-                );
-                RendererTypeId::MAX
-            });
+            let key = RendererTypeId(u8::try_from(self.renderers_by_key.len()).unwrap_or_else(
+                |_| {
+                    re_log::error!("Supporting at most {} distinct renderer types.", u8::MAX);
+                    u8::MAX
+                },
+            ));
 
             let renderer = Arc::new(R::create_renderer(ctx));
             self.renderers_by_key.push(renderer.clone());
@@ -200,7 +219,9 @@ impl Renderers {
     /// (there would be no key otherwise anyways!)
     /// The returned type is the type erased [`RendererExt`] rather than a concrete renderer type.
     pub(crate) fn get_by_key(&self, key: RendererTypeId) -> Option<&dyn RendererExt> {
-        self.renderers_by_key.get(key as usize).map(|r| r.as_ref())
+        self.renderers_by_key
+            .get(key.0 as usize)
+            .map(|r| r.as_ref())
     }
 }
 

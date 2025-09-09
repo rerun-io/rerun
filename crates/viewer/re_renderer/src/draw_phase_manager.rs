@@ -4,11 +4,10 @@ use enumset::__internal::EnumSetTypePrivate as _;
 use enumset::EnumSet;
 
 use crate::{
-    GpuRenderPipelinePoolAccessor, QueueableDrawData, RenderContext,
+    GpuRenderPipelinePoolAccessor, QueueableDrawData, RenderContext, RendererTypeId,
     context::Renderers,
     renderer::{
         DrawDataDrawable, DrawDataDrawablePayload, DrawInstruction, DrawableCollectionViewInfo,
-        RendererTypeId,
     },
 };
 
@@ -36,7 +35,7 @@ impl PackedRenderingKeyAndDrawDataIndex {
         // 24 bits for the draw data index. Should be enough for anyone ;-).
         debug_assert!(draw_data_index < 0xFFFFFF);
 
-        Self(((renderer_key as u32) << 24) | draw_data_index)
+        Self(((renderer_key.bits() as u32) << 24) | draw_data_index)
     }
 
     #[inline]
@@ -46,7 +45,7 @@ impl PackedRenderingKeyAndDrawDataIndex {
 
     #[inline]
     const fn renderer_key(&self) -> RendererTypeId {
-        ((self.0 & 0xFF000000) >> 24) as u8
+        RendererTypeId::from_bits(((self.0 & 0xFF000000) >> 24) as u8)
     }
 }
 
@@ -313,40 +312,43 @@ mod tests {
 
     use super::*;
 
+    const RENDERER_0: RendererTypeId = RendererTypeId::from_bits(0);
+    const RENDERER_2: RendererTypeId = RendererTypeId::from_bits(2);
+
     const TEST_DRAWABLES: [Drawable; 7] = [
         Drawable {
             distance_sort_key: 0.0,
-            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 0),
+            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(RENDERER_0, 0),
             draw_data_payload: 0,
         },
         Drawable {
             distance_sort_key: 1.0,
-            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 1),
+            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(RENDERER_0, 1),
             draw_data_payload: 0,
         },
         Drawable {
             distance_sort_key: 2.0,
-            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 1),
+            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(RENDERER_0, 1),
             draw_data_payload: 0,
         },
         Drawable {
             distance_sort_key: f32::MAX,
-            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 0),
+            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(RENDERER_0, 0),
             draw_data_payload: 0,
         },
         Drawable {
             distance_sort_key: f32::INFINITY,
-            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 0),
+            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(RENDERER_0, 0),
             draw_data_payload: 0,
         },
         Drawable {
             distance_sort_key: 2.0001,
-            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(2, 0),
+            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(RENDERER_2, 0),
             draw_data_payload: 0,
         },
         Drawable {
             distance_sort_key: 2.0001,
-            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(2, 0),
+            draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(RENDERER_2, 0),
             draw_data_payload: 1, // Same as previous, but has a different payload.
         },
     ];
@@ -356,37 +358,51 @@ mod tests {
         let expected = vec![
             Drawable {
                 distance_sort_key: 0.0,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 0),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_0, 0,
+                ),
                 draw_data_payload: 0,
             },
             Drawable {
                 distance_sort_key: f32::MAX,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 0),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_0, 0,
+                ),
                 draw_data_payload: 0,
             },
             Drawable {
                 distance_sort_key: f32::INFINITY,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 0),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_0, 0,
+                ),
                 draw_data_payload: 0,
             },
             Drawable {
                 distance_sort_key: 1.0,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 1),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_0, 1,
+                ),
                 draw_data_payload: 0,
             },
             Drawable {
                 distance_sort_key: 2.0,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 1),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_0, 1,
+                ),
                 draw_data_payload: 0,
             },
             Drawable {
                 distance_sort_key: 2.0001,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(2, 0),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_2, 0,
+                ),
                 draw_data_payload: 0,
             },
             Drawable {
                 distance_sort_key: 2.0001,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(2, 0),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_2, 0,
+                ),
                 draw_data_payload: 1, // Same as previous, but has a different payload.
             },
         ];
@@ -416,37 +432,51 @@ mod tests {
         let expected = vec![
             Drawable {
                 distance_sort_key: f32::INFINITY,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 0),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_0, 0,
+                ),
                 draw_data_payload: 0,
             },
             Drawable {
                 distance_sort_key: f32::MAX,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 0),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_0, 0,
+                ),
                 draw_data_payload: 0,
             },
             Drawable {
                 distance_sort_key: 2.0001,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(2, 0),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_2, 0,
+                ),
                 draw_data_payload: 0,
             },
             Drawable {
                 distance_sort_key: 2.0001,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(2, 0),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_2, 0,
+                ),
                 draw_data_payload: 1, // Same as previous, but has a different payload.
             },
             Drawable {
                 distance_sort_key: 2.0,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 1),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_0, 1,
+                ),
                 draw_data_payload: 0,
             },
             Drawable {
                 distance_sort_key: 1.0,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 1),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_0, 1,
+                ),
                 draw_data_payload: 0,
             },
             Drawable {
                 distance_sort_key: 0.0,
-                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(0, 0),
+                draw_data_plus_rendering_key: PackedRenderingKeyAndDrawDataIndex::new(
+                    RENDERER_0, 0,
+                ),
                 draw_data_payload: 0,
             },
         ];

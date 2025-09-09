@@ -1,8 +1,8 @@
 use std::any::Any;
 
 use crate::{
-    DrawableCollector, RenderContext,
-    renderer::{DrawData, DrawableCollectionViewInfo, RendererTypeId},
+    DrawableCollector, RenderContext, RendererTypeId,
+    renderer::{DrawData, DrawableCollectionViewInfo},
 };
 
 /// Utility trait for implementing dynamic dispatch within [`QueueableDrawData`].

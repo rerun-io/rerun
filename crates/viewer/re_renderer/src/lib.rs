@@ -83,7 +83,7 @@ pub use colormap::{
     grayscale_srgb,
 };
 pub use context::{
-    MsaaMode, RenderConfig, RenderContext, RenderContextError, adapter_info_summary,
+    MsaaMode, RenderConfig, RenderContext, RenderContextError, RendererTypeId, adapter_info_summary,
 };
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
