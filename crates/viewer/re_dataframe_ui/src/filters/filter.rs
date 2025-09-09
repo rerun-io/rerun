@@ -4,12 +4,12 @@ use std::sync::Arc;
 
 use arrow::array::{Array as _, ArrayRef, BooleanArray, ListArray, as_list_array};
 use arrow::datatypes::{DataType, Field};
-use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err};
+use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err, ExprSchema};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
     ScalarUDFImpl, Signature, TypeSignature, Volatility,
 };
-use datafusion::prelude::{Column, Expr, array_to_string, col, lit, lower};
+use datafusion::prelude::{Column, Expr, array_to_string, col, lit, lower, contains};
 
 use super::{NonNullableBooleanFilter, NullableBooleanFilter};
 
@@ -297,7 +297,7 @@ impl FilterOperation {
                     }
                 };
 
-                Ok(contains_patch(lower(operand), lower(lit(query_string))))
+                Ok(contains(lower(operand), lower(lit(query_string))))
             }
 
             Self::NullableBoolean(boolean_filter) => {
@@ -480,7 +480,7 @@ impl ScalarUDFImpl for FilterOperationUdf {
         }
     }
 
-    fn invoke_with_args(&self, args: ScalarFunctionArgs<'_>) -> DataFusionResult<ColumnarValue> {
+    fn invoke_with_args(&self, args: ScalarFunctionArgs) -> DataFusionResult<ColumnarValue> {
         let ColumnarValue::Array(input_array) = &args.args[0] else {
             return exec_err!("FilterOperation expected array inputs, not scalar values");
         };
@@ -511,15 +511,4 @@ impl ScalarUDFImpl for FilterOperationUdf {
             }
         }
     }
-}
-
-// TODO(ab): this is a workaround for https://github.com/apache/datafusion/pull/16046. Next time we
-// update datafusion, this should break compilation. Remove this function and replace
-// `contains_patch` by `datafusion::prelude::contains` in the method above.
-fn contains_patch(arg1: Expr, arg2: Expr) -> Expr {
-    // make sure we break compilation when we update datafusion
-    #[cfg(debug_assertions)]
-    let _ = datafusion::prelude::contains();
-
-    datafusion::functions::string::contains().call(<[_]>::into_vec(Box::new([arg1, arg2])))
 }
