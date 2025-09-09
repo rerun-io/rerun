@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_arrow_ui/tests/arrow_ui_test.rs
+expression: highlighted.text()
+---
+[[9, 18, 27], [0.412 118 485 241 757, −0.911 130 261 884 677, −0.452 315 659 441 81]]

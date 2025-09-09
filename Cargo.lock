@@ -7219,6 +7219,7 @@ dependencies = [
  "arrow",
  "egui",
  "egui_kittest",
+ "insta",
  "re_arrow_util",
  "re_format",
  "re_tracing",
