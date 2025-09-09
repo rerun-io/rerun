@@ -10,7 +10,8 @@ mod tests {
     fn generate_proto_mcap() -> Vec<u8> {
         let mut buffer = Vec::new();
         {
-            let mut writer = mcap::Writer::new(std::io::Cursor::new(&mut buffer)).expect("Failed to create MCAP writer");
+            let mut writer = mcap::Writer::new(std::io::Cursor::new(&mut buffer))
+                .expect("Failed to create MCAP writer");
 
             // Register a schema
             let schema_name = "TestProtoSchema";
@@ -22,6 +23,9 @@ mod tests {
                 optional y double = 2;
                 optional z double = 3;
             }"#;
+            let mut schema_raw = (schema_data.len() as u32).to_le_bytes().to_vec();
+            // schema_raw.extend_from_slice(schema_data);
+
             let schema_id = writer
                 .add_schema(schema_name, schema_encoding, schema_data)
                 .expect("Failed to add schema");
