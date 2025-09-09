@@ -1,4 +1,6 @@
-use arrow::array::{Array, ArrayRef, Int32DictionaryArray, ListArray};
+use std::sync::Arc;
+
+use arrow::array::{Array, ArrayRef, Int32DictionaryArray, ListArray, NullArray};
 use arrow::datatypes::DataType;
 
 /// A slice of an array that carries array vs. scalar semantics, which is typically useful for user
@@ -77,6 +79,10 @@ where
     T: Array + ?Sized,
 {
     fn get(&self, index: usize) -> Option<ArrayCell> {
+        if index >= self.len() {
+            return None;
+        }
+
         match self.data_type() {
             DataType::List(_) => {
                 let list_array = self
@@ -84,10 +90,12 @@ where
                     .downcast_ref::<ListArray>()
                     .expect("the data type was checked");
 
-                let offset = list_array.value_offsets().get(index)?;
-                let cell = list_array.values().slice(*offset as usize, 1);
-
-                Some(ArrayCell::Array(cell))
+                //TODO: is this sufficiently handling nulls?
+                if list_array.is_null(index) {
+                    Some(ArrayCell::Scalar(Arc::new(NullArray::new(0))))
+                } else {
+                    Some(ArrayCell::Array(list_array.value(index)))
+                }
             }
 
             //TODO(ab): support all dictionary types
@@ -107,7 +115,7 @@ where
 
             //TODO: list all types explicitly
             //TODO: handle more container types, dictionary, etc.?
-            _ => (index < self.len()).then(|| ArrayCell::Scalar(self.slice(index, 1))),
+            _ => Some(ArrayCell::Scalar(self.slice(index, 1))),
         }
     }
 }
