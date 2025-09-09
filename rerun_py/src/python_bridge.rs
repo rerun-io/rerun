@@ -1423,10 +1423,11 @@ fn timeout_from_sec(seconds: f32) -> PyResult<Duration> {
 ///
 /// Returns the URI of the server so you can connect the viewer to it.
 #[pyfunction]
-#[pyo3(signature = (grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
+#[pyo3(signature = (grpc_port, server_memory_limit, newest_first = false, default_blueprint = None, recording = None))]
 fn serve_grpc(
     grpc_port: Option<u16>,
     server_memory_limit: String,
+    newest_first: bool,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<String> {
@@ -1441,13 +1442,18 @@ fn serve_grpc(
             return Ok("[_RERUN_TEST_FORCE_SAVE is set]".to_owned());
         }
 
-        let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
-            .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
+        let server_options = re_sdk::ServerOptions {
+            playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(newest_first),
+
+            memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(|err| {
+                PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
+            })?,
+        };
 
         let sink = re_sdk::grpc_server::GrpcServerSink::new(
             "0.0.0.0",
             grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
-            server_memory_limit,
+            server_options,
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -1464,7 +1470,13 @@ fn serve_grpc(
 
     #[cfg(not(feature = "server"))]
     {
-        let _ = (grpc_port, server_memory_limit, default_blueprint, recording);
+        let _ = (
+            grpc_port,
+            server_memory_limit,
+            newest_first,
+            default_blueprint,
+            recording,
+        );
 
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'server' feature",
@@ -1510,6 +1522,7 @@ fn serve_web_viewer(
 }
 
 /// Serve a web-viewer AND host a gRPC server.
+// NOTE: DEPRECATED
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
@@ -1532,15 +1545,19 @@ fn serve_web(
             return Ok(());
         }
 
-        let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
-            .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
+        let server_options = re_sdk::ServerOptions {
+            memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(|err| {
+                PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
+            })?,
+            ..Default::default()
+        };
 
         let sink = re_sdk::web_viewer::new_sink(
             open_browser,
             "0.0.0.0",
             web_port.map(WebViewerServerPort).unwrap_or_default(),
             grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
-            server_memory_limit,
+            server_options,
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 

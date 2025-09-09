@@ -1,8 +1,6 @@
-use std::net::Ipv4Addr;
-use std::net::SocketAddr;
-use std::net::SocketAddrV4;
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
-use re_grpc_server::{DEFAULT_MEMORY_LIMIT, DEFAULT_SERVER_PORT, serve, shutdown};
+use re_grpc_server::{DEFAULT_SERVER_PORT, serve, shutdown};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
@@ -13,7 +11,7 @@ async fn main() -> anyhow::Result<()> {
             Ipv4Addr::new(0, 0, 0, 0),
             DEFAULT_SERVER_PORT,
         )),
-        DEFAULT_MEMORY_LIMIT,
+        Default::default(),
         shutdown::never(),
     )
     .await?;
