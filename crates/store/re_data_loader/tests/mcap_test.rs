@@ -1,11 +1,25 @@
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use prost::Message;
     use prost_reflect::{
         DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, Value,
     };
+    use prost_types::FileDescriptorSet;
     use re_data_loader::{DataLoaderSettings, loader_mcap::load_mcap};
     use re_mcap::layers::SelectedLayers;
+
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct TestProtoSchema {
+        #[prost(double, tag = "1")]
+        pub x: f64,
+        #[prost(double, tag = "2")]
+        pub y: f64,
+        #[prost(double, tag = "3")]
+        pub z: f64,
+    }
 
     fn generate_proto_mcap() -> Vec<u8> {
         let mut buffer = Vec::new();
@@ -16,19 +30,30 @@ mod tests {
             // Register a schema
             let schema_name = "TestProtoSchema";
             let schema_encoding = "protobuf";
-            let schema_data = br#"
-            syntax = "proto3";
-            message TestProtoSchema {
-                optional x double = 1;
-                optional y double = 2;
-                optional z double = 3;
-            }"#;
-            let mut schema_raw = (schema_data.len() as u32).to_le_bytes().to_vec();
-            // schema_raw.extend_from_slice(schema_data);
+            // let schema_data = br#"
+            // syntax = "proto3";
+            // message TestProtoSchema {
+            //     double x = 1;
+            //     double y = 2;
+            //     double z = 3;
+            // }"#;
+
+            let descriptor_data =
+                fs::read("tests/assets/file_descriptor_set").expect("Failed to read descriptors");
+            let file_descriptor_set = FileDescriptorSet::decode(&descriptor_data[..])
+                .expect("Failed to decode descriptors");
+            let schema_data = file_descriptor_set.encode_to_vec();
 
             let schema_id = writer
-                .add_schema(schema_name, schema_encoding, schema_data)
+                .add_schema(schema_name, schema_encoding, &schema_data)
                 .expect("Failed to add schema");
+
+            // let mut schema_raw = (schema_data.len() as u32).to_le_bytes().to_vec();
+            // // schema_raw.extend_from_slice(schema_data);
+
+            // let schema_id = writer
+            //     .add_schema(schema_name, schema_encoding, schema_data)
+            // .expect("Failed to add schema");
 
             // Register a channel
             let channel_topic = "/test/points";
@@ -46,11 +71,21 @@ mod tests {
             for i in 0..5 {
                 let timestamp = 1000000000 + i * 100000000; // nanoseconds
 
-                // Simple CDR-encoded point data (x=i, y=i*2, z=i*3)
+                let test_proto_schema = TestProtoSchema {
+                    x: 1.0,
+                    y: 2.0,
+                    z: 3.0,
+                };
                 let mut message_data = Vec::new();
-                message_data.extend_from_slice(&(i as f64).to_le_bytes()); // x
-                message_data.extend_from_slice(&((i * 2) as f64).to_le_bytes()); // y
-                message_data.extend_from_slice(&((i * 3) as f64).to_le_bytes()); // z
+                test_proto_schema
+                    .encode(&mut message_data)
+                    .expect("Failed to encode message");
+
+                // // Simple CDR-encoded point data (x=i, y=i*2, z=i*3)
+                // let mut message_data = Vec::new();
+                // message_data.extend_from_slice(&(i as f64).to_le_bytes()); // x
+                // message_data.extend_from_slice(&((i * 2) as f64).to_le_bytes()); // y
+                // message_data.extend_from_slice(&((i * 3) as f64).to_le_bytes()); // z
 
                 let message_header = mcap::records::MessageHeader {
                     channel_id,
