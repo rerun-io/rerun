@@ -686,6 +686,7 @@ impl AppState {
                 .copy_to_clipboard(ui.ctx());
         }
 
+        // Reset the focused item.
         self.focused_item = None;
     }
 
