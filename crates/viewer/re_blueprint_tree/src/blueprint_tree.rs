@@ -806,8 +806,11 @@ impl BlueprintTree {
                     );
 
                     if modifiers.command {
-                        ctx.selection_state
-                            .extend_selection(items, ctx.command_sender());
+                        // We extend into the current selection to append new items at the end.
+                        let mut selection = ctx.selection().clone();
+                        selection.extend(items);
+                        ctx.command_sender()
+                            .send_system(SystemCommand::SetSelection(selection));
                     } else {
                         ctx.command_sender()
                             .send_system(SystemCommand::SetSelection(items));

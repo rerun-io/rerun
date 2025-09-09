@@ -127,17 +127,6 @@ impl ApplicationSelectionState {
         self.selection_this_frame = items.into();
     }
 
-    /// Sends a command to select the current selection + `items`.
-    pub fn extend_selection(
-        &self,
-        items: impl Into<ItemCollection>,
-        command_sender: &CommandSender,
-    ) {
-        let mut selections = self.selection_this_frame.clone();
-        selections.extend(items.into());
-        command_sender.send_system(SystemCommand::SetSelection(selections));
-    }
-
     /// Returns the current selection.
     pub fn selected_items(&self) -> &ItemCollection {
         &self.selection_previous_frame
@@ -151,53 +140,6 @@ impl ApplicationSelectionState {
     /// Set the hovered objects. Will be in [`Self::hovered_items`] on the next frame.
     pub fn set_hovered(&self, hovered: impl Into<ItemCollection>) {
         *self.hovered_this_frame.lock() = hovered.into();
-    }
-
-    /// Sends a command to select passed objects unless already selected in which case they get unselected.
-    /// If however an object is already selected but now gets passed a *different* item context, it stays selected after all
-    /// but with an updated context!
-    pub fn toggle_selection(&self, toggle_items: ItemCollection, command_sender: &CommandSender) {
-        re_tracing::profile_function!();
-
-        let mut toggle_items_set: HashMap<Item, Option<ItemContext>> = toggle_items
-            .iter()
-            .map(|(item, ctx)| (item.clone(), ctx.clone()))
-            .collect();
-
-        let mut new_selection = self.selection_previous_frame.clone();
-
-        // If an item was already selected with the exact same context remove it.
-        // If an item was already selected and loses its context, remove it.
-        new_selection.retain(|item, ctx| {
-            if let Some(new_ctx) = toggle_items_set.get(item) {
-                if new_ctx == ctx || new_ctx.is_none() {
-                    toggle_items_set.remove(item);
-                    false
-                } else {
-                    true
-                }
-            } else {
-                true
-            }
-        });
-
-        // Update context for items that are remaining in the toggle_item_set:
-        for (item, ctx) in new_selection.iter_mut() {
-            if let Some(new_ctx) = toggle_items_set.get(item) {
-                *ctx = new_ctx.clone();
-                toggle_items_set.remove(item);
-            }
-        }
-
-        // Make sure we preserve the order - old items kept in same order, new items added to the end.
-        // Add the new items, unless they were toggling out existing items:
-        new_selection.extend(
-            toggle_items
-                .into_iter()
-                .filter(|(item, _)| toggle_items_set.contains_key(item)),
-        );
-
-        command_sender.send_system(SystemCommand::SetSelection(new_selection));
     }
 
     pub fn selection_item_contexts(&self) -> impl Iterator<Item = &ItemContext> {

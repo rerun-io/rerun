@@ -286,7 +286,50 @@ impl ViewerContext<'_> {
             // so we don't handle it here.
             if !modifiers.shift {
                 if modifiers.command {
-                    selection_state.toggle_selection(interacted_items, self.command_sender());
+                    // Sends a command to select `ìnteracted_items` unless already selected in which case they get unselected.
+                    // If however an object is already selected but now gets passed a *different* item context, it stays selected after all
+                    // but with an updated context!
+
+                    let mut toggle_items_set: HashMap<_, _> = interacted_items
+                        .iter()
+                        .map(|(item, ctx)| (item.clone(), ctx.clone()))
+                        .collect();
+
+                    let mut new_selection = selection_state.selected_items().clone();
+
+                    // If an item was already selected with the exact same context remove it.
+                    // If an item was already selected and loses its context, remove it.
+                    new_selection.retain(|item, ctx| {
+                        if let Some(new_ctx) = toggle_items_set.get(item) {
+                            if new_ctx == ctx || new_ctx.is_none() {
+                                toggle_items_set.remove(item);
+                                false
+                            } else {
+                                true
+                            }
+                        } else {
+                            true
+                        }
+                    });
+
+                    // Update context for items that are remaining in the toggle_item_set:
+                    for (item, ctx) in new_selection.iter_mut() {
+                        if let Some(new_ctx) = toggle_items_set.get(item) {
+                            *ctx = new_ctx.clone();
+                            toggle_items_set.remove(item);
+                        }
+                    }
+
+                    // Make sure we preserve the order - old items kept in same order, new items added to the end.
+                    // Add the new items, unless they were toggling out existing items:
+                    new_selection.extend(
+                        interacted_items
+                            .into_iter()
+                            .filter(|(item, _)| toggle_items_set.contains_key(item)),
+                    );
+
+                    self.command_sender()
+                        .send_system(SystemCommand::SetSelection(new_selection));
                 } else {
                     self.command_sender()
                         .send_system(SystemCommand::SetSelection(interacted_items));
