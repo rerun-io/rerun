@@ -143,11 +143,14 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
 /// The python module is called "rerun_bindings".
 #[pymodule]
 fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // NOTE: We do this here because some the inner init methods don't respond too kindly to being
-    // called more than once.
-    // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
-    #[cfg(not(feature = "perf_telemetry"))]
-    re_log::setup_logging_with_filter(&re_log::log_filter_from_env_or_default("warn"));
+    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
+        // TODO(tracing/issues#2499): allow installing multiple tracing sinks (https://github.com/tokio-rs/tracing/issues/2499)
+    } else {
+        // NOTE: We set up the logging this here because some the inner init methods don't respond too kindly to being
+        // called more than once.
+        // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
+        re_log::setup_logging_with_filter(&re_log::log_filter_from_env_or_default("warn"));
+    }
 
     #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
     let _telemetry = init_perf_telemetry();

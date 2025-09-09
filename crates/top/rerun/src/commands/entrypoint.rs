@@ -585,8 +585,11 @@ where
     );
 
     #[cfg(not(target_arch = "wasm32"))]
-    #[cfg(not(feature = "perf_telemetry"))]
-    re_crash_handler::install_crash_handlers(build_info.clone());
+    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
+        eprintln!("Disabling crash handler because of perf_telemetry/TELEMETRY_ENABLED"); // Ask Clement why
+    } else {
+        re_crash_handler::install_crash_handlers(build_info.clone());
+    }
 
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
