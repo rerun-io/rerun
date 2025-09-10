@@ -3,7 +3,10 @@ use crate::list_item::ContentContext;
 use egui::Widget;
 
 #[derive(Default)]
-pub struct ItemButtons<'a>(Vec<Box<dyn FnOnce(&mut egui::Ui) + 'a>>);
+pub struct ItemButtons<'a> {
+    buttons: Vec<Box<dyn FnOnce(&mut egui::Ui) + 'a>>,
+    always_show_buttons: bool,
+}
 
 impl Clone for ItemButtons<'_> {
     fn clone(&self) -> Self {
@@ -13,47 +16,46 @@ impl Clone for ItemButtons<'_> {
 
 impl std::fmt::Debug for ItemButtons<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("Buttons").field(&self.0.len()).finish()
+        f.debug_tuple("Buttons").field(&self.buttons.len()).finish()
     }
 }
 
 impl<'a> ItemButtons<'a> {
     pub fn add(&mut self, button: impl Widget + 'a) {
-        self.0.push(Box::new(move |ui: &mut egui::Ui| {
+        self.buttons.push(Box::new(move |ui: &mut egui::Ui| {
             button.ui(ui);
         }));
     }
 
     pub fn add_buttons(&mut self, buttons: impl FnOnce(&mut egui::Ui) + 'a) {
-        self.0.push(Box::new(buttons));
+        self.buttons.push(Box::new(buttons));
     }
 
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.buttons.is_empty()
     }
 
-    pub fn should_show_buttons(context: &ContentContext) -> bool {
+    fn should_show_buttons(&self, context: &ContentContext) -> bool {
         // We can't use `.hovered()` or the buttons disappear just as the user clicks,
         // so we use `contains_pointer` instead. That also means we need to check
         // that we aren't dragging anything.
         // By showing the buttons when selected, we allow users to find them on touch screens.
-        (context.list_item.interactive
-            && context
-                .response
-                .ctx
-                .rect_contains_pointer(context.response.layer_id, context.bg_rect)
+        (context
+            .response
+            .ctx
+            .rect_contains_pointer(context.response.layer_id, context.bg_rect)
             && !egui::DragAndDrop::has_any_payload(&context.response.ctx))
             || context.list_item.selected
+            || self.always_show_buttons
     }
 
     pub fn show_and_shrink_rect(
         self,
         ui: &mut egui::Ui,
         context: &ContentContext,
-        always_show: bool,
         rect: &mut egui::Rect,
     ) {
-        if self.0.is_empty() || !(Self::should_show_buttons(context) || always_show) {
+        if self.buttons.is_empty() || !self.should_show_buttons(context) {
             return;
         }
 
@@ -79,7 +81,7 @@ impl<'a> ItemButtons<'a> {
             visuals.widgets.hovered.fg_stroke.color = tokens.icon_color_on_primary_hovered;
         }
 
-        for button in self.0 {
+        for button in self.buttons {
             button(&mut ui);
         }
 
@@ -95,13 +97,85 @@ where
     fn buttons(&self) -> &ItemButtons<'a>;
     fn buttons_mut(&mut self) -> &mut ItemButtons<'a>;
 
-    fn button(mut self, button: impl Widget + 'a) -> Self {
+    /// Add a single widget.
+    ///
+    /// It will be shown on the right side of the list item.
+    /// By default, buttons are only shown on hover or when selected, use
+    /// [`Self::with_always_show_buttons`] to change that.
+    ///
+    /// Usually you want to add an [`crate::list_item::ItemMenuButton`] or
+    /// [`crate::list_item::ItemActionButton`].
+    ///
+    /// Notes:
+    /// - If buttons are used, the item will allocate the full available width of the parent. If the
+    ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't
+    ///   used, the item will only allocate the width needed for the text and icons if any.
+    /// - A right to left layout is used, so the right-most button must be added first.
+    fn with_button(mut self, button: impl Widget + 'a) -> Self {
         self.buttons_mut().add(button);
         self
     }
 
-    fn buttons_fn(mut self, buttons: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
+    fn with_buttons(mut self, buttons: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
         self.buttons_mut().add_buttons(buttons);
         self
+    }
+
+    /// Always show the buttons.
+    ///
+    /// By default, buttons are only shown when the item is hovered or selected. By setting this to
+    /// `true`, the buttons are always shown.
+    fn with_always_show_buttons(mut self, always_show: bool) -> Self {
+        self.buttons_mut().always_show_buttons = always_show;
+        self
+    }
+
+    /// Helper to add an [`super::ItemActionButton`] to the right of the item.
+    ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    ///
+    /// See [`Self::with_button`] for more information.
+    #[inline]
+    fn with_action_button(
+        self,
+        icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
+        on_click: impl FnOnce() + 'a,
+    ) -> Self {
+        self.with_action_button_enabled(icon, alt_text, true, on_click)
+    }
+
+    /// Helper to add an enabled/disabled [`super::ItemActionButton`] to the right of the item.
+    ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    ///
+    /// See [`Self::with_button`] for more information.
+    #[inline]
+    fn with_action_button_enabled(
+        self,
+        icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
+        enabled: bool,
+        on_click: impl FnOnce() + 'a,
+    ) -> Self {
+        self.with_button(super::ItemActionButton::new(icon, alt_text, on_click).enabled(enabled))
+    }
+
+    /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
+    ///
+    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
+    /// and is also how we can query the button in tests.
+    ///
+    /// See [`Self::with_button`] for more information.
+    #[inline]
+    fn with_menu_button(
+        self,
+        icon: &'static crate::icons::Icon,
+        alt_text: impl Into<String>,
+        add_contents: impl FnOnce(&mut egui::Ui) + 'a,
+    ) -> Self {
+        self.with_button(super::ItemMenuButton::new(icon, alt_text, add_contents))
     }
 }

@@ -8,6 +8,7 @@ use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
 use re_log_types::{ApplicationId, EntityPath};
 use re_ui::filter_widget::format_matching_text;
+use re_ui::list_item::ListItemContentButtonsExt;
 use re_ui::{
     ContextExt as _, DesignTokens, UiExt as _, drag_and_drop::DropTarget, filter_widget, list_item,
 };

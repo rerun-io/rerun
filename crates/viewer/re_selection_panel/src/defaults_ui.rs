@@ -9,6 +9,7 @@ use re_data_ui::{DataUi as _, archetype_label_list_item_ui};
 use re_log_types::EntityPath;
 use re_types_core::ComponentDescriptor;
 use re_types_core::reflection::ComponentDescriptorExt as _;
+use re_ui::list_item::ListItemContentButtonsExt;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
 use re_viewer_context::{
     ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewContext,
@@ -146,7 +147,7 @@ fn active_default_ui(
             let response = ui.list_item_flat_noninteractive(
                 re_ui::list_item::PropertyContent::new(component_descr.archetype_field_name())
                     .min_desired_width(150.0)
-                    .action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
+                    .with_action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
                         ctx.clear_blueprint_component(
                             view.defaults_path.clone(),
                             component_descr.clone(),

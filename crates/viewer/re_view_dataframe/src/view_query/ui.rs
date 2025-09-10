@@ -7,6 +7,7 @@ use re_log_types::{
 };
 use re_sorbet::ColumnSelector;
 use re_types::blueprint::components;
+use re_ui::list_item::ListItemContentButtonsExt;
 use re_ui::{TimeDragValue, UiExt as _, list_item};
 use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
 use std::collections::{BTreeSet, HashSet};
@@ -66,7 +67,7 @@ impl Query {
 
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Start")
-                    .action_button_with_enabled(
+                    .with_action_button_enabled(
                         &re_ui::icons::RESET,
                         "Reset",
                         start != TimeInt::MIN,
@@ -74,6 +75,7 @@ impl Query {
                             reset_start = true;
                         },
                     )
+                    .with_always_show_buttons(true)
                     .value_fn(|ui, _| {
                         if let Some((time_drag_value, timeline_type)) = &time_drag_value_and_type {
                             let response = time_boundary_ui(
@@ -106,7 +108,7 @@ impl Query {
 
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("End")
-                    .action_button_with_enabled(
+                    .with_action_button_enabled(
                         &re_ui::icons::RESET,
                         "Reset",
                         end != TimeInt::MAX,
@@ -114,6 +116,7 @@ impl Query {
                             reset_to = true;
                         },
                     )
+                    .with_always_show_buttons(true)
                     .value_fn(|ui, _| {
                         if let Some((time_drag_value, timeline_type)) = &time_drag_value_and_type {
                             let response = time_boundary_ui(

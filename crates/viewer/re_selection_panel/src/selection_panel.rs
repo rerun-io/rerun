@@ -9,6 +9,7 @@ use re_data_ui::{
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_types::ComponentDescriptor;
+use re_ui::list_item::ListItemContentButtonsExt;
 use re_ui::{
     SyntaxHighlighting as _, UiExt as _, icons,
     list_item::{self, PropertyContent},

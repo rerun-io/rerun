@@ -21,7 +21,6 @@ pub struct LabelContent<'a> {
     label_style: LabelStyle,
     icon_fn: Option<Box<dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a>>,
     buttons: ItemButtons<'a>,
-    always_show_buttons: bool,
 
     text_wrap_mode: Option<egui::TextWrapMode>,
     min_desired_width: Option<f32>,
@@ -40,7 +39,6 @@ impl<'a> LabelContent<'a> {
             label_style: Default::default(),
             icon_fn: None,
             buttons: ItemButtons::default(),
-            always_show_buttons: false,
 
             text_wrap_mode: None,
             min_desired_width: None,
@@ -141,36 +139,6 @@ impl<'a> LabelContent<'a> {
         self
     }
 
-    /// Provide a closure to display on-hover buttons on the right of the item.
-    ///
-    /// Buttons also show when the item is selected, in order to support clicking them on touch
-    /// screens. The buttons can be set to be always shown with [`Self::always_show_buttons`].
-    ///
-    /// If there are multiple buttons, the response returned should be the union of both buttons.
-    ///
-    /// Notes:
-    /// - If buttons are used, the item will allocate the full available width of the parent. If the
-    ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't
-    ///   used, the item will only allocate the width needed for the text and icons if any.
-    /// - A right to left layout is used, so the right-most button must be added first.
-    // TODO(#6191): This should reconciled this with the `ItemButton` abstraction by using something
-    //              like `Vec<Box<dyn ItemButton>>` instead of a generic closure.
-    #[inline]
-    pub fn with_buttons(mut self, buttons: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
-        self.buttons.add_buttons(buttons);
-        self
-    }
-
-    /// Always show the buttons.
-    ///
-    /// By default, buttons are only shown when the item is hovered or selected. By setting this to
-    /// `true`, the buttons are always shown.
-    #[inline]
-    pub fn always_show_buttons(mut self, always_show_buttons: bool) -> Self {
-        self.always_show_buttons = always_show_buttons;
-        self
-    }
-
     fn get_text_wrap_mode(&self, ui: &egui::Ui) -> egui::TextWrapMode {
         if let Some(text_wrap_mode) = self.text_wrap_mode {
             text_wrap_mode
@@ -195,7 +163,6 @@ impl ListItemContent for LabelContent<'_> {
             label_style,
             icon_fn,
             buttons,
-            always_show_buttons,
             text_wrap_mode: _,
             min_desired_width: _,
         } = *self;
@@ -233,7 +200,7 @@ impl ListItemContent for LabelContent<'_> {
             icon_fn(ui, icon_rect, visuals);
         }
 
-        buttons.show_and_shrink_rect(ui, context, always_show_buttons, &mut text_rect);
+        buttons.show_and_shrink_rect(ui, context, &mut text_rect);
 
         // Draw text
         let mut layout_job = Arc::unwrap_or_clone(text.into_layout_job(

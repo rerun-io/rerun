@@ -1,5 +1,6 @@
 use re_types::ComponentDescriptor;
 use re_types_core::{Archetype, ArchetypeReflectionMarker, reflection::ArchetypeFieldReflection};
+use re_ui::list_item::ListItemContentButtonsExt;
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
     ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewContext, ViewerContext,
@@ -160,9 +161,10 @@ pub fn view_property_component_ui_custom(
     let component_descr = field.component_descriptor(property.archetype_name);
 
     let singleline_list_item_content = list_item::PropertyContent::new(display_name)
-        .menu_button(&re_ui::icons::MORE, "More options", |ui| {
+        .with_menu_button(&re_ui::icons::MORE, "More options", |ui| {
             menu_more(ctx.viewer_ctx(), ui, property, &component_descr);
         })
+        .with_always_show_buttons(true)
         .value_fn(move |ui, _| singleline_ui(ui));
 
     let list_item_response = if let Some(multiline_ui) = multiline_ui {
