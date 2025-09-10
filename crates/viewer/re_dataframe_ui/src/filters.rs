@@ -98,17 +98,6 @@ impl ComparisonOperator {
             Self::Ge => left >= right,
         }
     }
-
-    pub fn apply_expr(&self, expr: Expr, value: impl datafusion::logical_expr::Literal) -> Expr {
-        match self {
-            Self::Eq => expr.eq(lit(value)),
-            Self::Ne => expr.not_eq(lit(value)),
-            Self::Lt => expr.lt(lit(value)),
-            Self::Le => expr.lt_eq(lit(value)),
-            Self::Gt => expr.gt(lit(value)),
-            Self::Ge => expr.gt_eq(lit(value)),
-        }
-    }
 }
 
 /// The kind of filter operation
