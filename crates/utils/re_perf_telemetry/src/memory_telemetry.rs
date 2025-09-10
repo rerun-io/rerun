@@ -51,7 +51,7 @@ async fn memory_monitor_task() {
         let total_ram_gb = total_ram_in_bytes / ONE_GIG;
         total_ram_gb / 2 // First warning when we cross 50%
     };
-    tracing::info!("Will log memory stats when we first pass {warn_at_gb} GiB");
+    tracing::debug!("Will log memory stats when we first pass {warn_at_gb} GiB");
 
     loop {
         interval.tick().await;
