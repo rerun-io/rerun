@@ -1356,39 +1356,19 @@ impl App {
             }
 
             UICommand::PlaybackTogglePlayPause => {
-                self.run_time_control_command(
-                    store_context,
-                    storage_context,
-                    TimeControlCommand::TogglePlayPause,
-                );
+                self.run_time_control_command(store_context, TimeControlCommand::TogglePlayPause);
             }
             UICommand::PlaybackFollow => {
-                self.run_time_control_command(
-                    store_context,
-                    storage_context,
-                    TimeControlCommand::Follow,
-                );
+                self.run_time_control_command(store_context, TimeControlCommand::Follow);
             }
             UICommand::PlaybackStepBack => {
-                self.run_time_control_command(
-                    store_context,
-                    storage_context,
-                    TimeControlCommand::StepBack,
-                );
+                self.run_time_control_command(store_context, TimeControlCommand::StepBack);
             }
             UICommand::PlaybackStepForward => {
-                self.run_time_control_command(
-                    store_context,
-                    storage_context,
-                    TimeControlCommand::StepForward,
-                );
+                self.run_time_control_command(store_context, TimeControlCommand::StepForward);
             }
             UICommand::PlaybackRestart => {
-                self.run_time_control_command(
-                    store_context,
-                    storage_context,
-                    TimeControlCommand::Restart,
-                );
+                self.run_time_control_command(store_context, TimeControlCommand::Restart);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1525,7 +1505,6 @@ impl App {
     fn run_time_control_command(
         &mut self,
         store_context: Option<&StoreContext<'_>>,
-        storage_context: &StorageContext<'_>,
         command: TimeControlCommand,
     ) {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
