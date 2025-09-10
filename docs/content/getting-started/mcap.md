@@ -57,6 +57,13 @@ Rerun provides automatic visualization for common ROS2 message types. Protobuf m
 
 Unsupported message types (such as ROS1 messages) remain available as raw bytes in Arrow format.
 
+<picture>
+  <img src="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/full.png" alt="Screenshot of MCAP messages converted to raw Arrow data in the selection panel">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/1024w.png">
+</picture>
+
 For more details about all supported message types, see [Message Formats](mcap/message-formats.md).
 
 ## Advanced usage
