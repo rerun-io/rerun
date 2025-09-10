@@ -468,7 +468,7 @@ impl App {
         if let SmartChannelSource::RedapGrpcStream { uri, .. } = rx.source() {
             self.command_sender
                 .send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-            self.go_to_dataset_data(uri);
+            self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
         }
 
         self.rx_log.add(rx);
@@ -622,6 +622,10 @@ impl App {
         egui_ctx: &egui::Context,
     ) {
         match cmd {
+            SystemCommand::SetFragment { store_id, fragment } => {
+                // This adds new system commands, which will be handled later in the loop.
+                self.go_to_dataset_data(store_id, fragment);
+            }
             SystemCommand::ActivateApp(app_id) => {
                 self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
@@ -1009,7 +1013,7 @@ impl App {
 
                     // Note that applying the fragment changes the per-recording settings like the active time cursor.
                     // Therefore, we apply it even when `select_when_loaded` is false.
-                    self.go_to_dataset_data(uri);
+                    self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
 
                     return;
                 }
@@ -1047,6 +1051,13 @@ impl App {
                     timeline,
                     time_range,
                 }),
+                re_redap_client::UiCommand::SetFragment {
+                    recording_id,
+                    fragment,
+                } => command_sender.send_system(SystemCommand::SetFragment {
+                    store_id: recording_id,
+                    fragment,
+                }),
             })
         };
 
@@ -1061,11 +1072,11 @@ impl App {
         }
     }
 
-    /// Applies the fragment of a dataset data URI to the viewer.
+    /// Applies a fragment.
     ///
     /// Does *not* switch the active recording.
-    fn go_to_dataset_data(&self, uri: &re_uri::DatasetPartitionUri) {
-        let re_uri::Fragment { selection, when } = uri.fragment.clone();
+    fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
+        let re_uri::Fragment { selection, when } = fragment;
 
         if let Some(selection) = selection {
             let re_log_types::DataPath {
@@ -1092,7 +1103,7 @@ impl App {
         if let Some((timeline, timecell)) = when {
             self.command_sender
                 .send_system(SystemCommand::SetActiveTime {
-                    store_id: uri.store_id(),
+                    store_id,
                     timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
                     time: Some(timecell.as_i64().into()),
                 });
@@ -2020,7 +2031,7 @@ impl App {
                 // Hack: we cannot go to a specific timeline or entity until we know about it.
                 // Now we _hopefully_ do.
                 if let SmartChannelSource::RedapGrpcStream { uri, .. } = channel_source.as_ref() {
-                    self.go_to_dataset_data(uri);
+                    self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
                 }
             }
 

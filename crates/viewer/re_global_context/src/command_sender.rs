@@ -90,6 +90,12 @@ pub enum SystemCommand {
     #[cfg(debug_assertions)]
     EnableInspectBlueprintTimeline(bool),
 
+    /// Load a [`re_uri::Fragment`].
+    SetFragment {
+        store_id: StoreId,
+        fragment: re_uri::Fragment,
+    },
+
     /// Set the item selection.
     SetSelection(crate::ItemCollection),
 

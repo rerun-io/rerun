@@ -26,6 +26,10 @@ pub enum UiCommand {
         timeline: re_log_types::Timeline,
         time_range: re_log_types::AbsoluteTimeRangeF,
     },
+    SetFragment {
+        recording_id: re_log_types::StoreId,
+        fragment: re_uri::Fragment,
+    },
 }
 
 /// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
@@ -355,6 +359,7 @@ pub async fn stream_blueprint_and_partition_from_server(
             blueprint_dataset,
             blueprint_partition,
             None,
+            re_uri::Fragment::default(),
             on_ui_cmd.as_deref(),
             on_msg.as_deref(),
         )
@@ -389,7 +394,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         dataset_id,
         partition_id,
         time_range,
-        fragment: _,
+        fragment,
     } = uri;
 
     stream_partition_from_server(
@@ -399,6 +404,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         dataset_id.into(),
         partition_id.into(),
         time_range,
+        fragment,
         on_ui_cmd.as_deref(),
         on_msg.as_deref(),
     )
@@ -416,6 +422,7 @@ async fn stream_partition_from_server(
     dataset_id: EntryId,
     partition_id: PartitionId,
     time_range: Option<TimeSelection>,
+    fragment: re_uri::Fragment,
     on_ui_cmd: Option<&(dyn Fn(UiCommand) + Send + Sync)>,
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
@@ -476,14 +483,20 @@ async fn stream_partition_from_server(
 
     let store_id = store_info.store_id.clone();
 
-    if let Some(time_range) = time_range
-        && let Some(on_ui_cmd) = on_ui_cmd
-    {
-        on_ui_cmd(UiCommand::SetLoopSelection {
-            recording_id: store_id.clone(),
-            timeline: time_range.timeline,
-            time_range: time_range.into(),
-        });
+    if let Some(on_ui_cmd) = on_ui_cmd {
+        if let Some(time_range) = time_range {
+            on_ui_cmd(UiCommand::SetLoopSelection {
+                recording_id: store_id.clone(),
+                timeline: time_range.timeline,
+                time_range: time_range.into(),
+            });
+        }
+        if !fragment.is_empty() {
+            on_ui_cmd(UiCommand::SetFragment {
+                recording_id: store_id.clone(),
+                fragment,
+            });
+        }
     }
 
     if tx
