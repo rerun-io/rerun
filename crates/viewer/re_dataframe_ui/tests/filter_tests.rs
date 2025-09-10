@@ -158,7 +158,7 @@ impl TestColumn {
     }
 
     fn bool_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
-        // the primitive array stuff doesn't work for bools, so we  go the manual way.
+        // the primitive array stuff doesn't work for bools, so we go the manual way.
         let values = if inner_nullable {
             BooleanArray::from(vec![
                 Some(true),
