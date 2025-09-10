@@ -157,7 +157,7 @@ impl DataLoader for McapLoader {
             &contents,
             settings,
             &tx,
-            self.selected_layers.clone(),
+            &self.selected_layers,
             self.raw_fallback_enabled,
         )
     }
