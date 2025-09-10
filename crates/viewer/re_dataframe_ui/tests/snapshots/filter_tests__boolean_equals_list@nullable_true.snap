@@ -1,51 +1,64 @@
 ---
 source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
-expression: "(filter, result)"
+expression: test_results
 ---
-(
-    Filter {
-        column_name: "bool_list",
-        operation: BooleanEquals(
-            true,
+TestResult {
+    op: BooleanEquals(
+        true,
+    ),
+    field: Field {
+        name: "column",
+        data_type: List(
+            Field {
+                name: "item",
+                data_type: Boolean,
+                nullable: false,
+                dict_id: 0,
+                dict_is_ordered: false,
+                metadata: {},
+            },
         ),
+        nullable: true,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
     },
-    RecordBatch {
-        schema: Schema {
-            fields: [
-                Field {
-                    name: "bool_list",
-                    data_type: List(
-                        Field {
-                            name: "item",
-                            data_type: Boolean,
-                            nullable: false,
-                            dict_id: 0,
-                            dict_is_ordered: false,
-                            metadata: {},
-                        },
-                    ),
-                    nullable: true,
-                    dict_id: 0,
-                    dict_is_ordered: false,
-                    metadata: {},
-                },
-            ],
-            metadata: {},
-        },
-        columns: [
-            ListArray
-            [
-              BooleanArray
-            [
-              true,
-            ],
-              BooleanArray
-            [
-              true,
-              true,
-            ],
-            ],
-        ],
-        row_count: 2,
-    },
-)
+    unfiltered: ListArray
+    [
+      BooleanArray
+    [
+      true,
+    ],
+      BooleanArray
+    [
+      false,
+    ],
+      BooleanArray
+    [
+      true,
+      true,
+    ],
+      BooleanArray
+    [
+      false,
+      false,
+    ],
+      BooleanArray
+    [
+      true,
+      false,
+    ],
+    ],
+    filtered: ListArray
+    [
+      BooleanArray
+    [
+      true,
+    ],
+      BooleanArray
+    [
+      true,
+      true,
+    ],
+    ],
+}

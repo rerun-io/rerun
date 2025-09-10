@@ -1,34 +1,28 @@
 ---
 source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
-expression: "(filter, result)"
+expression: test_results
 ---
-(
-    Filter {
-        column_name: "bool",
-        operation: BooleanEquals(
-            false,
-        ),
+TestResult {
+    op: BooleanEquals(
+        false,
+    ),
+    field: Field {
+        name: "column",
+        data_type: Boolean,
+        nullable: true,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
     },
-    RecordBatch {
-        schema: Schema {
-            fields: [
-                Field {
-                    name: "bool",
-                    data_type: Boolean,
-                    nullable: true,
-                    dict_id: 0,
-                    dict_is_ordered: false,
-                    metadata: {},
-                },
-            ],
-            metadata: {},
-        },
-        columns: [
-            BooleanArray
-            [
-              false,
-            ],
-        ],
-        row_count: 1,
-    },
-)
+    unfiltered: BooleanArray
+    [
+      true,
+      true,
+      null,
+      false,
+    ],
+    filtered: BooleanArray
+    [
+      false,
+    ],
+}

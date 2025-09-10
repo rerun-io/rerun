@@ -21,4 +21,4 @@ pub use self::{
 };
 
 // for testing purposes
-pub use self::filters::{Filter, FilterOperation};
+pub use self::filters::{ComparisonOperator, Filter, FilterOperation};
