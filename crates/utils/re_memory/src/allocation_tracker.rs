@@ -95,7 +95,7 @@ pub struct AllocationTracker {
     readable_backtraces: nohash_hasher::IntMap<BacktraceHash, ReadableBacktrace>,
 
     /// Current live allocations.
-    live_allocs: ahash::HashMap<PtrHash, BacktraceHash>,
+    live_allocs: nohash_hasher::IntMap<PtrHash, BacktraceHash>,
 
     /// How much memory is allocated by each callstack?
     callstack_stats: nohash_hasher::IntMap<BacktraceHash, CountAndSize>,
