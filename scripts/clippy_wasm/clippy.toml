@@ -1,5 +1,7 @@
 # This is used by `scripts/rust_checks.py` wasm checks so we can forbid some methods that are not available in wasm.
 #
+# Use it with `pixi run rs-check --only wasm`
+#
 # We cannot forbid all these methods in the main `clippy.toml` because of
 # https://github.com/rust-lang/rust-clippy/issues/10406
 
@@ -88,7 +90,7 @@ disallowed-methods = [
   { path = "std::sync::mpsc::Receiver::recv", reason = "Cannot block on Web" },
   { path = "std::thread::sleep", reason = "Can't block on web" },
   { path = "std::thread::spawn", reason = "Cannot spawn threads on wasm" },
-  { path = "std::time::Duration::elapsed", reason = "use `web-time` crate instead for wasm/web compatibility" },
+  { path = "std::time::Instant::elapsed", reason = "use `web-time` crate instead for wasm/web compatibility" },
   { path = "std::time::Instant::now", reason = "use `web-time` crate instead for wasm/web compatibility" },
   { path = "std::time::SystemTime::now", reason = "use `web-time` or `time` crates instead for wasm/web compatibility" },
   { path = "tokio::task::spawn_blocking", reason = "no Tokio runtime on web" },
