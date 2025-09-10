@@ -1,17 +1,15 @@
+use std::any::Any;
+use std::fmt::Formatter;
+use std::sync::Arc;
+
 use arrow::array::{ArrayRef, BooleanArray, ListArray, as_list_array};
 use arrow::datatypes::{DataType, Field};
-use datafusion::common::cast::as_int64_array;
 use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
     ScalarUDFImpl, Signature, TypeSignature, Volatility,
 };
-use datafusion::prelude::{
-    Column, Expr, array_element, array_has, array_to_string, col, lit, lower,
-};
-
-use std::any::Any;
-use std::sync::Arc;
+use datafusion::prelude::{Column, Expr, array_has, array_to_string, col, lit, lower};
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum FilterError {
@@ -60,17 +58,30 @@ pub enum ComparisonOperator {
     Ge,
 }
 
+impl std::fmt::Display for ComparisonOperator {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Eq => "==".fmt(f),
+            Self::Ne => "!=".fmt(f),
+            Self::Lt => "<".fmt(f),
+            Self::Le => "<=".fmt(f),
+            Self::Gt => ">".fmt(f),
+            Self::Ge => ">=".fmt(f),
+        }
+    }
+}
+
 impl ComparisonOperator {
     pub const ALL: &'static [Self] = &[Self::Eq, Self::Ne, Self::Lt, Self::Le, Self::Gt, Self::Ge];
 
-    pub fn operator_text(&self) -> &'static str {
+    pub fn as_ascii(&self) -> &'static str {
         match self {
-            Self::Eq => "==",
-            Self::Ne => "!=",
-            Self::Lt => "<",
-            Self::Le => "<=",
-            Self::Gt => ">",
-            Self::Ge => ">=",
+            Self::Eq => "eq",
+            Self::Ne => "ne",
+            Self::Lt => "lt",
+            Self::Le => "le",
+            Self::Gt => "gt",
+            Self::Ge => "ge",
         }
     }
 
@@ -108,8 +119,7 @@ pub enum FilterOperation {
     /// For columns of lists of integers, only the first value is considered.
     IntCompares {
         operator: ComparisonOperator,
-        value: i64, //TODO: should these be Option?
-                    //dyn Numeric
+        value: i128, //TODO: should these be Option?
     },
 
     /// Compare a floating point value to a constant.
@@ -175,29 +185,12 @@ impl FilterOperation {
         field: &Field,
     ) -> Result<Expr, FilterError> {
         match self {
-            Self::IntCompares { .. } => {
+            Self::IntCompares { .. } | Self::FloatCompares { .. } => {
                 let udf = FilterOperationUdf::new(self.clone());
                 let udf = ScalarUDF::new_from_impl(udf);
 
-                Ok(udf.call(vec![col(column.clone())])) // [true, false, null]
+                Ok(udf.call(vec![col(column.clone())]))
             }
-
-            Self::FloatCompares { operator, value } => match field.data_type() {
-                data_type if data_type.is_floating() => {
-                    Ok(operator.apply_expr(col(column.clone()), *value))
-                }
-
-                DataType::List(field) | DataType::ListView(field)
-                    if field.data_type().is_floating() =>
-                {
-                    Ok(operator.apply_expr(array_element(col(column.clone()), lit(0)), *value))
-                }
-
-                _ => Err(FilterError::InvalidFilterOperation(
-                    self.clone(),
-                    field.clone().into(),
-                )),
-            },
 
             Self::StringContains(query_string) => {
                 if query_string.is_empty() {
@@ -254,11 +247,11 @@ struct FilterOperationUdf {
 
 impl FilterOperationUdf {
     fn new(op: FilterOperation) -> Self {
-        // TODO we can be more explicit here.
         let type_signature = match &op {
             FilterOperation::IntCompares { .. } | FilterOperation::FloatCompares { .. } => {
                 TypeSignature::Numeric(1)
             }
+            //TODO: are we supporting those for now?
             FilterOperation::StringContains(_) => TypeSignature::String(1),
             FilterOperation::BooleanEquals(_) => TypeSignature::Exact(vec![DataType::Boolean]),
         };
@@ -280,12 +273,19 @@ impl FilterOperationUdf {
     //TODO: this should ideally share implementation with `default_for_datatype()`
     fn is_valid_input_type(&self, data_type: &DataType) -> bool {
         match data_type {
+            //TODO(ab): support other containers?
             DataType::List(field) | DataType::ListView(field) => {
+                //TODO: this incorrectly matches nested lists
                 self.is_valid_input_type(field.data_type())
             }
 
             _data_type if data_type.is_integer() => {
                 matches!(&self.op, FilterOperation::IntCompares { .. })
+            }
+
+            //TODO(ab): float16 support (use `is_floating()`)
+            DataType::Float32 | DataType::Float64 => {
+                matches!(&self.op, FilterOperation::FloatCompares { .. })
             }
 
             DataType::Utf8 | DataType::Utf8View | DataType::LargeUtf8 => {
@@ -294,10 +294,6 @@ impl FilterOperationUdf {
 
             DataType::Boolean => {
                 matches!(&self.op, FilterOperation::BooleanEquals(_))
-            }
-
-            DataType::Float16 | DataType::Float32 | DataType::Float64 => {
-                matches!(&self.op, FilterOperation::FloatCompares { .. })
             }
 
             _ => false,
@@ -314,7 +310,27 @@ impl FilterOperationUdf {
                         array.data_type()
                     );
                 };
-                let array = as_int64_array(array)?;
+                let array = datafusion::common::cast::$conv_fun(array)?;
+                #[allow(trivial_numeric_casts)]
+                let result: BooleanArray = array
+                    .iter()
+                    .map(|x| x.map(|v| operator.apply(v, *value as _)))
+                    .collect();
+
+                Ok(result)
+            }};
+        }
+
+        macro_rules! float_case {
+            ($conv_fun:ident, $op:expr) => {{
+                let FilterOperation::FloatCompares { operator, value } = &$op else {
+                    return exec_err!(
+                        "Incompatible operation and data types {:?} - {}",
+                        $op,
+                        array.data_type()
+                    );
+                };
+                let array = datafusion::common::cast::$conv_fun(array)?;
                 #[allow(trivial_numeric_casts)]
                 let result: BooleanArray = array
                     .iter()
@@ -334,6 +350,10 @@ impl FilterOperationUdf {
             DataType::UInt16 => int_case!(as_uint16_array, self.op),
             DataType::UInt32 => int_case!(as_uint32_array, self.op),
             DataType::UInt64 => int_case!(as_uint64_array, self.op),
+
+            //TODO(ab): float16 support
+            DataType::Float32 => float_case!(as_float32_array, self.op),
+            DataType::Float64 => float_case!(as_float64_array, self.op),
 
             _ => {
                 exec_err!("Unsupported data type {}", array.data_type())
@@ -404,6 +424,12 @@ impl ScalarUDFImpl for FilterOperationUdf {
                 let array = as_list_array(input_array);
                 let results = self.invoke_list_array(array)?;
 
+                Ok(ColumnarValue::Array(Arc::new(results)))
+            }
+
+            //TODO(ab): float16 support (use `is_floating()`)
+            DataType::Float32 | DataType::Float64 => {
+                let results = self.invoke_primitive_array(input_array)?;
                 Ok(ColumnarValue::Array(Arc::new(results)))
             }
 

@@ -4,7 +4,7 @@ expression: "(filter, result)"
 ---
 (
     Filter {
-        column_name: "string",
+        column_name: "column",
         operation: StringContains(
             "",
         ),
@@ -13,7 +13,7 @@ expression: "(filter, result)"
         schema: Schema {
             fields: [
                 Field {
-                    name: "string",
+                    name: "column",
                     data_type: Utf8,
                     nullable: false,
                     dict_id: 0,

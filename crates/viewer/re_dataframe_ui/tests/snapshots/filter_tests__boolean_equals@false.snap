@@ -4,7 +4,7 @@ expression: "(filter, result)"
 ---
 (
     Filter {
-        column_name: "bool",
+        column_name: "column",
         operation: BooleanEquals(
             false,
         ),
@@ -13,7 +13,7 @@ expression: "(filter, result)"
         schema: Schema {
             fields: [
                 Field {
-                    name: "bool",
+                    name: "column",
                     data_type: Boolean,
                     nullable: false,
                     dict_id: 0,

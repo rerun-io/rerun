@@ -1,0 +1,37 @@
+---
+source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
+expression: "(filter, result)"
+---
+(
+    Filter {
+        column_name: "column",
+        operation: FloatCompares {
+            operator: Le,
+            value: 3.0,
+        },
+    },
+    RecordBatch {
+        schema: Schema {
+            fields: [
+                Field {
+                    name: "column",
+                    data_type: Float64,
+                    nullable: false,
+                    dict_id: 0,
+                    dict_is_ordered: false,
+                    metadata: {},
+                },
+            ],
+            metadata: {},
+        },
+        columns: [
+            PrimitiveArray<Float64>
+            [
+              1.0,
+              2.0,
+              3.0,
+            ],
+        ],
+        row_count: 3,
+    },
+)

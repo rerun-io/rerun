@@ -1,11 +1,14 @@
 use std::sync::Arc;
 
 use arrow::array::{
-    Array, ArrayRef, BooleanArray, Float64Array, Int64Array, Int64Builder, ListArray, ListBuilder,
+    Array, ArrayRef, BooleanArray, ListArray, ListBuilder, PrimitiveArray, PrimitiveBuilder,
     StringArray,
 };
 use arrow::buffer::OffsetBuffer;
-use arrow::datatypes::{DataType, Field, Schema};
+use arrow::datatypes::{
+    ArrowPrimitiveType, DataType, Field, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
+    Int64Type, Schema, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
+};
 use arrow::record_batch::RecordBatch;
 use datafusion::catalog::MemTable;
 use datafusion::prelude::{DataFrame, SessionContext};
@@ -13,104 +16,102 @@ use datafusion::prelude::{DataFrame, SessionContext};
 use re_dataframe_ui::{ComparisonOperator, Filter, FilterOperation};
 use re_viewer_context::external::tokio;
 
+const COLUMN_NAME: &str = "column";
+
 /// A single column of test data, with convenient constructors.
+#[derive(Debug, Clone)]
 struct TestColumn {
     field: Field,
     array: ArrayRef,
 }
 
 impl TestColumn {
-    fn new(name: impl Into<String>, array: impl Array + 'static, nullable: bool) -> Self {
-        let name = name.into();
+    fn new(array: impl Array + 'static, nullable: bool) -> Self {
         let array = Arc::new(array) as ArrayRef;
-        let field = Field::new(name, array.data_type().clone(), nullable);
+        let field = Field::new(COLUMN_NAME, array.data_type().clone(), nullable);
 
         Self { array, field }
     }
 
-    fn ints() -> Self {
-        Self::new("int", Int64Array::from(vec![1, 2, 3, 4, 5]), false)
+    /// Create a primitive array with the provided data.
+    fn primitive<T>(data: Vec<T::Native>) -> Self
+    where
+        T: ArrowPrimitiveType,
+        PrimitiveArray<T>: From<Vec<T::Native>>,
+    {
+        Self::new(PrimitiveArray::<T>::from(data), false)
     }
 
-    fn ints_nulls() -> Self {
-        Self::new(
-            "int",
-            Int64Array::from(vec![Some(1), Some(2), None, Some(4), Some(5)]),
-            true,
-        )
+    /// Create a nullable primitive array with the provided data.
+    fn primitive_nulls<T>(data: Vec<Option<T::Native>>) -> Self
+    where
+        T: ArrowPrimitiveType,
+        PrimitiveArray<T>: From<Vec<Option<T::Native>>>,
+    {
+        Self::new(PrimitiveArray::<T>::from(data), true)
     }
 
-    fn int_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
-        let values_builder = Int64Builder::new();
-        let mut builder = ListBuilder::new(values_builder);
+    /// Create a list array with the provided data and automatically injecting nulls as required.
+    fn primitive_lists<T>(
+        data: &[Vec<T::Native>],
+        inner_nullable: bool,
+        outer_nullable: bool,
+    ) -> Self
+    where
+        T: ArrowPrimitiveType,
+        T::Native: Copy,
+    {
+        assert!(!data.is_empty());
 
-        builder.values().append_value(1);
-        builder.append(true);
+        let value_builder = PrimitiveBuilder::<T>::new();
+        let mut builder = ListBuilder::new(value_builder);
 
-        builder.values().append_value(2);
-        builder.append(true);
+        for item in data {
+            for inner_item in item {
+                builder.values().append_value(*inner_item);
+            }
+            builder.append(true);
+        }
 
-        builder.append(true);
-
-        builder.values().append_value(3);
-        builder.values().append_value(4);
-        builder.values().append_value(5);
-        builder.append(true);
-
+        // inject outer null
         if outer_nullable {
             builder.append(false);
         }
 
+        // inject inner nulls
         if inner_nullable {
+            // lone null
             builder.values().append_null();
             builder.append(true);
 
+            // find a non-empty inner item
+            let non_empty_item = data
+                .iter()
+                .find(|item| !item.is_empty())
+                .expect("there should be at least some non-empty data");
+
+            // first null
             builder.values().append_null();
-            builder.values().append_value(6);
+            for inner_item in non_empty_item {
+                builder.values().append_value(*inner_item);
+            }
             builder.append(true);
 
-            builder.values().append_value(7);
+            // last null
+            for inner_item in non_empty_item {
+                builder.values().append_value(*inner_item);
+            }
             builder.values().append_null();
             builder.append(true);
         }
-        let int_lists = builder.finish();
 
-        Self::new("int_list", int_lists, outer_nullable)
-    }
+        let array = builder.finish();
 
-    fn floats(nullable: bool) -> Self {
-        Self::new(
-            "float",
-            Float64Array::from(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
-            nullable,
-        )
-    }
-
-    fn floats_nulls() -> Self {
-        Self::new(
-            "float",
-            Float64Array::from(vec![Some(1.0), Some(2.0), None, Some(4.0), Some(5.0)]),
-            true,
-        )
-    }
-
-    fn float_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
-        let values = Float64Array::from(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
-        let offsets = OffsetBuffer::new(vec![0i32, 2, 4, 6].into());
-        let float_lists = ListArray::try_new(
-            Arc::new(Field::new("item", DataType::Float64, inner_nullable)),
-            offsets,
-            Arc::new(values),
-            None,
-        )
-        .expect("failed to create a float list array");
-
-        Self::new("float_list", float_lists, outer_nullable)
+        Self::new(array, outer_nullable)
     }
 
     fn strings(nullable: bool) -> Self {
         Self::new(
-            "string",
             StringArray::from(vec!["a", "b", "c", "ab", "A B", "aBc"]),
             nullable,
         )
@@ -118,7 +119,6 @@ impl TestColumn {
 
     fn strings_nulls() -> Self {
         Self::new(
-            "string",
             StringArray::from(vec![
                 Some("a"),
                 Some("b"),
@@ -131,6 +131,7 @@ impl TestColumn {
         )
     }
 
+    //TODO(ab): rewrite using `primitive_lists`
     fn strings_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
         let values = StringArray::from(vec!["a", "b", "c", "ab", "A B", "aBc"]);
         let offsets = OffsetBuffer::new(vec![0i32, 2, 4, 6].into());
@@ -142,25 +143,21 @@ impl TestColumn {
         )
         .expect("failed to create a string list array");
 
-        Self::new("string_list", strings_lists, outer_nullable)
+        Self::new(strings_lists, outer_nullable)
     }
 
     fn bools(nullable: bool) -> Self {
-        Self::new(
-            "bool",
-            BooleanArray::from(vec![true, true, false]),
-            nullable,
-        )
+        Self::new(BooleanArray::from(vec![true, true, false]), nullable)
     }
 
     fn bools_nulls() -> Self {
         Self::new(
-            "bool",
             BooleanArray::from(vec![Some(true), Some(true), None, Some(false)]),
             true,
         )
     }
 
+    //TODO(ab): rewrite using `primitive_lists`
     fn bool_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
         let values = BooleanArray::from(vec![true, false, true, true, false, false, true, false]);
         let offsets = OffsetBuffer::new(vec![0i32, 1, 2, 4, 6, 8].into());
@@ -172,7 +169,7 @@ impl TestColumn {
         )
         .expect("failed to create a bool list array");
 
-        Self::new("bool_list", bool_lists, outer_nullable)
+        Self::new(bool_lists, outer_nullable)
     }
 }
 
@@ -239,9 +236,10 @@ impl TestSessionContext {
     }
 }
 
+//TODO(ab): display the unfiltered data as well and make the snapshot less verbose.
 macro_rules! filter_snapshot {
     ($filter:expr, $col:expr, $case:expr) => {
-        let filter = $filter;
+        let filter = Filter::new(COLUMN_NAME, $filter);
         let result = TestSessionContext::new([$col])
             .to_filtered_record_batch(&filter)
             .await;
@@ -257,29 +255,173 @@ macro_rules! filter_snapshot {
 
 #[tokio::test]
 async fn test_int_compares() {
+    let ints = TestColumn::primitive::<Int64Type>(vec![1, 2, 3, 4, 5]);
+    let ints_nulls =
+        TestColumn::primitive_nulls::<Int64Type>(vec![Some(1), Some(2), None, Some(4), Some(5)]);
+
     for op in ComparisonOperator::ALL {
         filter_snapshot!(
-            Filter::new(
-                "int",
-                FilterOperation::IntCompares {
-                    operator: *op,
-                    value: 3
-                }
-            ),
-            TestColumn::ints(),
-            format!("{}3", op.operator_text())
+            FilterOperation::IntCompares {
+                operator: *op,
+                value: 3
+            },
+            ints.clone(),
+            format!("{}_3", op.as_ascii())
         );
 
         filter_snapshot!(
-            Filter::new(
-                "int",
+            FilterOperation::IntCompares {
+                operator: *op,
+                value: 4
+            },
+            ints_nulls.clone(),
+            format!("nulls_{}_4", op.as_ascii())
+        );
+    }
+}
+
+/// Make sure we correctly handle all integer types.
+#[tokio::test]
+async fn test_int_all_types() {
+    macro_rules! test_int_all_types_impl {
+        ($ty:tt) => {
+            filter_snapshot!(
                 FilterOperation::IntCompares {
-                    operator: *op,
-                    value: 4
-                }
-            ),
-            TestColumn::ints_nulls(),
-            format!("nulls_{}4", op.operator_text())
+                    operator: ComparisonOperator::Eq,
+                    value: 3
+                },
+                TestColumn::primitive::<$ty>(vec![1, 2, 3, 4, 5]),
+                format!("{:?}", $ty {})
+            )
+        };
+    }
+
+    test_int_all_types_impl!(Int8Type);
+    test_int_all_types_impl!(Int16Type);
+    test_int_all_types_impl!(Int32Type);
+    test_int_all_types_impl!(Int64Type);
+    test_int_all_types_impl!(UInt8Type);
+    test_int_all_types_impl!(UInt16Type);
+    test_int_all_types_impl!(UInt32Type);
+    test_int_all_types_impl!(UInt64Type);
+}
+
+#[tokio::test]
+async fn test_int_lists() {
+    let data = vec![
+        vec![1, 2, 3],
+        vec![2],
+        vec![2, 2],
+        vec![4, 5, 6],
+        vec![7, 4, 9],
+        vec![5, 2, 1],
+    ];
+    let int_lists = TestColumn::primitive_lists::<Int64Type>(&data, false, false);
+    let int_lists_nulls = TestColumn::primitive_lists::<Int64Type>(&data, true, true);
+
+    for op in ComparisonOperator::ALL {
+        filter_snapshot!(
+            FilterOperation::IntCompares {
+                operator: *op,
+                value: 2
+            },
+            int_lists.clone(),
+            format!("{}_2", op.as_ascii())
+        );
+
+        filter_snapshot!(
+            FilterOperation::IntCompares {
+                operator: *op,
+                value: 2
+            },
+            int_lists_nulls.clone(),
+            format!("nulls_{}_2", op.as_ascii())
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_float_compares() {
+    let floats = TestColumn::primitive::<Float64Type>(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+    let floats_nulls = TestColumn::primitive_nulls::<Float64Type>(vec![
+        Some(1.0),
+        Some(2.0),
+        None,
+        Some(4.0),
+        Some(5.0),
+    ]);
+
+    for op in ComparisonOperator::ALL {
+        filter_snapshot!(
+            FilterOperation::FloatCompares {
+                operator: *op,
+                value: 3.0
+            },
+            floats.clone(),
+            format!("{}_3.0", op.as_ascii())
+        );
+
+        filter_snapshot!(
+            FilterOperation::FloatCompares {
+                operator: *op,
+                value: 4.0
+            },
+            floats_nulls.clone(),
+            format!("nulls_{}_4", op.as_ascii())
+        );
+    }
+}
+
+/// Make sure we correctly handle all float types.
+#[tokio::test]
+async fn test_float_all_types() {
+    macro_rules! test_float_all_types_impl {
+        ($ty:tt) => {
+            filter_snapshot!(
+                FilterOperation::FloatCompares {
+                    operator: ComparisonOperator::Eq,
+                    value: 3.0
+                },
+                TestColumn::primitive::<$ty>(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
+                format!("{:?}", $ty {})
+            )
+        };
+    }
+
+    test_float_all_types_impl!(Float32Type);
+    test_float_all_types_impl!(Float64Type);
+}
+
+#[tokio::test]
+async fn test_float_lists() {
+    let data = vec![
+        vec![1.0, 2.0, 3.0],
+        vec![2.0],
+        vec![2.0, 2.0],
+        vec![4.0, 5.0, 6.0],
+        vec![7.0, 4.0, 9.0],
+        vec![5.0, 2.0, 1.0],
+    ];
+    let float_lists = TestColumn::primitive_lists::<Float64Type>(&data, false, false);
+    let float_lists_nulls = TestColumn::primitive_lists::<Float64Type>(&data, true, true);
+
+    for op in ComparisonOperator::ALL {
+        filter_snapshot!(
+            FilterOperation::FloatCompares {
+                operator: *op,
+                value: 2.0
+            },
+            float_lists.clone(),
+            format!("{}_2.0", op.as_ascii())
+        );
+
+        filter_snapshot!(
+            FilterOperation::FloatCompares {
+                operator: *op,
+                value: 2.0
+            },
+            float_lists_nulls.clone(),
+            format!("nulls_{}_2.0", op.as_ascii())
         );
     }
 }
@@ -287,37 +429,37 @@ async fn test_int_compares() {
 #[tokio::test]
 async fn test_string_contains() {
     filter_snapshot!(
-        Filter::new("string", FilterOperation::StringContains(String::new())),
+        FilterOperation::StringContains(String::new()),
         TestColumn::strings(false),
         "empty"
     );
 
     filter_snapshot!(
-        Filter::new("string", FilterOperation::StringContains("a".to_owned())),
+        FilterOperation::StringContains("a".to_owned()),
         TestColumn::strings(false),
         "a"
     );
 
     filter_snapshot!(
-        Filter::new("string", FilterOperation::StringContains("A".to_owned())),
+        FilterOperation::StringContains("A".to_owned()),
         TestColumn::strings(false),
         "a_uppercase"
     );
 
     filter_snapshot!(
-        Filter::new("string", FilterOperation::StringContains("A".to_owned())),
+        FilterOperation::StringContains("A".to_owned()),
         TestColumn::strings(true),
         "nullable_a_uppercase"
     );
 
     filter_snapshot!(
-        Filter::new("string", FilterOperation::StringContains(String::new())),
+        FilterOperation::StringContains(String::new()),
         TestColumn::strings_nulls(),
         "nulls_empty"
     );
 
     filter_snapshot!(
-        Filter::new("string", FilterOperation::StringContains("a".to_owned())),
+        FilterOperation::StringContains("a".to_owned()),
         TestColumn::strings_nulls(),
         "nulls_a"
     );
@@ -326,37 +468,25 @@ async fn test_string_contains() {
 #[tokio::test]
 async fn test_string_contains_list() {
     filter_snapshot!(
-        Filter::new(
-            "string_list",
-            FilterOperation::StringContains("c".to_owned())
-        ),
+        FilterOperation::StringContains("c".to_owned()),
         TestColumn::strings_lists(true, true),
         "inner_outer_nullable_c"
     );
 
     filter_snapshot!(
-        Filter::new(
-            "string_list",
-            FilterOperation::StringContains("c".to_owned())
-        ),
+        FilterOperation::StringContains("c".to_owned()),
         TestColumn::strings_lists(true, false),
         "inner_nullable_c"
     );
 
     filter_snapshot!(
-        Filter::new(
-            "string_list",
-            FilterOperation::StringContains("c".to_owned())
-        ),
+        FilterOperation::StringContains("c".to_owned()),
         TestColumn::strings_lists(false, true),
         "outer_nullable_c"
     );
 
     filter_snapshot!(
-        Filter::new(
-            "string_list",
-            FilterOperation::StringContains("c".to_owned())
-        ),
+        FilterOperation::StringContains("c".to_owned()),
         TestColumn::strings_lists(false, false),
         "c"
     );
@@ -365,31 +495,31 @@ async fn test_string_contains_list() {
 #[tokio::test]
 async fn test_boolean_equals() {
     filter_snapshot!(
-        Filter::new("bool", FilterOperation::BooleanEquals(true)),
+        FilterOperation::BooleanEquals(true),
         TestColumn::bools(false),
         "true"
     );
 
     filter_snapshot!(
-        Filter::new("bool", FilterOperation::BooleanEquals(false)),
+        FilterOperation::BooleanEquals(false),
         TestColumn::bools(false),
         "false"
     );
 
     filter_snapshot!(
-        Filter::new("bool", FilterOperation::BooleanEquals(true)),
+        FilterOperation::BooleanEquals(true),
         TestColumn::bools(true),
         "nullable_true"
     );
 
     filter_snapshot!(
-        Filter::new("bool", FilterOperation::BooleanEquals(true)),
+        FilterOperation::BooleanEquals(true),
         TestColumn::bools_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
-        Filter::new("bool", FilterOperation::BooleanEquals(false)),
+        FilterOperation::BooleanEquals(false),
         TestColumn::bools_nulls(),
         "nulls_false"
     );
@@ -398,25 +528,25 @@ async fn test_boolean_equals() {
 #[tokio::test]
 async fn test_boolean_equals_list() {
     filter_snapshot!(
-        Filter::new("bool_list", FilterOperation::BooleanEquals(true)),
+        FilterOperation::BooleanEquals(true),
         TestColumn::bool_lists(true, true),
         "inner_outer_nullable_true"
     );
 
     filter_snapshot!(
-        Filter::new("bool_list", FilterOperation::BooleanEquals(true)),
+        FilterOperation::BooleanEquals(true),
         TestColumn::bool_lists(true, false),
         "inner_nullable_true"
     );
 
     filter_snapshot!(
-        Filter::new("bool_list", FilterOperation::BooleanEquals(true)),
+        FilterOperation::BooleanEquals(true),
         TestColumn::bool_lists(false, true),
         "nullable_true"
     );
 
     filter_snapshot!(
-        Filter::new("bool_list", FilterOperation::BooleanEquals(true)),
+        FilterOperation::BooleanEquals(true),
         TestColumn::bool_lists(false, false),
         "true"
     );

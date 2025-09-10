@@ -248,7 +248,7 @@ impl Filter {
 
 impl SyntaxHighlighting for FilterOperation {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_keyword(self.operator_text());
+        builder.append_keyword(&self.operator_text());
         builder.append_keyword(" ");
 
         match self {
@@ -267,10 +267,10 @@ impl SyntaxHighlighting for FilterOperation {
 //todo
 fn comparison_op_ui(ui: &mut egui::Ui, op: &mut ComparisonOperator) {
     egui::ComboBox::new("comp_op", "")
-        .selected_text(op.operator_text())
+        .selected_text(op.to_string())
         .show_ui(ui, |ui| {
             for possible_op in crate::filters::ComparisonOperator::ALL {
-                if ui.button(possible_op.operator_text()).clicked() {
+                if ui.button(possible_op.to_string()).clicked() {
                     *op = *possible_op;
                 }
             }
@@ -290,14 +290,35 @@ impl FilterOperation {
         let mut top_text_builder = SyntaxHighlightedBuilder::new();
         top_text_builder.append_body(column_name);
         top_text_builder.append_keyword(" ");
-        top_text_builder.append_keyword(self.operator_text());
+        top_text_builder.append_keyword(&self.operator_text());
         let top_text = top_text_builder.into_widget_text(ui.style());
 
         match self {
             Self::IntCompares { operator, value } => {
                 ui.label(top_text);
                 comparison_op_ui(ui, operator);
-                ui.add(egui::DragValue::new(value));
+
+                let mut value_str = value.to_string();
+                let response = ui.text_edit_singleline(&mut value_str);
+                if response.changed()
+                    && let Ok(parsed) = value_str.parse()
+                {
+                    *value = parsed;
+                }
+
+                //TODO: clamp to actual type's range
+
+                if response.lost_focus() {
+                    action = ui.input(|i| {
+                        if i.key_pressed(egui::Key::Enter) {
+                            FilterUiAction::CommitStateToBlueprint
+                        } else if i.key_pressed(egui::Key::Escape) {
+                            FilterUiAction::CancelStateEdit
+                        } else {
+                            FilterUiAction::None
+                        }
+                    });
+                }
             }
 
             Self::FloatCompares { operator, value } => {
@@ -331,8 +352,7 @@ impl FilterOperation {
                 if ui.re_radio_value(query, true, "true").clicked()
                     || ui.re_radio_value(query, false, "false").clicked()
                 {
-                    //TODO?
-                    //action = FilterUiAction::CommitStateToBlueprint;
+                    action = FilterUiAction::CommitStateToBlueprint;
                 }
             }
         }
@@ -341,13 +361,13 @@ impl FilterOperation {
     }
 
     /// Display text of the operator.
-    fn operator_text(&self) -> &'static str {
+    fn operator_text(&self) -> String {
         match self {
             Self::IntCompares { operator, .. } | Self::FloatCompares { operator, .. } => {
-                operator.operator_text()
+                operator.to_string()
             }
-            Self::StringContains(_) => "contains",
-            Self::BooleanEquals(_) => "is",
+            Self::StringContains(_) => "contains".to_owned(),
+            Self::BooleanEquals(_) => "is".to_owned(),
         }
     }
 }
