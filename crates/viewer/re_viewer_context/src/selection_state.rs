@@ -56,22 +56,18 @@ impl InteractionHighlight {
 ///
 /// Both hover and selection are double buffered:
 /// Changes from one frame are only visible in the next frame.
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
+#[derive(Default)]
 pub struct ApplicationSelectionState {
     /// The selected items. Write to this with [`re_global_context::SystemCommand::SetSelection`].
     selection: ItemCollection,
 
     /// Has selection changed since the previous frame?
-    #[serde(skip)]
     selection_changed: bool,
 
     /// What objects are hovered? Read from this.
-    #[serde(skip)]
     hovered_previous_frame: ItemCollection,
 
     /// What objects are hovered? Write to this.
-    #[serde(skip)]
     hovered_this_frame: Mutex<ItemCollection>,
 }
 
