@@ -22,8 +22,6 @@ pub struct NavSatFixSchemaPlugin;
 
 pub struct NavSatFixMessageParser {
     geo_points: Vec<LatLon>,
-    latitude: FixedSizeListBuilder<Float64Builder>,
-    longitude: FixedSizeListBuilder<Float64Builder>,
     altitude: FixedSizeListBuilder<Float64Builder>,
     status: FixedSizeListBuilder<Int8Builder>,
     service: FixedSizeListBuilder<UInt16Builder>,
@@ -37,8 +35,6 @@ impl NavSatFixMessageParser {
     pub fn new(num_rows: usize) -> Self {
         Self {
             geo_points: Vec::with_capacity(num_rows),
-            latitude: fixed_size_list_builder(1, num_rows),
-            longitude: fixed_size_list_builder(1, num_rows),
             altitude: fixed_size_list_builder(1, num_rows),
             status: fixed_size_list_builder(1, num_rows),
             service: fixed_size_list_builder(1, num_rows),
@@ -80,12 +76,6 @@ impl MessageParser for NavSatFixMessageParser {
         let geo_point = LatLon::new(latitude, longitude);
         self.geo_points.push(geo_point);
 
-        self.latitude.values().append_slice(&[latitude]);
-        self.latitude.append(true);
-
-        self.longitude.values().append_slice(&[longitude]);
-        self.longitude.append(true);
-
         self.altitude.values().append_slice(&[altitude]);
         self.altitude.append(true);
 
@@ -112,8 +102,6 @@ impl MessageParser for NavSatFixMessageParser {
         re_tracing::profile_function!();
         let Self {
             geo_points,
-            mut latitude,
-            mut longitude,
             mut altitude,
             mut status,
             mut service,
@@ -130,8 +118,6 @@ impl MessageParser for NavSatFixMessageParser {
             .collect();
 
         chunk_components.extend([
-            Self::create_metadata_column("latitude", latitude.finish()),
-            Self::create_metadata_column("longitude", longitude.finish()),
             Self::create_metadata_column("altitude", altitude.finish()),
             Self::create_metadata_column("status", status.finish()),
             Self::create_metadata_column("service", service.finish()),
