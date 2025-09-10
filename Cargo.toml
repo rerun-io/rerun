@@ -754,6 +754,14 @@ significant_drop_tightening = "allow"  # An update of parking_lot made this trig
 unnecessary_debug_formatting = "allow"
 
 [patch.crates-io]
+# Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
+# If you do patch always prefer to patch to the trunk branch of the upstream repo (i.e. `main`, `master`, …).
+# If that is not possible, patch to a branch that has a PR open on the upstream repo.
+# As a last resort, patch to a branch on our own repository.
+#
+# Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
+# That makes it easy to upade with `cargo update -p $CRATE`.
+
 # https://github.com/rerun-io/arrow-datafusion/pull/1 - workaround for https://github.com/rerun-io/rerun/issues/9440 :
 # datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
 # datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
@@ -780,14 +788,6 @@ unnecessary_debug_formatting = "allow"
 # datafusion-physical-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
 # datafusion-physical-plan = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
 # datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-
-# Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
-# If you do patch always prefer to patch to the trunk branch of the upstream repo (i.e. `main`, `master`, …).
-# If that is not possible, patch to a branch that has a PR open on the upstream repo.
-# As a last resort, patch to a branch on our own repository.
-#
-# Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
-# That makes it easy to upade with `cargo update -p $CRATE`.
 
 # ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
 # eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
@@ -817,6 +817,6 @@ unnecessary_debug_formatting = "allow"
 
 # egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 
-#walkers = { git = "https://github.com/rerun-io/walkers", branch = "antoine/egui-0.32" } # https://github.com/podusowski/walkers/pull/345
+# walkers = { git = "https://github.com/rerun-io/walkers", branch = "antoine/egui-0.32" } # https://github.com/podusowski/walkers/pull/345
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
