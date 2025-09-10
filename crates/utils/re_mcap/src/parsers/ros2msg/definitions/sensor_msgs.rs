@@ -110,6 +110,7 @@ pub struct Imu {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(from = "u8", into = "u8")]
 #[repr(u8)]
 pub enum PointFieldDatatype {
     /// Does not exist in original spec.
@@ -122,6 +123,28 @@ pub enum PointFieldDatatype {
     UInt32 = 6,
     Float32 = 7,
     Float64 = 8,
+}
+
+impl From<u8> for PointFieldDatatype {
+    fn from(value: u8) -> Self {
+        match value {
+            1 => Self::Int8,
+            2 => Self::UInt8,
+            3 => Self::Int16,
+            4 => Self::UInt16,
+            5 => Self::Int32,
+            6 => Self::UInt32,
+            7 => Self::Float32,
+            8 => Self::Float64,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+impl From<PointFieldDatatype> for u8 {
+    fn from(datatype: PointFieldDatatype) -> Self {
+        datatype as Self
+    }
 }
 
 /// This message holds the description of one point entry in the
