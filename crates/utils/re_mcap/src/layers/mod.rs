@@ -480,6 +480,14 @@ impl LayerRegistry {
                 }
             }
 
+            let schema_name = channel_id.schema.as_ref().map(|s| s.name.clone());
+
+            let schema_encoding = channel_id
+                .schema
+                .as_ref()
+                .map(|s| s.encoding.as_str())
+                .unwrap_or("Unknown");
+
             if let Some(id) = chosen {
                 by_layer
                     .entry(id.clone())
@@ -489,28 +497,16 @@ impl LayerRegistry {
                 assignments.push(LayerAssignment {
                     channel_id: ChannelId::from(channel_id.id),
                     topic: channel_id.topic.clone(),
-                    encoding: channel_id
-                        .schema
-                        .as_ref()
-                        .map(|s| s.encoding.clone())
-                        .unwrap_or_default(),
+                    encoding: schema_encoding.to_owned(),
                     schema_name: channel_id.schema.as_ref().map(|s| s.name.clone()),
                     layer: id,
                 });
             } else {
                 re_log::debug!(
-                    "No message layer selected for topic '{}' (encoding='{}', schema='{}')",
+                    "No message layer selected for topic '{}' (encoding='{}', schema='{:?}')",
                     channel_id.topic,
-                    channel_id
-                        .schema
-                        .as_ref()
-                        .map(|s| s.encoding.as_str())
-                        .unwrap_or("-"),
-                    channel_id
-                        .schema
-                        .as_ref()
-                        .map(|s| s.name.as_str())
-                        .unwrap_or("-"),
+                    schema_encoding,
+                    schema_name,
                 );
             }
         }
