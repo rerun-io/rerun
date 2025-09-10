@@ -86,12 +86,16 @@ impl ApplicationSelectionState {
         // Use a different name so we don't get a collision in puffin.
         re_tracing::profile_scope!("SelectionState::on_frame_start");
 
+        let start_len = self.selection.len();
         // Purge selection of invalid items.
         self.selection.retain(|item, _| item_retain_condition(item));
+
+        self.selection_changed |= start_len != self.selection.len();
+
+        // Set to fallback if empty.
         if self.selection.is_empty()
             && let Some(fallback_selection) = fallback_selection
         {
-            self.selection_changed = true;
             self.selection = ItemCollection::from(fallback_selection);
         }
 
