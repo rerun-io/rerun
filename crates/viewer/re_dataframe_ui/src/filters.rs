@@ -1,5 +1,5 @@
 use arrow::datatypes::{DataType, Field};
-use datafusion::common::{DFSchema, ExprSchema};
+use datafusion::common::{DFSchema, ExprSchema as _};
 use datafusion::prelude::{Column, Expr, array_has, array_to_string, col, contains, lit, lower};
 
 #[derive(Debug, Clone, thiserror::Error)]
