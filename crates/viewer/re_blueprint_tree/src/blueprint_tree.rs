@@ -102,7 +102,7 @@ impl BlueprintTree {
                             );
                         }
                     })
-                    .menu_button(
+                    .with_menu_button(
                         &re_ui::icons::MORE,
                         "Open menu with more options",
                         |ui| {
