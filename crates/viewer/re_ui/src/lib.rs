@@ -24,7 +24,7 @@ mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
 
-use egui::NumExt as _;
+use egui::{NumExt as _, Ui};
 
 pub use self::{
     command::{UICommand, UICommandSender},
@@ -238,4 +238,72 @@ fn is_in_resizable_panel(ui: &egui::Ui) -> bool {
     } else {
         false // Safe fallback
     }
+}
+
+struct SmartWidget<'a, T> {
+    inner: T,
+    on_hover_ui: Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>,
+    on_click: Option<Box<dyn FnOnce() + 'a>>,
+}
+
+trait SmartWidgetExt<'a>: Sized {
+    fn on_click(self, on_click: impl FnOnce() + 'a) -> SmartWidget<'a, Self>;
+    fn on_hover_ui(self, on_hover_ui: impl Fn(&mut egui::Ui) + 'a) -> SmartWidget<'a, Self>;
+}
+
+impl<'a, T> SmartWidgetExt<'a> for T
+where
+    T: Into<SmartWidget<'a, T>>,
+{
+    fn on_click(self, on_click: impl FnOnce() + 'a) -> SmartWidget<'a, Self> {
+        let mut widget = self.into();
+        widget.on_click = Some(Box::new(on_click));
+        widget
+    }
+
+    fn on_hover_ui(self, on_hover_ui: impl Fn(&mut Ui) + 'a) -> SmartWidget<'a, Self> {
+        let mut widget = self.into();
+        widget.on_hover_ui = Some(Box::new(on_hover_ui));
+        widget
+    }
+}
+
+impl<'a, T: egui::Widget> egui::Widget for SmartWidget<'a, T> {
+    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        let mut response = ui.add(self.inner);
+
+        if let Some(on_hover_ui) = self.on_hover_ui {
+            response = response.on_hover_ui(on_hover_ui)
+        }
+
+        if let Some(on_click) = self.on_click
+            && response.clicked()
+        {
+            on_click();
+        }
+
+        response
+    }
+}
+
+impl<'a, T> From<T> for SmartWidget<'a, T> {
+    fn from(inner: T) -> Self {
+        Self {
+            inner,
+            on_hover_ui: None,
+            on_click: None,
+        }
+    }
+}
+
+fn test_ui(ui: &mut egui::Ui) {
+    ui.add(
+        egui::Button::new("Hi!")
+            .on_click(|| {
+                println!("Button clicked!");
+            })
+            .on_hover_ui(|ui| {
+                ui.label("This is a button");
+            }),
+    );
 }
