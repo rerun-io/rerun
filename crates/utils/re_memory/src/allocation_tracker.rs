@@ -52,6 +52,11 @@ impl ReadableBacktrace {
     }
 
     #[inline]
+    pub fn as_str(&self) -> &str {
+        &self.readable
+    }
+
+    #[inline]
     pub fn as_arc_str(&self) -> &Arc<str> {
         &self.readable
     }
