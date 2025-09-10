@@ -150,72 +150,6 @@ impl McapChunkDecoder {
     }
 }
 
-impl<T: MessageLayer> Layer for T {
-    fn identifier() -> LayerIdentifier {
-        T::identifier()
-    }
-
-    fn process(
-        &mut self,
-        mcap_bytes: &[u8],
-        summary: &mcap::Summary,
-        emit: &mut dyn FnMut(Chunk),
-    ) -> Result<(), Error> {
-        re_tracing::profile_scope!("process-message-layer");
-        self.init(summary)?;
-
-        for chunk in &summary.chunk_indexes {
-            re_tracing::profile_scope!("mcap-chunk");
-            let channel_counts = super::util::get_chunk_message_count(chunk, summary, mcap_bytes)?;
-
-            let parsers = summary
-                .read_message_indexes(mcap_bytes, chunk)?
-                .iter()
-                .filter_map(|(channel, msg_offsets)| {
-                    let parser = self.message_parser(channel, msg_offsets.len())?;
-                    let entity_path = EntityPath::from(channel.topic.as_str());
-                    let ctx = ParserContext::new(entity_path);
-                    Some((ChannelId::from(channel.id), (ctx, parser)))
-                })
-                .collect::<IntMap<_, _>>();
-
-            re_log::trace!(
-                "MCAP file contains {} channels with the following message counts: {:?}",
-                channel_counts.len(),
-                channel_counts
-            );
-
-            let mut decoder = McapChunkDecoder::new(parsers);
-
-            for msg in summary.stream_chunk(mcap_bytes, chunk)? {
-                match msg {
-                    Ok(message) => {
-                        if let Err(err) = decoder.decode_next(&message) {
-                            re_log::error!(
-                                "Failed to decode message from MCAP file: {err} on channel: {}",
-                                message.channel.topic
-                            );
-                        }
-                    }
-                    Err(err) => {
-                        re_log::error!("Failed to read message from MCAP file: {err}");
-                    }
-                }
-            }
-
-            for chunk in decoder.finish() {
-                if let Ok(chunk) = chunk {
-                    emit(chunk);
-                } else {
-                    re_log::error!("Failed to decode chunk from MCAP file: {:?}", chunk);
-                }
-            }
-        }
-
-        Ok(())
-    }
-}
-
 /// Used to select certain layers.
 #[derive(Clone, Debug)]
 pub enum SelectedLayers {
@@ -285,6 +219,7 @@ impl Layer for MessageLayerRunner {
                     if !self.allowed.contains(&ch_id) {
                         return None;
                     }
+
                     let parser = self.inner.message_parser(channel, msg_offsets.len())?;
                     let entity_path = EntityPath::from(channel.topic.as_str());
                     let ctx = ParserContext::new(entity_path);
