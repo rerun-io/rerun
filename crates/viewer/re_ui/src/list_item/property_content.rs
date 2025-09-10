@@ -5,7 +5,7 @@ use egui::{Align, Align2, NumExt as _, Ui, text::TextWrapping};
 use crate::{Icon, UiExt as _};
 
 use super::{
-    ContentContext, DesiredWidth, ItemButtons, LabelContent, LayoutInfoStack, ListItemContent,
+    ContentContext, DesiredWidth, ItemButtons, LayoutInfoStack, ListItemContent,
     ListItemContentButtonsExt, ListVisuals,
 };
 
@@ -218,10 +218,6 @@ impl ListItemContent for PropertyContent<'_> {
             0.0
         };
 
-        // Based on egui::ImageButton::ui()
-        let action_button_dimension =
-            tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
-
         let label_rect = egui::Rect::from_x_y_ranges(
             (content_left_x + icon_extra)..=(mid_point_x - Self::COLUMN_SPACING / 2.0),
             context.rect.y_range(),
@@ -331,12 +327,11 @@ impl ListItemContent for PropertyContent<'_> {
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
         let layout_info = LayoutInfoStack::top(ui.ctx());
-        let tokens = ui.tokens();
 
         if crate::is_in_resizable_panel(ui) {
             DesiredWidth::AtLeast(self.min_desired_width)
         } else if let Some(max_width) = layout_info.property_content_max_width {
-            let mut desired_width = max_width + layout_info.left_x - ui.max_rect().left();
+            let desired_width = max_width + layout_info.left_x - ui.max_rect().left();
 
             DesiredWidth::AtLeast(desired_width.ceil())
         } else {

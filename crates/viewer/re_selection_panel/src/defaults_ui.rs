@@ -9,7 +9,7 @@ use re_data_ui::{DataUi as _, archetype_label_list_item_ui};
 use re_log_types::EntityPath;
 use re_types_core::ComponentDescriptor;
 use re_types_core::reflection::ComponentDescriptorExt as _;
-use re_ui::list_item::ListItemContentButtonsExt;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
 use re_viewer_context::{
     ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewContext,
@@ -91,8 +91,8 @@ Click on the `+` button to add a new default value.";
         active_default_ui(ctx, ui, &active_defaults, view, query, db);
     };
     ui.section_collapsing_header("Component defaults")
-        .button(add_button)
-        .help_markdown(markdown)
+        .with_button(add_button)
+        .with_help_markdown(markdown)
         .show(ui, body);
 }
 

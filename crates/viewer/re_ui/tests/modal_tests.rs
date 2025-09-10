@@ -1,6 +1,6 @@
 use egui::Vec2;
 
-use re_ui::list_item::ListItemContentButtonsExt;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{UiExt as _, list_item};
 

@@ -8,7 +8,7 @@ use re_log_types::{ComponentPath, EntityPath};
 use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
 use re_types_core::external::arrow::array::ArrayRef;
-use re_ui::list_item::ListItemContentButtonsExt;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
@@ -75,8 +75,8 @@ in the blueprint or in the UI by selecting the view.
 specific to the visualizer and the current view type.";
 
     ui.section_collapsing_header("Visualizers")
-        .button(button)
-        .help_markdown(markdown)
+        .with_button(button)
+        .with_help_markdown(markdown)
         .show(ui, |ui| {
             visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers, &all_visualizers);
         });

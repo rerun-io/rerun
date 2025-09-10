@@ -7,7 +7,7 @@ use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
 use re_smart_channel::SmartChannelSource;
-use re_ui::list_item::{ItemButton as _, ItemMenuButton, LabelContent, ListItemContentButtonsExt};
+use re_ui::list_item::{ItemMenuButton, LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::{
     DisplayMode, Item, RecordingOrTable, SystemCommand, SystemCommandSender as _, ViewerContext,

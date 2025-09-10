@@ -9,10 +9,9 @@ pub struct SectionCollapsingHeader<'a> {
     label: egui::WidgetText,
     default_open: bool,
     buttons: ItemButtons<'a>,
-    help: Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>,
 }
 
-impl<'a> SectionCollapsingHeader<'a> {
+impl SectionCollapsingHeader<'_> {
     /// Create a new [`Self`].
     ///
     /// See also [`crate::UiExt::section_collapsing_header`]
@@ -21,7 +20,6 @@ impl<'a> SectionCollapsingHeader<'a> {
             label: label.into(),
             default_open: true,
             buttons: ItemButtons::default(),
-            help: None,
         }
     }
 
@@ -31,42 +29,6 @@ impl<'a> SectionCollapsingHeader<'a> {
     #[inline]
     pub fn default_open(mut self, default_open: bool) -> Self {
         self.default_open = default_open;
-        self
-    }
-
-    /// Set the button to be shown in the header.
-    #[inline]
-    pub fn button(mut self, button: impl egui::Widget + 'a) -> Self {
-        self.buttons.add(button);
-        self
-    }
-
-    /// Set the help text tooltip to be shown in the header.
-    //TODO(#6191): the help button should be just another `impl ItemButton`.
-    #[inline]
-    pub fn help_text(mut self, help: impl Into<egui::WidgetText>) -> Self {
-        let help = help.into();
-        self.help = Some(Box::new(move |ui| {
-            ui.label(help);
-        }));
-        self
-    }
-
-    /// Set the help markdown tooltip to be shown in the header.
-    //TODO(#6191): the help button should be just another `impl ItemButton`.
-    #[inline]
-    pub fn help_markdown(mut self, help: &'a str) -> Self {
-        self.help = Some(Box::new(move |ui| {
-            ui.markdown_ui(help);
-        }));
-        self
-    }
-
-    /// Set the help UI closure to be shown in the header.
-    //TODO(#6191): the help button should be just another `impl ItemButton`.
-    #[inline]
-    pub fn help_ui(mut self, help: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
-        self.help = Some(Box::new(help));
         self
     }
 
@@ -80,7 +42,6 @@ impl<'a> SectionCollapsingHeader<'a> {
             label,
             default_open,
             buttons,
-            help,
         } = self;
 
         let id = ui.make_persistent_id(label.text());
@@ -113,5 +74,15 @@ impl<'a> SectionCollapsingHeader<'a> {
             body_returned: None,
             openness: resp.openness,
         }
+    }
+}
+
+impl<'a> ListItemContentButtonsExt<'a> for SectionCollapsingHeader<'a> {
+    fn buttons(&self) -> &ItemButtons<'a> {
+        &self.buttons
+    }
+
+    fn buttons_mut(&mut self) -> &mut ItemButtons<'a> {
+        &mut self.buttons
     }
 }

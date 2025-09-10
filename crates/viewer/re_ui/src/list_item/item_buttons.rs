@@ -1,10 +1,12 @@
-use crate::UiExt;
+use crate::UiExt as _;
 use crate::list_item::ContentContext;
 use egui::Widget;
 
+type ButtonFn<'a> = Box<dyn FnOnce(&mut egui::Ui) + 'a>;
+
 #[derive(Default)]
 pub struct ItemButtons<'a> {
-    buttons: Vec<Box<dyn FnOnce(&mut egui::Ui) + 'a>>,
+    buttons: Vec<ButtonFn<'a>>,
     always_show_buttons: bool,
 }
 
@@ -35,7 +37,7 @@ impl<'a> ItemButtons<'a> {
         self.buttons.is_empty()
     }
 
-    fn should_show_buttons(&self, context: &ContentContext) -> bool {
+    fn should_show_buttons(&self, context: &ContentContext<'_>) -> bool {
         // We can't use `.hovered()` or the buttons disappear just as the user clicks,
         // so we use `contains_pointer` instead. That also means we need to check
         // that we aren't dragging anything.
@@ -52,7 +54,7 @@ impl<'a> ItemButtons<'a> {
     pub fn show_and_shrink_rect(
         self,
         ui: &mut egui::Ui,
-        context: &ContentContext,
+        context: &ContentContext<'_>,
         rect: &mut egui::Rect,
     ) {
         if self.buttons.is_empty() || !self.should_show_buttons(context) {
@@ -111,11 +113,27 @@ where
     ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't
     ///   used, the item will only allocate the width needed for the text and icons if any.
     /// - A right to left layout is used, so the right-most button must be added first.
+    #[inline]
     fn with_button(mut self, button: impl Widget + 'a) -> Self {
         self.buttons_mut().add(button);
         self
     }
 
+    /// Add some content in the button area.
+    ///
+    /// It will be shown on the right side of the list item.
+    /// By default, buttons are only shown on hover or when selected, use
+    /// [`Self::with_always_show_buttons`] to change that.
+    ///
+    /// Usually you want to add [`crate::list_item::ItemMenuButton`]s or
+    /// [`crate::list_item::ItemActionButton`]s.
+    ///
+    /// Notes:
+    /// - If buttons are used, the item will allocate the full available width of the parent. If the
+    ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't
+    ///   used, the item will only allocate the width needed for the text and icons if any.
+    /// - A right to left layout is used, so the right-most button must be added first.
+    #[inline]
     fn with_buttons(mut self, buttons: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
         self.buttons_mut().add_buttons(buttons);
         self
@@ -125,6 +143,7 @@ where
     ///
     /// By default, buttons are only shown when the item is hovered or selected. By setting this to
     /// `true`, the buttons are always shown.
+    #[inline]
     fn with_always_show_buttons(mut self, always_show: bool) -> Self {
         self.buttons_mut().always_show_buttons = always_show;
         self
@@ -177,5 +196,27 @@ where
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
         self.with_button(super::ItemMenuButton::new(icon, alt_text, add_contents))
+    }
+
+    /// Set the help text tooltip to be shown in the header.
+    #[inline]
+    fn with_help_text(self, help: impl Into<egui::WidgetText> + 'a) -> Self {
+        self.with_help_ui(|ui| {
+            ui.label(help);
+        })
+    }
+
+    /// Set the help markdown tooltip to be shown in the header.
+    #[inline]
+    fn with_help_markdown(self, help: &'a str) -> Self {
+        self.with_help_ui(|ui| {
+            ui.markdown_ui(help);
+        })
+    }
+
+    /// Set the help UI closure to be shown in the header.
+    #[inline]
+    fn with_help_ui(self, help: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
+        self.with_button(|ui: &mut egui::Ui| ui.help_button(help))
     }
 }

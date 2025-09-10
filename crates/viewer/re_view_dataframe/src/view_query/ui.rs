@@ -7,7 +7,7 @@ use re_log_types::{
 };
 use re_sorbet::ColumnSelector;
 use re_types::blueprint::components;
-use re_ui::list_item::ListItemContentButtonsExt;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{TimeDragValue, UiExt as _, list_item};
 use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
 use std::collections::{BTreeSet, HashSet};

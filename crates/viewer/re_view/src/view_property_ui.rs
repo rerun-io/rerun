@@ -1,6 +1,6 @@
 use re_types::ComponentDescriptor;
 use re_types_core::{Archetype, ArchetypeReflectionMarker, reflection::ArchetypeFieldReflection};
-use re_ui::list_item::ListItemContentButtonsExt;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
     ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewContext, ViewerContext,

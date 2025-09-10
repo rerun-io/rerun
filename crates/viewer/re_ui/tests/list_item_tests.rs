@@ -1,6 +1,6 @@
 use egui::Vec2;
 use egui_kittest::SnapshotOptions;
-use re_ui::list_item::ListItemContentButtonsExt;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
 
 #[test]
