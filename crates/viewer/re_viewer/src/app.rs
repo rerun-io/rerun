@@ -2827,8 +2827,20 @@ impl eframe::App for App {
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
-        // Update web address after commands have been applied.
-        self.update_web_address_bar(&store_hub);
+        // We don't want to spam the history API with changes, becuase
+        // otherwise it will start complaining about it being an insecure
+        // operation.
+        //
+        // This is a kind of hacky way to fix that: If there are currently any
+        // inputs, don't update the web address bar. This works for most cases
+        // because you need to hold down pointer to aggressivly scrub, need to
+        // hold down key inputs to quickly step through the timeline.
+        if !egui_ctx.is_using_pointer()
+            && egui_ctx.input(|input| !input.any_touches() && input.keys_down.is_empty())
+        {
+            // Update web address after commands have been applied.
+            self.update_web_address_bar(&store_hub);
+        }
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
