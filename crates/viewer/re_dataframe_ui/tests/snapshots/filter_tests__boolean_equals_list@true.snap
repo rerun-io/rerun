@@ -60,5 +60,10 @@ TestResult {
       true,
       true,
     ],
+      BooleanArray
+    [
+      true,
+      false,
+    ],
     ],
 }
