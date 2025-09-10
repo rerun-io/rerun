@@ -127,6 +127,10 @@ pub fn is_tracking_callstacks() -> bool {
 /// Requires that you have installed the [`AccountingAllocator`].
 pub fn set_tracking_callstacks(track: bool) {
     GLOBAL_STATS.track_callstacks.store(track, Relaxed);
+
+    if true {
+        re_log::info!("Turning on stochastic tracking of all allocations");
+    }
 }
 
 /// Turn on callstack tracking (slightly expensive) if a given env-var is set.
@@ -146,6 +150,7 @@ pub fn turn_on_tracking_if_env_var(env_var: &str) {
 
 const MAX_CALLSTACKS: usize = 128;
 
+#[derive(Debug)]
 pub struct TrackingStatistics {
     /// Allocations smaller than these are left untracked.
     pub track_size_threshold: usize,

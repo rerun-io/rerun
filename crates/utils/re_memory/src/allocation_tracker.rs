@@ -31,6 +31,12 @@ pub struct ReadableBacktrace {
     readable: Arc<str>,
 }
 
+impl std::fmt::Debug for ReadableBacktrace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.readable.fmt(f)
+    }
+}
+
 impl std::fmt::Display for ReadableBacktrace {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.readable.fmt(f)
@@ -44,12 +50,17 @@ impl ReadableBacktrace {
             readable: backtrace.format(),
         }
     }
+
+    #[inline]
+    pub fn as_arc_str(&self) -> &Arc<str> {
+        &self.readable
+    }
 }
 
 // ----------------------------------------------------------------------------
 
 /// Per-callstack statistics.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CallstackStatistics {
     /// For when we print this statistic.
     pub readable_backtrace: ReadableBacktrace,
