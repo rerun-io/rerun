@@ -53,9 +53,9 @@ For a detailed explanation of how each layer works and when to use them, see [La
 
 ## Supported message formats
 
-Rerun provides automatic visualization for common ROS2 message types, ROS1 message types are not currently supported for semantic interpretation through any layer.
+Rerun provides automatic visualization for common ROS2 message types. Protobuf messages are automatically decoded into Arrow structs, but for now will only show up in the selection panel and in the dataframe view. The contents of these MCAP files can also be queried using the Dataframe API.
 
-Protobuf messages are automatically decoded for structured access, while unsupported message types remain available as raw bytes.
+Unsupported message types (such as ROS1 messages) remain available as raw bytes in Arrow format.
 
 For more details about all supported message types, see [Message Formats](mcap/message-formats.md).
 
