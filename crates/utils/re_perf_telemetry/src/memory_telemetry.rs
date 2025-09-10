@@ -1,5 +1,3 @@
-use re_memory::TrackingStatistics;
-
 pub fn install_memory_use_meters() {
     let meter = opentelemetry::global::meter("memory-use");
 
@@ -15,19 +13,34 @@ pub fn install_memory_use_meters() {
         })
         .build();
 
+    // ---------------------------------------------------
+
+    // Configure the acounting allocator to only capture the big stuff.
+    // That way we get low overhead.
+    re_memory::accounting_allocator::set_tracking_options(
+        re_memory::accounting_allocator::TrackingOptions {
+            // Never capture callstacks for allocations smaller than this.
+            small_size: 1024,
+
+            // Allocations smaller than are stochastically sampled.
+            // Allocations larger than this are fully sampled.
+            medium_size: 1024 * 1024,
+        },
+    );
+    // Turn on the accounting allocator:
+    re_memory::accounting_allocator::set_tracking_callstacks(true);
+
+    // Perioidically check memory usage:
     tokio::spawn(memory_monitor_task());
 }
 
 /// Monitors memory use periodically,
 /// and logs memory stats each time we cross another GiB of allocated memory.
 async fn memory_monitor_task() {
-    // TODO: set SMALL_SIZE/MEDIUM_SIZE things.
-    re_memory::accounting_allocator::set_tracking_callstacks(true);
-
     const ONE_GIG: u64 = 1024 * 1024 * 1024;
 
-    // How often we check memory use
-    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
+    // How often we check RAM use.
+    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
 
     let total_ram_in_bytes = re_memory::total_ram_in_bytes();
 
