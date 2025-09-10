@@ -2,7 +2,7 @@
 title = "LeRobot loader"
 tags = ["2D", "Video", "Loader", "Hugging Face", "LeRobot"]
 thumbnail = "https://static.rerun.io/LeRobot/ec638243c38d01c0d9e27ef4e52e62c43c6e4ba4/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail_dimensions = [480, 275]
 -->
 
 <picture>
