@@ -19,6 +19,7 @@ pub fn total_ram_in_bytes() -> Option<u64> {
 /// Amount of available RAM on this machine.
 #[cfg(target_arch = "wasm32")]
 pub fn total_ram_in_bytes() -> Option<u64> {
+    #![expect(clippy::unnecessary_wraps)]
     Some(1_u64 << 32)
 }
 
