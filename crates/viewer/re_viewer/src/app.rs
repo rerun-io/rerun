@@ -854,7 +854,6 @@ impl App {
             }
 
             SystemCommand::SetFocus(item) => {
-                self.update_web_address_bar(store_hub);
                 self.state.focused_item = Some(item);
             }
 
@@ -1024,14 +1023,14 @@ impl App {
     ///
     /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, uri: &re_uri::DatasetPartitionUri) {
-        let re_uri::Fragment { focus, when } = uri.fragment.clone();
+        let re_uri::Fragment { selection, when } = uri.fragment.clone();
 
-        if let Some(focus) = focus {
+        if let Some(selection) = selection {
             let re_log_types::DataPath {
                 entity_path,
                 instance,
                 component_descriptor,
-            } = focus;
+            } = selection;
 
             let item = if let Some(component_descriptor) = component_descriptor {
                 Item::from(re_log_types::ComponentPath::new(
@@ -1046,8 +1045,6 @@ impl App {
 
             self.command_sender
                 .send_system(SystemCommand::SetSelection(item.clone().into()));
-            self.command_sender
-                .send_system(SystemCommand::SetFocus(item));
         }
 
         if let Some((timeline, timecell)) = when {
@@ -3236,7 +3233,7 @@ fn update_web_address_bar(
     _enable_history: bool,
     _store_hub: &StoreHub,
     _display_mode: &DisplayMode,
-    _focus: Option<&Item>,
+    _selection: Option<&Item>,
     _when: Option<&TimeControl>,
 ) {
     // No-op on native.
@@ -3247,7 +3244,7 @@ fn update_web_address_bar(
     enable_history: bool,
     store_hub: &StoreHub,
     display_mode: &DisplayMode,
-    focus: Option<&Item>,
+    selection: Option<&Item>,
     when: Option<&TimeControl>,
 ) -> Option<()> {
     if !enable_history {
@@ -3257,7 +3254,7 @@ fn update_web_address_bar(
         store_hub,
         display_mode.clone(),
         &re_uri::Fragment {
-            focus: focus.and_then(|item| item.to_data_path()),
+            selection: selection.and_then(|item| item.to_data_path()),
             when: when
                 .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused))
                 .and_then(|when| {
