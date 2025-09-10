@@ -176,9 +176,6 @@ pub enum Fallback {
 
     /// Single global fallback message layer (e.g. `raw`).
     Global(LayerIdentifier),
-
-    /// Per-encoding fallback, e.g. {"ros2msg" -> raw}
-    PerEncoding(BTreeMap<String, LayerIdentifier>),
 }
 
 /// A runner that constrains a [`MessageLayer`] to a specific set of channels.
@@ -215,15 +212,15 @@ impl Layer for MessageLayerRunner {
                 .read_message_indexes(mcap_bytes, chunk)?
                 .iter()
                 .filter_map(|(channel, msg_offsets)| {
-                    let ch_id = ChannelId::from(channel.id);
-                    if !self.allowed.contains(&ch_id) {
+                    let channel_id = ChannelId::from(channel.id);
+                    if !self.allowed.contains(&channel_id) {
                         return None;
                     }
 
                     let parser = self.inner.message_parser(channel, msg_offsets.len())?;
                     let entity_path = EntityPath::from(channel.topic.as_str());
                     let ctx = ParserContext::new(entity_path);
-                    Some((ch_id, (ctx, parser)))
+                    Some((channel_id, (ctx, parser)))
                 })
                 .collect::<IntMap<_, _>>();
 
@@ -278,7 +275,7 @@ impl ExecutionPlan {
         mcap_bytes: &[u8],
         summary: &mcap::Summary,
         emit: &mut dyn FnMut(Chunk),
-    ) -> Result<(), Error> {
+    ) -> anyhow::Result<()> {
         for mut layer in self.file_layers {
             layer.process(mcap_bytes, summary, emit)?;
         }
@@ -309,13 +306,18 @@ impl LayerRegistry {
         }
     }
 
-    /// Creates a registry with all builtin layers.
-    pub fn all() -> Self {
-        Self::all_with_raw_fallback(true)
+    /// Creates a registry with all builtin layers and raw fallback enabled.
+    pub fn all_with_raw_fallback() -> Self {
+        Self::all_builtin(true)
+    }
+
+    /// Creates a registry with all builtin layers and raw fallback disabled.
+    pub fn all_without_raw_fallback() -> Self {
+        Self::all_builtin(false)
     }
 
     /// Creates a registry with all builtin layers with configurable raw fallback.
-    pub fn all_with_raw_fallback(raw_fallback_enabled: bool) -> Self {
+    pub fn all_builtin(raw_fallback_enabled: bool) -> Self {
         let mut registry = Self::empty()
             // file layers:
             .register_file_layer::<McapRecordingInfoLayer>()
@@ -397,21 +399,6 @@ impl LayerRegistry {
         self
     }
 
-    /// Configure a per-encoding fallback (e.g. {"ros2msg" -> raw}).
-    pub fn with_per_encoding_fallback<S: Into<String>>(
-        mut self,
-        encoding: S,
-        layer_id: LayerIdentifier,
-    ) -> Self {
-        let mut map = match std::mem::take(&mut self.fallback) {
-            Fallback::PerEncoding(m) => m,
-            _ => BTreeMap::new(),
-        };
-        map.insert(encoding.into(), layer_id);
-        self.fallback = Fallback::PerEncoding(map);
-        self
-    }
-
     /// Produce a filtered registry that only contains `selected` layers.
     pub fn select(&self, selected: &SelectedLayers) -> Self {
         let file_factories = self
@@ -449,24 +436,11 @@ impl LayerRegistry {
         match &self.fallback {
             Fallback::Global(id) if selected.contains(id) => Fallback::Global(id.clone()),
             Fallback::Global(_) | Fallback::None => Fallback::None,
-            Fallback::PerEncoding(per_encoding_selected) => {
-                let kept = per_encoding_selected
-                    .iter()
-                    .filter(|(_, id)| selected.contains(id))
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                    .collect::<BTreeMap<_, _>>();
-
-                if kept.is_empty() {
-                    Fallback::None
-                } else {
-                    Fallback::PerEncoding(kept)
-                }
-            }
         }
     }
 
     /// Build a concrete execution plan for a given file.
-    pub fn plan(&self, summary: &mcap::Summary) -> Result<ExecutionPlan, Error> {
+    pub fn plan(&self, summary: &mcap::Summary) -> anyhow::Result<ExecutionPlan> {
         let file_layers = self
             .file_factories
             .values()
@@ -498,25 +472,10 @@ impl LayerRegistry {
             }
 
             if chosen.is_none() {
-                // fallbacks (per-encoding first)
-                let encoding = channel_id
-                    .schema
-                    .as_ref()
-                    .map(|s| s.encoding.clone())
-                    .unwrap_or_default();
-
-                if let Fallback::PerEncoding(map) = &self.fallback {
-                    if let Some(id) = map.get(&encoding) {
-                        if self.msg_factories.contains_key(id) {
-                            chosen = Some(id.clone());
-                        }
-                    }
-                }
-                if chosen.is_none() {
-                    if let Fallback::Global(id) = &self.fallback {
-                        if self.msg_factories.contains_key(id) {
-                            chosen = Some(id.clone());
-                        }
+                // fallbacks (if any)
+                if let Fallback::Global(id) = &self.fallback {
+                    if self.msg_factories.contains_key(id) {
+                        chosen = Some(id.clone());
                     }
                 }
             }

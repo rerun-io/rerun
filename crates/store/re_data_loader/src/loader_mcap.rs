@@ -84,17 +84,14 @@ impl DataLoader for McapLoader {
         std::thread::Builder::new()
             .name(format!("load_mcap({path:?}"))
             .spawn(move || {
-                match load_mcap_mmap(
+                if let Err(err) = load_mcap_mmap(
                     &path,
                     &settings,
                     &tx,
                     &selected_layers,
                     raw_fallback_enabled,
                 ) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        re_log::error!("Failed to load MCAP file: {err}");
-                    }
+                    re_log::error!("Failed to load MCAP file: {err}");
                 }
             })
             .map_err(|err| DataLoaderError::Other(err.into()))?;
@@ -128,17 +125,14 @@ impl DataLoader for McapLoader {
         std::thread::Builder::new()
             .name(format!("load_mcap({filepath:?}"))
             .spawn(move || {
-                match load_mcap_mmap(
+                if let Err(err) = load_mcap_mmap(
                     &filepath,
                     &settings,
                     &tx,
                     &selected_layers,
                     raw_fallback_enabled,
                 ) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        re_log::error!("Failed to load MCAP file: {err}");
-                    }
+                    re_log::error!("Failed to load MCAP file: {err}");
                 }
             })
             .map_err(|err| DataLoaderError::Other(err.into()))?;
@@ -236,12 +230,10 @@ fn load_mcap(
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
     // TODO(#10862): Add warning for channel that miss semantic information.
-    LayerRegistry::all_with_raw_fallback(raw_fallback_enabled)
+    LayerRegistry::all_builtin(raw_fallback_enabled)
         .select(selected_layers)
-        .plan(&summary)
-        .with_context(|| "Failed to create layer plan")?
-        .run(mcap, &summary, &mut send_chunk)
-        .with_context(|| "Failed to run layer plan")?;
+        .plan(&summary)?
+        .run(mcap, &summary, &mut send_chunk)?;
 
     Ok(())
 }
