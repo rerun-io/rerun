@@ -4,6 +4,8 @@
 //!
 use serde::{Deserialize, Serialize};
 
+use super::std_msgs::Header;
+
 /// This represents a vector in free space.
 ///
 /// This is semantically different than a point.
@@ -38,4 +40,27 @@ pub struct Point {
 pub struct Pose {
     pub position: Point,
     pub orientation: Quaternion,
+}
+
+/// This represents the transform between two coordinate frames in free space.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Transform {
+    /// Translation component of the transform
+    pub translation: Vector3,
+
+    /// Rotation component of the transform
+    pub rotation: Quaternion,
+}
+
+/// A transform with a timestamp and frame information.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TransformStamped {
+    /// Header with timestamp and frame information
+    pub header: Header,
+
+    /// The frame id of the child frame
+    pub child_frame_id: String,
+
+    /// The actual transform data
+    pub transform: Transform,
 }

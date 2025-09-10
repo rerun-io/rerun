@@ -9,3 +9,4 @@ pub mod geometry_msgs;
 pub mod rcl_interfaces;
 pub mod sensor_msgs;
 pub mod std_msgs;
+pub mod tf2_msgs;
