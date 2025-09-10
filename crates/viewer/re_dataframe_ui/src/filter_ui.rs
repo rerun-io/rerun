@@ -183,18 +183,29 @@ impl Filter {
                 }
 
                 text_response
-            });
+            })
+            .inner;
 
-        let popup_was_closed = !egui::Popup::is_id_open(ui.ctx(), filter_id);
+        // Should the popup be open?
+        //
+        // Note: we currently manually handle the popup state to allow popup-in-popup UIs.
+        //TODO(emilk/egui#7451): let egui handle that when popup-in-popup is supported.
+        let mut popup_open: bool = ui.data(|data| data.get_temp(filter_id)).unwrap_or_default();
+        let popup_was_closed = !popup_open;
+        if activate_filter || response.clicked() {
+            popup_open = true;
+        }
+        let any_popup_open = egui::Popup::is_any_open(ui.ctx());
 
-        let mut popup = egui::Popup::menu(&response.response)
+        let popup = egui::Popup::menu(&response)
             .id(filter_id)
             .gap(3.0)
-            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside);
-
-        if activate_filter {
-            popup = popup.open_memory(Some(egui::SetOpenCommand::Bool(true)));
-        }
+            .close_behavior(if any_popup_open {
+                egui::PopupCloseBehavior::IgnoreClicks
+            } else {
+                egui::PopupCloseBehavior::CloseOnClickOutside
+            })
+            .open_bool(&mut popup_open);
 
         let popup_response = popup.show(|ui| {
             let action = self
@@ -208,6 +219,8 @@ impl Filter {
 
             action
         });
+
+        ui.data_mut(|data| data.insert_temp(filter_id, popup_open));
 
         // Handle the logic of committing or cancelling the filter edit. This can happen in three
         // ways:
@@ -264,10 +277,9 @@ impl SyntaxHighlighting for FilterOperation {
     }
 }
 
-//todo
-fn comparison_op_ui(ui: &mut egui::Ui, op: &mut ComparisonOperator) {
+fn comparison_op_ui(ui: &mut egui::Ui, text: egui::WidgetText, op: &mut ComparisonOperator) {
     egui::ComboBox::new("comp_op", "")
-        .selected_text(op.to_string())
+        .selected_text(text)
         .show_ui(ui, |ui| {
             for possible_op in crate::filters::ComparisonOperator::ALL {
                 if ui.button(possible_op.to_string()).clicked() {
@@ -287,6 +299,24 @@ impl FilterOperation {
     ) -> FilterUiAction {
         let mut action = FilterUiAction::None;
 
+        let mut process_text_edit_response = |ui: &egui::Ui, response: &egui::Response| {
+            if popup_just_opened {
+                response.request_focus();
+            }
+
+            if response.lost_focus() {
+                action = ui.input(|i| {
+                    if i.key_pressed(egui::Key::Enter) {
+                        FilterUiAction::CommitStateToBlueprint
+                    } else if i.key_pressed(egui::Key::Escape) {
+                        FilterUiAction::CancelStateEdit
+                    } else {
+                        FilterUiAction::None
+                    }
+                });
+            }
+        };
+
         let mut top_text_builder = SyntaxHighlightedBuilder::new();
         top_text_builder.append_body(column_name);
         top_text_builder.append_keyword(" ");
@@ -295,8 +325,7 @@ impl FilterOperation {
 
         match self {
             Self::IntCompares { operator, value } => {
-                ui.label(top_text);
-                comparison_op_ui(ui, operator);
+                comparison_op_ui(ui, top_text, operator);
 
                 let mut value_str = value.to_string();
                 let response = ui.text_edit_singleline(&mut value_str);
@@ -306,45 +335,28 @@ impl FilterOperation {
                     *value = parsed;
                 }
 
-                //TODO: clamp to actual type's range
-
-                if response.lost_focus() {
-                    action = ui.input(|i| {
-                        if i.key_pressed(egui::Key::Enter) {
-                            FilterUiAction::CommitStateToBlueprint
-                        } else if i.key_pressed(egui::Key::Escape) {
-                            FilterUiAction::CancelStateEdit
-                        } else {
-                            FilterUiAction::None
-                        }
-                    });
-                }
+                process_text_edit_response(ui, &response);
             }
 
             Self::FloatCompares { operator, value } => {
-                ui.label(top_text);
-                comparison_op_ui(ui, operator);
-                ui.add(egui::DragValue::new(value));
+                comparison_op_ui(ui, top_text, operator);
+
+                let mut value_str = value.to_string();
+                let response = ui.text_edit_singleline(&mut value_str);
+                if response.changed()
+                    && let Ok(parsed) = value_str.parse()
+                {
+                    *value = parsed;
+                }
+
+                process_text_edit_response(ui, &response);
             }
 
             Self::StringContains(query) => {
                 ui.label(top_text);
                 let response = ui.text_edit_singleline(query);
-                if popup_just_opened {
-                    response.request_focus();
-                }
 
-                if response.lost_focus() {
-                    action = ui.input(|i| {
-                        if i.key_pressed(egui::Key::Enter) {
-                            FilterUiAction::CommitStateToBlueprint
-                        } else if i.key_pressed(egui::Key::Escape) {
-                            FilterUiAction::CancelStateEdit
-                        } else {
-                            FilterUiAction::None
-                        }
-                    });
-                }
+                process_text_edit_response(ui, &response);
             }
 
             Self::BooleanEquals(query) => {
@@ -391,7 +403,20 @@ mod tests {
         };
 
         [
-            //TODO: int/float compares
+            (
+                FilterOperation::IntCompares {
+                    operator: ComparisonOperator::Eq,
+                    value: 100,
+                },
+                "int_compare",
+            ),
+            (
+                FilterOperation::FloatCompares {
+                    operator: ComparisonOperator::Ge,
+                    value: 10.5,
+                },
+                "float_compares",
+            ),
             (
                 FilterOperation::StringContains("query".to_owned()),
                 "string_contains",

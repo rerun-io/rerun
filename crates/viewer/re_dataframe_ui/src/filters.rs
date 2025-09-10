@@ -119,7 +119,7 @@ pub enum FilterOperation {
     /// For columns of lists of integers, only the first value is considered.
     IntCompares {
         operator: ComparisonOperator,
-        value: i128, //TODO: should these be Option?
+        value: i128,
     },
 
     /// Compare a floating point value to a constant.
@@ -239,6 +239,8 @@ impl FilterOperation {
     }
 }
 
+/// Custom UDF for evaluating filter operations.
+//TODO(ab): consider splitting the vectorized filtering part from the `any`/`all` aggregation.
 #[derive(Debug, Clone)]
 struct FilterOperationUdf {
     op: FilterOperation,
@@ -247,14 +249,21 @@ struct FilterOperationUdf {
 
 impl FilterOperationUdf {
     fn new(op: FilterOperation) -> Self {
-        let type_signature = match &op {
-            FilterOperation::IntCompares { .. } | FilterOperation::FloatCompares { .. } => {
-                TypeSignature::Numeric(1)
-            }
-            //TODO: are we supporting those for now?
-            FilterOperation::StringContains(_) => TypeSignature::String(1),
-            FilterOperation::BooleanEquals(_) => TypeSignature::Exact(vec![DataType::Boolean]),
-        };
+        debug_assert!(matches!(
+            op,
+            FilterOperation::IntCompares { .. } | FilterOperation::FloatCompares { .. }
+        ));
+
+        let type_signature = TypeSignature::Numeric(1);
+
+        // TODO(ab): add support for other filter types?
+        // let type_signature = match &op {
+        //     FilterOperation::IntCompares { .. } | FilterOperation::FloatCompares { .. } => {
+        //         TypeSignature::Numeric(1)
+        //     }
+        //     FilterOperation::StringContains(_) => TypeSignature::String(1),
+        //     FilterOperation::BooleanEquals(_) => TypeSignature::Exact(vec![DataType::Boolean]),
+        // };
 
         let signature = Signature::one_of(
             vec![
@@ -270,15 +279,9 @@ impl FilterOperationUdf {
         Self { op, signature }
     }
 
-    //TODO: this should ideally share implementation with `default_for_datatype()`
-    fn is_valid_input_type(&self, data_type: &DataType) -> bool {
+    /// Check if the provided _primitive_ type is valid.
+    fn is_valid_primitive_input_type(&self, data_type: &DataType) -> bool {
         match data_type {
-            //TODO(ab): support other containers?
-            DataType::List(field) | DataType::ListView(field) => {
-                //TODO: this incorrectly matches nested lists
-                self.is_valid_input_type(field.data_type())
-            }
-
             _data_type if data_type.is_integer() => {
                 matches!(&self.op, FilterOperation::IntCompares { .. })
             }
@@ -288,15 +291,19 @@ impl FilterOperationUdf {
                 matches!(&self.op, FilterOperation::FloatCompares { .. })
             }
 
-            DataType::Utf8 | DataType::Utf8View | DataType::LargeUtf8 => {
-                matches!(&self.op, FilterOperation::StringContains(_))
-            }
-
-            DataType::Boolean => {
-                matches!(&self.op, FilterOperation::BooleanEquals(_))
-            }
-
             _ => false,
+        }
+    }
+
+    fn is_valid_input_type(&self, data_type: &DataType) -> bool {
+        match data_type {
+            DataType::List(field) | DataType::ListView(field) => {
+                // Note: we do not support double nested types
+                self.is_valid_primitive_input_type(field.data_type())
+            }
+
+            //TODO(ab): support other containers
+            _ => self.is_valid_primitive_input_type(data_type),
         }
     }
 
