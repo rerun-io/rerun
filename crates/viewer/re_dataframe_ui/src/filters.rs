@@ -193,9 +193,11 @@ impl FilterOperation {
                         if field.data_type() == &DataType::Utf8
                             || field.data_type() == &DataType::Utf8View =>
                     {
-                        // for List[Utf8], we concatenate all the instances into a single logical
-                        // string
-                        array_to_string(col(column.clone()), lit(" "))
+                        // For List[Utf8], we concatenate all the instances into a single logical
+                        // string, separated by a Record Separator (0x1E) character. This ensures
+                        // that the query string doesn't accidentally match a substring spanning
+                        // multiple instances.
+                        array_to_string(col(column.clone()), lit("\u{001E}"))
                     }
 
                     _ => {

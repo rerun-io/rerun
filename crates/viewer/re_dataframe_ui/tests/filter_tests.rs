@@ -110,10 +110,10 @@ impl TestColumn {
         Self::new(array, outer_nullable)
     }
 
-    fn strings(nullable: bool) -> Self {
+    fn strings() -> Self {
         Self::new(
             StringArray::from(vec!["a", "b", "c", "ab", "A B", "aBc"]),
-            nullable,
+            false,
         )
     }
 
@@ -131,15 +131,26 @@ impl TestColumn {
         )
     }
 
-    //TODO(ab): rewrite using `primitive_lists`
     fn strings_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
-        let values = StringArray::from(vec!["a", "b", "c", "ab", "A B", "aBc"]);
+        // the primitive array stuff doesn't work for strings, so we go the manual way.
+        let values = if inner_nullable {
+            StringArray::from(vec![
+                Some("a"),
+                Some("b"),
+                None,
+                Some("ab"),
+                None,
+                Some("aBc"),
+            ])
+        } else {
+            StringArray::from(vec!["a", "b", "c", "ab", "A B", "aBc"])
+        };
         let offsets = OffsetBuffer::new(vec![0i32, 2, 4, 6].into());
         let strings_lists = ListArray::try_new(
             Arc::new(Field::new("item", DataType::Utf8, inner_nullable)),
             offsets,
             Arc::new(values),
-            None,
+            outer_nullable.then(|| NullBuffer::from(vec![true, false, true])),
         )
         .expect("failed to create a string list array");
 
@@ -469,26 +480,26 @@ async fn test_float_lists() {
 async fn test_string_contains() {
     filter_snapshot!(
         FilterOperation::StringContains(String::new()),
-        TestColumn::strings(false),
+        TestColumn::strings(),
         "empty"
     );
 
     filter_snapshot!(
         FilterOperation::StringContains("a".to_owned()),
-        TestColumn::strings(false),
+        TestColumn::strings(),
         "a"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("A".to_owned()),
-        TestColumn::strings(false),
-        "a_uppercase"
+        FilterOperation::StringContains("a".to_owned()),
+        TestColumn::strings(),
+        "ab"
     );
 
     filter_snapshot!(
         FilterOperation::StringContains("A".to_owned()),
-        TestColumn::strings(true),
-        "nullable_a_uppercase"
+        TestColumn::strings(),
+        "a_uppercase"
     );
 
     filter_snapshot!(
@@ -507,27 +518,27 @@ async fn test_string_contains() {
 #[tokio::test]
 async fn test_string_contains_list() {
     filter_snapshot!(
-        FilterOperation::StringContains("c".to_owned()),
+        FilterOperation::StringContains("ab".to_owned()),
         TestColumn::strings_lists(true, true),
-        "inner_outer_nullable_c"
+        "inner_outer_nullable_ab"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("c".to_owned()),
+        FilterOperation::StringContains("ab".to_owned()),
         TestColumn::strings_lists(true, false),
-        "inner_nullable_c"
+        "inner_nullable_ab"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("c".to_owned()),
+        FilterOperation::StringContains("ab".to_owned()),
         TestColumn::strings_lists(false, true),
-        "outer_nullable_c"
+        "outer_nullable_ab"
     );
 
     filter_snapshot!(
-        FilterOperation::StringContains("c".to_owned()),
+        FilterOperation::StringContains("ab".to_owned()),
         TestColumn::strings_lists(false, false),
-        "c"
+        "ab"
     );
 }
 

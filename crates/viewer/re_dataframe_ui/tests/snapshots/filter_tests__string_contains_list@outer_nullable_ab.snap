@@ -4,7 +4,7 @@ expression: test_results
 ---
 TestResult {
     op: StringContains(
-        "c",
+        "ab",
     ),
     field: Field {
         name: "column",
@@ -30,11 +30,7 @@ TestResult {
       "a",
       "b",
     ],
-      StringArray
-    [
-      "c",
-      "ab",
-    ],
+      null,
       StringArray
     [
       "A B",
@@ -43,11 +39,6 @@ TestResult {
     ],
     filtered: ListArray
     [
-      StringArray
-    [
-      "c",
-      "ab",
-    ],
       StringArray
     [
       "A B",
