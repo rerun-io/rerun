@@ -10,6 +10,7 @@ use crate::{
             RelativeHumidityMessageParser, TemperatureMessageParser,
         },
         std_msgs::StringMessageParser,
+        tf2_msgs::TfMessageParser,
     },
 };
 
@@ -65,6 +66,7 @@ impl MessageLayer for McapRos2Layer {
             }
             "sensor_msgs/msg/Temperature" => Box::new(TemperatureMessageParser::new(num_rows)),
             "std_msgs/msg/String" => Box::new(StringMessageParser::new(num_rows)),
+            "tf2_msgs/msg/TFMessage" => Box::new(TfMessageParser::new(num_rows)),
             _ => {
                 re_log::warn_once!(
                     "Message schema {:?} is currently not supported",
