@@ -1,6 +1,6 @@
 /// Amount of available RAM on this machine.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn total_ram_in_bytes() -> u64 {
+pub fn total_ram_in_bytes() -> Option<u64> {
     re_tracing::profile_function!();
 
     let mut sys = sysinfo::System::new_with_specifics(
@@ -12,7 +12,8 @@ pub fn total_ram_in_bytes() -> u64 {
         sys.refresh_memory();
     }
 
-    sys.total_memory()
+    let bytes = sys.total_memory();
+    if bytes == 0 { None } else { Some(bytes) }
 }
 
 /// Amount of available RAM on this machine.
@@ -34,12 +35,20 @@ pub struct RamLimitWarner {
 
 impl RamLimitWarner {
     pub fn warn_at_fraction_of_max(fraction: f32) -> Self {
-        let total_ram_in_bytes = total_ram_in_bytes();
-        let limit = (fraction as f64 * total_ram_in_bytes as f64).round() as _;
-        Self {
-            total_ram_in_bytes,
-            warn_limit: limit,
-            has_warned: false,
+        if let Some(total_ram_in_bytes) = total_ram_in_bytes() {
+            let limit = (fraction as f64 * total_ram_in_bytes as f64).round() as _;
+            Self {
+                total_ram_in_bytes,
+                warn_limit: limit,
+                has_warned: false,
+            }
+        } else {
+            re_log::warn_once!("Failed to figure out how much RAM this machine has");
+            Self {
+                total_ram_in_bytes: 0,
+                warn_limit: 0,
+                has_warned: true,
+            }
         }
     }
 

@@ -44,12 +44,12 @@ async fn memory_monitor_task() {
 
     let total_ram_in_bytes = re_memory::total_ram_in_bytes();
 
-    let mut warn_at_gb = if total_ram_in_bytes == 0 {
-        tracing::warn!("Failed to estimate how much RAM is in this machine");
-        4 // First warning when we cross this many GiB
-    } else {
+    let mut warn_at_gb = if let Some(total_ram_in_bytes) = total_ram_in_bytes {
         let total_ram_gb = total_ram_in_bytes / ONE_GIG;
         total_ram_gb / 2 // First warning when we cross 50%
+    } else {
+        tracing::warn!("Failed to estimate how much RAM is in this machine");
+        4 // First warning when we cross this many GiB
     };
     tracing::debug!("Will log memory stats when we first pass {warn_at_gb} GiB");
 
@@ -72,7 +72,7 @@ async fn memory_monitor_task() {
         if warn_at_gb <= used_gb_floored {
             warn_at_gb = used_gb_floored + 1;
 
-            if total_ram_in_bytes == 0 {
+            if let Some(total_ram_in_bytes) = total_ram_in_bytes {
                 tracing::info!(
                     "Using {:.1} / {:.1} GiB RAM",
                     used_bytes as f64 / ONE_GIG as f64,
