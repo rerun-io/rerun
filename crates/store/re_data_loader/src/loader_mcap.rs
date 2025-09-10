@@ -2,7 +2,6 @@
 
 use std::{io::Cursor, path::Path, sync::mpsc::Sender};
 
-use anyhow::Context as _;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 use re_mcap::{LayerRegistry, SelectedLayers};
