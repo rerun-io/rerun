@@ -57,7 +57,7 @@ Rerun provides automatic visualization for common ROS2 message types. Protobuf m
 
 Unsupported message types (such as ROS1 messages) remain available as raw bytes in Arrow format.
 
-The following is a screenshot of the selection panel a Protobuf-encoded MCAP message. The top-level fields of the Protobuf message are imported as components in the corresponding archetype. The raw MCAP schema and message information shows up as seperate archetypes as well.
+The following is a screenshot of the selection panel and shows a Protobuf-encoded MCAP message. The top-level fields of the Protobuf message are imported as components in the corresponding point cloud archetype. The raw MCAP schema and message information show up as seperate archetypes as well.
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/full.png" alt="Screenshot of MCAP messages converted to raw Arrow data in the selection panel">
