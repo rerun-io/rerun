@@ -236,19 +236,44 @@ impl TestSessionContext {
     }
 }
 
-//TODO(ab): display the unfiltered data as well and make the snapshot less verbose.
+#[derive(Debug)]
+#[expect(dead_code)] // debug is excluded from dead code analysis
+struct TestResult<'a> {
+    op: FilterOperation,
+    field: Field,
+    unfiltered: ArrayRef,
+    filtered: &'a ArrayRef,
+}
+
+//note: this is a macro so insta is exposed to the actual test function
 macro_rules! filter_snapshot {
-    ($filter:expr, $col:expr, $case:expr) => {
-        let filter = Filter::new(COLUMN_NAME, $filter);
-        let result = TestSessionContext::new([$col])
+    ($filter_op:expr, $test_column:expr, $case:expr) => {
+        let filter = Filter::new(COLUMN_NAME, $filter_op.clone());
+        let initial_field = $test_column.field.clone();
+        let initial_column = $test_column.array.clone();
+
+        let result = TestSessionContext::new([$test_column])
             .to_filtered_record_batch(&filter)
             .await;
+
+        assert_eq!(result.columns().len(), 1);
+        assert_eq!(&initial_field, result.schema().field(0));
+
+        let final_column = result.column(0);
+
+
+        let test_results = TestResult {
+            op: $filter_op,
+            field: initial_field,
+            unfiltered: initial_column,
+            filtered: final_column,
+        };
 
         insta::with_settings!({
            snapshot_suffix => $case,
         },
         {
-            insta::assert_debug_snapshot!((filter, result));
+            insta::assert_debug_snapshot!(test_results);
         });
     };
 }

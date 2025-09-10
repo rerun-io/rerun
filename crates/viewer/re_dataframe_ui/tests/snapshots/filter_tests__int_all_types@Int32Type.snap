@@ -1,35 +1,30 @@
 ---
 source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
-expression: "(filter, result)"
+expression: test_results
 ---
-(
-    Filter {
-        column_name: "column",
-        operation: IntCompares {
-            operator: Eq,
-            value: 3,
-        },
+TestResult {
+    op: IntCompares {
+        operator: Eq,
+        value: 3,
     },
-    RecordBatch {
-        schema: Schema {
-            fields: [
-                Field {
-                    name: "column",
-                    data_type: Int32,
-                    nullable: false,
-                    dict_id: 0,
-                    dict_is_ordered: false,
-                    metadata: {},
-                },
-            ],
-            metadata: {},
-        },
-        columns: [
-            PrimitiveArray<Int32>
-            [
-              3,
-            ],
-        ],
-        row_count: 1,
+    field: Field {
+        name: "column",
+        data_type: Int32,
+        nullable: false,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
     },
-)
+    unfiltered: PrimitiveArray<Int32>
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+    ],
+    filtered: PrimitiveArray<Int32>
+    [
+      3,
+    ],
+}

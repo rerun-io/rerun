@@ -21,7 +21,7 @@ pub enum FilterError {
 }
 
 /// A filter applied to a table.
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Filter {
     pub column_name: String,
     pub operation: FilterOperation,
@@ -48,7 +48,7 @@ impl Filter {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ComparisonOperator {
     Eq,
     Ne,
@@ -101,7 +101,7 @@ impl ComparisonOperator {
 }
 
 /// The kind of filter operation
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum FilterOperation {
     /// Compare an integer value to a constant.
     ///

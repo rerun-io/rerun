@@ -1,52 +1,57 @@
 ---
 source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
-expression: "(filter, result)"
+expression: test_results
 ---
-(
-    Filter {
-        column_name: "column",
-        operation: StringContains(
-            "c",
+TestResult {
+    op: StringContains(
+        "c",
+    ),
+    field: Field {
+        name: "column",
+        data_type: List(
+            Field {
+                name: "item",
+                data_type: Utf8,
+                nullable: false,
+                dict_id: 0,
+                dict_is_ordered: false,
+                metadata: {},
+            },
         ),
+        nullable: true,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
     },
-    RecordBatch {
-        schema: Schema {
-            fields: [
-                Field {
-                    name: "column",
-                    data_type: List(
-                        Field {
-                            name: "item",
-                            data_type: Utf8,
-                            nullable: false,
-                            dict_id: 0,
-                            dict_is_ordered: false,
-                            metadata: {},
-                        },
-                    ),
-                    nullable: true,
-                    dict_id: 0,
-                    dict_is_ordered: false,
-                    metadata: {},
-                },
-            ],
-            metadata: {},
-        },
-        columns: [
-            ListArray
-            [
-              StringArray
-            [
-              "c",
-              "ab",
-            ],
-              StringArray
-            [
-              "A B",
-              "aBc",
-            ],
-            ],
-        ],
-        row_count: 2,
-    },
-)
+    unfiltered: ListArray
+    [
+      StringArray
+    [
+      "a",
+      "b",
+    ],
+      StringArray
+    [
+      "c",
+      "ab",
+    ],
+      StringArray
+    [
+      "A B",
+      "aBc",
+    ],
+    ],
+    filtered: ListArray
+    [
+      StringArray
+    [
+      "c",
+      "ab",
+    ],
+      StringArray
+    [
+      "A B",
+      "aBc",
+    ],
+    ],
+}
