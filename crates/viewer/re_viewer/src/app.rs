@@ -548,7 +548,7 @@ impl App {
             self.startup_options.web_history_enabled(),
             store_hub,
             self.state.navigation.peek(),
-            self.state.selection_state.new_selected_items().first_item(),
+            self.state.selection_state.selected_items().first_item(),
             time_ctrl.as_deref(),
         );
     }

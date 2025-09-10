@@ -126,11 +126,6 @@ impl ApplicationSelectionState {
         &self.selection
     }
 
-    /// Returns the items selected this frame.
-    pub fn new_selected_items(&self) -> &ItemCollection {
-        &self.selection_this_frame
-    }
-
     /// Returns the currently hovered objects.
     pub fn hovered_items(&self) -> &ItemCollection {
         &self.hovered_previous_frame
