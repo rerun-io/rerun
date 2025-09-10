@@ -243,7 +243,7 @@ impl Layer for MessageLayerRunner {
             for chunk in decoder.finish() {
                 match chunk {
                     Ok(c) => emit(c),
-                    Err(err) => re_log::error!("Failed to decode chunk: {err:?}"),
+                    Err(err) => re_log::error!("Failed to decode chunk: {err}"),
                 }
             }
         }
