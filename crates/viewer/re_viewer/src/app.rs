@@ -3285,22 +3285,23 @@ fn update_web_address_bar(
     }
 
     if let Some(history) = history().ok_or_log_js_error() {
+        let current_entry = history.current_entry().ok_or_log_js_error().flatten();
         let new_entry = HistoryEntry::new(url);
-        if history
-            .current_entry()
-            .ok_or_log_js_error()
-            .flatten()
-            .and_then(|entry| {
-                Some((
-                    entry.to_query_string().ok_or_log_js_error()?,
-                    new_entry.to_query_string().ok_or_log_js_error()?,
-                ))
-            })
-            .is_some_and(|(current, new)| strip_fragment(&current) == strip_fragment(&new))
-        {
-            history.replace_entry(new_entry).ok_or_log_js_error();
-        } else {
-            history.push_entry(new_entry).ok_or_log_js_error();
+        if Some(&new_entry) != current_entry.as_ref() {
+            // If only the fragment has changed, we replace history instead of pushing it.
+            if current_entry
+                .and_then(|entry| {
+                    Some((
+                        entry.to_query_string().ok_or_log_js_error()?,
+                        new_entry.to_query_string().ok_or_log_js_error()?,
+                    ))
+                })
+                .is_some_and(|(current, new)| strip_fragment(&current) == strip_fragment(&new))
+            {
+                history.replace_entry(new_entry).ok_or_log_js_error();
+            } else {
+                history.push_entry(new_entry).ok_or_log_js_error();
+            }
         }
     }
 
