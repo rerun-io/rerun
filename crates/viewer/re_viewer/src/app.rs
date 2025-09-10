@@ -564,28 +564,23 @@ impl App {
             SystemCommand::ActivateApp(app_id) => {
                 self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
-                self.update_web_address_bar(store_hub);
             }
 
             SystemCommand::CloseApp(app_id) => {
                 store_hub.close_app(&app_id);
-                self.update_web_address_bar(store_hub);
             }
 
-            SystemCommand::ActivateRecordingOrTable(entry) => {
-                match &entry {
-                    RecordingOrTable::Recording { store_id } => {
-                        self.state.navigation.replace(DisplayMode::LocalRecordings);
-                        store_hub.set_active_recording_id(store_id.clone());
-                    }
-                    RecordingOrTable::Table { table_id } => {
-                        self.state
-                            .navigation
-                            .replace(DisplayMode::LocalTable(table_id.clone()));
-                    }
+            SystemCommand::ActivateRecordingOrTable(entry) => match &entry {
+                RecordingOrTable::Recording { store_id } => {
+                    self.state.navigation.replace(DisplayMode::LocalRecordings);
+                    store_hub.set_active_recording_id(store_id.clone());
                 }
-                self.update_web_address_bar(store_hub);
-            }
+                RecordingOrTable::Table { table_id } => {
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::LocalTable(table_id.clone()));
+                }
+            },
 
             SystemCommand::CloseRecordingOrTable(entry) => {
                 // TODO(#9464): Find a better successor here.
@@ -624,8 +619,6 @@ impl App {
                 }
 
                 store_hub.remove(&entry);
-
-                self.update_web_address_bar(store_hub);
             }
 
             SystemCommand::CloseAllEntries => {
@@ -660,16 +653,6 @@ impl App {
                 }
 
                 self.state.navigation.replace(display_mode);
-
-                // Update web-navigation bar if this isn't about local recordings.
-                //
-                // Recordings are on selection since recording change always comes with a selection change.
-                // It's important to not do that here because otherwise we might miss on anchors etc. or even
-                // _which_ recording is about to be selected.
-                // I.e. if we update navigation bar here, this would become order dependent.
-                if *self.state.navigation.peek() != DisplayMode::LocalRecordings {
-                    self.update_web_address_bar(store_hub);
-                }
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
@@ -809,7 +792,6 @@ impl App {
                 }
 
                 self.state.selection_state.set_selection(items);
-                self.update_web_address_bar(store_hub);
                 egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
@@ -833,7 +815,6 @@ impl App {
                         "SystemCommand::SetActiveTime ignored: unknown store ID '{store_id:?}'"
                     );
                 }
-                self.update_web_address_bar(store_hub);
             }
 
             SystemCommand::SetLoopSelection {
@@ -1572,8 +1553,6 @@ impl App {
                 time_ctrl.restart(times_per_timeline);
             }
         }
-
-        self.update_web_address_bar(storage_context.hub);
     }
 
     /// Retrieve the link to the current viewer.
@@ -2868,6 +2847,9 @@ impl eframe::App for App {
             );
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
+
+        // Update web address after commands have been applied.
+        self.update_web_address_bar(&store_hub);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
