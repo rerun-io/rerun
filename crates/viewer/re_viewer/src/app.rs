@@ -659,17 +659,18 @@ impl App {
                     return;
                 }
 
+                self.state.navigation.replace(display_mode);
+
                 // Update web-navigation bar if this isn't about local recordings.
                 //
                 // Recordings are on selection since recording change always comes with a selection change.
                 // It's important to not do that here because otherwise we might miss on anchors etc. or even
                 // _which_ recording is about to be selected.
                 // I.e. if we update navigation bar here, this would become order dependent.
-                if display_mode != DisplayMode::LocalRecordings {
+                if *self.state.navigation.peek() != DisplayMode::LocalRecordings {
                     self.update_web_address_bar(store_hub);
                 }
 
-                self.state.navigation.replace(display_mode);
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
 
