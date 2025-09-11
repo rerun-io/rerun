@@ -181,6 +181,7 @@ jobs:
         with:
           max_attempts: 2
           retry_wait_seconds: 30
+          timeout_minutes: 60
           command: cd rerun_py/tests && pixi run -e wheel-test-min pytest -c ../pyproject.toml
 
       - name: Run e2e test

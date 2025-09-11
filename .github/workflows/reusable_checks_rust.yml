@@ -195,6 +195,7 @@ jobs:
         with:
           max_attempts: 2
           retry_wait_seconds: 30
+          timeout_minutes: 60
           command: pixi run rs-check --only tests
 
       - name: Rust all checks & tests (`nightly` channel)
