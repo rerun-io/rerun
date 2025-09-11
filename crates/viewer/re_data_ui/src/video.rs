@@ -1,6 +1,5 @@
 use egui::NumExt as _;
 use egui_extras::Column;
-use re_chunk_store::UnitChunkShared;
 use re_renderer::{
     external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
     video::VideoFrameTexture,
@@ -599,7 +598,7 @@ impl VideoUi {
                         debug_name,
                         blob_row_id,
                         blob_component_descriptor,
-                        &blob,
+                        blob,
                         media_type,
                         ctx.app_options().video_decoder_settings(),
                     )
@@ -618,7 +617,7 @@ impl VideoUi {
                 // See also `MediaTypeIsNotAVideo` case above.
                 None
             }
-            _ => Some(VideoUi::Asset(result, video_timestamp, blob.clone())),
+            _ => Some(Self::Asset(result, video_timestamp, blob.clone())),
         }
     }
 
@@ -641,7 +640,7 @@ impl VideoUi {
             )
         });
 
-        Some(VideoUi::Stream(video_stream_result))
+        Some(Self::Stream(video_stream_result))
     }
 
     pub fn data_ui(
@@ -652,8 +651,8 @@ impl VideoUi {
         query: &re_chunk_store::LatestAtQuery,
     ) {
         match self {
-            VideoUi::Stream(video_stream_result) => {
-                video_stream_result_ui(ui, ui_layout, &video_stream_result);
+            Self::Stream(video_stream_result) => {
+                video_stream_result_ui(ui, ui_layout, video_stream_result);
                 if let Ok(video) = video_stream_result {
                     let video = video.read();
                     let time = video_stream_time_from_query(query);
@@ -668,8 +667,8 @@ impl VideoUi {
                     );
                 }
             }
-            VideoUi::Asset(video_result, timestamp, blob) => {
-                video_asset_result_ui(ui, ui_layout, &video_result);
+            Self::Asset(video_result, timestamp, blob) => {
+                video_asset_result_ui(ui, ui_layout, video_result);
                 if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
                     // Show a mini video player for video blobs:
                     if let Ok(video) = video_result.as_ref() {

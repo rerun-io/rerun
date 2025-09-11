@@ -1,13 +1,8 @@
 use crate::{blob, image, video};
-use egui::Rangef;
 use re_chunk_store::UnitChunkShared;
-use re_types::components;
-use re_types::components::ValueRange;
-use re_types::image::ImageKind;
-use re_types_core::{Component, ComponentDescriptor, ComponentType};
-use re_ui::{UiLayout, icons, list_item};
-use re_viewer_context::gpu_bridge::image_data_range_heuristic;
-use re_viewer_context::{ColormapWithRange, ImageInfo, ImageStats, ImageStatsCache, ViewerContext};
+use re_types_core::ComponentDescriptor;
+use re_ui::{UiLayout, list_item};
+use re_viewer_context::ViewerContext;
 
 pub enum ExtraDataUi {
     Video(video::VideoUi),
@@ -43,17 +38,15 @@ impl ExtraDataUi {
         mut property_content: list_item::PropertyContent<'a>,
     ) -> list_item::PropertyContent<'a> {
         match self {
-            ExtraDataUi::Video(_) => {
-                /// Video streams are not copyable or downloadable
+            Self::Video(_) => {
+                // Video streams are not copyable or downloadable
                 property_content
             }
-            ExtraDataUi::Image(image) => {
+            Self::Image(image) => {
                 property_content = image.inline_copy_button(ctx, property_content);
                 image.inline_download_button(ctx, entity_path, property_content)
             }
-            ExtraDataUi::Blob(blob) => {
-                blob.inline_download_button(ctx, entity_path, property_content)
-            }
+            Self::Blob(blob) => blob.inline_download_button(ctx, entity_path, property_content),
         }
     }
 
@@ -66,13 +59,13 @@ impl ExtraDataUi {
         entity_path: &re_log_types::EntityPath,
     ) {
         match self {
-            ExtraDataUi::Video(video) => {
+            Self::Video(video) => {
                 video.data_ui(ctx, ui, layout, query);
             }
-            ExtraDataUi::Image(image) => {
+            Self::Image(image) => {
                 image.data_ui(ctx, ui, layout, query, entity_path);
             }
-            ExtraDataUi::Blob(blob) => {
+            Self::Blob(blob) => {
                 blob.data_ui(ctx, ui, layout, query, entity_path);
             }
         }

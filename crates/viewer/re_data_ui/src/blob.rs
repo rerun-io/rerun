@@ -1,17 +1,14 @@
 use crate::image::ImageUi;
 use crate::video::VideoUi;
-use crate::{
-    EntityDataUi, find_and_deserialize_archetype_mono_component,
-    video::{show_decoded_frame_info, video_asset_result_ui},
-};
+use crate::{EntityDataUi, find_and_deserialize_archetype_mono_component};
 use re_chunk_store::UnitChunkShared;
 use re_log_types::EntityPath;
 use re_types::{
     ComponentDescriptor, RowId, archetypes, components,
     components::{Blob, MediaType, VideoTimestamp},
 };
-use re_types_core::Component;
-use re_ui::list_item::ListItemContentButtonsExt;
+use re_types_core::Component as _;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
     UiExt as _, icons,
     list_item::{self, PropertyContent},
@@ -87,7 +84,7 @@ impl EntityDataUi for Blob {
                     )
                     .on_hover_text("Failed to detect media type (Mime) from magic header bytes");
                 }
-                blob_ui.data_ui(ctx, ui, ui_layout, query, entity_path)
+                blob_ui.data_ui(ctx, ui, ui_layout, query, entity_path);
             });
         }
     }
@@ -275,13 +272,6 @@ impl BlobUi {
         }
 
         if let Some(image) = &self.image {
-            if !ui_layout.is_single_line() {
-                // TODO: Should this be in ImageExtraData?
-                ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Image format").value_text(image.format.to_string()),
-                );
-            }
-
             image.data_ui(ctx, ui, ui_layout, query, entity_path);
         }
 

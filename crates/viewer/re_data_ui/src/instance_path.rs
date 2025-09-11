@@ -1,22 +1,16 @@
-use egui::{Rangef, RichText};
+use egui::RichText;
 use std::collections::BTreeMap;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
 use re_types::{
-    ArchetypeName, Component, ComponentDescriptor, archetypes, components,
-    datatypes::{ChannelDatatype, ColorModel},
-    image::ImageKind,
+    ArchetypeName, Component as _, ComponentDescriptor, components,
     reflection::ComponentDescriptorExt as _,
 };
-use re_ui::list_item::ListItemContentButtonsExt;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
-use re_viewer_context::{
-    ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout,
-    VideoStreamCache, ViewerContext, gpu_bridge::image_data_range_heuristic,
-    video_stream_time_from_query,
-};
+use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewerContext};
 
 use super::DataUi;
 use crate::extra_data_ui::ExtraDataUi;

@@ -6,33 +6,14 @@ use re_types::components;
 use re_types::components::MediaType;
 use re_types::datatypes::{ChannelDatatype, ColorModel};
 use re_types::image::ImageKind;
-use re_types_core::{Component, ComponentDescriptor, RowId};
-use re_ui::list_item::ListItemContentButtonsExt;
-use re_ui::{UiExt, icons, list_item};
+use re_types_core::{Component as _, ComponentDescriptor, RowId};
+use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
+use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::gpu_bridge::image_data_range_heuristic;
 use re_viewer_context::{
     ColormapWithRange, ImageInfo, ImageStats, ImageStatsCache, UiLayout, ViewerContext,
     gpu_bridge::{self, image_to_gpu},
 };
-
-/// Show a button letting the user copy the image
-pub fn copy_image_button_ui(ui: &mut egui::Ui, image: &ImageInfo, data_range: egui::Rangef) {
-    if ui
-        .add(Button::image_and_text(icons::COPY.as_image(), "Copy image"))
-        .on_hover_text("Copy image to system clipboard")
-        .clicked()
-    {
-        if let Some(rgba) = image.to_rgba8_image(data_range.into()) {
-            let egui_image = egui::ColorImage::from_rgba_unmultiplied(
-                [rgba.width() as _, rgba.height() as _],
-                bytemuck::cast_slice(rgba.as_raw()),
-            );
-            ui.ctx().copy_image(egui_image);
-        } else {
-            re_log::error!("Invalid image");
-        }
-    }
-}
 
 /// Show the given image with an appropriate size.
 ///
@@ -191,7 +172,6 @@ fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
 }
 
 pub struct ImageUi {
-    pub format: components::ImageFormat,
     pub image: ImageInfo,
     pub data_range: Rangef,
     pub image_stats: ImageStats,
@@ -204,10 +184,8 @@ impl ImageUi {
             .store_context
             .caches
             .entry(|c: &mut ImageStatsCache| c.entry(&image));
-        let data_range =
-            re_viewer_context::gpu_bridge::image_data_range_heuristic(&image_stats, &image.format);
+        let data_range = image_data_range_heuristic(&image_stats, &image.format);
         Self {
-            format: image.format.into(),
             image,
             data_range,
             image_stats,
@@ -225,7 +203,7 @@ impl ImageUi {
         ctx.store_context
             .caches
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-                c.entry(blob_row_id, blob_component_descriptor, &blob, media_type)
+                c.entry(blob_row_id, blob_component_descriptor, blob, media_type)
             })
             .ok()
             .map(|image| Self::new(ctx, image))
@@ -297,7 +275,6 @@ impl ImageUi {
         );
 
         Some(Self {
-            format: image_format,
             image,
             data_range,
             image_stats,
@@ -362,7 +339,6 @@ impl ImageUi {
         entity_path: &re_log_types::EntityPath,
     ) {
         let Self {
-            format,
             image,
             data_range,
             image_stats,
@@ -375,13 +351,17 @@ impl ImageUi {
             ui_layout,
             query,
             entity_path,
-            &image,
+            image,
             colormap_with_range.as_ref(),
         );
 
         if ui_layout.is_single_line() || ui_layout == UiLayout::Tooltip {
             return;
         }
+
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new("Image format").value_text(image.format.to_string()),
+        );
 
         // TODO(emilk): we should really support histograms for all types of images
         if image.format.pixel_format.is_none()
