@@ -44,7 +44,6 @@ tracy = ["dep:tracing-tracy"]
 
 
 [dependencies]
-re_log.workspace = true
 re_memory.workspace = true
 
 # External
