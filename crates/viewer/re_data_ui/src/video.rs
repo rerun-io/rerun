@@ -673,8 +673,6 @@ impl VideoUi {
                 if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
                     // Show a mini video player for video blobs:
                     if let Ok(video) = video_result.as_ref() {
-                        ui.separator();
-
                         let video_timestamp = timestamp.unwrap_or_else(|| {
                             // TODO(emilk): Some time controls would be nice,
                             // but the point here is not to have a nice viewer,

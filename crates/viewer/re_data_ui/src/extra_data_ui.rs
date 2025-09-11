@@ -24,13 +24,16 @@ impl ExtraDataUi {
         chunk: &UnitChunkShared,
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
     ) -> Option<Self> {
-        let image = image::ImageUi::from_components(ctx, descr, chunk, entity_components)
-            .map(ExtraDataUi::Image);
-        let video =
-            video::VideoUi::from_components(ctx, query, entity_path, descr).map(ExtraDataUi::Video);
-        let blob = blob::BlobUi::from_components(ctx, entity_path, descr, chunk, entity_components)
-            .map(ExtraDataUi::Blob);
-        image.or(video).or(blob)
+        blob::BlobUi::from_components(ctx, entity_path, descr, chunk, entity_components)
+            .map(ExtraDataUi::Blob)
+            .or_else(|| {
+                image::ImageUi::from_components(ctx, descr, chunk, entity_components)
+                    .map(ExtraDataUi::Image)
+            })
+            .or_else(|| {
+                video::VideoUi::from_components(ctx, query, entity_path, descr)
+                    .map(ExtraDataUi::Video)
+            })
     }
 
     pub fn add_inline_buttons<'a>(

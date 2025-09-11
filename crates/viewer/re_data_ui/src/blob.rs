@@ -1,8 +1,7 @@
 use crate::image::ImageUi;
-use crate::instance_path::find_and_deserialize_archetype_mono_component;
 use crate::video::VideoUi;
 use crate::{
-    EntityDataUi,
+    EntityDataUi, find_and_deserialize_archetype_mono_component,
     image::image_preview_ui,
     video::{show_decoded_frame_info, video_asset_result_ui},
 };

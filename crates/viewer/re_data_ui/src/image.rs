@@ -1,3 +1,4 @@
+use crate::find_and_deserialize_archetype_mono_component;
 use egui::{Button, NumExt as _, Rangef, Vec2};
 use re_chunk_store::UnitChunkShared;
 use re_renderer::renderer::ColormappedTexture;
@@ -267,12 +268,14 @@ impl ImageUi {
             .caches
             .entry(|c: &mut ImageStatsCache| c.entry(&image));
 
-        let colormap = crate::instance_path::find_and_deserialize_archetype_mono_component::<
-            components::Colormap,
-        >(entity_components, image_buffer_descr.archetype);
-        let value_range = crate::instance_path::find_and_deserialize_archetype_mono_component::<
-            components::ValueRange,
-        >(entity_components, image_buffer_descr.archetype);
+        let colormap = find_and_deserialize_archetype_mono_component::<components::Colormap>(
+            entity_components,
+            image_buffer_descr.archetype,
+        );
+        let value_range = find_and_deserialize_archetype_mono_component::<components::ValueRange>(
+            entity_components,
+            image_buffer_descr.archetype,
+        );
 
         let colormap_with_range = colormap.map(|colormap| ColormapWithRange {
             colormap,
