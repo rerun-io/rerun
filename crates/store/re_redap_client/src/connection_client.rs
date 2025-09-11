@@ -377,4 +377,14 @@ where
 
         Ok(())
     }
+
+    pub async fn do_global_maintenance(&mut self) -> Result<(), StreamError> {
+        self.inner()
+            .do_global_maintenance(tonic::Request::new(
+                re_protos::cloud::v1alpha1::DoGlobalMaintenanceRequest {},
+            ))
+            .await?;
+
+        Ok(())
+    }
 }

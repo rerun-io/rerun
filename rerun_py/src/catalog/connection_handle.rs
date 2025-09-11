@@ -329,6 +329,21 @@ impl ConnectionHandle {
         )
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn do_global_maintenance(&self, py: Python<'_>) -> PyResult<()> {
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .do_global_maintenance()
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
     // TODO(ab): migrate this to the `ConnectionClient` API.
     #[tracing::instrument(level = "info", skip_all)]
     pub fn query_tasks(&self, py: Python<'_>, task_ids: &[TaskId]) -> PyResult<RecordBatch> {

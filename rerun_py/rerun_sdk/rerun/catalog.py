@@ -179,6 +179,10 @@ class CatalogClient:
         """
         return self._raw_client.register_table(name, url)
 
+    def do_global_maintenance(self) -> None:
+        """Perform maintenance tasks on the whole system."""
+        return self._raw_client.do_global_maintenance()
+
     @property
     def ctx(self) -> datafusion.SessionContext:
         """Returns a DataFusion session context for querying the catalog."""
