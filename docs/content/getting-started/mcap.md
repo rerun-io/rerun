@@ -36,13 +36,13 @@ rerun output.rrd
 
 ## Data model
 
-Rerun's data model is based on an [entity component system (ECS)](concepts/entity-component.md) that is a bit different to the message-based model of [MCAP](https://mcap.dev).
+Rerun's data model is based on an [entity component system (ECS)](../concepts/entity-component.md) that is a bit different to the message-based model of [MCAP](https://mcap.dev).
 To map MCAP messages to Rerun entities we make the following assumptions:
 
 * MCAP topics corresponds to Rerun entities.
-* Messages from the same topic within an MCAP chunk will be placed into a corresponding [Rerun chunk](concepts/chunks.md).
+* Messages from the same topic within an MCAP chunk will be placed into a corresponding [Rerun chunk](../concepts/chunks.md).
 * The contents of an MCAP message will be extracted to Rerun components and grouped under a corresponding Rerun archetype.
-* `log_time` and `publish_time` of an MCAP message will be carried over to Rerun as two distinct [timelines](concepts/timelines.md).
+* `log_time` and `publish_time` of an MCAP message will be carried over to Rerun as two distinct [timelines](../concepts/timelines.md).
 
 ### Layered architecture
 
