@@ -106,7 +106,7 @@ impl ParserContext {
         self
     }
 
-    /// Add a timestamp to the timeline using the provided [`TimestampCell`].
+    /// Add a timestamp to the timeline using the provided timestamp cell.
     ///
     /// The timeline name and [`TimeCell`] are automatically determined from the timestamp cell.
     /// For Unix epochs, creates a timestamp cell. For custom epochs, creates a duration cell.
