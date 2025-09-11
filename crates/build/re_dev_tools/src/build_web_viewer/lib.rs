@@ -18,7 +18,12 @@ pub fn workspace_root() -> Utf8PathBuf {
 }
 
 pub fn default_build_dir() -> Utf8PathBuf {
-    workspace_root().join("web_viewer")
+    // crates/viewer/re_web_viewer_server/web_viewer
+    workspace_root()
+        .join("crates")
+        .join("viewer")
+        .join("re_web_viewer_server")
+        .join("web_viewer")
 }
 
 fn target_directory() -> Utf8PathBuf {
