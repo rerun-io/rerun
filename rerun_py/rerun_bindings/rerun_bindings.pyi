@@ -1741,6 +1741,10 @@ class CatalogClientInternal:
 
     # ---
 
+    def do_global_maintenance(self) -> None: ...
+
+    # ---
+
     def _entry_id_from_entry_name(self, name: str) -> EntryId: ...
 
 class DataFusionTable:
