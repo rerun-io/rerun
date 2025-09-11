@@ -8018,6 +8018,7 @@ dependencies = [
  "opentelemetry_sdk",
  "parking_lot",
  "prometheus-client",
+ "re_memory",
  "serde",
  "serde_json",
  "tokio",

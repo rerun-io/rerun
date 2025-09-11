@@ -29,10 +29,7 @@ impl MemoryLimit {
     /// Set the limit to some fraction (0-1) of the total available RAM.
     pub fn from_fraction_of_total(fraction: f32) -> Self {
         let total_memory = crate::total_ram_in_bytes();
-        if total_memory == 0 {
-            re_log::info!("Couldn't determine total available memory. Setting no memory limit.");
-            Self { max_bytes: None }
-        } else {
+        if let Some(total_memory) = total_memory {
             let max_bytes = (fraction as f64 * total_memory as f64).round();
 
             re_log::debug!(
@@ -45,6 +42,9 @@ impl MemoryLimit {
             Self {
                 max_bytes: Some(max_bytes as _),
             }
+        } else {
+            re_log::info!("Couldn't determine total available memory. Setting no memory limit.");
+            Self { max_bytes: None }
         }
     }
 

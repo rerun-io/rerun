@@ -96,12 +96,14 @@ disallowed-types = [
 doc-valid-idents = [
   # You must also update the same list in `scripts/clippy_wasm/clippy.toml`!
   "AOMedia",
+  "GiB",
   "GitHub",
   "GLB",
   "GLTF",
   "iOS",
   "macOS",
   "MessagePack",
+  "MiB",
   "MiMalloc",
   "NaN",
   "OBJ",
