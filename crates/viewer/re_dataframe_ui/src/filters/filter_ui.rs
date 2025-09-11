@@ -330,14 +330,29 @@ impl SyntaxHighlighting for FilterOperation {
 
         match self {
             Self::IntCompares { value, operator: _ } => {
-                builder.append_primitive(&re_format::format_int(*value))
+                if let Some(value) = value {
+                    builder.append_primitive(&re_format::format_int(*value));
+                } else {
+                    builder.append_primitive("…");
+                }
             }
+
             Self::FloatCompares { value, operator: _ } => {
-                builder.append_primitive(&re_format::format_f64(*value))
+                if let Some(value) = value {
+                    builder.append_primitive(&re_format::format_f64(*value));
+                } else {
+                    builder.append_primitive("…");
+                }
             }
-            Self::StringContains(query) => builder.append_string_value(query),
-            Self::BooleanEquals(query) => builder.append_primitive(&format!("{query}")),
-        };
+
+            Self::StringContains(query) => {
+                builder.append_string_value(query);
+            }
+
+            Self::BooleanEquals(query) => {
+                builder.append_primitive(&format!("{query}"));
+            }
+        }
     }
 }
 
@@ -391,12 +406,14 @@ impl FilterOperation {
             Self::IntCompares { operator, value } => {
                 comparison_op_ui(ui, top_text, operator);
 
-                let mut value_str = value.to_string();
+                let mut value_str = value.map(|v| v.to_string()).unwrap_or_default();
                 let response = ui.text_edit_singleline(&mut value_str);
-                if response.changed()
-                    && let Ok(parsed) = value_str.parse()
-                {
-                    *value = parsed;
+                if response.changed() {
+                    if value_str.is_empty() {
+                        *value = None;
+                    } else if let Ok(parsed) = value_str.parse() {
+                        *value = Some(parsed);
+                    }
                 }
 
                 process_text_edit_response(ui, &response);
@@ -405,12 +422,14 @@ impl FilterOperation {
             Self::FloatCompares { operator, value } => {
                 comparison_op_ui(ui, top_text, operator);
 
-                let mut value_str = value.to_string();
+                let mut value_str = value.map(|v| v.to_string()).unwrap_or_default();
                 let response = ui.text_edit_singleline(&mut value_str);
-                if response.changed()
-                    && let Ok(parsed) = value_str.parse()
-                {
-                    *value = parsed;
+                if response.changed() {
+                    if value_str.is_empty() {
+                        *value = None;
+                    } else if let Ok(parsed) = value_str.parse() {
+                        *value = Some(parsed);
+                    }
                 }
 
                 process_text_edit_response(ui, &response);
@@ -470,16 +489,30 @@ mod tests {
             (
                 FilterOperation::IntCompares {
                     operator: ComparisonOperator::Eq,
-                    value: 100,
+                    value: Some(100),
                 },
                 "int_compare",
             ),
             (
+                FilterOperation::IntCompares {
+                    operator: ComparisonOperator::Eq,
+                    value: None,
+                },
+                "int_compare_none",
+            ),
+            (
                 FilterOperation::FloatCompares {
                     operator: ComparisonOperator::Ge,
-                    value: 10.5,
+                    value: Some(10.5),
                 },
                 "float_compares",
+            ),
+            (
+                FilterOperation::FloatCompares {
+                    operator: ComparisonOperator::Ge,
+                    value: None,
+                },
+                "float_compares_none",
             ),
             (
                 FilterOperation::StringContains("query".to_owned()),
