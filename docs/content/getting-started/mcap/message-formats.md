@@ -20,7 +20,7 @@ We are continually adding support for more standard ROS2 message types. For the 
 
 The following are known limitations and link to the corresponding GitHub issues.
 
-<!-- TODO(11174) -->
+<!-- TODO(#11174) -->
 - [Cannot express transforms defined via `tf` messages](https://github.com/rerun-io/rerun/issues/11174)
 
 ## ROS1 message types
