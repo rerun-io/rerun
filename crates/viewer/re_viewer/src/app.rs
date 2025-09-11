@@ -1625,36 +1625,6 @@ impl App {
         }
     }
 
-    /// Retrieve the link to the current viewer.
-    #[cfg(target_arch = "wasm32")]
-    fn get_viewer_url(&self) -> Result<String, wasm_bindgen::JsValue> {
-        let location = web_sys::window()
-            .ok_or_else(|| "failed to get window".to_owned())?
-            .location();
-        let origin = location.origin()?;
-        let host = location.host()?;
-        let pathname = location.pathname()?;
-
-        let hosted_viewer_path = if self.build_info.is_final() {
-            // final release, use version tag
-            format!("version/{}", self.build_info.version)
-        } else {
-            // not a final release, use commit hash
-            format!("commit/{}", self.build_info.short_git_hash())
-        };
-
-        // links to `app.rerun.io` can be made into permanent links:
-        let url = if host == "app.rerun.io" {
-            format!("https://app.rerun.io/{hosted_viewer_path}")
-        } else if host == "rerun.io" && pathname.starts_with("/viewer") {
-            format!("https://rerun.io/viewer/{hosted_viewer_path}")
-        } else {
-            format!("{origin}{pathname}")
-        };
-
-        Ok(url)
-    }
-
     fn run_copy_link_command(&mut self, store_hub: &StoreHub, context: UrlContext) {
         // TODO(rerun-io/dataplatform#2663): Should take into account dataplatform URLs if any are provided.
         let base_url;
