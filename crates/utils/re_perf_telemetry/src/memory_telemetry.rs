@@ -22,7 +22,7 @@ pub fn install_memory_use_meters() {
             // Never capture callstacks for allocations smaller than this.
             small_size: 1024,
 
-            // Allocations smaller than are stochastically sampled.
+            // Allocations smaller than this are stochastically sampled.
             // Allocations larger than this are fully sampled.
             medium_size: 1024 * 1024,
         },
