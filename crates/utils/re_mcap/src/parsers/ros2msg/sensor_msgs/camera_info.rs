@@ -7,7 +7,6 @@ use re_chunk::{
     Chunk, ChunkId,
     external::arrow::array::{FixedSizeListBuilder, Float64Builder, StringBuilder, UInt32Builder},
 };
-use re_log_types::TimeCell;
 use re_types::{ComponentDescriptor, archetypes::Pinhole, reflection::ComponentDescriptorExt as _};
 
 use crate::{

@@ -3,7 +3,6 @@ use re_chunk::{
     Chunk, ChunkId,
     external::arrow::array::{Float64Builder, ListBuilder, StringBuilder},
 };
-use re_log_types::TimeCell;
 use re_types::archetypes::{Scalars, SeriesLines};
 
 use crate::{

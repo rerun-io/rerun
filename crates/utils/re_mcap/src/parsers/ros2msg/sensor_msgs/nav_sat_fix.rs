@@ -4,7 +4,6 @@ use arrow::array::{
     UInt16Builder,
 };
 use re_chunk::{Chunk, ChunkId};
-use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor, SerializedComponentColumn, archetypes::GeoPoints, components::LatLon,
 };

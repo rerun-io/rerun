@@ -2,7 +2,6 @@ use super::super::definitions::sensor_msgs;
 use arrow::array::{FixedSizeListBuilder, Float64Builder};
 
 use re_chunk::{Chunk, ChunkId};
-use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor, SerializedComponentColumn, archetypes::Arrows3D, datatypes::Vec3D,
 };

@@ -3,7 +3,6 @@ use re_chunk::{
     Chunk, ChunkId, ChunkResult, EntityPath, RowId, TimePoint,
     external::arrow::array::{FixedSizeListBuilder, Float64Builder},
 };
-use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor,
     archetypes::{Scalars, SeriesLines},

@@ -9,8 +9,7 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
 };
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt as _};
-use re_chunk::{Chunk, ChunkComponents, ChunkId, TimePoint};
-use re_log_types::TimeCell;
+use re_chunk::{Chunk, ChunkComponents, ChunkId};
 use re_types::{
     AsComponents as _, Component as _, ComponentDescriptor, SerializedComponentColumn, archetypes,
     components, reflection::ComponentDescriptorExt as _,
