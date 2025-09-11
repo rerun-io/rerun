@@ -34,7 +34,7 @@ rerun mcap convert input.mcap -o output.rrd
 rerun output.rrd
 ```
 
-## Data Model
+## Data model
 
 Rerun's data model is based on an [entity component system (ECS)](concepts/entity-component.md) that is a bit different to the message-based model of [MCAP](https://mcap.dev).
 To map MCAP messages to Rerun entities we make the following assumptions:
