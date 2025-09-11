@@ -199,6 +199,22 @@ pub struct ImageUi {
 }
 
 impl ImageUi {
+    pub fn new(ctx: &ViewerContext<'_>, image: ImageInfo) -> Self {
+        let image_stats = ctx
+            .store_context
+            .caches
+            .entry(|c: &mut ImageStatsCache| c.entry(&image));
+        let data_range =
+            re_viewer_context::gpu_bridge::image_data_range_heuristic(&image_stats, &image.format);
+        Self {
+            format: image.format.into(),
+            image,
+            data_range,
+            image_stats,
+            colormap_with_range: None,
+        }
+    }
+
     pub fn from_blob(
         ctx: &ViewerContext<'_>,
         blob_row_id: RowId,
@@ -212,23 +228,7 @@ impl ImageUi {
                 c.entry(blob_row_id, blob_component_descriptor, &blob, media_type)
             })
             .ok()
-            .map(|image| {
-                let image_stats = ctx
-                    .store_context
-                    .caches
-                    .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
-                let data_range = re_viewer_context::gpu_bridge::image_data_range_heuristic(
-                    &image_stats,
-                    &image.format,
-                );
-                ImageUi {
-                    format: image.format.into(),
-                    image,
-                    colormap_with_range: None,
-                    data_range,
-                    image_stats,
-                }
-            })
+            .map(|image| Self::new(ctx, image))
     }
 
     pub fn from_components(
