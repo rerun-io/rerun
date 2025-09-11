@@ -381,9 +381,9 @@ impl ViewerOpenUrl {
         } else if urls.len() == 1 {
             Ok(urls.split_off_first().0)
         } else {
-            return Err(anyhow::anyhow!(
+            Err(anyhow::anyhow!(
                 "Can't share more than one URL without a web viewer base URL"
-            ));
+            ))
         }
     }
 
