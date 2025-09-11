@@ -72,10 +72,10 @@ impl MessageParser for ImageMessageParser {
             .context("Failed to decode sensor_msgs::Image message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            crate::util::guess_epoch(header.stamp.as_nanos() as u64),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            header.stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         let dimensions = [width, height];
         let img_format = decode_image_format(&encoding, dimensions)
