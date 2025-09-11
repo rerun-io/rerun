@@ -34,11 +34,21 @@ rerun mcap convert input.mcap -o output.rrd
 rerun output.rrd
 ```
 
-## Layered architecture
+## Data Model
+
+Rerun's data model is based on an [entity component system (ECS)](concepts/entity-component.md) that is a bit different to the message-based model of [MCAP](https://mcap.dev).
+To map MCAP messages to Rerun entities we make the following assumptions:
+
+* MCAP topics corresponds to Rerun entities.
+* Messages from the same topic within an MCAP chunk will be placed into a corresponding [Rerun chunk](concepts/chunks.md).
+* The contents of an MCAP message will be extracted to Rerun components and grouped under a corresponding Rerun archetype.
+* `log_time` and `publish_time` of an MCAP message will be carried over to Rerun as two distinct [timelines](concepts/timelines.md).
+
+### Layered architecture
 
 Rerun uses a _layered architecture_ to process MCAP files at different levels of abstraction. This design allows the same MCAP file to be ingested in multiple ways simultaneously, from raw bytes to semantically meaningful visualizations.
 
-Each layer extracts different types of information from the MCAP source:
+Each layer extracts different types of information from the MCAP source and each of the following layers will create distinct Rerun archetypes:
 
 - **`raw`**: Logs the unprocessed message bytes as Rerun blobs without any interpretation
 - **`schema`**: Extracts metadata about channels, topics, and schemas
@@ -57,7 +67,7 @@ Rerun provides automatic visualization for common ROS2 message types. Protobuf m
 
 Unsupported message types (such as ROS1 messages) remain available as raw bytes in Arrow format.
 
-The following is a screenshot of the selection panel and shows a Protobuf-encoded MCAP message. The top-level fields of the Protobuf message are imported as components in the corresponding point cloud archetype. The raw MCAP schema and message information show up as seperate archetypes as well.
+The following is a screenshot of the selection panel and shows a Protobuf-encoded MCAP message. The top-level fields of the Protobuf message are imported as components in the corresponding point cloud archetype. The raw MCAP schema and message information show up as separate archetypes as well.
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/full.png" alt="Screenshot of MCAP messages converted to raw Arrow data in the selection panel">
