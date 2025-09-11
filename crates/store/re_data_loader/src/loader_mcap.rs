@@ -154,7 +154,7 @@ fn load_mcap_mmap(
     load_mcap(&mmap, settings, tx, selected_layers)
 }
 
-fn load_mcap(
+pub fn load_mcap(
     mcap: &[u8],
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
