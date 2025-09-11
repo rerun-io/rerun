@@ -3,7 +3,6 @@ use re_chunk::{
     Chunk, ChunkId,
     external::arrow::array::{Float64Builder, ListBuilder, StringBuilder},
 };
-use re_log_types::TimeCell;
 use re_types::archetypes::{Scalars, SeriesLines};
 
 use crate::{
@@ -48,7 +47,7 @@ impl MessageParser for JointStateMessageParser {
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
             "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(header.stamp.as_nanos()),
+            crate::util::guess_epoch(header.stamp.as_nanos() as u64),
         );
 
         for name in &name {

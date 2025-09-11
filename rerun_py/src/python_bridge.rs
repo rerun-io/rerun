@@ -19,8 +19,10 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
+//use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
+use re_log_types::external::re_types_core::reflection::ComponentDescriptorExt as _;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart};
 use re_log_types::{LogMsg, RecordingId};
 use re_sdk::{
@@ -143,11 +145,14 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
 /// The python module is called "rerun_bindings".
 #[pymodule]
 fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // NOTE: We do this here because some the inner init methods don't respond too kindly to being
-    // called more than once.
-    // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
-    #[cfg(not(feature = "perf_telemetry"))]
-    re_log::setup_logging_with_filter(&re_log::log_filter_from_env_or_default("warn"));
+    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
+        // TODO(tracing/issues#2499): allow installing multiple tracing sinks (https://github.com/tokio-rs/tracing/issues/2499)
+    } else {
+        // NOTE: We set up the logging this here because some the inner init methods don't respond too kindly to being
+        // called more than once.
+        // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
+        re_log::setup_logging_with_filter(&re_log::log_filter_from_env_or_default("warn"));
+    }
 
     #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
     let _telemetry = init_perf_telemetry();
@@ -1423,10 +1428,11 @@ fn timeout_from_sec(seconds: f32) -> PyResult<Duration> {
 ///
 /// Returns the URI of the server so you can connect the viewer to it.
 #[pyfunction]
-#[pyo3(signature = (grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
+#[pyo3(signature = (grpc_port, server_memory_limit, newest_first = false, default_blueprint = None, recording = None))]
 fn serve_grpc(
     grpc_port: Option<u16>,
     server_memory_limit: String,
+    newest_first: bool,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<String> {
@@ -1441,13 +1447,18 @@ fn serve_grpc(
             return Ok("[_RERUN_TEST_FORCE_SAVE is set]".to_owned());
         }
 
-        let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
-            .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
+        let server_options = re_sdk::ServerOptions {
+            playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(newest_first),
+
+            memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(|err| {
+                PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
+            })?,
+        };
 
         let sink = re_sdk::grpc_server::GrpcServerSink::new(
             "0.0.0.0",
             grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
-            server_memory_limit,
+            server_options,
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -1464,7 +1475,13 @@ fn serve_grpc(
 
     #[cfg(not(feature = "server"))]
     {
-        let _ = (grpc_port, server_memory_limit, default_blueprint, recording);
+        let _ = (
+            grpc_port,
+            server_memory_limit,
+            newest_first,
+            default_blueprint,
+            recording,
+        );
 
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'server' feature",
@@ -1510,6 +1527,7 @@ fn serve_web_viewer(
 }
 
 /// Serve a web-viewer AND host a gRPC server.
+// NOTE: DEPRECATED
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
@@ -1532,15 +1550,19 @@ fn serve_web(
             return Ok(());
         }
 
-        let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
-            .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
+        let server_options = re_sdk::ServerOptions {
+            memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(|err| {
+                PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
+            })?,
+            ..Default::default()
+        };
 
         let sink = re_sdk::web_viewer::new_sink(
             open_browser,
             "0.0.0.0",
             web_port.map(WebViewerServerPort).unwrap_or_default(),
             grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
-            server_memory_limit,
+            server_options,
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -1700,6 +1722,11 @@ impl PyComponentDescriptor {
             cloned = cloned.or_with_component_type(|| component_type.into());
         }
         Self(cloned)
+    }
+
+    /// Sets `archetype` in a format similar to built-in archetypes.
+    fn with_builtin_archetype(&mut self, archetype: &str) -> Self {
+        Self(self.0.clone().with_builtin_archetype(archetype))
     }
 }
 

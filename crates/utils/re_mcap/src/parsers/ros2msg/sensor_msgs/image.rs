@@ -1,7 +1,6 @@
 use anyhow::Context as _;
 use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, StringBuilder, UInt32Builder};
 use re_chunk::{Chunk, ChunkId};
-use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor, SerializedComponentColumn,
     archetypes::{DepthImage, Image},
@@ -75,7 +74,7 @@ impl MessageParser for ImageMessageParser {
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
             "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(header.stamp.as_nanos()),
+            crate::util::guess_epoch(header.stamp.as_nanos() as u64),
         );
 
         let dimensions = [width, height];

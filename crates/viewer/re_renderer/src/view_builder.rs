@@ -2,20 +2,18 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::{
-    DebugLabel, MsaaMode, RectInt, RenderConfig, Rgba,
+    DebugLabel, DrawPhaseManager, MsaaMode, RectInt, RenderConfig, Rgba,
     allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer},
-    context::{RenderContext, Renderers},
+    context::RenderContext,
     draw_phases::{
         DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
         ScreenshotProcessor,
     },
     global_bindings::FrameUniformBuffer,
     queueable_draw_data::QueueableDrawData,
-    renderer::{CompositorDrawData, DebugOverlayDrawData},
+    renderer::{CompositorDrawData, DebugOverlayDrawData, DrawableCollectionViewInfo},
     transform::RectTransform,
-    wgpu_resources::{
-        GpuBindGroup, GpuRenderPipelinePoolAccessor, GpuTexture, PoolError, TextureDesc,
-    },
+    wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc},
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -31,7 +29,7 @@ pub enum ViewBuilderError {
 /// Used to build up/collect various resources and then send them off for rendering of a single view.
 pub struct ViewBuilder {
     setup: ViewTargetSetup,
-    queued_draws: Vec<QueueableDrawData>,
+    draw_phase_manager: DrawPhaseManager,
 
     // TODO(andreas): Consider making "render processors" a "thing" by establishing a form of hardcoded/limited-flexibility render-graph
     outline_mask_processor: Option<OutlineMaskProcessor>,
@@ -41,6 +39,8 @@ pub struct ViewBuilder {
 
 struct ViewTargetSetup {
     name: DebugLabel,
+
+    camera_position: glam::Vec3A,
 
     bind_group_0: GpuBindGroup,
     main_target_msaa: GpuTexture,
@@ -577,8 +577,31 @@ impl ViewBuilder {
             None
         };
 
+        let active_draw_phases = {
+            let mut active_draw_phases = DrawPhase::Opaque
+                | DrawPhase::Background
+                | DrawPhase::Transparent
+                | DrawPhase::Compositing;
+            if config.outline_config.is_some() {
+                active_draw_phases |= DrawPhase::OutlineMask;
+            }
+            if picking_processor.is_some() {
+                active_draw_phases |= DrawPhase::PickingLayer;
+            }
+            // TODO(andreas): should not always be active.
+            // TODO(andreas): The fact that this is a draw phase is actually a bit dubious.
+            //if screenshot_processor.is_some() {
+            active_draw_phases |= DrawPhase::CompositingScreenshot;
+            //}
+
+            active_draw_phases
+        };
+
+        let draw_phase_manager = DrawPhaseManager::new(active_draw_phases);
+
         let setup = ViewTargetSetup {
             name: config.name,
+            camera_position: camera_position.into(),
             bind_group_0,
             main_target_msaa,
             main_target_resolved,
@@ -592,25 +615,28 @@ impl ViewBuilder {
 
         let mut view_builder = Self {
             setup,
-            queued_draws: Default::default(),
+            draw_phase_manager,
             outline_mask_processor,
             screenshot_processor: Default::default(),
             picking_processor,
         };
 
-        view_builder.queue_draw(CompositorDrawData::new(
+        view_builder.queue_draw(
             ctx,
-            &view_builder.setup.main_target_resolved,
-            view_builder
-                .outline_mask_processor
-                .as_ref()
-                .map(|p| p.final_voronoi_texture()),
-            &config.outline_config,
-            config.blend_with_background,
-        ));
+            CompositorDrawData::new(
+                ctx,
+                &view_builder.setup.main_target_resolved,
+                view_builder
+                    .outline_mask_processor
+                    .as_ref()
+                    .map(|p| p.final_voronoi_texture()),
+                &config.outline_config,
+                config.blend_with_background,
+            ),
+        );
 
         for debug_overlay in debug_overlays {
-            view_builder.queue_draw(debug_overlay);
+            view_builder.queue_draw(ctx, debug_overlay);
         }
 
         Ok(view_builder)
@@ -621,40 +647,22 @@ impl ViewBuilder {
         self.setup.resolution_in_pixel
     }
 
-    fn draw_phase(
-        &self,
-        renderers: &Renderers,
-        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
-        phase: DrawPhase,
-        pass: &mut wgpu::RenderPass<'_>,
-    ) {
-        re_tracing::profile_function!();
-
-        for queued_draw in &self.queued_draws {
-            if queued_draw.participated_phases.contains(&phase) {
-                let res = (queued_draw.draw_func)(
-                    renderers,
-                    render_pipelines,
-                    phase,
-                    pass,
-                    queued_draw.draw_data.as_ref(),
-                );
-                if let Err(err) = res {
-                    re_log::error!(renderer=%queued_draw.renderer_name, %err,
-                        "renderer failed to draw");
-                }
-            }
-        }
-    }
-
-    pub fn queue_draw(&mut self, draw_data: impl Into<QueueableDrawData>) -> &mut Self {
-        self.queued_draws.push(draw_data.into());
+    pub fn queue_draw(
+        &mut self,
+        ctx: &RenderContext,
+        draw_data: impl Into<QueueableDrawData>,
+    ) -> &mut Self {
+        let view_info = DrawableCollectionViewInfo {
+            camera_world_position: self.setup.camera_position,
+        };
+        self.draw_phase_manager
+            .add_draw_data(ctx, draw_data.into(), &view_info);
         self
     }
 
     /// Draws the frame as instructed to a temporary HDR target.
     pub fn draw(
-        &self,
+        &mut self,
         ctx: &RenderContext,
         clear_color: Rgba,
     ) -> Result<wgpu::CommandBuffer, PoolError> {
@@ -678,10 +686,16 @@ impl ViewBuilder {
         // However, having our locking concentrated for the duration of a view draw
         // is also beneficial since it enforces the model of prepare->draw which avoids a lot of repeated
         // locking and unlocking.
+        //
+        // TODO(andreas): Above limitation has been lifted by now. We can lift some of the restrictions now!
+
         let renderers = ctx.read_lock_renderers();
         let pipelines = ctx.gpu_resources.render_pipelines.resources();
 
         let setup = &self.setup;
+
+        // Prepare the drawables for drawing!
+        self.draw_phase_manager.sort_drawables();
 
         let mut encoder = ctx
             .device
@@ -736,7 +750,8 @@ impl ViewBuilder {
                 DrawPhase::Background,
                 DrawPhase::Transparent,
             ] {
-                self.draw_phase(&renderers, &pipelines, phase, &mut pass);
+                self.draw_phase_manager
+                    .draw(&renderers, &pipelines, phase, &mut pass);
             }
         }
 
@@ -754,7 +769,12 @@ impl ViewBuilder {
                 // 3: Draw call in renderer.
                 //
                 //pass.set_bind_group(0, &setup.bind_group_0, &[]);
-                self.draw_phase(&renderers, &pipelines, DrawPhase::PickingLayer, &mut pass);
+                self.draw_phase_manager.draw(
+                    &renderers,
+                    &pipelines,
+                    DrawPhase::PickingLayer,
+                    &mut pass,
+                );
             }
             match picking_processor.end_render_pass(&mut encoder, &pipelines) {
                 Err(PickingLayerError::ResourcePoolError(err)) => {
@@ -773,7 +793,12 @@ impl ViewBuilder {
                 re_tracing::profile_scope!("outline mask pass");
                 let mut pass = outline_mask_processor.start_mask_render_pass(&mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
-                self.draw_phase(&renderers, &pipelines, DrawPhase::OutlineMask, &mut pass);
+                self.draw_phase_manager.draw(
+                    &renderers,
+                    &pipelines,
+                    DrawPhase::OutlineMask,
+                    &mut pass,
+                );
             }
             outline_mask_processor.compute_outlines(&pipelines, &mut encoder)?;
         }
@@ -782,7 +807,7 @@ impl ViewBuilder {
             {
                 let mut pass = screenshot_processor.begin_render_pass(&setup.name, &mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
-                self.draw_phase(
+                self.draw_phase_manager.draw(
                     &renderers,
                     &pipelines,
                     DrawPhase::CompositingScreenshot,
@@ -852,7 +877,7 @@ impl ViewBuilder {
 
         pass.set_bind_group(0, &self.setup.bind_group_0, &[]);
 
-        self.draw_phase(
+        self.draw_phase_manager.draw(
             &ctx.read_lock_renderers(),
             &ctx.gpu_resources.render_pipelines.resources(),
             DrawPhase::Compositing,

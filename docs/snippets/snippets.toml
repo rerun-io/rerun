@@ -60,6 +60,7 @@ features = [
     "Send custom data",
     [
       "tutorials/any_values",
+      "tutorials/dynamic_archetype",
       "tutorials/extra_values",
       "tutorials/custom_data",
     ],

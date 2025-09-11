@@ -18,6 +18,7 @@ use tracing::error;
 use crate::prometheus::{MetricContainer, convert_to_prometheus, encode_registry};
 
 /// Start a metrics server that binds synchronously and serves asynchronously.
+///
 /// Returns the bound socket address after successful binding.
 /// The server continues running in the spawned task.
 pub(crate) async fn start_metrics_server(
@@ -52,11 +53,17 @@ pub(crate) async fn start_metrics_server(
         }
     });
 
+    tracing::info!("Metrics server started on http://{bound_addr}/metrics");
+
     Ok(bound_addr)
 }
 
-/// Handler for the ManualReader-based /metrics endpoint
-/// This collects metrics on-demand from `OpenTelemetry's` `ManualReader`
+/// Handler for the ManualReader-based /metrics endpoint.
+///
+/// This collects metrics on-demand from `OpenTelemetry's` `ManualReader`.
+///
+/// Exposing metrics is meant to be cheap in every moment.
+/// As long as determining the data to be exposed is not cheap it has to be somewhat cached and made available cheaply.
 async fn manual_metrics_handler(State(reader): State<Arc<ManualReader>>) -> impl IntoResponse {
     // This handler is picking up data from telemetry SDK's ManualReader,
     // this is a temporary solution to expose metrics in different ways

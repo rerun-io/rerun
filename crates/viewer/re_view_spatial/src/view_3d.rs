@@ -381,7 +381,7 @@ impl ViewClass for SpatialView3D {
             ui.grid_left_hand_label("Camera")
                 .on_hover_text("The virtual camera which controls what is shown on screen");
             ui.vertical(|ui| {
-                state.view_eye_ui(ui, ctx, scene_view_coordinates, view_id);
+                state.view_eye_ui(ui, scene_view_coordinates);
             });
             ui.end_row();
 

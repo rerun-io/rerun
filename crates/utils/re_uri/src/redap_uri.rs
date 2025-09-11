@@ -216,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_dataset_data_url_with_fragment() {
-        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#focus=/some/entity[#42]";
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#selection=/some/entity[#42]";
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetPartitionUri {
@@ -242,7 +242,7 @@ mod tests {
         assert_eq!(
             fragment,
             Fragment {
-                focus: Some(DataPath {
+                selection: Some(DataPath {
                     entity_path: "/some/entity".into(),
                     instance: Some(42.into()),
                     component_descriptor: None,
@@ -250,6 +250,34 @@ mod tests {
                 ..Default::default()
             }
         );
+    }
+
+    #[test]
+    fn test_dataset_data_url_with_broken_fragment() {
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#focus=/some/entity[#42]";
+        let address: RedapUri = url.parse().unwrap();
+
+        let RedapUri::DatasetData(DatasetPartitionUri {
+            origin,
+            dataset_id,
+            partition_id,
+            time_range,
+            fragment,
+        }) = address
+        else {
+            panic!("Expected recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(
+            dataset_id,
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+        );
+        assert_eq!(partition_id, "pid");
+        assert_eq!(time_range, None);
+        assert_eq!(fragment, Fragment::default());
     }
 
     #[test]

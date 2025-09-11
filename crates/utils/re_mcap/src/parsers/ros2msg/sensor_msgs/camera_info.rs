@@ -7,7 +7,6 @@ use re_chunk::{
     Chunk, ChunkId,
     external::arrow::array::{FixedSizeListBuilder, Float64Builder, StringBuilder, UInt32Builder},
 };
-use re_log_types::TimeCell;
 use re_types::{ComponentDescriptor, archetypes::Pinhole, reflection::ComponentDescriptorExt as _};
 
 use crate::{
@@ -99,7 +98,7 @@ impl MessageParser for CameraInfoMessageParser {
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
             "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(header.stamp.as_nanos()),
+            crate::util::guess_epoch(header.stamp.as_nanos() as u64),
         );
 
         self.distortion_models
@@ -162,9 +161,24 @@ impl MessageParser for CameraInfoMessageParser {
         struct_builder.append(true);
         self.rois.append(true);
 
+        // ROS2 stores the intrinsic matrix K as a row-major 9-element array:
+        // [fx, 0, cx, 0, fy, cy, 0, 0, 1]
+        // this corresponds to the matrix:
+        // [fx,  0, cx]
+        // [ 0, fy, cy]
+        // [ 0,  0,  1]
+        //
+        // However, `glam::Mat3` expects column-major data, so we need to transpose
+        // the ROS2 row-major data to get the correct matrix layout in Rerun.
+        let k_transposed = [
+            k[0], k[3], k[6], // first column:  [fx, 0, 0]
+            k[1], k[4], k[7], // second column: [0, fy, 0]
+            k[2], k[5], k[8], // third column:  [cx, cy, 1]
+        ];
+
         // TODO(#2315): Rerun currently only supports the pinhole model (`plumb_bob` in ROS2)
         // so this does NOT take into account the camera model.
-        self.image_from_cameras.push(k.map(|x| x as f32));
+        self.image_from_cameras.push(k_transposed.map(|x| x as f32));
         self.resolutions.push((width as f32, height as f32));
 
         Ok(())

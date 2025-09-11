@@ -6,6 +6,25 @@
 //! ## Feature flags
 #![doc = document_features::document_features!()]
 //!
+//! ## Draw recording overview
+//!
+//! [`ViewBuilder`] are the main entry point for all draw operations.
+//! Each [`ViewBuilder`] represents a rectangular screen area that is composited into the target surface
+//! via [`ViewBuilder::composite`].
+//!
+//! A user supplies [`renderer::DrawData`]s to the [`ViewBuilder`].
+//! Upon submission, the [`ViewBuilder`] collects the [`Drawable`]s from the [`QueueableDrawData`] and
+//! adds them to the appropriate work queues of each draw phase.
+//! [`Drawable`]s map roughly 1:1 to wgpu draw calls and have a [`renderer::DrawData`] type specific payload
+//! that identifies them within their [`renderer::DrawData`].
+//!
+//! Depending on the [`DrawPhase`] sorting of drawables may occur:
+//! for instance [`DrawPhase::Transparent`] sorts far to near to facilitate blending, whereas other phases aggressively
+//! bundle by [`renderer::DrawData`] types to minimize state changes.
+//!
+//! Each [`renderer::DrawData`] is associated with a single [`renderer::Renderer`].
+//! These encapsulate the knowledge (i.e. renderpipelines etc.) of how to render a certain kind of primitive.
+//! Unlike [`renderer::DrawData`]s, [`renderer::Renderer`]s are immutable and long-lived.
 
 // TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
@@ -26,6 +45,7 @@ mod colormap;
 mod context;
 mod debug_label;
 mod depth_offset;
+mod draw_phase_manager;
 mod draw_phases;
 mod error_handling;
 mod file_resolver;
@@ -63,10 +83,11 @@ pub use colormap::{
     grayscale_srgb,
 };
 pub use context::{
-    MsaaMode, RenderConfig, RenderContext, RenderContextError, adapter_info_summary,
+    MsaaMode, RenderConfig, RenderContext, RenderContextError, RendererTypeId, adapter_info_summary,
 };
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
+pub use draw_phase_manager::{DrawPhaseManager, Drawable, DrawableCollector};
 pub use draw_phases::{
     DrawPhase, OutlineConfig, OutlineMaskPreference, OutlineMaskProcessor, PickingLayerId,
     PickingLayerInstanceId, PickingLayerObjectId, PickingLayerProcessor, ScreenshotProcessor,

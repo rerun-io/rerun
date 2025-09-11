@@ -19,6 +19,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
+from .._numpy_compatibility import asarray
 from .mat3x3_ext import Mat3x3Ext
 
 __all__ = ["Mat3x3", "Mat3x3ArrayLike", "Mat3x3Batch", "Mat3x3Like"]
@@ -70,7 +71,7 @@ class Mat3x3(Mat3x3Ext):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Mat3x3Ext in mat3x3_ext.py
-        return np.asarray(self.flat_columns, dtype=dtype, copy=copy)
+        return asarray(self.flat_columns, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of Mat3x3Ext in mat3x3_ext.py
