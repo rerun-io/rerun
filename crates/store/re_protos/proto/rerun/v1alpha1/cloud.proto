@@ -84,9 +84,6 @@ service RerunCloudService {
   // Creates a custom index for a specific column (vector search, full-text search, etc).
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
 
-  // Recreate an index with the same configuration but (potentially) new data.
-  rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
-
   /* Queries */
 
   // Search a previously created index.
@@ -284,15 +281,6 @@ message CreateIndexRequest {
 }
 
 message CreateIndexResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-message ReIndexRequest {
-  reserved 1;
-  reserved "dataset_id";
-}
-
-message ReIndexResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 

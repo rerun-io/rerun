@@ -267,33 +267,6 @@ impl ::prost::Name for CreateIndexResponse {
         "/rerun.cloud.v1alpha1.CreateIndexResponse".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ReIndexRequest {}
-impl ::prost::Name for ReIndexRequest {
-    const NAME: &'static str = "ReIndexRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ReIndexRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ReIndexRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ReIndexResponse {
-    #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-}
-impl ::prost::Name for ReIndexResponse {
-    const NAME: &'static str = "ReIndexResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ReIndexResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ReIndexResponse".into()
-    }
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndexConfig {
     /// what kind of index do we want to create and what are its index specific properties.
@@ -2066,25 +2039,6 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Recreate an index with the same configuration but (potentially) new data.
-        pub async fn re_index(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ReIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/ReIndex",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "ReIndex",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
         /// Search a previously created index.
         pub async fn search_dataset(
             &mut self,
@@ -2443,11 +2397,6 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::CreateIndexRequest>,
         ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>;
-        /// Recreate an index with the same configuration but (potentially) new data.
-        async fn re_index(
-            &self,
-            request: tonic::Request<super::ReIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status>;
         /// Server streaming response type for the SearchDataset method.
         type SearchDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::SearchDatasetResponse, tonic::Status>,
@@ -3220,45 +3169,6 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = CreateIndexSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.cloud.v1alpha1.RerunCloudService/ReIndex" => {
-                    #[allow(non_camel_case_types)]
-                    struct ReIndexSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService> tonic::server::UnaryService<super::ReIndexRequest> for ReIndexSvc<T> {
-                        type Response = super::ReIndexResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ReIndexRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::re_index(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = ReIndexSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
