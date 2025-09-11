@@ -4,12 +4,12 @@ expression: test_results
 ---
 TestResult {
     op: StringContains(
-        "A",
+        "a",
     ),
     field: Field {
         name: "column",
         data_type: Utf8,
-        nullable: true,
+        nullable: false,
         dict_id: 0,
         dict_is_ordered: false,
         metadata: {},

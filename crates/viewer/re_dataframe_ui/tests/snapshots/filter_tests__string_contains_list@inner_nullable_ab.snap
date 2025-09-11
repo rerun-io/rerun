@@ -4,7 +4,7 @@ expression: test_results
 ---
 TestResult {
     op: StringContains(
-        "c",
+        "ab",
     ),
     field: Field {
         name: "column",
@@ -18,7 +18,7 @@ TestResult {
                 metadata: {},
             },
         ),
-        nullable: true,
+        nullable: false,
         dict_id: 0,
         dict_is_ordered: false,
         metadata: {},
@@ -32,12 +32,12 @@ TestResult {
     ],
       StringArray
     [
-      "c",
+      null,
       "ab",
     ],
       StringArray
     [
-      "A B",
+      null,
       "aBc",
     ],
     ],
@@ -45,12 +45,12 @@ TestResult {
     [
       StringArray
     [
-      "c",
+      null,
       "ab",
     ],
       StringArray
     [
-      "A B",
+      null,
       "aBc",
     ],
     ],

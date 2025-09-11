@@ -193,9 +193,11 @@ impl FilterOperation {
                         if field.data_type() == &DataType::Utf8
                             || field.data_type() == &DataType::Utf8View =>
                     {
-                        // for List[Utf8], we concatenate all the instances into a single logical
-                        // string
-                        array_to_string(col(column.clone()), lit(" "))
+                        // For List[Utf8], we concatenate all the instances into a single logical
+                        // string, separated by a Record Separator (0x1E) character. This ensures
+                        // that the query string doesn't accidentally match a substring spanning
+                        // multiple instances.
+                        array_to_string(col(column.clone()), lit("\u{001E}"))
                     }
 
                     _ => {
@@ -297,29 +299,9 @@ impl FilterOperationUdf {
     }
 
     fn invoke_primitive_array(&self, array: &ArrayRef) -> DataFusionResult<BooleanArray> {
-        macro_rules! int_case {
-            ($conv_fun:ident, $op:expr) => {{
-                let FilterOperation::IntCompares { operator, value } = &$op else {
-                    return exec_err!(
-                        "Incompatible operation and data types {:?} - {}",
-                        $op,
-                        array.data_type()
-                    );
-                };
-                let array = datafusion::common::cast::$conv_fun(array)?;
-                #[allow(trivial_numeric_casts)]
-                let result: BooleanArray = array
-                    .iter()
-                    .map(|x| x.map(|v| operator.apply(v, *value as _)))
-                    .collect();
-
-                Ok(result)
-            }};
-        }
-
-        macro_rules! float_case {
-            ($conv_fun:ident, $op:expr) => {{
-                let FilterOperation::FloatCompares { operator, value } = &$op else {
+        macro_rules! int_float_case {
+            ($op_arm:ident, $conv_fun:ident, $op:expr) => {{
+                let FilterOperation::$op_arm { operator, value } = &$op else {
                     return exec_err!(
                         "Incompatible operation and data types {:?} - {}",
                         $op,
@@ -338,18 +320,18 @@ impl FilterOperationUdf {
         }
 
         match array.data_type() {
-            DataType::Int8 => int_case!(as_int8_array, self.op),
-            DataType::Int16 => int_case!(as_int16_array, self.op),
-            DataType::Int32 => int_case!(as_int32_array, self.op),
-            DataType::Int64 => int_case!(as_int64_array, self.op),
-            DataType::UInt8 => int_case!(as_uint8_array, self.op),
-            DataType::UInt16 => int_case!(as_uint16_array, self.op),
-            DataType::UInt32 => int_case!(as_uint32_array, self.op),
-            DataType::UInt64 => int_case!(as_uint64_array, self.op),
+            DataType::Int8 => int_float_case!(IntCompares, as_int8_array, self.op),
+            DataType::Int16 => int_float_case!(IntCompares, as_int16_array, self.op),
+            DataType::Int32 => int_float_case!(IntCompares, as_int32_array, self.op),
+            DataType::Int64 => int_float_case!(IntCompares, as_int64_array, self.op),
+            DataType::UInt8 => int_float_case!(IntCompares, as_uint8_array, self.op),
+            DataType::UInt16 => int_float_case!(IntCompares, as_uint16_array, self.op),
+            DataType::UInt32 => int_float_case!(IntCompares, as_uint32_array, self.op),
+            DataType::UInt64 => int_float_case!(IntCompares, as_uint64_array, self.op),
 
             //TODO(ab): float16 support
-            DataType::Float32 => float_case!(as_float32_array, self.op),
-            DataType::Float64 => float_case!(as_float64_array, self.op),
+            DataType::Float32 => int_float_case!(FloatCompares, as_float32_array, self.op),
+            DataType::Float64 => int_float_case!(FloatCompares, as_float64_array, self.op),
 
             _ => {
                 exec_err!("Unsupported data type {}", array.data_type())
