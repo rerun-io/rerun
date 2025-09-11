@@ -198,7 +198,6 @@ impl ViewerOpenUrl {
     /// To produce a sharable url, from this result, call [`Self::sharable_url`].
     ///
     /// Returns Err(reason) if the current state can't be shared with a url.
-    // Does this method merely provide the starting point?
     #[allow(unused)] // TODO(rerun/dataplatform#1336): Only used on the web. About to change!
     pub fn from_display_mode(
         store_hub: &StoreHub,
