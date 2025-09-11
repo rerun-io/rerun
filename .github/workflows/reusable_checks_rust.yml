@@ -189,7 +189,13 @@ jobs:
 
       - name: Rust tests (`main` channel)
         if: ${{ inputs.CHANNEL == 'main' }}
-        run: pixi run rs-check --only tests
+        # We've seen some jobs fail on macOS because of a rendering adapter.
+        # Let's retry and hope for the best.
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 2
+          retry_wait_seconds: 30
+          command: pixi run rs-check --only tests
 
       - name: Rust all checks & tests (`nightly` channel)
         if: ${{ inputs.CHANNEL == 'nightly' }}
