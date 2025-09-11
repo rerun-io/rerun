@@ -190,7 +190,7 @@ impl std::fmt::Display for ViewerOpenUrlDescription {
 }
 
 impl ViewerOpenUrl {
-    /// Tries to create a viewer import URL for the current display mode and some extra context (typically for sharing purposes).
+    /// Tries to create a viewer import URL for the given [`UrlContext`] (typically for sharing purposes).
     ///
     /// Conceptually, this is the inverse of [`Self::open`]. However, some import URLs like
     /// intra-recording links aren't stand-alone enough to be returned by this function.
@@ -198,7 +198,6 @@ impl ViewerOpenUrl {
     /// To produce a sharable url, from this result, call [`Self::sharable_url`].
     ///
     /// Returns Err(reason) if the current state can't be shared with a url.
-    #[allow(unused)] // TODO(rerun/dataplatform#1336): Only used on the web. About to change!
     pub fn new(store_hub: &StoreHub, context: UrlContext) -> anyhow::Result<Self> {
         match context.display_mode {
             DisplayMode::Settings => {
