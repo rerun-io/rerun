@@ -15,8 +15,8 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, TimeControl,
-    ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
+    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
+    ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
@@ -539,18 +539,79 @@ impl App {
     }
 
     /// Updates the web address on web. Noop on native.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[expect(clippy::unused_self)]
+    fn update_web_address_bar(&self, _store_hub: &StoreHub) {}
+
+    /// Updates the web address on web. Noop on native.
+    #[cfg(target_arch = "wasm32")]
     fn update_web_address_bar(&self, store_hub: &StoreHub) {
+        if !self.startup_options.web_history_enabled() {
+            return;
+        }
+
         let rec_cfg = store_hub
             .active_recording()
             .and_then(|db| self.state.recording_config(db.store_id()));
         let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
-        update_web_address_bar(
-            self.startup_options.web_history_enabled(),
+
+        let display_mode = self.state.navigation.peek();
+        let selection = self.state.selection_state.selected_items().first_item();
+
+        let Ok(url) = crate::open_url::ViewerOpenUrl::from_display_mode(
             store_hub,
-            self.state.navigation.peek(),
-            self.state.selection_state.selected_items().first_item(),
-            time_ctrl.as_deref(),
-        );
+            display_mode.clone(),
+            &re_uri::Fragment {
+                selection: selection.and_then(|item| item.to_data_path()),
+                when: time_ctrl
+                    .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused))
+                    .and_then(|when| {
+                        Some((
+                            *when.timeline().name(),
+                            re_log_types::TimeCell {
+                                typ: when.timeline().typ(),
+                                value: when.time_int()?.into(),
+                            },
+                        ))
+                    }),
+            },
+        )
+        // History entries expect the url parameter, not the full url, therefore don't pass a base url.
+        .and_then(|url| url.sharable_url(None)) else {
+            return;
+        };
+
+        re_log::debug!("Updating navigation bar");
+
+        use crate::history::{HistoryEntry, HistoryExt as _, history};
+        use crate::web_tools::JsResultExt as _;
+
+        /// Returns the url without the fragment
+        fn strip_fragment(url: &str) -> &str {
+            // Split by url code for '#', which is used for fragments.
+            url.rsplit_once("%23").map_or(url, |(url, _)| url)
+        }
+
+        if let Some(history) = history().ok_or_log_js_error() {
+            let current_entry = history.current_entry().ok_or_log_js_error().flatten();
+            let new_entry = HistoryEntry::new(url);
+            if Some(&new_entry) != current_entry.as_ref() {
+                // If only the fragment has changed, we replace history instead of pushing it.
+                if current_entry
+                    .and_then(|entry| {
+                        Some((
+                            entry.to_query_string().ok_or_log_js_error()?,
+                            new_entry.to_query_string().ok_or_log_js_error()?,
+                        ))
+                    })
+                    .is_some_and(|(current, new)| strip_fragment(&current) == strip_fragment(&new))
+                {
+                    history.replace_entry(new_entry).ok_or_log_js_error();
+                } else {
+                    history.push_entry(new_entry).ok_or_log_js_error();
+                }
+            }
+        }
     }
 
     #[allow(clippy::unused_self)]
@@ -3199,84 +3260,4 @@ async fn async_save_dialog(
         messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn update_web_address_bar(
-    _enable_history: bool,
-    _store_hub: &StoreHub,
-    _display_mode: &DisplayMode,
-    _selection: Option<&Item>,
-    _when: Option<&TimeControl>,
-) {
-    // No-op on native.
-}
-
-#[cfg(target_arch = "wasm32")]
-fn update_web_address_bar(
-    enable_history: bool,
-    store_hub: &StoreHub,
-    display_mode: &DisplayMode,
-    selection: Option<&Item>,
-    when: Option<&TimeControl>,
-) -> Option<()> {
-    if !enable_history {
-        return None;
-    }
-    let Ok(url) = crate::open_url::ViewerOpenUrl::from_display_mode(
-        store_hub,
-        display_mode.clone(),
-        &re_uri::Fragment {
-            selection: selection.and_then(|item| item.to_data_path()),
-            when: when
-                .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused))
-                .and_then(|when| {
-                    Some((
-                        *when.timeline().name(),
-                        re_log_types::TimeCell {
-                            typ: when.timeline().typ(),
-                            value: when.time_int()?.into(),
-                        },
-                    ))
-                }),
-        },
-    )
-    // History entries expect the url parameter, not the full url, therefore don't pass a base url.
-    .and_then(|url| url.sharable_url(None)) else {
-        return None;
-    };
-
-    re_log::debug!("Updating navigation bar");
-
-    use crate::history::{HistoryEntry, HistoryExt as _, history};
-    use crate::web_tools::JsResultExt as _;
-
-    /// Returns the url without the fragment
-    fn strip_fragment(url: &str) -> &str {
-        // Split by url code for '#', which is used for fragments.
-        url.rsplit_once("%23").map_or(url, |(url, _)| url)
-    }
-
-    if let Some(history) = history().ok_or_log_js_error() {
-        let current_entry = history.current_entry().ok_or_log_js_error().flatten();
-        let new_entry = HistoryEntry::new(url);
-        if Some(&new_entry) != current_entry.as_ref() {
-            // If only the fragment has changed, we replace history instead of pushing it.
-            if current_entry
-                .and_then(|entry| {
-                    Some((
-                        entry.to_query_string().ok_or_log_js_error()?,
-                        new_entry.to_query_string().ok_or_log_js_error()?,
-                    ))
-                })
-                .is_some_and(|(current, new)| strip_fragment(&current) == strip_fragment(&new))
-            {
-                history.replace_entry(new_entry).ok_or_log_js_error();
-            } else {
-                history.push_entry(new_entry).ok_or_log_js_error();
-            }
-        }
-    }
-
-    Some(())
 }
