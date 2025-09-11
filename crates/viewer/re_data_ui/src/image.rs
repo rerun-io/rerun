@@ -171,11 +171,71 @@ fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
     }
 }
 
+fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
+    use egui::Color32;
+    use itertools::Itertools as _;
+
+    re_tracing::profile_function!();
+
+    let mut histograms = [[0_u64; 256]; 3];
+    {
+        // TODO(emilk): this is slow, so cache the results!
+        re_tracing::profile_scope!("build");
+        for pixel in rgb.chunks_exact(3) {
+            for c in 0..3 {
+                histograms[c][pixel[c] as usize] += 1;
+            }
+        }
+    }
+
+    use egui_plot::{Bar, BarChart, Legend, Plot};
+
+    let names = ["R", "G", "B"];
+    let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
+
+    let charts = histograms
+        .into_iter()
+        .enumerate()
+        .map(|(component, histogram)| {
+            let fill = colors[component].linear_multiply(0.5);
+
+            BarChart::new(
+                "bar_chart",
+                histogram
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, count)| {
+                        Bar::new(i as _, count as _)
+                            .width(1.0) // no gaps between bars
+                            .fill(fill)
+                            .vertical()
+                            .stroke(egui::Stroke::NONE)
+                    })
+                    .collect(),
+            )
+            .color(colors[component])
+            .name(names[component])
+        })
+        .collect_vec();
+
+    re_tracing::profile_scope!("show");
+    Plot::new("rgb_histogram")
+        .legend(Legend::default())
+        .height(200.0)
+        .show_axes([false; 2])
+        .show(ui, |plot_ui| {
+            for chart in charts {
+                plot_ui.bar_chart(chart);
+            }
+        })
+        .response
+}
+
 pub struct ImageUi {
-    pub image: ImageInfo,
-    pub data_range: Rangef,
-    pub image_stats: ImageStats,
-    pub colormap_with_range: Option<ColormapWithRange>,
+    image: ImageInfo,
+    data_range: Rangef,
+    image_stats: ImageStats,
+    colormap_with_range: Option<ColormapWithRange>,
 }
 
 impl ImageUi {
@@ -375,64 +435,4 @@ impl ImageUi {
                 });
         }
     }
-}
-
-fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
-    use egui::Color32;
-    use itertools::Itertools as _;
-
-    re_tracing::profile_function!();
-
-    let mut histograms = [[0_u64; 256]; 3];
-    {
-        // TODO(emilk): this is slow, so cache the results!
-        re_tracing::profile_scope!("build");
-        for pixel in rgb.chunks_exact(3) {
-            for c in 0..3 {
-                histograms[c][pixel[c] as usize] += 1;
-            }
-        }
-    }
-
-    use egui_plot::{Bar, BarChart, Legend, Plot};
-
-    let names = ["R", "G", "B"];
-    let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
-
-    let charts = histograms
-        .into_iter()
-        .enumerate()
-        .map(|(component, histogram)| {
-            let fill = colors[component].linear_multiply(0.5);
-
-            BarChart::new(
-                "bar_chart",
-                histogram
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, count)| {
-                        Bar::new(i as _, count as _)
-                            .width(1.0) // no gaps between bars
-                            .fill(fill)
-                            .vertical()
-                            .stroke(egui::Stroke::NONE)
-                    })
-                    .collect(),
-            )
-            .color(colors[component])
-            .name(names[component])
-        })
-        .collect_vec();
-
-    re_tracing::profile_scope!("show");
-    Plot::new("rgb_histogram")
-        .legend(Legend::default())
-        .height(200.0)
-        .show_axes([false; 2])
-        .show(ui, |plot_ui| {
-            for chart in charts {
-                plot_ui.bar_chart(chart);
-            }
-        })
-        .response
 }
