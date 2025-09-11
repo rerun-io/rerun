@@ -1,21 +1,24 @@
-use std::sync::Arc;
-
-use re_log_types::EntityPath;
-use re_types::{
-    ComponentDescriptor, RowId,
-    components::{Blob, MediaType, VideoTimestamp},
-};
-use re_ui::{
-    UiExt as _, icons,
-    list_item::{self, PropertyContent},
-};
-use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
-
+use crate::image::ImageExtraData;
+use crate::instance_path::find_and_deserialize_archetype_mono_component;
 use crate::{
     EntityDataUi,
     image::image_preview_ui,
     video::{show_decoded_frame_info, video_asset_result_ui},
 };
+use re_chunk_store::UnitChunkShared;
+use re_log_types::EntityPath;
+use re_types::{
+    ComponentDescriptor, RowId, archetypes, components,
+    components::{Blob, MediaType, VideoTimestamp},
+};
+use re_types_core::Component;
+use re_ui::list_item::ListItemContentButtonsExt;
+use re_ui::{
+    UiExt as _, icons,
+    list_item::{self, PropertyContent},
+};
+use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
+use std::sync::Arc;
 
 impl EntityDataUi for Blob {
     fn entity_data_ui(
@@ -41,6 +44,7 @@ impl EntityDataUi for Blob {
 
         if ui_layout.is_single_line() {
             ui.horizontal(|ui| {
+                ui.set_truncate_style();
                 blob_preview_and_save_ui(
                     ctx,
                     ui,
@@ -116,134 +120,6 @@ pub fn blob_preview_and_save_ui(
     media_type: Option<&MediaType>,
     video_timestamp: Option<VideoTimestamp>,
 ) {
-    #[allow(unused_assignments)] // Not used when targeting web.
-    let mut image = None;
-    let mut video_result_for_frame_preview = None;
-
-    if let Some(blob_row_id) = blob_row_id {
-        if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
-            exif_ui(
-                ui,
-                StoredBlobCacheKey::new(blob_row_id, blob_component_descriptor),
-                blob,
-            );
-        }
-
-        // Try to treat it as an image:
-        image = ctx
-            .store_context
-            .caches
-            .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-                c.entry(blob_row_id, blob_component_descriptor, blob, media_type)
-            })
-            .ok();
-
-        if let Some(image) = &image {
-            if !ui_layout.is_single_line() {
-                ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Image format").value_text(image.format.to_string()),
-                );
-            }
-
-            let colormap = None; // TODO(andreas): Rely on default here for now.
-            image_preview_ui(ctx, ui, ui_layout, query, entity_path, image, colormap);
-        } else {
-            // Try to treat it as a video.
-            let video_result =
-                ctx.store_context
-                    .caches
-                    .entry(|c: &mut re_viewer_context::VideoAssetCache| {
-                        let debug_name = entity_path.to_string();
-                        c.entry(
-                            debug_name,
-                            blob_row_id,
-                            blob_component_descriptor,
-                            blob,
-                            media_type,
-                            ctx.app_options().video_decoder_settings(),
-                        )
-                    });
-            video_asset_result_ui(ui, ui_layout, &video_result);
-            video_result_for_frame_preview = Some(video_result);
-        }
-    }
-
-    if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
-        ui.horizontal(|ui| {
-            let text = if cfg!(target_arch = "wasm32") {
-                "Download blob…"
-            } else {
-                "Save blob…"
-            };
-            if ui
-                .add(egui::Button::image_and_text(
-                    icons::DOWNLOAD.as_image(),
-                    text,
-                ))
-                .clicked()
-            {
-                let mut file_name = entity_path
-                    .last()
-                    .map_or("blob", |name| name.unescaped_str())
-                    .to_owned();
-
-                if let Some(file_extension) = media_type.as_ref().and_then(|mt| mt.file_extension())
-                {
-                    file_name.push('.');
-                    file_name.push_str(file_extension);
-                }
-
-                ctx.command_sender().save_file_dialog(
-                    re_capabilities::MainThreadToken::from_egui_ui(ui),
-                    &file_name,
-                    "Save blob".to_owned(),
-                    blob.to_vec(),
-                );
-            }
-
-            if let Some(image) = image {
-                let image_stats = ctx
-                    .store_context
-                    .caches
-                    .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
-                let data_range = re_viewer_context::gpu_bridge::image_data_range_heuristic(
-                    &image_stats,
-                    &image.format,
-                );
-                crate::image::copy_image_button_ui(ui, &image, data_range);
-            }
-        });
-
-        // Show a mini video player for video blobs:
-        if let Some(video_result) = &video_result_for_frame_preview
-            && let Ok(video) = video_result.as_ref()
-        {
-            ui.separator();
-
-            let video_timestamp = video_timestamp.unwrap_or_else(|| {
-                // TODO(emilk): Some time controls would be nice,
-                // but the point here is not to have a nice viewer,
-                // but to show the user what they have selected
-                ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
-                let time = ui.input(|i| i.time);
-
-                if let Some(duration) = video.data_descr().duration() {
-                    VideoTimestamp::from_secs(time % duration.as_secs_f64())
-                } else {
-                    // Invalid video or unknown timescale.
-                    VideoTimestamp::from_nanos(0)
-                }
-            });
-            let video_time = re_viewer_context::video_timestamp_component_to_video_time(
-                ctx,
-                video_timestamp,
-                video.data_descr().timescale,
-            );
-            let video_buffers = std::iter::once(blob.as_ref()).collect();
-
-            show_decoded_frame_info(ctx, ui, ui_layout, video, video_time, &video_buffers);
-        }
-    }
 }
 
 /// Show EXIF data about the given blob (image), if possible.
@@ -279,5 +155,226 @@ fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_types::datatype
                 }
             });
         });
+    }
+}
+
+// TODO: Hold references instead?
+pub struct BlobExtraData {
+    image: Option<ImageExtraData>,
+    row_id: Option<RowId>,
+    descr: ComponentDescriptor,
+    blob: re_types::datatypes::Blob,
+    media_type: Option<MediaType>,
+}
+
+impl BlobExtraData {
+    pub fn get_from_components(
+        ctx: &ViewerContext<'_>,
+        query: &re_chunk_store::LatestAtQuery,
+        entity_path: &re_log_types::EntityPath,
+        blob_descr: &ComponentDescriptor,
+        blob_chunk: &UnitChunkShared,
+        components: &[(ComponentDescriptor, UnitChunkShared)],
+    ) -> Option<Self> {
+        if blob_descr.component_type != Some(components::Blob::name()) {
+            return None;
+        }
+
+        let blob = blob_chunk
+            .component_mono::<components::Blob>(blob_descr)?
+            .ok()?;
+
+        // Media type comes typically alongside the blob in various different archetypes.
+        // Look for the one that matches the blob's archetype.
+        let media_type = find_and_deserialize_archetype_mono_component::<components::MediaType>(
+            components,
+            blob_descr.archetype,
+        )
+        .or_else(|| components::MediaType::guess_from_data(&blob));
+
+        // Video timestamp is only relevant here if it comes from a VideoFrameReference archetype.
+        // It doesn't show up in the blob's archetype.
+        let video_timestamp_descr = archetypes::VideoFrameReference::descriptor_timestamp();
+        let video_timestamp = components
+            .iter()
+            .find_map(|(descr, chunk)| {
+                (descr == &video_timestamp_descr).then(|| {
+                    chunk
+                        .component_mono::<components::VideoTimestamp>(&video_timestamp_descr)?
+                        .ok()
+                })
+            })
+            .flatten();
+
+        Self::get(
+            ctx,
+            query,
+            entity_path,
+            blob_descr,
+            blob_chunk.row_id(),
+            blob.0,
+            media_type.as_ref(),
+            video_timestamp,
+        )
+    }
+
+    pub fn get(
+        ctx: &re_viewer_context::ViewerContext<'_>,
+        query: &re_chunk_store::LatestAtQuery,
+        entity_path: &re_log_types::EntityPath,
+        blob_component_descriptor: &ComponentDescriptor,
+        blob_row_id: Option<RowId>,
+        blob: re_types::datatypes::Blob,
+        media_type: Option<&MediaType>,
+        video_timestamp: Option<VideoTimestamp>,
+    ) -> Option<Self> {
+        #[allow(unused_assignments)] // Not used when targeting web.
+        let mut image = None;
+        // let mut video_result_for_frame_preview = None;
+
+        if let Some(blob_row_id) = blob_row_id {
+            // Try to treat it as an image:
+            image = ctx
+                .store_context
+                .caches
+                .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
+                    c.entry(blob_row_id, blob_component_descriptor, &blob, media_type)
+                })
+                .ok()
+                .map(|image| {
+                    let image_stats = ctx
+                        .store_context
+                        .caches
+                        .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
+                    let data_range = re_viewer_context::gpu_bridge::image_data_range_heuristic(
+                        &image_stats,
+                        &image.format,
+                    );
+                    ImageExtraData {
+                        format: image.format.into(),
+                        image,
+                        colormap_with_range: None,
+                        data_range,
+                        image_stats,
+                    }
+                });
+
+            {
+                // Try to treat it as a video.
+                let video_result =
+                    ctx.store_context
+                        .caches
+                        .entry(|c: &mut re_viewer_context::VideoAssetCache| {
+                            let debug_name = entity_path.to_string();
+                            c.entry(
+                                debug_name,
+                                blob_row_id,
+                                blob_component_descriptor,
+                                &blob,
+                                media_type,
+                                ctx.app_options().video_decoder_settings(),
+                            )
+                        });
+            }
+        }
+        Some(Self {
+            image,
+            row_id: blob_row_id,
+            descr: blob_component_descriptor.clone(),
+            blob,
+            media_type: media_type.cloned(),
+        })
+    }
+
+    pub fn inline_download_button<'a>(
+        &'a self,
+        ctx: &'a ViewerContext<'_>,
+        entity_path: &'a EntityPath,
+        mut property_content: list_item::PropertyContent<'a>,
+    ) -> list_item::PropertyContent<'a> {
+        if let Some(image) = &self.image {
+            property_content = image.inline_copy_button(ctx, property_content);
+        }
+        property_content.with_action_button(&icons::DOWNLOAD, "Save blob…", || {
+            let mut file_name = entity_path
+                .last()
+                .map_or("blob", |name| name.unescaped_str())
+                .to_owned();
+
+            if let Some(file_extension) =
+                self.media_type.as_ref().and_then(|mt| mt.file_extension())
+            {
+                file_name.push('.');
+                file_name.push_str(file_extension);
+            }
+
+            ctx.command_sender().save_file_dialog(
+                re_capabilities::MainThreadToken::i_promise_i_am_on_the_main_thread(),
+                &file_name,
+                "Save blob".to_owned(),
+                self.blob.to_vec(),
+            );
+        })
+    }
+
+    pub fn data_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        ui_layout: UiLayout,
+        query: &re_chunk_store::LatestAtQuery,
+        entity_path: &EntityPath,
+    ) {
+        if let Some(row_id) = self.row_id {
+            if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
+                exif_ui(ui, StoredBlobCacheKey::new(row_id, &self.descr), &self.blob);
+            }
+        }
+
+        if let Some(image) = &self.image {
+            if !ui_layout.is_single_line() {
+                // TODO: Should this be in ImageExtraData?
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Image format").value_text(image.format.to_string()),
+                );
+            }
+
+            image.data_ui(ctx, ui, ui_layout, query, entity_path);
+        }
+
+        // video_asset_result_ui(ui, ui_layout, &video_result);
+        // video_result_for_frame_preview = Some(video_result);
+        // if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
+        //
+        //     // Show a mini video player for video blobs:
+        //     if let Some(video_result) = &video_result_for_frame_preview
+        //         && let Ok(video) = video_result.as_ref()
+        //     {
+        //         ui.separator();
+        //
+        //         let video_timestamp = video_timestamp.unwrap_or_else(|| {
+        //             // TODO(emilk): Some time controls would be nice,
+        //             // but the point here is not to have a nice viewer,
+        //             // but to show the user what they have selected
+        //             ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+        //             let time = ui.input(|i| i.time);
+        //
+        //             if let Some(duration) = video.data_descr().duration() {
+        //                 VideoTimestamp::from_secs(time % duration.as_secs_f64())
+        //             } else {
+        //                 // Invalid video or unknown timescale.
+        //                 VideoTimestamp::from_nanos(0)
+        //             }
+        //         });
+        //         let video_time = re_viewer_context::video_timestamp_component_to_video_time(
+        //             ctx,
+        //             video_timestamp,
+        //             video.data_descr().timescale,
+        //         );
+        //         let video_buffers = std::iter::once(blob.as_ref()).collect();
+        //
+        //         show_decoded_frame_info(ctx, ui, ui_layout, video, video_time, &video_buffers);
+        //     }
+        // }
     }
 }

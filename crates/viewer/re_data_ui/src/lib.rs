@@ -25,6 +25,7 @@ mod store_id;
 mod tensor;
 mod video;
 
+mod extra_data;
 pub mod item_ui;
 
 pub use crate::tensor::tensor_summary_ui_grid_contents;

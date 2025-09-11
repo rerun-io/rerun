@@ -1,9 +1,15 @@
-use egui::{Button, NumExt as _, Vec2};
-
+use egui::{Button, NumExt as _, Rangef, Vec2};
+use re_chunk_store::UnitChunkShared;
 use re_renderer::renderer::ColormappedTexture;
-use re_ui::icons;
+use re_types::components;
+use re_types::datatypes::{ChannelDatatype, ColorModel};
+use re_types::image::ImageKind;
+use re_types_core::{Component, ComponentDescriptor};
+use re_ui::list_item::ListItemContentButtonsExt;
+use re_ui::{UiExt, icons, list_item};
+use re_viewer_context::gpu_bridge::image_data_range_heuristic;
 use re_viewer_context::{
-    ColormapWithRange, ImageInfo, ImageStatsCache, UiLayout, ViewerContext,
+    ColormapWithRange, ImageInfo, ImageStats, ImageStatsCache, UiLayout, ViewerContext,
     gpu_bridge::{self, image_to_gpu},
 };
 
@@ -180,4 +186,237 @@ fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
         // A wide image in a portrait frame
         egui::vec2(max_size.x, max_size.x / aspect_ratio)
     }
+}
+
+pub struct ImageExtraData {
+    pub format: components::ImageFormat,
+    pub image: ImageInfo,
+    pub data_range: Rangef,
+    pub image_stats: ImageStats,
+    pub colormap_with_range: Option<ColormapWithRange>,
+}
+
+impl ImageExtraData {
+    pub fn get(
+        ctx: &ViewerContext<'_>,
+        image_buffer_descr: &ComponentDescriptor,
+        image_buffer_chunk: &UnitChunkShared,
+        entity_components: &[(ComponentDescriptor, UnitChunkShared)],
+    ) -> Option<Self> {
+        if image_buffer_descr.component_type != Some(components::ImageBuffer::name()) {
+            return None;
+        }
+
+        let blob_row_id = image_buffer_chunk.row_id()?;
+        let image_buffer = image_buffer_chunk
+            .component_mono::<components::ImageBuffer>(image_buffer_descr)?
+            .ok()?;
+
+        let (image_format_descr, image_format_chunk) =
+            entity_components.iter().find(|(descr, _chunk)| {
+                descr.component_type == Some(components::ImageFormat::name())
+                    && descr.archetype == image_buffer_descr.archetype
+            })?;
+        let image_format = image_format_chunk
+            .component_mono::<components::ImageFormat>(image_format_descr)?
+            .ok()?;
+
+        let kind = ImageKind::from_archetype_name(image_format_descr.archetype);
+        let image = ImageInfo::from_stored_blob(
+            blob_row_id,
+            image_buffer_descr,
+            image_buffer.0,
+            image_format.0,
+            kind,
+        );
+        let image_stats = ctx
+            .store_context
+            .caches
+            .entry(|c: &mut ImageStatsCache| c.entry(&image));
+
+        let colormap = crate::instance_path::find_and_deserialize_archetype_mono_component::<
+            components::Colormap,
+        >(entity_components, image_buffer_descr.archetype);
+        let value_range = crate::instance_path::find_and_deserialize_archetype_mono_component::<
+            components::ValueRange,
+        >(entity_components, image_buffer_descr.archetype);
+
+        let colormap_with_range = colormap.map(|colormap| ColormapWithRange {
+            colormap,
+            value_range: value_range
+                .map(|r| [r.start() as _, r.end() as _])
+                .unwrap_or_else(|| {
+                    if kind == ImageKind::Depth {
+                        ColormapWithRange::default_range_for_depth_images(&image_stats)
+                    } else {
+                        let (min, max) = image_stats.finite_range;
+                        [min as _, max as _]
+                    }
+                }),
+        });
+
+        let data_range = value_range.map_or_else(
+            || image_data_range_heuristic(&image_stats, &image.format),
+            |r| Rangef::new(r.start() as _, r.end() as _),
+        );
+
+        Some(Self {
+            format: image_format,
+            image,
+            data_range,
+            image_stats,
+            colormap_with_range,
+        })
+    }
+
+    pub fn inline_copy_button<'a>(
+        &'a self,
+        ctx: &'a ViewerContext<'_>,
+        property_content: list_item::PropertyContent<'a>,
+    ) -> list_item::PropertyContent<'a> {
+        property_content.with_action_button(&icons::COPY, "Copy image", move || {
+            if let Some(rgba) = self.image.to_rgba8_image(self.data_range.into()) {
+                let egui_image = egui::ColorImage::from_rgba_unmultiplied(
+                    [rgba.width() as _, rgba.height() as _],
+                    bytemuck::cast_slice(rgba.as_raw()),
+                );
+                ctx.egui_ctx().copy_image(egui_image);
+            } else {
+                re_log::error!("Invalid image");
+            }
+        })
+    }
+
+    pub fn inline_download_button<'a>(
+        &'a self,
+        ctx: &'a ViewerContext<'_>,
+        entity_path: &'a re_log_types::EntityPath,
+        property_content: list_item::PropertyContent<'a>,
+    ) -> list_item::PropertyContent<'a> {
+        property_content.with_action_button(&icons::DOWNLOAD, "Save image", move || {
+            match self.image.to_png(self.data_range.into()) {
+                Ok(png_bytes) => {
+                    let file_name = format!(
+                        "{}.png",
+                        entity_path
+                            .last()
+                            .map_or("image", |name| name.unescaped_str())
+                            .to_owned()
+                    );
+                    ctx.command_sender().save_file_dialog(
+                        re_capabilities::MainThreadToken::i_promise_i_am_on_the_main_thread(),
+                        &file_name,
+                        "Save image".to_owned(),
+                        png_bytes,
+                    );
+                }
+                Err(err) => {
+                    re_log::error!("{err}");
+                }
+            }
+        })
+    }
+
+    pub fn data_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        ui_layout: UiLayout,
+        query: &re_chunk_store::LatestAtQuery,
+        entity_path: &re_log_types::EntityPath,
+    ) {
+        let Self {
+            format,
+            image,
+            data_range,
+            image_stats,
+            colormap_with_range,
+        } = self;
+
+        image_preview_ui(
+            ctx,
+            ui,
+            ui_layout,
+            query,
+            entity_path,
+            &image,
+            colormap_with_range.as_ref(),
+        );
+
+        if ui_layout.is_single_line() || ui_layout == UiLayout::Tooltip {
+            return;
+        }
+
+        // TODO(emilk): we should really support histograms for all types of images
+        if image.format.pixel_format.is_none()
+            && image.format.color_model() == ColorModel::RGB
+            && image.format.datatype() == ChannelDatatype::U8
+        {
+            ui.section_collapsing_header("Histogram")
+                .default_open(false)
+                .show(ui, |ui| {
+                    rgb8_histogram_ui(ui, &image.buffer);
+                });
+        }
+    }
+}
+
+fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
+    use egui::Color32;
+    use itertools::Itertools as _;
+
+    re_tracing::profile_function!();
+
+    let mut histograms = [[0_u64; 256]; 3];
+    {
+        // TODO(emilk): this is slow, so cache the results!
+        re_tracing::profile_scope!("build");
+        for pixel in rgb.chunks_exact(3) {
+            for c in 0..3 {
+                histograms[c][pixel[c] as usize] += 1;
+            }
+        }
+    }
+
+    use egui_plot::{Bar, BarChart, Legend, Plot};
+
+    let names = ["R", "G", "B"];
+    let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
+
+    let charts = histograms
+        .into_iter()
+        .enumerate()
+        .map(|(component, histogram)| {
+            let fill = colors[component].linear_multiply(0.5);
+
+            BarChart::new(
+                "bar_chart",
+                histogram
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, count)| {
+                        Bar::new(i as _, count as _)
+                            .width(1.0) // no gaps between bars
+                            .fill(fill)
+                            .vertical()
+                            .stroke(egui::Stroke::NONE)
+                    })
+                    .collect(),
+            )
+            .color(colors[component])
+            .name(names[component])
+        })
+        .collect_vec();
+
+    re_tracing::profile_scope!("show");
+    Plot::new("rgb_histogram")
+        .legend(Legend::default())
+        .height(200.0)
+        .show_axes([false; 2])
+        .show(ui, |plot_ui| {
+            for chart in charts {
+                plot_ui.bar_chart(chart);
+            }
+        })
+        .response
 }

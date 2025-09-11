@@ -10,6 +10,7 @@ use re_types::{
     image::ImageKind,
     reflection::ComponentDescriptorExt as _,
 };
+use re_ui::list_item::ListItemContentButtonsExt;
 use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_viewer_context::{
     ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout,
@@ -17,13 +18,13 @@ use re_viewer_context::{
     video_stream_time_from_query,
 };
 
+use super::DataUi;
+use crate::extra_data::ExtraData;
 use crate::{
     blob::blob_preview_and_save_ui,
     image::image_preview_ui,
     video::{show_decoded_frame_info, video_stream_result_ui},
 };
-
-use super::DataUi;
 
 impl DataUi for InstancePath {
     fn data_ui(
@@ -159,9 +160,16 @@ impl DataUi for InstancePath {
                 .cloned()
                 .collect::<Vec<_>>();
 
-            preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, &components);
             preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, &components);
             preview_if_video_stream_ui(ctx, ui, ui_layout, query, entity_path, &components);
+
+            for (descr, shared) in &components {
+                if let Some(data) =
+                    ExtraData::get(ctx, query, entity_path, descr, shared, &components)
+                {
+                    data.data_ui(ctx, ui, ui_layout, query, entity_path);
+                }
+            }
         }
     }
 }
@@ -216,7 +224,10 @@ fn component_list_ui(
                         list_item = list_item.force_hovered(is_hovered);
                     }
 
-                    let content = re_ui::list_item::PropertyContent::new(
+                    let data =
+                        ExtraData::get(ctx, query, entity_path, component_descr, unit, components);
+
+                    let mut content = re_ui::list_item::PropertyContent::new(
                         component_descr.archetype_field_name(),
                     )
                     .with_icon(icon)
@@ -250,6 +261,12 @@ fn component_list_ui(
                             );
                         }
                     });
+
+                    if let Some(data) = &data {
+                        content = data
+                            .add_inline_buttons(ctx, entity_path, content)
+                            .with_always_show_buttons(true);
+                    }
 
                     let response = list_item.show_flat(ui, content).on_hover_ui(|ui| {
                         if let Some(component_type) = component_descr.component_type {
@@ -295,228 +312,13 @@ pub fn archetype_label_list_item_ui(ui: &mut egui::Ui, archetype: &Option<Archet
         );
 }
 
-/// If this entity is an image, show it together with buttons to download and copy the image.
-///
-/// Expected to get a list of all components on the entity, not just the blob.
-fn preview_if_image_ui(
+fn blob_save_copy_buttons<'a>(
     ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    ui_layout: UiLayout,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    components: &[(ComponentDescriptor, UnitChunkShared)],
-) {
-    // There might be several image buffers!
-    for (image_buffer_descr, image_buffer_chunk) in components
-        .iter()
-        .filter(|(descr, _chunk)| descr.component_type == Some(components::ImageBuffer::name()))
-    {
-        preview_single_image(
-            ctx,
-            ui,
-            ui_layout,
-            query,
-            entity_path,
-            components,
-            image_buffer_descr,
-            image_buffer_chunk,
-        );
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn preview_single_image(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    ui_layout: UiLayout,
-    query: &re_chunk_store::LatestAtQuery,
-    entity_path: &re_log_types::EntityPath,
-    components: &[(ComponentDescriptor, UnitChunkShared)],
-    image_buffer_descr: &ComponentDescriptor,
-    image_buffer_chunk: &UnitChunkShared,
-) -> Option<()> {
-    let blob_row_id = image_buffer_chunk.row_id()?;
-    let image_buffer = image_buffer_chunk
-        .component_mono::<components::ImageBuffer>(image_buffer_descr)?
-        .ok()?;
-
-    let (image_format_descr, image_format_chunk) = components.iter().find(|(descr, _chunk)| {
-        descr.component_type == Some(components::ImageFormat::name())
-            && descr.archetype == image_buffer_descr.archetype
-    })?;
-    let image_format = image_format_chunk
-        .component_mono::<components::ImageFormat>(image_format_descr)?
-        .ok()?;
-
-    let kind = ImageKind::from_archetype_name(image_format_descr.archetype);
-    let image = ImageInfo::from_stored_blob(
-        blob_row_id,
-        image_buffer_descr,
-        image_buffer.0,
-        image_format.0,
-        kind,
-    );
-    let image_stats = ctx
-        .store_context
-        .caches
-        .entry(|c: &mut ImageStatsCache| c.entry(&image));
-
-    let colormap = find_and_deserialize_archetype_mono_component::<components::Colormap>(
-        components,
-        image_buffer_descr.archetype,
-    );
-    let value_range = find_and_deserialize_archetype_mono_component::<components::ValueRange>(
-        components,
-        image_buffer_descr.archetype,
-    );
-
-    let colormap_with_range = colormap.map(|colormap| ColormapWithRange {
-        colormap,
-        value_range: value_range
-            .map(|r| [r.start() as _, r.end() as _])
-            .unwrap_or_else(|| {
-                if kind == ImageKind::Depth {
-                    ColormapWithRange::default_range_for_depth_images(&image_stats)
-                } else {
-                    let (min, max) = image_stats.finite_range;
-                    [min as _, max as _]
-                }
-            }),
-    });
-
-    image_preview_ui(
-        ctx,
-        ui,
-        ui_layout,
-        query,
-        entity_path,
-        &image,
-        colormap_with_range.as_ref(),
-    );
-
-    if ui_layout.is_single_line() || ui_layout == UiLayout::Tooltip {
-        return Some(());
-    }
-
-    let data_range = value_range.map_or_else(
-        || image_data_range_heuristic(&image_stats, &image.format),
-        |r| Rangef::new(r.start() as _, r.end() as _),
-    );
-    ui.horizontal(|ui| {
-        image_download_button_ui(ctx, ui, entity_path, &image, data_range);
-
-        crate::image::copy_image_button_ui(ui, &image, data_range);
-    });
-
-    // TODO(emilk): we should really support histograms for all types of images
-    if image.format.pixel_format.is_none()
-        && image.format.color_model() == ColorModel::RGB
-        && image.format.datatype() == ChannelDatatype::U8
-    {
-        ui.section_collapsing_header("Histogram")
-            .default_open(false)
-            .show(ui, |ui| {
-                rgb8_histogram_ui(ui, &image.buffer);
-            });
-    }
-
-    Some(())
-}
-
-fn image_download_button_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    entity_path: &re_log_types::EntityPath,
-    image: &ImageInfo,
-    data_range: egui::Rangef,
-) {
-    let text = if cfg!(target_arch = "wasm32") {
-        "Download image…"
-    } else {
-        "Save image…"
-    };
-    if ui.button(text).clicked() {
-        match image.to_png(data_range.into()) {
-            Ok(png_bytes) => {
-                let file_name = format!(
-                    "{}.png",
-                    entity_path
-                        .last()
-                        .map_or("image", |name| name.unescaped_str())
-                        .to_owned()
-                );
-                ctx.command_sender().save_file_dialog(
-                    re_capabilities::MainThreadToken::from_egui_ui(ui),
-                    &file_name,
-                    "Save image".to_owned(),
-                    png_bytes,
-                );
-            }
-            Err(err) => {
-                re_log::error!("{err}");
-            }
-        }
-    }
-}
-
-fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
-    use egui::Color32;
-    use itertools::Itertools as _;
-
-    re_tracing::profile_function!();
-
-    let mut histograms = [[0_u64; 256]; 3];
-    {
-        // TODO(emilk): this is slow, so cache the results!
-        re_tracing::profile_scope!("build");
-        for pixel in rgb.chunks_exact(3) {
-            for c in 0..3 {
-                histograms[c][pixel[c] as usize] += 1;
-            }
-        }
-    }
-
-    use egui_plot::{Bar, BarChart, Legend, Plot};
-
-    let names = ["R", "G", "B"];
-    let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
-
-    let charts = histograms
-        .into_iter()
-        .enumerate()
-        .map(|(component, histogram)| {
-            let fill = colors[component].linear_multiply(0.5);
-
-            BarChart::new(
-                "bar_chart",
-                histogram
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, count)| {
-                        Bar::new(i as _, count as _)
-                            .width(1.0) // no gaps between bars
-                            .fill(fill)
-                            .vertical()
-                            .stroke(egui::Stroke::NONE)
-                    })
-                    .collect(),
-            )
-            .color(colors[component])
-            .name(names[component])
-        })
-        .collect_vec();
-
-    re_tracing::profile_scope!("show");
-    Plot::new("rgb_histogram")
-        .legend(Legend::default())
-        .height(200.0)
-        .show_axes([false; 2])
-        .show(ui, |plot_ui| {
-            for chart in charts {
-                plot_ui.bar_chart(chart);
-            }
-        })
-        .response
+    mut content: list_item::PropertyContent<'a>,
+) -> list_item::PropertyContent<'a> {
+    content
 }
 
 /// If this entity has a blob, preview it and show a download button.
@@ -632,7 +434,7 @@ fn preview_if_video_stream_ui(
 }
 
 /// Finds and deserializes the given component type if its descriptor matches the given archetype name.
-fn find_and_deserialize_archetype_mono_component<C: Component>(
+pub(crate) fn find_and_deserialize_archetype_mono_component<C: Component>(
     components: &[(ComponentDescriptor, UnitChunkShared)],
     archetype_name: Option<ArchetypeName>,
 ) -> Option<C> {
