@@ -303,6 +303,11 @@ Convert an .mcap file to an .rrd.
 * `-l, --layer <SELECTED_LAYERS>`
 > Specifies which layers to apply during conversion.
 
+* `--disable-raw-fallback <DISABLE_RAW_FALLBACK>`
+> Disable using the raw layer as a fallback for unsupported channels. By default, channels that cannot be handled by semantic layers (protobuf, ROS2) will be processed by the raw layer.
+>
+> [Default: `false`]
+
 * `--recording-id <RECORDING_ID>`
 > If set, specifies the recording id of the output.
 >
