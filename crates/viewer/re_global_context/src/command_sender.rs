@@ -90,8 +90,8 @@ pub enum SystemCommand {
     #[cfg(debug_assertions)]
     EnableInspectBlueprintTimeline(bool),
 
-    /// Load a [`re_uri::Fragment`].
-    SetFragment {
+    /// Navigate to time/entities/anchors/etc. that are set in a [`re_uri::Fragment`].
+    SetUrlFragment {
         store_id: StoreId,
         fragment: re_uri::Fragment,
     },

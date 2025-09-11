@@ -26,7 +26,7 @@ pub enum UiCommand {
         timeline: re_log_types::Timeline,
         time_range: re_log_types::AbsoluteTimeRangeF,
     },
-    SetFragment {
+    SetUrlFragment {
         recording_id: re_log_types::StoreId,
         fragment: re_uri::Fragment,
     },
@@ -492,7 +492,7 @@ async fn stream_partition_from_server(
             });
         }
         if !fragment.is_empty() {
-            on_ui_cmd(UiCommand::SetFragment {
+            on_ui_cmd(UiCommand::SetUrlFragment {
                 recording_id: store_id.clone(),
                 fragment,
             });

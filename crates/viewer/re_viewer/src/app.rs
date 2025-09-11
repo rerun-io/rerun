@@ -622,7 +622,7 @@ impl App {
         egui_ctx: &egui::Context,
     ) {
         match cmd {
-            SystemCommand::SetFragment { store_id, fragment } => {
+            SystemCommand::SetUrlFragment { store_id, fragment } => {
                 // This adds new system commands, which will be handled later in the loop.
                 self.go_to_dataset_data(store_id, fragment);
             }
@@ -1051,10 +1051,10 @@ impl App {
                     timeline,
                     time_range,
                 }),
-                re_redap_client::UiCommand::SetFragment {
+                re_redap_client::UiCommand::SetUrlFragment {
                     recording_id,
                     fragment,
-                } => command_sender.send_system(SystemCommand::SetFragment {
+                } => command_sender.send_system(SystemCommand::SetUrlFragment {
                     store_id: recording_id,
                     fragment,
                 }),

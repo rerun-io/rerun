@@ -584,7 +584,7 @@ impl TestContext {
             let mut handled = true;
             let command_name = format!("{command:?}");
             match command {
-                SystemCommand::SetFragment { store_id, fragment } => {
+                SystemCommand::SetUrlFragment { store_id, fragment } => {
                     // This adds new system commands, which will be handled later in the loop.
                     self.go_to_dataset_data(store_id, fragment);
                 }
