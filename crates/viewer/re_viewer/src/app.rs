@@ -468,7 +468,6 @@ impl App {
         if let SmartChannelSource::RedapGrpcStream { uri, .. } = rx.source() {
             self.command_sender
                 .send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-            self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
         }
 
         self.rx_log.add(rx);
