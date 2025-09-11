@@ -137,13 +137,16 @@ impl UiLayout {
                 // instead of newline, but for now it doesn't, so `\n` will show up as a square.
                 layout_job.break_on_newline = false;
 
-                if ui.is_sizing_pass() {
-                    // grow parent if needed - that's the point of a sizing pass
-                    layout_job.wrap.max_width = f32::INFINITY;
-                } else {
-                    // Truncate
-                    layout_job.wrap.break_anywhere = true;
-                }
+                // TODO(lucas): This allows tooltips to grow infinitely,
+                // investigate why they aren't limited to a reasonable size
+                // if ui.is_sizing_pass() {
+                //     // grow parent if needed - that's the point of a sizing pass
+                //     layout_job.wrap.max_width = f32::INFINITY;
+                // } else {
+                //     // Truncate
+                //     layout_job.wrap.break_anywhere = true;
+                // }
+                layout_job.wrap.break_anywhere = true;
             }
             Self::Tooltip => {
                 layout_job.wrap.max_rows = 3;
