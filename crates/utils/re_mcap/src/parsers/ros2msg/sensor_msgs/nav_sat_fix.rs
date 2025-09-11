@@ -73,7 +73,7 @@ impl MessageParser for NavSatFixMessageParser {
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
             "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(header.stamp.as_nanos()),
+            crate::util::guess_epoch(header.stamp.as_nanos() as u64),
         );
 
         // Store latitude/longitude as geographic points
