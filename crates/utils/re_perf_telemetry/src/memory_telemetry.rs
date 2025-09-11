@@ -15,7 +15,7 @@ pub fn install_memory_use_meters() {
 
     // ---------------------------------------------------
 
-    // Configure the acounting allocator to only capture the big stuff.
+    // Configure the accounting allocator to only capture the big stuff.
     // That way we get low overhead.
     re_memory::accounting_allocator::set_tracking_options(
         re_memory::accounting_allocator::TrackingOptions {
