@@ -14,8 +14,8 @@ use super::super::Ros2MessageParser;
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
-    util::TimestampCell,
 };
+use crate::util::TimestampCell;
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
 pub struct CompressedImageMessageParser {
