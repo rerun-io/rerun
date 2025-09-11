@@ -357,7 +357,8 @@ where
     pub async fn do_maintenance(
         &mut self,
         dataset_id: EntryId,
-        build_scalar_indexes: bool,
+        optimize_indexes: bool,
+        retrain_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
         unsafe_allow_recent_cleanup: bool,
@@ -366,7 +367,8 @@ where
             .do_maintenance(tonic::Request::new(
                 re_protos::cloud::v1alpha1::ext::DoMaintenanceRequest {
                     dataset_id: Some(dataset_id.into()),
-                    build_scalar_indexes,
+                    optimize_indexes,
+                    retrain_indexes,
                     compact_fragments,
                     cleanup_before,
                     unsafe_allow_recent_cleanup,

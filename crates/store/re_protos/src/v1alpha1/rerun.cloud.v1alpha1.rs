@@ -854,28 +854,38 @@ impl ::prost::Name for ScanTableResponse {
 pub struct DoMaintenanceRequest {
     #[prost(message, optional, tag = "1")]
     pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-    /// Create the acceleration structures for temporal queries.
+    /// Optimize all builtin and user-defined indexes on this dataset.
     ///
-    /// This will recreate all scalar indexes from scratch everytime.
-    ///
-    /// TODO(cmc): support incremental scalar indexing & index compaction
+    /// This merges all individual index deltas back in the main index, improving runtime performance
+    /// of all indexes.
     #[prost(bool, tag = "2")]
-    pub build_scalar_indexes: bool,
+    pub optimize_indexes: bool,
+    /// Retrain all user-defined indexes on this dataset from scratch.
+    ///
+    /// This retrains all user-defined indexes from scratch for optimal runtime performance.
+    /// This is faster than re-creating the indexes, and automatically keeps track of their configurations.
+    ///
+    /// This implies `optimize_indexes`.
+    #[prost(bool, tag = "6")]
+    pub retrain_indexes: bool,
     /// Compact the underlying Lance fragments, for all Rerun Manifests.
     ///
     /// Hardcoded to the default (optimal) settings.
     #[prost(bool, tag = "3")]
     pub compact_fragments: bool,
     /// If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+    ///
     /// In case requested date is more recent than 1 hour, it will be ignored and 1 hour ago
     /// timestamp will be used. This is to prevent still used files (like recent transaction files)
     /// to be removed and cause Lance Dataset update issues.
+    ///
     /// See <https://docs.rs/lance/latest/lance/dataset/cleanup/index.html>
     /// and <https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html>
     #[prost(message, optional, tag = "4")]
     pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
     /// Override default platform behavior and allow cleanup of recent files. This will respect
     /// the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
+    ///
     /// ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
     #[prost(bool, tag = "5")]
     pub unsafe_allow_recent_cleanup: bool,
