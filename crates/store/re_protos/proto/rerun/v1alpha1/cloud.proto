@@ -150,6 +150,10 @@ service RerunCloudService {
 
   // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
   rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
+
+  // Run global maintenance operations on the platform: this includes optimization
+  // of all datasets, garbage collection of unused data, and can include more in the future.
+  rpc DoGlobalMaintenance(DoGlobalMaintenanceRequest) returns (DoGlobalMaintenanceResponse) {}
 }
 
 // ---
@@ -614,6 +618,8 @@ message ScanTableResponse {
   rerun.common.v1alpha1.DataframePart dataframe_part = 1;
 }
 
+// --- Maintenance ---
+
 message DoMaintenanceRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
 
@@ -646,6 +652,11 @@ message DoMaintenanceRequest {
 message DoMaintenanceResponse {
   string report = 1;
 }
+
+// Request all maintenance operations to run on all datasets
+message DoGlobalMaintenanceRequest {}
+
+message DoGlobalMaintenanceResponse {}
 
 // --- Tasks ---
 
