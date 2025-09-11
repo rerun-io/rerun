@@ -2,7 +2,6 @@ use super::super::definitions::sensor_msgs;
 use arrow::array::{FixedSizeListBuilder, Float64Builder};
 
 use re_chunk::{Chunk, ChunkId};
-use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor, SerializedComponentColumn, archetypes::Arrows3D, datatypes::Vec3D,
 };
@@ -42,7 +41,7 @@ impl MessageParser for MagneticFieldMessageParser {
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
             "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(magnetic_field.header.stamp.as_nanos()),
+            crate::util::guess_epoch(magnetic_field.header.stamp.as_nanos() as u64),
         );
 
         // Convert magnetic field vector to Vector3D and store

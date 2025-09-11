@@ -9,8 +9,7 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
 };
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt as _};
-use re_chunk::{Chunk, ChunkComponents, ChunkId, TimePoint};
-use re_log_types::TimeCell;
+use re_chunk::{Chunk, ChunkComponents, ChunkId};
 use re_types::{
     AsComponents as _, Component as _, ComponentDescriptor, SerializedComponentColumn, archetypes,
     components, reflection::ComponentDescriptorExt as _,
@@ -175,8 +174,10 @@ impl MessageParser for PointCloud2MessageParser {
         let point_cloud = cdr::try_decode_message::<sensor_msgs::PointCloud2>(msg.data.as_ref())
             .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
-        let cell = TimeCell::from_timestamp_nanos_since_epoch(point_cloud.header.stamp.as_nanos());
-        ctx.add_time_cell("timestamp", cell);
+        ctx.add_time_cell(
+            "timestamp",
+            crate::util::guess_epoch(point_cloud.header.stamp.as_nanos() as u64),
+        );
 
         let Self {
             num_rows,
@@ -192,9 +193,6 @@ impl MessageParser for PointCloud2MessageParser {
 
             points_3ds,
         } = self;
-
-        let mut timepoint = TimePoint::default();
-        timepoint.insert_cell("timestamp", cell);
 
         height.values().append_slice(&[point_cloud.height]);
         width.values().append_slice(&[point_cloud.width]);

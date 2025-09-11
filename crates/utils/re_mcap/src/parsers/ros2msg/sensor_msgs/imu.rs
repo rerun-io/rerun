@@ -3,7 +3,6 @@ use re_chunk::{
     Chunk, ChunkId, ChunkResult, EntityPath, RowId, TimePoint,
     external::arrow::array::{FixedSizeListBuilder, Float64Builder},
 };
-use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor,
     archetypes::{Scalars, SeriesLines},
@@ -75,7 +74,7 @@ impl MessageParser for ImuMessageParser {
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
             "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(imu.header.stamp.as_nanos()),
+            crate::util::guess_epoch(imu.header.stamp.as_nanos() as u64),
         );
 
         self.orientation.values().append_slice(&[

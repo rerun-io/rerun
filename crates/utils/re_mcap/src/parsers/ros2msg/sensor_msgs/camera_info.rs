@@ -7,7 +7,6 @@ use re_chunk::{
     Chunk, ChunkId,
     external::arrow::array::{FixedSizeListBuilder, Float64Builder, StringBuilder, UInt32Builder},
 };
-use re_log_types::TimeCell;
 use re_types::{ComponentDescriptor, archetypes::Pinhole, reflection::ComponentDescriptorExt as _};
 
 use crate::{
@@ -99,7 +98,7 @@ impl MessageParser for CameraInfoMessageParser {
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_time_cell(
             "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(header.stamp.as_nanos()),
+            crate::util::guess_epoch(header.stamp.as_nanos() as u64),
         );
 
         self.distortion_models
