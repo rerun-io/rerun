@@ -19,12 +19,7 @@ use re_viewer_context::{
 };
 
 use super::DataUi;
-use crate::extra_data::ExtraDataUi;
-use crate::{
-    blob::blob_preview_and_save_ui,
-    image::image_preview_ui,
-    video::{show_decoded_frame_info, video_stream_result_ui},
-};
+use crate::extra_data_ui::ExtraDataUi;
 
 impl DataUi for InstancePath {
     fn data_ui(
@@ -159,9 +154,6 @@ impl DataUi for InstancePath {
                 .flatten()
                 .cloned()
                 .collect::<Vec<_>>();
-
-            preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, &components);
-            preview_if_video_stream_ui(ctx, ui, ui_layout, query, entity_path, &components);
 
             for (descr, shared) in &components {
                 if let Some(data) = ExtraDataUi::from_components(
@@ -332,86 +324,6 @@ fn blob_save_copy_buttons<'a>(
     content
 }
 
-/// If this entity has a blob, preview it and show a download button.
-fn preview_if_blob_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    ui_layout: UiLayout,
-    query: &re_chunk_store::LatestAtQuery,
-    entity_path: &re_log_types::EntityPath,
-    components: &[(ComponentDescriptor, UnitChunkShared)],
-) {
-    // There might be several blobs, all with different meanings.
-    for (blob_descr, blob_chunk) in components
-        .iter()
-        .filter(|(descr, _chunk)| descr.component_type == Some(components::Blob::name()))
-    {
-        preview_single_blob(
-            ctx,
-            ui,
-            ui_layout,
-            query,
-            entity_path,
-            components,
-            blob_descr,
-            blob_chunk,
-        );
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn preview_single_blob(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    ui_layout: UiLayout,
-    query: &re_chunk_store::LatestAtQuery,
-    entity_path: &re_log_types::EntityPath,
-    components: &[(ComponentDescriptor, UnitChunkShared)],
-    blob_descr: &ComponentDescriptor,
-    blob_chunk: &UnitChunkShared,
-) -> Option<()> {
-    let blob = blob_chunk
-        .component_mono::<components::Blob>(blob_descr)?
-        .ok()?;
-
-    // Media type comes typically alongside the blob in various different archetypes.
-    // Look for the one that matches the blob's archetype.
-    let media_type = find_and_deserialize_archetype_mono_component::<components::MediaType>(
-        components,
-        blob_descr.archetype,
-    )
-    .or_else(|| components::MediaType::guess_from_data(&blob));
-
-    // Video timestamp is only relevant here if it comes from a VideoFrameReference archetype.
-    // It doesn't show up in the blob's archetype.
-    let video_timestamp_descr = archetypes::VideoFrameReference::descriptor_timestamp();
-    let video_timestamp = components
-        .iter()
-        .find_map(|(descr, chunk)| {
-            (descr == &video_timestamp_descr).then(|| {
-                chunk
-                    .component_mono::<components::VideoTimestamp>(&video_timestamp_descr)?
-                    .ok()
-            })
-        })
-        .flatten();
-
-    blob_preview_and_save_ui(
-        ctx,
-        ui,
-        ui_layout,
-        query,
-        entity_path,
-        blob_descr,
-        blob_chunk.row_id(),
-        &blob,
-        media_type.as_ref(),
-        video_timestamp,
-    );
-
-    Some(())
-}
-
 fn preview_if_video_stream_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -435,13 +347,6 @@ fn preview_if_video_stream_ui(
             ctx.app_options().video_decoder_settings(),
         )
     });
-    video_stream_result_ui(ui, ui_layout, &video_stream_result);
-    if let Ok(video) = video_stream_result {
-        let video = video.read();
-        let time = video_stream_time_from_query(query);
-        let buffers = video.sample_buffers();
-        show_decoded_frame_info(ctx, ui, ui_layout, &video.video_renderer, time, &buffers);
-    }
 }
 
 /// Finds and deserializes the given component type if its descriptor matches the given archetype name.

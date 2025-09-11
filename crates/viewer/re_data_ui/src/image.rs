@@ -2,9 +2,10 @@ use egui::{Button, NumExt as _, Rangef, Vec2};
 use re_chunk_store::UnitChunkShared;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::components;
+use re_types::components::MediaType;
 use re_types::datatypes::{ChannelDatatype, ColorModel};
 use re_types::image::ImageKind;
-use re_types_core::{Component, ComponentDescriptor};
+use re_types_core::{Component, ComponentDescriptor, RowId};
 use re_ui::list_item::ListItemContentButtonsExt;
 use re_ui::{UiExt, icons, list_item};
 use re_viewer_context::gpu_bridge::image_data_range_heuristic;
@@ -197,6 +198,38 @@ pub struct ImageUi {
 }
 
 impl ImageUi {
+    pub fn from_blob(
+        ctx: &ViewerContext<'_>,
+        blob_row_id: RowId,
+        blob_component_descriptor: &ComponentDescriptor,
+        blob: &re_types::datatypes::Blob,
+        media_type: Option<&MediaType>,
+    ) -> Option<Self> {
+        ctx.store_context
+            .caches
+            .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
+                c.entry(blob_row_id, blob_component_descriptor, &blob, media_type)
+            })
+            .ok()
+            .map(|image| {
+                let image_stats = ctx
+                    .store_context
+                    .caches
+                    .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
+                let data_range = re_viewer_context::gpu_bridge::image_data_range_heuristic(
+                    &image_stats,
+                    &image.format,
+                );
+                ImageUi {
+                    format: image.format.into(),
+                    image,
+                    colormap_with_range: None,
+                    data_range,
+                    image_stats,
+                }
+            })
+    }
+
     pub fn from_components(
         ctx: &ViewerContext<'_>,
         image_buffer_descr: &ComponentDescriptor,
