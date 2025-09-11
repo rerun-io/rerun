@@ -19,7 +19,7 @@ use re_viewer_context::{
 };
 
 use super::DataUi;
-use crate::extra_data::ExtraData;
+use crate::extra_data::ExtraDataUi;
 use crate::{
     blob::blob_preview_and_save_ui,
     image::image_preview_ui,
@@ -164,9 +164,14 @@ impl DataUi for InstancePath {
             preview_if_video_stream_ui(ctx, ui, ui_layout, query, entity_path, &components);
 
             for (descr, shared) in &components {
-                if let Some(data) =
-                    ExtraData::get(ctx, query, entity_path, descr, shared, &components)
-                {
+                if let Some(data) = ExtraDataUi::from_components(
+                    ctx,
+                    query,
+                    entity_path,
+                    descr,
+                    shared,
+                    &components,
+                ) {
                     data.data_ui(ctx, ui, ui_layout, query, entity_path);
                 }
             }
@@ -224,8 +229,14 @@ fn component_list_ui(
                         list_item = list_item.force_hovered(is_hovered);
                     }
 
-                    let data =
-                        ExtraData::get(ctx, query, entity_path, component_descr, unit, components);
+                    let data = ExtraDataUi::from_components(
+                        ctx,
+                        query,
+                        entity_path,
+                        component_descr,
+                        unit,
+                        components,
+                    );
 
                     let mut content = re_ui::list_item::PropertyContent::new(
                         component_descr.archetype_field_name(),

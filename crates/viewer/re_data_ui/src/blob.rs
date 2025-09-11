@@ -1,4 +1,4 @@
-use crate::image::ImageExtraData;
+use crate::image::ImageUi;
 use crate::instance_path::find_and_deserialize_archetype_mono_component;
 use crate::{
     EntityDataUi,
@@ -159,16 +159,16 @@ fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_types::datatype
 }
 
 // TODO: Hold references instead?
-pub struct BlobExtraData {
-    image: Option<ImageExtraData>,
+pub struct BlobUi {
+    image: Option<ImageUi>,
     row_id: Option<RowId>,
     descr: ComponentDescriptor,
     blob: re_types::datatypes::Blob,
     media_type: Option<MediaType>,
 }
 
-impl BlobExtraData {
-    pub fn get_from_components(
+impl BlobUi {
+    pub fn from_components(
         ctx: &ViewerContext<'_>,
         query: &re_chunk_store::LatestAtQuery,
         entity_path: &re_log_types::EntityPath,
@@ -206,7 +206,7 @@ impl BlobExtraData {
             })
             .flatten();
 
-        Self::get(
+        Self::new(
             ctx,
             query,
             entity_path,
@@ -218,7 +218,7 @@ impl BlobExtraData {
         )
     }
 
-    pub fn get(
+    pub fn new(
         ctx: &re_viewer_context::ViewerContext<'_>,
         query: &re_chunk_store::LatestAtQuery,
         entity_path: &re_log_types::EntityPath,
@@ -250,7 +250,7 @@ impl BlobExtraData {
                         &image_stats,
                         &image.format,
                     );
-                    ImageExtraData {
+                    ImageUi {
                         format: image.format.into(),
                         image,
                         colormap_with_range: None,

@@ -188,7 +188,7 @@ fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
     }
 }
 
-pub struct ImageExtraData {
+pub struct ImageUi {
     pub format: components::ImageFormat,
     pub image: ImageInfo,
     pub data_range: Rangef,
@@ -196,8 +196,8 @@ pub struct ImageExtraData {
     pub colormap_with_range: Option<ColormapWithRange>,
 }
 
-impl ImageExtraData {
-    pub fn get(
+impl ImageUi {
+    pub fn from_components(
         ctx: &ViewerContext<'_>,
         image_buffer_descr: &ComponentDescriptor,
         image_buffer_chunk: &UnitChunkShared,

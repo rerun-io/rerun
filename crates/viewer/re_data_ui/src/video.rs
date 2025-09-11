@@ -572,3 +572,5 @@ fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat
         }
     }
 }
+
+pub struct VideoExtraData {}
