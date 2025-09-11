@@ -67,7 +67,7 @@ pub struct DataFusionQueryResult {
     /// The record batches to display.
     pub sorbet_batches: Vec<SorbetBatch>,
 
-    /// The schema of the record batches (useful if none is returned).
+    /// The schema of the record batches (useful if the list of batches is empty).
     pub schema: SchemaRef,
 
     /// The migrated schema of the record batches.
