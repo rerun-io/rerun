@@ -932,6 +932,31 @@ impl ::prost::Name for DoMaintenanceResponse {
         "/rerun.cloud.v1alpha1.DoMaintenanceResponse".into()
     }
 }
+/// Request all maintenance operations to run on all datasets
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DoGlobalMaintenanceRequest {}
+impl ::prost::Name for DoGlobalMaintenanceRequest {
+    const NAME: &'static str = "DoGlobalMaintenanceRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DoGlobalMaintenanceRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DoGlobalMaintenanceRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DoGlobalMaintenanceResponse {}
+impl ::prost::Name for DoGlobalMaintenanceResponse {
+    const NAME: &'static str = "DoGlobalMaintenanceResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DoGlobalMaintenanceResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DoGlobalMaintenanceResponse".into()
+    }
+}
 /// A task is a unit of work that can be submitted to the system
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Task {
@@ -2339,6 +2364,27 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Run global maintenance operations on the platform: this includes optimization
+        /// of all datasets, garbage collection of unused data, and can include more in the future.
+        pub async fn do_global_maintenance(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DoGlobalMaintenanceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DoGlobalMaintenanceResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/DoGlobalMaintenance",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "DoGlobalMaintenance",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -2555,6 +2601,12 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::DoMaintenanceRequest>,
         ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>;
+        /// Run global maintenance operations on the platform: this includes optimization
+        /// of all datasets, garbage collection of unused data, and can include more in the future.
+        async fn do_global_maintenance(
+            &self,
+            request: tonic::Request<super::DoGlobalMaintenanceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DoGlobalMaintenanceResponse>, tonic::Status>;
     }
     /// The Rerun Cloud public API.
     ///
@@ -3733,6 +3785,49 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DoMaintenanceSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/DoGlobalMaintenance" => {
+                    #[allow(non_camel_case_types)]
+                    struct DoGlobalMaintenanceSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::DoGlobalMaintenanceRequest>
+                        for DoGlobalMaintenanceSvc<T>
+                    {
+                        type Response = super::DoGlobalMaintenanceResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DoGlobalMaintenanceRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::do_global_maintenance(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DoGlobalMaintenanceSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
