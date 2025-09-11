@@ -67,10 +67,10 @@ pub struct DataFusionQueryResult {
     /// The record batches to display.
     pub sorbet_batches: Vec<SorbetBatch>,
 
-    /// The schema of the record batches (useful if the list of batches is empty).
-    pub schema: SchemaRef,
+    /// The schema of the record batches.
+    pub original_schema: SchemaRef,
 
-    /// The migrated schema of the record batches.
+    /// The migrated schema of the record batches (useful when the list of batches is empty).
     pub sorbet_schema: re_sorbet::SorbetSchema,
 }
 
@@ -197,7 +197,7 @@ impl DataFusionQuery {
         // Collect record batches
         //
 
-        let schema = Arc::clone(dataframe.schema().inner());
+        let original_schema = Arc::clone(dataframe.schema().inner());
         let record_batches = dataframe.collect().await?;
 
         //
@@ -220,13 +220,13 @@ impl DataFusionQuery {
             .first()
             .map(|batch| Ok(batch.sorbet_schema().clone()))
             .unwrap_or_else(|| {
-                re_sorbet::SorbetSchema::try_from_raw_arrow_schema(Arc::clone(&schema))
+                re_sorbet::SorbetSchema::try_from_raw_arrow_schema(Arc::clone(&original_schema))
                     .map_err(|err| DataFusionError::External(err.into()))
             })?;
 
         Ok(DataFusionQueryResult {
             sorbet_batches,
-            schema,
+            original_schema,
             sorbet_schema,
         })
     }

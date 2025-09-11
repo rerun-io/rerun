@@ -639,7 +639,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             let id = self.table_config.visible_column_ids().nth(column_index);
 
             if let Some((index, column)) = self.columns.index_and_column_from_id(id) {
-                let column_field = &self.query_result.schema.fields[index];
+                let column_field = &self.query_result.original_schema.fields[index];
                 let column_physical_name = column_field.name();
                 let column_display_name = column.display_name();
 
