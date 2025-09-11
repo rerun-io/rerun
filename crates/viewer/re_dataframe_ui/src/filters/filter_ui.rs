@@ -129,6 +129,7 @@ impl FilterState {
                                 FilterOperation::StringContains(_) => "string",
                                 FilterOperation::NonNullableBoolean(_) => "non_nullable_bool",
                                 FilterOperation::NullableBoolean(_) => "nullable_bool",
+                                FilterOperation::Timestamp(_) => "timestamp",
                             },
                         ));
 
@@ -325,6 +326,10 @@ impl SyntaxHighlighting for FilterOperation {
             Self::NullableBoolean(boolean_filter) => {
                 builder.append_primitive(&boolean_filter.operand_text());
             }
+
+            Self::Timestamp(timestamp_filter) => {
+                builder.append(timestamp_filter);
+            }
         }
     }
 }
@@ -451,6 +456,10 @@ impl FilterOperation {
             Self::NullableBoolean(boolean_filter) => {
                 boolean_filter.popup_ui(ui, column_name, &mut action);
             }
+
+            Self::Timestamp(_) => {
+                //todo!()
+            }
         }
 
         action
@@ -463,7 +472,7 @@ impl FilterOperation {
                 operator.to_string()
             }
             Self::StringContains(_) => "contains".to_owned(),
-            Self::NonNullableBoolean(_) | Self::NullableBoolean(_) => "is".to_owned(),
+            Self::NonNullableBoolean(_) | Self::NullableBoolean(_) | Self::Timestamp(_) => "is".to_owned(),
         }
     }
 }
@@ -471,7 +480,7 @@ impl FilterOperation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::filters::{NonNullableBooleanFilter, NullableBooleanFilter};
+    use crate::filters::{NonNullableBooleanFilter, NullableBooleanFilter, TimestampFilter};
 
     fn test_cases() -> Vec<(FilterOperation, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
@@ -484,7 +493,8 @@ mod tests {
                 | FloatCompares { .. }
                 | StringContains(_)
                 | NonNullableBoolean(_)
-                | NullableBoolean(_) => {}
+                | NullableBoolean(_)
+                | Timestamp(_) => {}
             }
         };
 
@@ -545,6 +555,13 @@ mod tests {
                 FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
                 "nullable_boolean_equals_null",
             ),
+            (
+                FilterOperation::Timestamp(TimestampFilter::After(
+                    jiff::Timestamp::from_millisecond(1_000_000_000).unwrap(),
+                )),
+                "timestamp_after",
+            ),
+            //TODO: add more
         ]
         .into_iter()
         .collect()
