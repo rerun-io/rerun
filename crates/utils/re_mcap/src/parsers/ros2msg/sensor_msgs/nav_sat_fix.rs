@@ -66,10 +66,10 @@ impl MessageParser for NavSatFixMessageParser {
             .context("Failed to decode sensor_msgs::NavSatFix message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            crate::util::guess_epoch(header.stamp.as_nanos() as u64),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            header.stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         // Store latitude/longitude as geographic points
         let geo_point = LatLon::new(latitude, longitude);

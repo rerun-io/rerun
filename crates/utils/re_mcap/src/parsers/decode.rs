@@ -6,6 +6,8 @@ use re_chunk::{
 };
 use re_log_types::TimeCell;
 
+use crate::util::TimestampCell;
+
 /// Trait for parsing MCAP messages of a specific schema into Rerun chunks.
 ///
 /// This trait defines the interface for converting MCAP messages into Rerun's internal
@@ -96,6 +98,22 @@ impl ParserContext {
         cell: TimeCell,
     ) -> &mut Self {
         let timeline_name = timeline_name.into();
+        self.timelines
+            .entry(timeline_name)
+            .or_insert_with(|| TimeColumn::builder(Timeline::new(timeline_name, cell.typ)))
+            .with_row(cell.value);
+
+        self
+    }
+
+    /// Add a timestamp to the timeline using the provided [`TimestampCell`].
+    ///
+    /// The timeline name and [`TimeCell`] are automatically determined from the timestamp cell.
+    /// For Unix epochs, creates a timestamp cell. For custom epochs, creates a duration cell.
+    pub fn add_timestamp_cell(&mut self, timestamp_cell: TimestampCell) -> &mut Self {
+        let timeline_name = TimelineName::from(timestamp_cell.timeline_name());
+        let cell = timestamp_cell.into_time_cell();
+
         self.timelines
             .entry(timeline_name)
             .or_insert_with(|| TimeColumn::builder(Timeline::new(timeline_name, cell.typ)))
