@@ -15,20 +15,12 @@ pub fn install_memory_use_meters() {
 
     // ---------------------------------------------------
 
-    // Configure the accounting allocator to only capture the big stuff.
-    // That way we get low overhead.
-    re_memory::accounting_allocator::set_tracking_options(
-        re_memory::accounting_allocator::TrackingOptions {
-            // Never capture callstacks for allocations smaller than this.
-            small_size: 1024,
-
-            // Allocations smaller than this are stochastically sampled.
-            // Allocations larger than this are fully sampled.
-            medium_size: 1024 * 1024,
-        },
-    );
-    // Turn on the accounting allocator:
-    re_memory::accounting_allocator::set_tracking_callstacks(true);
+    if !re_memory::accounting_allocator::is_tracking_callstacks() {
+        // NOTE: we don't turn it on here. It's up to the caller to opt-in to it, since it has a runtime cost.
+        tracing::warn!(
+            "Memory tracking turned OFF. Consider turning it on in your `fn main` with re_memory::accounting_allocator::set_tracking_callstacks(true);"
+        );
+    }
 
     // Periodically check memory usage:
     tokio::spawn(memory_monitor_task());
@@ -115,8 +107,6 @@ async fn memory_monitor_task() {
                         "Highest allocator #{i}"
                     );
                 }
-            } else {
-                re_log::warn_once!("re_memory accounting allocator not installed");
             }
         }
     }
