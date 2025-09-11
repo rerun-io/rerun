@@ -239,7 +239,7 @@ impl Filter {
                 );
 
                 if ui
-                    .small_icon_button(&re_ui::icons::CLOSE, "Remove filter")
+                    .small_icon_button(&re_ui::icons::CLOSE_SMALL, "Remove filter")
                     .clicked()
                 {
                     should_delete_filter = true;
