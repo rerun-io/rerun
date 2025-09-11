@@ -618,6 +618,7 @@ tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
+gh = ">=2.79.0,<3"
 
 
 [feature.base.pypi-dependencies]

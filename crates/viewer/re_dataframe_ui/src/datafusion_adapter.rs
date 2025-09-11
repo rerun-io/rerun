@@ -32,7 +32,7 @@ fn col(name: &str) -> datafusion::logical_expr::Expr {
 /// In general, there are aspects of a table blueprint that are handled by the UI in an immediate
 /// mode fashion (e.g. is a column visible?), and other aspects that are handled by datafusion (e.g.
 /// sorting). This struct is for the latter.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 struct DataFusionQueryData {
     pub sort_by: Option<SortBy>,
     pub partition_links: Option<PartitionLinksSpec>,

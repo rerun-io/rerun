@@ -13,10 +13,11 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
+    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver,
+    CommandSender, ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig,
+    RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
+    TableStore, ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel,
+    santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
@@ -553,6 +554,7 @@ impl App {
                     self.startup_options.web_history_enabled(),
                     store_hub,
                     self.state.navigation.peek(),
+                    &self.state.selection_state,
                 );
             }
 
@@ -562,6 +564,7 @@ impl App {
                     self.startup_options.web_history_enabled(),
                     store_hub,
                     self.state.navigation.peek(),
+                    &self.state.selection_state,
                 );
             }
 
@@ -581,6 +584,7 @@ impl App {
                     self.startup_options.web_history_enabled(),
                     store_hub,
                     self.state.navigation.peek(),
+                    &self.state.selection_state,
                 );
             }
 
@@ -626,6 +630,7 @@ impl App {
                     self.startup_options.web_history_enabled(),
                     store_hub,
                     self.state.navigation.peek(),
+                    &self.state.selection_state,
                 );
             }
 
@@ -671,6 +676,7 @@ impl App {
                         self.startup_options.web_history_enabled(),
                         store_hub,
                         &display_mode,
+                        &self.state.selection_state,
                     );
                 }
 
@@ -774,47 +780,50 @@ impl App {
                 self.app_options_mut().inspect_blueprint_timeline = show;
             }
 
-            SystemCommand::SetSelection(item) => {
-                match &item {
-                    Item::RedapEntry(entry) => {
-                        self.state
-                            .navigation
-                            .replace(DisplayMode::RedapEntry(entry.clone()));
-                    }
+            SystemCommand::SetSelection(items) => {
+                if let Some(item) = items.single_item() {
+                    match item {
+                        Item::RedapEntry(entry) => {
+                            self.state
+                                .navigation
+                                .replace(DisplayMode::RedapEntry(entry.clone()));
+                        }
 
-                    Item::RedapServer(origin) => {
-                        self.state
-                            .navigation
-                            .replace(DisplayMode::RedapServer(origin.clone()));
-                    }
+                        Item::RedapServer(origin) => {
+                            self.state
+                                .navigation
+                                .replace(DisplayMode::RedapServer(origin.clone()));
+                        }
 
-                    Item::TableId(table_id) => {
-                        self.state
-                            .navigation
-                            .replace(DisplayMode::LocalTable(table_id.clone()));
-                    }
+                        Item::TableId(table_id) => {
+                            self.state
+                                .navigation
+                                .replace(DisplayMode::LocalTable(table_id.clone()));
+                        }
 
-                    Item::StoreId(store_id) => {
-                        self.state.navigation.replace(DisplayMode::LocalRecordings);
-                        store_hub.set_active_recording_id(store_id.clone());
-                    }
+                        Item::StoreId(store_id) => {
+                            self.state.navigation.replace(DisplayMode::LocalRecordings);
+                            store_hub.set_active_recording_id(store_id.clone());
+                        }
 
-                    Item::AppId(_)
-                    | Item::DataSource(_)
-                    | Item::InstancePath(_)
-                    | Item::ComponentPath(_)
-                    | Item::Container(_)
-                    | Item::View(_)
-                    | Item::DataResult(_, _) => {
-                        self.state.navigation.replace(DisplayMode::LocalRecordings);
+                        Item::AppId(_)
+                        | Item::DataSource(_)
+                        | Item::InstancePath(_)
+                        | Item::ComponentPath(_)
+                        | Item::Container(_)
+                        | Item::View(_)
+                        | Item::DataResult(_, _) => {
+                            self.state.navigation.replace(DisplayMode::LocalRecordings);
+                        }
                     }
                 }
 
-                self.state.selection_state.set_selection(item);
+                self.state.selection_state.set_selection(items);
                 update_web_address_bar(
                     self.startup_options.web_history_enabled(),
                     store_hub,
                     self.state.navigation.peek(),
+                    &self.state.selection_state,
                 );
                 egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
@@ -1900,7 +1909,7 @@ impl App {
                         re_log::debug!("Inserted table store with id: `{}`", table.id);
                     }
                     self.command_sender.send_system(SystemCommand::SetSelection(
-                        re_viewer_context::Item::TableId(table.id.clone()),
+                        re_viewer_context::Item::TableId(table.id.clone()).into(),
                     ));
 
                     // If the viewer is in the background, tell the user that it has received something new.
@@ -2136,7 +2145,7 @@ impl App {
 
         // Also select the new recording:
         self.command_sender.send_system(SystemCommand::SetSelection(
-            re_viewer_context::Item::StoreId(store_id.clone()),
+            re_viewer_context::Item::StoreId(store_id.clone()).into(),
         ));
 
         // If the viewer is in the background, tell the user that it has received something new.
@@ -3214,6 +3223,7 @@ fn update_web_address_bar(
     _enable_history: bool,
     _store_hub: &StoreHub,
     _display_mode: &DisplayMode,
+    _selection: &ApplicationSelectionState,
 ) {
     // No-op on native.
 }
@@ -3223,6 +3233,8 @@ fn update_web_address_bar(
     enable_history: bool,
     store_hub: &StoreHub,
     display_mode: &DisplayMode,
+    // TODO(#10866): Use this to add the current selection to the url.
+    _selection: &ApplicationSelectionState,
 ) -> Option<()> {
     if !enable_history {
         return None;

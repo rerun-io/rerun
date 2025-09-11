@@ -390,7 +390,7 @@ fn dataset_entry_ui(
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
+            .send_system(SystemCommand::SetSelection(item.into()));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
                 re_uri::EntryUri::new(origin.clone(), *entry_id),
@@ -424,7 +424,7 @@ fn remote_table_entry_ui(
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
+            .send_system(SystemCommand::SetSelection(item.into()));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
                 re_uri::EntryUri::new(origin.clone(), *entry_id),
@@ -459,7 +459,7 @@ fn failed_entry_ui(
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
+            .send_system(SystemCommand::SetSelection(item.into()));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
                 re_uri::EntryUri::new(origin.clone(), *entry_id),

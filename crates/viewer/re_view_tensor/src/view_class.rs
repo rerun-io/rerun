@@ -17,10 +17,11 @@ use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
-    MaybeVisualizableEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider,
-    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
-    gpu_bridge, suggest_view_for_each_entity,
+    MaybeVisualizableEntities, PerVisualizer, SystemCommand, SystemCommandSender as _,
+    TensorStatsCache, TypedComponentFallbackProvider, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewerContext, VisualizableEntities, gpu_bridge,
+    suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -251,8 +252,10 @@ Set the displayed dimensions in a selection panel.",
         }
 
         if response.clicked() {
-            ctx.selection_state()
-                .set_selection(Item::View(query.view_id));
+            ctx.command_sender()
+                .send_system(SystemCommand::SetSelection(
+                    Item::View(query.view_id).into(),
+                ));
         }
 
         Ok(())

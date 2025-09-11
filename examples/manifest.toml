@@ -124,6 +124,7 @@ examples = [
   "ros_bridge",
   "notebook",
   "notebook_neural_field_2d",
+  "lerobot_loader",
   "urdf_loader",
   "vrs",
   "revy",

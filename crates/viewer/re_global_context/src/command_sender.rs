@@ -91,7 +91,7 @@ pub enum SystemCommand {
     EnableInspectBlueprintTimeline(bool),
 
     /// Set the item selection.
-    SetSelection(crate::Item),
+    SetSelection(crate::ItemCollection),
 
     /// Set the active timeline and time for the given recording.
     SetActiveTime {
@@ -129,6 +129,12 @@ pub enum SystemCommand {
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
+}
+
+impl SystemCommand {
+    pub fn clear_selection() -> Self {
+        Self::SetSelection(crate::ItemCollection::default())
+    }
 }
 
 impl std::fmt::Debug for SystemCommand {
