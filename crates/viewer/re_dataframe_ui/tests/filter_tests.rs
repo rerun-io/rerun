@@ -4,7 +4,7 @@ use arrow::array::{
     Array, ArrayRef, BooleanArray, ListArray, ListBuilder, PrimitiveArray, PrimitiveBuilder,
     StringArray,
 };
-use arrow::buffer::OffsetBuffer;
+use arrow::buffer::{NullBuffer, OffsetBuffer};
 use arrow::datatypes::{
     ArrowPrimitiveType, DataType, Field, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
     Int64Type, Schema, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
@@ -146,8 +146,8 @@ impl TestColumn {
         Self::new(strings_lists, outer_nullable)
     }
 
-    fn bools(nullable: bool) -> Self {
-        Self::new(BooleanArray::from(vec![true, true, false]), nullable)
+    fn bools() -> Self {
+        Self::new(BooleanArray::from(vec![true, true, false]), false)
     }
 
     fn bools_nulls() -> Self {
@@ -157,15 +157,29 @@ impl TestColumn {
         )
     }
 
-    //TODO(ab): rewrite using `primitive_lists`
     fn bool_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
-        let values = BooleanArray::from(vec![true, false, true, true, false, false, true, false]);
+        // the primitive array stuff doesn't work for bools, so we go the manual way.
+        let values = if inner_nullable {
+            BooleanArray::from(vec![
+                Some(true),
+                Some(false),
+                None,
+                Some(true),
+                Some(false),
+                None,
+                Some(true),
+                Some(false),
+            ])
+        } else {
+            BooleanArray::from(vec![true, false, true, true, false, false, true, false])
+        };
+
         let offsets = OffsetBuffer::new(vec![0i32, 1, 2, 4, 6, 8].into());
         let bool_lists = ListArray::try_new(
             Arc::new(Field::new("item", DataType::Boolean, inner_nullable)),
             offsets,
             Arc::new(values),
-            None,
+            outer_nullable.then(|| NullBuffer::from(vec![true, false, true, true, true])),
         )
         .expect("failed to create a bool list array");
 
@@ -521,20 +535,14 @@ async fn test_string_contains_list() {
 async fn test_boolean_equals() {
     filter_snapshot!(
         FilterOperation::BooleanEquals(true),
-        TestColumn::bools(false),
+        TestColumn::bools(),
         "true"
     );
 
     filter_snapshot!(
         FilterOperation::BooleanEquals(false),
-        TestColumn::bools(false),
+        TestColumn::bools(),
         "false"
-    );
-
-    filter_snapshot!(
-        FilterOperation::BooleanEquals(true),
-        TestColumn::bools(true),
-        "nullable_true"
     );
 
     filter_snapshot!(

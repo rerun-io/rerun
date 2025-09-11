@@ -29,19 +29,16 @@ TestResult {
     [
       true,
     ],
+      null,
       BooleanArray
     [
-      false,
-    ],
-      BooleanArray
-    [
-      true,
+      null,
       true,
     ],
       BooleanArray
     [
       false,
-      false,
+      null,
     ],
       BooleanArray
     [
@@ -57,8 +54,13 @@ TestResult {
     ],
       BooleanArray
     [
+      null,
       true,
+    ],
+      BooleanArray
+    [
       true,
+      false,
     ],
     ],
 }
