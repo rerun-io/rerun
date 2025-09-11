@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use egui::{Frame, Margin};
+use jiff::civil::time;
 
 use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
@@ -352,6 +353,10 @@ impl SyntaxHighlighting for FilterOperation {
             Self::Boolean(boolean_filter) => {
                 builder.append_primitive(boolean_filter.operand_text());
             }
+
+            Self::Timestamp(timestamp_filter) => {
+                builder.append(timestamp_filter);
+            }
         }
     }
 }
@@ -470,6 +475,10 @@ impl FilterOperation {
             Self::Boolean(boolean_filter) => {
                 boolean_filter.popup_ui(ui, column_name, &mut action);
             }
+
+            Self::Timestamp(_) => {
+                //todo!()
+            }
         }
 
         action
@@ -482,7 +491,7 @@ impl FilterOperation {
                 operator.to_string()
             }
             Self::StringContains(_) => "contains".to_owned(),
-            Self::Boolean(_) => "is".to_owned(),
+            Self::Boolean(_) | Self::Timestamp(_) => "is".to_owned(),
         }
     }
 }
@@ -490,7 +499,7 @@ impl FilterOperation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::filters::BooleanFilter;
+    use crate::filters::{BooleanFilter, TimestampFilter};
 
     fn test_cases() -> Vec<(FilterOperation, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
@@ -499,7 +508,11 @@ mod tests {
             use FilterOperation::*;
             let _op = StringContains(String::new());
             match _op {
-                IntCompares { .. } | FloatCompares { .. } | StringContains(_) | Boolean(_) => {}
+                IntCompares { .. }
+                | FloatCompares { .. }
+                | StringContains(_)
+                | Boolean(_)
+                | Timestamp(_) => {}
             }
         };
 
@@ -560,6 +573,13 @@ mod tests {
                 FilterOperation::Boolean(BooleanFilter::Nullable(None)),
                 "nullable_boolean_equals_null",
             ),
+            (
+                FilterOperation::Timestamp(TimestampFilter::After(
+                    jiff::Timestamp::from_millisecond(1_000_000_000).unwrap(),
+                )),
+                "timestamp_after",
+            ),
+            //TODO: add more
         ]
         .into_iter()
         .collect()

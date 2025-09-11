@@ -2,14 +2,19 @@ use std::any::Any;
 use std::fmt::Formatter;
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, BooleanArray, ListArray, as_list_array};
-use arrow::datatypes::{DataType, Field};
+use super::TimestampFilter;
+use arrow::array::{Array, ArrayRef, AsArray, BooleanArray, ListArray, as_list_array};
+use arrow::compute::cast;
+use arrow::datatypes::{DataType, Field, TimeUnit};
 use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
     ScalarUDFImpl, Signature, TypeSignature, Volatility,
 };
-use datafusion::prelude::{Column, Expr, array_to_string, col, lit, lower};
+use datafusion::prelude::{Column, Expr, array_has, array_to_string, col, lit, lower};
+
+use re_types_core::Loggable;
+use re_types_core::datatypes::TimeInt;
 
 use super::BooleanFilter;
 
@@ -189,6 +194,8 @@ pub enum FilterOperation {
     StringContains(String),
 
     Boolean(BooleanFilter),
+
+    Timestamp(TimestampFilter),
 }
 
 impl FilterOperation {
@@ -214,6 +221,8 @@ impl FilterOperation {
             DataType::Boolean => Some(Self::Boolean(BooleanFilter::default_for_nullability(
                 nullability,
             ))),
+
+            DataType::Timestamp(_, _) => Some(Self::Timestamp(TimestampFilter::Today)),
 
             _ => None,
         }
@@ -241,7 +250,7 @@ impl FilterOperation {
         field: &Field,
     ) -> Result<Expr, FilterError> {
         match self {
-            Self::IntCompares { .. } | Self::FloatCompares { .. } => {
+            Self::IntCompares { .. } | Self::FloatCompares { .. } | Self::Timestamp(_) => {
                 let udf = FilterOperationUdf::new(self.clone());
                 let udf = ScalarUDF::new_from_impl(udf);
 
@@ -293,21 +302,22 @@ struct FilterOperationUdf {
 
 impl FilterOperationUdf {
     fn new(op: FilterOperation) -> Self {
-        debug_assert!(matches!(
-            op,
-            FilterOperation::IntCompares { .. } | FilterOperation::FloatCompares { .. }
-        ));
+        let type_signature = match op {
+            FilterOperation::IntCompares { .. } | FilterOperation::FloatCompares { .. } => {
+                TypeSignature::Numeric(1)
+            }
 
-        let type_signature = TypeSignature::Numeric(1);
+            //TODO: is that correct?
+            FilterOperation::Timestamp(_) => TypeSignature::Any(1),
 
-        // TODO(ab): add support for other filter types?
-        // let type_signature = match &op {
-        //     FilterOperation::IntCompares { .. } | FilterOperation::FloatCompares { .. } => {
-        //         TypeSignature::Numeric(1)
-        //     }
-        //     FilterOperation::StringContains(_) => TypeSignature::String(1),
-        //     FilterOperation::BooleanEquals(_) => TypeSignature::Exact(vec![DataType::Boolean]),
-        // };
+            // TODO(ab): add support for other filter types?
+            // FilterOperation::StringContains(_) => TypeSignature::String(1),
+            // FilterOperation::BooleanEquals(_) => TypeSignature::Exact(vec![DataType::Boolean]),
+            _ => {
+                debug_assert!(false, "Invalid filter operation");
+                TypeSignature::Any(1)
+            }
+        };
 
         let signature = Signature::one_of(
             vec![
@@ -326,6 +336,14 @@ impl FilterOperationUdf {
     /// Check if the provided _primitive_ type is valid.
     fn is_valid_primitive_input_type(&self, data_type: &DataType) -> bool {
         match data_type {
+            _data_type if _data_type == &TimeInt::arrow_datatype() => {
+                // TimeInt special case: we allow filtering by timestamp on Int64 columns
+                matches!(
+                    &self.op,
+                    FilterOperation::IntCompares { .. } | FilterOperation::Timestamp(_)
+                )
+            }
+
             _data_type if data_type.is_integer() => {
                 matches!(&self.op, FilterOperation::IntCompares { .. })
             }
@@ -393,14 +411,52 @@ impl FilterOperationUdf {
             DataType::Float32 => int_float_case!(FloatCompares, as_float32_array, self.op),
             DataType::Float64 => int_float_case!(FloatCompares, as_float64_array, self.op),
 
+            DataType::Timestamp(TimeUnit::Nanosecond, _) => {
+                let FilterOperation::Timestamp(timestamp_filter) = self.op else {
+                    return exec_err!(
+                        "Incompatible operation and data types {:?} - {}",
+                        self.op,
+                        array.data_type()
+                    );
+                };
+                let array = datafusion::common::cast::as_timestamp_nanosecond_array(array)?;
+                let result: BooleanArray = array
+                    .iter()
+                    .map(|x| x.map(|v| timestamp_filter.apply_nanoseconds(v)))
+                    .collect();
+
+                Ok(result)
+            }
+
             _ => {
                 exec_err!("Unsupported data type {}", array.data_type())
             }
         }
     }
 
-    fn invoke_list_array(&self, array: &ListArray) -> DataFusionResult<BooleanArray> {
-        array
+    fn invoke_list_array(&self, list_array: &ListArray) -> DataFusionResult<BooleanArray> {
+        // TimeInt special case: we cast the Int64 array TimestampNano
+        let cast_list_array = if list_array.values().data_type() == &TimeInt::arrow_datatype()
+            && matches!(self.op, FilterOperation::Timestamp(_))
+        {
+            let DataType::List(field) = list_array.data_type() else {
+                unreachable!("ListArray must have a List data type");
+            };
+            let new_field = Arc::new(Arc::unwrap_or_clone(field.clone()).with_data_type(
+                DataType::Timestamp(TimeUnit::Nanosecond, Some("+00:00".into())),
+            ));
+
+            Some(cast(list_array, &DataType::List(new_field))?)
+        } else {
+            None
+        };
+
+        let cast_list_array = cast_list_array
+            .as_ref()
+            .map(|array| array.as_list())
+            .unwrap_or(list_array);
+
+        cast_list_array
             .iter()
             .map(|maybe_row| {
                 maybe_row.map(|row| {
