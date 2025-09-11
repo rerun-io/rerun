@@ -79,6 +79,10 @@ fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
         default: { texture = vec3f(0.0); }
     }
 
+    // TODO(andreas): We could just pass on vertex & texture alpha here and make use of it.
+    // However, we currently don't have the detection code on the CPU side to flag such meshes as transparent.
+    // Therefore, using alpha here would mean that you get it surprise-enabled once you change the tint & albedo factor.
+    // To avoid that, we simply ignore it for now.
     var albedo = vec4f(texture * in.color, 1.0) * material.albedo_factor;
 
     // The additive tint linear space with unmultiplied/separate (!!) alpha.
