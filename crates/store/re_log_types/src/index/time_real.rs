@@ -142,6 +142,13 @@ impl From<TimeReal> for crate::Duration {
     }
 }
 
+impl From<TimeReal> for TimeInt {
+    #[inline]
+    fn from(time_real: TimeReal) -> Self {
+        Self::new_temporal(time_real.0.to_num())
+    }
+}
+
 // ---------------
 
 impl std::ops::Neg for TimeReal {

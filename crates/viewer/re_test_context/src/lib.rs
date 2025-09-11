@@ -588,6 +588,9 @@ impl TestContext {
                     // This adds new system commands, which will be handled later in the loop.
                     self.go_to_dataset_data(store_id, fragment);
                 }
+                SystemCommand::CopyUrlWithContext { .. } => {
+                    // Ignore copying to clipboard here.
+                }
                 SystemCommand::AppendToStore(store_id, chunks) => {
                     let store_hub = self.store_hub.get_mut();
                     let db = store_hub.entity_db_mut(&store_id);

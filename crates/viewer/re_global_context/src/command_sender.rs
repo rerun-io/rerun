@@ -96,6 +96,13 @@ pub enum SystemCommand {
         fragment: re_uri::Fragment,
     },
 
+    /// Copies an url to the clipboard to the given a display mode, selection range, and url fragment.
+    CopyUrlWithContext {
+        display_mode: crate::DisplayMode,
+        time_range: Option<re_uri::TimeSelection>,
+        fragment: re_uri::Fragment,
+    },
+
     /// Set the item selection.
     SetSelection(crate::ItemCollection),
 
