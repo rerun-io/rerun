@@ -41,7 +41,7 @@ impl<'a> CustomContent<'a> {
         Self {
             ui: Box::new(ui),
             desired_width: Default::default(),
-            buttons: ItemButtons::default(),
+            buttons: ItemButtons::default().with_extend_on_overflow(true),
         }
     }
 
@@ -70,21 +70,21 @@ impl ListItemContent for CustomContent<'_> {
         } = *self;
 
         let mut content_rect = context.rect;
-        buttons.show_and_shrink_rect(ui, context, &mut content_rect);
+        let buttons_rect = buttons.show(ui, context, content_rect, |ui| {
+            // When selected we override the text color so e.g. syntax highlighted code
+            // doesn't become unreadable
+            if context.visuals.selected {
+                ui.visuals_mut().override_text_color = Some(context.visuals.text_color());
+            }
+            content_ui(ui, context);
+        });
 
-        ui.scope_builder(
-            egui::UiBuilder::new()
-                .max_rect(content_rect)
-                .layout(egui::Layout::left_to_right(egui::Align::Center)),
-            |ui| {
-                // When selected we override the text color so e.g. syntax highlighted code
-                // doesn't become unreadable
-                if context.visuals.selected {
-                    ui.visuals_mut().override_text_color = Some(context.visuals.text_color());
-                }
-                content_ui(ui, context);
-            },
-        );
+        // context.layout_info.register_max_item_width(
+        //     ui.ctx(),
+        //     response.response.rect.width()
+        //         + ui.tokens().text_to_icon_padding()
+        //         + buttons_rect.width(),
+        // )
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {

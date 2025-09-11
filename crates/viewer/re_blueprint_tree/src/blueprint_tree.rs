@@ -102,15 +102,12 @@ impl BlueprintTree {
                             );
                         }
                     })
-                    .with_menu_button(
-                        &re_ui::icons::MORE,
-                        "Open menu with more options",
-                        |ui| {
-                            add_new_view_or_container_menu_button(ctx, viewport_blueprint, ui);
-                            set_blueprint_to_default_menu_buttons(ctx, ui);
-                            set_blueprint_to_auto_menu_button(ctx, ui);
-                        },
-                    ),
+                    .with_menu_button(&re_ui::icons::MORE, "Open menu with more options", |ui| {
+                        add_new_view_or_container_menu_button(ctx, viewport_blueprint, ui);
+                        set_blueprint_to_default_menu_buttons(ctx, ui);
+                        set_blueprint_to_auto_menu_button(ctx, ui);
+                    })
+                    .with_always_show_buttons(true),
                 );
             });
         });

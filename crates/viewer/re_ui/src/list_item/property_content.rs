@@ -43,7 +43,7 @@ impl<'a> PropertyContent<'a> {
             icon_fn: None,
             show_only_when_collapsed: true,
             value_fn: None,
-            buttons: ItemButtons::default(),
+            buttons: ItemButtons::default().with_extend_on_overflow(true),
         }
     }
 
@@ -223,12 +223,10 @@ impl ListItemContent for PropertyContent<'_> {
             context.rect.y_range(),
         );
 
-        let mut value_rect = egui::Rect::from_x_y_ranges(
+        let value_rect = egui::Rect::from_x_y_ranges(
             (mid_point_x + Self::COLUMN_SPACING / 2.0)..=context.rect.right(),
             context.rect.y_range(),
         );
-
-        buttons.show_and_shrink_rect(ui, context, &mut value_rect);
 
         let visuals = context.visuals;
 
@@ -295,34 +293,29 @@ impl ListItemContent for PropertyContent<'_> {
         } else {
             true
         };
-        if let Some(value_fn) = value_fn
-            && should_show_value
-        {
-            let mut child_ui = ui.new_child(
-                egui::UiBuilder::new()
-                    .max_rect(value_rect)
-                    .layout(egui::Layout::left_to_right(egui::Align::Center)),
-            );
-            // This sets the default text color for e.g. ui.label, but syntax highlighted
-            // text won't be overridden
-            child_ui
-                .visuals_mut()
-                .widgets
-                .noninteractive
-                .fg_stroke
-                .color = visuals_for_value.text_color();
-            // When selected we override the text color so e.g. syntax highlighted code
-            // doesn't become unreadable
-            if context.visuals.selected {
-                child_ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
-            }
-            value_fn(&mut child_ui, visuals_for_value);
 
-            context.layout_info.register_property_content_max_width(
-                child_ui.ctx(),
-                child_ui.min_rect().right() - context.layout_info.left_x,
-            );
-        }
+        let rect = buttons.show(ui, context, value_rect, |ui| {
+            if let Some(value_fn) = value_fn
+                && should_show_value
+            {
+                // This sets the default text color for e.g. ui.label, but syntax highlighted
+                // text won't be overridden
+                ui.visuals_mut().widgets.noninteractive.fg_stroke.color =
+                    visuals_for_value.text_color();
+                // When selected we override the text color so e.g. syntax highlighted code
+                // doesn't become unreadable
+                if context.visuals.selected {
+                    ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
+                }
+                value_fn(ui, visuals_for_value);
+
+                // TODO:
+            }
+        });
+        context.layout_info.register_property_content_max_width(
+            ui.ctx(),
+            rect.right() - context.layout_info.left_x,
+        );
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {

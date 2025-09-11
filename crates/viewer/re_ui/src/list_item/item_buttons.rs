@@ -8,6 +8,7 @@ type ButtonFn<'a> = Box<dyn FnOnce(&mut egui::Ui) + 'a>;
 pub struct ItemButtons<'a> {
     buttons: Vec<ButtonFn<'a>>,
     always_show_buttons: bool,
+    extend_on_overflow: bool,
 }
 
 impl Clone for ItemButtons<'_> {
@@ -51,44 +52,57 @@ impl<'a> ItemButtons<'a> {
             || self.always_show_buttons
     }
 
-    pub fn show_and_shrink_rect(
+    pub fn show(
         self,
         ui: &mut egui::Ui,
         context: &ContentContext<'_>,
-        rect: &mut egui::Rect,
-    ) {
-        if self.buttons.is_empty() || !self.should_show_buttons(context) {
-            return;
-        }
-
+        rect: egui::Rect,
+        content: impl FnOnce(&mut egui::Ui),
+    ) -> egui::Rect {
         let mut ui = ui.new_child(
             egui::UiBuilder::new()
-                .max_rect(*rect)
-                .layout(egui::Layout::right_to_left(egui::Align::Center)),
+                .max_rect(rect)
+                .layout(egui::Layout::left_to_right(egui::Align::Center)),
         );
 
-        let tokens = ui.tokens();
-        if context.list_item.selected {
-            // Icons and text get different colors when they are on a selected background:
-            let visuals = ui.visuals_mut();
+        let mut sides = egui::Sides::new()
+            .spacing(ui.tokens().text_to_icon_padding())
+            .height(rect.height());
+        if self.extend_on_overflow {
+            sides = sides.extend();
+        } else {
+            sides = sides.shrink_left();
+        };
 
-            visuals.widgets.noninteractive.weak_bg_fill = egui::Color32::TRANSPARENT;
-            visuals.widgets.inactive.weak_bg_fill = egui::Color32::TRANSPARENT;
-            visuals.widgets.active.weak_bg_fill = tokens.surface_on_primary_hovered;
-            visuals.widgets.hovered.weak_bg_fill = tokens.surface_on_primary_hovered;
+        // TODO: Properly handle empty case:
+        // if self.buttons.is_empty() || !self.should_show_buttons(context) {
+        //     return egui::Rect::ZERO;
+        // }
 
-            visuals.widgets.noninteractive.fg_stroke.color = tokens.icon_color_on_primary;
-            visuals.widgets.inactive.fg_stroke.color = tokens.icon_color_on_primary;
-            visuals.widgets.active.fg_stroke.color = tokens.icon_color_on_primary_hovered;
-            visuals.widgets.hovered.fg_stroke.color = tokens.icon_color_on_primary_hovered;
-        }
+        sides.show(&mut ui, content, |ui| {
+            let tokens = ui.tokens();
+            if context.list_item.selected {
+                // Icons and text get different colors when they are on a selected background:
+                let visuals = ui.visuals_mut();
 
-        for button in self.buttons {
-            button(&mut ui);
-        }
+                visuals.widgets.noninteractive.weak_bg_fill = egui::Color32::TRANSPARENT;
+                visuals.widgets.inactive.weak_bg_fill = egui::Color32::TRANSPARENT;
+                visuals.widgets.active.weak_bg_fill = tokens.surface_on_primary_hovered;
+                visuals.widgets.hovered.weak_bg_fill = tokens.surface_on_primary_hovered;
 
-        let used_rect = ui.min_rect();
-        rect.max.x -= used_rect.width() + tokens.text_to_icon_padding();
+                visuals.widgets.noninteractive.fg_stroke.color = tokens.icon_color_on_primary;
+                visuals.widgets.inactive.fg_stroke.color = tokens.icon_color_on_primary;
+                visuals.widgets.active.fg_stroke.color = tokens.icon_color_on_primary_hovered;
+                visuals.widgets.hovered.fg_stroke.color = tokens.icon_color_on_primary_hovered;
+            }
+
+            for button in self.buttons {
+                button(ui);
+            }
+        });
+
+        ui.advance_cursor_after_rect(ui.min_rect());
+        ui.min_rect()
     }
 }
 
@@ -98,6 +112,23 @@ where
 {
     fn buttons(&self) -> &ItemButtons<'a>;
     fn buttons_mut(&mut self) -> &mut ItemButtons<'a>;
+
+    /// Always show the buttons.
+    ///
+    /// By default, buttons are only shown when the item is hovered or selected. By setting this to
+    /// `true`, the buttons are always shown.
+    #[inline]
+    fn with_always_show_buttons(mut self, always_show: bool) -> Self {
+        self.buttons_mut().always_show_buttons = always_show;
+        self
+    }
+
+    /// Allocate more space than available if needed.
+    #[inline]
+    fn with_extend_on_overflow(mut self, extend_on_overflow: bool) -> Self {
+        self.buttons_mut().extend_on_overflow = extend_on_overflow;
+        self
+    }
 
     /// Add a single widget.
     ///
@@ -136,16 +167,6 @@ where
     #[inline]
     fn with_buttons(mut self, buttons: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
         self.buttons_mut().add_buttons(buttons);
-        self
-    }
-
-    /// Always show the buttons.
-    ///
-    /// By default, buttons are only shown when the item is hovered or selected. By setting this to
-    /// `true`, the buttons are always shown.
-    #[inline]
-    fn with_always_show_buttons(mut self, always_show: bool) -> Self {
-        self.buttons_mut().always_show_buttons = always_show;
         self
     }
 
@@ -218,5 +239,15 @@ where
     #[inline]
     fn with_help_ui(self, help: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
         self.with_button(|ui: &mut egui::Ui| ui.help_button(help))
+    }
+}
+
+impl<'a> ListItemContentButtonsExt<'a> for ItemButtons<'a> {
+    fn buttons(&self) -> &ItemButtons<'a> {
+        self
+    }
+
+    fn buttons_mut(&mut self) -> &mut ItemButtons<'a> {
+        self
     }
 }

@@ -184,7 +184,8 @@ impl FilterState {
                         || {
                             toggle_search_clicked = true;
                         },
-                    ),
+                    )
+                    .with_always_show_buttons(true),
                 );
         });
 

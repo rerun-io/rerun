@@ -344,9 +344,10 @@ impl RightPanel {
                             "CustomContent with an action button",
                         );
                     })
-                    .action_button(&re_ui::icons::ADD, "Add", || {
+                    .with_action_button(&re_ui::icons::ADD, "Add", || {
                         re_log::warn!("Add button clicked");
-                    }),
+                    })
+                    .with_always_show_buttons(true),
                 );
             },
         );
