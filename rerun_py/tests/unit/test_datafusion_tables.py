@@ -111,6 +111,7 @@ def server_instance() -> Generator[tuple[subprocess.Popen[str], DatasetEntry], N
         # Server can be noisy by default
         env["RUST_LOG"] = "warning"
 
+    # TODO(#11173): pick a free port
     cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH)]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
