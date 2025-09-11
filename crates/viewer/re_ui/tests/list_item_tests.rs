@@ -215,7 +215,8 @@ pub fn test_list_items_should_match_snapshot() {
                             "CustomContent with an action button",
                         );
                     })
-                    .action_button(&icons::ADD, "Add", || {}),
+                    .with_action_button(&icons::ADD, "Add", || {})
+                    .with_always_show_buttons(true),
                 );
             },
         );

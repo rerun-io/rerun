@@ -1,6 +1,7 @@
 use egui::Vec2;
 
 use re_ui::filter_widget::FilterState;
+use re_ui::list_item::list_item_scope;
 
 #[test]
 pub fn test_filter_widget() {
@@ -10,10 +11,12 @@ pub fn test_filter_widget() {
 
         FilterState::default().section_title_ui(ui, egui::RichText::new("Small").strong());
 
-        FilterState::default().section_title_ui(
-            ui,
-            egui::RichText::new("Expanding available width").strong(),
-        );
+        list_item_scope(ui, "expanding", |ui| {
+            FilterState::default().section_title_ui(
+                ui,
+                egui::RichText::new("Expanding available width").strong(),
+            );
+        });
 
         ui.set_width(600.0);
         ui.set_max_width(600.0);

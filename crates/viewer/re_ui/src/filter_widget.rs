@@ -4,6 +4,7 @@ use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools as _;
 use smallvec::SmallVec;
 
+use crate::list_item::ListItemContentButtonsExt;
 use crate::{UiExt as _, icons, list_item};
 
 /// State for the filter widget when it is toggled on.
@@ -169,7 +170,7 @@ impl FilterState {
                         }
                     })
                     .with_content_width(text_width)
-                    .action_button(
+                    .with_action_button(
                         if is_searching {
                             &icons::CLOSE
                         } else {
@@ -183,7 +184,8 @@ impl FilterState {
                         || {
                             toggle_search_clicked = true;
                         },
-                    ),
+                    )
+                    .with_always_show_buttons(true),
                 );
         });
 

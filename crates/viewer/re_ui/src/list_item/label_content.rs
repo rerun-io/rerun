@@ -1,4 +1,4 @@
-use egui::{Align, Align2, NumExt as _, RichText, Ui, text::TextWrapping};
+use egui::{Align, Align2, NumExt as _, RichText, Ui, Widget, text::TextWrapping};
 use std::sync::Arc;
 
 use super::{
@@ -200,33 +200,35 @@ impl ListItemContent for LabelContent<'_> {
             icon_fn(ui, icon_rect, visuals);
         }
 
-        buttons.show_and_shrink_rect(ui, context, &mut text_rect);
-
-        // Draw text
-        let mut layout_job = Arc::unwrap_or_clone(text.into_layout_job(
-            ui.style(),
-            egui::FontSelection::Default,
-            Align::LEFT,
-        ));
-        layout_job.wrap = TextWrapping::from_wrap_mode_and_width(text_wrap_mode, text_rect.width());
-
-        let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
-
-        // this happens here to avoid cloning the text
-        context.response.widget_info(|| {
-            egui::WidgetInfo::selected(
-                egui::WidgetType::SelectableLabel,
-                ui.is_enabled(),
-                context.list_item.selected,
-                galley.text(),
-            )
+        buttons.show(ui, context, text_rect, |ui| {
+            egui::Label::new(text).selectable(false).ui(ui);
         });
 
-        let text_pos = Align2::LEFT_CENTER
-            .align_size_within_rect(galley.size(), text_rect)
-            .min;
+        // // Draw text
+        // let mut layout_job = Arc::unwrap_or_clone(text.into_layout_job(
+        //     ui.style(),
+        //     egui::FontSelection::Default,
+        //     Align::LEFT,
+        // ));
+        // layout_job.wrap = TextWrapping::from_wrap_mode_and_width(text_wrap_mode, text_rect.width());
 
-        ui.painter().galley(text_pos, galley, text_color);
+        // let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
+
+        // this happens here to avoid cloning the text
+        // context.response.widget_info(|| {
+        //     egui::WidgetInfo::selected(
+        //         egui::WidgetType::SelectableLabel,
+        //         ui.is_enabled(),
+        //         context.list_item.selected,
+        //         galley.text(),
+        //     )
+        // });
+        //
+        // let text_pos = Align2::LEFT_CENTER
+        //     .align_size_within_rect(galley.size(), text_rect)
+        //     .min;
+        //
+        // ui.painter().galley(text_pos, galley, text_color);
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {

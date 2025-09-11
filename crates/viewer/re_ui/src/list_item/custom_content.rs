@@ -1,7 +1,9 @@
 use egui::{NumExt as _, Ui};
 
 use crate::UiExt as _;
-use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
+use crate::list_item::{
+    ContentContext, DesiredWidth, ItemButtons, ListItemContent, ListItemContentButtonsExt,
+};
 
 /// Control how the [`CustomContent`] advertises its width.
 #[derive(Debug, Clone, Copy)]
@@ -26,8 +28,7 @@ pub struct CustomContent<'a> {
     ui: Box<dyn FnOnce(&mut egui::Ui, &ContentContext<'_>) + 'a>,
     desired_width: CustomContentDesiredWidth,
 
-    //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
-    button: Option<Box<dyn super::ItemButton + 'a>>,
+    buttons: ItemButtons<'a>,
 }
 
 impl<'a> CustomContent<'a> {
@@ -40,7 +41,7 @@ impl<'a> CustomContent<'a> {
         Self {
             ui: Box::new(ui),
             desired_width: Default::default(),
-            button: None,
+            buttons: ItemButtons::default().with_extend_on_overflow(true),
         }
     }
 
@@ -58,71 +59,6 @@ impl<'a> CustomContent<'a> {
         self.desired_width = CustomContentDesiredWidth::ContentWidth(desired_content_width);
         self
     }
-
-    /// Add a right-aligned [`super::ItemButton`].
-    ///
-    /// Note: for aesthetics, space is always reserved for the action button.
-    // TODO(#6191): accept multiple calls for this function for multiple actions.
-    #[inline]
-    pub fn button(mut self, button: impl super::ItemButton + 'a) -> Self {
-        // TODO(#6191): support multiple action buttons
-        assert!(
-            self.button.is_none(),
-            "Only one action button is supported right now"
-        );
-
-        self.button = Some(Box::new(button));
-        self
-    }
-
-    /// Helper to add an [`super::ItemActionButton`] to the right of the item.
-    ///
-    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
-    /// and is also how we can query the button in tests.
-    ///
-    /// See [`Self::button`] for more information.
-    #[inline]
-    pub fn action_button(
-        self,
-        icon: &'static crate::icons::Icon,
-        alt_text: impl Into<String>,
-        on_click: impl FnOnce() + 'a,
-    ) -> Self {
-        self.action_button_with_enabled(icon, alt_text, true, on_click)
-    }
-
-    /// Helper to add an enabled/disabled [`super::ItemActionButton`] to the right of the item.
-    ///
-    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
-    /// and is also how we can query the button in tests.
-    ///
-    /// See [`Self::button`] for more information.
-    #[inline]
-    pub fn action_button_with_enabled(
-        self,
-        icon: &'static crate::icons::Icon,
-        alt_text: impl Into<String>,
-        enabled: bool,
-        on_click: impl FnOnce() + 'a,
-    ) -> Self {
-        self.button(super::ItemActionButton::new(icon, alt_text, on_click).enabled(enabled))
-    }
-
-    /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
-    ///
-    /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
-    /// and is also how we can query the button in tests.
-    ///
-    /// See [`Self::button`] for more information.
-    #[inline]
-    pub fn menu_button(
-        self,
-        icon: &'static crate::icons::Icon,
-        alt_text: impl Into<String>,
-        add_contents: impl FnOnce(&mut egui::Ui) + 'a,
-    ) -> Self {
-        self.button(super::ItemMenuButton::new(icon, alt_text, add_contents))
-    }
 }
 
 impl ListItemContent for CustomContent<'_> {
@@ -130,67 +66,43 @@ impl ListItemContent for CustomContent<'_> {
         let Self {
             ui: content_ui,
             desired_width: _,
-            button,
+            buttons,
         } = *self;
 
-        let tokens = ui.tokens();
-        let button_dimension = tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
+        let mut content_rect = context.rect;
+        let buttons_rect = buttons.show(ui, context, content_rect, |ui| {
+            // When selected we override the text color so e.g. syntax highlighted code
+            // doesn't become unreadable
+            if context.visuals.selected {
+                ui.visuals_mut().override_text_color = Some(context.visuals.text_color());
+            }
+            content_ui(ui, context);
+        });
 
-        let content_width = if button.is_some() {
-            (context.rect.width() - button_dimension - tokens.text_to_icon_padding()).at_least(0.0)
-        } else {
-            context.rect.width()
-        };
-
-        let content_rect = egui::Rect::from_min_size(
-            context.rect.min,
-            egui::vec2(content_width, context.rect.height()),
-        );
-
-        ui.scope_builder(
-            egui::UiBuilder::new()
-                .max_rect(content_rect)
-                .layout(egui::Layout::left_to_right(egui::Align::Center)),
-            |ui| {
-                // When selected we override the text color so e.g. syntax highlighted code
-                // doesn't become unreadable
-                if context.visuals.selected {
-                    ui.visuals_mut().override_text_color = Some(context.visuals.text_color());
-                }
-                content_ui(ui, context);
-            },
-        );
-
-        if let Some(button) = button {
-            let action_button_rect = egui::Rect::from_center_size(
-                context.rect.right_center() - egui::vec2(button_dimension / 2.0, 0.0),
-                egui::Vec2::splat(button_dimension),
-            );
-
-            // the right to left layout is used to mimic LabelContent's buttons behavior and get a
-            // better alignment
-            let mut child_ui = ui.new_child(
-                egui::UiBuilder::new()
-                    .max_rect(action_button_rect)
-                    .layout(egui::Layout::right_to_left(egui::Align::Center)),
-            );
-
-            button.ui(&mut child_ui);
-        }
+        // context.layout_info.register_max_item_width(
+        //     ui.ctx(),
+        //     response.response.rect.width()
+        //         + ui.tokens().text_to_icon_padding()
+        //         + buttons_rect.width(),
+        // )
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
         match self.desired_width {
             CustomContentDesiredWidth::DesiredWidth(desired_width) => desired_width,
             CustomContentDesiredWidth::ContentWidth(mut content_width) => {
-                if self.button.is_some() {
-                    let tokens = ui.tokens();
-                    content_width += tokens.small_icon_size.x
-                        + 2.0 * ui.spacing().button_padding.x
-                        + tokens.text_to_icon_padding();
-                }
                 DesiredWidth::AtLeast(content_width)
             }
         }
+    }
+}
+
+impl<'a> ListItemContentButtonsExt<'a> for CustomContent<'a> {
+    fn buttons(&self) -> &ItemButtons<'a> {
+        &self.buttons
+    }
+
+    fn buttons_mut(&mut self) -> &mut ItemButtons<'a> {
+        &mut self.buttons
     }
 }
