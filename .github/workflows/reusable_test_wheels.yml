@@ -176,7 +176,7 @@ jobs:
 
       - name: Run unit tests
         if: ${{ inputs.PLATFORM != 'linux-arm64' }}
-        # We've seen some spurious network errors here… easier to retry than to fix :(
+        # TODO(#11173): fix the test instead of retrying
         uses: nick-fields/retry@v3
         with:
           max_attempts: 2
