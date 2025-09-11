@@ -42,6 +42,7 @@ egui.workspace = true
 egui_dnd.workspace = true
 egui_table.workspace = true
 itertools.workspace = true
+jiff.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
