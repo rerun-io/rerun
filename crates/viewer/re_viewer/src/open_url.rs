@@ -233,6 +233,7 @@ impl ViewerOpenUrl {
                         }
                         #[cfg(target_arch = "wasm32")]
                         {
+                            _ = path_buf;
                             Err(anyhow::anyhow!(
                                 "Can't share links to local files on the web."
                             ))

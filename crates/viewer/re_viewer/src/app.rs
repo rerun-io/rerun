@@ -559,8 +559,15 @@ impl App {
 
         let Ok(url) = crate::open_url::ViewerOpenUrl::new(
             store_hub,
-            UrlContext::from_context_expanded(display_mode, time_ctrl.as_deref(), selection)
-                .without_time_range(),
+            UrlContext::from_context_expanded(
+                display_mode,
+                time_ctrl
+                    .as_deref()
+                    // Only update `when` fragment when paused.
+                    .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused)),
+                selection,
+            )
+            .without_time_range(),
         )
         // History entries expect the url parameter, not the full url, therefore don't pass a base url.
         .and_then(|url| url.sharable_url(None)) else {
