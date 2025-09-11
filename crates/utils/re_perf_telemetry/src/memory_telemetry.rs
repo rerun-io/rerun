@@ -30,7 +30,7 @@ pub fn install_memory_use_meters() {
     // Turn on the accounting allocator:
     re_memory::accounting_allocator::set_tracking_callstacks(true);
 
-    // Perioidically check memory usage:
+    // Periodically check memory usage:
     tokio::spawn(memory_monitor_task());
 }
 
