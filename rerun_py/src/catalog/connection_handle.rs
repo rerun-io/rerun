@@ -300,12 +300,13 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    #[allow(clippy::fn_params_excessive_bools)]
+    #[allow(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
     pub fn do_maintenance(
         &self,
         py: Python<'_>,
         dataset_id: EntryId,
-        build_scalar_indexes: bool,
+        optimize_indexes: bool,
+        retrain_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
         unsafe_allow_recent_cleanup: bool,
@@ -317,7 +318,8 @@ impl ConnectionHandle {
                     .await?
                     .do_maintenance(
                         dataset_id,
-                        build_scalar_indexes,
+                        optimize_indexes,
+                        retrain_indexes,
                         compact_fragments,
                         cleanup_before,
                         unsafe_allow_recent_cleanup,
