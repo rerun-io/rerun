@@ -1,5 +1,5 @@
 use crate::find_and_deserialize_archetype_mono_component;
-use egui::{Button, NumExt as _, Rangef, Vec2};
+use egui::{NumExt as _, Rangef, Vec2};
 use re_chunk_store::UnitChunkShared;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::components;
@@ -7,11 +7,11 @@ use re_types::components::MediaType;
 use re_types::datatypes::{ChannelDatatype, ColorModel};
 use re_types::image::ImageKind;
 use re_types_core::{Component as _, ComponentDescriptor, RowId};
-use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::gpu_bridge::image_data_range_heuristic;
 use re_viewer_context::{
-    ColormapWithRange, ImageInfo, ImageStats, ImageStatsCache, UiLayout, ViewerContext,
+    ColormapWithRange, ImageInfo, ImageStatsCache, UiLayout, ViewerContext,
     gpu_bridge::{self, image_to_gpu},
 };
 
@@ -234,7 +234,6 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
 pub struct ImageUi {
     image: ImageInfo,
     data_range: Rangef,
-    image_stats: ImageStats,
     colormap_with_range: Option<ColormapWithRange>,
 }
 
@@ -248,7 +247,6 @@ impl ImageUi {
         Self {
             image,
             data_range,
-            image_stats,
             colormap_with_range: None,
         }
     }
@@ -337,7 +335,6 @@ impl ImageUi {
         Some(Self {
             image,
             data_range,
-            image_stats,
             colormap_with_range,
         })
     }
@@ -400,8 +397,7 @@ impl ImageUi {
     ) {
         let Self {
             image,
-            data_range,
-            image_stats,
+            data_range: _,
             colormap_with_range,
         } = self;
 
@@ -420,7 +416,7 @@ impl ImageUi {
         }
 
         ui.list_item_flat_noninteractive(
-            PropertyContent::new("Image format").value_text(image.format.to_string()),
+            list_item::PropertyContent::new("Image format").value_text(image.format.to_string()),
         );
 
         // TODO(emilk): we should really support histograms for all types of images
