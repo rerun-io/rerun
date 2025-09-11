@@ -956,6 +956,18 @@ impl RerunCloudService for RerunCloudHandler {
             "do_maintenance not implemented",
         ))
     }
+
+    async fn do_global_maintenance(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::DoGlobalMaintenanceRequest>,
+    ) -> Result<
+        tonic::Response<re_protos::cloud::v1alpha1::DoGlobalMaintenanceResponse>,
+        tonic::Status,
+    > {
+        Err(tonic::Status::unimplemented(
+            "do_global_maintenance not implemented",
+        ))
+    }
 }
 
 /// Retrieves the entry ID based on HTTP headers.
