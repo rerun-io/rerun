@@ -2827,7 +2827,7 @@ impl eframe::App for App {
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
-        // We don't want to spam the history API with changes, because
+        // We don't want to spam the web history API with changes, because
         // otherwise it will start complaining about it being an insecure
         // operation.
         //
