@@ -79,7 +79,7 @@ struct GlobalStats {
     /// Never capture callstacks for allocations smaller than this.
     pub small_size: AtomicUsize,
 
-    /// Allocations smaller than are stochastically sampled.
+    /// Allocations smaller than this are stochastically sampled.
     /// Allocations larger than this are fully sampled.
     pub medium_size: AtomicUsize,
 
