@@ -356,16 +356,36 @@ impl SyntaxHighlighting for FilterOperation {
     }
 }
 
-fn comparison_op_ui(ui: &mut egui::Ui, text: egui::WidgetText, op: &mut ComparisonOperator) {
-    egui::ComboBox::new("comp_op", "")
-        .selected_text(text)
-        .show_ui(ui, |ui| {
-            for possible_op in crate::filters::ComparisonOperator::ALL {
-                if ui.button(possible_op.to_string()).clicked() {
-                    *op = *possible_op;
+fn numerical_comparison_operator_ui(
+    ui: &mut egui::Ui,
+    column_name: &str,
+    operator_text: &str,
+    op: &mut ComparisonOperator,
+) {
+    ui.horizontal(|ui| {
+        ui.label(SyntaxHighlightedBuilder::body(column_name).into_widget_text(ui.style()));
+
+        egui::ComboBox::new("comp_op", "")
+            .selected_text(
+                SyntaxHighlightedBuilder::keyword(operator_text).into_widget_text(ui.style()),
+            )
+            .show_ui(ui, |ui| {
+                for possible_op in crate::filters::ComparisonOperator::ALL {
+                    if ui.button(possible_op.to_string()).clicked() {
+                        *op = *possible_op;
+                    }
                 }
-            }
-        });
+            });
+    });
+}
+
+fn basic_operation_ui(ui: &mut egui::Ui, column_name: &str, operator_text: &str) {
+    ui.label(
+        SyntaxHighlightedBuilder::body(column_name)
+            .with_keyword(" ")
+            .with_keyword(operator_text)
+            .into_widget_text(ui.style()),
+    );
 }
 
 impl FilterOperation {
@@ -396,15 +416,13 @@ impl FilterOperation {
             }
         };
 
-        let mut top_text_builder = SyntaxHighlightedBuilder::new();
-        top_text_builder.append_body(column_name);
-        top_text_builder.append_keyword(" ");
-        top_text_builder.append_keyword(&self.operator_text());
-        let top_text = top_text_builder.into_widget_text(ui.style());
+        let operator_text = self.operator_text();
 
+        // TODO(ab): this is getting unwieldy. All arms should have an independent inner struct,
+        // which all handle their own UI.
         match self {
             Self::IntCompares { operator, value } => {
-                comparison_op_ui(ui, top_text, operator);
+                numerical_comparison_operator_ui(ui, column_name, &operator_text, operator);
 
                 let mut value_str = value.map(|v| v.to_string()).unwrap_or_default();
                 let response = ui.text_edit_singleline(&mut value_str);
@@ -420,7 +438,7 @@ impl FilterOperation {
             }
 
             Self::FloatCompares { operator, value } => {
-                comparison_op_ui(ui, top_text, operator);
+                numerical_comparison_operator_ui(ui, column_name, &operator_text, operator);
 
                 let mut value_str = value.map(|v| v.to_string()).unwrap_or_default();
                 let response = ui.text_edit_singleline(&mut value_str);
@@ -436,14 +454,16 @@ impl FilterOperation {
             }
 
             Self::StringContains(query) => {
-                ui.label(top_text);
+                basic_operation_ui(ui, column_name, &operator_text);
+
                 let response = ui.text_edit_singleline(query);
 
                 process_text_edit_response(ui, &response);
             }
 
             Self::BooleanEquals(query) => {
-                ui.label(top_text);
+                basic_operation_ui(ui, column_name, &operator_text);
+
                 if ui.re_radio_value(query, true, "true").clicked()
                     || ui.re_radio_value(query, false, "false").clicked()
                 {
