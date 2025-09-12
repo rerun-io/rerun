@@ -143,8 +143,20 @@ impl FilterState {
                 for row in rows {
                     ui.horizontal(|ui| {
                         for index in row {
-                            let filter_id = ui.make_persistent_id(index);
                             let filter = &mut self.filters[index];
+
+                            // egui uses this id to store the popup openness and size information,
+                            // so we must invalidate if the filter at a given index changes its
+                            // nature
+                            let filter_id = ui.make_persistent_id(egui::Id::new(index).with(
+                                match filter.operation {
+                                    FilterOperation::IntCompares { .. } => "int",
+                                    FilterOperation::FloatCompares { .. } => "float",
+                                    FilterOperation::StringContains(_) => "string",
+                                    FilterOperation::BooleanEquals(_) => "bool",
+                                },
+                            ));
+
                             let prepared_ui = &prepared_uis[index];
 
                             let result =
