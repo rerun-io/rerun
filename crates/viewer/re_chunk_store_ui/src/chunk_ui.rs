@@ -49,6 +49,8 @@ impl ChunkUi {
 
     // Return `true` if the user wants to exit the chunk viewer.
     pub(crate) fn ui(&mut self, ui: &mut egui::Ui, timestamp_format: TimestampFormat) -> bool {
+        ui.sanity_check();
+
         let tokens = ui.tokens();
 
         let table_style = re_ui::TableStyle::Dense;

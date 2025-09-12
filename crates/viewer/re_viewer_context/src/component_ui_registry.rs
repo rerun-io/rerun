@@ -343,6 +343,8 @@ impl ComponentUiRegistry {
         unit: &UnitChunkShared,
         instance: &Instance,
     ) {
+        ui.sanity_check();
+
         // Don't use component.raw_instance here since we want to handle the case where there's several
         // elements differently.
         // Also, it allows us to slice the array without cloning any elements.
@@ -381,6 +383,8 @@ impl ComponentUiRegistry {
             unit.row_id(),
             component_raw.as_ref(),
         );
+
+        ui.sanity_check();
     }
 
     /// Show a UI for a single raw component.

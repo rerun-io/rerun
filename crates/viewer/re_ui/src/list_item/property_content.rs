@@ -173,6 +173,8 @@ impl<'a> PropertyContent<'a> {
 
 impl ListItemContent for PropertyContent<'_> {
     fn ui(self: Box<Self>, ui: &mut Ui, context: &ContentContext<'_>) {
+        ui.sanity_check();
+
         let Self {
             label,
             min_desired_width: _,
@@ -256,7 +258,7 @@ impl ListItemContent for PropertyContent<'_> {
 
         context
             .layout_info
-            .register_desired_left_column_width(ui.ctx(), desired_width);
+            .register_desired_left_column_width(ui, desired_width);
 
         let galley = if desired_galley.size().x <= label_rect.width() {
             desired_galley
@@ -316,16 +318,21 @@ impl ListItemContent for PropertyContent<'_> {
             if context.visuals.selected {
                 child_ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
             }
+
+            child_ui.sanity_check();
             value_fn(&mut child_ui, visuals_for_value);
+            child_ui.sanity_check();
 
             context.layout_info.register_property_content_max_width(
-                child_ui.ctx(),
+                &child_ui,
                 child_ui.min_rect().right() - context.layout_info.left_x,
             );
         }
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
+        ui.sanity_check();
+
         let layout_info = LayoutInfoStack::top(ui.ctx());
 
         if crate::is_in_resizable_panel(ui) {

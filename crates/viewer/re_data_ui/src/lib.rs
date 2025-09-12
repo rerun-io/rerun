@@ -7,6 +7,7 @@
 use re_log_types::EntityPath;
 use re_types::reflection::ComponentDescriptorExt as _;
 use re_types::{ComponentDescriptor, RowId};
+use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 mod annotation_context;
@@ -90,7 +91,9 @@ pub trait DataUi {
 
     /// Called [`Self::data_ui`] using the default query and recording.
     fn data_ui_recording(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
+        ui.sanity_check();
         self.data_ui(ctx, ui, ui_layout, &ctx.current_query(), ctx.recording());
+        ui.sanity_check();
     }
 }
 

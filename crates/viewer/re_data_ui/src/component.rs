@@ -26,6 +26,8 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
     ) {
         re_tracing::profile_function!(self.component_path.component_descriptor.display_name());
 
+        ui.sanity_check();
+
         let tokens = ui.tokens();
 
         let ComponentPath {
@@ -218,5 +220,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                 ));
             }
         }
+
+        ui.sanity_check();
     }
 }
