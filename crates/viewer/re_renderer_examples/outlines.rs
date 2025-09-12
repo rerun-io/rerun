@@ -117,7 +117,7 @@ impl framework::Example for Outlines {
                         ) * instance.world_from_mesh,
                         outline_mask_ids: props.outline_mask_ids,
                         picking_layer_id: Default::default(),
-                        additive_tint: Color32::TRANSPARENT,
+                        additive_tint: Color32::BLACK,
                     })
             })
             .collect_vec();

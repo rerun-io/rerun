@@ -44,6 +44,8 @@ table Cylinders3D (
   quaternions: [rerun.components.PoseRotationQuat] ("attr.rerun.component_optional", nullable, order: 2200);
 
   /// Optional colors for the cylinders.
+  ///
+  /// Alpha channel is used for transparency for solid fill-mode.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2300);
 
   // --- Optional ---
