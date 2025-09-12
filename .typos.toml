@@ -176,5 +176,5 @@ extend-ignore-re = [
 
   "muh_scalars", # Weird name introduced in `crates/viewer/re_view_time_series/tests/basic.rs` introduced in https://github.com/rerun-io/rerun/pull/10713
 
-  "Isse", # Name
+  "isse", # Name
 ]
