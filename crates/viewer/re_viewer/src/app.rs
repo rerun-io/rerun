@@ -1488,12 +1488,12 @@ impl App {
             }
 
             UICommand::Share => {
-                if let Ok(url_for_current_screen) =
-                    ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode.clone())
+                if let Err(err) = self
+                    .state
+                    .share_modal
+                    .open(storage_context.hub, display_mode)
                 {
-                    self.state.share_modal.open(url_for_current_screen);
-                } else {
-                    re_log::error!("Cannot share link to current screen.");
+                    re_log::error!("Cannot share link to current screen: {err}");
                 }
             }
             UICommand::CopyDirectLink => {
@@ -1642,17 +1642,7 @@ impl App {
     }
 
     fn run_copy_link_command(&mut self, store_hub: &StoreHub, context: UrlContext) {
-        // TODO(rerun-io/dataplatform#2663): Should take into account dataplatform URLs if any are provided.
-        let base_url;
-        #[cfg(target_arch = "wasm32")]
-        {
-            use crate::web_tools::JsResultExt as _;
-            base_url = crate::web_tools::current_base_url().ok_or_log_js_error();
-        };
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            base_url = None;
-        };
+        let base_url = web_viewer_base_url();
 
         match crate::open_url::ViewerOpenUrl::new(store_hub, context)
             .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
@@ -3204,4 +3194,17 @@ async fn async_save_dialog(
         messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")
+}
+
+pub fn web_viewer_base_url() -> Option<url::Url> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        crate::web_tools::current_base_url().ok()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
+        url::Url::parse("https://rerun.io/viewer").ok()
+    }
 }

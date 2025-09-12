@@ -9,9 +9,9 @@ use re_ui::{
     modal::{ModalHandler, ModalWrapper},
 };
 use re_uri::Fragment;
-use re_viewer_context::{DisplayMode, Item, RecordingConfig, StoreHub};
+use re_viewer_context::{DisplayMode, Item, RecordingConfig, StoreHub, UrlContext};
 
-use crate::{app::web_viewer_base_url, open_url::ViewerOpenUrl};
+use crate::open_url::ViewerOpenUrl;
 
 const COPIED_FEEDBACK_DURATION: Duration = Duration::from_millis(500);
 
@@ -43,9 +43,26 @@ impl Default for ShareModal {
 }
 
 impl ShareModal {
-    pub fn open(&mut self, url_for_current_screen: ViewerOpenUrl) {
+    /// URL for the current screen, used as a starting point for the modal.
+    fn current_url(
+        store_hub: &StoreHub,
+        display_mode: &DisplayMode,
+    ) -> anyhow::Result<ViewerOpenUrl> {
+        // TODO: add more to the url context.
+        ViewerOpenUrl::new(store_hub, UrlContext::new(display_mode.clone()))
+    }
+
+    /// Opens the share modal with the current URL.
+    pub fn open(&mut self, store_hub: &StoreHub, display_mode: &DisplayMode) -> anyhow::Result<()> {
+        let url = Self::current_url(store_hub, display_mode)?;
+        self.open_with_url(url);
+        Ok(())
+    }
+
+    /// Opens the share modal with the given URL.
+    fn open_with_url(&mut self, url: ViewerOpenUrl) {
+        self.url = Some(url);
         self.modal.open();
-        self.url = Some(url_for_current_screen);
     }
 
     /// Button that opens the share popup.
@@ -57,8 +74,7 @@ impl ShareModal {
     ) {
         re_tracing::profile_function!();
 
-        let url_for_current_screen =
-            ViewerOpenUrl::from_display_mode(store_hub, display_mode.clone());
+        let url_for_current_screen = Self::current_url(store_hub, display_mode);
         let enable_share_button = url_for_current_screen.is_ok()
             && display_mode != &DisplayMode::RedapServer(EXAMPLES_ORIGIN.clone());
 
@@ -72,15 +88,17 @@ impl ShareModal {
             }
             Ok(url) => {
                 if share_button_resp.clicked() {
-                    self.open(url);
+                    self.open_with_url(url);
                 }
             }
         }
     }
 
+    /// Draws the share modal dialog if its open.
     pub fn ui(
         &mut self,
         ui: &egui::Ui,
+        web_viewer_base_url: Option<&url::Url>,
         timestamp_format: re_log_types::TimestampFormat,
         current_selection: Option<&Item>,
         rec_cfg: &RecordingConfig,
@@ -105,13 +123,11 @@ impl ShareModal {
                 // Style URL box like a test edit.
                 let url_string = {
                     let web_viewer_base_url = if self.create_web_viewer_url {
-                        web_viewer_base_url()
+                        web_viewer_base_url
                     } else {
                         None
                     };
-                    let mut url_string = url
-                        .sharable_url(web_viewer_base_url.as_ref())
-                        .unwrap_or_default();
+                    let mut url_string = url.sharable_url(web_viewer_base_url).unwrap_or_default();
 
                     egui::TextEdit::singleline(&mut url_string)
                         .hint_text("<can't share link>") // No known way to get into this situation.
@@ -266,13 +282,13 @@ fn fragments_ui(
     rec_cfg: &RecordingConfig,
 ) {
     ui.list_item_collapsible_noninteractive_label("Selection", default_expanded, |ui| {
-        let Fragment { focus, when } = fragments;
+        let Fragment { selection, when } = fragments;
 
-        let mut any_focus = focus.is_some();
+        let mut any_selection = selection.is_some();
         let current_selection = current_selection.and_then(|selection| selection.to_data_path());
-        ui.list_item_flat_noninteractive(PropertyContent::new("Focus").value_fn(|ui, _| {
+        ui.list_item_flat_noninteractive(PropertyContent::new("Selection").value_fn(|ui, _| {
             ui.selectable_toggle(|ui| {
-                ui.selectable_value(&mut any_focus, false, "None");
+                ui.selectable_value(&mut any_selection, false, "None");
                 ui.add_enabled_ui(current_selection.is_some(), |ui| {
                     let mut label = egui::Atoms::new("Active");
                     if let Some(current_selection) = &current_selection {
@@ -284,15 +300,15 @@ fn fragments_ui(
                     } else {
                         "Current selection can't be embedded in the URL."
                     };
-                    ui.selectable_value(&mut any_focus, true, label)
+                    ui.selectable_value(&mut any_selection, true, label)
                         .on_disabled_hover_text(disabled_reason)
                 });
             });
         }));
-        if any_focus {
-            *focus = current_selection;
+        if any_selection {
+            *selection = current_selection;
         } else {
-            *focus = None;
+            *selection = None;
         }
 
         let current_time_cursor = {
@@ -338,7 +354,7 @@ mod tests {
     use re_chunk::EntityPath;
     use re_log_types::{AbsoluteTimeRangeF, TimeCell, external::re_tuid};
     use re_test_context::TestContext;
-    use re_viewer_context::Item;
+    use re_viewer_context::{DisplayMode, Item};
 
     use crate::{open_url::ViewerOpenUrl, ui::ShareModal};
 
@@ -362,25 +378,30 @@ mod tests {
 
                 modal.lock().ui(
                     ui,
+                    None,
                     re_log_types::TimestampFormat::Utc,
                     Some(&selection),
                     &test_ctx.recording_config,
                 );
             });
 
-        let url = ViewerOpenUrl::RedapCatalog(re_uri::CatalogUri::new(origin.clone()));
-        modal.lock().open(url.clone());
+        let store_hub = test_ctx.store_hub.lock();
+        modal
+            .lock()
+            .open(&store_hub, &DisplayMode::RedapServer(origin.clone()))
+            .unwrap();
         harness.run();
         harness.snapshot("share_modal__server_url");
 
-        let url = ViewerOpenUrl::RedapDatasetPartition(re_uri::DatasetPartitionUri {
-            origin: origin.clone(),
-            dataset_id,
-            partition_id: "partition_id".to_owned(),
-            time_range: None,
-            fragment: re_uri::Fragment::default(),
-        });
-        modal.lock().open(url.clone());
+        modal.lock().url = Some(ViewerOpenUrl::RedapDatasetPartition(
+            re_uri::DatasetPartitionUri {
+                origin: origin.clone(),
+                dataset_id,
+                partition_id: "partition_id".to_owned(),
+                time_range: None,
+                fragment: re_uri::Fragment::default(),
+            },
+        ));
         harness.run_steps(2); // Force running two steps to ensure relayouting happens. TODO(andreas): Why is this needed?
         harness.snapshot("share_modal__dataset_partition_url");
 
@@ -391,20 +412,21 @@ mod tests {
             time_ctrl.set_loop_selection(AbsoluteTimeRangeF::new(0.0, 1000.0));
         }
 
-        let url = ViewerOpenUrl::RedapDatasetPartition(re_uri::DatasetPartitionUri {
-            origin: origin.clone(),
-            dataset_id,
-            partition_id: "partition_id".to_owned(),
-            time_range: Some(re_uri::TimeSelection {
-                timeline,
-                range: re_log_types::AbsoluteTimeRange::new(0, 1000),
-            }),
-            fragment: re_uri::Fragment {
-                focus: selection.to_data_path(),
-                when: Some((*timeline.name(), TimeCell::new(timeline.typ(), 234))),
+        modal.lock().url = Some(ViewerOpenUrl::RedapDatasetPartition(
+            re_uri::DatasetPartitionUri {
+                origin: origin.clone(),
+                dataset_id,
+                partition_id: "partition_id".to_owned(),
+                time_range: Some(re_uri::TimeSelection {
+                    timeline,
+                    range: re_log_types::AbsoluteTimeRange::new(0, 1000),
+                }),
+                fragment: re_uri::Fragment {
+                    selection: selection.to_data_path(),
+                    when: Some((*timeline.name(), TimeCell::new(timeline.typ(), 234))),
+                },
             },
-        });
-        modal.lock().open(url.clone());
+        ));
         harness.run();
         harness.snapshot("share_modal__dataset_partition_url_with_time_range");
     }
