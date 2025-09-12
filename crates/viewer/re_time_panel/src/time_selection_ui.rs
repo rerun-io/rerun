@@ -1,10 +1,56 @@
-use egui::{CursorIcon, Id, NumExt as _, Rect};
+use egui::{Color32, CursorIcon, Id, NumExt as _, Rect};
 
-use re_log_types::{AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType};
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType};
 use re_ui::UiExt as _;
 use re_viewer_context::{Looping, TimeControl};
 
 use super::time_ranges_ui::TimeRangesUi;
+
+/// Paints a rect on the timeline given a time range.
+pub fn paint_timeline_range(
+    highlighted_range: AbsoluteTimeRange,
+    time_ranges_ui: &TimeRangesUi,
+    painter: &egui::Painter,
+    rect: Rect,
+    color: Color32,
+) {
+    let x_from = time_ranges_ui.x_from_time_f32(highlighted_range.min().into());
+    let x_to = time_ranges_ui.x_from_time_f32(highlighted_range.max().into());
+
+    if let (Some(x_from), Some(x_to)) = (x_from, x_to) {
+        let visible_history_area_rect =
+            Rect::from_x_y_ranges(x_from..=x_to, rect.y_range()).intersect(rect);
+
+        painter.rect_filled(visible_history_area_rect, 0.0, color);
+    }
+}
+
+fn loop_selection_color(time_ctrl: &TimeControl, tokens: &re_ui::DesignTokens) -> Color32 {
+    // Display in a brighter color when active
+    if time_ctrl.looping() == Looping::Selection {
+        tokens.loop_selection_color
+    } else {
+        tokens.loop_selection_color.gamma_multiply(0.7)
+    }
+}
+
+pub fn collapsed_loop_selection_ui(
+    time_ctrl: &TimeControl,
+    painter: &egui::Painter,
+    time_ranges_ui: &TimeRangesUi,
+    ui: &egui::Ui,
+    time_range_rect: Rect,
+) {
+    if let Some(loop_range) = time_ctrl.loop_selection() {
+        paint_timeline_range(
+            loop_range.to_int(),
+            time_ranges_ui,
+            painter,
+            time_range_rect,
+            loop_selection_color(time_ctrl, ui.tokens()),
+        );
+    }
+}
 
 pub fn loop_selection_ui(
     time_ctrl: &mut TimeControl,
@@ -28,11 +74,7 @@ pub fn loop_selection_ui(
 
     let is_active = time_ctrl.looping() == Looping::Selection;
 
-    let selection_color = if is_active {
-        tokens.loop_selection_color
-    } else {
-        tokens.loop_selection_color.gamma_multiply(0.7)
-    };
+    let selection_color = loop_selection_color(time_ctrl, tokens);
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let is_pointer_in_timeline =
