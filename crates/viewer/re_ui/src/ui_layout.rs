@@ -108,6 +108,8 @@ impl UiLayout {
     }
 
     fn decorate_url(ui: &mut egui::Ui, galley: Arc<egui::Galley>) -> egui::Response {
+        ui.sanity_check();
+
         let text = galley.text();
         // By default e.g., "droid:full" would be considered a valid URL. We decided we only care
         // about sane URL formats that include "://". This means e.g., "mailto:hello@world" won't
@@ -120,7 +122,9 @@ impl UiLayout {
                 return ui.re_hyperlink(galley.clone(), stripped, false);
             }
         }
-        ui.label(galley)
+        let response = ui.label(galley);
+        ui.sanity_check();
+        response
     }
 
     fn data_label_impl(self, ui: &mut egui::Ui, mut layout_job: LayoutJob) -> egui::Response {

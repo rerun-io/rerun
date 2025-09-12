@@ -303,6 +303,7 @@ impl ListItem {
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_flat<'a>(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
+        ui.sanity_check();
         ui.scope(|ui| self.ui(ui, None, 0.0, Box::new(content)))
             .inner
             .response
@@ -494,7 +495,7 @@ impl ListItem {
         let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
 
         // Record the max allocated width.
-        layout_info.register_max_item_width(ui.ctx(), rect.right() - layout_info.left_x);
+        layout_info.register_max_item_width(ui, rect.right() - layout_info.left_x);
 
         // We want to be able to select/hover the item across its full span, so we interact over the
         // entire background rect. But…

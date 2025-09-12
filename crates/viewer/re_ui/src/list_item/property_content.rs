@@ -330,10 +330,10 @@ impl ListItemContent for PropertyContent<'_> {
 
         context
             .layout_info
-            .register_desired_left_column_width(ui.ctx(), desired_width);
+            .register_desired_left_column_width(ui, desired_width);
         context
             .layout_info
-            .reserve_action_button_space(ui.ctx(), button.is_some());
+            .reserve_action_button_space(ui, button.is_some());
 
         let galley = if desired_galley.size().x <= label_rect.width() {
             desired_galley
@@ -393,10 +393,13 @@ impl ListItemContent for PropertyContent<'_> {
             if context.visuals.selected {
                 child_ui.visuals_mut().override_text_color = Some(visuals_for_value.text_color());
             }
+
+            child_ui.sanity_check();
             value_fn(&mut child_ui, visuals_for_value);
+            child_ui.sanity_check();
 
             context.layout_info.register_property_content_max_width(
-                child_ui.ctx(),
+                &child_ui,
                 child_ui.min_rect().right() - context.layout_info.left_x,
             );
         }

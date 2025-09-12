@@ -383,6 +383,8 @@ impl ComponentUiRegistry {
             unit.row_id(),
             component_raw.as_ref(),
         );
+
+        ui.sanity_check();
     }
 
     /// Show a UI for a single raw component.

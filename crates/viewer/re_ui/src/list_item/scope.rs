@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 
-use crate::UiExt;
+use crate::UiExt as _;
 
 /// Layout statistics accumulated during the frame that are used for next frame's layout.
 ///
@@ -86,7 +86,7 @@ impl LayoutStatistics {
     /// Update the accumulator.
     ///
     /// Used by [`LayoutInfo`]'s methods.
-    fn update(ctx: &egui::Context, scope_id: egui::Id, update: impl FnOnce(&mut Self)) {
+    fn update(ctx: &egui::Ui, scope_id: egui::Id, update: impl FnOnce(&mut Self)) {
         ctx.data_mut(|writer| {
             let stats: &mut Self = writer.get_temp_mut_or_default(scope_id);
             update(stats);
@@ -155,8 +155,8 @@ impl LayoutInfo {
     ///
     /// All [`super::ListItemContent`] implementation that attempt to align on the two-column system should
     /// call this function once in their [`super::ListItemContent::ui`] method.
-    pub fn register_desired_left_column_width(&self, ctx: &egui::Context, desired_width: f32) {
-        LayoutStatistics::update(ctx, self.scope_id, |stats| {
+    pub fn register_desired_left_column_width(&self, ui: &egui::Ui, desired_width: f32) {
+        LayoutStatistics::update(ui, self.scope_id, |stats| {
             stats.max_desired_left_column_width = stats
                 .max_desired_left_column_width
                 .map(|v| v.max(desired_width))
@@ -165,8 +165,8 @@ impl LayoutInfo {
     }
 
     /// Indicate whether right-aligned space should be reserved for the action button.
-    pub fn reserve_action_button_space(&self, ctx: &egui::Context, reserve: bool) {
-        LayoutStatistics::update(ctx, self.scope_id, |stats| {
+    pub fn reserve_action_button_space(&self, ui: &egui::Ui, reserve: bool) {
+        LayoutStatistics::update(ui, self.scope_id, |stats| {
             stats.is_action_button_used |= reserve;
         });
     }
@@ -174,15 +174,25 @@ impl LayoutInfo {
     /// Register the maximum width of the item.
     ///
     /// Should only be set by [`super::ListItem`].
-    pub(crate) fn register_max_item_width(&self, ctx: &egui::Context, width: f32) {
-        LayoutStatistics::update(ctx, self.scope_id, |stats| {
+    pub(crate) fn register_max_item_width(&self, ui: &egui::Ui, width: f32) {
+        #[expect(clippy::manual_assert)]
+        if cfg!(debug_assertions) && ui.layer_id().order == egui::Order::Tooltip && 2000.0 < width {
+            panic!("DEBUG ASSERT: Huge toolip: {width}");
+        }
+
+        LayoutStatistics::update(ui, self.scope_id, |stats| {
             stats.max_item_width = stats.max_item_width.map(|v| v.max(width)).or(Some(width));
         });
     }
 
     /// `PropertyContent` only — register max content width in the current scope
-    pub(super) fn register_property_content_max_width(&self, ctx: &egui::Context, width: f32) {
-        LayoutStatistics::update(ctx, self.scope_id, |stats| {
+    pub(super) fn register_property_content_max_width(&self, ui: &egui::Ui, width: f32) {
+        #[expect(clippy::manual_assert)]
+        if cfg!(debug_assertions) && ui.layer_id().order == egui::Order::Tooltip && 2000.0 < width {
+            panic!("DEBUG ASSERT: Huge toolip: {width}");
+        }
+
+        LayoutStatistics::update(ui, self.scope_id, |stats| {
             stats.property_content_max_width = stats
                 .property_content_max_width
                 .map(|v| v.max(width))
@@ -319,6 +329,8 @@ pub fn list_item_scope<R>(
     {
         panic!("DEBUG ASSERT: Huge toolip: {property_content_max_width}");
     }
+
+    ui.sanity_check();
 
     result
 }
