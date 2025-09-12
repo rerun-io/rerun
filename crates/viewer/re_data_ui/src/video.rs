@@ -669,39 +669,33 @@ impl VideoUi {
             }
             Self::Asset(video_result, timestamp, blob) => {
                 video_asset_result_ui(ui, ui_layout, video_result);
-                if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
-                    // Show a mini video player for video blobs:
-                    if let Ok(video) = video_result.as_ref() {
-                        let video_timestamp = timestamp.unwrap_or_else(|| {
-                            // TODO(emilk): Some time controls would be nice,
-                            // but the point here is not to have a nice viewer,
-                            // but to show the user what they have selected
-                            ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
-                            let time = ui.input(|i| i.time);
+                // Show a mini video player for video blobs:
+                if !ui_layout.is_single_line()
+                    && ui_layout != UiLayout::Tooltip
+                    && let Ok(video) = video_result.as_ref()
+                {
+                    let video_timestamp = timestamp.unwrap_or_else(|| {
+                        // TODO(emilk): Some time controls would be nice,
+                        // but the point here is not to have a nice viewer,
+                        // but to show the user what they have selected
+                        ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+                        let time = ui.input(|i| i.time);
 
-                            if let Some(duration) = video.data_descr().duration() {
-                                VideoTimestamp::from_secs(time % duration.as_secs_f64())
-                            } else {
-                                // Invalid video or unknown timescale.
-                                VideoTimestamp::from_nanos(0)
-                            }
-                        });
-                        let video_time = re_viewer_context::video_timestamp_component_to_video_time(
-                            ctx,
-                            video_timestamp,
-                            video.data_descr().timescale,
-                        );
-                        let video_buffers = std::iter::once(blob.as_ref()).collect();
+                        if let Some(duration) = video.data_descr().duration() {
+                            VideoTimestamp::from_secs(time % duration.as_secs_f64())
+                        } else {
+                            // Invalid video or unknown timescale.
+                            VideoTimestamp::from_nanos(0)
+                        }
+                    });
+                    let video_time = re_viewer_context::video_timestamp_component_to_video_time(
+                        ctx,
+                        video_timestamp,
+                        video.data_descr().timescale,
+                    );
+                    let video_buffers = std::iter::once(blob.as_ref()).collect();
 
-                        show_decoded_frame_info(
-                            ctx,
-                            ui,
-                            ui_layout,
-                            video,
-                            video_time,
-                            &video_buffers,
-                        );
-                    }
+                    show_decoded_frame_info(ctx, ui, ui_layout, video, video_time, &video_buffers);
                 }
             }
         }

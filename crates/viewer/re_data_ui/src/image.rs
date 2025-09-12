@@ -344,17 +344,19 @@ impl ImageUi {
         ctx: &'a ViewerContext<'_>,
         property_content: list_item::PropertyContent<'a>,
     ) -> list_item::PropertyContent<'a> {
-        property_content.with_action_button(&icons::COPY, "Copy image", move || {
-            if let Some(rgba) = self.image.to_rgba8_image(self.data_range.into()) {
-                let egui_image = egui::ColorImage::from_rgba_unmultiplied(
-                    [rgba.width() as _, rgba.height() as _],
-                    bytemuck::cast_slice(rgba.as_raw()),
-                );
-                ctx.egui_ctx().copy_image(egui_image);
-            } else {
-                re_log::error!("Invalid image");
-            }
-        })
+        property_content
+            .with_action_button(&icons::COPY, "Copy image", move || {
+                if let Some(rgba) = self.image.to_rgba8_image(self.data_range.into()) {
+                    let egui_image = egui::ColorImage::from_rgba_unmultiplied(
+                        [rgba.width() as _, rgba.height() as _],
+                        bytemuck::cast_slice(rgba.as_raw()),
+                    );
+                    ctx.egui_ctx().copy_image(egui_image);
+                } else {
+                    re_log::error!("Invalid image");
+                }
+            })
+            .with_help_text("Copy image to clipboard")
     }
 
     pub fn inline_download_button<'a>(
