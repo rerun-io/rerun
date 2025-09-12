@@ -307,6 +307,8 @@ impl MeshDrawData {
                 // Identify runs of instances with the opaque draw phase for batching.
                 // Might be more efficient (citiation needed) to do this in a single iteration, but this is more readable.
                 for phase in [DrawPhase::Opaque, DrawPhase::OutlineMask] {
+                    let mut instance_start = num_processed_instances;
+
                     for chunk in instances.chunk_by(|(_, phases_a), (_, phases_b)| {
                         phases_a.contains(phase) == phases_b.contains(phase)
                     }) {
@@ -314,11 +316,8 @@ impl MeshDrawData {
                             continue;
                         }
 
-                        // SAFETY: `chunk` and `instances` are both from the same allocation with chunk being a subset of instances.
-                        #[expect(unsafe_code)]
-                        let start_idx = unsafe { chunk.as_ptr().offset_from(instances.as_ptr()) };
-                        let instance_start = num_processed_instances + start_idx as u32;
-                        let instance_end = instance_start + chunk.len() as u32;
+                        let num_instances = chunk.len() as u32;
+                        let instance_end = instance_start + num_instances;
 
                         batches.push(MeshBatch {
                             mesh: mesh.clone(),
@@ -328,6 +327,8 @@ impl MeshDrawData {
                             // Ordering isn't super important, so for many instances just pick the first as representative.
                             position: chunk[0].0.world_from_mesh.transform_point3a(mesh_center),
                         });
+
+                        instance_start += num_instances;
                     }
                 }
 
