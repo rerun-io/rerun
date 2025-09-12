@@ -1,5 +1,6 @@
 //! The Rerun public data APIs. Access `DataFusion` `TableProviders`.
 
+mod catalog_provider;
 mod dataframe_query_common;
 #[cfg(not(target_arch = "wasm32"))]
 mod dataframe_query_provider;
