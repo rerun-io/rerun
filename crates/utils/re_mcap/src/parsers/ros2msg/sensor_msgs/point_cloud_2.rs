@@ -129,8 +129,8 @@ fn access(data: &[u8], datatype: PointFieldDatatype, is_big_endian: bool) -> std
 impl From<PointFieldDatatype> for DataType {
     fn from(value: PointFieldDatatype) -> Self {
         match value {
-            // Not part of the ROS2 spec
-            // https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/PointField.html
+            // Not part of the MCAP spec
+            // // https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/PointField.html
             PointFieldDatatype::Unknown => unreachable!(),
             PointFieldDatatype::Int8 => Self::Int8,
             PointFieldDatatype::UInt8 => Self::UInt8,
@@ -561,7 +561,7 @@ impl MessageParser for PointCloud2MessageParser {
                 // We only extract additional fields when we have a `Points3d`
                 // archetype to attach them to. In that case we're not interested
                 // in the other components.
-                // TODO(@grtlr): It would be nice to never initialize the unnecessary builders
+                // TODO(grtlr): It would be nice to never initialize the unnecessary builders
                 // in the first place. But, we'll soon move the semantic extraction of `Points3d`
                 // into a different layer anyways, making that optimization obsolete.
                 points_3ds.as_ref()?;
