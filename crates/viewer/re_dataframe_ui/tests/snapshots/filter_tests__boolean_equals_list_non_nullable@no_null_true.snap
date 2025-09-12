@@ -3,8 +3,10 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: BooleanEquals(
-        true,
+    op: Boolean(
+        NonNullable(
+            true,
+        ),
     ),
     field: Field {
         name: "column",
@@ -18,7 +20,7 @@ TestResult {
                 metadata: {},
             },
         ),
-        nullable: true,
+        nullable: false,
         dict_id: 0,
         dict_is_ordered: false,
         metadata: {},
@@ -29,7 +31,10 @@ TestResult {
     [
       true,
     ],
-      null,
+      BooleanArray
+    [
+      false,
+    ],
       BooleanArray
     [
       true,
