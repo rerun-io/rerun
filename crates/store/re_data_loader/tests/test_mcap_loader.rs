@@ -10,7 +10,7 @@ mod tests {
         let mcap_data = std::fs::read(path).unwrap();
         let (tx, rx) = std::sync::mpsc::channel();
         let settings = DataLoaderSettings::recommended("test");
-        load_mcap(&mcap_data, &settings, &tx, SelectedLayers::All).unwrap();
+        load_mcap(&mcap_data, &settings, &tx, &SelectedLayers::All, false).unwrap();
         drop(tx);
 
         // Collect chunks
