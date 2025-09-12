@@ -430,7 +430,7 @@ impl ListItemContent for PropertyContent<'_> {
         let tokens = ui.tokens();
 
         if cfg!(debug_assertions)
-            && ui.layer_id().order == egui::Order::Tooltip
+            && ui.is_tooltip()
             && 2000.0 < self.min_desired_width
         {
             panic!("DEBUG ASSERT: Huge toolip: {}", self.min_desired_width);
@@ -440,7 +440,7 @@ impl ListItemContent for PropertyContent<'_> {
             DesiredWidth::AtLeast(self.min_desired_width)
         } else if let Some(max_width) = layout_info.property_content_max_width {
             if cfg!(debug_assertions)
-                && ui.layer_id().order == egui::Order::Tooltip
+                && ui.is_tooltip()
                 && 2000.0 < max_width
             {
                 panic!("DEBUG ASSERT: Huge toolip: {max_width}");
@@ -458,7 +458,7 @@ impl ListItemContent for PropertyContent<'_> {
             }
 
             if cfg!(debug_assertions)
-                && ui.layer_id().order == egui::Order::Tooltip
+                && ui.is_tooltip()
                 && 2000.0 < desired_width
             {
                 panic!("DEBUG ASSERT: Huge toolip: {desired_width}");

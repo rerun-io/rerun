@@ -36,12 +36,14 @@ pub trait UiExt {
     fn sanity_check(&self) {
         let ui = self.ui();
 
-        if cfg!(debug_assertions)
-            && ui.layer_id().order == egui::Order::Tooltip
-            && 2000.0 < ui.max_rect().width()
-        {
+        if cfg!(debug_assertions) && ui.is_tooltip() && 2000.0 < ui.max_rect().width() {
             panic!("DEBUG ASSERT: Huge toolip: {}", ui.max_rect().size());
         }
+    }
+
+    #[inline]
+    fn is_tooltip(&self) -> bool {
+        self.ui().layer_id().order == egui::Order::Tooltip
     }
 
     /// Shows a success label with a large border.

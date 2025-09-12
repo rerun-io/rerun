@@ -176,7 +176,7 @@ impl LayoutInfo {
     /// Should only be set by [`super::ListItem`].
     pub(crate) fn register_max_item_width(&self, ui: &egui::Ui, width: f32) {
         #[expect(clippy::manual_assert)]
-        if cfg!(debug_assertions) && ui.layer_id().order == egui::Order::Tooltip && 2000.0 < width {
+        if cfg!(debug_assertions) && ui.is_tooltip() && 2000.0 < width {
             panic!("DEBUG ASSERT: Huge toolip: {width}");
         }
 
@@ -188,7 +188,7 @@ impl LayoutInfo {
     /// `PropertyContent` only — register max content width in the current scope
     pub(super) fn register_property_content_max_width(&self, ui: &egui::Ui, width: f32) {
         #[expect(clippy::manual_assert)]
-        if cfg!(debug_assertions) && ui.layer_id().order == egui::Order::Tooltip && 2000.0 < width {
+        if cfg!(debug_assertions) && ui.is_tooltip() && 2000.0 < width {
             panic!("DEBUG ASSERT: Huge toolip: {width}");
         }
 
@@ -305,7 +305,7 @@ pub fn list_item_scope<R>(
 
     if cfg!(debug_assertions)
         && let Some(property_content_max_width) = state.property_content_max_width
-        && ui.layer_id().order == egui::Order::Tooltip
+        && ui.is_tooltip()
         && 2000.0 < property_content_max_width
     {
         panic!("DEBUG ASSERT: Huge toolip: {property_content_max_width}");
@@ -324,7 +324,7 @@ pub fn list_item_scope<R>(
     if cfg!(debug_assertions)
         && let Some(popped) = popped
         && let Some(property_content_max_width) = popped.property_content_max_width
-        && ui.layer_id().order == egui::Order::Tooltip
+        && ui.is_tooltip()
         && 2000.0 < property_content_max_width
     {
         panic!("DEBUG ASSERT: Huge toolip: {property_content_max_width}");
