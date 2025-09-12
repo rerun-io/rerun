@@ -1,10 +1,11 @@
-use crate::UiExt as _;
-use crate::syntax_highlighting::SyntaxHighlightedBuilder;
+use std::sync::Arc;
+
 use egui::{
-    NumExt, TextWrapMode,
+    NumExt as _, TextWrapMode,
     text::{LayoutJob, TextWrapping},
 };
-use std::sync::Arc;
+
+use crate::{UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
 /// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
