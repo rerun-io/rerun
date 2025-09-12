@@ -353,6 +353,7 @@ impl ImageUi {
                         bytemuck::cast_slice(rgba.as_raw()),
                     );
                     ctx.egui_ctx().copy_image(egui_image);
+                    re_log::info!("Copied image to clipboard");
                 } else {
                     re_log::error!("Invalid image");
                 }
