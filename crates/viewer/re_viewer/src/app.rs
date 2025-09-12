@@ -15,8 +15,8 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
+    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, UrlContext,
+    ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
@@ -555,25 +555,19 @@ impl App {
         let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
 
         let display_mode = self.state.navigation.peek();
-        let selection = self.state.selection_state.selected_items().first_item();
+        let selection = self.state.selection_state.selected_items();
 
-        let Ok(url) = crate::open_url::ViewerOpenUrl::from_display_mode(
+        let Ok(url) = crate::open_url::ViewerOpenUrl::new(
             store_hub,
-            display_mode.clone(),
-            &re_uri::Fragment {
-                selection: selection.and_then(|item| item.to_data_path()),
-                when: time_ctrl
-                    .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused))
-                    .and_then(|when| {
-                        Some((
-                            *when.timeline().name(),
-                            re_log_types::TimeCell {
-                                typ: when.timeline().typ(),
-                                value: when.time_int()?.into(),
-                            },
-                        ))
-                    }),
-            },
+            UrlContext::from_context_expanded(
+                display_mode,
+                time_ctrl
+                    .as_deref()
+                    // Only update `when` fragment when paused.
+                    .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused)),
+                selection,
+            )
+            .without_time_range(),
         )
         // History entries expect the url parameter, not the full url, therefore don't pass a base url.
         .and_then(|url| url.sharable_url(None)) else {
@@ -624,6 +618,20 @@ impl App {
             SystemCommand::SetUrlFragment { store_id, fragment } => {
                 // This adds new system commands, which will be handled later in the loop.
                 self.go_to_dataset_data(store_id, fragment);
+            }
+            SystemCommand::CopyUrlWithContext {
+                display_mode,
+                time_range,
+                fragment,
+            } => {
+                self.run_copy_link_command(
+                    store_hub,
+                    UrlContext {
+                        display_mode,
+                        time_range,
+                        fragment,
+                    },
+                );
             }
             SystemCommand::ActivateApp(app_id) => {
                 self.state.navigation.replace(DisplayMode::LocalRecordings);
@@ -1480,11 +1488,30 @@ impl App {
             }
 
             UICommand::CopyDirectLink => {
-                self.run_copy_direct_link_command(storage_context, display_mode);
+                self.run_copy_link_command(
+                    storage_context.hub,
+                    UrlContext::new(display_mode.clone()),
+                );
             }
 
             UICommand::CopyTimeRangeLink => {
-                self.run_copy_time_range_link_command(store_context);
+                let mut url_context = UrlContext::new(display_mode.clone());
+
+                let rec_cfg = storage_context
+                    .hub
+                    .active_recording()
+                    .and_then(|db| self.state.recording_config(db.store_id()));
+                let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
+
+                if let Some(time_ctrl) = &time_ctrl {
+                    url_context = url_context.with_time_range(time_ctrl);
+                } else {
+                    re_log::warn!("No timeline in current mode");
+                }
+
+                drop(time_ctrl);
+
+                self.run_copy_link_command(storage_context.hub, url_context);
             }
 
             #[cfg(target_arch = "wasm32")]
@@ -1605,41 +1632,7 @@ impl App {
         }
     }
 
-    /// Retrieve the link to the current viewer.
-    #[cfg(target_arch = "wasm32")]
-    fn get_viewer_url(&self) -> Result<String, wasm_bindgen::JsValue> {
-        let location = web_sys::window()
-            .ok_or_else(|| "failed to get window".to_owned())?
-            .location();
-        let origin = location.origin()?;
-        let host = location.host()?;
-        let pathname = location.pathname()?;
-
-        let hosted_viewer_path = if self.build_info.is_final() {
-            // final release, use version tag
-            format!("version/{}", self.build_info.version)
-        } else {
-            // not a final release, use commit hash
-            format!("commit/{}", self.build_info.short_git_hash())
-        };
-
-        // links to `app.rerun.io` can be made into permanent links:
-        let url = if host == "app.rerun.io" {
-            format!("https://app.rerun.io/{hosted_viewer_path}")
-        } else if host == "rerun.io" && pathname.starts_with("/viewer") {
-            format!("https://rerun.io/viewer/{hosted_viewer_path}")
-        } else {
-            format!("{origin}{pathname}")
-        };
-
-        Ok(url)
-    }
-
-    fn run_copy_direct_link_command(
-        &mut self,
-        storage_context: &StorageContext<'_>,
-        display_mode: &DisplayMode,
-    ) {
+    fn run_copy_link_command(&mut self, store_hub: &StoreHub, context: UrlContext) {
         // TODO(rerun-io/dataplatform#2663): Should take into account dataplatform URLs if any are provided.
         let base_url;
         #[cfg(target_arch = "wasm32")]
@@ -1652,12 +1645,8 @@ impl App {
             base_url = None;
         };
 
-        match crate::open_url::ViewerOpenUrl::from_display_mode(
-            storage_context.hub,
-            display_mode.clone(),
-            &re_uri::Fragment::default(),
-        )
-        .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
+        match crate::open_url::ViewerOpenUrl::new(store_hub, context)
+            .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
         {
             Ok(url) => {
                 self.egui_ctx.copy_text(url);
@@ -1668,71 +1657,6 @@ impl App {
                 re_log::error!("{err}");
             }
         }
-    }
-
-    fn run_copy_time_range_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
-        let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
-            re_log::warn!("Could not copy time range link: No active recording");
-            return;
-        };
-
-        let Some(SmartChannelSource::RedapGrpcStream { mut uri, .. }) =
-            entity_db.data_source.clone()
-        else {
-            re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
-            return;
-        };
-
-        let rec_cfg = self.state.recording_config_mut(entity_db);
-        let time_ctrl = rec_cfg.time_ctrl.get_mut();
-
-        let Some(range) = time_ctrl.loop_selection() else {
-            // no loop selection
-            re_log::warn!(
-                "Could not copy time range link: No loop selection set. Use shift to drag a selection on the timeline"
-            );
-            return;
-        };
-
-        uri.time_range = Some(re_uri::TimeSelection {
-            timeline: *time_ctrl.timeline(),
-            range: re_log_types::AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
-        });
-
-        // On web we can produce a link to the web viewer,
-        // which can be used to share the time range.
-        //
-        // On native we only produce a link to the time range
-        // which can be passed to `rerun-cli`.
-        #[cfg(target_arch = "wasm32")]
-        let url = {
-            use crate::web_tools::JsResultExt as _;
-            let Some(viewer_url) = self.get_viewer_url().ok_or_log_js_error() else {
-                // error was logged already
-                return;
-            };
-
-            let time_range_url = uri.to_string();
-            // %-encode the time range URL, because it's a url-within-a-url.
-            // This results in VERY ugly links.
-            // TODO(jan): Tweak the asciiset used here.
-            //            Alternatively, use a better (shorter, simpler) format
-            //            for linking to recordings that isn't a full url and
-            //            can actually exist in a query value.
-            let url_query = percent_encoding::utf8_percent_encode(
-                &time_range_url,
-                percent_encoding::NON_ALPHANUMERIC,
-            );
-
-            format!("{viewer_url}?url={url_query}")
-        };
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let url = uri.to_string();
-
-        self.egui_ctx.copy_text(url.clone());
-        self.notifications
-            .success(format!("Copied {url:?} to clipboard"));
     }
 
     fn copy_entity_hierarchy_to_clipboard(
