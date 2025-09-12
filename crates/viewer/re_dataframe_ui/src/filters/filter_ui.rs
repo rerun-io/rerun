@@ -9,7 +9,7 @@ use crate::TableBlueprint;
 
 /// Action to take based on the user interaction.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-enum FilterUiAction {
+pub enum FilterUiAction {
     #[default]
     None,
 
@@ -361,8 +361,8 @@ impl SyntaxHighlighting for FilterOperation {
                 builder.append_string_value(query);
             }
 
-            Self::BooleanEquals(query) => {
-                builder.append_primitive(&format!("{query}"));
+            Self::Boolean(boolean_filter) => {
+                builder.append_primitive(boolean_filter.operand_text());
             }
         }
     }
@@ -391,7 +391,7 @@ fn numerical_comparison_operator_ui(
     });
 }
 
-fn basic_operation_ui(ui: &mut egui::Ui, column_name: &str, operator_text: &str) {
+pub fn basic_operation_ui(ui: &mut egui::Ui, column_name: &str, operator_text: &str) {
     ui.label(
         SyntaxHighlightedBuilder::body(column_name)
             .with_keyword(" ")
@@ -473,14 +473,8 @@ impl FilterOperation {
                 process_text_edit_response(ui, &response);
             }
 
-            Self::BooleanEquals(query) => {
-                basic_operation_ui(ui, column_name, &operator_text);
-
-                if ui.re_radio_value(query, true, "true").clicked()
-                    || ui.re_radio_value(query, false, "false").clicked()
-                {
-                    action = FilterUiAction::CommitStateToBlueprint;
-                }
+            Self::Boolean(boolean_filter) => {
+                boolean_filter.popup_ui(ui, column_name, &mut action);
             }
         }
 
@@ -494,7 +488,7 @@ impl FilterOperation {
                 operator.to_string()
             }
             Self::StringContains(_) => "contains".to_owned(),
-            Self::BooleanEquals(_) => "is".to_owned(),
+            Self::Boolean(_) => "is".to_owned(),
         }
     }
 }
@@ -502,6 +496,7 @@ impl FilterOperation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::filters::BooleanFilter;
 
     fn test_cases() -> Vec<(FilterOperation, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
@@ -510,10 +505,7 @@ mod tests {
             use FilterOperation::*;
             let _op = StringContains(String::new());
             match _op {
-                IntCompares { .. }
-                | FloatCompares { .. }
-                | StringContains(_)
-                | BooleanEquals(_) => {}
+                IntCompares { .. } | FloatCompares { .. } | StringContains(_) | Boolean(_) => {}
             }
         };
 
@@ -554,10 +546,25 @@ mod tests {
                 FilterOperation::StringContains(String::new()),
                 "string_contains_empty",
             ),
-            (FilterOperation::BooleanEquals(true), "boolean_equals_true"),
             (
-                FilterOperation::BooleanEquals(false),
+                FilterOperation::Boolean(BooleanFilter::NonNullable(true)),
+                "boolean_equals_true",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::NonNullable(false)),
                 "boolean_equals_false",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::Nullable(Some(true))),
+                "nullable_boolean_equals_true",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::Nullable(Some(false))),
+                "nullable_boolean_equals_false",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::Nullable(None)),
+                "nullable_boolean_equals_null",
             ),
         ]
         .into_iter()
