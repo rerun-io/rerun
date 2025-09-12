@@ -197,6 +197,8 @@ impl ModalWrapper {
                     }
                     if let Some(max_width) = self.max_width {
                         ui.set_max_width(max_width);
+                    } else {
+                        ui.set_max_width(tokens.default_modal_width);
                     }
 
                     if let Some(min_height) = self.min_height {

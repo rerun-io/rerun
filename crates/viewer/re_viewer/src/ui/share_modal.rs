@@ -119,12 +119,9 @@ impl ShareModal {
             return;
         };
 
-        // TODO: make this standard width for all modals
-        let panel_width = 500.0;
-
         self.modal.ui(
             ui.ctx(),
-            || ModalWrapper::new("Share").max_width(panel_width),
+            || ModalWrapper::new("Share"),
             |ui| {
                 let panel_max_height = (ui.ctx().screen_rect().height() - 100.0)
                     .at_least(0.0)
@@ -203,7 +200,7 @@ impl ShareModal {
     }
 }
 
-// TODO(andreas): why is this not a thing?
+// TODO(andreas): why is this not a thing, should we make it one?
 // TODO(andreas): What we _actually_ want is a group of toggles that are all vertically aligned.
 fn selectable_value_with_min_width<'a, Value: PartialEq>(
     ui: &mut egui::Ui,
@@ -223,7 +220,7 @@ fn selectable_value_with_min_width<'a, Value: PartialEq>(
     response
 }
 
-const MIN_TOGGLE_WIDTH: f32 = 150.0;
+const MIN_TOGGLE_WIDTH: f32 = 130.0;
 
 fn url_settings_ui(
     ctx: &ViewerContext<'_>,

@@ -4,6 +4,7 @@
   "large_button_corner_radius": 6,
   "small_icon_size": 14,
   "modal_button_width": 50,
+  "default_modal_width": 400,
 
   "Alias": {
     "native_frame_stroke": {
