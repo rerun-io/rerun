@@ -221,7 +221,6 @@ fn component_list_ui(
                     )
                     .with_icon(icon)
                     .value_fn(|ui, _| {
-                        ui.sanity_check();
                         if instance.is_all() {
                             crate::ComponentPathLatestAtResults {
                                 component_path: ComponentPath::new(
@@ -250,28 +249,21 @@ fn component_list_ui(
                                 instance,
                             );
                         }
-                        ui.sanity_check();
                     });
 
                     let response = list_item.show_flat(ui, content).on_hover_ui(|ui| {
-                        ui.sanity_check();
-
                         if let Some(component_type) = component_descr.component_type {
                             component_type.data_ui_recording(ctx, ui, UiLayout::Tooltip);
-                            ui.sanity_check();
                         }
 
                         if let Some(data) = unit.component_batch_raw(component_descr) {
                             re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
-                                ui.sanity_check();
                                 ui.list_item_flat_noninteractive(
                                     re_ui::list_item::PropertyContent::new("Data type").value_text(
                                         re_arrow_util::format_data_type(data.data_type()),
                                     ),
                                 );
-                                ui.sanity_check();
                             });
-                            ui.sanity_check();
                         }
                     });
 

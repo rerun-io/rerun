@@ -86,8 +86,9 @@ impl LayoutStatistics {
     /// Update the accumulator.
     ///
     /// Used by [`LayoutInfo`]'s methods.
-    fn update(ctx: &egui::Ui, scope_id: egui::Id, update: impl FnOnce(&mut Self)) {
-        ctx.data_mut(|writer| {
+    fn update(ui: &egui::Ui, scope_id: egui::Id, update: impl FnOnce(&mut Self)) {
+        ui.sanity_check();
+        ui.data_mut(|writer| {
             let stats: &mut Self = writer.get_temp_mut_or_default(scope_id);
             update(stats);
         });
@@ -175,11 +176,6 @@ impl LayoutInfo {
     ///
     /// Should only be set by [`super::ListItem`].
     pub(crate) fn register_max_item_width(&self, ui: &egui::Ui, width: f32) {
-        #[expect(clippy::manual_assert)]
-        if cfg!(debug_assertions) && ui.is_tooltip() && 2000.0 < width {
-            panic!("DEBUG ASSERT: Huge toolip: {width}");
-        }
-
         LayoutStatistics::update(ui, self.scope_id, |stats| {
             stats.max_item_width = stats.max_item_width.map(|v| v.max(width)).or(Some(width));
         });
@@ -187,11 +183,6 @@ impl LayoutInfo {
 
     /// `PropertyContent` only — register max content width in the current scope
     pub(super) fn register_property_content_max_width(&self, ui: &egui::Ui, width: f32) {
-        #[expect(clippy::manual_assert)]
-        if cfg!(debug_assertions) && ui.is_tooltip() && 2000.0 < width {
-            panic!("DEBUG ASSERT: Huge toolip: {width}");
-        }
-
         LayoutStatistics::update(ui, self.scope_id, |stats| {
             stats.property_content_max_width = stats
                 .property_content_max_width
@@ -303,14 +294,6 @@ pub fn list_item_scope<R>(
         property_content_max_width: layout_stats.property_content_max_width,
     };
 
-    if cfg!(debug_assertions)
-        && let Some(property_content_max_width) = state.property_content_max_width
-        && ui.is_tooltip()
-        && 2000.0 < property_content_max_width
-    {
-        panic!("DEBUG ASSERT: Huge toolip: {property_content_max_width}");
-    }
-
     // push, run, pop
     LayoutInfoStack::push(ui.ctx(), state.clone());
     let result = ui
@@ -319,16 +302,7 @@ pub fn list_item_scope<R>(
             content(ui)
         })
         .inner;
-    let popped = LayoutInfoStack::pop(ui.ctx());
-
-    if cfg!(debug_assertions)
-        && let Some(popped) = popped
-        && let Some(property_content_max_width) = popped.property_content_max_width
-        && ui.is_tooltip()
-        && 2000.0 < property_content_max_width
-    {
-        panic!("DEBUG ASSERT: Huge toolip: {property_content_max_width}");
-    }
+    LayoutInfoStack::pop(ui.ctx());
 
     ui.sanity_check();
 

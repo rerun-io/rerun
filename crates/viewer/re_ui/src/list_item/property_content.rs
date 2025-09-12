@@ -429,23 +429,9 @@ impl ListItemContent for PropertyContent<'_> {
         let layout_info = LayoutInfoStack::top(ui.ctx());
         let tokens = ui.tokens();
 
-        if cfg!(debug_assertions)
-            && ui.is_tooltip()
-            && 2000.0 < self.min_desired_width
-        {
-            panic!("DEBUG ASSERT: Huge toolip: {}", self.min_desired_width);
-        }
-
         if crate::is_in_resizable_panel(ui) {
             DesiredWidth::AtLeast(self.min_desired_width)
         } else if let Some(max_width) = layout_info.property_content_max_width {
-            if cfg!(debug_assertions)
-                && ui.is_tooltip()
-                && 2000.0 < max_width
-            {
-                panic!("DEBUG ASSERT: Huge toolip: {max_width}");
-            }
-
             let mut desired_width = max_width + layout_info.left_x - ui.max_rect().left();
 
             // TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
@@ -455,13 +441,6 @@ impl ListItemContent for PropertyContent<'_> {
                 self.button.is_some() || layout_info.reserve_action_button_space;
             if reserve_action_button_space {
                 desired_width += action_button_dimension + tokens.text_to_icon_padding();
-            }
-
-            if cfg!(debug_assertions)
-                && ui.is_tooltip()
-                && 2000.0 < desired_width
-            {
-                panic!("DEBUG ASSERT: Huge toolip: {desired_width}");
             }
 
             DesiredWidth::AtLeast(desired_width.ceil())

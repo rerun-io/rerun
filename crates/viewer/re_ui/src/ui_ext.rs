@@ -41,7 +41,7 @@ pub trait UiExt {
             && ui.is_tooltip()
             && ui.spacing().tooltip_width + 100.0 < ui.max_rect().width()
         {
-            panic!("DEBUG ASSERT: Huge toolip: {}", ui.max_rect().size());
+            panic!("DEBUG ASSERT: Huge tooltip: {}", ui.max_rect().size());
         }
     }
 

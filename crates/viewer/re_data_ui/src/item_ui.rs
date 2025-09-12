@@ -593,9 +593,7 @@ pub fn instance_hover_card_ui(
         // TODO(emilk): per-component stats
     }
 
-    re_ui::list_item::list_item_scope(ui, "instance_hover_card_ui", |ui| {
-        instance_path.data_ui(ctx, ui, UiLayout::Tooltip, query, db);
-    });
+    instance_path.data_ui(ctx, ui, UiLayout::Tooltip, query, db);
 }
 
 /// Displays the "hover card" (i.e. big tooltip) for an entity.
