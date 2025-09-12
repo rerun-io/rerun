@@ -435,12 +435,20 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
     package = crate.manifest["package"]
     name = package["name"]
 
+    publish_cmd = f"publish --quiet --locked --token {token}"
+    if name == "re_web_viewer_server":
+        # For some reason, cargo complains about the web viewer .wasm and .js being "dirty",
+        # despite them being in .gitignore.
+        # We don't know why. But we still want to publish:
+        # TODO(#11199): remove this hack
+        publish_cmd += " --allow-dirty"
+
     print(f"{G}Publishing{X} {B}{name}{X}…")
     retry_attempts = 5
     while True:
         try:
             cargo(
-                f"publish --quiet --locked --token {token}",
+                publish_cmd,
                 cwd=crate.path,
                 env=env,
                 dry_run=False,
