@@ -729,7 +729,8 @@ impl PyDatasetEntry {
 
     /// Perform maintenance tasks on the datasets.
     #[pyo3(signature = (
-            build_scalar_index = false,
+            optimize_indexes = false,
+            retrain_indexes = false,
             compact_fragments = false,
             cleanup_before = None,
             unsafe_allow_recent_cleanup = false,
@@ -739,7 +740,8 @@ impl PyDatasetEntry {
     fn do_maintenance(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
-        build_scalar_index: bool,
+        optimize_indexes: bool,
+        retrain_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<Bound<'_, PyAny>>,
         unsafe_allow_recent_cleanup: bool,
@@ -766,7 +768,8 @@ impl PyDatasetEntry {
         connection.do_maintenance(
             py,
             dataset_id,
-            build_scalar_index,
+            optimize_indexes,
+            retrain_indexes,
             compact_fragments,
             cleanup_before,
             unsafe_allow_recent_cleanup,

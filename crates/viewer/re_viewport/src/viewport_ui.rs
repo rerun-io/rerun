@@ -11,8 +11,9 @@ use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
 use re_ui::{ContextExt as _, Help, Icon, IconText, UiExt as _, design_tokens_of_visuals};
 use re_view::controls::TOGGLE_MAXIMIZE_VIEW;
 use re_viewer_context::{
-    Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo,
-    SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
+    Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo, SystemCommand,
+    SystemCommandSender as _, SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext,
+    icon_for_container_kind,
 };
 use re_viewport_blueprint::{
     ViewBlueprint, ViewportBlueprint, ViewportCommand, create_entity_add_info,
@@ -288,8 +289,10 @@ impl ViewportUi {
                     }
                 });
 
-            ctx.selection_state()
-                .set_selection(Item::View(view_blueprint.id));
+            ctx.command_sender()
+                .send_system(SystemCommand::SetSelection(
+                    Item::View(view_blueprint.id).into(),
+                ));
 
             // drop is completed, no need for highlighting anymore
             false

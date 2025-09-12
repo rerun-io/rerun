@@ -1,7 +1,7 @@
 use std::iter;
 use std::sync::Arc;
 
-use arrow::datatypes::Fields;
+use arrow::datatypes::Field;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
@@ -19,10 +19,9 @@ use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
-use crate::datafusion_adapter::DataFusionAdapter;
+use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
 use crate::display_record_batch::DisplayColumn;
-use crate::filter_ui::FilterState;
-use crate::filters::{Filter, FilterOperation};
+use crate::filters::{Filter, FilterOperation, FilterState};
 use crate::header_tooltip::column_header_tooltip_ui;
 use crate::table_blueprint::{
     ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
@@ -214,15 +213,13 @@ impl<'a> DataFusionTableWidget<'a> {
             .response
     }
 
+    /// Display the table.
     pub fn show(
         self,
         viewer_ctx: &ViewerContext<'_>,
         runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
     ) {
-        let tokens = ui.tokens();
-        let table_style = re_ui::TableStyle::Spacious;
-
         let Self {
             session_ctx,
             table_ref,
@@ -247,9 +244,7 @@ impl<'a> DataFusionTableWidget<'a> {
         }
 
         // The TableConfig should be persisted across sessions, so we also need a static id.
-        let static_id = Id::new(&table_ref);
         let session_id = id_from_session_context_and_table(&session_ctx, &table_ref);
-
         let table_state = DataFusionAdapter::get(
             runtime,
             ui,
@@ -258,23 +253,19 @@ impl<'a> DataFusionTableWidget<'a> {
             session_id,
             initial_blueprint,
         );
-        let mut new_blueprint = table_state.blueprint().clone();
 
-        let mut filter_state =
-            FilterState::load_or_init_from_blueprint(ui.ctx(), session_id, table_state.blueprint());
-
-        let requested_sorbet_batches = table_state.requested_sorbet_batches.lock();
+        let requested_query_result = table_state.requested_query_result.lock();
 
         let mut should_show_spinner = false;
-        let (sorbet_batches, fields) = match (
-            requested_sorbet_batches.try_as_ref(),
-            &table_state.last_sorbet_batches,
+        let query_result = match (
+            requested_query_result.try_as_ref(),
+            &table_state.last_query_results,
         ) {
-            (Some(Ok(dataframe)), _) => dataframe,
+            (Some(Ok(query_result)), _) => query_result,
 
             (Some(Err(err)), _) => {
                 let error = format!("Could not load table: {err}");
-                drop(requested_sorbet_batches);
+                drop(requested_query_result);
 
                 ui.horizontal(|ui| {
                     ui.error_label(error);
@@ -290,64 +281,83 @@ impl<'a> DataFusionTableWidget<'a> {
                 return;
             }
 
-            (None, Some(last_dataframe)) => {
+            (None, Some(last_query_result)) => {
                 // The new dataframe is still processing, but we have the previous one to display for now.
                 should_show_spinner = true;
-                last_dataframe
+                last_query_result
             }
 
             (None, None) => {
                 // still processing, nothing yet to show
+                //TODO(ab): it can happen that we're stuck in the state. We should detect it and
+                //produce an error
                 Self::loading_ui(ui);
                 return;
             }
         };
 
-        // TODO(ab): significant code duplication here. This could possible be addressed by allowing
-        // the rest of this function to run over a schema and empty dataframe.
-        let (sorbet_schema, migrated_fields) = {
-            // TODO(ab): We need to deal better with empty vec of sorbet batches. In that case, we
-            // do have a schema, so we should be able to display an empty table.
-            let Some(sorbet_batch) = sorbet_batches.first() else {
-                if let Some(title) = title {
-                    title_ui(ui, None, &title, url.as_ref(), should_show_spinner);
-                }
+        let new_blueprint = Self::table_ui(
+            viewer_ctx,
+            ui,
+            session_ctx.as_ref(),
+            table_ref,
+            table_state.blueprint(),
+            session_id,
+            title.as_deref(),
+            url.as_deref(),
+            table_state.queried_at,
+            should_show_spinner,
+            query_result,
+            &column_blueprint_fn,
+        );
 
-                drop(requested_sorbet_batches);
-                filter_state.filter_bar_ui(ui, &mut new_blueprint);
-                if table_state.blueprint() != &new_blueprint {
-                    table_state.update_query(runtime, ui, new_blueprint);
-                }
-                filter_state.store(ui.ctx(), session_id);
+        drop(requested_query_result);
+        if table_state.blueprint() != &new_blueprint {
+            table_state.update_query(runtime, ui, new_blueprint);
+        }
+    }
 
-                Frame::new()
-                    .inner_margin(egui::vec2(16.0, 0.0))
-                    .show(ui, |ui| {
-                        ui.label(egui::RichText::new("Empty table").italics());
-                    });
+    /// Actual UI code to render a table.
+    //TODO(ab): make the argument list less crazy
+    #[expect(clippy::too_many_arguments)]
+    fn table_ui(
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        session_ctx: &SessionContext,
+        table_ref: TableReference,
+        table_blueprint: &TableBlueprint,
+        session_id: egui::Id,
+        title: Option<&str>,
+        url: Option<&str>,
+        queried_at: Timestamp,
+        should_show_spinner: bool,
+        query_result: &DataFusionQueryResult,
+        column_blueprint_fn: &ColumnBlueprintFn<'_>,
+    ) -> TableBlueprint {
+        let static_id = Id::new(&table_ref);
 
-                return;
-            };
+        let mut new_blueprint = table_blueprint.clone();
 
-            (sorbet_batch.sorbet_schema(), sorbet_batch.fields())
-        };
+        let mut filter_state =
+            FilterState::load_or_init_from_blueprint(ui.ctx(), session_id, table_blueprint);
 
-        let num_rows = sorbet_batches
+        let num_rows = query_result
+            .sorbet_batches
             .iter()
             .map(|record_batch| record_batch.num_rows() as u64)
             .sum();
 
-        let columns = Columns::from(sorbet_schema, &column_blueprint_fn);
+        let columns = Columns::from(&query_result.sorbet_schema, column_blueprint_fn);
 
-        let display_record_batches = sorbet_batches
+        let display_record_batches = query_result
+            .sorbet_batches
             .iter()
-            .map(|sorbet_batch| {
-                DisplayRecordBatch::try_new(
-                    sorbet_batch
-                        .all_columns_ref()
-                        .zip(columns.iter())
-                        .map(|((desc, array), column)| (desc, &column.blueprint, array.clone())),
-                )
+            .map(|record_batch| {
+                DisplayRecordBatch::try_new(itertools::izip!(
+                    query_result.sorbet_schema.columns.iter().map(|x| x.into()),
+                    columns.iter().map(|column| &column.blueprint),
+                    record_batch.columns().iter().map(Arc::clone)
+                ))
             })
             .collect::<Result<Vec<_>, _>>();
 
@@ -356,7 +366,7 @@ impl<'a> DataFusionTableWidget<'a> {
             Err(err) => {
                 //TODO(ab): better error handling?
                 ui.error_label(err.to_string());
-                return;
+                return new_blueprint;
             }
         };
 
@@ -375,18 +385,14 @@ impl<'a> DataFusionTableWidget<'a> {
         );
 
         if let Some(title) = title {
-            title_ui(
-                ui,
-                Some(&mut table_config),
-                &title,
-                url.as_ref(),
-                should_show_spinner,
-            );
+            title_ui(ui, Some(&mut table_config), title, url, should_show_spinner);
         }
 
         filter_state.filter_bar_ui(ui, &mut new_blueprint);
 
         apply_table_style_fixes(ui.style_mut());
+
+        let table_style = re_ui::TableStyle::Spacious;
 
         let mut row_height = viewer_ctx.tokens().table_row_height(table_style);
 
@@ -401,17 +407,22 @@ impl<'a> DataFusionTableWidget<'a> {
             row_height *= 3.0;
         }
 
+        let migrated_fields = query_result
+            .sorbet_schema
+            .columns
+            .arrow_fields(re_sorbet::BatchType::Dataframe);
+
         let mut table_delegate = DataFusionTableDelegate {
             ctx: viewer_ctx,
             table_style,
-            fields,
-            migrated_fields,
+            query_result,
+            migrated_fields: &migrated_fields,
             display_record_batches: &display_record_batches,
             columns: &columns,
-            blueprint: table_state.blueprint(),
+            blueprint: table_blueprint,
             new_blueprint: &mut new_blueprint,
-            table_config,
-            filter_state,
+            table_config: &mut table_config,
+            filter_state: &mut filter_state,
             row_height,
         };
 
@@ -425,12 +436,12 @@ impl<'a> DataFusionTableWidget<'a> {
             num_rows,
             visible_columns,
             total_columns,
-            table_state.queried_at,
+            queried_at,
         );
 
         match action {
             Some(BottomBarAction::Refresh) => {
-                Self::refresh(ui.ctx(), &session_ctx, table_ref);
+                Self::refresh(ui.ctx(), session_ctx, table_ref);
             }
             None => {}
         }
@@ -468,17 +479,15 @@ impl<'a> DataFusionTableWidget<'a> {
                 .collect::<Vec<_>>(),
             )
             .headers(vec![egui_table::HeaderRow::new(
-                tokens.table_header_height(),
+                ui.tokens().table_header_height(),
             )])
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
 
-        table_delegate.table_config.store(ui.ctx());
-        table_delegate.filter_state.store(ui.ctx(), session_id);
-        drop(requested_sorbet_batches);
-        if table_state.blueprint() != &new_blueprint {
-            table_state.update_query(runtime, ui, new_blueprint);
-        }
+        table_config.store(ui.ctx());
+        filter_state.store(ui.ctx(), session_id);
+
+        new_blueprint
     }
 
     fn row_number_text(rows: u64) -> WidgetText {
@@ -559,7 +568,7 @@ fn title_ui(
     ui: &mut egui::Ui,
     table_config: Option<&mut TableConfig>,
     title: &str,
-    url: Option<&String>,
+    url: Option<&str>,
     should_show_spinner: bool,
 ) {
     Frame::new()
@@ -580,7 +589,7 @@ fn title_ui(
                             .on_hover_text(url)
                             .clicked()
                     {
-                        ui.ctx().copy_text(url.clone());
+                        ui.ctx().copy_text(url.into());
                     }
 
                     if should_show_spinner {
@@ -603,14 +612,14 @@ enum BottomBarAction {
 struct DataFusionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     table_style: re_ui::TableStyle,
-    fields: &'a Fields,
-    migrated_fields: &'a Fields,
+    query_result: &'a DataFusionQueryResult,
+    migrated_fields: &'a Vec<Field>,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
     blueprint: &'a TableBlueprint,
     new_blueprint: &'a mut TableBlueprint,
-    table_config: TableConfig,
-    filter_state: FilterState,
+    table_config: &'a mut TableConfig,
+    filter_state: &'a mut FilterState,
     row_height: f32,
 }
 
@@ -629,7 +638,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             let id = self.table_config.visible_column_ids().nth(column_index);
 
             if let Some((index, column)) = self.columns.index_and_column_from_id(id) {
-                let column_field = &self.fields[index];
+                let column_field = &self.query_result.original_schema.fields[index];
                 let column_physical_name = column_field.name();
                 let column_display_name = column.display_name();
 

@@ -19,8 +19,10 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
+//use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
+use re_log_types::external::re_types_core::reflection::ComponentDescriptorExt as _;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart};
 use re_log_types::{LogMsg, RecordingId};
 use re_sdk::{
@@ -1720,6 +1722,11 @@ impl PyComponentDescriptor {
             cloned = cloned.or_with_component_type(|| component_type.into());
         }
         Self(cloned)
+    }
+
+    /// Sets `archetype` in a format similar to built-in archetypes.
+    fn with_builtin_archetype(&mut self, archetype: &str) -> Self {
+        Self(self.0.clone().with_builtin_archetype(archetype))
     }
 }
 

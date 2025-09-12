@@ -251,6 +251,10 @@ impl SyntaxHighlightedBuilder {
     pub fn into_widget_text(self, style: &Style) -> egui::WidgetText {
         self.into_job(style).into()
     }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
 }
 
 // ----------------------------------------------------------------------------

@@ -15,8 +15,9 @@ use re_ui::{
     list_item::{self, PropertyContent},
 };
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, UiLayout,
-    ViewContext, ViewId, ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SystemCommand,
+    SystemCommandSender as _, UiLayout, ViewContext, ViewId, ViewStates, ViewerContext,
+    contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
@@ -572,7 +573,8 @@ fn clone_view_button_ui(
         list_item::ButtonContent::new("Clone this view")
             .on_click(|| {
                 if let Some(new_view_id) = viewport.duplicate_view(&view_id, ctx) {
-                    ctx.selection_state().set_selection(Item::View(new_view_id));
+                    ctx.command_sender()
+                        .send_system(SystemCommand::SetSelection(Item::View(new_view_id).into()));
                     viewport.mark_user_interaction(ctx);
                 }
             })

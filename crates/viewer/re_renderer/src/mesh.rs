@@ -68,6 +68,9 @@ pub struct CpuMesh {
     pub vertex_texcoords: Vec<glam::Vec2>,
 
     pub materials: SmallVec<[Material; 1]>,
+
+    /// Object space bounding box.
+    pub bbox: macaw::BoundingBox,
 }
 
 impl CpuMesh {
@@ -83,6 +86,7 @@ impl CpuMesh {
             vertex_normals,
             vertex_texcoords,
             materials: _,
+            bbox,
         } = self;
 
         let num_pos = vertex_positions.len();
@@ -111,6 +115,10 @@ impl CpuMesh {
 
         if self.triangle_indices.is_empty() {
             return Err(MeshError::ZeroIndices);
+        }
+
+        if bbox.is_nan() || !bbox.is_finite() || bbox.is_nothing() {
+            return Err(MeshError::InvalidBbox(*bbox));
         }
 
         for indices in triangle_indices {
@@ -152,6 +160,9 @@ pub enum MeshError {
 
     #[error("Mesh has no triangle indices.")]
     ZeroIndices,
+
+    #[error("Mesh has an invalid bounding box {0:?}")]
+    InvalidBbox(macaw::BoundingBox),
 
     #[error("Index {index} was out of bounds for {num_pos} vertex positions")]
     IndexOutOfBounds { num_pos: usize, index: u32 },
@@ -198,6 +209,11 @@ pub struct GpuMesh {
 
     /// Every mesh has at least one material.
     pub materials: SmallVec<[GpuMaterial; 1]>,
+
+    /// Object space bounding box.
+    ///
+    /// Needed for distance sorting.
+    pub bbox: macaw::BoundingBox,
 }
 
 impl GpuMesh {
@@ -213,6 +229,9 @@ pub struct GpuMaterial {
     pub index_range: Range<u32>,
 
     pub bind_group: GpuBindGroup,
+
+    /// Whether there's any transparency in this material.
+    pub has_transparency: bool,
 }
 
 pub(crate) mod gpu_data {
@@ -232,7 +251,7 @@ pub(crate) mod gpu_data {
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct MaterialUniformBuffer {
-        albedo_factor: wgpu_buffer_types::Vec4,
+        albedo_factor: ecolor::Rgba,
         texture_format: wgpu_buffer_types::U32RowPadded,
         end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
     }
@@ -240,7 +259,7 @@ pub(crate) mod gpu_data {
     impl MaterialUniformBuffer {
         pub fn new(albedo_factor: ecolor::Rgba, texture_format: TextureFormat) -> Self {
             Self {
-                albedo_factor: albedo_factor.into(),
+                albedo_factor,
                 texture_format: (texture_format as u32).into(),
                 end_padding: Default::default(),
             }
@@ -367,9 +386,13 @@ impl GpuMesh {
                     },
                 );
 
+                // TODO(andreas): handle texture transparency
+                let is_transparent = material.albedo_factor.a() < 1.0;
+
                 materials.push(GpuMaterial {
                     index_range: material.index_range.clone(),
                     bind_group,
+                    has_transparency: is_transparent,
                 });
             }
             materials
@@ -388,6 +411,7 @@ impl GpuMesh {
             vertex_buffer_texcoord_range: vb_texcoord_start..vb_combined_size,
             index_buffer_range: 0..index_buffer_size,
             materials,
+            bbox: data.bbox,
         })
     }
 }

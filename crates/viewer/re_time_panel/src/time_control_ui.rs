@@ -2,9 +2,9 @@ use egui::NumExt as _;
 
 use re_entity_db::TimesPerTimeline;
 use re_log_types::TimeType;
-use re_ui::{UICommand, UiExt as _, list_item};
+use re_ui::{UICommand, UICommandSender as _, UiExt as _, list_item};
 
-use re_viewer_context::{Looping, PlayState, TimeControl};
+use re_viewer_context::{Looping, PlayState, TimeControl, ViewerContext};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct TimeControlUi;
@@ -91,16 +91,16 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
     pub fn play_pause_ui(
         &self,
+        ctx: &ViewerContext<'_>,
         time_control: &mut TimeControl,
-        times_per_timeline: &TimesPerTimeline,
         ui: &mut egui::Ui,
     ) {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 5.0; // from figma
-            self.play_button_ui(time_control, ui, times_per_timeline);
-            self.follow_button_ui(time_control, ui, times_per_timeline);
-            self.pause_button_ui(time_control, ui);
-            self.step_time_button_ui(time_control, ui, times_per_timeline);
+            self.play_button_ui(ctx, time_control, ui);
+            self.follow_button_ui(ctx, time_control, ui);
+            self.pause_button_ui(ctx, time_control, ui);
+            self.step_time_button_ui(ctx, ui);
             self.loop_button_ui(time_control, ui);
         });
     }
@@ -108,9 +108,9 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
     #[allow(clippy::unused_self)]
     fn play_button_ui(
         &self,
-        time_control: &mut TimeControl,
+        ctx: &ViewerContext<'_>,
+        time_control: &TimeControl,
         ui: &mut egui::Ui,
-        times_per_timeline: &TimesPerTimeline,
     ) {
         let is_playing = time_control.play_state() == PlayState::Playing;
         if ui
@@ -118,16 +118,17 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             .on_hover_ui(|ui| UICommand::PlaybackTogglePlayPause.tooltip_ui(ui))
             .clicked()
         {
-            time_control.set_play_state(times_per_timeline, PlayState::Playing);
+            ctx.command_sender()
+                .send_ui(UICommand::PlaybackTogglePlayPause);
         }
     }
 
     #[allow(clippy::unused_self)]
     fn follow_button_ui(
         &self,
-        time_control: &mut TimeControl,
+        ctx: &ViewerContext<'_>,
+        time_control: &TimeControl,
         ui: &mut egui::Ui,
-        times_per_timeline: &TimesPerTimeline,
     ) {
         let is_following = time_control.play_state() == PlayState::Following;
         if ui
@@ -135,35 +136,36 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             .on_hover_ui(|ui| UICommand::PlaybackFollow.tooltip_ui(ui))
             .clicked()
         {
-            time_control.set_play_state(times_per_timeline, PlayState::Following);
+            ctx.command_sender().send_ui(UICommand::PlaybackFollow);
         }
     }
 
     #[allow(clippy::unused_self)]
-    fn pause_button_ui(&self, time_control: &mut TimeControl, ui: &mut egui::Ui) {
+    fn pause_button_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        time_control: &TimeControl,
+        ui: &mut egui::Ui,
+    ) {
         let is_paused = time_control.play_state() == PlayState::Paused;
         if ui
             .large_button_selected(&re_ui::icons::PAUSE, is_paused)
             .on_hover_ui(|ui| UICommand::PlaybackTogglePlayPause.tooltip_ui(ui))
             .clicked()
         {
-            time_control.pause();
+            ctx.command_sender()
+                .send_ui(UICommand::PlaybackTogglePlayPause);
         }
     }
 
     #[allow(clippy::unused_self)]
-    fn step_time_button_ui(
-        &self,
-        time_control: &mut TimeControl,
-        ui: &mut egui::Ui,
-        times_per_timeline: &TimesPerTimeline,
-    ) {
+    fn step_time_button_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         if ui
             .large_button(&re_ui::icons::ARROW_LEFT)
             .on_hover_ui(|ui| UICommand::PlaybackStepBack.tooltip_ui(ui))
             .clicked()
         {
-            time_control.step_time_back(times_per_timeline);
+            ctx.command_sender().send_ui(UICommand::PlaybackStepBack);
         }
 
         if ui
@@ -171,7 +173,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             .on_hover_ui(|ui| UICommand::PlaybackStepForward.tooltip_ui(ui))
             .clicked()
         {
-            time_control.step_time_fwd(times_per_timeline);
+            ctx.command_sender().send_ui(UICommand::PlaybackStepForward);
         }
     }
 

@@ -25,5 +25,7 @@ arrow.workspace = true
 egui.workspace = true
 
 [dev-dependencies]
-egui_kittest.workspace = true
 re_types.workspace = true
+
+egui_kittest.workspace = true
+insta.workspace = true

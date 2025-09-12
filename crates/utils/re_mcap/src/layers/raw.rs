@@ -55,12 +55,22 @@ impl MessageParser for RawMcapMessageParser {
 ///
 /// The result will be verbatim copies of the original messages without decoding
 /// or imposing any semantic meaning on the data.
-#[derive(Debug, Default)]
+#[derive(Default, Debug)]
 pub struct McapRawLayer;
 
 impl MessageLayer for McapRawLayer {
     fn identifier() -> LayerIdentifier {
         "raw".into()
+    }
+
+    fn init(&mut self, summary: &::mcap::Summary) -> Result<(), Error> {
+        let _ = summary; // nothing to do
+        Ok(())
+    }
+
+    fn supports_channel(&self, _channel: &mcap::Channel<'_>) -> bool {
+        // Raw can capture any channel
+        true
     }
 
     fn message_parser(

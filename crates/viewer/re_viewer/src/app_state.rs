@@ -670,7 +670,7 @@ impl AppState {
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
-            self.selection_state.clear_selection();
+            command_sender.send_system(SystemCommand::clear_selection());
         }
 
         // If there's no text edit or label selected, and the user triggers a copy command, copy a description of the current selection.
@@ -690,7 +690,6 @@ impl AppState {
         self.focused_item = None;
     }
 
-    #[cfg(target_arch = "wasm32")] // Only used in Wasm
     pub fn recording_config(&self, rec_id: &StoreId) -> Option<&RecordingConfig> {
         self.recording_configs.get(rec_id)
     }

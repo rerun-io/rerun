@@ -300,12 +300,13 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    #[allow(clippy::fn_params_excessive_bools)]
+    #[allow(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
     pub fn do_maintenance(
         &self,
         py: Python<'_>,
         dataset_id: EntryId,
-        build_scalar_indexes: bool,
+        optimize_indexes: bool,
+        retrain_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
         unsafe_allow_recent_cleanup: bool,
@@ -317,11 +318,27 @@ impl ConnectionHandle {
                     .await?
                     .do_maintenance(
                         dataset_id,
-                        build_scalar_indexes,
+                        optimize_indexes,
+                        retrain_indexes,
                         compact_fragments,
                         cleanup_before,
                         unsafe_allow_recent_cleanup,
                     )
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn do_global_maintenance(&self, py: Python<'_>) -> PyResult<()> {
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .do_global_maintenance()
                     .await
                     .map_err(to_py_err)
             }

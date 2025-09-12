@@ -11,8 +11,8 @@ use parking_lot::Mutex;
 
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::EntityDb;
-use re_global_context::{AppOptions, DisplayMode};
+use re_entity_db::{EntityDb, InstancePath};
+use re_global_context::{AppOptions, DisplayMode, Item, SystemCommandSender as _};
 use re_log_types::{
     ApplicationId, EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
     StoreSource, Timeline, external::re_tuid::Tuid,
@@ -540,12 +540,57 @@ impl TestContext {
         result.expect("Function should have been called at least once")
     }
 
+    /// Applies a fragment.
+    ///
+    /// Does *not* switch the active recording.
+    fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
+        let re_uri::Fragment { selection, when } = fragment;
+
+        if let Some(selection) = selection {
+            let re_log_types::DataPath {
+                entity_path,
+                instance,
+                component_descriptor,
+            } = selection;
+
+            let item = if let Some(component_descriptor) = component_descriptor {
+                Item::from(re_log_types::ComponentPath::new(
+                    entity_path,
+                    component_descriptor,
+                ))
+            } else if let Some(instance) = instance {
+                Item::from(InstancePath::instance(entity_path, instance))
+            } else {
+                Item::from(entity_path)
+            };
+
+            self.command_sender
+                .send_system(SystemCommand::SetSelection(item.clone().into()));
+        }
+
+        if let Some((timeline, timecell)) = when {
+            self.command_sender
+                .send_system(SystemCommand::SetActiveTime {
+                    store_id,
+                    timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
+                    time: Some(timecell.as_i64().into()),
+                });
+        }
+    }
+
     /// Best-effort attempt to meaningfully handle some of the system commands.
     pub fn handle_system_commands(&mut self) {
         while let Some(command) = self.command_receiver.recv_system() {
             let mut handled = true;
             let command_name = format!("{command:?}");
             match command {
+                SystemCommand::SetUrlFragment { store_id, fragment } => {
+                    // This adds new system commands, which will be handled later in the loop.
+                    self.go_to_dataset_data(store_id, fragment);
+                }
+                SystemCommand::CopyUrlWithContext { .. } => {
+                    // Ignore copying to clipboard here.
+                }
                 SystemCommand::AppendToStore(store_id, chunks) => {
                     let store_hub = self.store_hub.get_mut();
                     let db = store_hub.entity_db_mut(&store_id);

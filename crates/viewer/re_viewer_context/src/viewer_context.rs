@@ -5,7 +5,7 @@ use parking_lot::RwLock;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
-use re_global_context::DisplayMode;
+use re_global_context::{DisplayMode, SystemCommand};
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
 use re_ui::ContextExt as _;
@@ -217,7 +217,9 @@ impl ViewerContext<'_> {
         interacted_items: impl Into<ItemCollection>,
         draggable: bool,
     ) {
-        let mut interacted_items = interacted_items.into().into_mono_instance_path_items(self);
+        let mut interacted_items = interacted_items
+            .into()
+            .into_mono_instance_path_items(self.recording(), &self.current_query());
         let selection_state = self.selection_state();
 
         if response.hovered() {
@@ -235,7 +237,8 @@ impl ViewerContext<'_> {
             // see semantics description in the docstring
             let dragged_items = if !is_already_selected && is_cmd_held {
                 selected_items.extend(interacted_items);
-                selection_state.set_selection(selected_items.clone());
+                self.command_sender()
+                    .send_system(SystemCommand::SetSelection(selected_items.clone()));
                 selected_items
             } else if !is_already_selected {
                 interacted_items
@@ -283,9 +286,53 @@ impl ViewerContext<'_> {
             // so we don't handle it here.
             if !modifiers.shift {
                 if modifiers.command {
-                    selection_state.toggle_selection(interacted_items);
+                    // Sends a command to select `ìnteracted_items` unless already selected in which case they get unselected.
+                    // If however an object is already selected but now gets passed a *different* item context, it stays selected after all
+                    // but with an updated context!
+
+                    let mut toggle_items_set: HashMap<_, _> = interacted_items
+                        .iter()
+                        .map(|(item, ctx)| (item.clone(), ctx.clone()))
+                        .collect();
+
+                    let mut new_selection = selection_state.selected_items().clone();
+
+                    // If an item was already selected with the exact same context remove it.
+                    // If an item was already selected and loses its context, remove it.
+                    new_selection.retain(|item, ctx| {
+                        if let Some(new_ctx) = toggle_items_set.get(item) {
+                            if new_ctx == ctx || new_ctx.is_none() {
+                                toggle_items_set.remove(item);
+                                false
+                            } else {
+                                true
+                            }
+                        } else {
+                            true
+                        }
+                    });
+
+                    // Update context for items that are remaining in the toggle_item_set:
+                    for (item, ctx) in new_selection.iter_mut() {
+                        if let Some(new_ctx) = toggle_items_set.get(item) {
+                            *ctx = new_ctx.clone();
+                            toggle_items_set.remove(item);
+                        }
+                    }
+
+                    // Make sure we preserve the order - old items kept in same order, new items added to the end.
+                    // Add the new items, unless they were toggling out existing items:
+                    new_selection.extend(
+                        interacted_items
+                            .into_iter()
+                            .filter(|(item, _)| toggle_items_set.contains_key(item)),
+                    );
+
+                    self.command_sender()
+                        .send_system(SystemCommand::SetSelection(new_selection));
                 } else {
-                    selection_state.set_selection(interacted_items);
+                    self.command_sender()
+                        .send_system(SystemCommand::SetSelection(interacted_items));
                 }
             }
         }

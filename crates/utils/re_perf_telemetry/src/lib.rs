@@ -46,6 +46,7 @@
 
 mod args;
 mod grpc;
+mod memory_telemetry;
 mod metrics_server;
 mod prometheus;
 mod shared_reader;

@@ -1,6 +1,6 @@
 /// RGBA color in sRGB gamma space, with separate/unmultiplied linear alpha.
 ///
-/// This is the most common input color, e.g. speicied using CSS colors.
+/// This is the most common input color, e.g. specified using CSS colors.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Rgba32Unmul(pub [u8; 4]);
