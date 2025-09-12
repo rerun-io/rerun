@@ -24,7 +24,7 @@ impl UrlContext {
     /// sharing when we know it won't work.
     ///
     /// This should be kept up to date with what `ViewerOpenUrl::new` does
-    // TODO(isse): I don't really like how this has to be kept up to date manually with
+    // TODO(Isse): I don't really like how this has to be kept up to date manually with
     // `ViewerOpenUrl`, would be nice to consolidate.
     pub fn features(&self, store_hub: &crate::StoreHub) -> Option<UrlFeatures> {
         match &self.display_mode {
