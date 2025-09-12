@@ -30,7 +30,7 @@ use crate::list_item_ranges::list_item_ranges;
 
 /// Arrow display options.
 ///
-/// Max item limits will not affect the `list_item` based ui, that will always show all items.
+/// Max item limits will not affect the `list_item`-based ui, that will always show all items.
 pub struct DisplayOptions<'a> {
     /// Format options for items formatted with arrows built-in formatter.
     pub format_options: FormatOptions<'a>,
