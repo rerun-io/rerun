@@ -113,7 +113,8 @@ impl TryFrom<crate::cloud::v1alpha1::GetChunksRequest> for GetChunksRequest {
 #[derive(Debug, Clone)]
 pub struct DoMaintenanceRequest {
     pub dataset_id: Option<crate::common::v1alpha1::EntryId>,
-    pub build_scalar_indexes: bool,
+    pub optimize_indexes: bool,
+    pub retrain_indexes: bool,
     pub compact_fragments: bool,
     pub cleanup_before: Option<jiff::Timestamp>,
     pub unsafe_allow_recent_cleanup: bool,
@@ -123,7 +124,8 @@ impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest
     fn from(value: DoMaintenanceRequest) -> Self {
         Self {
             dataset_id: value.dataset_id,
-            build_scalar_indexes: value.build_scalar_indexes,
+            optimize_indexes: value.optimize_indexes,
+            retrain_indexes: value.retrain_indexes,
             compact_fragments: value.compact_fragments,
             cleanup_before: value.cleanup_before.map(|ts| prost_types::Timestamp {
                 seconds: ts.as_second(),

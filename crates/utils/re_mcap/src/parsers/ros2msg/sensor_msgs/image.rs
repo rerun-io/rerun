@@ -1,7 +1,6 @@
 use anyhow::Context as _;
 use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, StringBuilder, UInt32Builder};
 use re_chunk::{Chunk, ChunkId};
-use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor, SerializedComponentColumn,
     archetypes::{DepthImage, Image},
@@ -73,10 +72,10 @@ impl MessageParser for ImageMessageParser {
             .context("Failed to decode sensor_msgs::Image message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(header.stamp.as_nanos()),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            header.stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         let dimensions = [width, height];
         let img_format = decode_image_format(&encoding, dimensions)

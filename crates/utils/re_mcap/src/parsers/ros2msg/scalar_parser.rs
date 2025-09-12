@@ -1,7 +1,6 @@
 use anyhow::Context as _;
 use arrow::array::{FixedSizeListBuilder, Float64Builder};
 use re_chunk::{Chunk, ChunkId, ChunkResult, EntityPath, RowId, TimePoint};
-use re_log_types::TimeCell;
 use re_types::archetypes::{Scalars, SeriesLines};
 
 use crate::parsers::{
@@ -85,10 +84,10 @@ impl<T: ScalarExtractor> MessageParser for ScalarMessageParser<T> {
         })?;
 
         // Add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(message.header().stamp.as_nanos()),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            message.header().stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         let scalar_values = message.extract_scalars();
 

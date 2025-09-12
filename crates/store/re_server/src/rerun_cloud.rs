@@ -594,16 +594,6 @@ impl RerunCloudService for RerunCloudHandler {
         Err(tonic::Status::unimplemented("create_index not implemented"))
     }
 
-    async fn re_index(
-        &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::ReIndexRequest>,
-    ) -> std::result::Result<
-        tonic::Response<re_protos::cloud::v1alpha1::ReIndexResponse>,
-        tonic::Status,
-    > {
-        Err(tonic::Status::unimplemented("re_index not implemented"))
-    }
-
     /* Queries */
 
     type SearchDatasetStream = SearchDatasetResponseStream;
@@ -954,6 +944,18 @@ impl RerunCloudService for RerunCloudHandler {
     {
         Err(tonic::Status::unimplemented(
             "do_maintenance not implemented",
+        ))
+    }
+
+    async fn do_global_maintenance(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::DoGlobalMaintenanceRequest>,
+    ) -> Result<
+        tonic::Response<re_protos::cloud::v1alpha1::DoGlobalMaintenanceResponse>,
+        tonic::Status,
+    > {
+        Err(tonic::Status::unimplemented(
+            "do_global_maintenance not implemented",
         ))
     }
 }

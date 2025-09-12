@@ -1,7 +1,6 @@
 use anyhow::Context as _;
 use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, StringBuilder, UInt32Builder};
 use re_chunk::{Chunk, ChunkComponents, ChunkId};
-use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor, SerializedComponentColumn,
     archetypes::TextLog,
@@ -79,10 +78,10 @@ impl MessageParser for LogMessageParser {
             .context("Failed to decode `rcl_interfaces::Log` message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(stamp.as_nanos()),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         self.text_entries.push(format!("[{name}] {log_msg}"));
         self.levels.push(level.to_string());

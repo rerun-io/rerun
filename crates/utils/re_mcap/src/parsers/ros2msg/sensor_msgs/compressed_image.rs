@@ -3,7 +3,6 @@ use re_chunk::{
     Chunk, ChunkId, RowId, TimePoint,
     external::arrow::array::{FixedSizeListBuilder, StringBuilder},
 };
-use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor,
     archetypes::{EncodedImage, VideoStream},
@@ -11,9 +10,12 @@ use re_types::{
     reflection::ComponentDescriptorExt as _,
 };
 
-use crate::parsers::{
-    cdr,
-    decode::{MessageParser, ParserContext},
+use crate::{
+    parsers::{
+        cdr,
+        decode::{MessageParser, ParserContext},
+    },
+    util::TimestampCell,
 };
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
@@ -48,10 +50,10 @@ impl MessageParser for CompressedImageMessageParser {
         } = cdr::try_decode_message::<sensor_msgs::CompressedImage<'_>>(&msg.data)?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(header.stamp.as_nanos()),
-        );
+        ctx.add_timestamp_cell(TimestampCell::guess_from_nanos(
+            header.stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         self.blobs.push(data.into_owned());
 

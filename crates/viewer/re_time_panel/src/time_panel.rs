@@ -349,9 +349,7 @@ impl TimePanel {
             ui.vertical(|ui| {
                 if has_more_than_one_time_point {
                     ui.horizontal(|ui| {
-                        let times_per_timeline = entity_db.times_per_timeline();
-                        self.time_control_ui
-                            .play_pause_ui(time_ctrl, times_per_timeline, ui);
+                        self.time_control_ui.play_pause_ui(ctx, time_ctrl, ui);
 
                         self.time_control_ui.playback_speed_ui(time_ctrl, ui);
                         self.time_control_ui.fps_ui(time_ctrl, ui);
@@ -371,8 +369,7 @@ impl TimePanel {
             let times_per_timeline = entity_db.times_per_timeline();
 
             if has_more_than_one_time_point {
-                self.time_control_ui
-                    .play_pause_ui(time_ctrl, times_per_timeline, ui);
+                self.time_control_ui.play_pause_ui(ctx, time_ctrl, ui);
             }
 
             self.time_control_ui
@@ -1261,9 +1258,7 @@ impl TimePanel {
             // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    let times_per_timeline = entity_db.times_per_timeline();
-                    self.time_control_ui
-                        .play_pause_ui(time_ctrl, times_per_timeline, ui);
+                    self.time_control_ui.play_pause_ui(ctx, time_ctrl, ui);
                     self.time_control_ui.playback_speed_ui(time_ctrl, ui);
                     self.time_control_ui.fps_ui(time_ctrl, ui);
                 });
@@ -1285,8 +1280,7 @@ impl TimePanel {
             // One row:
             let times_per_timeline = entity_db.times_per_timeline();
 
-            self.time_control_ui
-                .play_pause_ui(time_ctrl, times_per_timeline, ui);
+            self.time_control_ui.play_pause_ui(ctx, time_ctrl, ui);
             self.time_control_ui
                 .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
             self.time_control_ui.playback_speed_ui(time_ctrl, ui);

@@ -111,15 +111,12 @@ impl McapChunkDecoder {
 
         let channel = msg.channel.as_ref();
         let channel_id = ChannelId(channel.id);
+        let log_time_cell = crate::util::TimestampCell::guess_from_nanos(msg.log_time, "log_time");
+        let publish_time_cell =
+            crate::util::TimestampCell::guess_from_nanos(msg.publish_time, "publish_time");
         let timepoint = re_chunk::TimePoint::from([
-            (
-                "log_time",
-                re_log_types::TimeCell::from_timestamp_nanos_since_epoch(msg.log_time as i64),
-            ),
-            (
-                "publish_time",
-                re_log_types::TimeCell::from_timestamp_nanos_since_epoch(msg.publish_time as i64),
-            ),
+            ("log_time", log_time_cell.into_time_cell()),
+            ("publish_time", publish_time_cell.into_time_cell()),
         ]);
 
         if let Some((ctx, parser)) = self.parsers.get_mut(&channel_id) {

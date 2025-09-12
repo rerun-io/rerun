@@ -53,7 +53,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: web_viewer
-          path: web_viewer
+          path: "crates/viewer/re_web_viewer_server/web_viewer"
 
       - name: Download examples
         if: ${{ inputs.WITH_EXAMPLES }}
@@ -94,8 +94,8 @@ jobs:
         run: |
           entries=()
 
-          entries+=("Wasm:web_viewer/re_viewer_bg.wasm:MiB")
-          entries+=("JS:web_viewer/re_viewer.js:kiB")
+          entries+=("Wasm:crates/viewer/re_web_viewer_server/web_viewer/re_viewer_bg.wasm:MiB")
+          entries+=("JS:crates/viewer/re_web_viewer_server/web_viewer/re_viewer.js:kiB")
 
           if [ ${{ inputs.WITH_EXAMPLES }} = "true" ]; then
             for file in example_data/*.rrd; do
