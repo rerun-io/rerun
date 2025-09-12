@@ -135,14 +135,16 @@ impl ShareModal {
                     } else {
                         None
                     };
-                    let mut url_string = url.sharable_url(web_viewer_base_url).unwrap_or_default();
+                    let url_string = url.sharable_url(web_viewer_base_url).unwrap_or_default();
 
-                    // TODO: make this editable.
-                    egui::TextEdit::singleline(&mut url_string)
+                    // We don't actually want to edit the URL, but text edit is stylewise what we want here.
+                    // TODO(andreas): This is slightly glitchy: you can still type and we forget about it immediately.
+                    // Ideally we'd keep this interactive but don't allow text edits, but `TextEdit` doesn't have this option yet.
+                    let mut url_for_text_edit = url_string.clone();
+                    egui::TextEdit::singleline(&mut url_for_text_edit)
                         .hint_text("<can't share link>") // No known way to get into this situation.
                         .text_color(ui.style().visuals.strong_text_color())
-                        .interactive(false) // We don't actually want to edit the URL, but text edit is stylewise what we want here.
-                        .desired_width(f32::INFINITY)
+                        .desired_width(f32::INFINITY) // Take up the entire space.
                         .show(ui);
 
                     url_string
