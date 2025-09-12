@@ -766,7 +766,7 @@ platforms = ["linux-64", "osx-arm64", "win-64"]
 
 
 [feature.examples-common.system-requirements]
-macos = "12.0" # needed for scipy
+macos = "13.0" # needed for scipy and opencv contrib wheels
 
 [feature.examples-common.dependencies]
 python = "=3.11"
