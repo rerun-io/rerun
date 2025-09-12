@@ -1,6 +1,9 @@
 use crate::UiExt as _;
 use crate::syntax_highlighting::SyntaxHighlightedBuilder;
-use egui::text::{LayoutJob, TextWrapping};
+use egui::{
+    NumExt, TextWrapMode,
+    text::{LayoutJob, TextWrapping},
+};
 use std::sync::Arc;
 
 /// Specifies the context in which the UI is used and the constraints it should follow.
@@ -74,19 +77,23 @@ impl UiLayout {
 
         // Respect set wrap_mode if already set
         if ui.style().wrap_mode.is_none() {
-            match self {
+            let wrap_mode = match self {
                 Self::List => {
                     if ui.is_sizing_pass() {
-                        // grow parent if needed - that's the point of a sizing pass
-                        label = label.extend();
+                        if ui.is_tooltip() {
+                            TextWrapMode::Truncate // Dangerous to let this grow without bounds. TODO(emilk): let it grow up to `tooltip_width`
+                        } else {
+                            // grow parent if needed - that's the point of a sizing pass
+                            TextWrapMode::Extend
+                        }
                     } else {
-                        label = label.truncate();
+                        TextWrapMode::Truncate
                     }
                 }
-                Self::Tooltip | Self::SelectionPanel => {
-                    label = label.wrap();
-                }
-            }
+                Self::Tooltip | Self::SelectionPanel => TextWrapMode::Wrap,
+            };
+
+            label = label.wrap_mode(wrap_mode);
         }
 
         ui.add(label)
@@ -142,8 +149,20 @@ impl UiLayout {
                 layout_job.break_on_newline = false;
 
                 if ui.is_sizing_pass() {
-                    // grow parent if needed - that's the point of a sizing pass
-                    layout_job.wrap.max_width = f32::INFINITY;
+                    if ui.is_tooltip() {
+                        // We should only allow this to grow up to the width of the tooltip:
+                        let max_tooltip_width = ui.style().spacing.tooltip_width;
+                        let growth_margin = max_tooltip_width - ui.max_rect().width();
+
+                        layout_job.wrap.max_width += growth_margin;
+
+                        // There are limits to how small we shrink this though,
+                        // even at the cost of making the tooltip too wide.
+                        layout_job.wrap.max_width = layout_job.wrap.max_width.at_least(10.0);
+                    } else {
+                        // grow parent if needed - that's the point of a sizing pass
+                        layout_job.wrap.max_width = f32::INFINITY;
+                    }
                 } else {
                     // Truncate
                     layout_job.wrap.break_anywhere = true;
