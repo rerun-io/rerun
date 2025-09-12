@@ -3,15 +3,15 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: BooleanEquals(
-        Some(
-            false,
+    op: Boolean(
+        NonNullable(
+            true,
         ),
     ),
     field: Field {
         name: "column",
         data_type: Boolean,
-        nullable: true,
+        nullable: false,
         dict_id: 0,
         dict_is_ordered: false,
         metadata: {},
@@ -20,11 +20,11 @@ TestResult {
     [
       true,
       true,
-      null,
       false,
     ],
     filtered: BooleanArray
     [
-      false,
+      true,
+      true,
     ],
 }

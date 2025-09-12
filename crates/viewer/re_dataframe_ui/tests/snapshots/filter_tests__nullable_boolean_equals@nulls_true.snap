@@ -3,9 +3,11 @@ source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
 expression: test_results
 ---
 TestResult {
-    op: BooleanEquals(
-        Some(
-            false,
+    op: Boolean(
+        Nullable(
+            Some(
+                true,
+            ),
         ),
     ),
     field: Field {
@@ -25,6 +27,7 @@ TestResult {
     ],
     filtered: BooleanArray
     [
-      false,
+      true,
+      true,
     ],
 }

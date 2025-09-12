@@ -4,7 +4,9 @@ expression: test_results
 ---
 TestResult {
     op: BooleanEquals(
-        true,
+        Some(
+            true,
+        ),
     ),
     field: Field {
         name: "column",
