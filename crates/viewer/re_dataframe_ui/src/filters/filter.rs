@@ -4,7 +4,8 @@ use std::sync::Arc;
 
 use arrow::array::{Array as _, ArrayRef, BooleanArray, ListArray, as_list_array};
 use arrow::datatypes::{DataType, Field};
-use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err, ExprSchema};
+use datafusion::common::ExprSchema as _;
+use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
     ScalarUDFImpl, Signature, TypeSignature, Volatility,
