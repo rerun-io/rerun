@@ -108,7 +108,7 @@ pub enum FilterOperation {
     /// For columns of lists of integers, only the first value is considered.
     IntCompares {
         operator: ComparisonOperator,
-        value: i128,
+        value: Option<i128>,
     },
 
     /// Compare a floating point value to a constant.
@@ -116,7 +116,7 @@ pub enum FilterOperation {
     /// For columns of lists of floats, only the first value is considered.
     FloatCompares {
         operator: ComparisonOperator,
-        value: f64,
+        value: Option<f64>,
     },
 
     //TODO(ab): parameterise that over multiple string ops, e.g. "contains", "starts with", etc.
@@ -126,42 +126,37 @@ pub enum FilterOperation {
 }
 
 impl FilterOperation {
-    pub fn default_for_datatype(data_type: &DataType) -> Option<Self> {
+    fn default_for_primitive_datatype(data_type: &DataType) -> Option<Self> {
         match data_type {
             data_type if data_type.is_integer() => Some(Self::IntCompares {
                 operator: ComparisonOperator::Eq,
-                value: 0,
+                value: None,
             }),
-            DataType::List(field) | DataType::ListView(field) if field.data_type().is_integer() => {
-                Some(Self::IntCompares {
-                    operator: ComparisonOperator::Eq,
-                    value: 0,
-                })
-            }
-
-            DataType::Utf8 | DataType::Utf8View => Some(Self::StringContains(String::new())),
-            DataType::List(field) | DataType::ListView(field)
-                if field.data_type() == &DataType::Utf8
-                    || field.data_type() == &DataType::Utf8View =>
-            {
-                Some(Self::StringContains(String::new()))
-            }
-
-            DataType::Boolean => Some(Self::BooleanEquals(true)),
-            DataType::List(fields) | DataType::ListView(fields)
-                if fields.data_type() == &DataType::Boolean =>
-            {
-                Some(Self::BooleanEquals(true))
-            }
 
             DataType::Float16 | DataType::Float32 | DataType::Float64 => {
                 Some(Self::FloatCompares {
                     operator: ComparisonOperator::Eq,
-                    value: 0.0,
+                    value: None,
                 })
             }
 
+            DataType::Utf8 | DataType::Utf8View => Some(Self::StringContains(String::new())),
+
+            DataType::Boolean => Some(Self::BooleanEquals(true)),
+
             _ => None,
+        }
+    }
+
+    pub fn default_for_datatype(data_type: &DataType) -> Option<Self> {
+        match data_type {
+            DataType::List(field) | DataType::ListView(field) => {
+                // Note: we do not support double-nested types
+                Self::default_for_primitive_datatype(field.data_type())
+            }
+
+            //TODO(ab): support other nested types
+            _ => Self::default_for_primitive_datatype(data_type),
         }
     }
 
@@ -312,7 +307,14 @@ impl FilterOperationUdf {
                 #[allow(trivial_numeric_casts)]
                 let result: BooleanArray = array
                     .iter()
-                    .map(|x| x.map(|v| operator.apply(v, *value as _)))
+                    .map(|x| {
+                        // accept everything if the value is not set
+                        let Some(value) = value else {
+                            return Some(true);
+                        };
+
+                        x.map(|x| operator.apply(x, *value as _))
+                    })
                     .collect();
 
                 Ok(result)

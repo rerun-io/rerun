@@ -313,7 +313,7 @@ async fn test_int_compares() {
         filter_snapshot!(
             FilterOperation::IntCompares {
                 operator: *op,
-                value: 3
+                value: Some(3),
             },
             ints.clone(),
             format!("{}_3", op.as_ascii())
@@ -322,10 +322,19 @@ async fn test_int_compares() {
         filter_snapshot!(
             FilterOperation::IntCompares {
                 operator: *op,
-                value: 4
+                value: Some(4),
             },
             ints_nulls.clone(),
             format!("nulls_{}_4", op.as_ascii())
+        );
+
+        filter_snapshot!(
+            FilterOperation::IntCompares {
+                operator: *op,
+                value: None,
+            },
+            ints_nulls.clone(),
+            format!("nulls_{}_unspecified", op.as_ascii())
         );
     }
 }
@@ -338,7 +347,7 @@ async fn test_int_all_types() {
             filter_snapshot!(
                 FilterOperation::IntCompares {
                     operator: ComparisonOperator::Eq,
-                    value: 3
+                    value: Some(3),
                 },
                 TestColumn::primitive::<$ty>(vec![1, 2, 3, 4, 5]),
                 format!("{:?}", $ty {})
@@ -373,7 +382,7 @@ async fn test_int_lists() {
         filter_snapshot!(
             FilterOperation::IntCompares {
                 operator: *op,
-                value: 2
+                value: Some(2),
             },
             int_lists.clone(),
             format!("{}_2", op.as_ascii())
@@ -382,7 +391,7 @@ async fn test_int_lists() {
         filter_snapshot!(
             FilterOperation::IntCompares {
                 operator: *op,
-                value: 2
+                value: Some(2),
             },
             int_lists_nulls.clone(),
             format!("nulls_{}_2", op.as_ascii())
@@ -405,7 +414,7 @@ async fn test_float_compares() {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: 3.0
+                value: Some(3.0),
             },
             floats.clone(),
             format!("{}_3.0", op.as_ascii())
@@ -414,7 +423,7 @@ async fn test_float_compares() {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: 4.0
+                value: Some(4.0),
             },
             floats_nulls.clone(),
             format!("nulls_{}_4", op.as_ascii())
@@ -430,7 +439,7 @@ async fn test_float_all_types() {
             filter_snapshot!(
                 FilterOperation::FloatCompares {
                     operator: ComparisonOperator::Eq,
-                    value: 3.0
+                    value: Some(3.0),
                 },
                 TestColumn::primitive::<$ty>(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
                 format!("{:?}", $ty {})
@@ -459,7 +468,7 @@ async fn test_float_lists() {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: 2.0
+                value: Some(2.0)
             },
             float_lists.clone(),
             format!("{}_2.0", op.as_ascii())
@@ -468,7 +477,7 @@ async fn test_float_lists() {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: 2.0
+                value: Some(2.0)
             },
             float_lists_nulls.clone(),
             format!("nulls_{}_2.0", op.as_ascii())

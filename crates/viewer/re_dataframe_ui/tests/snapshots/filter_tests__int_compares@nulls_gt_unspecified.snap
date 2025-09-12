@@ -4,15 +4,13 @@ expression: test_results
 ---
 TestResult {
     op: IntCompares {
-        operator: Ge,
-        value: Some(
-            3,
-        ),
+        operator: Gt,
+        value: None,
     },
     field: Field {
         name: "column",
         data_type: Int64,
-        nullable: false,
+        nullable: true,
         dict_id: 0,
         dict_is_ordered: false,
         metadata: {},
@@ -21,13 +19,15 @@ TestResult {
     [
       1,
       2,
-      3,
+      null,
       4,
       5,
     ],
     filtered: PrimitiveArray<Int64>
     [
-      3,
+      1,
+      2,
+      null,
       4,
       5,
     ],

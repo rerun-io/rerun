@@ -699,9 +699,17 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                         }
                                     }
 
-                                    if let Some(filter_op) = FilterOperation::default_for_datatype(
-                                        column_field.data_type(),
-                                    ) {
+                                    // TODO(ab): for now, we disable filtering on any column with a
+                                    // variant UI, because chances are the filter will not be
+                                    // relevant to what's displayed (e.g. recording link column).
+                                    // In the future, we'll probably need to be more fine-grained.
+                                    #[expect(clippy::collapsible_if)]
+                                    if column.blueprint.variant_ui.is_none()
+                                        && let Some(filter_op) =
+                                            FilterOperation::default_for_datatype(
+                                                column_field.data_type(),
+                                            )
+                                    {
                                         if ui
                                             .icon_and_text_menu_item(
                                                 &re_ui::icons::FILTER,

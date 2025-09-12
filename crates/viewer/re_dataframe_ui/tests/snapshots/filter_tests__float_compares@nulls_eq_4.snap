@@ -5,7 +5,9 @@ expression: test_results
 TestResult {
     op: FloatCompares {
         operator: Eq,
-        value: 4.0,
+        value: Some(
+            4.0,
+        ),
     },
     field: Field {
         name: "column",
