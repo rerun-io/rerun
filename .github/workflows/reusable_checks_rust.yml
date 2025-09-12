@@ -189,8 +189,7 @@ jobs:
 
       - name: Rust tests (`main` channel)
         if: ${{ inputs.CHANNEL == 'main' }}
-        # run: pixi run rs-check --only tests
-        run: pixi run rs-update-snapshot-tests
+        run: pixi run rs-check --only tests
 
       - name: Rust all checks & tests (`nightly` channel)
         if: ${{ inputs.CHANNEL == 'nightly' }}
