@@ -436,6 +436,10 @@ impl FilterOperation {
 
         let operator_text = self.operator_text();
 
+        // Reduce the default width unnecessarily expands the popup width (queries as usually vers
+        // small).
+        ui.spacing_mut().text_edit_width = 150.0;
+
         // TODO(ab): this is getting unwieldy. All arms should have an independent inner struct,
         // which all handle their own UI.
         match self {
