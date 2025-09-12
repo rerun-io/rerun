@@ -4,8 +4,8 @@ use re_renderer::{
     external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
     video::VideoFrameTexture,
 };
-use re_types::archetypes;
 use re_types::components::{MediaType, VideoTimestamp};
+use re_types::{Archetype as _, archetypes};
 use re_types_core::{ComponentDescriptor, RowId};
 use re_ui::{
     UiExt as _,
@@ -604,21 +604,21 @@ impl VideoUi {
                     )
                 });
 
-        match &*result {
-            Err(VideoLoadError::MimeTypeIsNotAVideo { .. }) => {
-                // Don't show an error if this wasn't a video in the first place.
-                // Unfortunately we can't easily detect here if the Blob was _supposed_ to be a video, for that we'd need tagged components!
-                // (User may have confidently logged a non-video format as Video, we should tell them that!)
-                None
-            }
-            Err(VideoLoadError::UnrecognizedMimeType) => {
-                // If we couldn't detect the media type,
-                // we can't show an error for unrecognized formats since maybe this wasn't a video to begin with.
-                // See also `MediaTypeIsNotAVideo` case above.
-                None
-            }
-            _ => Some(Self::Asset(result, video_timestamp, blob.clone())),
+        let certain_this_is_a_video =
+            blob_component_descriptor.archetype == Some(archetypes::AssetVideo::name());
+
+        if let Err(err) = &*result
+            && !certain_this_is_a_video
+            && matches!(
+                err,
+                VideoLoadError::MimeTypeIsNotAVideo { .. } | VideoLoadError::UnrecognizedMimeType
+            )
+        {
+            // Don't show an error if we weren't certain that this was a video and it turned out not to be one.
+            return None;
         }
+
+        Some(Self::Asset(result, video_timestamp, blob.clone()))
     }
 
     pub fn from_components(
