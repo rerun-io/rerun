@@ -153,7 +153,7 @@ impl FilterState {
                                     FilterOperation::IntCompares { .. } => "int",
                                     FilterOperation::FloatCompares { .. } => "float",
                                     FilterOperation::StringContains(_) => "string",
-                                    FilterOperation::BooleanEquals(_) => "bool",
+                                    FilterOperation::Boolean(_) => "bool",
                                 },
                             ));
 
