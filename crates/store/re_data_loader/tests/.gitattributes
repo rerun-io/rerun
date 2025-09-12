@@ -1,0 +1,2 @@
+*.mcap filter=lfs diff=lfs merge=lfs -text
+*.snap filter=lfs diff=lfs merge=lfs -text
