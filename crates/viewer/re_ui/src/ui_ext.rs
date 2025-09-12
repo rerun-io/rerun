@@ -34,9 +34,13 @@ pub trait UiExt {
     #[inline]
     #[track_caller]
     fn sanity_check(&self) {
+        // TODO(emilk/egui#7537): add the contents of this function as a callback in egui instead.
         let ui = self.ui();
 
-        if cfg!(debug_assertions) && ui.is_tooltip() && 2000.0 < ui.max_rect().width() {
+        if cfg!(debug_assertions)
+            && ui.is_tooltip()
+            && ui.spacing().tooltip_width + 100.0 < ui.max_rect().width()
+        {
             panic!("DEBUG ASSERT: Huge toolip: {}", ui.max_rect().size());
         }
     }
