@@ -40,7 +40,7 @@ pub struct PointCloud2MessageParser {
     data: FixedSizeListBuilder<ListBuilder<UInt8Builder>>,
     is_dense: FixedSizeListBuilder<BooleanBuilder>,
 
-    points: Vec<(String, ListBuilder<Box<dyn ArrayBuilder>>)>,
+    extracted_fields: Vec<(String, ListBuilder<Box<dyn ArrayBuilder>>)>,
 
     // We lazily create this, only if we can interpret the point cloud semantically.
     // For now, this is the case if there are fields with names `x`,`y`, and `z` present.
@@ -84,7 +84,7 @@ impl Ros2MessageParser for PointCloud2MessageParser {
             data: blob_list_builder(num_rows),
             is_dense: fixed_size_list_builder(1, num_rows),
 
-            points: Default::default(),
+            extracted_fields: Default::default(),
 
             points_3ds: None,
         }
@@ -129,7 +129,9 @@ fn access(data: &[u8], datatype: PointFieldDatatype, is_big_endian: bool) -> std
 impl From<PointFieldDatatype> for DataType {
     fn from(value: PointFieldDatatype) -> Self {
         match value {
-            PointFieldDatatype::Unknown => unreachable!(), // Not part of the ROS2 spec
+            // Not part of the ROS2 spec
+            // https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/PointField.html
+            PointFieldDatatype::Unknown => unreachable!(),
             PointFieldDatatype::Int8 => Self::Int8,
             PointFieldDatatype::UInt8 => Self::UInt8,
             PointFieldDatatype::Int16 => Self::Int16,
@@ -352,7 +354,7 @@ impl MessageParser for PointCloud2MessageParser {
             data,
             is_dense,
 
-            points,
+            extracted_fields,
 
             points_3ds,
         } = self;
@@ -367,9 +369,10 @@ impl MessageParser for PointCloud2MessageParser {
             &point_cloud.fields,
         );
 
-        // We lazily initialize the builders for the values in the point cloud.
-        if points.len() != point_cloud.fields.len() {
-            *points = point_cloud
+        // We lazily initialize the builders that store the extracted fields from
+        // the blob when we receive the first message.
+        if extracted_fields.len() != point_cloud.fields.len() {
+            *extracted_fields = point_cloud
                 .fields
                 .iter()
                 .map(|field| {
@@ -382,13 +385,15 @@ impl MessageParser for PointCloud2MessageParser {
         }
 
         for point in point_cloud.data.chunks(point_cloud.point_step as usize) {
-            for (field, (_name, builder)) in point_cloud.fields.iter().zip(points.iter_mut()) {
+            for (field, (_name, builder)) in
+                point_cloud.fields.iter().zip(extracted_fields.iter_mut())
+            {
                 let field_builder = builder.values();
                 add_field_value(field_builder, field, point_cloud.is_bigendian, point)?;
             }
         }
 
-        for (_name, builder) in points {
+        for (_name, builder) in extracted_fields {
             builder.append(true);
         }
 
@@ -475,7 +480,7 @@ impl MessageParser for PointCloud2MessageParser {
             mut data,
             mut is_dense,
 
-            points,
+            extracted_fields: points,
 
             points_3ds,
         } = *self;
@@ -553,6 +558,12 @@ impl MessageParser for PointCloud2MessageParser {
             ]
             .into_iter()
             .chain(points.into_iter().filter_map(|(name, mut builder)| {
+                // We only extract additional fields when we have a `Points3d`
+                // archetype to attach them to. In that case we're not interested
+                // in the other components.
+                // TODO(@grtlr): It would be nice to never initialize the unnecessary builders
+                // in the first place. But, we'll soon move the semantic extraction of `Points3d`
+                // into a different layer anyways, making that optimization obsolete.
                 points_3ds.as_ref()?;
                 if ["x", "y", "z"].contains(&name.as_str()) {
                     None

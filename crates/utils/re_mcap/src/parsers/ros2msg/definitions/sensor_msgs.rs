@@ -114,6 +114,7 @@ pub struct Imu {
 #[repr(u8)]
 pub enum PointFieldDatatype {
     /// Does not exist in original spec.
+    /// <https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/PointField.html>
     Unknown = 0,
     Int8 = 1,
     UInt8 = 2,
