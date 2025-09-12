@@ -403,9 +403,17 @@ fn panel_buttons_r2l(
 
     app.notifications.notification_toggle_button(ui);
 
-    app.state
-        .share_modal
-        .button_ui(ui, store_hub, app.state.navigation.peek());
+    let selection = app.state.selection_state.selected_items().clone();
+    let rec_cfg = store_hub
+        .active_store_id()
+        .and_then(|id| app.state.recording_configs.get(id));
+    app.state.share_modal.button_ui(
+        ui,
+        store_hub,
+        app.state.navigation.peek(),
+        rec_cfg,
+        &selection,
+    );
 }
 
 /// Shows clickable website link as an image (text doesn't look as nice)

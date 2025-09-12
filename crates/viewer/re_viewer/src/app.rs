@@ -1488,11 +1488,17 @@ impl App {
             }
 
             UICommand::Share => {
-                if let Err(err) = self
-                    .state
-                    .share_modal
-                    .open(storage_context.hub, display_mode)
-                {
+                let selection = self.state.selection_state.selected_items().clone();
+                let rec_cfg = storage_context
+                    .hub
+                    .active_store_id()
+                    .and_then(|id| self.state.recording_configs.get(id));
+                if let Err(err) = self.state.share_modal.open(
+                    storage_context.hub,
+                    display_mode,
+                    rec_cfg,
+                    &selection,
+                ) {
                     re_log::error!("Cannot share link to current screen: {err}");
                 }
             }
@@ -1508,8 +1514,8 @@ impl App {
 
                 let rec_cfg = storage_context
                     .hub
-                    .active_recording()
-                    .and_then(|db| self.state.recording_config(db.store_id()));
+                    .active_store_id()
+                    .and_then(|id| self.state.recording_config(id));
                 let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
 
                 if let Some(time_ctrl) = &time_ctrl {

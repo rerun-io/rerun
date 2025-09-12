@@ -657,13 +657,8 @@ impl AppState {
 
                 self.redap_servers.modals_ui(&ctx.global_context, ui);
                 self.open_url_modal.ui(ui);
-                self.share_modal.ui(
-                    ui,
-                    web_viewer_base_url().as_ref(),
-                    ctx.app_options().timestamp_format,
-                    ctx.selection().first_item(),
-                    ctx.rec_cfg,
-                );
+                self.share_modal
+                    .ui(&ctx, ui, web_viewer_base_url().as_ref());
             }
         }
 

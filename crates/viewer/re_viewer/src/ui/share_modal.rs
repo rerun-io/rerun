@@ -1,7 +1,7 @@
-use egui::{AtomExt as _, IntoAtoms as _, NumExt as _};
+use egui::{AtomExt as _, IntoAtoms, NumExt as _};
 use web_time::{Duration, Instant};
 
-use re_log_types::{AbsoluteTimeRange, TimeCell};
+use re_log_types::AbsoluteTimeRange;
 use re_redap_browser::EXAMPLES_ORIGIN;
 use re_ui::{
     UiExt as _, icons,
@@ -9,7 +9,9 @@ use re_ui::{
     modal::{ModalHandler, ModalWrapper},
 };
 use re_uri::Fragment;
-use re_viewer_context::{DisplayMode, Item, RecordingConfig, StoreHub, UrlContext};
+use re_viewer_context::{
+    DisplayMode, ItemCollection, RecordingConfig, StoreHub, UrlContext, ViewerContext,
+};
 
 use crate::open_url::ViewerOpenUrl;
 
@@ -21,8 +23,6 @@ pub struct ShareModal {
     url: Option<ViewerOpenUrl>,
     create_web_viewer_url: bool,
     last_time_copied: Option<Instant>,
-
-    default_expanded: bool,
 }
 
 impl Default for ShareModal {
@@ -37,7 +37,6 @@ impl Default for ShareModal {
             url: None,
             create_web_viewer_url,
             last_time_copied: None,
-            default_expanded: false,
         }
     }
 }
@@ -47,14 +46,25 @@ impl ShareModal {
     fn current_url(
         store_hub: &StoreHub,
         display_mode: &DisplayMode,
+        rec_cfg: Option<&RecordingConfig>,
+        selection: &ItemCollection,
     ) -> anyhow::Result<ViewerOpenUrl> {
-        // TODO: add more to the url context.
-        ViewerOpenUrl::new(store_hub, UrlContext::new(display_mode.clone()))
+        let url_context = {
+            let time_ctrl = rec_cfg.map(|cfg| cfg.time_ctrl.read());
+            UrlContext::from_context_expanded(display_mode, time_ctrl.as_deref(), selection)
+        };
+        ViewerOpenUrl::new(store_hub, url_context)
     }
 
     /// Opens the share modal with the current URL.
-    pub fn open(&mut self, store_hub: &StoreHub, display_mode: &DisplayMode) -> anyhow::Result<()> {
-        let url = Self::current_url(store_hub, display_mode)?;
+    pub fn open(
+        &mut self,
+        store_hub: &StoreHub,
+        display_mode: &DisplayMode,
+        rec_cfg: Option<&RecordingConfig>,
+        selection: &ItemCollection,
+    ) -> anyhow::Result<()> {
+        let url = Self::current_url(store_hub, display_mode, rec_cfg, selection)?;
         self.open_with_url(url);
         Ok(())
     }
@@ -71,10 +81,12 @@ impl ShareModal {
         ui: &mut egui::Ui,
         store_hub: &StoreHub,
         display_mode: &DisplayMode,
+        rec_cfg: Option<&RecordingConfig>,
+        selection: &ItemCollection,
     ) {
         re_tracing::profile_function!();
 
-        let url_for_current_screen = Self::current_url(store_hub, display_mode);
+        let url_for_current_screen = Self::current_url(store_hub, display_mode, rec_cfg, selection);
         let enable_share_button = url_for_current_screen.is_ok()
             && display_mode != &DisplayMode::RedapServer(EXAMPLES_ORIGIN.clone());
 
@@ -97,11 +109,9 @@ impl ShareModal {
     /// Draws the share modal dialog if its open.
     pub fn ui(
         &mut self,
+        ctx: &ViewerContext<'_>,
         ui: &egui::Ui,
         web_viewer_base_url: Option<&url::Url>,
-        timestamp_format: re_log_types::TimestampFormat,
-        current_selection: Option<&Item>,
-        rec_cfg: &RecordingConfig,
     ) {
         let Some(url) = &mut self.url else {
             // Happens only if the modal is closed anyways.
@@ -109,6 +119,7 @@ impl ShareModal {
             return;
         };
 
+        // TODO: make this standard width for all modals
         let panel_width = 500.0;
 
         self.modal.ui(
@@ -129,6 +140,7 @@ impl ShareModal {
                     };
                     let mut url_string = url.sharable_url(web_viewer_base_url).unwrap_or_default();
 
+                    // TODO: make this editable.
                     egui::TextEdit::singleline(&mut url_string)
                         .hint_text("<can't share link>") // No known way to get into this situation.
                         .text_color(ui.style().visuals.strong_text_color())
@@ -184,54 +196,62 @@ impl ShareModal {
                 }
 
                 ui.list_item_scope("share_dialog_url_settings", |ui| {
-                    url_settings_ui(
-                        ui,
-                        url,
-                        &mut self.create_web_viewer_url,
-                        timestamp_format,
-                        current_selection,
-                        self.default_expanded,
-                        rec_cfg,
-                    );
+                    url_settings_ui(ctx, ui, url, &mut self.create_web_viewer_url);
                 });
             },
         );
     }
 }
 
+// TODO(andreas): why is this not a thing?
+// TODO(andreas): What we _actually_ want is a group of toggles that are all vertically aligned.
+fn selectable_value_with_min_width<'a, Value: PartialEq>(
+    ui: &mut egui::Ui,
+    min_width: f32,
+    current_value: &mut Value,
+    selected_value: Value,
+    text: impl IntoAtoms<'a>,
+) -> egui::Response {
+    let checked = *current_value == selected_value;
+    let mut response =
+        ui.add(egui::Button::selectable(checked, text).min_size(egui::vec2(min_width, 0.0)));
+
+    if response.clicked() && *current_value != selected_value {
+        *current_value = selected_value;
+        response.mark_changed();
+    }
+    response
+}
+
+const MIN_TOGGLE_WIDTH: f32 = 150.0;
+
 fn url_settings_ui(
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     url: &mut ViewerOpenUrl,
     create_web_viewer_url: &mut bool,
-    timestamp_format: re_log_types::TimestampFormat,
-    current_selection: Option<&Item>,
-    default_expanded: bool,
-    rec_cfg: &RecordingConfig,
 ) {
-    ui.list_item_flat_noninteractive(
-        PropertyContent::new("Web viewer URL").value_bool_mut(create_web_viewer_url),
-    );
+    ui.list_item_flat_noninteractive(PropertyContent::new("Link format").value_fn(|ui, _| {
+        ui.selectable_toggle(|ui| {
+            selectable_value_with_min_width(ui, MIN_TOGGLE_WIDTH, create_web_viewer_url, false, "Only source")
+                .on_hover_text("Link works only in already opened viewers and not in the browser's address bar.");
+            selectable_value_with_min_width(ui, MIN_TOGGLE_WIDTH, create_web_viewer_url, true, "Web viewer")
+                .on_hover_text("Link works in the browser's address bar, opening a new viewer. You can still use this link in the native viewer as well.");
+        });
+    }));
 
     if let Some(url_time_range) = url.time_range_mut() {
-        time_range_ui(ui, url_time_range, timestamp_format, rec_cfg);
+        time_range_ui(ui, url_time_range, ctx.rec_cfg);
     }
-
     if let Some(fragments) = url.fragments_mut() {
-        fragments_ui(
-            ui,
-            fragments,
-            timestamp_format,
-            current_selection,
-            default_expanded,
-            rec_cfg,
-        );
+        let timestamp_format = ctx.app_options().timestamp_format;
+        time_cursor_ui(ui, fragments, timestamp_format, ctx.rec_cfg);
     }
 }
 
 fn time_range_ui(
     ui: &mut egui::Ui,
     url_time_range: &mut Option<re_uri::TimeSelection>,
-    timestamp_format: re_log_types::TimestampFormat,
     rec_cfg: &RecordingConfig,
 ) {
     let current_time_range_selection = {
@@ -244,24 +264,27 @@ fn time_range_ui(
             })
     };
 
-    // TODO(#10814): still missing snapshot handling.
-
     let mut entire_range = url_time_range.is_none();
     ui.list_item_flat_noninteractive(PropertyContent::new("Trim time range").value_fn(|ui, _| {
         ui.selectable_toggle(|ui| {
-            ui.selectable_value(&mut entire_range, true, "Entire recording");
+            selectable_value_with_min_width(
+                ui,
+                MIN_TOGGLE_WIDTH,
+                &mut entire_range,
+                true,
+                "Entire recording",
+            )
+            .on_hover_text("Link will share the entire recording.");
             ui.add_enabled_ui(current_time_range_selection.is_some(), |ui| {
-                let mut label = egui::Atoms::new("Selection");
-                if let Some(range) = &current_time_range_selection {
-                    let min = TimeCell::new(range.timeline.typ(), range.range.min())
-                        .format_compact(timestamp_format);
-                    let max = TimeCell::new(range.timeline.typ(), range.range.max())
-                        .format_compact(timestamp_format);
-                    label.push_right(format_extra_toggle_info(format!("{min}..{max}")));
-                }
-
-                ui.selectable_value(&mut entire_range, false, label)
-                    .on_disabled_hover_text("No time range selected.");
+                selectable_value_with_min_width(
+                    ui,
+                    MIN_TOGGLE_WIDTH,
+                    &mut entire_range,
+                    false,
+                    "Trim to selection",
+                )
+                .on_disabled_hover_text("No time range selected.")
+                .on_hover_text("Link trims the recording to the selected time range.");
             });
         });
     }));
@@ -273,73 +296,52 @@ fn time_range_ui(
     }
 }
 
-fn fragments_ui(
+fn time_cursor_ui(
     ui: &mut egui::Ui,
     fragments: &mut Fragment,
     timestamp_format: re_log_types::TimestampFormat,
-    current_selection: Option<&Item>,
-    default_expanded: bool,
     rec_cfg: &RecordingConfig,
 ) {
-    ui.list_item_collapsible_noninteractive_label("Selection", default_expanded, |ui| {
-        let Fragment { selection, when } = fragments;
+    let Fragment {
+        selection: _, // We just always include the selection, not exposing it directly in the editor.
+        when,
+    } = fragments;
 
-        let mut any_selection = selection.is_some();
-        let current_selection = current_selection.and_then(|selection| selection.to_data_path());
-        ui.list_item_flat_noninteractive(PropertyContent::new("Selection").value_fn(|ui, _| {
-            ui.selectable_toggle(|ui| {
-                ui.selectable_value(&mut any_selection, false, "None");
-                ui.add_enabled_ui(current_selection.is_some(), |ui| {
-                    let mut label = egui::Atoms::new("Active");
-                    if let Some(current_selection) = &current_selection {
-                        label.push_right(format_extra_toggle_info(current_selection.to_string()));
-                    }
+    let current_time_cursor = {
+        let time_ctrl = rec_cfg.time_ctrl.read();
+        time_ctrl
+            .time_cell()
+            .map(|cell| (*time_ctrl.timeline().name(), cell))
+    };
 
-                    let disabled_reason = if current_selection.is_none() {
-                        "No selection."
-                    } else {
-                        "Current selection can't be embedded in the URL."
-                    };
-                    ui.selectable_value(&mut any_selection, true, label)
-                        .on_disabled_hover_text(disabled_reason)
-                });
+    let mut any_time = when.is_some();
+    ui.list_item_flat_noninteractive(PropertyContent::new("Time cursor").value_fn(|ui, _| {
+        ui.selectable_toggle(|ui| {
+            selectable_value_with_min_width(
+                ui,
+                MIN_TOGGLE_WIDTH,
+                &mut any_time,
+                false,
+                "At the start",
+            );
+            ui.add_enabled_ui(current_time_cursor.is_some(), |ui| {
+                let mut label = egui::Atoms::new("Current");
+                if let Some((_, time_cell)) = current_time_cursor {
+                    label.push_right(format_extra_toggle_info(
+                        time_cell.format_compact(timestamp_format),
+                    ));
+                }
+
+                selectable_value_with_min_width(ui, MIN_TOGGLE_WIDTH, &mut any_time, true, label)
+                    .on_disabled_hover_text("No time selected.");
             });
-        }));
-        if any_selection {
-            *selection = current_selection;
-        } else {
-            *selection = None;
-        }
-
-        let current_time_cursor = {
-            let time_ctrl = rec_cfg.time_ctrl.read();
-            time_ctrl
-                .time_cell()
-                .map(|cell| (*time_ctrl.timeline().name(), cell))
-        };
-        let mut any_time = when.is_some();
-        ui.list_item_flat_noninteractive(PropertyContent::new("Time").value_fn(|ui, _| {
-            ui.selectable_toggle(|ui| {
-                ui.selectable_value(&mut any_time, false, "None");
-                ui.add_enabled_ui(current_time_cursor.is_some(), |ui| {
-                    let mut label = egui::Atoms::new("Current");
-                    if let Some((_, time_cell)) = current_time_cursor {
-                        label.push_right(format_extra_toggle_info(
-                            time_cell.format_compact(timestamp_format),
-                        ));
-                    }
-
-                    ui.selectable_value(&mut any_time, true, label)
-                        .on_disabled_hover_text("No time selected.");
-                });
-            });
-        }));
-        if any_time {
-            *when = current_time_cursor;
-        } else {
-            *when = None;
-        }
-    });
+        });
+    }));
+    if any_time {
+        *when = current_time_cursor;
+    } else {
+        *when = None;
+    }
 }
 
 fn format_extra_toggle_info(info: String) -> egui::Atom<'static> {
@@ -354,7 +356,7 @@ mod tests {
     use re_chunk::EntityPath;
     use re_log_types::{AbsoluteTimeRangeF, TimeCell, external::re_tuid};
     use re_test_context::TestContext;
-    use re_viewer_context::{DisplayMode, Item};
+    use re_viewer_context::{DisplayMode, Item, ItemCollection};
 
     use crate::{open_url::ViewerOpenUrl, ui::ShareModal};
 
@@ -369,27 +371,29 @@ mod tests {
         let dataset_id = re_tuid::Tuid::from_u128(0x182342300c5f8c327a7b4a6e5a379ac4);
 
         let modal = Arc::new(Mutex::new(ShareModal::default()));
-        modal.lock().default_expanded = true;
 
         let mut harness = egui_kittest::Harness::builder()
             .with_size(egui::Vec2::new(500.0, 300.0))
             .build_ui(|ui| {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                modal.lock().ui(
-                    ui,
-                    None,
-                    re_log_types::TimestampFormat::Utc,
-                    Some(&selection),
-                    &test_ctx.recording_config,
-                );
+                test_ctx.run(ui.ctx(), |ctx| {
+                    modal.lock().ui(ctx, ui, None);
+                });
             });
 
-        let store_hub = test_ctx.store_hub.lock();
-        modal
-            .lock()
-            .open(&store_hub, &DisplayMode::RedapServer(origin.clone()))
-            .unwrap();
+        {
+            let store_hub = test_ctx.store_hub.lock();
+            modal
+                .lock()
+                .open(
+                    &store_hub,
+                    &DisplayMode::RedapServer(origin.clone()),
+                    Some(&test_ctx.recording_config),
+                    &ItemCollection::default(),
+                )
+                .unwrap();
+        }
         harness.run();
         harness.snapshot("share_modal__server_url");
 
