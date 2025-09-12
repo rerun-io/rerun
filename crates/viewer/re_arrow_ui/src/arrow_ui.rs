@@ -20,19 +20,11 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
                         DataTypeUi::new(array.data_type()).list_item_ui(ui);
                     });
                     list_item_scope(ui, "arrow_ui", |ui| {
-                        if array.len() == 1 {
-                            array_formatter.show_value(0, ui);
-                        } else {
-                            array_formatter.show(ui);
-                        }
+                        array_formatter.show(ui);
                     });
                 }
                 UiLayout::Tooltip | UiLayout::List => {
-                    let highlighted = if array.len() == 1 {
-                        array_formatter.value_highlighted(0)
-                    } else {
-                        array_formatter.highlighted()
-                    };
+                    let highlighted = array_formatter.highlighted();
                     match highlighted {
                         Ok(job) => {
                             ui_layout.data_label(ui, job);
