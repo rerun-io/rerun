@@ -126,13 +126,21 @@ fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_types::datatype
     }
 }
 
-// TODO: Hold references instead?
+/// Utility for displaying additional UI for blobs.
 pub struct BlobUi {
-    image: Option<ImageUi>,
-    video: Option<VideoUi>,
-    row_id: Option<RowId>,
     descr: ComponentDescriptor,
     blob: re_types::datatypes::Blob,
+
+    /// Additional image ui if any.
+    image: Option<ImageUi>,
+
+    /// Additional video ui if the blob is a video.
+    video: Option<VideoUi>,
+
+    /// The row id of the blob.
+    row_id: Option<RowId>,
+
+    /// The media type of the blob if known (used to inform image and video uis).
     media_type: Option<MediaType>,
 }
 
@@ -265,10 +273,11 @@ impl BlobUi {
         query: &re_chunk_store::LatestAtQuery,
         entity_path: &EntityPath,
     ) {
-        if let Some(row_id) = self.row_id {
-            if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
-                exif_ui(ui, StoredBlobCacheKey::new(row_id, &self.descr), &self.blob);
-            }
+        if let Some(row_id) = self.row_id
+            && !ui_layout.is_single_line()
+            && ui_layout != UiLayout::Tooltip
+        {
+            exif_ui(ui, StoredBlobCacheKey::new(row_id, &self.descr), &self.blob);
         }
 
         if let Some(image) = &self.image {
