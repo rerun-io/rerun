@@ -165,6 +165,8 @@ pub const CLOSE_SMALL: Icon = icon_from_path!("../data/icons/close_small.svg");
 pub const EXTERNAL_LINK: Icon = icon_from_path!("../data/icons/external_link.svg");
 pub const DISCORD: Icon = icon_from_path!("../data/icons/discord.svg");
 
+pub const URL: Icon = icon_from_path!("../data/icons/url.svg");
+
 pub const CONTAINER_HORIZONTAL: Icon = icon_from_path!("../data/icons/container_horizontal.svg");
 pub const CONTAINER_GRID: Icon = icon_from_path!("../data/icons/container_grid.svg");
 pub const CONTAINER_TABS: Icon = icon_from_path!("../data/icons/container_tabs.svg");
