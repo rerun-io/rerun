@@ -1798,7 +1798,7 @@ fn copy_timeline_properties_context_menu(
             ctx.command_sender().send_system(
                 UrlContext::from_context(ctx)
                     .without_time_range()
-                    .with_timestamp(time_ctrl.timeline(), hovered_time.into())
+                    .with_timestamp(time_ctrl.timeline(), hovered_time.floor())
                     .into_copy_cmd(),
             );
         }
