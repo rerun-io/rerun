@@ -203,7 +203,7 @@ impl ShareModal {
 }
 
 // TODO(andreas): why is this not a thing, should we make it one?
-// TODO(andreas): What we _actually_ want is a group of toggles that are all vertically aligned.
+// TODO(andreas): What we _actually_ want is a group of toggles that are all vertically aligned and take up the entire width.
 fn selectable_value_with_min_width<'a, Value: PartialEq>(
     ui: &mut egui::Ui,
     min_width: f32,
@@ -225,7 +225,7 @@ fn selectable_value_with_min_width<'a, Value: PartialEq>(
     response
 }
 
-const MIN_TOGGLE_WIDTH: f32 = 130.0;
+const MIN_TOGGLE_WIDTH: f32 = 140.0;
 
 fn url_settings_ui(
     ctx: &ViewerContext<'_>,
@@ -267,7 +267,7 @@ fn time_range_ui(
     };
 
     let mut entire_range = url_time_range.is_none();
-    ui.list_item_flat_noninteractive(PropertyContent::new("Trim time range").value_fn(|ui, _| {
+    ui.list_item_flat_noninteractive(PropertyContent::new("Trim range").value_fn(|ui, _| {
         ui.selectable_toggle(|ui| {
             selectable_value_with_min_width(
                 ui,
