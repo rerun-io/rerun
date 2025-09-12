@@ -129,7 +129,7 @@ fn access(data: &[u8], datatype: PointFieldDatatype, is_big_endian: bool) -> std
 impl From<PointFieldDatatype> for DataType {
     fn from(value: PointFieldDatatype) -> Self {
         match value {
-            PointFieldDatatype::Unknown => unreachable!(), // Not part of the MCAP spec
+            PointFieldDatatype::Unknown => unreachable!(), // Not part of the ROS2 spec
             PointFieldDatatype::Int8 => Self::Int8,
             PointFieldDatatype::UInt8 => Self::UInt8,
             PointFieldDatatype::Int16 => Self::Int16,
