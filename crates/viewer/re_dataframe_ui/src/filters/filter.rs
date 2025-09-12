@@ -24,7 +24,7 @@ impl std::fmt::Display for Nullability {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match (self.inner, self.outer) {
             (false, false) => write!(f, "no_null"),
-            (false, true) => write!(f, "oute_null"),
+            (false, true) => write!(f, "outer_null"),
             (true, false) => write!(f, "inner_null"),
             (true, true) => write!(f, "both_null"),
         }
