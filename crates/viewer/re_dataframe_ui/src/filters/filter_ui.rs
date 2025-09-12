@@ -383,7 +383,13 @@ fn numerical_comparison_operator_ui(
             )
             .show_ui(ui, |ui| {
                 for possible_op in crate::filters::ComparisonOperator::ALL {
-                    if ui.button(possible_op.to_string()).clicked() {
+                    if ui
+                        .button(
+                            SyntaxHighlightedBuilder::keyword(&possible_op.to_string())
+                                .into_widget_text(ui.style()),
+                        )
+                        .clicked()
+                    {
                         *op = *possible_op;
                     }
                 }
