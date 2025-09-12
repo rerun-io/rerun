@@ -113,9 +113,9 @@ impl framework::Example for Render2D {
                 pixels_per_point,
                 ..Default::default()
             },
-        );
+        )?;
         let command_buffer = view_builder
-            .queue_draw(RectangleDrawData::new(re_ctx, &rectangles)?)
+            .queue_draw(re_ctx, RectangleDrawData::new(re_ctx, &rectangles)?)
             .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 
         Ok(vec![{

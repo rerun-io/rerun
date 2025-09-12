@@ -306,10 +306,10 @@ impl framework::Example for Render2D {
                         pixels_per_point,
                         ..Default::default()
                     },
-                );
-                view_builder.queue_draw(line_strip_draw_data.clone());
-                view_builder.queue_draw(point_draw_data.clone());
-                view_builder.queue_draw(rectangle_draw_data.clone());
+                )?;
+                view_builder.queue_draw(re_ctx, line_strip_draw_data.clone());
+                view_builder.queue_draw(re_ctx, point_draw_data.clone());
+                view_builder.queue_draw(re_ctx, rectangle_draw_data.clone());
                 let command_buffer = view_builder
                     .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
                     .unwrap();
@@ -346,11 +346,11 @@ impl framework::Example for Render2D {
                         pixels_per_point,
                         ..Default::default()
                     },
-                );
+                )?;
                 let command_buffer = view_builder
-                    .queue_draw(line_strip_draw_data)
-                    .queue_draw(point_draw_data)
-                    .queue_draw(rectangle_draw_data)
+                    .queue_draw(re_ctx, line_strip_draw_data)
+                    .queue_draw(re_ctx, point_draw_data)
+                    .queue_draw(re_ctx, rectangle_draw_data)
                     .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
                     .unwrap();
                 framework::ViewDrawResult {

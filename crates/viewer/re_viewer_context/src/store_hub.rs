@@ -402,6 +402,7 @@ impl StoreHub {
 
         self.table_stores.clear();
         self.active_application_id = Some(Self::welcome_screen_app_id());
+        self.active_recording_or_table = None;
     }
 
     // ---------------------

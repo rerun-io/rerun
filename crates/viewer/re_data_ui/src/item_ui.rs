@@ -2,6 +2,7 @@
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
+use re_entity_db::entity_db::EntityDbClass;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
@@ -9,6 +10,7 @@ use re_types::{
     archetypes::RecordingInfo,
     components::{Name, Timestamp},
 };
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::{
     HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
@@ -692,10 +694,17 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
+    // We try to use a name that has the most chance to be familiar to the user:
+    // - The recording name has to be explicitly set by the user, so use it if it exists.
+    // - For remote data, partition id have a lot of visibility too, so good fall-back.
+    // - Lacking anything better, the start time is better than a random id and caters to the local
+    //   workflow where the same logging process is run repeatedly.
     let recording_name = if let Some(recording_name) =
         entity_db.recording_info_property::<Name>(&RecordingInfo::descriptor_name())
     {
         Some(recording_name.to_string())
+    } else if let EntityDbClass::DatasetPartition(url) = entity_db.store_class() {
+        Some(url.partition_id.clone())
     } else {
         entity_db
             .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
@@ -740,7 +749,6 @@ pub fn entity_db_button_ui(
                         store_id.clone().into(),
                     ));
             }
-            resp
         });
     }
 
@@ -812,7 +820,6 @@ pub fn table_id_button_ui(
                         table_id.clone().into(),
                     ));
             }
-            resp
         });
     }
 

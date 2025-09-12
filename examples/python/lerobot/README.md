@@ -14,9 +14,9 @@ LeRobot is a project by huggingface that aims to provide models, datasets and to
 
 ## Run the code
 
-This is an external example, check the [repository](https://github.com/rerun-io/lerobot) for more information.
+This is an external example, check the [repository](https://github.com/rerun-io/lerobot/tree/alexander/train_viz) for more information.
 
-To train the model as shown in the video, install git-lfs and clone the [repository](https://github.com/rerun-io/lerobot) and then run the following code:
+To train the model as shown in the video, install git-lfs and clone the [repository](https://github.com/rerun-io/lerobot/tree/alexander/train_viz) and then run the following code:
 
 ```
 pip install -e '.[pusht]'

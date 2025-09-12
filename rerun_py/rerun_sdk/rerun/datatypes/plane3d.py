@@ -19,6 +19,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float32,
 )
+from .._numpy_compatibility import asarray
 from .plane3d_ext import Plane3DExt
 
 __all__ = ["Plane3D", "Plane3DArrayLike", "Plane3DBatch", "Plane3DLike"]
@@ -44,7 +45,7 @@ class Plane3D(Plane3DExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Plane3DExt in plane3d_ext.py
-        return np.asarray(self.xyzd, dtype=dtype, copy=copy)
+        return asarray(self.xyzd, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of Plane3DExt in plane3d_ext.py

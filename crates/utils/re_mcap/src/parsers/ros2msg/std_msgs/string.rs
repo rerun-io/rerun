@@ -3,7 +3,9 @@ use re_chunk::{Chunk, ChunkId};
 use re_types::archetypes::TextDocument;
 
 use crate::parsers::{
-    cdr, {MessageParser, ParserContext},
+    cdr,
+    ros2msg::Ros2MessageParser,
+    {MessageParser, ParserContext},
 };
 
 /// Plugin that parses `std_msgs/msg/String` messages.
@@ -12,8 +14,8 @@ pub struct StringMessageParser {
     texts: Vec<String>,
 }
 
-impl StringMessageParser {
-    pub fn new(num_rows: usize) -> Self {
+impl Ros2MessageParser for StringMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             texts: Vec::with_capacity(num_rows),
         }

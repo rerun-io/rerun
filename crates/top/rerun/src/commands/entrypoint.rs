@@ -117,6 +117,10 @@ Default is `0B`, or `25%` if any of the `--serve-*` flags are set."
     )]
     server_memory_limit: Option<String>,
 
+    /// If true, play back the most recent data first when new clients connect.
+    #[clap(long)]
+    newest_first: bool,
+
     #[clap(
         long,
         default_value_t = true,
@@ -581,8 +585,11 @@ where
     );
 
     #[cfg(not(target_arch = "wasm32"))]
-    #[cfg(not(feature = "perf_telemetry"))]
-    re_crash_handler::install_crash_handlers(build_info.clone());
+    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
+        eprintln!("Disabling crash handler because of perf_telemetry/TELEMETRY_ENABLED"); // Ask Clement why
+    } else {
+        re_crash_handler::install_crash_handlers(build_info.clone());
+    }
 
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
@@ -717,7 +724,7 @@ where
 fn run_impl(
     _main_thread_token: crate::MainThreadToken,
     _build_info: re_build_info::BuildInfo,
-    call_source: CallSource,
+    _call_source: CallSource,
     args: Args,
     tokio_runtime_handle: &tokio::runtime::Handle,
     #[cfg(feature = "native_viewer")] profiler: re_tracing::Profiler,
@@ -726,22 +733,28 @@ fn run_impl(
     let connection_registry = re_redap_client::ConnectionRegistry::new();
 
     let server_addr = std::net::SocketAddr::new(args.bind, args.port);
-    let server_memory_limit = {
-        re_log::debug!("Parsing --server-memory-limit (for gRPC server)");
-        let value = match &args.server_memory_limit {
-            Some(v) => v.as_str(),
-            None => {
-                // When spawning just a server, we don't want the memory limit to be 0.
-                if args.serve_web || args.serve_grpc {
-                    "25%"
-                } else {
-                    "0B"
+
+    #[cfg(feature = "server")]
+    let server_options = re_sdk::ServerOptions {
+        playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(args.newest_first),
+
+        memory_limit: {
+            re_log::debug!("Parsing --server-memory-limit (for gRPC server)");
+            let value = match &args.server_memory_limit {
+                Some(v) => v.as_str(),
+                None => {
+                    // When spawning just a server, we don't want the memory limit to be 0.
+                    if args.serve_web || args.serve_grpc {
+                        "25%"
+                    } else {
+                        "0B"
+                    }
                 }
-            }
-        };
-        re_log::debug!("Server memory limit: {value}");
-        re_memory::MemoryLimit::parse(value)
-            .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
+            };
+            re_log::debug!("Server memory limit: {value}");
+            re_memory::MemoryLimit::parse(value)
+                .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
+        },
     };
 
     // All URLs that we want to process.
@@ -764,57 +777,80 @@ fn run_impl(
             args.save,
             url_or_paths,
             &connection_registry,
+            #[cfg(feature = "server")]
             server_addr,
-            server_memory_limit,
+            #[cfg(feature = "server")]
+            server_options,
         )
     } else if args.serve_grpc {
-        serve_grpc(
-            url_or_paths,
-            &call_source,
-            tokio_runtime_handle,
-            &connection_registry,
-            server_addr,
-            server_memory_limit,
-        )
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "server")] {
+                serve_grpc(
+                    url_or_paths,
+                    tokio_runtime_handle,
+                    &connection_registry,
+                    server_addr,
+                    server_options,
+                )
+            } else {
+                Err(anyhow::anyhow!(
+                    "rerun-cli must be compiled with the 'server' feature enabled"
+                ))
+            }
+        }
     } else if args.serve_web {
-        // We always host the web-viewer in case the users wants it,
-        // but we only open a browser automatically with the `--web-viewer` flag.
-        let open_browser = args.web_viewer;
+        cfg_if::cfg_if! {
+            if #[cfg(not(feature = "server"))] {
+                Err(anyhow::anyhow!(
+                    "Can't host server - rerun was not compiled with the 'server' feature"
+                ))
+            } else if #[cfg(not(feature = "web_viewer"))] {
+                Err(anyhow::anyhow!(
+                    "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
+                ))
+            } else {
+                // We always host the web-viewer in case the users wants it,
+                // but we only open a browser automatically with the `--web-viewer` flag.
+                let open_browser = args.web_viewer;
 
-        serve_web(
-            url_or_paths,
-            &call_source,
-            &connection_registry,
-            args.web_viewer_port,
-            args.renderer,
-            args.video_decoder,
-            server_addr,
-            server_memory_limit,
-            open_browser,
-        )
+                #[cfg(all(feature = "server", feature = "web_viewer"))]
+                serve_web(
+                    url_or_paths,
+                    &connection_registry,
+                    args.web_viewer_port,
+                    args.renderer,
+                    args.video_decoder,
+                    server_addr,
+                    server_options,
+                    open_browser,
+                )
+            }
+        }
     } else if args.connect.is_none() && is_another_server_already_running(server_addr) {
         connect_to_existing_server(url_or_paths, &connection_registry, server_addr)
     } else {
-        #[cfg(not(feature = "native_viewer"))]
-        {
-            anyhow::bail!(
-                "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
-            )
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "native_viewer")] {
+                start_native_viewer(
+                    &args,
+                    url_or_paths,
+                    _main_thread_token,
+                    _build_info,
+                    _call_source,
+                    tokio_runtime_handle,
+                    profiler,
+                    connection_registry,
+                    #[cfg(feature = "server")]
+                    server_addr,
+                    #[cfg(feature = "server")]
+                    server_options,
+                )
+            } else {
+                Err(anyhow::anyhow!(
+                    "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
+                ))
+            }
         }
-
-        #[cfg(feature = "native_viewer")]
-        start_native_viewer(
-            &args,
-            url_or_paths,
-            _main_thread_token,
-            _build_info,
-            call_source,
-            tokio_runtime_handle,
-            profiler,
-            connection_registry,
-            server_addr,
-            server_memory_limit,
-        )
     }
 }
 
@@ -830,8 +866,8 @@ fn start_native_viewer(
     tokio_runtime_handle: &tokio::runtime::Handle,
     profiler: re_tracing::Profiler,
     connection_registry: re_redap_client::ConnectionRegistryHandle,
-    server_addr: std::net::SocketAddr,
-    server_memory_limit: re_sdk::MemoryLimit,
+    #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
+    #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
     let startup_options = native_startup_options_from_args(args)?;
 
@@ -858,7 +894,7 @@ fn start_native_viewer(
             crossbeam::channel::Receiver<re_log_types::TableMsg>,
         ) = re_grpc_server::spawn_with_recv(
             server_addr,
-            server_memory_limit,
+            server_options,
             re_grpc_server::shutdown::never(),
         );
 
@@ -990,98 +1026,83 @@ fn connect_to_existing_server(
 }
 
 #[expect(clippy::too_many_arguments)]
-#[allow(unused_variables)] // Depending on build config, most of the parameters remain unused.
+#[cfg(all(feature = "server", feature = "web_viewer"))]
 fn serve_web(
     url_or_paths: Vec<String>,
-    call_source: &CallSource,
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     web_viewer_port: u16,
     force_wgpu_backend: Option<String>,
     video_decoder: Option<String>,
     server_addr: std::net::SocketAddr,
-    server_memory_limit: re_sdk::MemoryLimit,
+    server_options: re_sdk::ServerOptions,
     open_browser: bool,
 ) -> anyhow::Result<()> {
-    if !cfg!(feature = "server") {
-        anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
-    }
+    let ReceiversFromUrlParams {
+        log_receivers,
+        mut urls_to_pass_on_to_viewer,
+    } = ReceiversFromUrlParams::new(
+        url_or_paths,
+        &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
+        connection_registry,
+    )?;
 
-    if !cfg!(feature = "web_viewer") {
-        anyhow::bail!(
-            "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
-        );
-    }
-
-    #[cfg(all(feature = "server", feature = "web_viewer"))]
-    {
-        let ReceiversFromUrlParams {
-            log_receivers,
-            mut urls_to_pass_on_to_viewer,
-        } = ReceiversFromUrlParams::new(
-            url_or_paths,
-            &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
-            connection_registry,
-        )?;
-
-        // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
-        let spawn_server = !log_receivers.is_empty() || urls_to_pass_on_to_viewer.is_empty();
-        if spawn_server {
-            if server_addr.port() == web_viewer_port {
-                anyhow::bail!(
-                    "Trying to spawn a Web Viewer server on {}, but this port is \
+    // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
+    let spawn_server = !log_receivers.is_empty() || urls_to_pass_on_to_viewer.is_empty();
+    if spawn_server {
+        if server_addr.port() == web_viewer_port {
+            anyhow::bail!(
+                "Trying to spawn a Web Viewer server on {}, but this port is \
                     already used by the server we're connecting to. Please specify a different port.",
-                    server_addr.port()
-                );
-            }
-
-            // Spawn a server which the Web Viewer can connect to.
-            // All `rxs` are consumed by the server.
-            re_grpc_server::spawn_from_rx_set(
-                server_addr,
-                server_memory_limit,
-                re_grpc_server::shutdown::never(),
-                ReceiveSet::new(log_receivers),
+                server_addr.port()
             );
-
-            // Add the proxy URL to the url parameters.
-            let proxy_url = if server_addr.ip().is_unspecified() || server_addr.ip().is_loopback() {
-                format!("rerun+http://localhost:{}/proxy", server_addr.port())
-            } else {
-                format!("rerun+http://{server_addr}/proxy")
-            };
-
-            debug_assert!(
-                proxy_url.parse::<re_uri::RedapUri>().is_ok(),
-                "Expected a proper proxy URI, but got {proxy_url:?}"
-            );
-
-            urls_to_pass_on_to_viewer.push(proxy_url);
         }
 
-        // This is the server that serves the Wasm+HTML:
-        WebViewerConfig {
-            bind_ip: server_addr.ip().to_string(),
-            web_port: re_web_viewer_server::WebViewerServerPort(web_viewer_port),
-            connect_to: urls_to_pass_on_to_viewer,
-            force_wgpu_backend,
-            video_decoder,
-            open_browser,
-        }
-        .host_web_viewer()?
-        .block();
+        // Spawn a server which the Web Viewer can connect to.
+        // All `rxs` are consumed by the server.
+        re_grpc_server::spawn_from_rx_set(
+            server_addr,
+            server_options,
+            re_grpc_server::shutdown::never(),
+            ReceiveSet::new(log_receivers),
+        );
+
+        // Add the proxy URL to the url parameters.
+        let proxy_url = if server_addr.ip().is_unspecified() || server_addr.ip().is_loopback() {
+            format!("rerun+http://localhost:{}/proxy", server_addr.port())
+        } else {
+            format!("rerun+http://{server_addr}/proxy")
+        };
+
+        debug_assert!(
+            proxy_url.parse::<re_uri::RedapUri>().is_ok(),
+            "Expected a proper proxy URI, but got {proxy_url:?}"
+        );
+
+        urls_to_pass_on_to_viewer.push(proxy_url);
     }
+
+    // This is the server that serves the Wasm+HTML:
+    WebViewerConfig {
+        bind_ip: server_addr.ip().to_string(),
+        web_port: re_web_viewer_server::WebViewerServerPort(web_viewer_port),
+        connect_to: urls_to_pass_on_to_viewer,
+        force_wgpu_backend,
+        video_decoder,
+        open_browser,
+    }
+    .host_web_viewer()?
+    .block();
 
     Ok(())
 }
 
-#[allow(unused_variables)] // Depending on build config, most of the parameters remain unused.
+#[cfg(feature = "server")]
 fn serve_grpc(
     url_or_paths: Vec<String>,
-    call_source: &CallSource,
     tokio_runtime_handle: &tokio::runtime::Handle,
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
-    server_memory_limit: re_sdk::MemoryLimit,
+    server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
     if !cfg!(feature = "server") {
         anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
@@ -1094,22 +1115,19 @@ fn serve_grpc(
     )?;
     receivers.error_on_unhandled_urls("--serve-grpc")?;
 
-    #[cfg(feature = "server")]
-    {
-        let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
-        // Spawn a server which the Web Viewer can connect to.
-        re_grpc_server::spawn_from_rx_set(
-            server_addr,
-            server_memory_limit,
-            shutdown,
-            ReceiveSet::new(receivers.log_receivers),
-        );
+    let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
+    // Spawn a server which the Web Viewer can connect to.
+    re_grpc_server::spawn_from_rx_set(
+        server_addr,
+        server_options,
+        shutdown,
+        ReceiveSet::new(receivers.log_receivers),
+    );
 
-        // Gracefully shut down the server on SIGINT
-        tokio_runtime_handle.block_on(tokio::signal::ctrl_c()).ok();
+    // Gracefully shut down the server on SIGINT
+    tokio_runtime_handle.block_on(tokio::signal::ctrl_c()).ok();
 
-        signal.stop();
-    }
+    signal.stop();
 
     Ok(())
 }
@@ -1118,8 +1136,8 @@ fn save_or_test_receive(
     save: Option<String>,
     url_or_paths: Vec<String>,
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
-    _server_addr: std::net::SocketAddr,
-    _server_memory_limit: re_sdk::MemoryLimit,
+    #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
+    #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
     let receivers = ReceiversFromUrlParams::new(
         url_or_paths,
@@ -1141,8 +1159,8 @@ fn save_or_test_receive(
             Receiver<LogMsg>,
             crossbeam::channel::Receiver<re_log_types::TableMsg>,
         ) = re_grpc_server::spawn_with_recv(
-            _server_addr,
-            _server_memory_limit,
+            server_addr,
+            server_options,
             re_grpc_server::shutdown::never(),
         );
 

@@ -43,6 +43,6 @@ pub fn switch_to_welcome_screen(command_sender: &re_viewer_context::CommandSende
         re_viewer_context::DisplayMode::RedapServer(EXAMPLES_ORIGIN.clone()),
     ));
     command_sender.send_system(SystemCommand::SetSelection(
-        re_viewer_context::Item::RedapServer(EXAMPLES_ORIGIN.clone()),
+        re_viewer_context::Item::RedapServer(EXAMPLES_ORIGIN.clone()).into(),
     ));
 }

@@ -127,14 +127,17 @@ namespace rerun {
     }
 
     Result<std::string> RecordingStream::serve_grpc(
-        std::string_view bind_ip, uint16_t port, std::string_view server_memory_limit
+        std::string_view bind_ip, uint16_t port, std::string_view server_memory_limit,
+        PlaybackBehavior playback_behavior
     ) const {
+        bool newest_first = playback_behavior == PlaybackBehavior::NewestFirst;
         rr_error status = {};
         rr_recording_stream_serve_grpc(
             _id,
             detail::to_rr_string(bind_ip),
             port,
             detail::to_rr_string(server_memory_limit),
+            newest_first,
             &status
         );
         RR_RETURN_NOT_OK(status);

@@ -15,8 +15,8 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
+    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, UrlContext,
+    ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
@@ -328,6 +328,23 @@ impl App {
             command_sender.send_ui(UICommand::ExpandBlueprintPanel);
         }
 
+        creation_context.egui_ctx.on_end_pass(
+            "remove copied text formatting",
+            Arc::new(|ctx| {
+                ctx.output_mut(|o| {
+                    #[expect(deprecated)]
+                    if !o.copied_text.is_empty() {
+                        o.copied_text = re_format::remove_number_formatting(&o.copied_text);
+                    }
+                    for command in &mut o.commands {
+                        if let egui::output::OutputCommand::CopyText(text) = command {
+                            *text = re_format::remove_number_formatting(text);
+                        }
+                    }
+                });
+            }),
+        );
+
         Self {
             main_thread_token,
             build_info,
@@ -451,7 +468,6 @@ impl App {
         if let SmartChannelSource::RedapGrpcStream { uri, .. } = rx.source() {
             self.command_sender
                 .send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-            self.go_to_dataset_data(uri);
         }
 
         self.rx_log.add(rx);
@@ -521,6 +537,76 @@ impl App {
         }
     }
 
+    /// Updates the web address on web. Noop on native.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[expect(clippy::unused_self)]
+    fn update_web_address_bar(&self, _store_hub: &StoreHub) {}
+
+    /// Updates the web address on web. Noop on native.
+    #[cfg(target_arch = "wasm32")]
+    fn update_web_address_bar(&self, store_hub: &StoreHub) {
+        if !self.startup_options.web_history_enabled() {
+            return;
+        }
+
+        let rec_cfg = store_hub
+            .active_recording()
+            .and_then(|db| self.state.recording_config(db.store_id()));
+        let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
+
+        let display_mode = self.state.navigation.peek();
+        let selection = self.state.selection_state.selected_items();
+
+        let Ok(url) = crate::open_url::ViewerOpenUrl::new(
+            store_hub,
+            UrlContext::from_context_expanded(
+                display_mode,
+                time_ctrl
+                    .as_deref()
+                    // Only update `when` fragment when paused.
+                    .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused)),
+                selection,
+            )
+            .without_time_range(),
+        )
+        // History entries expect the url parameter, not the full url, therefore don't pass a base url.
+        .and_then(|url| url.sharable_url(None)) else {
+            return;
+        };
+
+        re_log::debug!("Updating navigation bar");
+
+        use crate::history::{HistoryEntry, HistoryExt as _, history};
+        use crate::web_tools::JsResultExt as _;
+
+        /// Returns the url without the fragment
+        fn strip_fragment(url: &str) -> &str {
+            // Split by url code for '#', which is used for fragments.
+            url.rsplit_once("%23").map_or(url, |(url, _)| url)
+        }
+
+        if let Some(history) = history().ok_or_log_js_error() {
+            let current_entry = history.current_entry().ok_or_log_js_error().flatten();
+            let new_entry = HistoryEntry::new(url);
+            if Some(&new_entry) != current_entry.as_ref() {
+                // If only the fragment has changed, we replace history instead of pushing it.
+                if current_entry
+                    .and_then(|entry| {
+                        Some((
+                            entry.to_query_string().ok_or_log_js_error()?,
+                            new_entry.to_query_string().ok_or_log_js_error()?,
+                        ))
+                    })
+                    .is_some_and(|(current, new)| strip_fragment(&current) == strip_fragment(&new))
+                {
+                    history.replace_entry(new_entry).ok_or_log_js_error();
+                } else {
+                    history.push_entry(new_entry).ok_or_log_js_error();
+                }
+            }
+        }
+    }
+
     #[allow(clippy::unused_self)]
     fn run_system_command(
         &mut self,
@@ -529,43 +615,44 @@ impl App {
         egui_ctx: &egui::Context,
     ) {
         match cmd {
+            SystemCommand::SetUrlFragment { store_id, fragment } => {
+                // This adds new system commands, which will be handled later in the loop.
+                self.go_to_dataset_data(store_id, fragment);
+            }
+            SystemCommand::CopyUrlWithContext {
+                display_mode,
+                time_range,
+                fragment,
+            } => {
+                self.run_copy_link_command(
+                    store_hub,
+                    UrlContext {
+                        display_mode,
+                        time_range,
+                        fragment,
+                    },
+                );
+            }
             SystemCommand::ActivateApp(app_id) => {
                 self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
-                update_web_address_bar(
-                    self.startup_options.web_history_enabled(),
-                    store_hub,
-                    self.state.navigation.peek(),
-                );
             }
 
             SystemCommand::CloseApp(app_id) => {
                 store_hub.close_app(&app_id);
-                update_web_address_bar(
-                    self.startup_options.web_history_enabled(),
-                    store_hub,
-                    self.state.navigation.peek(),
-                );
             }
 
-            SystemCommand::ActivateRecordingOrTable(entry) => {
-                match &entry {
-                    RecordingOrTable::Recording { store_id } => {
-                        self.state.navigation.replace(DisplayMode::LocalRecordings);
-                        store_hub.set_active_recording_id(store_id.clone());
-                    }
-                    RecordingOrTable::Table { table_id } => {
-                        self.state
-                            .navigation
-                            .replace(DisplayMode::LocalTable(table_id.clone()));
-                    }
+            SystemCommand::ActivateRecordingOrTable(entry) => match &entry {
+                RecordingOrTable::Recording { store_id } => {
+                    self.state.navigation.replace(DisplayMode::LocalRecordings);
+                    store_hub.set_active_recording_id(store_id.clone());
                 }
-                update_web_address_bar(
-                    self.startup_options.web_history_enabled(),
-                    store_hub,
-                    self.state.navigation.peek(),
-                );
-            }
+                RecordingOrTable::Table { table_id } => {
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::LocalTable(table_id.clone()));
+                }
+            },
 
             SystemCommand::CloseRecordingOrTable(entry) => {
                 // TODO(#9464): Find a better successor here.
@@ -604,15 +691,10 @@ impl App {
                 }
 
                 store_hub.remove(&entry);
-
-                update_web_address_bar(
-                    self.startup_options.web_history_enabled(),
-                    store_hub,
-                    self.state.navigation.peek(),
-                );
             }
 
             SystemCommand::CloseAllEntries => {
+                self.state.navigation.push_start_mode();
                 store_hub.clear_entries();
 
                 // Stop receiving into the old recordings.
@@ -642,21 +724,8 @@ impl App {
                     return;
                 }
 
-                // Update web-navigation bar if this isn't about local recordings.
-                //
-                // Recordings are on selection since recording change always comes with a selection change.
-                // It's important to not do that here because otherwise we might miss on anchors etc. or even
-                // _which_ recording is about to be selected.
-                // I.e. if we update navigation bar here, this would become order dependent.
-                if display_mode != DisplayMode::LocalRecordings {
-                    update_web_address_bar(
-                        self.startup_options.web_history_enabled(),
-                        store_hub,
-                        &display_mode,
-                    );
-                }
-
                 self.state.navigation.replace(display_mode);
+
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
 
@@ -756,48 +825,45 @@ impl App {
                 self.app_options_mut().inspect_blueprint_timeline = show;
             }
 
-            SystemCommand::SetSelection(item) => {
-                match &item {
-                    Item::RedapEntry(entry) => {
-                        self.state
-                            .navigation
-                            .replace(DisplayMode::RedapEntry(entry.clone()));
-                    }
+            SystemCommand::SetSelection(items) => {
+                if let Some(item) = items.single_item() {
+                    match item {
+                        Item::RedapEntry(entry) => {
+                            self.state
+                                .navigation
+                                .replace(DisplayMode::RedapEntry(entry.clone()));
+                        }
 
-                    Item::RedapServer(origin) => {
-                        self.state
-                            .navigation
-                            .replace(DisplayMode::RedapServer(origin.clone()));
-                    }
+                        Item::RedapServer(origin) => {
+                            self.state
+                                .navigation
+                                .replace(DisplayMode::RedapServer(origin.clone()));
+                        }
 
-                    Item::TableId(table_id) => {
-                        self.state
-                            .navigation
-                            .replace(DisplayMode::LocalTable(table_id.clone()));
-                    }
+                        Item::TableId(table_id) => {
+                            self.state
+                                .navigation
+                                .replace(DisplayMode::LocalTable(table_id.clone()));
+                        }
 
-                    Item::StoreId(store_id) => {
-                        self.state.navigation.replace(DisplayMode::LocalRecordings);
-                        store_hub.set_active_recording_id(store_id.clone());
-                    }
+                        Item::StoreId(store_id) => {
+                            self.state.navigation.replace(DisplayMode::LocalRecordings);
+                            store_hub.set_active_recording_id(store_id.clone());
+                        }
 
-                    Item::AppId(_)
-                    | Item::DataSource(_)
-                    | Item::InstancePath(_)
-                    | Item::ComponentPath(_)
-                    | Item::Container(_)
-                    | Item::View(_)
-                    | Item::DataResult(_, _) => {
-                        self.state.navigation.replace(DisplayMode::LocalRecordings);
+                        Item::AppId(_)
+                        | Item::DataSource(_)
+                        | Item::InstancePath(_)
+                        | Item::ComponentPath(_)
+                        | Item::Container(_)
+                        | Item::View(_)
+                        | Item::DataResult(_, _) => {
+                            self.state.navigation.replace(DisplayMode::LocalRecordings);
+                        }
                     }
                 }
 
-                self.state.selection_state.set_selection(item);
-                update_web_address_bar(
-                    self.startup_options.web_history_enabled(),
-                    store_hub,
-                    self.state.navigation.peek(),
-                );
+                self.state.selection_state.set_selection(items);
                 egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
@@ -954,7 +1020,7 @@ impl App {
 
                     // Note that applying the fragment changes the per-recording settings like the active time cursor.
                     // Therefore, we apply it even when `select_when_loaded` is false.
-                    self.go_to_dataset_data(uri);
+                    self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
 
                     return;
                 }
@@ -992,6 +1058,13 @@ impl App {
                     timeline,
                     time_range,
                 }),
+                re_redap_client::UiCommand::SetUrlFragment {
+                    recording_id,
+                    fragment,
+                } => command_sender.send_system(SystemCommand::SetUrlFragment {
+                    store_id: recording_id,
+                    fragment,
+                }),
             })
         };
 
@@ -1006,18 +1079,18 @@ impl App {
         }
     }
 
-    /// Applies the fragment of a dataset data URI to the viewer.
+    /// Applies a fragment.
     ///
     /// Does *not* switch the active recording.
-    fn go_to_dataset_data(&self, uri: &re_uri::DatasetPartitionUri) {
-        let re_uri::Fragment { focus, when } = uri.fragment.clone();
+    fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
+        let re_uri::Fragment { selection, when } = fragment;
 
-        if let Some(focus) = focus {
+        if let Some(selection) = selection {
             let re_log_types::DataPath {
                 entity_path,
                 instance,
                 component_descriptor,
-            } = focus;
+            } = selection;
 
             let item = if let Some(component_descriptor) = component_descriptor {
                 Item::from(re_log_types::ComponentPath::new(
@@ -1031,13 +1104,13 @@ impl App {
             };
 
             self.command_sender
-                .send_system(SystemCommand::SetFocus(item));
+                .send_system(SystemCommand::SetSelection(item.clone().into()));
         }
 
         if let Some((timeline, timecell)) = when {
             self.command_sender
                 .send_system(SystemCommand::SetActiveTime {
-                    store_id: uri.store_id(),
+                    store_id,
                     timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
                     time: Some(timecell.as_i64().into()),
                 });
@@ -1424,11 +1497,30 @@ impl App {
                 }
             }
             UICommand::CopyDirectLink => {
-                self.run_copy_direct_link_command(storage_context, display_mode);
+                self.run_copy_link_command(
+                    storage_context.hub,
+                    UrlContext::new(display_mode.clone()),
+                );
             }
 
             UICommand::CopyTimeRangeLink => {
-                self.run_copy_time_range_link_command(store_context);
+                let mut url_context = UrlContext::new(display_mode.clone());
+
+                let rec_cfg = storage_context
+                    .hub
+                    .active_recording()
+                    .and_then(|db| self.state.recording_config(db.store_id()));
+                let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
+
+                if let Some(time_ctrl) = &time_ctrl {
+                    url_context = url_context.with_time_range(time_ctrl);
+                } else {
+                    re_log::warn!("No timeline in current mode");
+                }
+
+                drop(time_ctrl);
+
+                self.run_copy_link_command(storage_context.hub, url_context);
             }
 
             #[cfg(target_arch = "wasm32")]
@@ -1549,41 +1641,7 @@ impl App {
         }
     }
 
-    /// Retrieve the link to the current viewer.
-    #[cfg(target_arch = "wasm32")]
-    fn get_viewer_url(&self) -> Result<String, wasm_bindgen::JsValue> {
-        let location = web_sys::window()
-            .ok_or_else(|| "failed to get window".to_owned())?
-            .location();
-        let origin = location.origin()?;
-        let host = location.host()?;
-        let pathname = location.pathname()?;
-
-        let hosted_viewer_path = if self.build_info.is_final() {
-            // final release, use version tag
-            format!("version/{}", self.build_info.version)
-        } else {
-            // not a final release, use commit hash
-            format!("commit/{}", self.build_info.short_git_hash())
-        };
-
-        // links to `app.rerun.io` can be made into permanent links:
-        let url = if host == "app.rerun.io" {
-            format!("https://app.rerun.io/{hosted_viewer_path}")
-        } else if host == "rerun.io" && pathname.starts_with("/viewer") {
-            format!("https://rerun.io/viewer/{hosted_viewer_path}")
-        } else {
-            format!("{origin}{pathname}")
-        };
-
-        Ok(url)
-    }
-
-    fn run_copy_direct_link_command(
-        &mut self,
-        storage_context: &StorageContext<'_>,
-        display_mode: &DisplayMode,
-    ) {
+    fn run_copy_link_command(&mut self, store_hub: &StoreHub, context: UrlContext) {
         // TODO(rerun-io/dataplatform#2663): Should take into account dataplatform URLs if any are provided.
         let base_url;
         #[cfg(target_arch = "wasm32")]
@@ -1596,7 +1654,7 @@ impl App {
             base_url = None;
         };
 
-        match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode.clone())
+        match crate::open_url::ViewerOpenUrl::new(store_hub, context)
             .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
         {
             Ok(url) => {
@@ -1608,72 +1666,6 @@ impl App {
                 re_log::error!("{err}");
             }
         }
-    }
-
-    // TODO(andreas): this method is a mess. reconciliate it with the new link unification.
-    fn run_copy_time_range_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
-        let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
-            re_log::warn!("Could not copy time range link: No active recording");
-            return;
-        };
-
-        let Some(SmartChannelSource::RedapGrpcStream { mut uri, .. }) =
-            entity_db.data_source.clone()
-        else {
-            re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
-            return;
-        };
-
-        let rec_cfg = self.state.recording_config_mut(entity_db);
-        let time_ctrl = rec_cfg.time_ctrl.get_mut();
-
-        let Some(range) = time_ctrl.loop_selection() else {
-            // no loop selection
-            re_log::warn!(
-                "Could not copy time range link: No loop selection set. Use shift to drag a selection on the timeline"
-            );
-            return;
-        };
-
-        uri.time_range = Some(re_uri::TimeSelection {
-            timeline: *time_ctrl.timeline(),
-            range: re_log_types::AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
-        });
-
-        // On web we can produce a link to the web viewer,
-        // which can be used to share the time range.
-        //
-        // On native we only produce a link to the time range
-        // which can be passed to `rerun-cli`.
-        #[cfg(target_arch = "wasm32")]
-        let url = {
-            use crate::web_tools::JsResultExt as _;
-            let Some(viewer_url) = self.get_viewer_url().ok_or_log_js_error() else {
-                // error was logged already
-                return;
-            };
-
-            let time_range_url = uri.to_string();
-            // %-encode the time range URL, because it's a url-within-a-url.
-            // This results in VERY ugly links.
-            // TODO(jan): Tweak the asciiset used here.
-            //            Alternatively, use a better (shorter, simpler) format
-            //            for linking to recordings that isn't a full url and
-            //            can actually exist in a query value.
-            let url_query = percent_encoding::utf8_percent_encode(
-                &time_range_url,
-                percent_encoding::NON_ALPHANUMERIC,
-            );
-
-            format!("{viewer_url}?url={url_query}")
-        };
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let url = uri.to_string();
-
-        self.egui_ctx.copy_text(url.clone());
-        self.notifications
-            .success(format!("Copied {url:?} to clipboard"));
     }
 
     fn copy_entity_hierarchy_to_clipboard(
@@ -1890,7 +1882,7 @@ impl App {
                         re_log::debug!("Inserted table store with id: `{}`", table.id);
                     }
                     self.command_sender.send_system(SystemCommand::SetSelection(
-                        re_viewer_context::Item::TableId(table.id.clone()),
+                        re_viewer_context::Item::TableId(table.id.clone()).into(),
                     ));
 
                     // If the viewer is in the background, tell the user that it has received something new.
@@ -1972,7 +1964,7 @@ impl App {
                 // Hack: we cannot go to a specific timeline or entity until we know about it.
                 // Now we _hopefully_ do.
                 if let SmartChannelSource::RedapGrpcStream { uri, .. } = channel_source.as_ref() {
-                    self.go_to_dataset_data(uri);
+                    self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
                 }
             }
 
@@ -2126,7 +2118,7 @@ impl App {
 
         // Also select the new recording:
         self.command_sender.send_system(SystemCommand::SetSelection(
-            re_viewer_context::Item::StoreId(store_id.clone()),
+            re_viewer_context::Item::StoreId(store_id.clone()).into(),
         ));
 
         // If the viewer is in the background, tell the user that it has received something new.
@@ -2754,6 +2746,7 @@ impl eframe::App for App {
                     None => {}
                 }
             } else {
+                self.state.navigation.push_start_mode();
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }
         }
@@ -2838,6 +2831,21 @@ impl eframe::App for App {
             );
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
+
+        // We don't want to spam the web history API with changes, because
+        // otherwise it will start complaining about it being an insecure
+        // operation.
+        //
+        // This is a kind of hacky way to fix that: If there are currently any
+        // inputs, don't update the web address bar. This works for most cases
+        // because you need to hold down pointer to aggressively scrub, need to
+        // hold down key inputs to quickly step through the timeline.
+        if !egui_ctx.is_using_pointer()
+            && egui_ctx.input(|input| !input.any_touches() && input.keys_down.is_empty())
+        {
+            // Update web address after commands have been applied.
+            self.update_web_address_bar(&store_hub);
+        }
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
@@ -3196,57 +3204,4 @@ async fn async_save_dialog(
         messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn update_web_address_bar(
-    _enable_history: bool,
-    _store_hub: &StoreHub,
-    _display_mode: &DisplayMode,
-) {
-    // No-op on native.
-}
-
-#[cfg(target_arch = "wasm32")]
-fn update_web_address_bar(
-    enable_history: bool,
-    store_hub: &StoreHub,
-    display_mode: &DisplayMode,
-) -> Option<()> {
-    if !enable_history {
-        return None;
-    }
-    let Ok(url) = ViewerOpenUrl::from_display_mode(store_hub, display_mode.clone())
-        // History entries expect the url parameter, not the full url, therefore don't pass a base url.
-        .and_then(|url| url.sharable_url(None))
-    else {
-        return None;
-    };
-
-    re_log::debug!("Updating navigation bar");
-
-    use crate::history::{HistoryEntry, HistoryExt as _, history};
-    use crate::web_tools::JsResultExt as _;
-
-    if let Some(history) = history().ok_or_log_js_error() {
-        // TODO(#10866): don't push if only the fragments change.
-        history
-            .push_entry(HistoryEntry::new(url))
-            .ok_or_log_js_error();
-    }
-
-    Some(())
-}
-
-pub fn web_viewer_base_url() -> Option<url::Url> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        crate::web_tools::current_base_url().ok()
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
-        url::Url::parse("https://rerun.io/viewer").ok()
-    }
 }

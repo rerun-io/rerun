@@ -1,37 +1,33 @@
 ---
 source: crates/viewer/re_dataframe_ui/tests/filter_tests.rs
-expression: "(filter, result)"
+expression: test_results
 ---
-(
-    Filter {
-        column_name: "string",
-        operation: StringContains(
-            "A",
-        ),
+TestResult {
+    op: StringContains(
+        "A",
+    ),
+    field: Field {
+        name: "column",
+        data_type: Utf8,
+        nullable: false,
+        dict_id: 0,
+        dict_is_ordered: false,
+        metadata: {},
     },
-    RecordBatch {
-        schema: Schema {
-            fields: [
-                Field {
-                    name: "string",
-                    data_type: Utf8,
-                    nullable: false,
-                    dict_id: 0,
-                    dict_is_ordered: false,
-                    metadata: {},
-                },
-            ],
-            metadata: {},
-        },
-        columns: [
-            StringArray
-            [
-              "a",
-              "ab",
-              "A B",
-              "aBc",
-            ],
-        ],
-        row_count: 4,
-    },
-)
+    unfiltered: StringArray
+    [
+      "a",
+      "b",
+      "c",
+      "ab",
+      "A B",
+      "aBc",
+    ],
+    filtered: StringArray
+    [
+      "a",
+      "ab",
+      "A B",
+      "aBc",
+    ],
+}

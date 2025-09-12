@@ -547,11 +547,13 @@ impl Cache for SolidCache {
 fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<SolidMesh, GenError> {
     re_tracing::profile_function!();
 
+    let bbox = key.simple_bounding_box();
+
     let mesh: mesh::CpuMesh = match *key {
         ProcMeshKey::Cube => {
             let mut mg = macaw::MeshGen::new();
             mg.push_cube(Vec3::splat(0.5), macaw::IsoTransform::IDENTITY);
-            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx, bbox)
         }
         ProcMeshKey::Sphere {
             subdivisions,
@@ -588,6 +590,8 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
                 vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
 
                 materials,
+
+                bbox,
             }
         }
         ProcMeshKey::Capsule {
@@ -618,7 +622,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
                     std::f32::consts::FRAC_PI_2,
                 )),
             );
-            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx, bbox)
         }
         ProcMeshKey::Cylinder {
             subdivisions,
@@ -629,7 +633,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
             let mut mg = macaw::MeshGen::new();
 
             push_cylinder_solid(&mut mg, 1.0, 2.0, mg_subdivisions);
-            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx, bbox)
         }
     };
 
@@ -716,6 +720,7 @@ fn mesh_from_mesh_gen(
     label: re_renderer::DebugLabel,
     mg: MeshGen,
     render_ctx: &RenderContext,
+    bbox: macaw::BoundingBox,
 ) -> mesh::CpuMesh {
     let num_vertices = mg.positions.len();
 
@@ -736,6 +741,7 @@ fn mesh_from_mesh_gen(
         // Colors are black so that the instance `additive_tint` can set per-instance color.
         vertex_colors: vec![re_renderer::Rgba32Unmul::BLACK; num_vertices],
         vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
+        bbox,
     }
 }
 

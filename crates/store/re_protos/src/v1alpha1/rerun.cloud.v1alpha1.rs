@@ -267,33 +267,6 @@ impl ::prost::Name for CreateIndexResponse {
         "/rerun.cloud.v1alpha1.CreateIndexResponse".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ReIndexRequest {}
-impl ::prost::Name for ReIndexRequest {
-    const NAME: &'static str = "ReIndexRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ReIndexRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ReIndexRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ReIndexResponse {
-    #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-}
-impl ::prost::Name for ReIndexResponse {
-    const NAME: &'static str = "ReIndexResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ReIndexResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ReIndexResponse".into()
-    }
-}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndexConfig {
     /// what kind of index do we want to create and what are its index specific properties.
@@ -881,28 +854,38 @@ impl ::prost::Name for ScanTableResponse {
 pub struct DoMaintenanceRequest {
     #[prost(message, optional, tag = "1")]
     pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-    /// Create the acceleration structures for temporal queries.
+    /// Optimize all builtin and user-defined indexes on this dataset.
     ///
-    /// This will recreate all scalar indexes from scratch everytime.
-    ///
-    /// TODO(cmc): support incremental scalar indexing & index compaction
+    /// This merges all individual index deltas back in the main index, improving runtime performance
+    /// of all indexes.
     #[prost(bool, tag = "2")]
-    pub build_scalar_indexes: bool,
+    pub optimize_indexes: bool,
+    /// Retrain all user-defined indexes on this dataset from scratch.
+    ///
+    /// This retrains all user-defined indexes from scratch for optimal runtime performance.
+    /// This is faster than re-creating the indexes, and automatically keeps track of their configurations.
+    ///
+    /// This implies `optimize_indexes`.
+    #[prost(bool, tag = "6")]
+    pub retrain_indexes: bool,
     /// Compact the underlying Lance fragments, for all Rerun Manifests.
     ///
     /// Hardcoded to the default (optimal) settings.
     #[prost(bool, tag = "3")]
     pub compact_fragments: bool,
     /// If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+    ///
     /// In case requested date is more recent than 1 hour, it will be ignored and 1 hour ago
     /// timestamp will be used. This is to prevent still used files (like recent transaction files)
     /// to be removed and cause Lance Dataset update issues.
+    ///
     /// See <https://docs.rs/lance/latest/lance/dataset/cleanup/index.html>
     /// and <https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html>
     #[prost(message, optional, tag = "4")]
     pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
     /// Override default platform behavior and allow cleanup of recent files. This will respect
     /// the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
+    ///
     /// ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
     #[prost(bool, tag = "5")]
     pub unsafe_allow_recent_cleanup: bool,
@@ -930,6 +913,31 @@ impl ::prost::Name for DoMaintenanceResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.DoMaintenanceResponse".into()
+    }
+}
+/// Request all maintenance operations to run on all datasets
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DoGlobalMaintenanceRequest {}
+impl ::prost::Name for DoGlobalMaintenanceRequest {
+    const NAME: &'static str = "DoGlobalMaintenanceRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DoGlobalMaintenanceRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DoGlobalMaintenanceRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DoGlobalMaintenanceResponse {}
+impl ::prost::Name for DoGlobalMaintenanceResponse {
+    const NAME: &'static str = "DoGlobalMaintenanceResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DoGlobalMaintenanceResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DoGlobalMaintenanceResponse".into()
     }
 }
 /// A task is a unit of work that can be submitted to the system
@@ -2066,25 +2074,6 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Recreate an index with the same configuration but (potentially) new data.
-        pub async fn re_index(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ReIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/ReIndex",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "ReIndex",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
         /// Search a previously created index.
         pub async fn search_dataset(
             &mut self,
@@ -2339,6 +2328,27 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Run global maintenance operations on the platform: this includes optimization
+        /// of all datasets, garbage collection of unused data, and can include more in the future.
+        pub async fn do_global_maintenance(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DoGlobalMaintenanceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DoGlobalMaintenanceResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/DoGlobalMaintenance",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "DoGlobalMaintenance",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -2443,11 +2453,6 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::CreateIndexRequest>,
         ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>;
-        /// Recreate an index with the same configuration but (potentially) new data.
-        async fn re_index(
-            &self,
-            request: tonic::Request<super::ReIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status>;
         /// Server streaming response type for the SearchDataset method.
         type SearchDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::SearchDatasetResponse, tonic::Status>,
@@ -2555,6 +2560,12 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::DoMaintenanceRequest>,
         ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>;
+        /// Run global maintenance operations on the platform: this includes optimization
+        /// of all datasets, garbage collection of unused data, and can include more in the future.
+        async fn do_global_maintenance(
+            &self,
+            request: tonic::Request<super::DoGlobalMaintenanceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DoGlobalMaintenanceResponse>, tonic::Status>;
     }
     /// The Rerun Cloud public API.
     ///
@@ -3235,45 +3246,6 @@ pub mod rerun_cloud_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.cloud.v1alpha1.RerunCloudService/ReIndex" => {
-                    #[allow(non_camel_case_types)]
-                    struct ReIndexSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService> tonic::server::UnaryService<super::ReIndexRequest> for ReIndexSvc<T> {
-                        type Response = super::ReIndexResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ReIndexRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::re_index(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = ReIndexSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/rerun.cloud.v1alpha1.RerunCloudService/SearchDataset" => {
                     #[allow(non_camel_case_types)]
                     struct SearchDatasetSvc<T: RerunCloudService>(pub Arc<T>);
@@ -3733,6 +3705,49 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DoMaintenanceSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/DoGlobalMaintenance" => {
+                    #[allow(non_camel_case_types)]
+                    struct DoGlobalMaintenanceSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::DoGlobalMaintenanceRequest>
+                        for DoGlobalMaintenanceSvc<T>
+                    {
+                        type Response = super::DoGlobalMaintenanceResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DoGlobalMaintenanceRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::do_global_maintenance(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DoGlobalMaintenanceSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

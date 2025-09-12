@@ -12,10 +12,10 @@ use re_types::{
 use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::{controls::DRAG_PAN2D_BUTTON, view_property_ui};
 use re_viewer_context::{
-    IdentifiedViewSystem as _, Item, RecommendedView, SystemExecutionOutput, ViewClass,
-    ViewClassExt as _, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext,
+    IdentifiedViewSystem as _, Item, RecommendedView, SystemCommand, SystemCommandSender as _,
+    SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -217,8 +217,10 @@ impl ViewClass for GraphView {
 
         if resp.clicked() {
             // clicked elsewhere, select the view
-            ctx.selection_state()
-                .set_selection(Item::View(query.view_id));
+            ctx.command_sender()
+                .send_system(SystemCommand::SetSelection(
+                    Item::View(query.view_id).into(),
+                ));
         }
 
         // Update blueprint if changed

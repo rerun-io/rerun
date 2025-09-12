@@ -522,9 +522,11 @@ extern void rr_recording_stream_connect_grpc(
 ///
 /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
 /// on the same machine, otherwise you're potentially doubling your memory usage!
+///
+/// `newest_first` controls whether or not to play back the newest data first to clients.
 extern void rr_recording_stream_serve_grpc(
     rr_recording_stream stream, rr_string bind_ip, uint16_t port, rr_string server_memory_limit,
-    rr_error* error
+    bool newest_first, rr_error* error
 );
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it

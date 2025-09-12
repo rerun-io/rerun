@@ -491,7 +491,7 @@ impl DesignTokens {
         egui_style.spacing.scroll.bar_width = 6.0;
         egui_style.spacing.scroll.bar_outer_margin = 2.0;
 
-        egui_style.spacing.tooltip_width = 720.0;
+        egui_style.spacing.tooltip_width = 600.0;
 
         egui_style.visuals.image_loading_spinners = false;
     }
