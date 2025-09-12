@@ -5,6 +5,7 @@ use re_chunk::{
 };
 use re_types::archetypes::{Scalars, SeriesLines};
 
+use super::super::Ros2MessageParser;
 use crate::{
     Error,
     parsers::{MessageParser, ParserContext, cdr},
@@ -21,9 +22,8 @@ pub struct JointStateMessageParser {
     efforts: ListBuilder<Float64Builder>,
 }
 
-impl JointStateMessageParser {
-    /// Create a new [`JointStateMessageParser`]
-    pub fn new(num_rows: usize) -> Self {
+impl Ros2MessageParser for JointStateMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             joint_names: ListBuilder::with_capacity(StringBuilder::new(), num_rows),
             positions: ListBuilder::with_capacity(Float64Builder::new(), num_rows),

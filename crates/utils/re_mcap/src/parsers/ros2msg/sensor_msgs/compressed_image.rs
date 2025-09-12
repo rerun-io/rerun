@@ -10,13 +10,12 @@ use re_types::{
     reflection::ComponentDescriptorExt as _,
 };
 
-use crate::{
-    parsers::{
-        cdr,
-        decode::{MessageParser, ParserContext},
-    },
-    util::TimestampCell,
+use super::super::Ros2MessageParser;
+use crate::parsers::{
+    cdr,
+    decode::{MessageParser, ParserContext},
 };
+use crate::util::TimestampCell;
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
 pub struct CompressedImageMessageParser {
@@ -30,8 +29,10 @@ pub struct CompressedImageMessageParser {
 
 impl CompressedImageMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.CompressedImage";
+}
 
-    pub fn new(num_rows: usize) -> Self {
+impl Ros2MessageParser for CompressedImageMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             blobs: Vec::with_capacity(num_rows),
             formats: FixedSizeListBuilder::with_capacity(StringBuilder::new(), 1, num_rows),
