@@ -25,7 +25,7 @@ impl TimeControlUi {
             ui.visuals_mut().widgets.hovered.expansion = 0.0;
             ui.visuals_mut().widgets.open.expansion = 0.0;
 
-            egui::ComboBox::from_id_salt("timeline")
+            let response = egui::ComboBox::from_id_salt("timeline")
                 .selected_text(time_control.timeline().name().as_str())
                 .show_ui(ui, |ui| {
                     for timeline in times_per_timeline.timelines() {
@@ -65,6 +65,25 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                             true,
                         );
                     });
+                });
+            egui::Popup::menu(&response)
+                .id(egui::Id::new("timeline select context menu"))
+                .open_memory(if response.secondary_clicked() {
+                    Some(egui::SetOpenCommand::Bool(true))
+                } else if response.clicked() {
+                    // Explicitly close the menu if the widget was clicked
+                    // Without this, the context menu would stay open if the user clicks the widget
+                    Some(egui::SetOpenCommand::Bool(false))
+                } else {
+                    None
+                })
+                .at_pointer_fixed()
+                .show(|ui| {
+                    if ui.button("Copy timeline name").clicked() {
+                        let timeline = format!("{}", time_control.timeline().name());
+                        re_log::info!("Copied timeline: {}", timeline);
+                        ui.ctx().copy_text(timeline);
+                    }
                 })
         });
     }
