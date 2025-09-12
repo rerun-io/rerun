@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use egui::{Frame, Margin};
 
 use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
+use super::{ComparisonOperator, Filter, FilterOperation};
 use crate::TableBlueprint;
-use crate::filters::{ComparisonOperator, Filter, FilterOperation};
 
 /// Action to take based on the user interaction.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -112,27 +114,56 @@ impl FilterState {
                 right: 16,
             })
             .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    let active_index = self.active_filter.take();
+                let active_index = self.active_filter.take();
+                let mut remove_idx = None;
 
-                    let mut remove_idx = None;
-                    for (index, filter) in self.filters.iter_mut().enumerate() {
-                        let filter_id = ui.make_persistent_id(index);
-                        let result = filter.ui(ui, filter_id, Some(index) == active_index);
+                // TODO(#11194): ideally, egui would allow wrapping `Frame` widget itself. Remove
+                // this when it does.
+                let prepared_uis = self
+                    .filters
+                    .iter()
+                    .map(|filter| filter.prepare_ui(ui))
+                    .collect::<Vec<_>>();
+                let item_spacing = ui.style().spacing.item_spacing.x;
+                let available_width = ui.available_width();
+                let mut rows = vec1::vec1![vec![]];
+                let mut current_left_position = 0.0;
+                for (index, prepared_ui) in prepared_uis.iter().enumerate() {
+                    if current_left_position > 0.0
+                        && current_left_position + prepared_ui.desired_width() > available_width
+                    {
+                        rows.push(vec![]);
+                        current_left_position = 0.0;
+                    }
 
-                        action = action.merge(result.filter_action);
+                    rows.last_mut().push(index);
+                    current_left_position += prepared_ui.desired_width() + item_spacing;
+                }
 
-                        if result.should_delete_filter {
-                            remove_idx = Some(index);
+                for row in rows {
+                    ui.horizontal(|ui| {
+                        for index in row {
+                            let filter_id = ui.make_persistent_id(index);
+                            let filter = &mut self.filters[index];
+                            let prepared_ui = &prepared_uis[index];
+
+                            let result =
+                                filter.ui(ui, prepared_ui, filter_id, Some(index) == active_index);
+
+                            action = action.merge(result.filter_action);
+
+                            if result.should_delete_filter {
+                                remove_idx = Some(index);
+                            }
                         }
-                    }
+                    });
+                }
 
-                    if let Some(remove_idx) = remove_idx {
-                        self.active_filter = None;
-                        self.filters.remove(remove_idx);
-                        should_commit = true;
-                    }
-                });
+                if let Some(remove_idx) = remove_idx {
+                    self.active_filter = None;
+                    self.filters.remove(remove_idx);
+                    should_commit = true;
+                }
             });
 
         action
@@ -145,31 +176,64 @@ struct DisplayFilterUiResult {
     should_delete_filter: bool,
 }
 
+// TODO(#11194): used by the manual wrapping code. Remove when no longer needed.
+struct FilterPreparedUi {
+    frame: Frame,
+    galley: Arc<egui::Galley>,
+    desired_width: f32,
+}
+
+impl FilterPreparedUi {
+    fn desired_width(&self) -> f32 {
+        self.desired_width
+    }
+}
+
 impl Filter {
+    /// Prepare the UI for this filter
+    fn prepare_ui(&self, ui: &egui::Ui) -> FilterPreparedUi {
+        let layout_job = SyntaxHighlightedBuilder::new()
+            .with_body(&self.column_name)
+            .with_keyword(" ")
+            .with(&self.operation)
+            .into_job(ui.style());
+
+        let galley = ui.fonts(|f| f.layout_job(layout_job));
+
+        let frame = Frame::new()
+            .inner_margin(Margin::symmetric(4, 4))
+            .stroke(ui.tokens().table_filter_frame_stroke)
+            .corner_radius(2.0);
+
+        let desired_width = galley.size().x
+            + ui.style().spacing.item_spacing.x
+            + ui.tokens().small_icon_size.x
+            + frame.total_margin().sum().x;
+
+        FilterPreparedUi {
+            frame,
+            galley,
+            desired_width,
+        }
+    }
+
     /// UI for a single filter.
     #[must_use]
     fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        prepared_ui: &FilterPreparedUi,
         filter_id: egui::Id,
         activate_filter: bool,
     ) -> DisplayFilterUiResult {
         let mut should_delete_filter = false;
         let mut action_due_to_filter_deletion = FilterUiAction::None;
 
-        let response = Frame::new()
-            .inner_margin(Margin::symmetric(4, 4))
-            .stroke(ui.tokens().table_filter_frame_stroke)
-            .corner_radius(2.0)
+        let response = prepared_ui
+            .frame
             .show(ui, |ui| {
-                let widget_text = SyntaxHighlightedBuilder::new()
-                    .with_body(&self.column_name)
-                    .with_keyword(" ")
-                    .with(&self.operation)
-                    .into_widget_text(ui.style());
-
                 let text_response = ui.add(
-                    egui::Label::new(widget_text)
+                    egui::Label::new(Arc::clone(&prepared_ui.galley))
                         .selectable(false)
                         .sense(egui::Sense::click()),
                 );
@@ -472,5 +536,48 @@ mod tests {
 
             harness.snapshot(format!("popup_ui_{test_name}"));
         }
+    }
+
+    #[test]
+    fn test_filter_wrapping() {
+        let filters = vec![
+            Filter::new(
+                "some:column:name",
+                FilterOperation::StringContains("some query string".to_owned()),
+            ),
+            Filter::new(
+                "other:column:name",
+                FilterOperation::StringContains("hello".to_owned()),
+            ),
+            Filter::new(
+                "short:name",
+                FilterOperation::StringContains("world".to_owned()),
+            ),
+            Filter::new(
+                "looooog:name",
+                FilterOperation::StringContains("some more querying text here".to_owned()),
+            ),
+            Filter::new(
+                "world",
+                FilterOperation::StringContains(":wave:".to_owned()),
+            ),
+        ];
+
+        let mut filters = FilterState {
+            filters,
+            active_filter: None,
+        };
+
+        let mut harness = egui_kittest::Harness::builder()
+            .with_size(egui::Vec2::new(700.0, 500.0))
+            .build_ui(|ui| {
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+
+                filters.filter_bar_ui(ui, &mut TableBlueprint::default());
+            });
+
+        harness.run();
+
+        harness.snapshot("filter_wrapping");
     }
 }
