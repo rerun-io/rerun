@@ -153,6 +153,7 @@ where
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
+    /// The `alt_text` will also be used for the tooltip.
     ///
     /// See [`Self::with_button`] for more information.
     #[inline]
@@ -169,6 +170,7 @@ where
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
+    /// The `alt_text` will also be used for the tooltip.
     ///
     /// See [`Self::with_button`] for more information.
     #[inline]
@@ -179,13 +181,19 @@ where
         enabled: bool,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
-        self.with_button(super::ItemActionButton::new(icon, alt_text, on_click).enabled(enabled))
+        let hover_text = alt_text.into();
+        self.with_button(
+            super::ItemActionButton::new(icon, &hover_text, on_click)
+                .enabled(enabled)
+                .hover_text(hover_text),
+        )
     }
 
     /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
+    /// The `alt_text` will also be used for the tooltip.
     ///
     /// See [`Self::with_button`] for more information.
     #[inline]
@@ -195,7 +203,10 @@ where
         alt_text: impl Into<String>,
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
-        self.with_button(super::ItemMenuButton::new(icon, alt_text, add_contents))
+        let hover_text = alt_text.into();
+        self.with_button(
+            super::ItemMenuButton::new(icon, &hover_text, add_contents).hover_text(hover_text),
+        )
     }
 
     /// Set the help text tooltip to be shown in the header.
