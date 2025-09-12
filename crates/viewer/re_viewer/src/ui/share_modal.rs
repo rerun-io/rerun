@@ -212,8 +212,11 @@ fn selectable_value_with_min_width<'a, Value: PartialEq>(
     text: impl IntoAtoms<'a>,
 ) -> egui::Response {
     let checked = *current_value == selected_value;
-    let mut response =
-        ui.add(egui::Button::selectable(checked, text).min_size(egui::vec2(min_width, 0.0)));
+    let mut response = ui.add(
+        egui::Button::selectable(checked, text)
+            .wrap_mode(egui::TextWrapMode::Truncate)
+            .min_size(egui::vec2(min_width, 0.0)),
+    );
 
     if response.clicked() && *current_value != selected_value {
         *current_value = selected_value;
@@ -324,11 +327,12 @@ fn time_cursor_ui(
                 "At the start",
             );
             ui.add_enabled_ui(current_time_cursor.is_some(), |ui| {
-                let mut label = egui::Atoms::new("Current");
+                let mut label = egui::Atoms::new(egui::Atom::from("Current").atom_grow(true));
                 if let Some((_, time_cell)) = current_time_cursor {
-                    label.push_right(format_extra_toggle_info(
-                        time_cell.format_compact(timestamp_format),
-                    ));
+                    label.push_right({
+                        let time = time_cell.format_compact(timestamp_format);
+                        egui::RichText::new(time).weak().atom_shrink(true)
+                    });
                 }
 
                 selectable_value_with_min_width(ui, MIN_TOGGLE_WIDTH, &mut any_time, true, label)
@@ -341,10 +345,6 @@ fn time_cursor_ui(
     } else {
         *when = None;
     }
-}
-
-fn format_extra_toggle_info(info: String) -> egui::Atom<'static> {
-    egui::RichText::new(info).weak().atom_max_width(120.0)
 }
 
 #[cfg(test)]
