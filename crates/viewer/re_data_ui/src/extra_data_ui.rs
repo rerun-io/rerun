@@ -34,6 +34,7 @@ impl ExtraDataUi {
     pub fn add_inline_buttons<'a>(
         &'a self,
         ctx: &'a ViewerContext<'_>,
+        main_thread_token: re_capabilities::MainThreadToken,
         entity_path: &'a re_log_types::EntityPath,
         mut property_content: list_item::PropertyContent<'a>,
     ) -> list_item::PropertyContent<'a> {
@@ -44,7 +45,7 @@ impl ExtraDataUi {
             }
             Self::Image(image) => {
                 property_content = image.inline_copy_button(ctx, property_content);
-                image.inline_download_button(ctx, entity_path, property_content)
+                image.inline_download_button(ctx, main_thread_token, entity_path, property_content)
             }
             Self::Blob(blob) => blob.inline_download_button(ctx, entity_path, property_content),
         }

@@ -1,5 +1,6 @@
 use crate::find_and_deserialize_archetype_mono_component;
 use egui::{NumExt as _, Rangef, Vec2};
+use re_capabilities::MainThreadToken;
 use re_chunk_store::UnitChunkShared;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::components;
@@ -362,6 +363,7 @@ impl ImageUi {
     pub fn inline_download_button<'a>(
         &'a self,
         ctx: &'a ViewerContext<'_>,
+        main_thread_token: MainThreadToken,
         entity_path: &'a re_log_types::EntityPath,
         property_content: list_item::PropertyContent<'a>,
     ) -> list_item::PropertyContent<'a> {
@@ -376,7 +378,7 @@ impl ImageUi {
                             .to_owned()
                     );
                     ctx.command_sender().save_file_dialog(
-                        re_capabilities::MainThreadToken::i_promise_i_am_on_the_main_thread(),
+                        main_thread_token,
                         &file_name,
                         "Save image".to_owned(),
                         png_bytes,

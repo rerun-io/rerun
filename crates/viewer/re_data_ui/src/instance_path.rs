@@ -1,4 +1,5 @@
 use egui::RichText;
+use re_capabilities::MainThreadToken;
 use std::collections::BTreeMap;
 
 use re_chunk_store::UnitChunkShared;
@@ -261,7 +262,12 @@ fn component_list_ui(
 
                     if let Some(data) = &data {
                         content = data
-                            .add_inline_buttons(ctx, entity_path, content)
+                            .add_inline_buttons(
+                                ctx,
+                                MainThreadToken::from_egui_ui(ui),
+                                entity_path,
+                                content,
+                            )
                             .with_always_show_buttons(true);
                     }
 
