@@ -2,14 +2,24 @@ use arrow::datatypes::{DataType, Field};
 use datafusion::common::Column;
 use datafusion::logical_expr::{Expr, col, lit};
 use datafusion::prelude::{array_element, array_has, array_sort};
-
 use re_ui::UiExt as _;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
 use super::{FilterError, FilterUiAction, Nullability};
 
+/// A filter for a boolean column.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BooleanFilter {
+    /// Filter for strictly non-nullable columns.
+    ///
+    /// This includes non-nullable primitive datatypes, as well as outer AND inner non-nullable nested
+    /// datatypes. In that case, the UI should not display the `null` option.
     NonNullable(bool),
+
+    /// Filter for nullable columns.
+    ///
+    /// In this case, the UI should display a `null` option. A value of `None` means nulls should be
+    /// matched.
     Nullable(Option<bool>),
 }
 
@@ -102,16 +112,28 @@ impl BooleanFilter {
     ) {
         super::basic_operation_ui(ui, column_name, "is");
 
+        let primitive = |ui: &egui::Ui, s: &str| {
+            SyntaxHighlightedBuilder::primitive(s).into_widget_text(ui.style())
+        };
+
         let clicked = match self {
             Self::NonNullable(query) => {
-                ui.re_radio_value(query, true, "true").clicked()
-                    || ui.re_radio_value(query, false, "false").clicked()
+                ui.re_radio_value(query, true, primitive(ui, "true"))
+                    .clicked()
+                    || ui
+                        .re_radio_value(query, false, primitive(ui, "false"))
+                        .clicked()
             }
 
             Self::Nullable(query) => {
-                ui.re_radio_value(query, Some(true), "true").clicked()
-                    || ui.re_radio_value(query, Some(false), "false").clicked()
-                    || ui.re_radio_value(query, None, "null").clicked()
+                ui.re_radio_value(query, Some(true), primitive(ui, "true"))
+                    .clicked()
+                    || ui
+                        .re_radio_value(query, Some(false), primitive(ui, "false"))
+                        .clicked()
+                    || ui
+                        .re_radio_value(query, None, primitive(ui, "null"))
+                        .clicked()
             }
         };
 
