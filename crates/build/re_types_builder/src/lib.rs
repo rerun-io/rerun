@@ -103,6 +103,8 @@
 
 // TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
+// Exception for the build crates as it's not production code.
+#![allow(clippy::panic)]
 
 // NOTE: Official generated code from flatbuffers; ignore _everything_.
 
