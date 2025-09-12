@@ -6,6 +6,7 @@ mod button_content;
 mod custom_content;
 mod debug_content;
 mod item_button;
+mod item_buttons;
 mod label_content;
 #[allow(clippy::module_inception)]
 mod list_item;
@@ -16,6 +17,7 @@ pub use button_content::*;
 pub use custom_content::*;
 pub use debug_content::*;
 pub use item_button::*;
+pub use item_buttons::*;
 pub use label_content::*;
 pub use list_item::*;
 pub use property_content::*;

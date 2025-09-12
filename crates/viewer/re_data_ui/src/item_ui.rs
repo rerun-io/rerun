@@ -9,6 +9,7 @@ use re_types::{
     archetypes::RecordingInfo,
     components::{Name, Timestamp},
 };
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::{
     HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
@@ -740,7 +741,6 @@ pub fn entity_db_button_ui(
                         store_id.clone().into(),
                     ));
             }
-            resp
         });
     }
 
@@ -812,7 +812,6 @@ pub fn table_id_button_ui(
                         table_id.clone().into(),
                     ));
             }
-            resp
         });
     }
 

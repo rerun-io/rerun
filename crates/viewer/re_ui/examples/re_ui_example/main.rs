@@ -3,6 +3,7 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use egui::{Modifiers, os};
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
     CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
     IconText, UICommand, UICommandSender, UiExt as _,
@@ -250,7 +251,7 @@ impl eframe::App for ExampleApp {
             // ---
 
             ui.section_collapsing_header("Data")
-                .button(list_item::ItemMenuButton::new(
+                .with_button(list_item::ItemMenuButton::new(
                     &re_ui::icons::ADD,
                     "Add",
                     |ui| {

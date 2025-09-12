@@ -127,9 +127,6 @@ pub struct LayoutInfo {
     /// value.
     pub(crate) left_column_width: Option<f32>,
 
-    /// If true, right-aligned space should be reserved for the action button, even if not used.
-    pub(crate) reserve_action_button_space: bool,
-
     /// Scope id, used to retrieve the corresponding [`LayoutStatistics`].
     scope_id: egui::Id,
 
@@ -144,7 +141,6 @@ impl Default for LayoutInfo {
         Self {
             left_x: 0.0,
             left_column_width: None,
-            reserve_action_button_space: true,
             scope_id: egui::Id::NULL,
             property_content_max_width: None,
         }
@@ -289,7 +285,6 @@ pub fn list_item_scope<R>(
     let state = LayoutInfo {
         left_x: ui.max_rect().left(),
         left_column_width,
-        reserve_action_button_space: layout_stats.is_action_button_used,
         scope_id,
         property_content_max_width: layout_stats.property_content_max_width,
     };
