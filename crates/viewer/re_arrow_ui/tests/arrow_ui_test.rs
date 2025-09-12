@@ -109,6 +109,6 @@ fn inline_formatting() {
         let highlighted =
             re_arrow_ui::arrow_syntax_highlighted(&data).expect("Failed to format data");
 
-        insta::assert_snapshot!(name, highlighted.text())
+        insta::assert_snapshot!(name, highlighted.text());
     }
 }
