@@ -87,24 +87,27 @@ impl framework::Example for Outlines {
             },
         )?;
 
-        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
+        view_builder.queue_draw(
             re_ctx,
-            Default::default(),
-        ));
-        view_builder.queue_draw(re_renderer::renderer::WorldGridDrawData::new(
+            re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx, Default::default()),
+        );
+        view_builder.queue_draw(
             re_ctx,
-            &re_renderer::renderer::WorldGridConfiguration {
-                #[expect(clippy::disallowed_methods)]
-                color: re_renderer::Rgba::from_rgb(0.5, 0.5, 0.5),
-                spacing: 0.1,
-                thickness_ui: 1.0,
-                plane: macaw::Plane3::ZX,
-            },
-        ));
-        view_builder.queue_draw(re_renderer::renderer::MeshDrawData::new(
+            re_renderer::renderer::WorldGridDrawData::new(
+                re_ctx,
+                &re_renderer::renderer::WorldGridConfiguration {
+                    #[expect(clippy::disallowed_methods)]
+                    color: re_renderer::Rgba::from_rgb(0.5, 0.5, 0.5),
+                    spacing: 0.1,
+                    thickness_ui: 1.0,
+                    plane: macaw::Plane3::ZX,
+                },
+            ),
+        );
+        view_builder.queue_draw(
             re_ctx,
-            &self.model_mesh_instances,
-        )?);
+            re_renderer::renderer::MeshDrawData::new(re_ctx, &self.model_mesh_instances)?,
+        );
 
         let command_buffer = view_builder.draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 

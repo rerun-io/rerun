@@ -313,6 +313,9 @@ impl GpuReadbackBelt {
     /// This should be called after the command encoder(s) used in [`GpuReadbackBuffer`] copy operations are submitted.
     pub fn after_queue_submit(&mut self) {
         re_tracing::profile_function!();
+
+        // TODO(andreas): Use `map_buffer_on_submit` https://github.com/gfx-rs/wgpu/pull/8125 once available.
+
         for chunk in self.active_chunks.drain(..) {
             let sender = self.sender.clone();
             chunk.buffer.clone().slice(..chunk.unused_offset).map_async(

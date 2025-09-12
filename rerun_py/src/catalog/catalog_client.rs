@@ -303,6 +303,17 @@ impl PyCatalogClientInternal {
         Py::new(py, (table, entry))
     }
 
+    // ---
+
+    /// Perform global maintenance tasks on the server.
+    fn do_global_maintenance(self_: Py<Self>, py: Python<'_>) -> PyResult<()> {
+        let connection = self_.borrow_mut(py).connection.clone();
+
+        connection.do_global_maintenance(py)
+    }
+
+    // ---
+
     /// The DataFusion context (if available).
     pub fn ctx(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         if let Some(datafusion_ctx) = &self.datafusion_ctx {

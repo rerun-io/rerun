@@ -18,6 +18,7 @@ from rerun._baseclasses import (
 from rerun._converters import (
     float_or_none,
 )
+from rerun._numpy_compatibility import asarray
 
 __all__ = ["AffixFuzzer2", "AffixFuzzer2ArrayLike", "AffixFuzzer2Batch", "AffixFuzzer2Like"]
 
@@ -34,7 +35,7 @@ class AffixFuzzer2:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer2Ext in affix_fuzzer2_ext.py
-        return np.asarray(self.single_float_optional, dtype=dtype, copy=copy)
+        return asarray(self.single_float_optional, dtype=dtype, copy=copy)
 
 
 AffixFuzzer2Like = AffixFuzzer2

@@ -28,7 +28,7 @@ impl GrpcServerSink {
     pub fn new(
         bind_ip: &str,
         grpc_port: u16,
-        server_memory_limit: re_memory::MemoryLimit,
+        server_options: re_grpc_server::ServerOptions,
     ) -> Result<Self, std::net::AddrParseError> {
         let (server_shutdown_signal, shutdown) = re_grpc_server::shutdown::shutdown();
 
@@ -51,7 +51,7 @@ impl GrpcServerSink {
 
                 rt.block_on(re_grpc_server::serve_from_channel(
                     grpc_server_addr,
-                    server_memory_limit,
+                    server_options,
                     shutdown,
                     channel_rx,
                 ));

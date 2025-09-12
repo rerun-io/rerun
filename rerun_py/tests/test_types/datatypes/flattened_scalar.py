@@ -15,6 +15,7 @@ from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
 )
+from rerun._numpy_compatibility import asarray
 
 __all__ = ["FlattenedScalar", "FlattenedScalarArrayLike", "FlattenedScalarBatch", "FlattenedScalarLike"]
 
@@ -31,7 +32,7 @@ class FlattenedScalar:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of FlattenedScalarExt in flattened_scalar_ext.py
-        return np.asarray(self.value, dtype=dtype, copy=copy)
+        return asarray(self.value, dtype=dtype, copy=copy)
 
     def __float__(self) -> float:
         return float(self.value)

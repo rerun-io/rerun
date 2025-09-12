@@ -109,7 +109,7 @@ py-docs = ["base", "python-docs"]
 cpp = ["base", "cpp"]
 
 # The wheel-test environment is for testing the python package when built from a wheel.
-# Thistenvironment is specifically used for validation of the wheel artifact in CI.
+# This environment is specifically used for validation of the wheel artifact in CI.
 # It does not include the features necessary for a source-build of the wheel.
 #
 # WARNING: wheel-test default depends on a published `rerun-sdk` version which will
@@ -175,8 +175,10 @@ codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/stor
 
 # Generate the Rerun CLI manual.
 
-# NOTE:must be --all-features, otherwise we might miss some optional commands.
-man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/content/reference/cli.md"
+# NOTE: must be --all-features, otherwise we might miss some optional commands.
+man = { cmd = "cargo --quiet run --package rerun-cli --all-features -- man > docs/content/reference/cli.md", depends-on = [
+  "rerun-build-web", # Must have web-viewer to build `rerun-cli` with --all-features
+] }
 
 # Compile and run the rerun viewer.
 #
@@ -616,6 +618,7 @@ tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
+gh = ">=2.79.0,<3"
 
 
 [feature.base.pypi-dependencies]

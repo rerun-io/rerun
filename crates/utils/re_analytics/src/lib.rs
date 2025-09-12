@@ -240,10 +240,10 @@ pub struct Analytics {
 #[cfg(not(target_arch = "wasm32"))] // NOTE: can't block on web
 impl Drop for Analytics {
     fn drop(&mut self) {
-        if let Some(pipeline) = self.pipeline.as_ref() {
-            if let Err(err) = pipeline.flush_blocking(Duration::MAX) {
-                re_log::debug!("Failed to flush analytics events during shutdown: {err}");
-            }
+        if let Some(pipeline) = self.pipeline.as_ref()
+            && let Err(err) = pipeline.flush_blocking(Duration::MAX)
+        {
+            re_log::debug!("Failed to flush analytics events during shutdown: {err}");
         }
     }
 }

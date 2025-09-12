@@ -211,15 +211,6 @@ type Inventory = HashMap<String, Object>;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum Role {
-    Module,
-    Attr,
-    Function,
-    Class,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "snake_case")]
 #[serde(tag = "kind")]
 enum Item {
     Module(Box<Module>),
@@ -248,19 +239,6 @@ struct Attribute {
     name: String,
     // labels: HashSet<Label>,
     docstring: Option<Docstring>,
-}
-
-#[derive(Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Label {
-    #[serde(rename = "instance-attribute")]
-    InstanceAttribute,
-    #[serde(rename = "class-attribute")]
-    ClassAttribute,
-    #[serde(rename = "module-attribute")]
-    ModuleAttribute,
-
-    #[serde(other)]
-    Unknown,
 }
 
 #[derive(Debug, Deserialize)]

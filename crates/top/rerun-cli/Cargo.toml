@@ -86,7 +86,7 @@ oss_server = ["rerun/oss_server"]
 
 ## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
 ##
-## This only works on native.
+## This only works on native, and only with `TELEMETRY_ENABLED` set.
 perf_telemetry = ["rerun/perf_telemetry"]
 
 ## Support serving a web viewer over HTTP.
@@ -114,7 +114,7 @@ rerun = { workspace = true, default-features = false, features = [
 ] }
 
 document-features.workspace = true
-mimalloc = "0.1.43"
+mimalloc.workspace = true
 
 
 [build-dependencies]

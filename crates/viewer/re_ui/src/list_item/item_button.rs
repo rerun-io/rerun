@@ -95,6 +95,12 @@ impl super::ItemButton for ItemMenuButton<'_> {
     }
 }
 
+impl egui::Widget for ItemMenuButton<'_> {
+    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        super::ItemButton::ui(Box::new(self), ui)
+    }
+}
+
 // -------------------------------------------------------------------------------------------------
 
 /// An [`super::ItemButton`] that acts as an action button.
@@ -176,5 +182,11 @@ impl super::ItemButton for ItemActionButton<'_> {
             response
         })
         .inner
+    }
+}
+
+impl egui::Widget for ItemActionButton<'_> {
+    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        super::ItemButton::ui(Box::new(self), ui)
     }
 }

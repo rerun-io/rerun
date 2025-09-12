@@ -7,6 +7,7 @@ use re_types::{
     blueprint::{archetypes as blueprint_archetypes, components::VisibleTimeRange},
     datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
 };
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{TimeDragValue, UiExt as _};
 use re_viewer_context::{QueryRange, ViewClass, ViewState, ViewerContext};
 use re_viewport_blueprint::{ViewBlueprint, entity_path_for_view_property};
@@ -173,7 +174,7 @@ Notes:
     let collapsing_response = ui
         .section_collapsing_header("Visible time range")
         .default_open(true)
-        .help_markdown(markdown)
+        .with_help_markdown(markdown)
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.re_radio_value(has_individual_time_range, false, "Default")

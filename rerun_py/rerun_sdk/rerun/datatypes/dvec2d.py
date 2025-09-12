@@ -19,6 +19,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_float64,
 )
+from .._numpy_compatibility import asarray
 from .dvec2d_ext import DVec2DExt
 
 __all__ = ["DVec2D", "DVec2DArrayLike", "DVec2DBatch", "DVec2DLike"]
@@ -38,7 +39,7 @@ class DVec2D(DVec2DExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of DVec2DExt in dvec2d_ext.py
-        return np.asarray(self.xy, dtype=dtype, copy=copy)
+        return asarray(self.xy, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of DVec2DExt in dvec2d_ext.py

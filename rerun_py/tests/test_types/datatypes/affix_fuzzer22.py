@@ -6,10 +6,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
@@ -18,6 +16,11 @@ from rerun._baseclasses import (
 from rerun._converters import (
     to_np_uint8,
 )
+from rerun._numpy_compatibility import asarray
+
+if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
 
 __all__ = ["AffixFuzzer22", "AffixFuzzer22ArrayLike", "AffixFuzzer22Batch", "AffixFuzzer22Like"]
 
@@ -34,7 +37,7 @@ class AffixFuzzer22:
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of AffixFuzzer22Ext in affix_fuzzer22_ext.py
-        return np.asarray(self.fixed_sized_native, dtype=dtype, copy=copy)
+        return asarray(self.fixed_sized_native, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of AffixFuzzer22Ext in affix_fuzzer22_ext.py
