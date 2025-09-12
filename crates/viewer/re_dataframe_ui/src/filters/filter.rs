@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use arrow::array::{ArrayRef, BooleanArray, ListArray, as_list_array};
 use arrow::datatypes::{DataType, Field};
+use datafusion::common::ExprSchema as _;
 use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
@@ -393,7 +394,7 @@ impl ScalarUDFImpl for FilterOperationUdf {
         }
     }
 
-    fn invoke_with_args(&self, args: ScalarFunctionArgs<'_>) -> DataFusionResult<ColumnarValue> {
+    fn invoke_with_args(&self, args: ScalarFunctionArgs) -> DataFusionResult<ColumnarValue> {
         let ColumnarValue::Array(input_array) = &args.args[0] else {
             return exec_err!("FilterOperation expected array inputs, not scalar values");
         };
