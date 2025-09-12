@@ -97,7 +97,7 @@ impl UrlContext {
             .loop_selection()
             .map(|range| re_uri::TimeSelection {
                 timeline: *time_ctrl.timeline(),
-                range: range.into(),
+                range: range.to_int(),
             });
         self
     }

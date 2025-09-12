@@ -145,12 +145,6 @@ impl re_byte_size::SizeBytes for AbsoluteTimeRange {
     }
 }
 
-impl From<AbsoluteTimeRangeF> for AbsoluteTimeRange {
-    fn from(range: AbsoluteTimeRangeF) -> Self {
-        Self::new(range.min, range.max)
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 /// Like [`AbsoluteTimeRange`], but using [`TimeReal`] for improved precision.
@@ -208,6 +202,12 @@ impl AbsoluteTimeRangeF {
     #[inline]
     pub fn length(&self) -> TimeReal {
         self.max - self.min
+    }
+
+    /// Creates an [`AbsoluteTimeRange`] from self by rounding the start
+    /// of the range down, and rounding the end of the range up.
+    pub fn to_int(self) -> AbsoluteTimeRange {
+        AbsoluteTimeRange::new(self.min.floor(), self.max.ceil())
     }
 }
 
