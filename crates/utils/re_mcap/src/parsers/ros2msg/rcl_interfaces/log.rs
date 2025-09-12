@@ -11,7 +11,10 @@ use re_types::{
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
-    ros2msg::definitions::rcl_interfaces::{self, LogLevel},
+    ros2msg::{
+        Ros2MessageParser,
+        definitions::rcl_interfaces::{self, LogLevel},
+    },
     util::fixed_size_list_builder,
 };
 
@@ -31,17 +34,6 @@ pub struct LogMessageParser {
 impl LogMessageParser {
     const ARCHETYPE_NAME: &str = "rcl_interfaces.msg.Log";
 
-    pub fn new(num_rows: usize) -> Self {
-        Self {
-            text_entries: Vec::with_capacity(num_rows),
-            levels: Vec::with_capacity(num_rows),
-            colors: Vec::with_capacity(num_rows),
-            file: fixed_size_list_builder(1, num_rows),
-            function: fixed_size_list_builder(1, num_rows),
-            line: fixed_size_list_builder(1, num_rows),
-        }
-    }
-
     fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
         SerializedComponentColumn {
             list_array: array.into(),
@@ -59,6 +51,19 @@ impl LogMessageParser {
             LogLevel::Unknown | LogLevel::Debug => {
                 Color::from(Rgba32::from_rgb(128, 128, 128)) // Gray
             }
+        }
+    }
+}
+
+impl Ros2MessageParser for LogMessageParser {
+    fn new(num_rows: usize) -> Self {
+        Self {
+            text_entries: Vec::with_capacity(num_rows),
+            levels: Vec::with_capacity(num_rows),
+            colors: Vec::with_capacity(num_rows),
+            file: fixed_size_list_builder(1, num_rows),
+            function: fixed_size_list_builder(1, num_rows),
+            line: fixed_size_list_builder(1, num_rows),
         }
     }
 }

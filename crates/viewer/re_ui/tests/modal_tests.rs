@@ -1,5 +1,6 @@
 use egui::Vec2;
 
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{UiExt as _, list_item};
 
@@ -36,7 +37,8 @@ pub fn test_modal_list_item_should_match_snapshot() {
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Property content")
                         .value_color(&egui::Color32::RED.to_array())
-                        .action_button(&re_ui::icons::EDIT, "Edit", || {}),
+                        .with_action_button(&re_ui::icons::EDIT, "Edit", || {})
+                        .with_always_show_buttons(true),
                 );
             });
         },

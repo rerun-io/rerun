@@ -80,6 +80,13 @@ pub trait MessageLayer {
         Ok(())
     }
 
+    /// Returns `true` if this layer can handle the given channel.
+    ///
+    /// This method is used to determine which channels should be processed by which layers,
+    /// particularly for implementing fallback behavior where one layer handles channels
+    /// that other layers cannot process.
+    fn supports_channel(&self, channel: &mcap::Channel<'_>) -> bool;
+
     /// Instantites a new [`MessageParser`] that expects `num_rows` if it is interested in the current channel.
     ///
     /// Otherwise returns `None`.
@@ -143,72 +150,6 @@ impl McapChunkDecoder {
     }
 }
 
-impl<T: MessageLayer> Layer for T {
-    fn identifier() -> LayerIdentifier {
-        T::identifier()
-    }
-
-    fn process(
-        &mut self,
-        mcap_bytes: &[u8],
-        summary: &mcap::Summary,
-        emit: &mut dyn FnMut(Chunk),
-    ) -> Result<(), Error> {
-        re_tracing::profile_scope!("process-message-layer");
-        self.init(summary)?;
-
-        for chunk in &summary.chunk_indexes {
-            re_tracing::profile_scope!("mcap-chunk");
-            let channel_counts = super::util::get_chunk_message_count(chunk, summary, mcap_bytes)?;
-
-            let parsers = summary
-                .read_message_indexes(mcap_bytes, chunk)?
-                .iter()
-                .filter_map(|(channel, msg_offsets)| {
-                    let parser = self.message_parser(channel, msg_offsets.len())?;
-                    let entity_path = EntityPath::from(channel.topic.as_str());
-                    let ctx = ParserContext::new(entity_path);
-                    Some((ChannelId::from(channel.id), (ctx, parser)))
-                })
-                .collect::<IntMap<_, _>>();
-
-            re_log::trace!(
-                "MCAP file contains {} channels with the following message counts: {:?}",
-                channel_counts.len(),
-                channel_counts
-            );
-
-            let mut decoder = McapChunkDecoder::new(parsers);
-
-            for msg in summary.stream_chunk(mcap_bytes, chunk)? {
-                match msg {
-                    Ok(message) => {
-                        if let Err(err) = decoder.decode_next(&message) {
-                            re_log::error!(
-                                "Failed to decode message from MCAP file: {err} on channel: {}",
-                                message.channel.topic
-                            );
-                        }
-                    }
-                    Err(err) => {
-                        re_log::error!("Failed to read message from MCAP file: {err}");
-                    }
-                }
-            }
-
-            for chunk in decoder.finish() {
-                if let Ok(chunk) = chunk {
-                    emit(chunk);
-                } else {
-                    re_log::error!("Failed to decode chunk from MCAP file: {:?}", chunk);
-                }
-            }
-        }
-
-        Ok(())
-    }
-}
-
 /// Used to select certain layers.
 #[derive(Clone, Debug)]
 pub enum SelectedLayers {
@@ -226,63 +167,335 @@ impl SelectedLayers {
     }
 }
 
-/// Holds a set of all known layers.
-///
-/// Custom layers can be added by implementing the [`Layer`] or [`MessageLayer`]
-/// traits and calling [`Self::register`].
+/// Registry fallback strategy.
+#[derive(Clone, Debug, Default)]
+pub enum Fallback {
+    /// No fallback – channels without a handler are simply unassigned.
+    #[default]
+    None,
+
+    /// Single global fallback message layer (e.g. `raw`).
+    Global(LayerIdentifier),
+}
+
+/// A runner that constrains a [`MessageLayer`] to a specific set of channels.
+pub struct MessageLayerRunner {
+    inner: Box<dyn MessageLayer>,
+    allowed: BTreeSet<ChannelId>,
+}
+
+impl MessageLayerRunner {
+    fn new(inner: Box<dyn MessageLayer>, allowed: BTreeSet<ChannelId>) -> Self {
+        Self { inner, allowed }
+    }
+}
+
+impl Layer for MessageLayerRunner {
+    fn identifier() -> LayerIdentifier
+    where
+        Self: Sized,
+    {
+        // static identifier isn't used for trait objects; unreachable in practice.
+        "message_layer_runner".into()
+    }
+
+    fn process(
+        &mut self,
+        mcap_bytes: &[u8],
+        summary: &mcap::Summary,
+        emit: &mut dyn FnMut(Chunk),
+    ) -> Result<(), Error> {
+        self.inner.init(summary)?;
+
+        for chunk in &summary.chunk_indexes {
+            let parsers = summary
+                .read_message_indexes(mcap_bytes, chunk)?
+                .iter()
+                .filter_map(|(channel, msg_offsets)| {
+                    let channel_id = ChannelId::from(channel.id);
+                    if !self.allowed.contains(&channel_id) {
+                        return None;
+                    }
+
+                    let parser = self.inner.message_parser(channel, msg_offsets.len())?;
+                    let entity_path = EntityPath::from(channel.topic.as_str());
+                    let ctx = ParserContext::new(entity_path);
+                    Some((channel_id, (ctx, parser)))
+                })
+                .collect::<IntMap<_, _>>();
+
+            let mut decoder = McapChunkDecoder::new(parsers);
+
+            for msg in summary.stream_chunk(mcap_bytes, chunk)? {
+                match msg {
+                    Ok(message) => {
+                        if let Err(err) = decoder.decode_next(&message) {
+                            re_log::error!(
+                                "Failed to decode message on channel {}: {err}",
+                                message.channel.topic
+                            );
+                        }
+                    }
+                    Err(err) => re_log::error!("Failed to read message from MCAP file: {err}"),
+                }
+            }
+
+            for chunk in decoder.finish() {
+                match chunk {
+                    Ok(c) => emit(c),
+                    Err(err) => re_log::error!("Failed to decode chunk: {err}"),
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// A printable assignment used for dry-runs / UI.
+#[derive(Clone, Debug)]
+pub struct LayerAssignment {
+    pub channel_id: ChannelId,
+    pub topic: String,
+    pub encoding: String,
+    pub schema_name: Option<String>,
+    pub layer: LayerIdentifier,
+}
+
+/// A concrete execution plan for a given MCAP source.
+pub struct ExecutionPlan {
+    pub file_layers: Vec<Box<dyn Layer>>,
+    pub runners: Vec<MessageLayerRunner>,
+    pub assignments: Vec<LayerAssignment>,
+}
+
+impl ExecutionPlan {
+    pub fn run(
+        mut self,
+        mcap_bytes: &[u8],
+        summary: &mcap::Summary,
+        emit: &mut dyn FnMut(Chunk),
+    ) -> anyhow::Result<()> {
+        for mut layer in self.file_layers {
+            layer.process(mcap_bytes, summary, emit)?;
+        }
+
+        for runner in &mut self.runners {
+            runner.process(mcap_bytes, summary, emit)?;
+        }
+        Ok(())
+    }
+}
+
+/// Holds a set of all known layers, split into file-scoped and message-scoped.
 pub struct LayerRegistry {
-    factories: BTreeMap<LayerIdentifier, fn() -> Box<dyn Layer>>,
+    file_factories: BTreeMap<LayerIdentifier, fn() -> Box<dyn Layer>>,
+    msg_factories: BTreeMap<LayerIdentifier, fn() -> Box<dyn MessageLayer>>,
+    msg_order: Vec<LayerIdentifier>,
+    fallback: Fallback,
 }
 
 impl LayerRegistry {
     /// Creates an empty registry.
     pub fn empty() -> Self {
         Self {
-            factories: Default::default(),
+            file_factories: Default::default(),
+            msg_factories: Default::default(),
+            msg_order: Vec::new(),
+            fallback: Fallback::None,
         }
     }
 
-    /// Creates a registry with all builtin layers.
-    pub fn all() -> Self {
-        Self::empty()
-            .register::<McapProtobufLayer>()
-            .register::<McapRawLayer>()
-            .register::<McapRecordingInfoLayer>()
-            .register::<McapRos2Layer>()
-            .register::<McapSchemaLayer>()
-            .register::<McapStatisticLayer>()
+    /// Creates a registry with all builtin layers and raw fallback enabled.
+    pub fn all_with_raw_fallback() -> Self {
+        Self::all_builtin(true)
     }
 
-    /// Adds an additional layer to the registry.
-    pub fn register<L: Layer + Default + 'static>(mut self) -> Self {
+    /// Creates a registry with all builtin layers and raw fallback disabled.
+    pub fn all_without_raw_fallback() -> Self {
+        Self::all_builtin(false)
+    }
+
+    /// Creates a registry with all builtin layers with configurable raw fallback.
+    pub fn all_builtin(raw_fallback_enabled: bool) -> Self {
+        let mut registry = Self::empty()
+            // file layers:
+            .register_file_layer::<McapRecordingInfoLayer>()
+            .register_file_layer::<McapSchemaLayer>()
+            .register_file_layer::<McapStatisticLayer>()
+            // message layers (priority order):
+            .register_message_layer::<McapRos2Layer>()
+            .register_message_layer::<McapProtobufLayer>();
+
+        if raw_fallback_enabled {
+            registry = registry
+                .register_message_layer::<McapRawLayer>()
+                .with_global_fallback::<McapRawLayer>();
+        } else {
+            // still register raw so users can explicitly select it, just no fallback
+            registry = registry.register_message_layer::<McapRawLayer>();
+        }
+
+        registry
+    }
+
+    /// Register a file-scoped layer (runs once over the file/summary).
+    pub fn register_file_layer<L: Layer + Default + 'static>(mut self) -> Self {
+        let id = L::identifier();
         if self
-            .factories
-            .insert(L::identifier(), || Box::new(L::default()))
+            .file_factories
+            .insert(id.clone(), || Box::new(L::default()))
             .is_some()
         {
-            re_log::warn_once!("Inserted layer {} twice.", L::identifier());
+            re_log::warn_once!("Inserted file layer {} twice.", id);
         }
         self
     }
 
-    /// Returns a list of all layers.
-    pub fn layers(&self, selected: SelectedLayers) -> impl Iterator<Item = Box<dyn Layer>> {
-        re_log::debug!(
-            "Existing layers: {:?}",
-            self.factories.keys().collect::<Vec<_>>()
-        );
-        self.factories
-            .iter()
-            .filter_map(move |(identifier, factory)| {
-                let SelectedLayers::Subset(selected) = &selected else {
-                    return Some(factory());
-                };
+    /// Register a message-scoped layer (eligible to handle channels).
+    pub fn register_message_layer<M: MessageLayer + Default + 'static>(mut self) -> Self {
+        let id = <M as MessageLayer>::identifier();
+        if self
+            .msg_factories
+            .insert(id.clone(), || Box::new(M::default()))
+            .is_some()
+        {
+            re_log::warn_once!("Inserted message layer {} twice.", id);
+        }
+        self.msg_order.push(id);
+        self
+    }
 
-                if selected.contains(identifier) {
-                    Some(factory())
-                } else {
-                    None
+    /// Configure a global fallback message layer (e.g. `raw`).
+    pub fn with_global_fallback<M: MessageLayer + 'static>(mut self) -> Self {
+        self.fallback = Fallback::Global(<M as MessageLayer>::identifier());
+        self
+    }
+
+    /// Produce a filtered registry that only contains `selected` layers.
+    pub fn select(&self, selected: &SelectedLayers) -> Self {
+        let file_factories = self
+            .file_factories
+            .iter()
+            .filter(|(id, _)| selected.contains(id))
+            .map(|(k, v)| (k.clone(), *v))
+            .collect();
+
+        let msg_factories = self
+            .msg_factories
+            .iter()
+            .filter(|(id, _)| selected.contains(id))
+            .map(|(k, v)| (k.clone(), *v))
+            .collect();
+
+        let msg_order = self
+            .msg_order
+            .iter()
+            .filter(|&id| selected.contains(id))
+            .cloned()
+            .collect();
+
+        let fallback = self.select_fallback(selected);
+
+        Self {
+            file_factories,
+            msg_factories,
+            msg_order,
+            fallback,
+        }
+    }
+
+    fn select_fallback(&self, selected: &SelectedLayers) -> Fallback {
+        match &self.fallback {
+            Fallback::Global(id) if selected.contains(id) => Fallback::Global(id.clone()),
+            Fallback::Global(_) | Fallback::None => Fallback::None,
+        }
+    }
+
+    /// Build a concrete execution plan for a given file.
+    pub fn plan(&self, summary: &mcap::Summary) -> anyhow::Result<ExecutionPlan> {
+        let file_layers = self
+            .file_factories
+            .values()
+            .map(|f| f())
+            .collect::<Vec<_>>();
+
+        // instantiate message layers and init them (supports_channel may depend on init)
+        let mut msg_layers: Vec<(LayerIdentifier, Box<dyn MessageLayer>)> = self
+            .msg_order
+            .iter()
+            .filter_map(|id| self.msg_factories.get(id).map(|f| (id.clone(), f())))
+            .collect();
+
+        for (_, l) in &mut msg_layers {
+            l.init(summary)?;
+        }
+
+        let mut by_layer: BTreeMap<LayerIdentifier, BTreeSet<ChannelId>> = BTreeMap::new();
+        let mut assignments: Vec<LayerAssignment> = Vec::new();
+
+        for channel_id in summary.channels.values() {
+            // explicit priority order
+            let mut chosen: Option<LayerIdentifier> = None;
+            for (id, layer) in &msg_layers {
+                if layer.supports_channel(channel_id.as_ref()) {
+                    chosen = Some(id.clone());
+                    break;
                 }
-            })
+            }
+
+            if chosen.is_none() {
+                // fallbacks (if any)
+                if let Fallback::Global(id) = &self.fallback {
+                    if self.msg_factories.contains_key(id) {
+                        chosen = Some(id.clone());
+                    }
+                }
+            }
+
+            let schema_name = channel_id.schema.as_ref().map(|s| s.name.clone());
+
+            let schema_encoding = channel_id
+                .schema
+                .as_ref()
+                .map(|s| s.encoding.as_str())
+                .unwrap_or("Unknown");
+
+            if let Some(id) = chosen {
+                by_layer
+                    .entry(id.clone())
+                    .or_default()
+                    .insert(ChannelId::from(channel_id.id));
+
+                assignments.push(LayerAssignment {
+                    channel_id: ChannelId::from(channel_id.id),
+                    topic: channel_id.topic.clone(),
+                    encoding: schema_encoding.to_owned(),
+                    schema_name: channel_id.schema.as_ref().map(|s| s.name.clone()),
+                    layer: id,
+                });
+            } else {
+                re_log::debug!(
+                    "No message layer selected for topic '{}' (encoding='{}', schema='{:?}')",
+                    channel_id.topic,
+                    schema_encoding,
+                    schema_name,
+                );
+            }
+        }
+
+        let mut runners = Vec::new();
+        for (layer_id, allowed) in by_layer {
+            if let Some(factory) = self.msg_factories.get(&layer_id) {
+                let inner = factory();
+                runners.push(MessageLayerRunner::new(inner, allowed));
+            }
+        }
+
+        Ok(ExecutionPlan {
+            file_layers,
+            runners,
+            assignments,
+        })
     }
 }

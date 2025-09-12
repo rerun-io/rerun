@@ -9,6 +9,7 @@ use re_data_ui::{
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_types::ComponentDescriptor;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
     SyntaxHighlighting as _, UiExt as _, icons,
     list_item::{self, PropertyContent},
@@ -428,7 +429,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
         if let Some(view) = viewport.view(view_id) {
             ui.section_collapsing_header("Entity path filter")
-                .button(
+                .with_button(
                     list_item::ItemActionButton::new(
                         &re_ui::icons::EDIT,
                         "Add new entity…",
@@ -438,7 +439,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                     )
                     .hover_text("Modify the entity query using the editor"),
                 )
-                .help_markdown(markdown)
+                .with_help_markdown(markdown)
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                     ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
@@ -710,7 +711,7 @@ fn container_children(
     };
 
     ui.section_collapsing_header("Contents")
-        .button(
+        .with_button(
             list_item::ItemActionButton::new(&re_ui::icons::ADD, "Add to container", || {
                 show_add_view_or_container_modal(*container_id);
             })
@@ -999,8 +1000,6 @@ fn show_list_item_for_container_child(
                         if response.clicked() {
                             remove_contents = true;
                         }
-
-                        response
                     }),
             )
         }
@@ -1025,8 +1024,6 @@ fn show_list_item_for_container_child(
                         if response.clicked() {
                             remove_contents = true;
                         }
-
-                        response
                     }),
             )
         }

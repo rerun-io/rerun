@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_arrow_ui/tests/arrow_ui_test.rs
+expression: highlighted.text()
+---
+[{x: 0, y: 0, z: 1}, {x: 1, y: 0.841 470 984 807 897, z: 0.540 302 305 868 14}, {x: 2, y: 0.909 297 426 825 682, z: −0.416 146 836 547 142}]
