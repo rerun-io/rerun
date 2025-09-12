@@ -88,6 +88,7 @@ function(download_and_build_arrow)
         GIT_TAG apache-arrow-18.0.0
         GIT_SHALLOW ON
         GIT_PROGRESS OFF # Git progress sounds like a nice idea but is in practice very spammy.
+        UPDATE_COMMAND "" # Prevent unnecessary rebuilds on every cmake --build
 
         # LOG_X ON means that the output of the command will
         # be logged to a file _instead_ of printed to the console.
