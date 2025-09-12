@@ -1,6 +1,6 @@
 ---
 title: Supported Message Formats
-order: 400
+order: 200
 ---
 
 Rerun provides automatic visualization for common message types in MCAP files through different processing layers.
