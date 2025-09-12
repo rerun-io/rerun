@@ -202,10 +202,6 @@ jobs:
         if: ${{ inputs.CHANNEL == 'nightly' }}
         run: pixi run rs-check
 
-      - name: DEBUG ME PLEASE
-        if: always()
-        run: find .
-
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
