@@ -31,6 +31,19 @@ pub trait UiExt {
         crate::design_tokens_of(self.theme())
     }
 
+    #[inline]
+    #[track_caller]
+    fn sanity_check(&self) {
+        let ui = self.ui();
+
+        if cfg!(debug_assertions)
+            && ui.layer_id().order == egui::Order::Tooltip
+            && 2000.0 < ui.max_rect().width()
+        {
+            panic!("DEBUG ASSERT: Huge toolip: {}", ui.max_rect().size());
+        }
+    }
+
     /// Shows a success label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].

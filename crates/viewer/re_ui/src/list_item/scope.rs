@@ -1,5 +1,7 @@
 use egui::NumExt as _;
 
+use crate::UiExt;
+
 /// Layout statistics accumulated during the frame that are used for next frame's layout.
 ///
 /// On frame `n`, statistics are gathered by the [`super::ListItemContent`] implementations and
@@ -264,6 +266,8 @@ pub fn list_item_scope<R>(
     id_salt: impl std::hash::Hash,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> R {
+    ui.sanity_check();
+
     let id_salt = egui::Id::new(id_salt); // So we can use it twice
     let scope_id = ui.id().with(id_salt);
 
@@ -289,6 +293,14 @@ pub fn list_item_scope<R>(
         property_content_max_width: layout_stats.property_content_max_width,
     };
 
+    if cfg!(debug_assertions)
+        && let Some(property_content_max_width) = state.property_content_max_width
+        && ui.layer_id().order == egui::Order::Tooltip
+        && 2000.0 < property_content_max_width
+    {
+        panic!("DEBUG ASSERT: Huge toolip: {property_content_max_width}");
+    }
+
     // push, run, pop
     LayoutInfoStack::push(ui.ctx(), state.clone());
     let result = ui
@@ -297,7 +309,16 @@ pub fn list_item_scope<R>(
             content(ui)
         })
         .inner;
-    LayoutInfoStack::pop(ui.ctx());
+    let popped = LayoutInfoStack::pop(ui.ctx());
+
+    if cfg!(debug_assertions)
+        && let Some(popped) = popped
+        && let Some(property_content_max_width) = popped.property_content_max_width
+        && ui.layer_id().order == egui::Order::Tooltip
+        && 2000.0 < property_content_max_width
+    {
+        panic!("DEBUG ASSERT: Huge toolip: {property_content_max_width}");
+    }
 
     result
 }

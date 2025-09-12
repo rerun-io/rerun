@@ -426,6 +426,8 @@ impl ListItem {
         extra_indent: f32,
         content: Box<dyn ListItemContent + 'a>,
     ) -> ListItemResponse {
+        ui.sanity_check();
+
         let Self {
             interactive,
             selected,
@@ -483,6 +485,8 @@ impl ListItem {
 
         let (allocated_id, mut rect) = ui.allocate_space(desired_size);
         rect.min.x += extra_indent;
+
+        ui.sanity_check();
 
         // We use the state set by ListItemContainer to determine how far the background should
         // extend.
