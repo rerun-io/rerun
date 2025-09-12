@@ -126,20 +126,17 @@ impl FilterState {
                     .collect::<Vec<_>>();
                 let item_spacing = ui.style().spacing.item_spacing.x;
                 let available_width = ui.available_width();
-                let mut rows = vec![vec![]]; // single empty row
+                let mut rows = vec1::vec1![vec![]];
                 let mut current_left_position = 0.0;
                 for (index, prepared_ui) in prepared_uis.iter().enumerate() {
                     if current_left_position > 0.0
-                        && current_left_position + prepared_ui.desired_width() + item_spacing
-                            > available_width - item_spacing
+                        && current_left_position + prepared_ui.desired_width() > available_width
                     {
                         rows.push(vec![]);
                         current_left_position = 0.0;
                     }
 
-                    rows.last_mut()
-                        .expect("we always have at least one row")
-                        .push(index);
+                    rows.last_mut().push(index);
                     current_left_position += prepared_ui.desired_width() + item_spacing;
                 }
 
