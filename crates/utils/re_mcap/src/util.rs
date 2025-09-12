@@ -2,13 +2,9 @@ use std::io::{Read, Seek};
 
 use mcap::{
     Summary,
-    records::ChunkIndex,
     sans_io::{SummaryReadEvent, SummaryReader},
 };
-use re_chunk::external::nohash_hasher::IntMap;
 use re_log_types::TimeCell;
-
-use crate::parsers::ChannelId;
 
 /// Read out the summary of an MCAP file.
 pub fn read_summary<R: Read + Seek>(mut reader: R) -> anyhow::Result<Option<Summary>> {
@@ -28,36 +24,50 @@ pub fn read_summary<R: Read + Seek>(mut reader: R) -> anyhow::Result<Option<Summ
     Ok(summary_reader.finish())
 }
 
-/// Counts the number of messages per channel within a specific chunk.
-///
-/// This function reads the message indexes for the given chunk and returns
-/// a mapping of channel IDs to their respective message counts.
-#[inline]
-pub fn get_chunk_message_count(
-    chunk_index: &ChunkIndex,
-    summary: &Summary,
-    mcap: &[u8],
-) -> Result<IntMap<ChannelId, usize>, ::mcap::McapError> {
-    Ok(summary
-        .read_message_indexes(mcap, chunk_index)?
-        .iter()
-        .map(|(channel, msg_offsets)| (channel.id.into(), msg_offsets.len()))
-        .collect())
+/// Timestamp + epoch interpretation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TimestampCell {
+    /// Unix epoch (nanoseconds since 1970-01-01).
+    Unix { time: TimeCell },
+
+    /// User-understood epoch with a named timeline (nanoseconds since custom zero).
+    Custom { timeline: String, time: TimeCell },
 }
 
-/// Converts a raw timestamp (in nanoseconds) to a [`TimeCell`], making a best effort guess
-/// about the epoch.
-pub fn guess_epoch(timestamp_ns: u64) -> TimeCell {
-    // Define reasonable bounds for Unix timestamps
-    const YEAR_1990_NS: u64 = 631_148_400_000_000_000;
-    const YEAR_2100_NS: u64 = 4_102_444_800_000_000_000;
+impl TimestampCell {
+    // Unix range we consider "reasonable" for raw ns values.
+    const YEAR_1990_NS: i64 = 631_148_400_000_000_000; // 1990-01-01
+    const YEAR_2100_NS: i64 = 4_102_444_800_000_000_000; // 2100-01-01
 
-    // If timestamp is within reasonable Unix range and close to current time
-    if timestamp_ns >= YEAR_1990_NS && timestamp_ns <= YEAR_2100_NS {
-        TimeCell::from_timestamp_nanos_since_epoch(timestamp_ns as i64)
-    } else {
-        // For custom epochs, use duration to represent relative time
-        TimeCell::from_duration_nanos(timestamp_ns as i64)
+    /// Make a best-effort guess on the epoch type based on the provided raw timestamp.
+    pub fn guess_from_nanos(timestamp_ns: u64, timeline: impl Into<String>) -> Self {
+        let ns = timestamp_ns as i64; // safe for our bounds
+
+        if ns >= Self::YEAR_1990_NS && ns <= Self::YEAR_2100_NS {
+            Self::Unix {
+                time: TimeCell::from_timestamp_nanos_since_epoch(ns),
+            }
+        } else {
+            Self::Custom {
+                timeline: timeline.into(),
+                time: TimeCell::from_duration_nanos(ns),
+            }
+        }
+    }
+
+    /// The timeline name for this timestamp.
+    pub fn timeline_name(&self) -> &str {
+        match self {
+            Self::Unix { .. } => "timestamp",
+            Self::Custom { timeline, .. } => timeline,
+        }
+    }
+
+    /// Extract the contained [`TimeCell`].
+    pub fn into_time_cell(self) -> TimeCell {
+        match self {
+            Self::Unix { time } | Self::Custom { time, .. } => time,
+        }
     }
 }
 
@@ -68,38 +78,111 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_guess_epoch() {
-        // Test Unix timestamp within reasonable range (year 2023)
-        let unix_timestamp_2023 = 1_672_531_200_000_000_000; // Jan 1, 2023
-        let result = guess_epoch(unix_timestamp_2023);
-        assert!(matches!(result.typ, TimeType::TimestampNs));
+    fn test_guess_from_nanos() {
+        // within reasonable unix range for `TimestampCell::Unix`
+        let unix_ts_2023: u64 = 1_672_531_200_000_000_000; // 2023-01-01
+        let cell = TimestampCell::guess_from_nanos(unix_ts_2023, "test_timeline");
+        let TimestampCell::Unix { time } = cell else {
+            panic!("expected `TimestampCell::Unix` variant")
+        };
 
-        // Test timestamp before 1990 (should use duration)
-        let early_timestamp = 100_000_000; // Very small timestamp
-        let result = guess_epoch(early_timestamp);
-        assert!(matches!(result.typ, TimeType::DurationNs));
+        assert!(matches!(time.typ, TimeType::TimestampNs));
+        assert_eq!(
+            time,
+            TimeCell::from_timestamp_nanos_since_epoch(unix_ts_2023 as i64)
+        );
+        assert_eq!(TimestampCell::Unix { time }.timeline_name(), "timestamp");
 
-        // Test timestamp after 2100 (should use duration)
-        let future_timestamp = 5_000_000_000_000_000_000; // Far future
-        let result = guess_epoch(future_timestamp);
-        assert!(matches!(result.typ, TimeType::DurationNs));
+        // early date for `TimestampCell::Custom`
+        let early: u64 = 100_000_000;
+        let cell = TimestampCell::guess_from_nanos(early, "test_timeline");
+        let TimestampCell::Custom { timeline, time } = cell else {
+            panic!("expected `TimestampCell::Custom` variant")
+        };
+        assert_eq!(timeline, "test_timeline");
+        assert!(matches!(time.typ, TimeType::DurationNs));
+        assert_eq!(time, TimeCell::from_duration_nanos(early as i64));
 
-        // Test boundary cases
-        let year_1990 = 631_148_400_000_000_000;
-        let result = guess_epoch(year_1990);
-        assert!(matches!(result.typ, TimeType::TimestampNs));
+        // after 2100 for `TimestampCell::Custom`
+        let far_future: u64 = 5_000_000_000_000_000_000;
+        let cell = TimestampCell::guess_from_nanos(far_future, "test_timeline");
+        let TimestampCell::Custom { timeline, time } = cell else {
+            panic!("expected `TimestampCell::Custom` variant")
+        };
+        assert_eq!(timeline, "test_timeline");
+        assert!(matches!(time.typ, TimeType::DurationNs));
+        assert_eq!(time, TimeCell::from_duration_nanos(far_future as i64));
 
-        let year_2100 = 4_102_444_800_000_000_000;
-        let result = guess_epoch(year_2100);
-        assert!(matches!(result.typ, TimeType::TimestampNs));
+        // exactly 1990-01-01 for `TimestampCell::Unix`
+        let year_1990 = TimestampCell::YEAR_1990_NS as u64;
+        let cell = TimestampCell::guess_from_nanos(year_1990, "test_timeline");
+        let TimestampCell::Unix { time } = cell else {
+            panic!("expected `TimestampCell::Unix` at lower boundary")
+        };
+        assert!(matches!(time.typ, TimeType::TimestampNs));
+        assert_eq!(
+            time,
+            TimeCell::from_timestamp_nanos_since_epoch(year_1990 as i64)
+        );
 
-        // Test just outside boundaries
-        let before_1990 = year_1990 - 1;
-        let result = guess_epoch(before_1990);
-        assert!(matches!(result.typ, TimeType::DurationNs));
+        // exactly 2100-01-01 for `TimestampCell::Unix`
+        let year_2100 = TimestampCell::YEAR_2100_NS as u64;
+        let cell = TimestampCell::guess_from_nanos(year_2100, "test_timeline");
+        let TimestampCell::Unix { time } = cell else {
+            panic!("expected `TimestampCell::Unix` at upper boundary")
+        };
+        assert!(matches!(time.typ, TimeType::TimestampNs));
+        assert_eq!(
+            time,
+            TimeCell::from_timestamp_nanos_since_epoch(year_2100 as i64)
+        );
 
-        let after_2100 = year_2100 + 1;
-        let result = guess_epoch(after_2100);
-        assert!(matches!(result.typ, TimeType::DurationNs));
+        // just outside lower boundary for `TimestampCell::Custom`
+        let before_1990 = (TimestampCell::YEAR_1990_NS - 1) as u64;
+        let cell = TimestampCell::guess_from_nanos(before_1990, "test_timeline");
+        let TimestampCell::Custom { timeline, time } = cell else {
+            panic!("expected `TimestampCell::Custom` just before lower boundary")
+        };
+        assert_eq!(timeline, "test_timeline");
+        assert!(matches!(time.typ, TimeType::DurationNs));
+        assert_eq!(time, TimeCell::from_duration_nanos(before_1990 as i64));
+
+        // just outside upper boundary for `TimestampCell::Custom`
+        let after_2100 = (TimestampCell::YEAR_2100_NS + 1) as u64;
+        let cell = TimestampCell::guess_from_nanos(after_2100, "test_timeline");
+        let TimestampCell::Custom { timeline, time } = cell else {
+            panic!("expected `TimestampCell::Custom` just after upper boundary")
+        };
+        assert_eq!(timeline, "test_timeline");
+        assert!(matches!(time.typ, TimeType::DurationNs));
+        assert_eq!(time, TimeCell::from_duration_nanos(after_2100 as i64));
+    }
+
+    #[test]
+    fn test_timeline_name() {
+        let unix = TimestampCell::Unix {
+            time: TimeCell::from_timestamp_nanos_since_epoch(1_234_567_890),
+        };
+        assert_eq!(unix.timeline_name(), "timestamp");
+
+        let custom = TimestampCell::Custom {
+            timeline: "sensor/imu".to_owned(),
+            time: TimeCell::from_duration_nanos(1_234_567_890),
+        };
+        assert_eq!(custom.timeline_name(), "sensor/imu");
+    }
+
+    #[test]
+    fn test_into_time_cell() {
+        let timestamp1 = TimeCell::from_timestamp_nanos_since_epoch(42);
+        let unix = TimestampCell::Unix { time: timestamp1 };
+        assert_eq!(unix.into_time_cell(), timestamp1);
+
+        let timestamp2 = TimeCell::from_duration_nanos(1337);
+        let custom = TimestampCell::Custom {
+            timeline: "foo".into(),
+            time: timestamp2,
+        };
+        assert_eq!(custom.into_time_cell(), timestamp2);
     }
 }

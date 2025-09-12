@@ -84,9 +84,6 @@ service RerunCloudService {
   // Creates a custom index for a specific column (vector search, full-text search, etc).
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
 
-  // Recreate an index with the same configuration but (potentially) new data.
-  rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
-
   /* Queries */
 
   // Search a previously created index.
@@ -150,6 +147,10 @@ service RerunCloudService {
 
   // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
   rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
+
+  // Run global maintenance operations on the platform: this includes optimization
+  // of all datasets, garbage collection of unused data, and can include more in the future.
+  rpc DoGlobalMaintenance(DoGlobalMaintenanceRequest) returns (DoGlobalMaintenanceResponse) {}
 }
 
 // ---
@@ -284,15 +285,6 @@ message CreateIndexRequest {
 }
 
 message CreateIndexResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-message ReIndexRequest {
-  reserved 1;
-  reserved "dataset_id";
-}
-
-message ReIndexResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -614,15 +606,24 @@ message ScanTableResponse {
   rerun.common.v1alpha1.DataframePart dataframe_part = 1;
 }
 
+// --- Maintenance ---
+
 message DoMaintenanceRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
 
-  // Create the acceleration structures for temporal queries.
+  // Optimize all builtin and user-defined indexes on this dataset.
   //
-  // This will recreate all scalar indexes from scratch everytime.
+  // This merges all individual index deltas back in the main index, improving runtime performance
+  // of all indexes.
+  bool optimize_indexes = 2;
+
+  // Retrain all user-defined indexes on this dataset from scratch.
   //
-  // TODO(cmc): support incremental scalar indexing & index compaction
-  bool build_scalar_indexes = 2;
+  // This retrains all user-defined indexes from scratch for optimal runtime performance.
+  // This is faster than re-creating the indexes, and automatically keeps track of their configurations.
+  //
+  // This implies `optimize_indexes`.
+  bool retrain_indexes = 6;
 
   // Compact the underlying Lance fragments, for all Rerun Manifests.
   //
@@ -630,15 +631,18 @@ message DoMaintenanceRequest {
   bool compact_fragments = 3;
 
   // If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+  //
   // In case requested date is more recent than 1 hour, it will be ignored and 1 hour ago
   // timestamp will be used. This is to prevent still used files (like recent transaction files)
   // to be removed and cause Lance Dataset update issues.
+  //
   // See https://docs.rs/lance/latest/lance/dataset/cleanup/index.html
   // and https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html
   google.protobuf.Timestamp cleanup_before = 4;
 
   // Override default platform behavior and allow cleanup of recent files. This will respect
   // the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
+  //
   // ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
   bool unsafe_allow_recent_cleanup = 5;
 }
@@ -646,6 +650,11 @@ message DoMaintenanceRequest {
 message DoMaintenanceResponse {
   string report = 1;
 }
+
+// Request all maintenance operations to run on all datasets
+message DoGlobalMaintenanceRequest {}
+
+message DoGlobalMaintenanceResponse {}
 
 // --- Tasks ---
 

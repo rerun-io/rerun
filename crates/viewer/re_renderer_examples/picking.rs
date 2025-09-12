@@ -179,7 +179,7 @@ impl framework::Example for Picking {
                 additive_tint: if self.mesh_is_hovered {
                     Color32::DEBUG_COLOR
                 } else {
-                    Color32::TRANSPARENT
+                    Color32::BLACK
                 },
                 outline_mask_ids: Default::default(),
             })

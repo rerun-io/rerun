@@ -8,6 +8,7 @@ use re_types::{
     ComponentDescriptor, SerializedComponentColumn, archetypes::GeoPoints, components::LatLon,
 };
 
+use super::super::Ros2MessageParser;
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
@@ -31,7 +32,17 @@ pub struct NavSatFixMessageParser {
 impl NavSatFixMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.NavSatFix";
 
-    pub fn new(num_rows: usize) -> Self {
+    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
+        SerializedComponentColumn {
+            list_array: array.into(),
+            descriptor: ComponentDescriptor::partial(name)
+                .with_archetype(Self::ARCHETYPE_NAME.into()),
+        }
+    }
+}
+
+impl Ros2MessageParser for NavSatFixMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             geo_points: Vec::with_capacity(num_rows),
             altitude: fixed_size_list_builder(1, num_rows),
@@ -39,14 +50,6 @@ impl NavSatFixMessageParser {
             service: fixed_size_list_builder(1, num_rows),
             position_covariance: fixed_size_list_builder(9, num_rows),
             position_covariance_type: fixed_size_list_builder(1, num_rows),
-        }
-    }
-
-    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
-        SerializedComponentColumn {
-            list_array: array.into(),
-            descriptor: ComponentDescriptor::partial(name)
-                .with_archetype(Self::ARCHETYPE_NAME.into()),
         }
     }
 }
@@ -66,10 +69,10 @@ impl MessageParser for NavSatFixMessageParser {
             .context("Failed to decode sensor_msgs::NavSatFix message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            crate::util::guess_epoch(header.stamp.as_nanos() as u64),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            header.stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         // Store latitude/longitude as geographic points
         let geo_point = LatLon::new(latitude, longitude);

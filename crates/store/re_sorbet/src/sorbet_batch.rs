@@ -178,7 +178,7 @@ impl SorbetBatch {
         re_tracing::profile_function!();
 
         // First migrate the incoming batch to the latest format:
-        let batch = crate::migrations::migrate_record_batch(batch.clone());
+        let batch = crate::migrations::migrate_record_batch(batch.clone(), batch_type);
 
         let sorbet_schema =
             SorbetSchema::try_from_migrated_arrow_schema(batch.schema_ref().as_ref())?;

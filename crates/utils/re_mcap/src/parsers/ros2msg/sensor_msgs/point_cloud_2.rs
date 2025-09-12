@@ -16,6 +16,7 @@ use re_types::{
 };
 use std::collections::HashMap;
 
+use super::super::Ros2MessageParser;
 use crate::{
     Error,
     parsers::{
@@ -44,8 +45,10 @@ pub struct PointCloud2MessageParser {
 
 impl PointCloud2MessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.PointCloud2";
+}
 
-    pub fn new(num_rows: usize) -> Self {
+impl Ros2MessageParser for PointCloud2MessageParser {
+    fn new(num_rows: usize) -> Self {
         let fields = FixedSizeListBuilder::with_capacity(
             ListBuilder::new(StructBuilder::new(
                 Fields::from(vec![
@@ -174,10 +177,10 @@ impl MessageParser for PointCloud2MessageParser {
         let point_cloud = cdr::try_decode_message::<sensor_msgs::PointCloud2>(msg.data.as_ref())
             .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
-        ctx.add_time_cell(
-            "timestamp",
-            crate::util::guess_epoch(point_cloud.header.stamp.as_nanos() as u64),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            point_cloud.header.stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         let Self {
             num_rows,

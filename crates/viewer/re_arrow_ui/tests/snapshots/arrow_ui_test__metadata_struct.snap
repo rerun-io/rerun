@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_arrow_ui/tests/arrow_ui_test.rs
+expression: highlighted.text()
+---
+[{timestamp: "1", device_id: "device_1", sensor_type: "accelerometer"}]

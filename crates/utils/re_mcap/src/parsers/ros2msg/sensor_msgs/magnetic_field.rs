@@ -8,7 +8,10 @@ use re_types::{
 
 use crate::{
     Error,
-    parsers::{MessageParser, ParserContext, cdr, util::fixed_size_list_builder},
+    parsers::{
+        MessageParser, ParserContext, cdr, ros2msg::Ros2MessageParser,
+        util::fixed_size_list_builder,
+    },
 };
 
 /// Plugin that parses `sensor_msgs/msg/MagneticField` messages.
@@ -22,9 +25,10 @@ pub struct MagneticFieldMessageParser {
 
 impl MagneticFieldMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.MagneticField";
+}
 
-    /// Create a new [`MagneticFieldMessageParser`]
-    pub fn new(num_rows: usize) -> Self {
+impl Ros2MessageParser for MagneticFieldMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             vectors: Vec::with_capacity(num_rows),
             magnetic_field_covariance: fixed_size_list_builder(9, num_rows),
@@ -39,10 +43,10 @@ impl MessageParser for MagneticFieldMessageParser {
                 .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            crate::util::guess_epoch(magnetic_field.header.stamp.as_nanos() as u64),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            magnetic_field.header.stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         // Convert magnetic field vector to Vector3D and store
         self.vectors.push(Vec3D([

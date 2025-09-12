@@ -112,6 +112,14 @@ impl Fragment {
             }
         }
     }
+
+    /// True if this fragment doesn't contain any information.
+    pub fn is_empty(&self) -> bool {
+        // Keep this as a destruction so there is a compile error if a new field isn't handled here.
+        let Self { selection, when } = self;
+
+        selection.is_none() && when.is_none()
+    }
 }
 
 /// Split on all '&' that is not immediately proceeded by '\':

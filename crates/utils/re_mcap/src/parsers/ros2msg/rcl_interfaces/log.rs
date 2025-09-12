@@ -8,14 +8,14 @@ use re_types::{
     datatypes::Rgba32,
 };
 
-use crate::{
-    parsers::{
-        cdr,
-        decode::{MessageParser, ParserContext},
-        ros2msg::definitions::rcl_interfaces::{self, LogLevel},
-        util::fixed_size_list_builder,
+use crate::parsers::{
+    cdr,
+    decode::{MessageParser, ParserContext},
+    ros2msg::{
+        Ros2MessageParser,
+        definitions::rcl_interfaces::{self, LogLevel},
     },
-    util::guess_epoch,
+    util::fixed_size_list_builder,
 };
 
 /// Plugin that parses `rcl_interfaces/msg/Log` messages.
@@ -33,17 +33,6 @@ pub struct LogMessageParser {
 
 impl LogMessageParser {
     const ARCHETYPE_NAME: &str = "rcl_interfaces.msg.Log";
-
-    pub fn new(num_rows: usize) -> Self {
-        Self {
-            text_entries: Vec::with_capacity(num_rows),
-            levels: Vec::with_capacity(num_rows),
-            colors: Vec::with_capacity(num_rows),
-            file: fixed_size_list_builder(1, num_rows),
-            function: fixed_size_list_builder(1, num_rows),
-            line: fixed_size_list_builder(1, num_rows),
-        }
-    }
 
     fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
         SerializedComponentColumn {
@@ -66,6 +55,19 @@ impl LogMessageParser {
     }
 }
 
+impl Ros2MessageParser for LogMessageParser {
+    fn new(num_rows: usize) -> Self {
+        Self {
+            text_entries: Vec::with_capacity(num_rows),
+            levels: Vec::with_capacity(num_rows),
+            colors: Vec::with_capacity(num_rows),
+            file: fixed_size_list_builder(1, num_rows),
+            function: fixed_size_list_builder(1, num_rows),
+            line: fixed_size_list_builder(1, num_rows),
+        }
+    }
+}
+
 impl MessageParser for LogMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
@@ -81,7 +83,10 @@ impl MessageParser for LogMessageParser {
             .context("Failed to decode `rcl_interfaces::Log` message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell("timestamp", guess_epoch(stamp.as_nanos() as u64));
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         self.text_entries.push(format!("[{name}] {log_msg}"));
         self.levels.push(level.to_string());

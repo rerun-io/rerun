@@ -5,6 +5,7 @@ use re_chunk::{
 };
 use re_types::archetypes::{Scalars, SeriesLines};
 
+use super::super::Ros2MessageParser;
 use crate::{
     Error,
     parsers::{MessageParser, ParserContext, cdr},
@@ -21,9 +22,8 @@ pub struct JointStateMessageParser {
     efforts: ListBuilder<Float64Builder>,
 }
 
-impl JointStateMessageParser {
-    /// Create a new [`JointStateMessageParser`]
-    pub fn new(num_rows: usize) -> Self {
+impl Ros2MessageParser for JointStateMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             joint_names: ListBuilder::with_capacity(StringBuilder::new(), num_rows),
             positions: ListBuilder::with_capacity(Float64Builder::new(), num_rows),
@@ -45,10 +45,10 @@ impl MessageParser for JointStateMessageParser {
             .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            crate::util::guess_epoch(header.stamp.as_nanos() as u64),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            header.stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         for name in &name {
             self.joint_names.values().append_value(name);

@@ -8,6 +8,7 @@ use re_log_types::{ComponentPath, EntityPath};
 use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
 use re_types_core::external::arrow::array::ArrayRef;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
@@ -74,8 +75,8 @@ in the blueprint or in the UI by selecting the view.
 specific to the visualizer and the current view type.";
 
     ui.section_collapsing_header("Visualizers")
-        .button(button)
-        .help_markdown(markdown)
+        .with_button(button)
+        .with_help_markdown(markdown)
         .show(ui, |ui| {
             visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers, &all_visualizers);
         });
@@ -129,8 +130,10 @@ pub fn visualizer_ui_impl(
                             ),
                         )
                         .min_desired_width(150.0)
-                        .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
-                        .always_show_buttons(true),
+                        .with_buttons(|ui| {
+                            remove_visualizer_button(ui, visualizer_id);
+                        })
+                        .with_always_show_buttons(true),
                     );
                 visualizer_components(ctx, ui, data_result, visualizer);
             } else {
@@ -138,8 +141,10 @@ pub fn visualizer_ui_impl(
                     list_item::LabelContent::new(format!("{visualizer_id} (unknown visualizer)"))
                         .weak(true)
                         .min_desired_width(150.0)
-                        .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
-                        .always_show_buttons(true),
+                        .with_buttons(|ui| {
+                            remove_visualizer_button(ui, visualizer_id);
+                        })
+                        .with_always_show_buttons(true),
                 );
             }
         }
@@ -406,22 +411,21 @@ fn visualizer_components(
                 )
                 .value_fn(value_fn)
                 .show_only_when_collapsed(false)
-                .menu_button(
-                    &re_ui::icons::MORE,
-                    "More options",
-                    |ui: &mut egui::Ui| {
-                        menu_more(
-                            ctx,
-                            ui,
-                            component_descr.clone(),
-                            override_path,
-                            &raw_override.clone().map(|(_, raw_override)| raw_override),
-                            raw_default.clone().map(|(_, raw_override)| raw_override),
-                            raw_fallback.clone(),
-                            raw_current_value.clone(),
-                        );
-                    },
-                ),
+                .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
+                    menu_more(
+                        ctx,
+                        ui,
+                        component_descr.clone(),
+                        override_path,
+                        &raw_override.clone().map(|(_, raw_override)| raw_override),
+                        raw_default.clone().map(|(_, raw_override)| raw_override),
+                        raw_fallback.clone(),
+                        raw_current_value.clone(),
+                    );
+                })
+                // TODO(emilk/egui#7531): Ideally we would hide the button unless hovered, but this
+                // currently breaks the menu.
+                .with_always_show_buttons(true),
                 add_children,
             )
             .item_response;
@@ -460,7 +464,7 @@ fn editable_blueprint_component_list_item(
                     allow_multiline,
                 );
             })
-            .action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
+            .with_action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
                 query_ctx
                     .viewer_ctx()
                     .clear_blueprint_component(blueprint_path, component_descr.clone());

@@ -26,6 +26,7 @@ mod tensor;
 mod time_control;
 mod typed_entity_collections;
 mod undo;
+mod url_context;
 mod utils;
 mod view;
 mod viewer_context;
@@ -75,6 +76,7 @@ pub use self::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },
     undo::BlueprintUndoState,
+    url_context::UrlContext,
     utils::{
         auto_color_egui, auto_color_for_entity_path, level_to_rich_text,
         video_stream_time_from_query, video_timestamp_component_to_video_time,

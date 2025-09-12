@@ -7,6 +7,7 @@ use re_types::{
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
 };
 
+use super::super::Ros2MessageParser;
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
@@ -35,7 +36,17 @@ pub struct ImageMessageParser {
 impl ImageMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.Image";
 
-    pub fn new(num_rows: usize) -> Self {
+    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
+        SerializedComponentColumn {
+            list_array: array.into(),
+            descriptor: ComponentDescriptor::partial(name)
+                .with_archetype(Self::ARCHETYPE_NAME.into()),
+        }
+    }
+}
+
+impl Ros2MessageParser for ImageMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             blobs: Vec::with_capacity(num_rows),
             image_formats: Vec::with_capacity(num_rows),
@@ -45,14 +56,6 @@ impl ImageMessageParser {
             is_bigendian: fixed_size_list_builder(1, num_rows),
             step: fixed_size_list_builder(1, num_rows),
             is_depth_image: false,
-        }
-    }
-
-    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
-        SerializedComponentColumn {
-            list_array: array.into(),
-            descriptor: ComponentDescriptor::partial(name)
-                .with_archetype(Self::ARCHETYPE_NAME.into()),
         }
     }
 }
@@ -72,10 +75,10 @@ impl MessageParser for ImageMessageParser {
             .context("Failed to decode sensor_msgs::Image message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            crate::util::guess_epoch(header.stamp.as_nanos() as u64),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            header.stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         let dimensions = [width, height];
         let img_format = decode_image_format(&encoding, dimensions)

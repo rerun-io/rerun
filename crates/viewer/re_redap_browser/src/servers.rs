@@ -483,9 +483,17 @@ impl RedapServers {
                 match entry.inner() {
                     Ok(crate::entries::EntryInner::Dataset(dataset)) => {
                         server.dataset_entry_ui(viewer_ctx, ui, dataset);
+
+                        // If we're connected twice to the same server, we will find this entry
+                        // multiple times. We avoid it by returning here.
+                        return;
                     }
                     Ok(crate::entries::EntryInner::Table(table)) => {
                         server.table_entry_ui(viewer_ctx, ui, table);
+
+                        // If we're connected twice to the same server, we will find this entry
+                        // multiple times. We avoid it by returning here.
+                        return;
                     }
                     Err(err) => {
                         Frame::new().inner_margin(16.0).show(ui, |ui| {
