@@ -3,7 +3,9 @@ title: MCAP Layers Explained
 order: 300
 ---
 
-MCAP processing in Rerun uses a layered architecture where each layer represents a different way to interpret and extract data from the same MCAP source. You can specify which layers to use during conversion, allowing you to extract exactly the information you need for your analysis.
+MCAP processing in Rerun uses a layered architecture where each layer represents a different way to interpret and extract data from the same MCAP source.
+By default, when opening a file Rerun analyzes an MCAP file to determine which layers are active to provide the most comprehensive view of your data, while avoiding duplication.
+You can specify which layers to use during conversion, allowing you to extract exactly the information you need for your analysis.
 
 ## Understanding layers with an example
 

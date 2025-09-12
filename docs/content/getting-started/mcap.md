@@ -57,9 +57,20 @@ Each layer extracts different types of information from the MCAP source and each
 - **`ros2msg`**: Provides semantic conversion of common ROS2 message types into Rerun's visualization components
 - **`recording_info`**: Extracts recording metadata such as message counts, start time, and session information
 
-By default, Rerun processes MCAP files with all layers active to provide the most comprehensive view of your data. You can also choose to activate only specific layers that are relevant to your use case.
+By default, Rerun analyzes an MCAP file to determine which layers are active to provide the most comprehensive view of your data, while avoiding duplication.
+You can also choose to activate only specific layers that are relevant to your use case.
 
-For a detailed explanation of how each layer works and when to use them, see [Layers Explained](mcap/layers-explained.md).
+The following shows how to select specific layers:
+
+```sh
+# Use only specific layers
+rerun mcap convert input.mcap -l protobuf -l stats -o output.rrd
+
+# Use multiple layers for different perspectives
+rerun mcap convert input.mcap -l ros2msg -l raw -l recording_info -o output.rrd
+```
+
+For a detailed explanation of how each layer works and when to use them, see [Layers Explained](../reference/mcap/layers-explained.md).
 
 ## Supported message formats
 
@@ -76,8 +87,8 @@ The following is a screenshot of the selection panel and shows a Protobuf-encode
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mcap_raw_arrow/17b7723690c46901d14e6c1d264298ce0ca8c3ae/1024w.png">
 </picture>
 
-For more details about all supported message types, see [Message Formats](mcap/message-formats.md).
+For more details about all supported message types, see [Message Formats](../reference/mcap/message-formats.md).
 
 ## Advanced usage
 
-For advanced command-line options and automation workflows, see the [CLI Reference](mcap/cli-reference.md) for complete documentation of all available commands and flags.
+For advanced command-line options and automation workflows, see the [CLI Reference](../reference/mcap/cli-reference.md) for complete documentation of all available commands and flags.
