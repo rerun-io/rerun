@@ -14558,19 +14558,6 @@ packages:
   version: 1.2.5
   sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
   requires_dist:
-  - dataclasses ; python_full_version < '3.7'
-  - backports-datetime-fromisoformat ; python_full_version < '3.7'
-  - grpclib
-  - stringcase
-  - black ; extra == 'compiler'
-  - jinja2 ; extra == 'compiler'
-  - protobuf ; extra == 'compiler'
-  requires_python: '>=3.6'
-- pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
-  name: betterproto
-  version: 1.2.5
-  sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
-  requires_dist:
   - grpclib
   - stringcase
   - dataclasses ; python_full_version < '3.7'
@@ -33767,8 +33754,8 @@ packages:
   requires_python: '>=3.9'
 - pypi: rerun_py
   name: rerun-sdk
-  version: 0.25.0a5
-  sha256: 8a2d4c355a07d8140658ad70ce7e259f972685a8964712b3c18c94ed27940f7e
+  version: 0.25.0a6
+  sha256: eb4b58e1a3aca693794a03e9485a83b01283c5bc78d0d82955c78bd8542fead2
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -33776,7 +33763,7 @@ packages:
   - pyarrow>=18.0.0
   - typing-extensions>=4.5
   - pytest==8.4.1 ; extra == 'tests'
-  - rerun-notebook==0.25.0a5 ; extra == 'notebook'
+  - rerun-notebook==0.25.0a6 ; extra == 'notebook'
   - datafusion==48.0.0 ; extra == 'datafusion'
   - rerun-sdk[notebook] ; extra == 'all'
   - rerun-sdk[datafusion] ; extra == 'all'
