@@ -1884,19 +1884,38 @@ fn time_marker_ui(
         let is_pointer_in_timeline_rect =
             ui.ui_contains_pointer() && timeline_rect.contains(pointer_pos);
 
-        // Show preview?
-        if !is_hovering_time_cursor
+        let hovered_ctx_id = egui::Id::new("hovered timestamp context");
+
+        let on_timeline = !is_hovering_time_cursor
             && !time_area_double_clicked
             && is_pointer_in_time_area_rect
             && !is_anything_being_dragged
-            && !is_hovering_the_loop_selection
+            && !is_hovering_the_loop_selection;
+
+        if on_timeline {
+            ui.ctx().set_cursor_icon(timeline_cursor_icon);
+        }
+
+        // Show a preview bar at this position, if we have right-clicked
+        // on the time panel we want to still draw the line at the
+        // original position.
+        let hovered_x_pos = if let Some(hovered_time) =
+            ui.ctx().memory(|mem| mem.data.get_temp(hovered_ctx_id))
+            && let Some(x) = time_ranges_ui.x_from_time_f32(hovered_time)
         {
+            Some(x)
+        } else if on_timeline {
+            Some(pointer_pos.x)
+        } else {
+            None
+        };
+
+        if let Some(x) = hovered_x_pos {
             time_area_painter.vline(
-                pointer_pos.x,
+                x,
                 timeline_rect.top()..=ui.max_rect().bottom(),
                 ui.visuals().widgets.noninteractive.fg_stroke,
             );
-            ui.ctx().set_cursor_icon(timeline_cursor_icon); // preview!
         }
 
         // Click to move time here:
@@ -1935,7 +1954,6 @@ fn time_marker_ui(
             }
         }
 
-        let hovered_ctx_id = egui::Id::new("hovered timestamp context");
         if let Some(hovered_time) = ui
             .ctx()
             .memory(|mem| mem.data.get_temp(hovered_ctx_id))
