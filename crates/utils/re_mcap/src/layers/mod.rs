@@ -366,33 +366,6 @@ impl LayerRegistry {
         self
     }
 
-    /// Custom factory for file layer.
-    pub fn register_file_with_factory<S: Into<LayerIdentifier>>(
-        mut self,
-        identifier: S,
-        factory: fn() -> Box<dyn Layer>,
-    ) -> Self {
-        let id = identifier.into();
-        if self.file_factories.insert(id.clone(), factory).is_some() {
-            re_log::warn_once!("Inserted file layer {} twice.", id);
-        }
-        self
-    }
-
-    /// Custom factory for message layer.
-    pub fn register_message_with_factory<S: Into<LayerIdentifier>>(
-        mut self,
-        identifier: S,
-        factory: fn() -> Box<dyn MessageLayer>,
-    ) -> Self {
-        let id = identifier.into();
-        if self.msg_factories.insert(id.clone(), factory).is_some() {
-            re_log::warn_once!("Inserted message layer {} twice.", id);
-        }
-        self.msg_order.push(id);
-        self
-    }
-
     /// Configure a global fallback message layer (e.g. `raw`).
     pub fn with_global_fallback<M: MessageLayer + 'static>(mut self) -> Self {
         self.fallback = Fallback::Global(<M as MessageLayer>::identifier());

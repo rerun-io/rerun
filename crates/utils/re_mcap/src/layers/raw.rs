@@ -68,8 +68,7 @@ impl MessageLayer for McapRawLayer {
         Ok(())
     }
 
-    fn supports_channel(&self, channel: &mcap::Channel<'_>) -> bool {
-        let _ = channel;
+    fn supports_channel(&self, _channel: &mcap::Channel<'_>) -> bool {
         // Raw can capture any channel
         true
     }
