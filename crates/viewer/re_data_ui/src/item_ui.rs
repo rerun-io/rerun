@@ -693,6 +693,11 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
+    // We try to use a name that has the most chance to be familiar to the user:
+    // - The recording name has to be explicitly set by the user, so use it if it exists.
+    // - For remote data, partition id have a lot of visibility too, so good fall-back.
+    // - Lacking anything better, the start time is better than a random id and caters to the local
+    //   workflow where the same logging process is run repeatedly.
     let recording_name = if let Some(recording_name) =
         entity_db.recording_info_property::<Name>(&RecordingInfo::descriptor_name())
     {
