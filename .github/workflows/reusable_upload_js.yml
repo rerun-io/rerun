@@ -26,6 +26,10 @@ on:
         required: false
         type: boolean
         default: false
+      RELEASE_COMMIT:
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-upload-js
@@ -47,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+          ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
       - name: Download rerun_js package
         uses: actions/download-artifact@v4
@@ -65,7 +69,7 @@ jobs:
       - name: Get sha
         id: get-sha
         run: |
-          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
+          full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Upload rerun_js (commit)"
