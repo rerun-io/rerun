@@ -16,7 +16,7 @@ use datafusion::prelude::{Column, Expr, array_to_string, col, lit, lower};
 use re_types_core::datatypes::TimeInt;
 use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE, Loggable as _};
 
-use super::{NonNullableBooleanFilter, NullableBooleanFilter};
+use super::{NonNullableBooleanFilter, NullableBooleanFilter, TimestampFilter};
 
 /// The nullability of a nested arrow datatype.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -590,7 +590,7 @@ impl ScalarUDFImpl for FilterOperationUdf {
             _data_type if _data_type.is_integer() => self.invoke_primitive_array(input_array)?,
 
             _ => {
-                exec_err!(
+                return exec_err!(
                     "DataType not implemented for FilterOperationUdf: {}",
                     input_array.data_type()
                 );
