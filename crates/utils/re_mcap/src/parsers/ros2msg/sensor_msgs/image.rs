@@ -75,7 +75,7 @@ impl MessageParser for ImageMessageParser {
             .context("Failed to decode sensor_msgs::Image message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_ros2_from_nanos(
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
             header.stamp.as_nanos() as u64,
         ));
 

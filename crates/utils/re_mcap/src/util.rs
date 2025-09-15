@@ -60,11 +60,15 @@ impl TimestampCell {
         }
     }
 
+    /// Make a best-effort guess on the epoch type based on the provided raw timestamp, using
+    /// the default timeline names `timestamp` and `duration`.
     pub fn guess_from_nanos(timestamp_ns: u64) -> Self {
         Self::guess_from_nanos_with_names(timestamp_ns, "timestamp", "duration")
     }
 
-    pub fn guess_ros2_from_nanos(timestamp_ns: u64) -> Self {
+    /// Make a best-effort guess on the epoch type based on the provided raw timestamp, using
+    /// the default timeline names `ros2_timestamp` and `ros2_duration`.
+    pub fn guess_from_nanos_ros2(timestamp_ns: u64) -> Self {
         Self::guess_from_nanos_with_names(timestamp_ns, "ros2_timestamp", "ros2_duration")
     }
 
