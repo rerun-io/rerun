@@ -23,7 +23,7 @@ impl std::fmt::Display for ViewerOpenUrlDescription {
 }
 
 impl ViewerOpenUrlDescription {
-    pub fn get(open_url: &ViewerOpenUrl) -> Self {
+    pub fn from_url(open_url: &ViewerOpenUrl) -> Self {
         match open_url {
             ViewerOpenUrl::IntraRecordingSelection(item) => Self {
                 category: "Selection",
@@ -73,7 +73,7 @@ impl ViewerOpenUrlDescription {
 
             ViewerOpenUrl::WebViewerUrl { url_parameters, .. } => {
                 if url_parameters.len() == 1 {
-                    Self::get(url_parameters.first())
+                    Self::from_url(url_parameters.first())
                 } else {
                     Self {
                         category: "Several URLs",
@@ -92,6 +92,6 @@ pub fn command_palette_parse_url(url: &str) -> Option<CommandPaletteUrl> {
 
     Some(CommandPaletteUrl {
         url: url.to_owned(),
-        command_text: format!("Open {}", ViewerOpenUrlDescription::get(&open_url)),
+        command_text: format!("Open {}", ViewerOpenUrlDescription::from_url(&open_url)),
     })
 }

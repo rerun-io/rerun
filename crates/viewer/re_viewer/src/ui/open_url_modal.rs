@@ -58,7 +58,7 @@ impl OpenUrlModal {
                 let open_url = ViewerOpenUrl::from_str(&self.url);
                 let can_import = match &open_url {
                     Ok(url) => {
-                        let description = ViewerOpenUrlDescription::get(url);
+                        let description = ViewerOpenUrlDescription::from_url(url);
                         if let Some(target_short) = description.target_short {
                             ui.horizontal(|ui| {
                                 ui.label(format!("{}:", description.category));
