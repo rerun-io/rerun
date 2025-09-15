@@ -102,7 +102,7 @@ pub fn entity_path_parts_buttons(
                     db,
                     ui,
                     view_id,
-                    &InstancePath::entity_all(accumulated.clone().into()),
+                    &InstancePath::entity_all(accumulated.clone()),
                     part.syntax_highlighted(ui.style()),
                     with_individual_icons,
                 );
@@ -322,7 +322,7 @@ pub fn instance_path_parts_buttons(
                 db,
                 ui,
                 view_id,
-                &InstancePath::entity_all(accumulated.clone().into()),
+                &InstancePath::entity_all(accumulated.clone()),
                 part.syntax_highlighted(ui.style()),
                 with_icon,
             );
