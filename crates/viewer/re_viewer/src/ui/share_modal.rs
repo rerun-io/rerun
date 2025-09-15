@@ -225,7 +225,22 @@ fn selectable_value_with_min_width<'a, Value: PartialEq>(
     response
 }
 
-const MIN_TOGGLE_WIDTH: f32 = 140.0;
+fn selectable_value_with_available_width<'a, Value: PartialEq>(
+    ui: &mut egui::Ui,
+    current_value: &mut Value,
+    selected_value: Value,
+    text: impl IntoAtoms<'a>,
+) -> egui::Response {
+    selectable_value_with_min_width(
+        ui,
+        ui.available_width(),
+        current_value,
+        selected_value,
+        text,
+    )
+}
+
+const MIN_TOGGLE_WIDTH_RH: f32 = 120.0;
 
 fn url_settings_ui(
     ctx: &ViewerContext<'_>,
@@ -235,9 +250,9 @@ fn url_settings_ui(
 ) {
     ui.list_item_flat_noninteractive(PropertyContent::new("Link format").value_fn(|ui, _| {
         ui.selectable_toggle(|ui| {
-            selectable_value_with_min_width(ui, MIN_TOGGLE_WIDTH, create_web_viewer_url, false, "Only source")
+            selectable_value_with_min_width(ui, MIN_TOGGLE_WIDTH_RH, create_web_viewer_url, false, "Only source")
                 .on_hover_text("Link works only in already opened viewers and not in the browser's address bar.");
-            selectable_value_with_min_width(ui, MIN_TOGGLE_WIDTH, create_web_viewer_url, true, "Web viewer")
+            selectable_value_with_available_width(ui, create_web_viewer_url, true, "Web viewer")
                 .on_hover_text("Link works in the browser's address bar, opening a new viewer. You can still use this link in the native viewer as well.");
         });
     }));
@@ -274,16 +289,15 @@ fn time_range_ui(
         ui.selectable_toggle(|ui| {
             selectable_value_with_min_width(
                 ui,
-                MIN_TOGGLE_WIDTH,
+                MIN_TOGGLE_WIDTH_RH,
                 &mut entire_range,
                 true,
                 "Entire recording",
             )
             .on_hover_text("Link will share the entire recording.");
             ui.add_enabled_ui(current_time_range_selection.is_some(), |ui| {
-                selectable_value_with_min_width(
+                selectable_value_with_available_width(
                     ui,
-                    MIN_TOGGLE_WIDTH,
                     &mut entire_range,
                     false,
                     "Trim to selection",
@@ -324,7 +338,7 @@ fn time_cursor_ui(
         ui.selectable_toggle(|ui| {
             selectable_value_with_min_width(
                 ui,
-                MIN_TOGGLE_WIDTH,
+                MIN_TOGGLE_WIDTH_RH,
                 &mut any_time,
                 false,
                 "At the start",
@@ -333,12 +347,12 @@ fn time_cursor_ui(
                 let mut label = egui::Atoms::new(egui::Atom::from("Current").atom_grow(true));
                 if let Some((_, time_cell)) = current_time_cursor {
                     label.push_right({
-                        let time = time_cell.format_compact(timestamp_format);
-                        egui::RichText::new(time).weak().atom_shrink(true)
+                        let time = time_cell.format(timestamp_format);
+                        egui::RichText::new(time).weak().small().atom_shrink(true)
                     });
                 }
 
-                selectable_value_with_min_width(ui, MIN_TOGGLE_WIDTH, &mut any_time, true, label)
+                selectable_value_with_available_width(ui, &mut any_time, true, label)
                     .on_disabled_hover_text("No time selected.");
             });
         });
