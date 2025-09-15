@@ -344,13 +344,15 @@ fn time_cursor_ui(
                 "At the start",
             );
             ui.add_enabled_ui(current_time_cursor.is_some(), |ui| {
-                let mut label = egui::Atoms::new(egui::Atom::from("Current").atom_grow(true));
+                let mut label = egui::Atoms::new(egui::Atom::from("Current"));
                 if let Some((_, time_cell)) = current_time_cursor {
                     label.push_right({
                         let time = time_cell.format(timestamp_format);
                         egui::RichText::new(time).weak().small().atom_shrink(true)
                     });
                 }
+                label.push_left(egui::Atom::grow());
+                label.push_right(egui::Atom::grow());
 
                 selectable_value_with_available_width(ui, &mut any_time, true, label)
                     .on_disabled_hover_text("No time selected.");
