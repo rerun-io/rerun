@@ -96,6 +96,8 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> quaternions;
 
         /// Optional colors for the cylinders.
+        ///
+        /// Alpha channel is used for transparency for solid fill-mode.
         std::optional<ComponentBatch> colors;
 
         /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
@@ -251,6 +253,8 @@ namespace rerun::archetypes {
         }
 
         /// Optional colors for the cylinders.
+        ///
+        /// Alpha channel is used for transparency for solid fill-mode.
         Cylinders3D with_colors(const Collection<rerun::components::Color>& _colors) && {
             colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
             return std::move(*this);

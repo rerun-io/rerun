@@ -2,13 +2,9 @@ use std::io::{Read, Seek};
 
 use mcap::{
     Summary,
-    records::ChunkIndex,
     sans_io::{SummaryReadEvent, SummaryReader},
 };
-use re_chunk::external::nohash_hasher::IntMap;
 use re_log_types::TimeCell;
-
-use crate::parsers::ChannelId;
 
 /// Read out the summary of an MCAP file.
 pub fn read_summary<R: Read + Seek>(mut reader: R) -> anyhow::Result<Option<Summary>> {
@@ -26,23 +22,6 @@ pub fn read_summary<R: Read + Seek>(mut reader: R) -> anyhow::Result<Option<Summ
     }
 
     Ok(summary_reader.finish())
-}
-
-/// Counts the number of messages per channel within a specific chunk.
-///
-/// This function reads the message indexes for the given chunk and returns
-/// a mapping of channel IDs to their respective message counts.
-#[inline]
-pub fn get_chunk_message_count(
-    chunk_index: &ChunkIndex,
-    summary: &Summary,
-    mcap: &[u8],
-) -> Result<IntMap<ChannelId, usize>, ::mcap::McapError> {
-    Ok(summary
-        .read_message_indexes(mcap, chunk_index)?
-        .iter()
-        .map(|(channel, msg_offsets)| (channel.id.into(), msg_offsets.len()))
-        .collect())
 }
 
 /// Timestamp + epoch interpretation.

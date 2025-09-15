@@ -409,7 +409,7 @@ impl DrawData for RectangleDrawData {
         view_info: &DrawableCollectionViewInfo,
         collector: &mut DrawableCollector<'_>,
     ) {
-        // TODO(#1025, #4787): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
+        // TODO(#1025, #4787, #11156): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
         // This is extra hacky here since we actually have transparent objects, but putting them on the transparency layer messes with the
         // 2D setup we have so far.
 
@@ -644,7 +644,7 @@ impl Renderer for RectangleRenderer {
                 cull_mode: None,
                 ..Default::default()
             },
-            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE),
             multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), false),
         };
         let render_pipeline_color =

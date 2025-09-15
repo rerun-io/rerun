@@ -102,3 +102,13 @@ fn arrow_tree_ui() {
         results.add(harness.try_snapshot(array_name));
     }
 }
+
+#[test]
+fn inline_formatting() {
+    for (name, data) in arrow_test_data::all_arrays() {
+        let highlighted =
+            re_arrow_ui::arrow_syntax_highlighted(&data).expect("Failed to format data");
+
+        insta::assert_snapshot!(name, highlighted.text());
+    }
+}
