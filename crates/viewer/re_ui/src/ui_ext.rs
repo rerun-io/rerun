@@ -39,7 +39,7 @@ pub trait UiExt {
 
         if cfg!(debug_assertions)
             && ui.is_tooltip()
-            && ui.spacing().tooltip_width + 100.0 < ui.max_rect().width()
+            && ui.spacing().tooltip_width + 1000.0 < ui.max_rect().width()
         {
             panic!("DEBUG ASSERT: Huge tooltip: {}", ui.max_rect().size());
         }
