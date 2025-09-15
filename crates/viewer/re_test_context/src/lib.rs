@@ -324,6 +324,14 @@ impl TestContext {
         builder
     }
 
+    /// Set the active timeline.
+    pub fn set_timeline(&self, timeline: Timeline) {
+        self.recording_config
+            .time_ctrl
+            .write()
+            .set_timeline(timeline);
+    }
+
     /// Timeline the recording config is using by default.
     pub fn active_timeline(&self) -> re_chunk::Timeline {
         *self.recording_config.time_ctrl.read().timeline()
