@@ -1,5 +1,4 @@
 use re_global_context::{DisplayMode, SystemCommand};
-use re_smart_channel::SmartChannelSource;
 
 use crate::ViewerContext;
 
