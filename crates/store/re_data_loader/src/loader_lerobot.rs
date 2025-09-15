@@ -600,7 +600,7 @@ fn make_scalar_entity_chunk(
 fn extract_scalar_slices_as_f64(data: &ArrayRef) -> anyhow::Result<Vec<ArrayRef>> {
     // cast the slice to f64 first, as scalars need an f64
     let scalar_values = cast(&data, &DataType::Float64)
-        .with_context(|| format!("Failed to cast {:?} to Float64", data.data_type()))?;
+        .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))?;
 
     Ok((0..data.len())
         .map(|idx| scalar_values.slice(idx, 1))
@@ -613,7 +613,7 @@ fn extract_fixed_size_list_array_elements_as_f64(
     (0..data.len())
         .map(|idx| {
             cast(&data.value(idx), &DataType::Float64)
-                .with_context(|| format!("Failed to cast {:?} to Float64", data.data_type()))
+                .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))
         })
         .collect::<Result<Vec<_>, _>>()
 }
@@ -624,7 +624,7 @@ fn extract_list_array_elements_as_f64(
     (0..data.len())
         .map(|idx| {
             cast(&data.value(idx), &DataType::Float64)
-                .with_context(|| format!("Failed to cast {:?} to Float64", data.data_type()))
+                .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))
         })
         .collect::<Result<Vec<_>, _>>()
 }
