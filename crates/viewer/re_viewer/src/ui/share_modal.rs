@@ -243,9 +243,12 @@ fn url_settings_ui(
     }));
 
     if let Some(url_time_range) = url.time_range_mut() {
+        ui.add_space(8.0);
         time_range_ui(ui, url_time_range, ctx.rec_cfg);
     }
     if let Some(fragments) = url.fragments_mut() {
+        ui.add_space(8.0);
+
         let timestamp_format = ctx.app_options().timestamp_format;
         time_cursor_ui(ui, fragments, timestamp_format, ctx.rec_cfg);
     }
@@ -371,16 +374,6 @@ mod tests {
 
         let modal = Arc::new(Mutex::new(ShareModal::default()));
 
-        let mut harness = egui_kittest::Harness::builder()
-            .with_size(egui::Vec2::new(500.0, 300.0))
-            .build_ui(|ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-
-                test_ctx.run(ui.ctx(), |ctx| {
-                    modal.lock().ui(ctx, ui, None);
-                });
-            });
-
         {
             let store_hub = test_ctx.store_hub.lock();
             modal
@@ -393,7 +386,16 @@ mod tests {
                 )
                 .unwrap();
         }
-        harness.run();
+
+        let mut harness = egui_kittest::Harness::builder()
+            .with_size(egui::Vec2::new(500.0, 300.0))
+            .build_ui(|ui| {
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+
+                test_ctx.run(ui.ctx(), |ctx| {
+                    modal.lock().ui(ctx, ui, None);
+                });
+            });
         harness.snapshot("share_modal__server_url");
 
         modal.lock().url = Some(ViewerOpenUrl::RedapDatasetPartition(
