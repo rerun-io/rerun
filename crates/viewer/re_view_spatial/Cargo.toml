@@ -76,7 +76,6 @@ re_test_viewport.workspace = true
 
 insta.workspace = true
 ndarray.workspace = true
-parking_lot.workspace = true
 
 [lib]
 bench = false
