@@ -56,7 +56,7 @@ pub enum ShaderDecoding {
 }
 
 /// Describes a texture and how to map it to a color.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ColormappedTexture {
     pub texture: GpuTexture2D,
 
@@ -148,7 +148,7 @@ impl ColormappedTexture {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TexturedRect {
     /// Top left corner position in world space.
     pub top_left_corner_position: glam::Vec3,
@@ -184,7 +184,7 @@ impl TexturedRect {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RectangleOptions {
     pub texture_filter_magnification: TextureFilterMag,
     pub texture_filter_minification: TextureFilterMin,
