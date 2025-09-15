@@ -706,9 +706,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                     #[expect(clippy::collapsible_if)]
                                     if column.blueprint.variant_ui.is_none()
                                         && let Some(filter_op) =
-                                            FilterOperation::default_for_datatype(
-                                                column_field.data_type(),
-                                            )
+                                            FilterOperation::default_for_column(column_field)
                                     {
                                         if ui
                                             .icon_and_text_menu_item(

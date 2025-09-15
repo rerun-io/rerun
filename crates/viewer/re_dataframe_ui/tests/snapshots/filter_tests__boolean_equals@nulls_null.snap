@@ -4,9 +4,7 @@ expression: test_results
 ---
 TestResult {
     op: BooleanEquals(
-        Some(
-            false,
-        ),
+        None,
     ),
     field: Field {
         name: "column",
@@ -25,6 +23,6 @@ TestResult {
     ],
     filtered: BooleanArray
     [
-      false,
+      null,
     ],
 }
