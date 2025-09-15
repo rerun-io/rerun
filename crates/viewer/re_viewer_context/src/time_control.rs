@@ -736,6 +736,8 @@ fn range(values: &TimeCounts) -> AbsoluteTimeRange {
 
 /// Pick the timeline that should be the default, by number of elements and prioritizing user-defined ones.
 fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a TimelineStats>) -> Timeline {
+    re_tracing::profile_function!();
+
     // Helper function that acts as a tie-breaker.
     fn timeline_priority(timeline: &Timeline) -> u8 {
         match timeline {

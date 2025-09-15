@@ -12,6 +12,7 @@ pub type TimeCounts = BTreeMap<TimeInt, u64>;
 pub struct TimelineStats {
     pub timeline: Timeline,
     pub per_time: TimeCounts,
+    pub total_count: u64,
 }
 
 impl TimelineStats {
@@ -19,11 +20,12 @@ impl TimelineStats {
         Self {
             timeline,
             per_time: Default::default(),
+            total_count: 0,
         }
     }
 
     pub fn num_events(&self) -> u64 {
-        self.per_time.values().sum()
+        self.total_count
     }
 }
 
@@ -94,6 +96,7 @@ impl ChunkStoreSubscriber for TimesPerTimeline {
 
                 for time in time_column.times() {
                     let count = stats.per_time.entry(time).or_default();
+                    let total_count = &mut stats.total_count;
 
                     let delta = event.delta();
 
@@ -104,10 +107,22 @@ impl ChunkStoreSubscriber for TimesPerTimeline {
                                 entity_path = %event.chunk.entity_path(),
                                 current = count,
                                 removed = delta.unsigned_abs(),
-                                "book keeping underflowed"
+                                "per `TimeInt` book keeping underflowed"
                             );
                             u64::MIN
                         });
+                        *total_count = total_count
+                            .checked_sub(delta.unsigned_abs())
+                            .unwrap_or_else(|| {
+                                re_log::debug!(
+                                    store_id = ?event.store_id,
+                                    entity_path = %event.chunk.entity_path(),
+                                    current = total_count,
+                                    removed = delta.unsigned_abs(),
+                                    "total book keeping underflowed"
+                                );
+                                u64::MIN
+                            });
                     } else {
                         *count = count.checked_add(delta.unsigned_abs()).unwrap_or_else(|| {
                             re_log::debug!(
@@ -115,10 +130,22 @@ impl ChunkStoreSubscriber for TimesPerTimeline {
                                 entity_path = %event.chunk.entity_path(),
                                 current = count,
                                 removed = delta.unsigned_abs(),
-                                "book keeping overflowed"
+                                "per `TimeInt` book keeping overflowed"
                             );
                             u64::MAX
                         });
+                        *total_count = total_count
+                            .checked_add(delta.unsigned_abs())
+                            .unwrap_or_else(|| {
+                                re_log::debug!(
+                                    store_id = ?event.store_id,
+                                    entity_path = %event.chunk.entity_path(),
+                                    current = total_count,
+                                    removed = delta.unsigned_abs(),
+                                    "total book keeping underflowed"
+                                );
+                                u64::MAX
+                            });
                     }
 
                     if *count == 0 {
