@@ -607,7 +607,7 @@ impl TimeControl {
         )
     }
 
-    /// The current loop range, iff selection looping is turned on.
+    /// The current loop range, if selection looping is turned on.
     pub fn active_loop_selection(&self) -> Option<AbsoluteTimeRangeF> {
         if self.looping == Looping::Selection {
             self.states

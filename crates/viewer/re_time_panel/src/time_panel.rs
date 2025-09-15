@@ -18,10 +18,11 @@ use re_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_ui::{ContextExt as _, DesignTokens, Help, UiExt as _, filter_widget, icons, list_item};
 use re_ui::{IconText, filter_widget::format_matching_text};
+use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig,
-    SystemCommand, SystemCommandSender as _, TimeControl, TimeView, UiLayout, UrlContext,
-    ViewerContext, VisitorControlFlow,
+    SystemCommand, SystemCommandSender as _, TimeControl, TimeView, UiLayout, ViewerContext,
+    VisitorControlFlow,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -1784,21 +1785,59 @@ fn copy_timeline_properties_context_menu(
     time_ctrl: &TimeControl,
     hovered_time: TimeReal,
 ) {
-    let url_context = UrlContext::from_context(ctx);
+    let mut url = ViewerOpenUrl::from_context(ctx);
     if let Some(selected_time_range) = time_ctrl.active_loop_selection()
         && selected_time_range.contains(hovered_time)
     {
-        if ui.button("Copy link to trimmed range").clicked() {
-            ctx.command_sender()
-                .send_system(url_context.without_timestamp().into_copy_cmd());
+        let has_time_range = url.as_mut().is_ok_and(|url| url.fragment_mut().is_some());
+        let copy_command = url.and_then(|url| url.copy_url_command());
+        if ui
+            .add_enabled(
+                copy_command.is_ok() && has_time_range,
+                egui::Button::new("Copy link to trimmed range"),
+            )
+            .on_disabled_hover_text(if copy_command.is_err() {
+                "Can't share links to the current recording"
+            } else {
+                "The current recording doesn't support time range links"
+            })
+            .clicked()
+            && let Ok(copy_command) = copy_command
+        {
+            ctx.command_sender().send_system(copy_command);
         }
-    } else if ui.button("Copy link to timestamp").clicked() {
-        ctx.command_sender().send_system(
-            UrlContext::from_context(ctx)
-                .without_time_range()
-                .with_timestamp(time_ctrl.timeline(), hovered_time.floor())
-                .into_copy_cmd(),
-        );
+    } else {
+        let has_fragment = url.as_mut().is_ok_and(|url| {
+            if let Some(fragment) = url.fragment_mut() {
+                fragment.when = Some((
+                    *time_ctrl.timeline().name(),
+                    re_log_types::TimeCell {
+                        typ: time_ctrl.time_type(),
+                        value: hovered_time.floor().into(),
+                    },
+                ));
+                true
+            } else {
+                false
+            }
+        });
+        let copy_command = url.and_then(|url| url.copy_url_command());
+
+        if ui
+            .add_enabled(
+                copy_command.is_ok() && has_fragment,
+                egui::Button::new("Copy link to timestamp"),
+            )
+            .on_disabled_hover_text(if copy_command.is_err() {
+                "Can't share links to the current recording"
+            } else {
+                "The current recording doesn't support time stamp links"
+            })
+            .clicked()
+            && let Ok(copy_command) = copy_command
+        {
+            ctx.command_sender().send_system(copy_command);
+        }
     }
 
     if ui.button("Copy timestamp").clicked() {
