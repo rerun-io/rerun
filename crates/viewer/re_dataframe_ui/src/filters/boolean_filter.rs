@@ -133,7 +133,7 @@ impl BooleanFilter {
                     .re_radio_value(query, None, primitive(ui, "null"))
                     .clicked();
             }
-        };
+        }
 
         if clicked {
             *action = FilterUiAction::CommitStateToBlueprint;
