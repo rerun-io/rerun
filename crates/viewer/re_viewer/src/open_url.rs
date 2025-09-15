@@ -562,6 +562,56 @@ impl ViewerOpenUrl {
             }
         }
     }
+
+    /// Fragments of the URL if supported.
+    pub fn fragments_mut(&mut self) -> Option<&mut re_uri::Fragment> {
+        match self {
+            Self::IntraRecordingSelection(..) => None,
+            Self::RrdHttpUrl(..) => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::FilePath(..) => None,
+            Self::RedapDatasetPartition(uri) => Some(&mut uri.fragment),
+            Self::RedapProxy(..) => None,
+            Self::RedapCatalog(..) => None,
+            Self::RedapEntry(..) => None,
+            Self::WebEventListener => None,
+            Self::WebViewerUrl {
+                base_url: _,
+                url_parameters,
+            } => {
+                if url_parameters.len() == 1 {
+                    url_parameters.first_mut().fragments_mut()
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    /// Time selection embedded in the URL if supported.
+    pub fn time_range_mut(&mut self) -> Option<&mut Option<re_uri::TimeSelection>> {
+        match self {
+            Self::IntraRecordingSelection(..) => None,
+            Self::RrdHttpUrl(..) => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::FilePath(..) => None,
+            Self::RedapDatasetPartition(uri) => Some(&mut uri.time_range),
+            Self::RedapProxy(..) => None,
+            Self::RedapCatalog(..) => None,
+            Self::RedapEntry(..) => None,
+            Self::WebEventListener => None,
+            Self::WebViewerUrl {
+                base_url: _,
+                url_parameters,
+            } => {
+                if url_parameters.len() == 1 {
+                    url_parameters.first_mut().time_range_mut()
+                } else {
+                    None
+                }
+            }
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

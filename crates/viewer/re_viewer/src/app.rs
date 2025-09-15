@@ -437,7 +437,7 @@ impl App {
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
 
-        if let Ok(url) = crate::open_url::ViewerOpenUrl::from_str(url) {
+        if let Ok(url) = ViewerOpenUrl::from_str(url) {
             url.open(
                 &self.egui_ctx,
                 follow_if_http,
@@ -1487,6 +1487,21 @@ impl App {
                 re_ui::apply_style_and_install_loaders(egui_ctx);
             }
 
+            UICommand::Share => {
+                let selection = self.state.selection_state.selected_items();
+                let rec_cfg = storage_context
+                    .hub
+                    .active_store_id()
+                    .and_then(|id| self.state.recording_configs.get(id));
+                if let Err(err) = self.state.share_modal.open(
+                    storage_context.hub,
+                    display_mode,
+                    rec_cfg,
+                    selection,
+                ) {
+                    re_log::error!("Cannot share link to current screen: {err}");
+                }
+            }
             UICommand::CopyDirectLink => {
                 self.run_copy_link_command(
                     storage_context.hub,
@@ -1499,8 +1514,8 @@ impl App {
 
                 let rec_cfg = storage_context
                     .hub
-                    .active_recording()
-                    .and_then(|db| self.state.recording_config(db.store_id()));
+                    .active_store_id()
+                    .and_then(|id| self.state.recording_config(id));
                 let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
 
                 if let Some(time_ctrl) = &time_ctrl {
@@ -1633,25 +1648,15 @@ impl App {
     }
 
     fn run_copy_link_command(&mut self, store_hub: &StoreHub, context: UrlContext) {
-        // TODO(rerun-io/dataplatform#2663): Should take into account dataplatform URLs if any are provided.
-        let base_url;
-        #[cfg(target_arch = "wasm32")]
-        {
-            use crate::web_tools::JsResultExt as _;
-            base_url = crate::web_tools::current_base_url().ok_or_log_js_error();
-        };
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            base_url = None;
-        };
+        let base_url = web_viewer_base_url();
 
         match crate::open_url::ViewerOpenUrl::new(store_hub, context)
             .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
         {
             Ok(url) => {
-                self.egui_ctx.copy_text(url);
+                self.egui_ctx.copy_text(url.clone());
                 self.notifications
-                    .success("Copied link to clipboard".to_owned());
+                    .success(format!("Copied {url:?} to clipboard"));
             }
             Err(err) => {
                 re_log::error!("{err}");
@@ -1778,6 +1783,7 @@ impl App {
                     self,
                     app_blueprint,
                     store_context,
+                    storage_context.hub,
                     gpu_resource_stats,
                     ui,
                 );
@@ -3194,4 +3200,17 @@ async fn async_save_dialog(
         messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")
+}
+
+pub fn web_viewer_base_url() -> Option<url::Url> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        crate::web_tools::current_base_url().ok()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
+        url::Url::parse("https://rerun.io/viewer").ok()
+    }
 }

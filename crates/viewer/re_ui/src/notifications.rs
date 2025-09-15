@@ -303,9 +303,9 @@ impl NotificationUi {
 
         ui.horizontal_top(|ui| {
             if !notifications.is_empty() {
-                ui.label(format!("Notifications ({})", notifications.len()));
+                ui.strong(format!("Notifications ({})", notifications.len()));
             } else {
-                ui.label("Notifications");
+                ui.strong("Notifications");
             }
             ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
                 if ui.small_icon_button(&icons::CLOSE, "Close").clicked() {
