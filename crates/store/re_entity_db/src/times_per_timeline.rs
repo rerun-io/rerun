@@ -45,14 +45,19 @@ impl TimesPerTimeline {
     }
 }
 
-// Always ensure we have a default "log_time" timeline.
+// Always ensure we have the default "log_time" and "log_tick" timelines.
 impl Default for TimesPerTimeline {
     fn default() -> Self {
-        let timeline = Timeline::log_time();
-        Self(BTreeMap::from([(
-            *timeline.name(),
-            TimelineStats::new(timeline),
-        )]))
+        Self(BTreeMap::from([
+            (
+                *Timeline::log_time().name(),
+                TimelineStats::new(Timeline::log_time()),
+            ),
+            (
+                *Timeline::log_tick().name(),
+                TimelineStats::new(Timeline::log_tick()),
+            ),
+        ]))
     }
 }
 

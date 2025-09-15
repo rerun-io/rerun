@@ -559,7 +559,7 @@ impl TimeControl {
             false
         }
 
-        // If the timeline is auto refresh it every frame, otherwise only pick a new one if invalid.
+        // If the timeline is `Auto` refresh it every frame, otherwise only pick a new one if invalid.
         if matches!(self.timeline, ActiveTimeline::Auto(_))
             || !is_timeline_valid(self.timeline(), times_per_timeline)
         {

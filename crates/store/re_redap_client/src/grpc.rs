@@ -491,6 +491,7 @@ async fn stream_partition_from_server(
                 time_range: time_range.into(),
             });
         }
+
         if !fragment.is_empty() {
             on_ui_cmd(UiCommand::SetUrlFragment {
                 recording_id: store_id.clone(),
