@@ -6,7 +6,7 @@ use re_renderer::Color32;
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_test_viewport::TestContextExt as _;
 use re_types::{RowId, archetypes, components::FillMode};
-use re_view_spatial::{SpatialView3D, SpatialViewState, ViewEye};
+use re_view_spatial::SpatialView3D;
 use re_viewer_context::{Item, RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 
