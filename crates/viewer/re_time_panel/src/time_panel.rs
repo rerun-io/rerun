@@ -1785,23 +1785,20 @@ fn copy_timeline_properties_context_menu(
     hovered_time: TimeReal,
 ) {
     let url_context = UrlContext::from_context(ctx);
-    if let Some(url_features) = url_context.features(ctx.storage_context.hub) {
-        if let Some(selected_time_range) = time_ctrl.active_loop_selection()
-            && selected_time_range.contains(hovered_time)
-            && url_features.time_range
-        {
-            if ui.button("Copy link to trimmed range").clicked() {
-                ctx.command_sender()
-                    .send_system(url_context.without_timestamp().into_copy_cmd());
-            }
-        } else if url_features.fragment && ui.button("Copy link to timestamp").clicked() {
-            ctx.command_sender().send_system(
-                UrlContext::from_context(ctx)
-                    .without_time_range()
-                    .with_timestamp(time_ctrl.timeline(), hovered_time.floor())
-                    .into_copy_cmd(),
-            );
+    if let Some(selected_time_range) = time_ctrl.active_loop_selection()
+        && selected_time_range.contains(hovered_time)
+    {
+        if ui.button("Copy link to trimmed range").clicked() {
+            ctx.command_sender()
+                .send_system(url_context.without_timestamp().into_copy_cmd());
         }
+    } else if ui.button("Copy link to timestamp").clicked() {
+        ctx.command_sender().send_system(
+            UrlContext::from_context(ctx)
+                .without_time_range()
+                .with_timestamp(time_ctrl.timeline(), hovered_time.floor())
+                .into_copy_cmd(),
+        );
     }
 
     if ui.button("Copy timestamp").clicked() {

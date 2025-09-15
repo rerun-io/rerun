@@ -13,60 +13,7 @@ pub struct UrlContext {
     pub fragment: re_uri::Fragment,
 }
 
-#[derive(Default, Clone, Copy)]
-pub struct UrlFeatures {
-    pub time_range: bool,
-    pub fragment: bool,
-}
-
 impl UrlContext {
-    /// Information about what this url can do, can be used to hide UI for
-    /// sharing when we know it won't work.
-    ///
-    /// This should be kept up to date with what `ViewerOpenUrl::new` does
-    // TODO(isse): I don't really like how this has to be kept up to date manually with
-    // `ViewerOpenUrl`, would be nice to consolidate.
-    pub fn features(&self, store_hub: &crate::StoreHub) -> Option<UrlFeatures> {
-        match &self.display_mode {
-            DisplayMode::Settings | DisplayMode::LocalTable(_) | DisplayMode::ChunkStoreBrowser => {
-                None
-            }
-
-            DisplayMode::LocalRecordings => {
-                let active_recording = store_hub.active_recording()?;
-                let data_source = active_recording.data_source.as_ref()?;
-                match data_source {
-                    SmartChannelSource::RrdHttpStream { .. }
-                    | SmartChannelSource::RrdWebEventListener
-                    | SmartChannelSource::MessageProxy(_) => Some(UrlFeatures::default()),
-
-                    SmartChannelSource::RedapGrpcStream { .. } => Some(UrlFeatures {
-                        time_range: true,
-                        fragment: true,
-                    }),
-
-                    SmartChannelSource::File(_) => {
-                        #[cfg(not(target_arch = "wasm32"))]
-                        {
-                            Some(UrlFeatures::default())
-                        }
-                        #[cfg(target_arch = "wasm32")]
-                        {
-                            None
-                        }
-                    }
-
-                    SmartChannelSource::JsChannel { .. }
-                    | SmartChannelSource::Sdk
-                    | SmartChannelSource::Stdin => None,
-                }
-            }
-            DisplayMode::RedapServer(_) | DisplayMode::RedapEntry(_) => {
-                Some(UrlFeatures::default())
-            }
-        }
-    }
-
     /// Create a url for a certain display mode.
     ///
     /// Not all display modes lead to valid URLs.

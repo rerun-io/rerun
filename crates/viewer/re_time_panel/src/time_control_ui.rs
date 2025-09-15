@@ -66,6 +66,9 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                         );
                     });
                 });
+            // Sort of an inline of the `egui::Response::context_menu` function.
+            // This is required to assign an id to the context menu, which would
+            // otherwise conflict with the popup of this `ComboBox`'s popup menu.
             egui::Popup::menu(&response)
                 .id(egui::Id::new("timeline select context menu"))
                 .open_memory(if response.secondary_clicked() {
