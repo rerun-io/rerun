@@ -93,7 +93,6 @@ impl Ros2MessageParser for PointCloud2MessageParser {
 
 fn builder_from_datatype(datatype: PointFieldDatatype) -> Box<dyn ArrayBuilder> {
     match datatype {
-        PointFieldDatatype::Unknown => unreachable!(),
         PointFieldDatatype::Int8 => Box::new(Int8Builder::new()),
         PointFieldDatatype::UInt8 => Box::new(UInt8Builder::new()),
         PointFieldDatatype::Int16 => Box::new(Int16Builder::new()),
@@ -108,7 +107,6 @@ fn builder_from_datatype(datatype: PointFieldDatatype) -> Box<dyn ArrayBuilder> 
 fn access(data: &[u8], datatype: PointFieldDatatype, is_big_endian: bool) -> std::io::Result<f32> {
     let mut rdr = Cursor::new(data);
     match (is_big_endian, datatype) {
-        (_, PointFieldDatatype::Unknown) => Ok(0f32), // Not in the original spec.
         (_, PointFieldDatatype::UInt8) => rdr.read_u8().map(|x| x as f32),
         (_, PointFieldDatatype::Int8) => rdr.read_i8().map(|x| x as f32),
         (true, PointFieldDatatype::Int16) => rdr.read_i16::<BigEndian>().map(|x| x as f32),
@@ -129,9 +127,6 @@ fn access(data: &[u8], datatype: PointFieldDatatype, is_big_endian: bool) -> std
 impl From<PointFieldDatatype> for DataType {
     fn from(value: PointFieldDatatype) -> Self {
         match value {
-            // Not part of the MCAP spec
-            // // https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/PointField.html
-            PointFieldDatatype::Unknown => unreachable!(),
             PointFieldDatatype::Int8 => Self::Int8,
             PointFieldDatatype::UInt8 => Self::UInt8,
             PointFieldDatatype::Int16 => Self::Int16,
@@ -218,7 +213,6 @@ fn add_field_value(
 ) -> anyhow::Result<()> {
     let mut rdr = Cursor::new(data);
     match field.datatype {
-        PointFieldDatatype::Unknown => unreachable!(),
         PointFieldDatatype::Int8 => {
             let builder = builder
                 .as_any_mut()
