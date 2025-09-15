@@ -10,7 +10,7 @@ use std::cmp::Ordering;
 
 use arrow::{array::RecordBatch, datatypes::SchemaRef};
 
-use crate::SorbetSchema;
+use crate::{BatchType, SorbetSchema};
 
 mod make_list_arrays;
 
@@ -105,11 +105,13 @@ fn maybe_apply<M: Migration>(
 
 /// Migrate a sorbet record batch of unknown version to the latest version.
 #[tracing::instrument(level = "debug", skip_all)]
-pub fn migrate_record_batch(mut batch: RecordBatch) -> RecordBatch {
+pub fn migrate_record_batch(mut batch: RecordBatch, batch_type: BatchType) -> RecordBatch {
     batch = migrate_record_batch_impl(batch);
 
-    // TODO(emilk): only call make_all_data_columns_list_arrays for chunk batches?
-    make_list_arrays::make_all_data_columns_list_arrays(&batch)
+    match batch_type {
+        BatchType::Chunk => make_list_arrays::make_all_data_columns_list_arrays(&batch),
+        BatchType::Dataframe => batch,
+    }
 }
 
 fn migrate_record_batch_impl(mut batch: RecordBatch) -> RecordBatch {

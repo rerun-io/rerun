@@ -9,14 +9,14 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
 };
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt as _};
-use re_chunk::{Chunk, ChunkComponents, ChunkId, TimePoint};
-use re_log_types::TimeCell;
+use re_chunk::{Chunk, ChunkComponents, ChunkId};
 use re_types::{
     AsComponents as _, Component as _, ComponentDescriptor, SerializedComponentColumn, archetypes,
     components, reflection::ComponentDescriptorExt as _,
 };
 use std::collections::HashMap;
 
+use super::super::Ros2MessageParser;
 use crate::{
     Error,
     parsers::{
@@ -45,8 +45,10 @@ pub struct PointCloud2MessageParser {
 
 impl PointCloud2MessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.PointCloud2";
+}
 
-    pub fn new(num_rows: usize) -> Self {
+impl Ros2MessageParser for PointCloud2MessageParser {
+    fn new(num_rows: usize) -> Self {
         let fields = FixedSizeListBuilder::with_capacity(
             ListBuilder::new(StructBuilder::new(
                 Fields::from(vec![
@@ -175,8 +177,10 @@ impl MessageParser for PointCloud2MessageParser {
         let point_cloud = cdr::try_decode_message::<sensor_msgs::PointCloud2>(msg.data.as_ref())
             .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
-        let cell = TimeCell::from_timestamp_nanos_since_epoch(point_cloud.header.stamp.as_nanos());
-        ctx.add_time_cell("timestamp", cell);
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+            point_cloud.header.stamp.as_nanos() as u64,
+            msg.channel.topic.clone(),
+        ));
 
         let Self {
             num_rows,
@@ -192,9 +196,6 @@ impl MessageParser for PointCloud2MessageParser {
 
             points_3ds,
         } = self;
-
-        let mut timepoint = TimePoint::default();
-        timepoint.insert_cell("timestamp", cell);
 
         height.values().append_slice(&[point_cloud.height]);
         width.values().append_slice(&[point_cloud.width]);

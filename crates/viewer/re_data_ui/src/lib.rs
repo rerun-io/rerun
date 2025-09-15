@@ -25,6 +25,7 @@ mod store_id;
 mod tensor;
 mod video;
 
+mod extra_data_ui;
 pub mod item_ui;
 
 pub use crate::tensor::tensor_summary_ui_grid_contents;
@@ -32,8 +33,9 @@ pub use component::ComponentPathLatestAtResults;
 pub use component_ui_registry::{add_to_registry, register_component_uis};
 pub use image::image_preview_ui;
 pub use instance_path::archetype_label_list_item_ui;
-use re_types_core::ArchetypeName;
+use re_chunk_store::UnitChunkShared;
 use re_types_core::reflection::Reflection;
+use re_types_core::{ArchetypeName, Component};
 
 pub type ArchetypeComponentMap =
     std::collections::BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;
@@ -145,4 +147,16 @@ pub fn annotations(
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
     annotation_map.load(ctx, query, std::iter::once(entity_path));
     annotation_map.find(entity_path)
+}
+
+/// Finds and deserializes the given component type if its descriptor matches the given archetype name.
+fn find_and_deserialize_archetype_mono_component<C: Component>(
+    components: &[(ComponentDescriptor, UnitChunkShared)],
+    archetype_name: Option<ArchetypeName>,
+) -> Option<C> {
+    components.iter().find_map(|(descr, chunk)| {
+        (descr.component_type == Some(C::name()) && descr.archetype == archetype_name)
+            .then(|| chunk.component_mono::<C>(descr)?.ok())
+            .flatten()
+    })
 }

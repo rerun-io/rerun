@@ -176,7 +176,7 @@ class AnyValues(AsComponents):
         """
         inst = cls(drop_untyped_nones, **kwargs)
         return ComponentColumnList([
-            ComponentColumn(batch.component_descriptor(), batch) for batch in inst._builder.component_batches
+            ComponentColumn(batch.component_descriptor(), batch) for batch in inst._builder.as_component_batches()
         ])
 
     @property

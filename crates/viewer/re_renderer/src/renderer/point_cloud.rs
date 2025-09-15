@@ -557,7 +557,7 @@ impl Renderer for PointCloudRenderer {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 ..Default::default()
             },
-            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE),
             // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
             multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), true),
         };

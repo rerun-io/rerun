@@ -90,8 +90,21 @@ pub enum SystemCommand {
     #[cfg(debug_assertions)]
     EnableInspectBlueprintTimeline(bool),
 
+    /// Navigate to time/entities/anchors/etc. that are set in a [`re_uri::Fragment`].
+    SetUrlFragment {
+        store_id: StoreId,
+        fragment: re_uri::Fragment,
+    },
+
+    /// Copies an url to the clipboard to the given a display mode, selection range, and url fragment.
+    CopyUrlWithContext {
+        display_mode: crate::DisplayMode,
+        time_range: Option<re_uri::TimeSelection>,
+        fragment: re_uri::Fragment,
+    },
+
     /// Set the item selection.
-    SetSelection(crate::Item),
+    SetSelection(crate::ItemCollection),
 
     /// Set the active timeline and time for the given recording.
     SetActiveTime {
@@ -129,6 +142,12 @@ pub enum SystemCommand {
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
+}
+
+impl SystemCommand {
+    pub fn clear_selection() -> Self {
+        Self::SetSelection(crate::ItemCollection::default())
+    }
 }
 
 impl std::fmt::Debug for SystemCommand {

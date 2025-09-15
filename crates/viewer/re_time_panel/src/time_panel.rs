@@ -19,8 +19,9 @@ use re_types_core::ComponentDescriptor;
 use re_ui::{ContextExt as _, DesignTokens, Help, UiExt as _, filter_widget, icons, list_item};
 use re_ui::{IconText, filter_widget::format_matching_text};
 use re_viewer_context::{
-    CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig, TimeControl,
-    TimeView, UiLayout, ViewerContext, VisitorControlFlow,
+    CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig,
+    SystemCommand, SystemCommandSender as _, TimeControl, TimeView, UiLayout, ViewerContext,
+    VisitorControlFlow,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -348,9 +349,7 @@ impl TimePanel {
             ui.vertical(|ui| {
                 if has_more_than_one_time_point {
                     ui.horizontal(|ui| {
-                        let times_per_timeline = entity_db.times_per_timeline();
-                        self.time_control_ui
-                            .play_pause_ui(time_ctrl, times_per_timeline, ui);
+                        self.time_control_ui.play_pause_ui(ctx, time_ctrl, ui);
 
                         self.time_control_ui.playback_speed_ui(time_ctrl, ui);
                         self.time_control_ui.fps_ui(time_ctrl, ui);
@@ -370,8 +369,7 @@ impl TimePanel {
             let times_per_timeline = entity_db.times_per_timeline();
 
             if has_more_than_one_time_point {
-                self.time_control_ui
-                    .play_pause_ui(time_ctrl, times_per_timeline, ui);
+                self.time_control_ui.play_pause_ui(ctx, time_ctrl, ui);
             }
 
             self.time_control_ui
@@ -1095,7 +1093,8 @@ impl TimePanel {
             });
 
             if let ControlFlow::Break(Some(item)) = result {
-                ctx.selection_state().set_selection(item.clone());
+                ctx.command_sender()
+                    .send_system(SystemCommand::SetSelection(item.clone().into()));
                 self.scroll_to_me_item = Some(item.clone());
                 self.range_selection_anchor_item = Some(item);
             }
@@ -1126,7 +1125,8 @@ impl TimePanel {
             });
 
             if let ControlFlow::Break(Some(item)) = result {
-                ctx.selection_state().set_selection(item.clone());
+                ctx.command_sender()
+                    .send_system(SystemCommand::SetSelection(item.clone().into()));
                 self.scroll_to_me_item = Some(item.clone());
                 self.range_selection_anchor_item = Some(item);
             }
@@ -1177,9 +1177,14 @@ impl TimePanel {
                     );
 
                     if modifiers.command {
-                        ctx.selection_state.extend_selection(items);
+                        // We extend into the current selection to append new items at the end.
+                        let mut selection = ctx.selection().clone();
+                        selection.extend(items);
+                        ctx.command_sender()
+                            .send_system(SystemCommand::SetSelection(selection));
                     } else {
-                        ctx.selection_state.set_selection(items);
+                        ctx.command_sender()
+                            .send_system(SystemCommand::SetSelection(items));
                     }
                 }
             }
@@ -1253,9 +1258,7 @@ impl TimePanel {
             // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    let times_per_timeline = entity_db.times_per_timeline();
-                    self.time_control_ui
-                        .play_pause_ui(time_ctrl, times_per_timeline, ui);
+                    self.time_control_ui.play_pause_ui(ctx, time_ctrl, ui);
                     self.time_control_ui.playback_speed_ui(time_ctrl, ui);
                     self.time_control_ui.fps_ui(time_ctrl, ui);
                 });
@@ -1277,8 +1280,7 @@ impl TimePanel {
             // One row:
             let times_per_timeline = entity_db.times_per_timeline();
 
-            self.time_control_ui
-                .play_pause_ui(time_ctrl, times_per_timeline, ui);
+            self.time_control_ui.play_pause_ui(ctx, time_ctrl, ui);
             self.time_control_ui
                 .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
             self.time_control_ui.playback_speed_ui(time_ctrl, ui);
@@ -1354,6 +1356,14 @@ impl TimePanel {
                         time_range_rect,
                     );
                 }
+
+                time_selection_ui::collapsed_loop_selection_ui(
+                    time_ctrl,
+                    &painter,
+                    &time_ranges_ui,
+                    ui,
+                    time_range_rect,
+                );
 
                 painter.hline(
                     time_range_rect.x_range(),
@@ -1478,19 +1488,13 @@ fn paint_range_highlight(
     painter: &egui::Painter,
     rect: Rect,
 ) {
-    let x_from = time_ranges_ui.x_from_time_f32(highlighted_range.min().into());
-    let x_to = time_ranges_ui.x_from_time_f32(highlighted_range.max().into());
-
-    if let (Some(x_from), Some(x_to)) = (x_from, x_to) {
-        let visible_history_area_rect =
-            Rect::from_x_y_ranges(x_from..=x_to, rect.y_range()).intersect(rect);
-
-        painter.rect_filled(
-            visible_history_area_rect,
-            0.0,
-            painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1),
-        );
-    }
+    time_selection_ui::paint_timeline_range(
+        highlighted_range,
+        time_ranges_ui,
+        painter,
+        rect,
+        painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1),
+    );
 }
 
 fn help(os: egui::os::OperatingSystem) -> Help {
