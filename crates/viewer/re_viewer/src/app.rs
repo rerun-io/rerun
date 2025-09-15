@@ -2271,12 +2271,12 @@ impl App {
                     // welcome screen would end up in different recordings!
 
                     // If we don't have any application ID to recommend (which means we are on the welcome screen),
-                    // then we use the file path as the application ID or generate a new one using a UUID.
+                    // then we use the file path as the application ID or the file name if there is no path (on web builds).
                     let application_id = file
                         .path
                         .clone()
                         .map(|p| ApplicationId::from(p.display().to_string()))
-                        .unwrap_or(ApplicationId::random());
+                        .unwrap_or(ApplicationId::from(file.name.clone()));
 
                     // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
                     // this can only be a recording.
