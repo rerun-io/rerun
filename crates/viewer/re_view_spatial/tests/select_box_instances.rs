@@ -14,7 +14,7 @@ use re_viewport_blueprint::ViewBlueprint;
 ///
 /// Note that we could also repeat this test for many other shapes but this would be largely redundant.
 ///
-/// As of writing this is _partially_ true for `transprent_geometry` tests as well.
+/// As of writing this is _partially_ true for `transparent_geometry` tests as well.
 /// However, the transparency test also tests regular meshes and doesn't take batches as input, so the dataflow is quite different.
 #[test]
 fn test_select_box_instances() {
