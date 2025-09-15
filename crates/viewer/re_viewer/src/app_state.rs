@@ -1,7 +1,7 @@
 use std::str::FromStr as _;
 
 use ahash::HashMap;
-use egui::{NumExt as _, Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
+use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
@@ -549,17 +549,22 @@ impl AppState {
                                 let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
                                 let resizable = show_blueprints;
                                 if resizable {
-                                    // Don't shrink either recordings panel or blueprint panel below this height, height = top panel + 1 opened recording + extra space before bluprint
-                                    let min_height_each =
-                                        104.0_f32.at_most(ui.available_height() / 2.0);
+                                    // Ensure Blueprint panel has at least 150px minimum height, because now it doesn't autogrow (as it does without resizing=active)
+                                    let blueprint_min_height = 150.0;
+                                    let recordings_min_height = 104.0; // Minimum for recordings panel = top panel + 1 opened recording + extra space before bluprint
+                                    let available_height = ui.available_height();
+
+                                    // Calculate the maximum height for recordings panel
+                                    // Allow full space usage minus the blueprint minimum height, so that the blueprint panel can grow below existing content
+                                    let max_recordings_height = (available_height - blueprint_min_height).max(recordings_min_height);
 
                                     egui::TopBottomPanel::top("recording_panel")
                                         .frame(egui::Frame::new())
                                         .resizable(resizable)
                                         .show_separator_line(false)
-                                        .min_height(min_height_each)
-                                        .default_height(210.0)
-                                        .max_height(ui.available_height() - min_height_each)
+                                        .min_height(recordings_min_height)
+                                        .max_height(max_recordings_height)
+                                        .default_height(160.0_f32.max(recordings_min_height))
                                         .show_inside(ui, |ui| {
                                             re_recording_panel::recordings_panel_ui(
                                                 &ctx,
