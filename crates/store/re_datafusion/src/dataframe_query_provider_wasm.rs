@@ -60,7 +60,6 @@ pub struct DataframePartitionStream {
     current_query: Option<(String, QueryHandle<StorageEngine>)>,
     query_expression: QueryExpression,
     remaining_partition_ids: Vec<String>,
-    dataset_id: EntryId, // TODO(tsaucer) delete?
 }
 
 impl DataframePartitionStream {
@@ -90,12 +89,10 @@ impl DataframePartitionStream {
             fetch_chunks_response_stream,
         );
 
-        // TODO(tsaucer) Verify if we can just remove StoreInfo
         let store_info = StoreInfo {
-            // Note: normally we use dataset name as application id,
-            // but we don't have it here, and it doesn't really
+            // Note: using partition id as the store id, shouldn't really
             // matter since this is just a temporary store.
-            store_id: StoreId::random(StoreKind::Recording, self.dataset_id.to_string()),
+            store_id: StoreId::random(StoreKind::Recording, self.partition_id.to_string()),
             cloned_from: None,
             store_source: StoreSource::Unknown,
             store_version: None,
@@ -392,7 +389,6 @@ impl ExecutionPlan for PartitionStreamExec {
 
         let client = self.client.clone();
 
-        // Get chunk infos for this partition
         let chunk_infos: Vec<RecordBatch> = remaining_partition_ids
             .iter()
             .filter_map(|pid| self.chunk_info.get(pid))
@@ -402,9 +398,6 @@ impl ExecutionPlan for PartitionStreamExec {
 
         let query_expression = self.query_expression.clone();
 
-        // For WASM, we'll use a new dataset_id since it gets set per request
-        let dataset_id = re_log_types::EntryId::new();
-
         let stream = DataframePartitionStream {
             projected_schema: self.projected_schema.clone(),
             client,
@@ -412,7 +405,6 @@ impl ExecutionPlan for PartitionStreamExec {
             remaining_partition_ids,
             current_query: None,
             query_expression,
-            dataset_id,
         };
 
         Ok(Box::pin(stream))
