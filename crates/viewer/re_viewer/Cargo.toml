@@ -140,7 +140,6 @@ serde-wasm-bindgen.workspace = true
 tap.workspace = true
 thiserror.workspace = true
 url.workspace = true
-vec1.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
 

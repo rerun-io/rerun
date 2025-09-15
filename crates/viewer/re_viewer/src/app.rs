@@ -558,7 +558,7 @@ impl App {
         let display_mode = self.state.navigation.peek();
         let selection = self.state.selection_state.selected_items();
 
-        let Ok(url) = crate::open_url_description::ViewerOpenUrl::from_context_expanded(
+        let Ok(url) = ViewerOpenUrl::from_context_expanded(
             store_hub,
             display_mode,
             time_ctrl
