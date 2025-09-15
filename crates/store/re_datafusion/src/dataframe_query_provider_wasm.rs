@@ -33,7 +33,7 @@ use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_redap_client::ConnectionClient;
 
 use crate::dataframe_query_common::{
-    align_record_batch_to_schema, compute_partition_stream_chunk_info,
+    align_record_batch_to_schema, group_chunk_infos_by_partition_id,
 };
 
 #[derive(Debug)]
@@ -258,7 +258,7 @@ impl PartitionStreamExec {
             Boundedness::Bounded,
         );
 
-        let chunk_info = compute_partition_stream_chunk_info(&chunk_info_batches)?;
+        let chunk_info = group_chunk_infos_by_partition_id(&chunk_info_batches)?;
 
         Ok(Self {
             props,
