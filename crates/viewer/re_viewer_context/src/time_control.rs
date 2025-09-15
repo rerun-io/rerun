@@ -825,6 +825,7 @@ mod tests {
             timeline,
             // Dummy `TimeInt` because were only interested in the counts.
             per_time: std::iter::once((TimeInt::ZERO, num)).collect(),
+            total_count: num,
         }
     }
 

@@ -25,6 +25,11 @@ impl TimelineStats {
     }
 
     pub fn num_events(&self) -> u64 {
+        debug_assert_eq!(
+            self.per_time.values().sum::<u64>(),
+            self.total_count,
+            "[DEBUG ASSERT] book keeping drifted"
+        );
         self.total_count
     }
 }
