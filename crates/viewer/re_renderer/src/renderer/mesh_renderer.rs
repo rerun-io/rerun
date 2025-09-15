@@ -312,21 +312,18 @@ impl MeshDrawData {
                     for chunk in instances.chunk_by(|(_, phases_a), (_, phases_b)| {
                         phases_a.contains(phase) == phases_b.contains(phase)
                     }) {
-                        if !chunk[0].1.contains(phase) {
-                            continue;
-                        }
-
                         let num_instances = chunk.len() as u32;
-                        let instance_end = instance_start + num_instances;
 
-                        batches.push(MeshBatch {
-                            mesh: mesh.clone(),
-                            instance_range: instance_start..instance_end,
-                            draw_phase: phase,
-                            has_transparent_tint: false,
-                            // Ordering isn't super important, so for many instances just pick the first as representative.
-                            position: chunk[0].0.world_from_mesh.transform_point3a(mesh_center),
-                        });
+                        if chunk[0].1.contains(phase) {
+                            batches.push(MeshBatch {
+                                mesh: mesh.clone(),
+                                instance_range: instance_start..(instance_start + num_instances),
+                                draw_phase: phase,
+                                has_transparent_tint: false,
+                                // Ordering isn't super important, so for many instances just pick the first as representative.
+                                position: chunk[0].0.world_from_mesh.transform_point3a(mesh_center),
+                            });
+                        }
 
                         instance_start += num_instances;
                     }
