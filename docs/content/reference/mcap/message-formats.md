@@ -18,7 +18,9 @@ We are continually adding support for more standard ROS2 message types. For the 
 
 ### Timelines
 
-Timestamps within Unix time range (1990-2100) create `ros2_timestamp` timelines. Values outside this range create `ros2_duration` timelines for relative time from custom epochs.
+In addition to the `log_time` and `publish_time` timestamps that are part of an MCAP message, some ROS message payloads can have an additional [`Header`]( https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Header.html) that may also contain timestamp information. These timestamps are put onto specific `ros2_*` timelines.
+
+Timestamps within Unix time range (1990-2100) create a `ros2_timestamp` timeline. Values outside this range create a `ros2_duration` timeline representing relative time from custom epochs.
 
 ### Limitations
 
