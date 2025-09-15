@@ -5,7 +5,9 @@ expression: test_results
 TestResult {
     op: IntCompares {
         operator: Lt,
-        value: 4,
+        value: Some(
+            4,
+        ),
     },
     field: Field {
         name: "column",
