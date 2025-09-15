@@ -111,24 +111,27 @@ impl BooleanFilter {
             SyntaxHighlightedBuilder::primitive(s).into_widget_text(ui.style())
         };
 
-        let clicked = match self {
+        let mut clicked = false;
+        match self {
             Self::NonNullable(query) => {
-                ui.re_radio_value(query, true, primitive(ui, "true"))
-                    .clicked()
-                    || ui
-                        .re_radio_value(query, false, primitive(ui, "false"))
-                        .clicked()
+                clicked |= ui
+                    .re_radio_value(query, true, primitive(ui, "true"))
+                    .clicked();
+                clicked |= ui
+                    .re_radio_value(query, false, primitive(ui, "false"))
+                    .clicked();
             }
 
             Self::Nullable(query) => {
-                ui.re_radio_value(query, Some(true), primitive(ui, "true"))
-                    .clicked()
-                    || ui
-                        .re_radio_value(query, Some(false), primitive(ui, "false"))
-                        .clicked()
-                    || ui
-                        .re_radio_value(query, None, primitive(ui, "null"))
-                        .clicked()
+                clicked |= ui
+                    .re_radio_value(query, Some(true), primitive(ui, "true"))
+                    .clicked();
+                clicked |= ui
+                    .re_radio_value(query, Some(false), primitive(ui, "false"))
+                    .clicked();
+                clicked |= ui
+                    .re_radio_value(query, None, primitive(ui, "null"))
+                    .clicked();
             }
         };
 
