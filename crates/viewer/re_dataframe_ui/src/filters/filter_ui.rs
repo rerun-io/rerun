@@ -362,7 +362,7 @@ impl SyntaxHighlighting for FilterOperation {
             }
 
             Self::Boolean(boolean_filter) => {
-                builder.append_primitive(boolean_filter.operand_text());
+                builder.append_primitive(&boolean_filter.operand_text());
             }
         }
     }

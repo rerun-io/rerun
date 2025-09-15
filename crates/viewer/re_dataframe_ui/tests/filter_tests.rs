@@ -530,7 +530,7 @@ async fn test_string_contains_list() {
         filter_snapshot!(
             FilterOperation::StringContains("ab".to_owned()),
             TestColumn::strings_lists(nullability),
-            format!("{nullability}_ab")
+            format!("{nullability:?}_ab")
         );
     }
 }
@@ -590,7 +590,7 @@ async fn test_boolean_equals_list_non_nullable() {
         filter_snapshot!(
             FilterOperation::Boolean(BooleanFilter::NonNullable(true)),
             TestColumn::bool_lists(nullability),
-            format!("{nullability}_true")
+            format!("{nullability:?}_true")
         );
     }
 }
@@ -603,7 +603,7 @@ async fn test_boolean_equals_list_nullable() {
         filter_snapshot!(
             FilterOperation::Boolean(BooleanFilter::Nullable(None)),
             TestColumn::bool_lists(nullability),
-            nullability.to_string()
+            format!("{nullability:?}")
         );
     }
 }

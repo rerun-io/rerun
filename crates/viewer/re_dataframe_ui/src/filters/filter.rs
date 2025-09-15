@@ -13,14 +13,19 @@ use datafusion::prelude::{Column, Expr, array_to_string, col, lit, lower};
 
 use super::BooleanFilter;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The nullability of a nested arrow datatype.
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Nullability {
+    /// The inner datatype is nullable (e.g. for a list array, one row's array may contain nulls).
     pub inner: bool,
+
+    /// The outer datatype is nullable (e.g, the a list array, one row may have a null instead of an
+    /// array).
     pub outer: bool,
 }
 
 // for test snapshot naming
-impl std::fmt::Display for Nullability {
+impl std::fmt::Debug for Nullability {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match (self.inner, self.outer) {
             (false, false) => write!(f, "no_null"),

@@ -85,20 +85,15 @@ impl BooleanFilter {
         }
     }
 
-    pub fn operand_text(&self) -> &str {
+    pub fn operand_text(&self) -> String {
         match self {
-            Self::NonNullable(value) => {
-                if *value {
-                    "true"
-                } else {
-                    "false"
-                }
-            }
+            Self::NonNullable(value) => value.to_string(),
+
             Self::Nullable(value) => {
                 if let Some(value) = value {
-                    if *value { "true" } else { "false" }
+                    value.to_string()
                 } else {
-                    "null"
+                    "null".to_owned()
                 }
             }
         }
