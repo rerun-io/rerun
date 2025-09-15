@@ -822,3 +822,4 @@ unnecessary_debug_formatting = "allow"
 #walkers = { git = "https://github.com/rerun-io/walkers", branch = "antoine/egui-0.32" } # https://github.com/podusowski/walkers/pull/345
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
+re_mp4 = { git = "https://github.com/rerun-io/re_mp4.git", branch="nick/fix_constant_sixe" }
