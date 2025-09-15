@@ -1488,7 +1488,7 @@ impl App {
             }
 
             UICommand::Share => {
-                let selection = self.state.selection_state.selected_items().clone();
+                let selection = self.state.selection_state.selected_items();
                 let rec_cfg = storage_context
                     .hub
                     .active_store_id()
@@ -1497,7 +1497,7 @@ impl App {
                     storage_context.hub,
                     display_mode,
                     rec_cfg,
-                    &selection,
+                    selection,
                 ) {
                     re_log::error!("Cannot share link to current screen: {err}");
                 }
