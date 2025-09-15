@@ -97,7 +97,7 @@ impl DataLoader for LeRobotDatasetLoader {
                     re_log::info!(
                         "Loading LeRobot dataset from {:?}, with {} episode(s)",
                         dataset.path,
-                        dataset.metadata.episodes.len(),
+                        dataset.metadata.episode_count(),
                     );
                     load_and_stream(&dataset, &application_id, &tx);
                 }
@@ -177,8 +177,8 @@ fn prepare_episode_chunks(
 ) -> Vec<(EpisodeIndex, StoreId)> {
     let mut store_ids = vec![];
 
-    for episode in &dataset.metadata.episodes {
-        let episode = episode.index;
+    for episode_index in dataset.metadata.episodes.keys() {
+        let episode = *episode_index;
 
         let store_id = StoreId::recording(application_id.clone(), format!("episode_{}", episode.0));
         let set_store_info = LoadedData::LogMsg(
