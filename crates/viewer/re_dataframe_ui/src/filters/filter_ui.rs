@@ -472,7 +472,9 @@ impl FilterOperation {
                 operator.to_string()
             }
             Self::StringContains(_) => "contains".to_owned(),
-            Self::NonNullableBoolean(_) | Self::NullableBoolean(_) | Self::Timestamp(_) => "is".to_owned(),
+            Self::NonNullableBoolean(_) | Self::NullableBoolean(_) | Self::Timestamp(_) => {
+                "is".to_owned()
+            }
         }
     }
 }
