@@ -61,7 +61,7 @@ impl ModalHandler {
         }
     }
 
-    /// Whet
+    /// Whether the modal is currently open.
     pub fn is_open(&self) -> bool {
         self.modal.is_some()
     }
