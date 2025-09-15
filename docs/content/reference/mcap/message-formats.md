@@ -16,6 +16,10 @@ The `ros2msg` layer provides automatic visualization for common ROS2 message typ
 
 We are continually adding support for more standard ROS2 message types. For the complete list of currently supported messages, see the [ROS2 message parsers in our codebase](../../../../crates/utils/re_mcap/src/layers/ros2.rs).
 
+### Timelines
+
+Timestamps within Unix time range (1990-2100) create `ros2_timestamp` timelines. Values outside this range create `ros2_duration` timelines for relative time from custom epochs.
+
 ### Limitations
 
 The following are known limitations and link to the corresponding GitHub issues.
