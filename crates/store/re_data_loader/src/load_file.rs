@@ -37,10 +37,12 @@ pub fn load_from_path(
 
     re_log::info!("Loading {path:?}…");
 
-    let application_id = path
-        .file_name()
-        .map(|f| f.to_string_lossy().to_string())
-        .map(ApplicationId::from);
+    // If no application ID was specified, we derive one from the filename.
+    let application_id = settings.application_id.clone().or_else(|| {
+        path.file_name()
+            .map(|f| f.to_string_lossy().to_string())
+            .map(ApplicationId::from)
+    });
     let settings = &crate::DataLoaderSettings {
         // When loading a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot loader handles this automatically.
         force_store_info: !crate::lerobot::is_lerobot_dataset(path),

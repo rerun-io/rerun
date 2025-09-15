@@ -90,6 +90,7 @@ function(download_and_build_arrow)
         GIT_TAG apache-arrow-18.0.0
         GIT_SHALLOW ON
         GIT_PROGRESS OFF # Git progress sounds like a nice idea but is in practice very spammy.
+        UPDATE_COMMAND "" # Prevent unnecessary rebuilds on every cmake --build
 
         # Apply patch after checkout but before configure
         # TODO(apache/arrow#45985): Arrow can't support CMake 4.0 yet
