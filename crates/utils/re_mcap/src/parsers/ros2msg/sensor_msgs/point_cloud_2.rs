@@ -331,9 +331,8 @@ impl MessageParser for PointCloud2MessageParser {
         let point_cloud = cdr::try_decode_message::<sensor_msgs::PointCloud2>(msg.data.as_ref())
             .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
-        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
             point_cloud.header.stamp.as_nanos() as u64,
-            msg.channel.topic.clone(),
         ));
 
         let Self {
