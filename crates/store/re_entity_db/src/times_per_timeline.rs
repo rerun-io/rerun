@@ -8,7 +8,7 @@ use re_log_types::{TimeInt, Timeline};
 
 pub type TimeCounts = BTreeMap<TimeInt, u64>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TimelineStats {
     pub timeline: Timeline,
     pub per_time: TimeCounts,
@@ -20,6 +20,10 @@ impl TimelineStats {
             timeline,
             per_time: Default::default(),
         }
+    }
+
+    pub fn num_events(&self) -> u64 {
+        self.per_time.values().sum()
     }
 }
 
@@ -42,6 +46,11 @@ impl TimesPerTimeline {
     #[inline]
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> + '_ {
         self.0.values().map(|stats| &stats.timeline)
+    }
+
+    #[inline]
+    pub fn timelines_with_stats(&self) -> impl ExactSizeIterator<Item = &TimelineStats> + '_ {
+        self.0.values()
     }
 }
 
