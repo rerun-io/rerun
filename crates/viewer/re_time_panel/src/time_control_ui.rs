@@ -28,11 +28,21 @@ impl TimeControlUi {
             egui::ComboBox::from_id_salt("timeline")
                 .selected_text(time_control.timeline().name().as_str())
                 .show_ui(ui, |ui| {
-                    for timeline in times_per_timeline.timelines() {
+                    for timeline_stats in times_per_timeline.timelines_with_stats() {
+                        let timeline = &timeline_stats.timeline;
                         if ui
                             .selectable_label(
                                 timeline == time_control.timeline(),
-                                timeline.name().as_str(),
+                                (
+                                    timeline.name().as_str(),
+                                    egui::Atom::grow(),
+                                    egui::RichText::new(format!(
+                                        "{} events",
+                                        re_format::format_uint(timeline_stats.num_events())
+                                    ))
+                                    .size(10.0)
+                                    .color(ui.tokens().text_subdued),
+                                ),
                             )
                             .clicked()
                         {
