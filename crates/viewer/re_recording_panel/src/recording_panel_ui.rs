@@ -201,6 +201,9 @@ fn all_sections_ui(
     //
 
     loading_receivers_ui(ctx, ui, &recording_panel_data.loading_receivers);
+
+    // Add space at the end of the recordings panel
+    ui.add_space(8.0);
 }
 
 // ---

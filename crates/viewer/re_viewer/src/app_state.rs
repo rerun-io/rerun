@@ -545,9 +545,9 @@ impl AppState {
                                 let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
                                 let resizable = show_blueprints;
                                 if resizable {
-                                    // Don't shrink either recordings panel or blueprint panel below this height
+                                    // Don't shrink either recordings panel or blueprint panel below this height, height = top panel + 1 opened recording + extra space before bluprint
                                     let min_height_each =
-                                        90.0_f32.at_most(ui.available_height() / 2.0);
+                                        104.0_f32.at_most(ui.available_height() / 2.0);
 
                                     egui::TopBottomPanel::top("recording_panel")
                                         .frame(egui::Frame::new())
@@ -572,8 +572,6 @@ impl AppState {
                                         welcome_screen_state.hide_examples,
                                     );
                                 }
-
-                                ui.add_space(4.0);
 
                                 if show_blueprints {
                                     blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
