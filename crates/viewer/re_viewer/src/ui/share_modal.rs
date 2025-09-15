@@ -1,5 +1,4 @@
 use egui::{AtomExt as _, IntoAtoms, NumExt as _};
-use web_time::{Duration, Instant};
 
 use re_log_types::AbsoluteTimeRange;
 use re_redap_browser::EXAMPLES_ORIGIN;
@@ -15,14 +14,16 @@ use re_viewer_context::{
 
 use crate::open_url::ViewerOpenUrl;
 
-const COPIED_FEEDBACK_DURATION: Duration = Duration::from_millis(500);
-
 pub struct ShareModal {
     modal: ModalHandler,
 
     url: Option<ViewerOpenUrl>,
     create_web_viewer_url: bool,
-    last_time_copied: Option<Instant>,
+
+    /// Whether to show feedback that the link just has been copied to the clipboard.
+    ///
+    /// This is shown on pressing the copy link button and reset when the button is no longer hovered.
+    show_copied_feedback: bool,
 }
 
 impl Default for ShareModal {
@@ -36,7 +37,7 @@ impl Default for ShareModal {
 
             url: None,
             create_web_viewer_url,
-            last_time_copied: None,
+            show_copied_feedback: false,
         }
     }
 }
@@ -150,10 +151,7 @@ impl ShareModal {
                     url_string
                 };
 
-                let copy_link_label = if self
-                    .last_time_copied
-                    .is_some_and(|t| t.elapsed() < COPIED_FEEDBACK_DURATION)
-                {
+                let copy_link_label = if self.show_copied_feedback {
                     (
                         egui::Atom::grow(),
                         "Copied to clipboard!",
@@ -191,7 +189,9 @@ impl ShareModal {
                     .inner;
                 if copy_link_response.clicked() {
                     ui.ctx().copy_text(url_string.clone());
-                    self.last_time_copied = Some(Instant::now());
+                    self.show_copied_feedback = true;
+                } else if !copy_link_response.hovered() {
+                    self.show_copied_feedback = false;
                 }
 
                 ui.list_item_scope("share_dialog_url_settings", |ui| {
