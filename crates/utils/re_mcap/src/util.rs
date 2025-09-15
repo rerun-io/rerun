@@ -93,11 +93,7 @@ mod tests {
     fn test_guess_from_nanos() {
         // within reasonable unix range for `TimestampCell::Unix`
         let unix_ts_2023: u64 = 1_672_531_200_000_000_000; // 2023-01-01
-        let cell = TimestampCell::guess_from_nanos_with_names(
-            unix_ts_2023,
-            "test_timeline",
-            "test_duration_timeline",
-        );
+        let cell = TimestampCell::guess_from_nanos(unix_ts_2023);
         let TimestampCell::Unix { timeline: _, time } = cell else {
             panic!("expected `TimestampCell::Unix` variant")
         };
@@ -111,39 +107,27 @@ mod tests {
 
         // early date for `TimestampCell::Custom`
         let early: u64 = 100_000_000;
-        let cell = TimestampCell::guess_from_nanos_with_names(
-            early,
-            "test_timeline",
-            "test_duration_timeline",
-        );
+        let cell = TimestampCell::guess_from_nanos(early);
         let TimestampCell::Custom { timeline, time } = cell else {
             panic!("expected `TimestampCell::Custom` variant")
         };
-        assert_eq!(timeline, "test_duration_timeline");
+        assert_eq!(timeline, "duration");
         assert!(matches!(time.typ, TimeType::DurationNs));
         assert_eq!(time, TimeCell::from_duration_nanos(early as i64));
 
         // after 2100 for `TimestampCell::Custom`
         let far_future: u64 = 5_000_000_000_000_000_000;
-        let cell = TimestampCell::guess_from_nanos_with_names(
-            far_future,
-            "test_timeline",
-            "test_duration_timeline",
-        );
+        let cell = TimestampCell::guess_from_nanos(far_future);
         let TimestampCell::Custom { timeline, time } = cell else {
             panic!("expected `TimestampCell::Custom` variant")
         };
-        assert_eq!(timeline, "test_duration_timeline");
+        assert_eq!(timeline, "duration");
         assert!(matches!(time.typ, TimeType::DurationNs));
         assert_eq!(time, TimeCell::from_duration_nanos(far_future as i64));
 
         // exactly 1990-01-01 for `TimestampCell::Unix`
         let year_1990 = TimestampCell::YEAR_1990_NS as u64;
-        let cell = TimestampCell::guess_from_nanos_with_names(
-            year_1990,
-            "test_timeline",
-            "test_duration_timeline",
-        );
+        let cell = TimestampCell::guess_from_nanos(year_1990);
         let TimestampCell::Unix { timeline: _, time } = cell else {
             panic!("expected `TimestampCell::Unix` at lower boundary")
         };
@@ -155,11 +139,7 @@ mod tests {
 
         // exactly 2100-01-01 for `TimestampCell::Unix`
         let year_2100 = TimestampCell::YEAR_2100_NS as u64;
-        let cell = TimestampCell::guess_from_nanos_with_names(
-            year_2100,
-            "test_timeline",
-            "test_duration_timeline",
-        );
+        let cell = TimestampCell::guess_from_nanos(year_2100);
         let TimestampCell::Unix { timeline: _, time } = cell else {
             panic!("expected `TimestampCell::Unix` at upper boundary")
         };
@@ -171,29 +151,21 @@ mod tests {
 
         // just outside lower boundary for `TimestampCell::Custom`
         let before_1990 = (TimestampCell::YEAR_1990_NS - 1) as u64;
-        let cell = TimestampCell::guess_from_nanos_with_names(
-            before_1990,
-            "test_timeline",
-            "test_duration_timeline",
-        );
+        let cell = TimestampCell::guess_from_nanos(before_1990);
         let TimestampCell::Custom { timeline, time } = cell else {
             panic!("expected `TimestampCell::Custom` just before lower boundary")
         };
-        assert_eq!(timeline, "test_duration_timeline");
+        assert_eq!(timeline, "duration");
         assert!(matches!(time.typ, TimeType::DurationNs));
         assert_eq!(time, TimeCell::from_duration_nanos(before_1990 as i64));
 
         // just outside upper boundary for `TimestampCell::Custom`
         let after_2100 = (TimestampCell::YEAR_2100_NS + 1) as u64;
-        let cell = TimestampCell::guess_from_nanos_with_names(
-            after_2100,
-            "test_timeline",
-            "test_duration_timeline",
-        );
+        let cell = TimestampCell::guess_from_nanos(after_2100);
         let TimestampCell::Custom { timeline, time } = cell else {
             panic!("expected `TimestampCell::Custom` just after upper boundary")
         };
-        assert_eq!(timeline, "test_duration_timeline");
+        assert_eq!(timeline, "duration");
         assert!(matches!(time.typ, TimeType::DurationNs));
         assert_eq!(time, TimeCell::from_duration_nanos(after_2100 as i64));
     }
