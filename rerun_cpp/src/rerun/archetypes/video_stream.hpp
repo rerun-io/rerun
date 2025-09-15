@@ -7,6 +7,7 @@
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/opacity.hpp"
 #include "../components/video_codec.hpp"
 #include "../components/video_sample.hpp"
 #include "../result.hpp"
@@ -57,6 +58,11 @@ namespace rerun::archetypes {
         /// See `components::VideoCodec` for codec specific requirements.
         std::optional<ComponentBatch> sample;
 
+        /// Opacity of the video stream, useful for layering several media.
+        ///
+        /// Defaults to 1.0 (fully opaque).
+        std::optional<ComponentBatch> opacity;
+
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
@@ -76,6 +82,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_sample = ComponentDescriptor(
             ArchetypeName, "VideoStream:sample",
             Loggable<rerun::components::VideoSample>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `opacity` field.
+        static constexpr auto Descriptor_opacity = ComponentDescriptor(
+            ArchetypeName, "VideoStream:opacity",
+            Loggable<rerun::components::Opacity>::ComponentType
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
@@ -150,6 +161,23 @@ namespace rerun::archetypes {
         /// be used when logging a single row's worth of data.
         VideoStream with_many_sample(const Collection<rerun::components::VideoSample>& _sample) && {
             sample = ComponentBatch::from_loggable(_sample, Descriptor_sample).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Opacity of the video stream, useful for layering several media.
+        ///
+        /// Defaults to 1.0 (fully opaque).
+        VideoStream with_opacity(const rerun::components::Opacity& _opacity) && {
+            opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `opacity` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_opacity` should
+        /// be used when logging a single row's worth of data.
+        VideoStream with_many_opacity(const Collection<rerun::components::Opacity>& _opacity) && {
+            opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
             return std::move(*this);
         }
 

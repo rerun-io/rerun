@@ -149,9 +149,9 @@ fn schema_static_columns() -> anyhow::Result<()> {
     );
 
     let any_values = AnyValues::default()
-        .with_field("yak", Arc::new(StringArray::from(vec!["yuk"])))
-        .with_field("foo", Arc::new(StringArray::from(vec!["bar"])))
-        .with_field("baz", Arc::new(UInt32Array::from(vec![42u32])));
+        .with_component_from_data("yak", Arc::new(StringArray::from(vec!["yuk"])))
+        .with_component_from_data("foo", Arc::new(StringArray::from(vec!["bar"])))
+        .with_component_from_data("baz", Arc::new(UInt32Array::from(vec![42u32])));
 
     let entity_path = EntityPath::from("test");
 

@@ -48,6 +48,8 @@ plugins:
               - rerun_bindings
             annotations_path: brief
             signature_crossrefs: true
+            extensions:
+              - griffe_warnings_deprecated
 
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files
       scripts:

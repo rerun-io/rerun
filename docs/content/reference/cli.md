@@ -57,6 +57,11 @@ The Rerun command-line interface:
 > Example: `16GB` or `50%` (of system total).
 > Default is `0B`, or `25%` if any of the `--serve-*` flags are set.
 
+* `--newest-first <NEWEST_FIRST>`
+> If true, play back the most recent data first when new clients connect.
+>
+> [Default: `false`]
+
 * `--persist-state <PERSIST_STATE>`
 > Whether the Rerun Viewer should persist the state of the viewer to disk.
 > When persisted, the state will be stored at the following locations:
@@ -297,6 +302,11 @@ Convert an .mcap file to an .rrd.
 
 * `-l, --layer <SELECTED_LAYERS>`
 > Specifies which layers to apply during conversion.
+
+* `--disable-raw-fallback <DISABLE_RAW_FALLBACK>`
+> Disable using the raw layer as a fallback for unsupported channels. By default, channels that cannot be handled by semantic layers (protobuf, ROS2) will be processed by the raw layer.
+>
+> [Default: `false`]
 
 * `--recording-id <RECORDING_ID>`
 > If set, specifies the recording id of the output.

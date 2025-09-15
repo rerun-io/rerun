@@ -75,8 +75,6 @@ impl ::prost::Name for DataSource {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterWithDatasetRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(message, repeated, tag = "2")]
     pub data_sources: ::prost::alloc::vec::Vec<DataSource>,
     #[prost(
@@ -138,10 +136,7 @@ impl ::prost::Name for WriteChunksResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct GetPartitionTableSchemaRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-}
+pub struct GetPartitionTableSchemaRequest {}
 impl ::prost::Name for GetPartitionTableSchemaRequest {
     const NAME: &'static str = "GetPartitionTableSchemaRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
@@ -169,10 +164,11 @@ impl ::prost::Name for GetPartitionTableSchemaResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ScanPartitionTableRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-    #[prost(message, optional, tag = "2")]
-    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
+    /// A list of column names to be projected server-side.
+    ///
+    /// All of them if left empty.
+    #[prost(string, repeated, tag = "3")]
+    pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for ScanPartitionTableRequest {
     const NAME: &'static str = "ScanPartitionTableRequest";
@@ -201,10 +197,7 @@ impl ::prost::Name for ScanPartitionTableResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct GetDatasetSchemaRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-}
+pub struct GetDatasetSchemaRequest {}
 impl ::prost::Name for GetDatasetSchemaRequest {
     const NAME: &'static str = "GetDatasetSchemaRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
@@ -232,8 +225,6 @@ impl ::prost::Name for GetDatasetSchemaResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateIndexRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// List of specific partitions that will be indexed (all if left empty).
     #[prost(message, repeated, tag = "2")]
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
@@ -274,36 +265,6 @@ impl ::prost::Name for CreateIndexResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.CreateIndexResponse".into()
-    }
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ReIndexRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-}
-impl ::prost::Name for ReIndexRequest {
-    const NAME: &'static str = "ReIndexRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ReIndexRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ReIndexRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ReIndexResponse {
-    #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-}
-impl ::prost::Name for ReIndexResponse {
-    const NAME: &'static str = "ReIndexResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ReIndexResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ReIndexResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -429,8 +390,6 @@ impl ::prost::Name for BTreeIndex {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SearchDatasetRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Index column that is queried
     #[prost(message, optional, tag = "2")]
     pub column: ::core::option::Option<IndexColumn>,
@@ -545,8 +504,6 @@ impl ::prost::Name for BTreeIndexQuery {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryDatasetRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Client can specify what partitions are queried. If left unspecified (empty list),
     /// all partitions will be queried.
     #[prost(message, repeated, tag = "2")]
@@ -793,6 +750,43 @@ impl ::prost::Name for GetChunksResponse {
         "/rerun.cloud.v1alpha1.GetChunksResponse".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchChunksRequest {
+    /// Information about the chunks to fetch. These dataframes have to include the following columns:
+    /// * `chunk_id` - Chunk unique identifier
+    /// * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
+    /// * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
+    /// * `chunk_key` - chunk location details
+    #[prost(message, repeated, tag = "1")]
+    pub chunk_infos: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for FetchChunksRequest {
+    const NAME: &'static str = "FetchChunksRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.FetchChunksRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.FetchChunksRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FetchChunksResponse {
+    /// Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
+    /// cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
+    #[prost(message, repeated, tag = "1")]
+    pub chunks: ::prost::alloc::vec::Vec<super::super::log_msg::v1alpha1::ArrowMsg>,
+}
+impl ::prost::Name for FetchChunksResponse {
+    const NAME: &'static str = "FetchChunksResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.FetchChunksResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.FetchChunksResponse".into()
+    }
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct GetTableSchemaRequest {
     #[prost(message, optional, tag = "1")]
@@ -860,28 +854,38 @@ impl ::prost::Name for ScanTableResponse {
 pub struct DoMaintenanceRequest {
     #[prost(message, optional, tag = "1")]
     pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-    /// Create the acceleration structures for temporal queries.
+    /// Optimize all builtin and user-defined indexes on this dataset.
     ///
-    /// This will recreate all scalar indexes from scratch everytime.
-    ///
-    /// TODO(cmc): support incremental scalar indexing & index compaction
+    /// This merges all individual index deltas back in the main index, improving runtime performance
+    /// of all indexes.
     #[prost(bool, tag = "2")]
-    pub build_scalar_indexes: bool,
+    pub optimize_indexes: bool,
+    /// Retrain all user-defined indexes on this dataset from scratch.
+    ///
+    /// This retrains all user-defined indexes from scratch for optimal runtime performance.
+    /// This is faster than re-creating the indexes, and automatically keeps track of their configurations.
+    ///
+    /// This implies `optimize_indexes`.
+    #[prost(bool, tag = "6")]
+    pub retrain_indexes: bool,
     /// Compact the underlying Lance fragments, for all Rerun Manifests.
     ///
     /// Hardcoded to the default (optimal) settings.
     #[prost(bool, tag = "3")]
     pub compact_fragments: bool,
     /// If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+    ///
     /// In case requested date is more recent than 1 hour, it will be ignored and 1 hour ago
     /// timestamp will be used. This is to prevent still used files (like recent transaction files)
     /// to be removed and cause Lance Dataset update issues.
+    ///
     /// See <https://docs.rs/lance/latest/lance/dataset/cleanup/index.html>
     /// and <https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html>
     #[prost(message, optional, tag = "4")]
     pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
     /// Override default platform behavior and allow cleanup of recent files. This will respect
     /// the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
+    ///
     /// ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
     #[prost(bool, tag = "5")]
     pub unsafe_allow_recent_cleanup: bool,
@@ -909,6 +913,31 @@ impl ::prost::Name for DoMaintenanceResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.DoMaintenanceResponse".into()
+    }
+}
+/// Request all maintenance operations to run on all datasets
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DoGlobalMaintenanceRequest {}
+impl ::prost::Name for DoGlobalMaintenanceRequest {
+    const NAME: &'static str = "DoGlobalMaintenanceRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DoGlobalMaintenanceRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DoGlobalMaintenanceRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DoGlobalMaintenanceResponse {}
+impl ::prost::Name for DoGlobalMaintenanceResponse {
+    const NAME: &'static str = "DoGlobalMaintenanceResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DoGlobalMaintenanceResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DoGlobalMaintenanceResponse".into()
     }
 }
 /// A task is a unit of work that can be submitted to the system
@@ -1204,10 +1233,7 @@ impl ::prost::Name for CreateDatasetEntryResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ReadDatasetEntryRequest {
-    #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-}
+pub struct ReadDatasetEntryRequest {}
 impl ::prost::Name for ReadDatasetEntryRequest {
     const NAME: &'static str = "ReadDatasetEntryRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
@@ -1675,6 +1701,17 @@ pub mod rerun_cloud_service_client {
     use tonic::codegen::http::Uri;
     use tonic::codegen::*;
     /// The Rerun Cloud public API.
+    ///
+    /// ## Headers
+    ///
+    /// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+    ///
+    /// The so-called "standard dataset headers" correspond to at least one of the following headers:
+    /// * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.
+    /// * x-rerun-entry-name-bin: Name of the entry of interest, e.g. `droid:sample2k`.
+    ///
+    /// Headers with a -bin suffix must be base64-encoded (HTTP only supports ASCII values, UTF8 strings must
+    /// binary encoded).
     #[derive(Debug, Clone)]
     pub struct RerunCloudServiceClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -1837,6 +1874,9 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Fetch metadata about a specific dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn read_dataset_entry(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadDatasetEntryRequest>,
@@ -1916,9 +1956,9 @@ pub mod rerun_cloud_service_client {
         }
         /// Write chunks to one or more partitions.
         ///
-        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
         ///
-        /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
+        /// This endpoint requires the standard dataset headers.
         pub async fn write_chunks(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::WriteChunksRequest>,
@@ -1938,10 +1978,14 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.client_streaming(req, path, codec).await
         }
-        /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
+        /// Returns the schema of the partition table.
         ///
-        /// * To inspect the data of the partition table, use `ScanPartitionTable`.
-        /// * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+        /// This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
+        ///
+        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanPartitionTable`.
+        ///
+        /// This endpoint requires the standard dataset headers.
         pub async fn get_partition_table_schema(
             &mut self,
             request: impl tonic::IntoRequest<super::GetPartitionTableSchemaRequest>,
@@ -1963,9 +2007,9 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Inspect the contents of the partition table (i.e. the dataset manifest).
+        /// Inspect the contents of the partition table.
         ///
-        /// The returned data will follow the schema specified by `GetPartitionTableSchema`.
+        /// The data will follow the schema returned by `GetPartitionTableSchema`.
         pub async fn scan_partition_table(
             &mut self,
             request: impl tonic::IntoRequest<super::ScanPartitionTableRequest>,
@@ -2030,25 +2074,6 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Recreate an index with the same configuration but (potentially) new data.
-        pub async fn re_index(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ReIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/ReIndex",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "ReIndex",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
         /// Search a previously created index.
         pub async fn search_dataset(
             &mut self,
@@ -2071,7 +2096,11 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs.
+        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
+        /// as information that can be sent back to Rerun Cloud to fetch the actual chunks as part
+        /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
+        /// from the server about the chunks that contain relevant information. 2nd step is fetching
+        /// those chunks (the actual data).
         ///
         /// These Rerun-native queries include:
         /// * Filtering by specific partition and chunk IDs.
@@ -2128,6 +2157,32 @@ pub mod rerun_cloud_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "GetChunks",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
+        /// Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
+        /// that is, the result of `QueryDataset` should include all the necessary information to send
+        /// the actual chunk requests, which is the 2nd step of the query process.
+        ///
+        /// See `FetchChunksRequest` for details on the fields that describe each individual chunk.
+        pub async fn fetch_chunks(
+            &mut self,
+            request: impl tonic::IntoRequest<super::FetchChunksRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::FetchChunksResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/FetchChunks",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "FetchChunks",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -2273,6 +2328,27 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Run global maintenance operations on the platform: this includes optimization
+        /// of all datasets, garbage collection of unused data, and can include more in the future.
+        pub async fn do_global_maintenance(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DoGlobalMaintenanceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DoGlobalMaintenanceResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/DoGlobalMaintenance",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "DoGlobalMaintenance",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -2308,6 +2384,9 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::CreateDatasetEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::CreateDatasetEntryResponse>, tonic::Status>;
+        /// Fetch metadata about a specific dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn read_dataset_entry(
             &self,
             request: tonic::Request<super::ReadDatasetEntryRequest>,
@@ -2327,17 +2406,21 @@ pub mod rerun_cloud_service_server {
         ) -> std::result::Result<tonic::Response<super::RegisterWithDatasetResponse>, tonic::Status>;
         /// Write chunks to one or more partitions.
         ///
-        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
         ///
-        /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
+        /// This endpoint requires the standard dataset headers.
         async fn write_chunks(
             &self,
             request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
         ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>;
-        /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
+        /// Returns the schema of the partition table.
         ///
-        /// * To inspect the data of the partition table, use `ScanPartitionTable`.
-        /// * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+        /// This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
+        ///
+        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanPartitionTable`.
+        ///
+        /// This endpoint requires the standard dataset headers.
         async fn get_partition_table_schema(
             &self,
             request: tonic::Request<super::GetPartitionTableSchemaRequest>,
@@ -2350,9 +2433,9 @@ pub mod rerun_cloud_service_server {
                 Item = std::result::Result<super::ScanPartitionTableResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Inspect the contents of the partition table (i.e. the dataset manifest).
+        /// Inspect the contents of the partition table.
         ///
-        /// The returned data will follow the schema specified by `GetPartitionTableSchema`.
+        /// The data will follow the schema returned by `GetPartitionTableSchema`.
         async fn scan_partition_table(
             &self,
             request: tonic::Request<super::ScanPartitionTableRequest>,
@@ -2370,11 +2453,6 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::CreateIndexRequest>,
         ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>;
-        /// Recreate an index with the same configuration but (potentially) new data.
-        async fn re_index(
-            &self,
-            request: tonic::Request<super::ReIndexRequest>,
-        ) -> std::result::Result<tonic::Response<super::ReIndexResponse>, tonic::Status>;
         /// Server streaming response type for the SearchDataset method.
         type SearchDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::SearchDatasetResponse, tonic::Status>,
@@ -2390,7 +2468,11 @@ pub mod rerun_cloud_service_server {
                 Item = std::result::Result<super::QueryDatasetResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs.
+        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
+        /// as information that can be sent back to Rerun Cloud to fetch the actual chunks as part
+        /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
+        /// from the server about the chunks that contain relevant information. 2nd step is fetching
+        /// those chunks (the actual data).
         ///
         /// These Rerun-native queries include:
         /// * Filtering by specific partition and chunk IDs.
@@ -2421,6 +2503,20 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::GetChunksRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
+        /// Server streaming response type for the FetchChunks method.
+        type FetchChunksStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::FetchChunksResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
+        /// that is, the result of `QueryDataset` should include all the necessary information to send
+        /// the actual chunk requests, which is the 2nd step of the query process.
+        ///
+        /// See `FetchChunksRequest` for details on the fields that describe each individual chunk.
+        async fn fetch_chunks(
+            &self,
+            request: tonic::Request<super::FetchChunksRequest>,
+        ) -> std::result::Result<tonic::Response<Self::FetchChunksStream>, tonic::Status>;
         /// Register a foreign table as a new table entry in the catalog.
         async fn register_table(
             &self,
@@ -2464,8 +2560,25 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::DoMaintenanceRequest>,
         ) -> std::result::Result<tonic::Response<super::DoMaintenanceResponse>, tonic::Status>;
+        /// Run global maintenance operations on the platform: this includes optimization
+        /// of all datasets, garbage collection of unused data, and can include more in the future.
+        async fn do_global_maintenance(
+            &self,
+            request: tonic::Request<super::DoGlobalMaintenanceRequest>,
+        ) -> std::result::Result<tonic::Response<super::DoGlobalMaintenanceResponse>, tonic::Status>;
     }
     /// The Rerun Cloud public API.
+    ///
+    /// ## Headers
+    ///
+    /// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+    ///
+    /// The so-called "standard dataset headers" correspond to at least one of the following headers:
+    /// * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.
+    /// * x-rerun-entry-name-bin: Name of the entry of interest, e.g. `droid:sample2k`.
+    ///
+    /// Headers with a -bin suffix must be base64-encoded (HTTP only supports ASCII values, UTF8 strings must
+    /// binary encoded).
     #[derive(Debug)]
     pub struct RerunCloudServiceServer<T> {
         inner: Arc<T>,
@@ -3133,45 +3246,6 @@ pub mod rerun_cloud_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.cloud.v1alpha1.RerunCloudService/ReIndex" => {
-                    #[allow(non_camel_case_types)]
-                    struct ReIndexSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService> tonic::server::UnaryService<super::ReIndexRequest> for ReIndexSvc<T> {
-                        type Response = super::ReIndexResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ReIndexRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::re_index(&inner, request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = ReIndexSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
                 "/rerun.cloud.v1alpha1.RerunCloudService/SearchDataset" => {
                     #[allow(non_camel_case_types)]
                     struct SearchDatasetSvc<T: RerunCloudService>(pub Arc<T>);
@@ -3289,6 +3363,50 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetChunksSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/FetchChunks" => {
+                    #[allow(non_camel_case_types)]
+                    struct FetchChunksSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::FetchChunksRequest>
+                        for FetchChunksSvc<T>
+                    {
+                        type Response = super::FetchChunksResponse;
+                        type ResponseStream = T::FetchChunksStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::FetchChunksRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::fetch_chunks(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = FetchChunksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3587,6 +3705,49 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DoMaintenanceSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/DoGlobalMaintenance" => {
+                    #[allow(non_camel_case_types)]
+                    struct DoGlobalMaintenanceSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::DoGlobalMaintenanceRequest>
+                        for DoGlobalMaintenanceSvc<T>
+                    {
+                        type Response = super::DoGlobalMaintenanceResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DoGlobalMaintenanceRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::do_global_maintenance(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DoGlobalMaintenanceSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

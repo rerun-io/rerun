@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import platform
 import subprocess
 import time
 from typing import TYPE_CHECKING
@@ -23,6 +24,20 @@ CATALOG_URL = f"rerun+http://{HOST}:{PORT}"
 DATASET_NAME = "dataset"
 
 DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_windows_tzdata() -> None:
+    """
+    Adds timezone data on Windows machines.
+
+    Pyarrow requires timezone data to handle timestamps properly.
+    Arrow can use the OS-provided timezone database on Mac and Linux
+    but it requires this command to install tzdata for Windows.
+    https://arrow.apache.org/docs/python/install.html#tzdata-on-windows
+    """
+    if platform.system() == "Windows":
+        pa.util.download_tzdata_on_windows()
 
 
 def shutdown_process(process: subprocess.Popen[str]) -> None:
@@ -96,6 +111,7 @@ def server_instance() -> Generator[tuple[subprocess.Popen[str], DatasetEntry], N
         # Server can be noisy by default
         env["RUST_LOG"] = "warning"
 
+    # TODO(#11173): pick a free port
     cmd = ["python", "-m", "rerun", "server", "--dataset", str(DATASET_FILEPATH)]
     server_process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
@@ -145,6 +161,40 @@ def test_df_aggregation(server_instance: tuple[subprocess.Popen[str], DatasetEnt
 
     assert results[0][0][0] == pa.scalar(1.0, type=pa.float32())
     assert results[0][1][0] == pa.scalar(50.0, type=pa.float32())
+
+
+def test_component_filtering(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:
+    """
+    Cover the case where a user specifies a component filter on the client.
+
+    We also support push down filtering to take a `.filter()` on the dataframe gets
+    pushed into the query. Verify these both give the same results and that we don't
+    get any nulls in that column.
+    """
+    (_process, dataset) = server_instance
+
+    component_path = "/obj2:Points3D:positions"
+
+    filter_on_query = (
+        dataset.dataframe_query_view(index="time_1", contents="/**")
+        .filter_is_not_null(component_path)
+        .df()
+        .collect_partitioned()
+    )
+
+    filter_on_dataframe = (
+        dataset.dataframe_query_view(index="time_1", contents="/**")
+        .df()
+        .filter(col(component_path).is_not_null())
+        .collect_partitioned()
+    )
+
+    for outer in filter_on_dataframe:
+        for inner in outer:
+            column = inner.column(component_path)
+            assert column.null_count == 0
+
+    assert filter_on_query == filter_on_dataframe
 
 
 def test_partition_ordering(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:

@@ -160,7 +160,7 @@ fn handle_popstate(
 
     let follow_if_http = false;
     let select_redap_source_when_loaded = true;
-    match entry.url.parse::<open_url::ViewerImportUrl>() {
+    match entry.url.parse::<open_url::ViewerOpenUrl>() {
         Ok(url) => {
             url.open(
                 egui_ctx,
@@ -263,7 +263,6 @@ pub trait HistoryExt: private::Sealed {
     ///
     /// Use this to update the current url with a new fragment (selection, time, etc.)
     /// to which browser history doesn't need to go back to.
-    #[allow(unused)]
     fn replace_entry(&self, entry: HistoryEntry) -> Result<(), JsValue>;
 
     /// Get the latest entry.

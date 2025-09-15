@@ -1,9 +1,11 @@
-use arrow::datatypes::Schema as ArrowSchema;
+use arrow::datatypes::{Schema as ArrowSchema, SchemaRef as ArrowSchemaRef};
 
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
-use crate::{ArrowBatchMetadata, SorbetColumnDescriptors, SorbetError, TimestampMetadata};
+use crate::{
+    ArrowBatchMetadata, SorbetColumnDescriptors, SorbetError, TimestampMetadata, migrate_schema_ref,
+};
 
 // ----------------------------------------------------------------------------
 
@@ -42,7 +44,7 @@ impl SorbetSchema {
     /// This is bumped everytime we require a migration, but notable it is
     /// decoupled from the Rerun version to avoid confusion as there will not
     /// be a new Sorbet version for each Rerun version.
-    pub(crate) const METADATA_VERSION: semver::Version = semver::Version::new(0, 1, 2);
+    pub(crate) const METADATA_VERSION: semver::Version = semver::Version::new(0, 1, 1);
 }
 
 impl SorbetSchema {
@@ -116,6 +118,11 @@ impl SorbetSchema {
 }
 
 impl SorbetSchema {
+    /// Parse an arbitrary arrow schema by first migrating it to the Rerun schema.
+    pub fn try_from_raw_arrow_schema(arrow_schema: ArrowSchemaRef) -> Result<Self, SorbetError> {
+        Self::try_from_migrated_arrow_schema(&migrate_schema_ref(arrow_schema))
+    }
+
     /// Parse an already migrated Arrow schema.
     #[tracing::instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_migrated_arrow_schema(

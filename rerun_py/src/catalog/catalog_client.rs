@@ -30,6 +30,11 @@ impl PyCatalogClientInternal {
 
 #[pymethods]
 impl PyCatalogClientInternal {
+    #[staticmethod]
+    pub fn datafusion_major_version() -> u64 {
+        datafusion_ffi::version()
+    }
+
     /// Create a new catalog client object.
     #[new]
     #[pyo3(text_signature = "(self, addr, token=None)")]
@@ -43,7 +48,7 @@ impl PyCatalogClientInternal {
 
         let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
-        let connection_registry = re_grpc_client::ConnectionRegistry::new();
+        let connection_registry = re_redap_client::ConnectionRegistry::new();
 
         let token = token
             .map(TryFrom::try_from)
@@ -297,6 +302,17 @@ impl PyCatalogClientInternal {
 
         Py::new(py, (table, entry))
     }
+
+    // ---
+
+    /// Perform global maintenance tasks on the server.
+    fn do_global_maintenance(self_: Py<Self>, py: Python<'_>) -> PyResult<()> {
+        let connection = self_.borrow_mut(py).connection.clone();
+
+        connection.do_global_maintenance(py)
+    }
+
+    // ---
 
     /// The DataFusion context (if available).
     pub fn ctx(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {

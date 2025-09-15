@@ -82,6 +82,7 @@ pub struct ListVisuals {
     pub active: bool,
     pub interactive: bool,
     pub strong: bool,
+    pub openness: Option<f32>,
 }
 
 impl ListVisuals {
@@ -157,6 +158,32 @@ impl ListVisuals {
         } else {
             self.interactive_icon_tint(icon_hovered)
         }
+    }
+
+    /// Is the item collapsible?
+    pub fn is_collapsible(&self) -> bool {
+        self.openness.is_some()
+    }
+
+    /// Is the item fully collapsed?
+    ///
+    /// Returns true if the item is not collapsible.
+    pub fn collapsed(&self) -> bool {
+        self.openness.is_none_or(|openness| openness <= 0.0)
+    }
+
+    /// Is the item fully opened?
+    ///
+    /// Returns false if the item is not collapsible.
+    pub fn opened(&self) -> bool {
+        !self.collapsed()
+    }
+
+    /// Openness of the item.
+    ///
+    /// 0.0 if the item is not collapsible.
+    pub fn openness(&self) -> f32 {
+        self.openness.unwrap_or(0.0)
     }
 }
 
@@ -276,6 +303,7 @@ impl ListItem {
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_flat<'a>(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
+        ui.sanity_check();
         ui.scope(|ui| self.ui(ui, None, 0.0, Box::new(content)))
             .inner
             .response
@@ -399,6 +427,8 @@ impl ListItem {
         extra_indent: f32,
         content: Box<dyn ListItemContent + 'a>,
     ) -> ListItemResponse {
+        ui.sanity_check();
+
         let Self {
             interactive,
             selected,
@@ -457,13 +487,15 @@ impl ListItem {
         let (allocated_id, mut rect) = ui.allocate_space(desired_size);
         rect.min.x += extra_indent;
 
+        ui.sanity_check();
+
         // We use the state set by ListItemContainer to determine how far the background should
         // extend.
         let layout_info = LayoutInfoStack::top(ui.ctx());
         let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
 
         // Record the max allocated width.
-        layout_info.register_max_item_width(ui.ctx(), rect.right() - layout_info.left_x);
+        layout_info.register_max_item_width(ui, rect.right() - layout_info.left_x);
 
         // We want to be able to select/hover the item across its full span, so we interact over the
         // entire background rect. But…
@@ -500,6 +532,7 @@ impl ListItem {
             active,
             interactive,
             strong: false,
+            openness: collapse_openness,
         };
 
         let mut collapse_response = None;

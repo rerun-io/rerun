@@ -60,6 +60,7 @@ features = [
     "Send custom data",
     [
       "tutorials/any_values",
+      "tutorials/dynamic_archetype",
       "tutorials/extra_values",
       "tutorials/custom_data",
     ],
@@ -368,3 +369,4 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/video_manual_frames" = [
   "$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4",
 ]
+"howto/load_mcap" = ["$config_dir/../../tests/assets/mcap/r2b_galileo.mcap"]

@@ -7,13 +7,14 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-In and out of process performance profiling utilities for Rerun & Redap.
+In and out of process telemetry and profiling utilities for Rerun & Redap.
 
 Performance telemetry is always disabled by default. It is gated both by a feature flag (`perf_telemetry`) and runtime configuration in the form of environment variables:
 * `TELEMETRY_ENABLED`: is performance telemetry enabled at all (default: `false`)?
 * `TRACY_ENABLED`: is the tracy integration enabled (default: `false`)? works even if `TELEMETRY_ENABLED=false`, to reduce noise in measurements.
 * `OTEL_SDK_ENABLED`: is the OpenTelemetry enabled (default: `false`)? does nothing if `TELEMETRY_ENABLED=false`.
 
+Note that despite the name, this crate also hands all log output to the telemetry backend.
 
 ## What
 

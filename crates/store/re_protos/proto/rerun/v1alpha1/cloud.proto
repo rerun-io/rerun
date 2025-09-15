@@ -9,6 +9,17 @@ import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/log_msg.proto";
 
 // The Rerun Cloud public API.
+//
+// ## Headers
+//
+// Most endpoints in the Rerun Cloud service require specific gRPC headers to be set.
+//
+// The so-called "standard dataset headers" correspond to at least one of the following headers:
+// * x-rerun-entry-id: ID of the entry of interest, e.g. `1860390B087BC65F602d68eb646c385c`.
+// * x-rerun-entry-name-bin: Name of the entry of interest, e.g. `droid:sample2k`.
+//
+// Headers with a -bin suffix must be base64-encoded (HTTP only supports ASCII values, UTF8 strings must
+// binary encoded).
 service RerunCloudService {
   rpc Version(VersionRequest) returns (VersionResponse) {}
 
@@ -22,6 +33,9 @@ service RerunCloudService {
 
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
 
+  // Fetch metadata about a specific dataset.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
 
   rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
@@ -37,22 +51,26 @@ service RerunCloudService {
 
   // Write chunks to one or more partitions.
   //
-  // The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+  // The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
   //
-  // The destination dataset must be provided in the `x-rerun-dataset-id` header.
+  // This endpoint requires the standard dataset headers.
   rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
   /* Query schemas */
 
-  // Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
+  // Returns the schema of the partition table.
   //
-  // * To inspect the data of the partition table, use `ScanPartitionTable`.
-  // * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+  // This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
+  //
+  // To inspect the data of the partition table, which is guaranteed to match the schema returned by
+  // this endpoint, check out `ScanPartitionTable`.
+  //
+  // This endpoint requires the standard dataset headers.
   rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (GetPartitionTableSchemaResponse) {}
 
-  // Inspect the contents of the partition table (i.e. the dataset manifest).
+  // Inspect the contents of the partition table.
   //
-  // The returned data will follow the schema specified by `GetPartitionTableSchema`.
+  // The data will follow the schema returned by `GetPartitionTableSchema`.
   rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
 
   // Returns the schema of the dataset.
@@ -66,15 +84,16 @@ service RerunCloudService {
   // Creates a custom index for a specific column (vector search, full-text search, etc).
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
 
-  // Recreate an index with the same configuration but (potentially) new data.
-  rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
-
   /* Queries */
 
   // Search a previously created index.
   rpc SearchDataset(SearchDatasetRequest) returns (stream SearchDatasetResponse) {}
 
-  // Perform Rerun-native queries on a dataset, returning the matching chunk IDs.
+  // Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
+  // as information that can be sent back to Rerun Cloud to fetch the actual chunks as part
+  // of `FetchChunks` request. In this 2-step query process, 1st step is getting information
+  // from the server about the chunks that contain relevant information. 2nd step is fetching
+  // those chunks (the actual data).
   //
   // These Rerun-native queries include:
   // * Filtering by specific partition and chunk IDs.
@@ -95,6 +114,13 @@ service RerunCloudService {
   //
   // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
   rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
+
+  // Fetch specific chunks from Rerun Cloud. In a 2-step query process, result of 1st phase,
+  // that is, the result of `QueryDataset` should include all the necessary information to send
+  // the actual chunk requests, which is the 2nd step of the query process.
+  //
+  // See `FetchChunksRequest` for details on the fields that describe each individual chunk.
+  rpc FetchChunks(FetchChunksRequest) returns (stream FetchChunksResponse) {}
 
   // --- Tables ---
   // TODO(jleibs): This will be replaced / extended by Arrow Flight
@@ -121,6 +147,10 @@ service RerunCloudService {
 
   // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
   rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
+
+  // Run global maintenance operations on the platform: this includes optimization
+  // of all datasets, garbage collection of unused data, and can include more in the future.
+  rpc DoGlobalMaintenance(DoGlobalMaintenanceRequest) returns (DoGlobalMaintenanceResponse) {}
 }
 
 // ---
@@ -179,9 +209,11 @@ enum DataSourceKind {
 }
 
 message RegisterWithDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
   repeated DataSource data_sources = 2;
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message RegisterWithDatasetResponse {
@@ -197,7 +229,8 @@ message WriteChunksResponse {}
 /* Query schemas */
 
 message GetPartitionTableSchemaRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message GetPartitionTableSchemaResponse {
@@ -205,8 +238,16 @@ message GetPartitionTableSchemaResponse {
 }
 
 message ScanPartitionTableRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+  // A list of column names to be projected server-side.
+  //
+  // All of them if left empty.
+  repeated string columns = 3;
+
+  reserved 1;
+  reserved "dataset_id";
+
+  reserved 2;
+  reserved "scan_parameters";
 }
 
 message ScanPartitionTableResponse {
@@ -215,7 +256,8 @@ message ScanPartitionTableResponse {
 }
 
 message GetDatasetSchemaRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message GetDatasetSchemaResponse {
@@ -225,8 +267,6 @@ message GetDatasetSchemaResponse {
 /* Indexing */
 
 message CreateIndexRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // List of specific partitions that will be indexed (all if left empty).
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
@@ -239,17 +279,12 @@ message CreateIndexRequest {
 
   // Specify behavior when index for a partition was already created.
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message CreateIndexResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-message ReIndexRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-}
-
-message ReIndexResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -310,8 +345,6 @@ message BTreeIndex {
 /* Queries */
 
 message SearchDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // Index column that is queried
   IndexColumn column = 2;
 
@@ -326,6 +359,9 @@ message SearchDatasetRequest {
 
   // Scan parameters
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message SearchDatasetResponse {
@@ -355,8 +391,6 @@ message BTreeIndexQuery {
 }
 
 message QueryDatasetRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-
   // Client can specify what partitions are queried. If left unspecified (empty list),
   // all partitions will be queried.
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
@@ -404,6 +438,9 @@ message QueryDatasetRequest {
   rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
 
   Query query = 6;
+
+  reserved 1;
+  reserved "dataset_id";
 }
 
 message QueryDatasetResponse {
@@ -533,6 +570,21 @@ message GetChunksResponse {
   repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
 }
 
+message FetchChunksRequest {
+  // Information about the chunks to fetch. These dataframes have to include the following columns:
+  // * `chunk_id` - Chunk unique identifier
+  // * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
+  // * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
+  // * `chunk_key` - chunk location details
+  repeated rerun.common.v1alpha1.DataframePart chunk_infos = 1;
+}
+
+message FetchChunksResponse {
+  // Every gRPC response, even within the confines of a stream, involves HTTP2 overhead, which isn't
+  // cheap by any means, which is why we're returning a batch of `ArrowMsg` rather than a single one.
+  repeated rerun.log_msg.v1alpha1.ArrowMsg chunks = 1;
+}
+
 // --- Table Apis ---
 
 message GetTableSchemaRequest {
@@ -554,15 +606,24 @@ message ScanTableResponse {
   rerun.common.v1alpha1.DataframePart dataframe_part = 1;
 }
 
+// --- Maintenance ---
+
 message DoMaintenanceRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
 
-  // Create the acceleration structures for temporal queries.
+  // Optimize all builtin and user-defined indexes on this dataset.
   //
-  // This will recreate all scalar indexes from scratch everytime.
+  // This merges all individual index deltas back in the main index, improving runtime performance
+  // of all indexes.
+  bool optimize_indexes = 2;
+
+  // Retrain all user-defined indexes on this dataset from scratch.
   //
-  // TODO(cmc): support incremental scalar indexing & index compaction
-  bool build_scalar_indexes = 2;
+  // This retrains all user-defined indexes from scratch for optimal runtime performance.
+  // This is faster than re-creating the indexes, and automatically keeps track of their configurations.
+  //
+  // This implies `optimize_indexes`.
+  bool retrain_indexes = 6;
 
   // Compact the underlying Lance fragments, for all Rerun Manifests.
   //
@@ -570,15 +631,18 @@ message DoMaintenanceRequest {
   bool compact_fragments = 3;
 
   // If set, all Lance fragments older than this date will be removed, for all Rerun Manifests.
+  //
   // In case requested date is more recent than 1 hour, it will be ignored and 1 hour ago
   // timestamp will be used. This is to prevent still used files (like recent transaction files)
   // to be removed and cause Lance Dataset update issues.
+  //
   // See https://docs.rs/lance/latest/lance/dataset/cleanup/index.html
   // and https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html
   google.protobuf.Timestamp cleanup_before = 4;
 
   // Override default platform behavior and allow cleanup of recent files. This will respect
   // the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
+  //
   // ⚠️ Do not ever use this unless you know exactly what you're doing. Improper use will lead to data loss.
   bool unsafe_allow_recent_cleanup = 5;
 }
@@ -586,6 +650,11 @@ message DoMaintenanceRequest {
 message DoMaintenanceResponse {
   string report = 1;
 }
+
+// Request all maintenance operations to run on all datasets
+message DoGlobalMaintenanceRequest {}
+
+message DoGlobalMaintenanceResponse {}
 
 // --- Tasks ---
 
@@ -707,7 +776,8 @@ message CreateDatasetEntryResponse {
 // ReadDatasetEntry
 
 message ReadDatasetEntryRequest {
-  rerun.common.v1alpha1.EntryId id = 1;
+  reserved 1;
+  reserved "id";
 }
 
 message ReadDatasetEntryResponse {

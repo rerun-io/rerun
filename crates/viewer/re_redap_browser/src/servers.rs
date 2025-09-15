@@ -8,10 +8,10 @@ use egui::{Frame, Margin, RichText};
 
 use re_auth::Jwt;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
-use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::cloud::v1alpha1::EntryKind;
+use re_redap_client::ConnectionRegistryHandle;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
@@ -31,13 +31,13 @@ pub struct Server {
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: Arc<SessionContext>,
 
-    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: re_redap_client::ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
 }
 
 impl Server {
     fn new(
-        connection_registry: re_grpc_client::ConnectionRegistryHandle,
+        connection_registry: re_redap_client::ConnectionRegistryHandle,
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
@@ -181,7 +181,7 @@ impl Server {
                 blueprint
             })
             .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
-            .filter(
+            .prefilter(
                 col("entry_kind")
                     .in_list(
                         vec![lit(EntryKind::Table as i32), lit(EntryKind::Dataset as i32)],
@@ -396,7 +396,7 @@ impl RedapServers {
 
     fn handle_command(
         &mut self,
-        connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+        connection_registry: &re_redap_client::ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         command: Command,
@@ -483,9 +483,17 @@ impl RedapServers {
                 match entry.inner() {
                     Ok(crate::entries::EntryInner::Dataset(dataset)) => {
                         server.dataset_entry_ui(viewer_ctx, ui, dataset);
+
+                        // If we're connected twice to the same server, we will find this entry
+                        // multiple times. We avoid it by returning here.
+                        return;
                     }
                     Ok(crate::entries::EntryInner::Table(table)) => {
                         server.table_entry_ui(viewer_ctx, ui, table);
+
+                        // If we're connected twice to the same server, we will find this entry
+                        // multiple times. We avoid it by returning here.
+                        return;
                     }
                     Err(err) => {
                         Frame::new().inner_margin(16.0).show(ui, |ui| {

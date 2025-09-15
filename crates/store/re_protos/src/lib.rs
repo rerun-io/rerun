@@ -9,6 +9,8 @@ pub mod external {
     pub use prost;
 }
 
+pub mod headers;
+
 // This extra module is needed, because of how imports from different packages are resolved.
 // For example, `rerun.remote_store.v1alpha1.EncoderVersion` is resolved to `super::super::remote_store::v1alpha1::EncoderVersion`.
 // We need an extra module in the path to `common` to make that work.
@@ -167,6 +169,7 @@ impl From<TypeConversionError> for pyo3::PyErr {
     }
 }
 
+/// Create [`TypeConversionError::MissingField`]
 #[macro_export]
 macro_rules! missing_field {
     ($type:ty, $field:expr $(,)?) => {
@@ -174,6 +177,7 @@ macro_rules! missing_field {
     };
 }
 
+/// Create [`TypeConversionError::InvalidField`]
 #[macro_export]
 macro_rules! invalid_field {
     ($type:ty, $field:expr, $reason:expr $(,)?) => {
@@ -317,6 +321,7 @@ mod sizes {
                 uncompressed_size,
                 encoding,
                 payload,
+                is_static: _,
             } = self;
 
             store_id.heap_size_bytes()

@@ -11,9 +11,9 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{ChunkStore, QueryExpression};
 use re_dataframe::ChunkStoreHandle;
 use re_datafusion::query_from_query_expression;
-use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
     cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
     cloud::v1alpha1::{
@@ -28,6 +28,7 @@ use re_protos::{
         ext::{IfDuplicateBehavior, ScanParameters},
     },
 };
+use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
@@ -234,9 +235,11 @@ impl ConnectionHandle {
                 self.client()
                     .await?
                     .inner()
-                    .get_dataset_schema(GetDatasetSchemaRequest {
-                        dataset_id: Some(entry_id.into()),
-                    })
+                    .get_dataset_schema(
+                        tonic::Request::new(GetDatasetSchemaRequest {})
+                            .with_entry_id(entry_id)
+                            .map_err(to_py_err)?,
+                    )
                     .await
                     .map_err(to_py_err)?
                     .into_inner()
@@ -297,12 +300,13 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    #[allow(clippy::fn_params_excessive_bools)]
+    #[allow(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
     pub fn do_maintenance(
         &self,
         py: Python<'_>,
         dataset_id: EntryId,
-        build_scalar_indexes: bool,
+        optimize_indexes: bool,
+        retrain_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
         unsafe_allow_recent_cleanup: bool,
@@ -314,11 +318,27 @@ impl ConnectionHandle {
                     .await?
                     .do_maintenance(
                         dataset_id,
-                        build_scalar_indexes,
+                        optimize_indexes,
+                        retrain_indexes,
                         compact_fragments,
                         cleanup_before,
                         unsafe_allow_recent_cleanup,
                     )
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn do_global_maintenance(&self, py: Python<'_>) -> PyResult<()> {
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .do_global_maintenance()
                     .await
                     .map_err(to_py_err)
             }
@@ -544,13 +564,13 @@ impl ConnectionHandle {
                     Ok::<_, PyErr>(resp)
                 })
                 .await
-                .map_err(Into::<re_grpc_client::StreamError>::into)
+                .map_err(Into::<re_redap_client::StreamError>::into)
                 .map_err(to_py_err)??;
 
                 // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
                 // and the app layer (Arrow).
                 let mut chunk_stream =
-                    re_grpc_client::get_chunks_response_to_chunk_and_partition_id(
+                    re_redap_client::get_chunks_response_to_chunk_and_partition_id(
                         get_chunks_response_stream,
                     );
 
@@ -638,7 +658,7 @@ impl ConnectionHandle {
                     })
                     .in_current_span()
                     .await
-                    .map_err(Into::<re_grpc_client::StreamError>::into)
+                    .map_err(Into::<re_redap_client::StreamError>::into)
                     .map_err(to_py_err)??;
                 }
 
@@ -735,6 +755,30 @@ impl ConnectionHandle {
 
         let query = query_from_query_expression(query_expression);
 
+        let request = QueryDatasetRequest {
+            partition_ids: partition_ids
+                .iter()
+                .map(|id| id.as_ref().to_owned().into())
+                .collect(),
+            chunk_ids: vec![],
+            entity_paths: entity_paths
+                .into_iter()
+                .map(|p| (*p).clone().into())
+                .collect(),
+            select_all_entity_paths,
+            fuzzy_descriptors,
+            exclude_static_data: false,
+            exclude_temporal_data: false,
+            query: Some(query.into()),
+            scan_parameters: Some(
+                ScanParameters {
+                    columns: vec!["chunk_partition_id".to_owned(), "chunk_id".to_owned()],
+                    ..Default::default()
+                }
+                .into(),
+            ),
+        };
+
         wait_for_future(
             py,
             async {
@@ -742,33 +786,11 @@ impl ConnectionHandle {
                     .client()
                     .await?
                     .inner()
-                    .query_dataset(QueryDatasetRequest {
-                        dataset_id: Some(dataset_id.into()),
-                        partition_ids: partition_ids
-                            .iter()
-                            .map(|id| id.as_ref().to_owned().into())
-                            .collect(),
-                        chunk_ids: vec![],
-                        entity_paths: entity_paths
-                            .into_iter()
-                            .map(|p| (*p).clone().into())
-                            .collect(),
-                        select_all_entity_paths,
-                        fuzzy_descriptors,
-                        exclude_static_data: false,
-                        exclude_temporal_data: false,
-                        query: Some(query.into()),
-                        scan_parameters: Some(
-                            ScanParameters {
-                                columns: vec![
-                                    "chunk_partition_id".to_owned(),
-                                    "chunk_id".to_owned(),
-                                ],
-                                ..Default::default()
-                            }
-                            .into(),
-                        ),
-                    })
+                    .query_dataset(
+                        tonic::Request::new(request)
+                            .with_entry_id(dataset_id)
+                            .map_err(to_py_err)?,
+                    )
                     .await
                     .map_err(to_py_err)?
                     .into_inner();

@@ -8,7 +8,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Union
 
-import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
@@ -16,6 +15,7 @@ from attrs import define, field
 from ..._baseclasses import (
     BaseBatch,
 )
+from ..._numpy_compatibility import asarray
 from .tensor_dimension_index_slider_ext import TensorDimensionIndexSliderExt
 
 __all__ = [
@@ -55,7 +55,7 @@ class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
 
     def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of TensorDimensionIndexSliderExt in tensor_dimension_index_slider_ext.py
-        return np.asarray(self.dimension, dtype=dtype, copy=copy)
+        return asarray(self.dimension, dtype=dtype, copy=copy)
 
     def __int__(self) -> int:
         return int(self.dimension)

@@ -26,6 +26,7 @@ mod tensor;
 mod time_control;
 mod typed_entity_collections;
 mod undo;
+mod url_context;
 mod utils;
 mod view;
 mod viewer_context;
@@ -43,8 +44,9 @@ pub use self::{
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
     cache::{
-        Cache, Caches, ImageDecodeCache, ImageStatsCache, SharablePlayableVideoStream,
-        TensorStatsCache, VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
+        Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
+        SharablePlayableVideoStream, TensorStatsCache, VideoAssetCache, VideoStreamCache,
+        VideoStreamProcessingError,
     },
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     component_fallbacks::{
@@ -61,8 +63,8 @@ pub use self::{
     },
     query_range::QueryRange,
     selection_state::{
-        ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
-        ItemContext, SelectionChange, SelectionHighlight,
+        ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectionChange,
+        SelectionHighlight,
     },
     storage_context::StorageContext,
     store_context::StoreContext,
@@ -74,6 +76,7 @@ pub use self::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },
     undo::BlueprintUndoState,
+    url_context::UrlContext,
     utils::{
         auto_color_egui, auto_color_for_entity_path, level_to_rich_text,
         video_stream_time_from_query, video_timestamp_component_to_video_time,

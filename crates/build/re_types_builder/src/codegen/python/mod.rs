@@ -426,6 +426,7 @@ impl PythonCodeGenerator {
             import pyarrow as pa
             import uuid
 
+            from {rerun_path}_numpy_compatibility import asarray
             from {rerun_path}error_utils import catch_and_log_exceptions
             from {rerun_path}_baseclasses import (
                 Archetype,
@@ -1430,7 +1431,7 @@ fn quote_array_method_from_obj(
         "
         def __array__(self, dtype: npt.DTypeLike=None, copy: bool|None=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
-            return np.asarray(self.{field_name}, dtype=dtype, copy=copy)
+            return asarray(self.{field_name}, dtype=dtype, copy=copy)
         ",
         ext_class.name, ext_class.file_name
     ))
@@ -2283,10 +2284,10 @@ return pa.array(pa_data, type=data_type)
                 .into_iter()
                 .sorted() // Make order not dependent on hash shenanigans (also looks nicer often).
                 .filter(|typename| !typename.contains('[')) // If we keep these we unfortunately get: `TypeError: Subscripted generics cannot be used with class and instance checks`
-                .filter(|typename| !typename.ends_with("Like")) // `xLike` types are union types and checking those is not supported until Python 3.10.
+                .filter(|typename| !typename.ends_with("Like")) // TODO(#10959): `xLike` types are union types and checking those is not supported until Python 3.10.
                 .map(|typename| {
                     if typename == "None" {
-                        "type(None)".to_owned() // `NoneType` requires Python 3.10.
+                        "type(None)".to_owned() // TODO(#10959): `NoneType` requires Python 3.10.
                     } else {
                         typename
                     }

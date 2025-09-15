@@ -11,7 +11,7 @@ version.workspace = true
 publish = false
 
 [dependencies]
-re_grpc_client.workspace = true
+re_redap_client.workspace = true
 re_protos.workspace = true
 re_sdk.workspace = true
 re_server.workspace = true

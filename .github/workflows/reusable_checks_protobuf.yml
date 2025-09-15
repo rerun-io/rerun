@@ -48,7 +48,7 @@ jobs:
       #   # continue-on-error: true
       #
       - name: Breaking changes
-        run: pixi run pb-breaking
+        run: pixi run -q pb-breaking
         if: success() || failure() # trigger this step even if the previous one failed
 
       - name: Lints

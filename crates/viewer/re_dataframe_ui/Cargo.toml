@@ -41,13 +41,17 @@ datafusion.workspace = true
 egui.workspace = true
 egui_dnd.workspace = true
 egui_table.workspace = true
+itertools.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+vec1.workspace = true
 
 
 [dev-dependencies]
 egui_kittest.workspace = true
+insta.workspace = true
 itertools.workspace = true
 static_assertions.workspace = true
+tokio.workspace = true

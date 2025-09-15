@@ -13,7 +13,9 @@ use re_renderer::{external::re_video::VideoLoadError, video::Video};
 use re_types::{ComponentDescriptor, components::MediaType};
 use re_video::DecodeSettings;
 
-use crate::{Cache, cache::filter_blob_removed_events, image_info::StoredBlobCacheKey};
+use crate::{
+    Cache, CacheMemoryReport, cache::filter_blob_removed_events, image_info::StoredBlobCacheKey,
+};
 
 // ----------------------------------------------------------------------------
 
@@ -122,8 +124,12 @@ impl Cache for VideoAssetCache {
         }
     }
 
-    fn bytes_used(&self) -> u64 {
-        self.0.total_size_bytes()
+    fn memory_report(&self) -> CacheMemoryReport {
+        CacheMemoryReport {
+            bytes_cpu: self.0.total_size_bytes(),
+            bytes_gpu: None,
+            per_cache_item_info: Vec::new(),
+        }
     }
 
     fn purge_memory(&mut self) {
@@ -134,6 +140,10 @@ impl Cache for VideoAssetCache {
         // As of writing, in a debug wasm build with Chrome loading a 600MiB 1h video
         // this assumption holds up fine: There is a (sufferable) delay,
         // but it's almost entirely due to the decoder trying to retrieve a frame.
+    }
+
+    fn name(&self) -> &'static str {
+        "Video Assets"
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {

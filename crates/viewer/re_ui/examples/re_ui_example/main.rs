@@ -3,11 +3,13 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use egui::{Modifiers, os};
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
     CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
     IconText, UICommand, UICommandSender, UiExt as _,
     filter_widget::{FilterState, format_matching_text},
-    icons, list_item, notifications,
+    icons, list_item,
+    notifications::NotificationUi,
 };
 
 /// Sender that queues up the execution of a command.
@@ -62,13 +64,13 @@ fn main() -> eframe::Result {
         native_options,
         Box::new(move |cc| {
             re_ui::apply_style_and_install_loaders(&cc.egui_ctx);
-            Ok(Box::new(ExampleApp::new()))
+            Ok(Box::new(ExampleApp::new(cc.egui_ctx.clone())))
         }),
     )
 }
 
 pub struct ExampleApp {
-    notifications: notifications::NotificationUi,
+    notifications: NotificationUi,
 
     /// Listens to the local text log stream
     text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
@@ -100,7 +102,7 @@ pub struct ExampleApp {
 }
 
 impl ExampleApp {
-    fn new() -> Self {
+    fn new(ctx: egui::Context) -> Self {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
 
@@ -109,7 +111,7 @@ impl ExampleApp {
         let (command_sender, command_receiver) = command_channel();
 
         Self {
-            notifications: Default::default(),
+            notifications: NotificationUi::new(ctx),
             text_log_rx,
 
             tree,
@@ -249,7 +251,7 @@ impl eframe::App for ExampleApp {
             // ---
 
             ui.section_collapsing_header("Data")
-                .button(list_item::ItemMenuButton::new(
+                .with_button(list_item::ItemMenuButton::new(
                     &re_ui::icons::ADD,
                     "Add",
                     |ui| {

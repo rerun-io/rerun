@@ -6,9 +6,9 @@ use egui::{NumExt as _, Ui, text_edit::TextEditState, text_selection::LabelSelec
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{AbsoluteTimeRangeF, LogMsg, StoreId, TableId};
 use re_redap_browser::RedapServers;
+use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, UiExt as _};
@@ -59,6 +59,9 @@ pub struct AppState {
     /// Redap server catalogs and browser UI
     pub(crate) redap_servers: RedapServers,
 
+    #[serde(skip)]
+    pub(crate) open_url_modal: crate::ui::OpenUrlModal,
+
     /// A stack of display modes that represents tab-like navigation of the user.
     #[serde(skip)]
     pub(crate) navigation: Navigation,
@@ -102,6 +105,7 @@ impl Default for AppState {
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
             redap_servers: Default::default(),
+            open_url_modal: Default::default(),
             navigation: Default::default(),
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -645,6 +649,7 @@ impl AppState {
                 viewport_ui.save_to_blueprint_store(&ctx);
 
                 self.redap_servers.modals_ui(&ctx.global_context, ui);
+                self.open_url_modal.ui(ui);
             }
         }
 
@@ -661,7 +666,7 @@ impl AppState {
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
-            self.selection_state.clear_selection();
+            command_sender.send_system(SystemCommand::clear_selection());
         }
 
         // If there's no text edit or label selected, and the user triggers a copy command, copy a description of the current selection.
@@ -681,7 +686,6 @@ impl AppState {
         self.focused_item = None;
     }
 
-    #[cfg(target_arch = "wasm32")] // Only used in Wasm
     pub fn recording_config(&self, rec_id: &StoreId) -> Option<&RecordingConfig> {
         self.recording_configs.get(rec_id)
     }
@@ -861,8 +865,8 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                if let Ok(url) = open_url::ViewerImportUrl::from_str(&open_url.url) {
-                    let select_redap_source_when_loaded = open_url.new_tab;
+                if let Ok(url) = open_url::ViewerOpenUrl::from_str(&open_url.url) {
+                    let select_redap_source_when_loaded = !open_url.new_tab;
                     url.open(
                         egui_ctx,
                         follow_if_http,

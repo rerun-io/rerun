@@ -19,7 +19,7 @@ use re_component_ui::REDAP_THUMBNAIL_VARIANT;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
+use re_sorbet::ColumnDescriptorRef;
 use re_types::ComponentDescriptor;
 use re_types::components::{Blob, MediaType};
 use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
@@ -36,9 +36,6 @@ pub enum DisplayRecordBatchError {
         error: TimeColumnError,
     },
 
-    #[error("Unexpected column data type for component '{0}': {1:?}")]
-    UnexpectedComponentColumnDataType(ComponentDescriptor, ArrowDataType),
-
     #[error(transparent)]
     DeserializationError(#[from] DeserializationError),
 }
@@ -54,21 +51,19 @@ enum ComponentData {
         dict: ArrowInt32DictionaryArray,
         values: ArrowListArray,
     },
+    Scalar(ArrowArrayRef),
 }
 
 impl ComponentData {
-    fn try_new(
-        descriptor: &ComponentColumnDescriptor,
-        column_data: &ArrowArrayRef,
-    ) -> Result<Self, DisplayRecordBatchError> {
+    fn new(column_data: &ArrowArrayRef) -> Self {
         match column_data.data_type() {
-            ArrowDataType::Null => Ok(Self::Null),
-            ArrowDataType::List(_) => Ok(Self::ListArray(
+            ArrowDataType::Null => Self::Null,
+            ArrowDataType::List(_) => Self::ListArray(
                 column_data
                     .downcast_array_ref::<ArrowListArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone(),
-            )),
+            ),
             ArrowDataType::Dictionary(_, _) => {
                 let dict = column_data
                     .downcast_array_ref::<ArrowInt32DictionaryArray>()
@@ -79,12 +74,9 @@ impl ComponentData {
                     .downcast_array_ref::<ArrowListArray>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
-                Ok(Self::DictionaryArray { dict, values })
+                Self::DictionaryArray { dict, values }
             }
-            _ => Err(DisplayRecordBatchError::UnexpectedComponentColumnDataType(
-                descriptor.component_descriptor(),
-                column_data.data_type().to_owned(),
-            )),
+            _ => Self::Scalar(Arc::clone(column_data)),
         }
     }
 
@@ -108,6 +100,7 @@ impl ComponentData {
                     0
                 }
             }
+            Self::Scalar(_) => 1,
         }
     }
 
@@ -120,11 +113,21 @@ impl ComponentData {
     fn row_data(&self, row_index: usize) -> Option<ArrowArrayRef> {
         match self {
             Self::Null => None,
+
             Self::ListArray(list_array) => list_array
                 .is_valid(row_index)
                 .then(|| list_array.value(row_index)),
+
             Self::DictionaryArray { dict, values } => {
                 dict.key(row_index).map(|key| values.value(key))
+            }
+
+            Self::Scalar(scalar_array) => {
+                if row_index < scalar_array.len() {
+                    Some(scalar_array.slice(row_index, 1))
+                } else {
+                    None
+                }
             }
         }
     }
@@ -338,7 +341,7 @@ impl DisplayColumn {
                 Ok(Self::Component(Box::new(DisplayComponentColumn {
                     entity_path: desc.entity_path.clone(),
                     component_descr: desc.component_descriptor(),
-                    component_data: ComponentData::try_new(desc, column_data)?,
+                    component_data: ComponentData::new(column_data),
                     row_ids: None,
                     variant_name: column_blueprint.variant_ui,
                 })))

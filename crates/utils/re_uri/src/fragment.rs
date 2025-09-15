@@ -5,10 +5,10 @@ use re_log_types::{DataPath, TimeCell, TimelineName};
 /// ```
 /// # use re_uri::Fragment;
 /// # let tests = [
-///  "focus=/entity/path",
-///  "focus=/entity/path[#42]",
-///  "focus=/entity/path[#42]&when=log_tick@32",
-///  "focus=/entity/path&when=log_time@2022-01-01T00:00:03.123456789Z",
+///  "selection=/entity/path",
+///  "selection=/entity/path[#42]",
+///  "selection=/entity/path[#42]&when=log_tick@32",
+///  "selection=/entity/path&when=log_time@2022-01-01T00:00:03.123456789Z",
 ///  "when=log_time@2022-01-01T00:00:03.123456789Z",
 /// # ];
 /// # for test in tests {
@@ -17,7 +17,7 @@ use re_log_types::{DataPath, TimeCell, TimelineName};
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct Fragment {
-    pub focus: Option<DataPath>,
+    pub selection: Option<DataPath>,
 
     /// Select this timeline and this time
     pub when: Option<(TimelineName, TimeCell)>,
@@ -25,12 +25,12 @@ pub struct Fragment {
 
 impl std::fmt::Display for Fragment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { focus, when } = self;
+        let Self { selection, when } = self;
 
         let mut did_write = false;
 
-        if let Some(focus) = focus {
-            write!(f, "focus={focus}")?;
+        if let Some(selection) = selection {
+            write!(f, "selection={selection}")?;
             did_write = true;
         }
 
@@ -49,20 +49,20 @@ impl std::str::FromStr for Fragment {
     type Err = String;
 
     fn from_str(fragment: &str) -> Result<Self, Self::Err> {
-        let mut focus = None;
+        let mut selection = None;
         let mut when = None;
 
         for part in split_on_unescaped_ampersand(fragment) {
             if let Some((key, value)) = split_at_first_unescaped_equals(part) {
                 match key {
-                    "focus" => match value.parse() {
+                    "selection" => match value.parse() {
                         Ok(path) => {
-                            if focus.is_some() {
+                            if selection.is_some() {
                                 re_log::warn_once!(
                                     "Multiple paths set in uri #fragment {fragment:?}. Ignoring all but last."
                                 );
                             }
-                            focus = Some(path);
+                            selection = Some(path);
                         }
                         Err(err) => {
                             return Err(format!("Bad data path {part:?}: {err}"));
@@ -88,7 +88,7 @@ impl std::str::FromStr for Fragment {
                     }
                     _ => {
                         return Err(format!(
-                            "Unknown key {key:?}. Expected either 'focus' or 'time'"
+                            "Unknown key {key:?}. Expected either 'selection' or 'time'"
                         ));
                     }
                 }
@@ -97,7 +97,7 @@ impl std::str::FromStr for Fragment {
             }
         }
 
-        Ok(Self { focus, when })
+        Ok(Self { selection, when })
     }
 }
 
@@ -111,6 +111,14 @@ impl Fragment {
                 Self::default()
             }
         }
+    }
+
+    /// True if this fragment doesn't contain any information.
+    pub fn is_empty(&self) -> bool {
+        // Keep this as a destruction so there is a compile error if a new field isn't handled here.
+        let Self { selection, when } = self;
+
+        selection.is_none() && when.is_none()
     }
 }
 
@@ -188,16 +196,16 @@ fn test_parse_fragment() {
     let test_cases = [
         ("", Fragment::default()),
         (
-            "focus=/entity/path",
+            "selection=/entity/path",
             Fragment {
-                focus: Some("/entity/path".parse().unwrap()),
+                selection: Some("/entity/path".parse().unwrap()),
                 when: None,
             },
         ),
         (
-            "focus=/entity/path&when=log_time@2022-01-01T00:00:03.123456789Z",
+            "selection=/entity/path&when=log_time@2022-01-01T00:00:03.123456789Z",
             Fragment {
-                focus: Some("/entity/path".parse().unwrap()),
+                selection: Some("/entity/path".parse().unwrap()),
                 when: Some((
                     "log_time".into(),
                     "2022-01-01T00:00:03.123456789Z".parse().unwrap(),
@@ -207,7 +215,7 @@ fn test_parse_fragment() {
         (
             "when=log_time@2022-01-01T00:00:03.123456789Z",
             Fragment {
-                focus: None,
+                selection: None,
                 when: Some((
                     "log_time".into(),
                     "2022-01-01T00:00:03.123456789Z".parse().unwrap(),
@@ -219,5 +227,11 @@ fn test_parse_fragment() {
     for (string, fragment) in test_cases {
         assert_eq!(fragment.to_string(), string);
         assert_eq!(string.parse::<Fragment>().unwrap(), fragment);
+    }
+
+    let fail_cases = ["focus=/entity/path", "selection=/entity/path&foo=test"];
+
+    for string in fail_cases {
+        assert!(string.parse::<Fragment>().is_err());
     }
 }

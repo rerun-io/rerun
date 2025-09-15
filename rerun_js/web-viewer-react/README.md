@@ -21,7 +21,7 @@ npm i @rerun-io/web-viewer-react
 ```
 
 ℹ️ Note:
-The package version is equal to the supported Rerun SDK version, and [RRD files are not yet stable across different versions](https://github.com/rerun-io/rerun/issues/6410).
+The package version is equal to the supported Rerun SDK version.
 This means that `@rerun-io/web-viewer-react@0.10.0` can only connect to a data source (`.rrd` file, gRPC connection, etc.) that originates from a Rerun SDK with version `0.10.0`!
 
 ## Usage
@@ -35,7 +35,7 @@ export default function App() {
 ```
 
 The `rrd` in the snippet above should be a URL pointing to either:
-- A hosted `.rrd` file, such as <https://app.rerun.io/version/0.24.0/examples/dna.rrd>
+- A hosted `.rrd` file, such as <https://app.rerun.io/version/0.25.0-alpha.6/examples/dna.rrd>
 - A gRPC connection to the SDK opened via the [`serve`](https://www.rerun.io/docs/reference/sdk/operating-modes#serve) API
 
 If `rrd` is not set, the Viewer will display the same welcome screen as <https://app.rerun.io>.

@@ -84,6 +84,8 @@ pub struct Boxes3D {
     pub quaternions: Option<SerializedComponentBatch>,
 
     /// Optional colors for the boxes.
+    ///
+    /// Alpha channel is used for transparency for solid fill-mode.
     pub colors: Option<SerializedComponentBatch>,
 
     /// Optional radii for the lines that make up the boxes.
@@ -606,6 +608,8 @@ impl Boxes3D {
     }
 
     /// Optional colors for the boxes.
+    ///
+    /// Alpha channel is used for transparency for solid fill-mode.
     #[inline]
     pub fn with_colors(
         mut self,

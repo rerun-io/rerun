@@ -119,6 +119,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         self.__attrs_init__(
             timestamp=None,
             video_reference=None,
+            opacity=None,
             draw_order=None,
         )
 
@@ -136,6 +137,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         clear_unset: bool = False,
         timestamp: datatypes.VideoTimestampLike | None = None,
         video_reference: datatypes.EntityPathLike | None = None,
+        opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> VideoFrameReference:
         """
@@ -164,6 +166,10 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
             For a series of video frame references, it is recommended to specify this path only once
             at the beginning of the series and then rely on latest-at query semantics to
             keep the video reference active.
+        opacity:
+            Opacity of the video, useful for layering several media.
+
+            Defaults to 1.0 (fully opaque).
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -177,6 +183,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
             kwargs = {
                 "timestamp": timestamp,
                 "video_reference": video_reference,
+                "opacity": opacity,
                 "draw_order": draw_order,
             }
 
@@ -200,6 +207,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         *,
         timestamp: datatypes.VideoTimestampArrayLike | None = None,
         video_reference: datatypes.EntityPathArrayLike | None = None,
+        opacity: datatypes.Float32ArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
@@ -231,6 +239,10 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
             For a series of video frame references, it is recommended to specify this path only once
             at the beginning of the series and then rely on latest-at query semantics to
             keep the video reference active.
+        opacity:
+            Opacity of the video, useful for layering several media.
+
+            Defaults to 1.0 (fully opaque).
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -244,6 +256,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
             inst.__attrs_init__(
                 timestamp=timestamp,
                 video_reference=video_reference,
+                opacity=opacity,
                 draw_order=draw_order,
             )
 
@@ -254,6 +267,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         kwargs = {
             "VideoFrameReference:timestamp": timestamp,
             "VideoFrameReference:video_reference": video_reference,
+            "VideoFrameReference:opacity": opacity,
             "VideoFrameReference:draw_order": draw_order,
         }
         columns = []
@@ -315,6 +329,17 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     # For a series of video frame references, it is recommended to specify this path only once
     # at the beginning of the series and then rely on latest-at query semantics to
     # keep the video reference active.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    opacity: components.OpacityBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.OpacityBatch._converter,  # type: ignore[misc]
+    )
+    # Opacity of the video, useful for layering several media.
+    #
+    # Defaults to 1.0 (fully opaque).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
