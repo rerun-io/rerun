@@ -27,7 +27,7 @@ use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
 use re_log_encoding::codec::wire::encoder::Encode as _;
-use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_redap_client::ConnectionClient;
@@ -92,7 +92,7 @@ impl DataframePartitionStream {
         let store_info = StoreInfo {
             // Note: using partition id as the store id, shouldn't really
             // matter since this is just a temporary store.
-            store_id: StoreId::random(StoreKind::Recording, self.partition_id.to_string()),
+            store_id: StoreId::random(StoreKind::Recording, partition_id),
             cloned_from: None,
             store_source: StoreSource::Unknown,
             store_version: None,
