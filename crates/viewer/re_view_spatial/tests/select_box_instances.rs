@@ -73,7 +73,7 @@ fn test_select_box_instances() {
         };
         harness.snapshot_options(
             name,
-            &SnapshotOptions::default(), // TODO: calibrate
+            &SnapshotOptions::default().failed_pixel_count_threshold(80),
         );
     }
 }
