@@ -35,6 +35,7 @@ impl TimeControlUi {
                                 timeline == time_control.timeline(),
                                 (
                                     timeline.name().as_str(),
+                                    egui::Atom::grow(),
                                     egui::RichText::new(format!(
                                         "{} events",
                                         re_format::format_uint(timeline_stats.num_events())
