@@ -19,7 +19,7 @@ pub use point_cloud::{
 };
 pub use rectangles::{
     ColorMapper, ColormappedTexture, RectangleDrawData, RectangleOptions, ShaderDecoding,
-    TextureFilterMag, TextureFilterMin, TexturedRect,
+    TextureAlpha, TextureFilterMag, TextureFilterMin, TexturedRect,
 };
 pub use test_triangle::TestTriangleDrawData;
 pub use world_grid::{WorldGridConfiguration, WorldGridDrawData, WorldGridRenderer};
