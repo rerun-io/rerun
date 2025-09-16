@@ -209,9 +209,6 @@ fn decode_and_stream<R: std::io::Read>(
                         blueprint_id =
                             blueprint_id.with_application_id(forced_application_id.clone());
                     }
-                    if let Some(forced_recording_id) = forced_recording_id {
-                        blueprint_id = blueprint_id.with_recording_id(forced_recording_id.clone());
-                    }
                     re_log_types::LogMsg::BlueprintActivationCommand(
                         re_log_types::BlueprintActivationCommand {
                             blueprint_id,
