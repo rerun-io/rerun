@@ -9,8 +9,7 @@ table ChannelMessageCounts (
 
   /// TODO(#11107): Stabilize
   "attr.rerun.state": "unstable",
-  "attr.rust.derive": "Default, PartialEq, Eq",
-  "attr.docs.unreleased"
+  "attr.rust.derive": "Default, PartialEq, Eq"
 ) {
   /// The channel ID to message count pairs.
   counts: [rerun.datatypes.ChannelCountPair] (order: 100);
