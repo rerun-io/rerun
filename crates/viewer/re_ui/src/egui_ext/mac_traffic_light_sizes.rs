@@ -4,7 +4,8 @@ use raw_window_handle::{AppKitWindowHandle, RawWindowHandle};
 
 #[derive(Debug)]
 pub struct WindowChromeMetrics {
-    /// Size of the "traffic lights" (red/yellow/green close/minimize/maximize buttons)
+    /// Size of the "traffic lights" (red/yellow/green close/minimize/maximize buttons),
+    /// including margins.
     pub traffic_lights_size: Vec2,
 }
 
@@ -28,34 +29,24 @@ fn window_chrome_metrics(window_handle: &RawWindowHandle) -> Option<WindowChrome
 }
 
 fn traffic_lights_metrics(ns_window: &NSWindow) -> Option<Vec2> {
-    let close_button = ns_window.standardWindowButton(NSWindowButton::CloseButton)?;
-    let zoom_button = ns_window.standardWindowButton(NSWindowButton::ZoomButton)?;
+    // Button order is CloseButton, MiniaturizeButton, ZoomButton:
+    let close_button = ns_window
+        .standardWindowButton(NSWindowButton::CloseButton)?
+        .frame();
+    let zoom_button = ns_window
+        .standardWindowButton(NSWindowButton::ZoomButton)?
+        .frame();
 
-    let close_frame = close_button.frame();
-    let zoom_frame = zoom_button.frame();
-
-    // Include the left margin (from window edge to close button)
-    let left_margin = close_frame.origin.x;
-
-    // Include right margin after zoom button
+    let left_margin = close_button.origin.x;
     let right_margin = left_margin; // for symmetry
 
-    // Total width from window edge to end of traffic light area
-    let total_width_from_edge = zoom_frame.origin.x + zoom_frame.size.width + right_margin;
+    let total_width = zoom_button.origin.x + zoom_button.size.width + right_margin;
 
-    // Or just the traffic lights themselves plus margins:
-    let traffic_lights_width = total_width_from_edge;
-
-    // Height includes the button plus top and bottom margins
-    let button_height = close_frame.size.height;
-    let top_margin = close_frame.origin.y;
+    let top_margin = close_button.origin.y;
     let bottom_margin = top_margin; // Usually symmetric
-    let traffic_lights_height = button_height + top_margin + bottom_margin;
+    let total_height = top_margin + close_button.size.height + bottom_margin;
 
-    Some(Vec2::new(
-        traffic_lights_width as f32,
-        traffic_lights_height as f32,
-    ))
+    Some(Vec2::new(total_width as f32, total_height as f32))
 }
 
 fn ns_view_from_handle(handle: &AppKitWindowHandle) -> Option<&NSView> {
