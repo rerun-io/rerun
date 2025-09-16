@@ -7421,6 +7421,7 @@ dependencies = [
  "egui_extras",
  "itertools 0.14.0",
  "re_arrow_ui",
+ "re_arrow_util",
  "re_byte_size",
  "re_chunk_store",
  "re_format",

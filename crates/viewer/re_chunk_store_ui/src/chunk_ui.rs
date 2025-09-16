@@ -85,7 +85,7 @@ impl ChunkUi {
             .map(|(component_desc, list_array)| {
                 (
                     component_desc.clone(),
-                    format!("{:#?}", list_array.data_type()),
+                    re_arrow_util::format_data_type(list_array.data_type()),
                 )
             })
             .collect::<BTreeMap<_, _>>();
@@ -208,7 +208,7 @@ impl ChunkUi {
                 ui.push_id(field.name().clone(), |ui| {
                     ui.list_item_collapsible_noninteractive_label(field.name(), false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Data type", false, |ui| {
-                            ui.label(format!("{:#?}", field.data_type()));
+                            ui.label(re_arrow_util::format_data_type(field.data_type()));
                         });
 
                         ui.list_item_collapsible_noninteractive_label("Metadata", false, |ui| {

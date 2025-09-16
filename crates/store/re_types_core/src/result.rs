@@ -142,7 +142,7 @@ pub enum DeserializationError {
     #[error("Expected non-nullable data but didn't find any")]
     MissingData { backtrace: Box<_Backtrace> },
 
-    #[error("Expected field {field_name:?} to be present in {datatype:#?}")]
+    #[error("Expected field {field_name:?} to be present in {datatype}")]
     MissingStructField {
         datatype: arrow::datatypes::DataType,
         field_name: String,
@@ -160,7 +160,7 @@ pub enum DeserializationError {
         backtrace: Box<_Backtrace>,
     },
 
-    #[error("Expected union arm {arm_name:?} (#{arm_index}) to be present in {datatype:#?}")]
+    #[error("Expected union arm {arm_name:?} (#{arm_index}) to be present in {datatype}")]
     MissingUnionArm {
         datatype: arrow::datatypes::DataType,
         arm_name: String,
@@ -168,7 +168,7 @@ pub enum DeserializationError {
         backtrace: Box<_Backtrace>,
     },
 
-    #[error("Expected {expected:#?} but found {got:#?} instead")]
+    #[error("Expected {expected} but found {got} instead")]
     DatatypeMismatch {
         expected: arrow::datatypes::DataType,
         got: arrow::datatypes::DataType,

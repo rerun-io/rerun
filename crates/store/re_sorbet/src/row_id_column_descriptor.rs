@@ -86,7 +86,7 @@ impl TryFrom<&ArrowField> for RowIdColumnDescriptor {
             })
         } else {
             Err(WrongDatatypeError(format!(
-                "Expected a RowId column with datatype {expected_datatype:?}, but column {:?} has datatype {actual_datatype:?}",
+                "Expected a RowId column with datatype {expected_datatype}, but column {:?} has datatype {actual_datatype}",
                 field.name()
             )))
         }
