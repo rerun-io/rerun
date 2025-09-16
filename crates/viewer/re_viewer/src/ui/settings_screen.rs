@@ -1,3 +1,5 @@
+use std::str::FromStr as _;
+
 use egui::{NumExt as _, Ui};
 
 use re_log_types::TimestampFormat;
@@ -86,25 +88,84 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     separator_with_some_space(ui);
 
-    ui.strong("Timezone");
+    let timestamp = re_log_types::Timestamp::from(
+        jiff::Timestamp::from_str("2023-02-14T22:47:18+01").expect("valid timestamp"),
+    );
+
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 0.0;
+        ui.strong("Timestamp format");
+        ui.help_button(|ui| {
+            ui.set_max_width(400.0);
+            ui.markdown_ui(&format!(
+                "\
+This setting controls how timestamps are displayed and parsed in the viewer.
+
+#### UTC
+
+All timestamps are displayed in UTC, with the standard `Z` suffix.
+For example:
+
+```
+{}
+```
+
+#### Local (show time zone information)
+
+All timestamps are displayed in the local time zone (as provided by your OS).
+For example:
+
+```
+{}
+```
+
+#### Local (hide time zone information)
+
+All timestamps are displayed in the local time zone, but the time zone information is not displayed.
+For example:
+
+```
+{}
+```
+
+**Note**: timestamps representations lacking time zone information are ambiguous.
+They may lead to incorrect interpretation by third party systems, e.g. when copy-pasting them.
+
+#### Seconds since Unix epoch
+
+All timestamps are displayed as seconds since the Unix epoch (1970-01-01 00:00:00 UTC).
+For example:
+
+```
+{}
+```",
+                timestamp.format(TimestampFormat::Utc),
+                timestamp.format(TimestampFormat::LocalTimezone),
+                timestamp.format(TimestampFormat::LocalTimezoneImplicit),
+                timestamp.format(TimestampFormat::UnixEpoch)
+            ));
+        })
+    });
     ui.re_radio_value(
         &mut app_options.timestamp_format,
         TimestampFormat::Utc,
         "UTC",
-    )
-    .on_hover_text("Display timestamps in UTC");
+    );
     ui.re_radio_value(
         &mut app_options.timestamp_format,
         TimestampFormat::LocalTimezone,
-        "Local",
-    )
-    .on_hover_text("Display timestamps in the local timezone");
+        "Local (show time zone information)",
+    );
+    ui.re_radio_value(
+        &mut app_options.timestamp_format,
+        TimestampFormat::LocalTimezoneImplicit,
+        "Local (hide time zone information)",
+    );
     ui.re_radio_value(
         &mut app_options.timestamp_format,
         TimestampFormat::UnixEpoch,
-        "Unix epoch",
-    )
-    .on_hover_text("Display timestamps in seconds since unix epoch");
+        "Seconds since Unix epoch",
+    );
 
     //
     // Map view

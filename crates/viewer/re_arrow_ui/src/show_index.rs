@@ -4,23 +4,25 @@
 use std::ops::Range;
 
 use arrow::array::cast::{
-    AsArray as _, as_generic_list_array, as_map_array, as_struct_array, as_union_array,
+    as_generic_list_array, as_map_array, as_struct_array, as_union_array, AsArray as _,
 };
 use arrow::array::types::{
-    ArrowDictionaryKeyType, Float16Type, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
-    Int64Type, RunEndIndexType, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
+    ArrowDictionaryKeyType, Float16Type, Float32Type, Float64Type, Int16Type, Int32Type, Int64Type,
+    Int8Type, RunEndIndexType, UInt16Type, UInt32Type, UInt64Type, UInt8Type,
 };
 use arrow::array::{
+    as_generic_binary_array, downcast_dictionary_array, downcast_integer_array, downcast_run_array,
     Array, ArrayAccessor as _, DictionaryArray, FixedSizeBinaryArray, FixedSizeListArray,
     GenericBinaryArray, GenericListArray, MapArray, OffsetSizeTrait, PrimitiveArray, RunArray,
-    StructArray, UnionArray, as_generic_binary_array, downcast_dictionary_array,
-    downcast_integer_array, downcast_run_array,
+    StructArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
+    TimestampSecondArray, UnionArray,
 };
-use arrow::datatypes::{ArrowNativeType as _, DataType, Field, UnionMode};
+use arrow::datatypes::{ArrowNativeType as _, DataType, Field, TimeUnit, UnionMode};
 use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::{RichText, Ui};
 
+use re_log_types::TimestampFormat;
 use re_ui::list_item::{CustomContent, LabelContent};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{UiExt as _, UiLayout};
@@ -34,6 +36,9 @@ use crate::list_item_ranges::list_item_ranges;
 pub struct DisplayOptions<'a> {
     /// Format options for items formatted with arrows built-in formatter.
     pub format_options: FormatOptions<'a>,
+
+    /// Format for timestamp values.
+    pub timestamp_format: TimestampFormat,
 
     /// How many items should be shown for arrays that have nested items?
     pub max_nested_array_items: usize,
@@ -57,6 +62,7 @@ impl Default for DisplayOptions<'_> {
             format_options: FormatOptions::default()
                 .with_null("null")
                 .with_display_error(true),
+            timestamp_format: Default::default(),
             max_nested_array_items: 3,
             max_array_items: 6,
             max_map_items: 3,
@@ -70,6 +76,7 @@ impl DisplayOptions<'_> {
     fn nested(&self) -> Self {
         Self {
             format_options: self.format_options.clone(),
+            timestamp_format: self.timestamp_format,
             max_nested_array_items: self
                 .max_nested_array_items
                 .saturating_sub(self.decrease_nested_items_per_nested_level),
@@ -159,13 +166,41 @@ fn make_ui<'a>(
         DataType::Null | DataType::Boolean | DataType::Utf8 | DataType::LargeUtf8
         | DataType::Utf8View | DataType::BinaryView
         | DataType::Date32 | DataType::Date64 | DataType::Time32(_) | DataType::Time64(_)
-        | DataType::Timestamp(_, _) | DataType::Duration(_) | DataType::Interval(_)
+        | DataType::Duration(_) | DataType::Interval(_)
         | DataType::Decimal128(_, _) | DataType::Decimal256(_, _)
         => {
             show_arrow_builtin(array, options)
         }
+        DataType::Timestamp(TimeUnit::Second, _) => {
+            Ok(show_timestamp(array
+                .as_any()
+                .downcast_ref::<TimestampSecondArray>()
+                .expect("TimestampSecondArray downcast failed"), options.timestamp_format))
+        }
+        DataType::Timestamp(TimeUnit::Millisecond, _) => {
+            Ok(show_timestamp(array
+                .as_any()
+                .downcast_ref::<TimestampMillisecondArray>()
+                .expect("TimestampMillisecondArray downcast failed"), options.timestamp_format))
+        }
+        DataType::Timestamp(TimeUnit::Microsecond, _) => {
+            Ok(show_timestamp(array
+                .as_any()
+                .downcast_ref::<TimestampMicrosecondArray>()
+                .expect("TimestampMicrosecondArray downcast failed"), options.timestamp_format))
+        }
+        DataType::Timestamp(TimeUnit::Nanosecond, _) => {
+            Ok(show_timestamp(array
+                .as_any()
+                .downcast_ref::<TimestampNanosecondArray>()
+                .expect("TimestampNanosecondArray downcast failed"), options.timestamp_format))
+        }
+
         DataType::FixedSizeBinary(_) => {
-            let a = array.as_any().downcast_ref::<FixedSizeBinaryArray>().expect("FixedSizeBinaryArray downcast failed");
+            let a = array
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .expect("FixedSizeBinaryArray downcast failed");
             show_arrow_builtin(a, options)
         }
         DataType::Binary => {
@@ -181,7 +216,10 @@ fn make_ui<'a>(
         DataType::List(_) => show_custom(as_generic_list_array::<i32>(array), options),
         DataType::LargeList(_) => show_custom(as_generic_list_array::<i64>(array), options),
         DataType::FixedSizeList(_, _) => {
-            let a = array.as_any().downcast_ref::<FixedSizeListArray>().expect("FixedSizeListArray downcast failed");
+            let a = array
+                .as_any()
+                .downcast_ref::<FixedSizeListArray>()
+                .expect("FixedSizeListArray downcast failed");
             show_custom(a, options)
         }
         DataType::Struct(_) => show_custom(as_struct_array(array), options),
@@ -198,6 +236,49 @@ fn make_ui<'a>(
         }
     }
 }
+
+fn show_timestamp<'a, T>(array: T, format: TimestampFormat) -> Box<dyn ShowIndex + 'a>
+where
+    T: Array + 'a,
+    ShowTimestamp<T>: ShowIndex,
+{
+    Box::new(ShowTimestamp { array, format })
+}
+
+struct ShowTimestamp<T: Array> {
+    array: T,
+    format: TimestampFormat,
+}
+
+macro_rules! show_timestamp_impl {
+    ($array_ty:ty, $conv_fn:ident) => {
+        impl ShowIndex for ShowTimestamp<&$array_ty> {
+            fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult {
+                if self.array.is_null(idx) {
+                    f.append_primitive("null");
+                } else {
+                    #[allow(trivial_numeric_casts)]
+                    let timestamp = jiff::Timestamp::$conv_fn(self.array.value(idx) as _)
+                        .map_err(|err| ArrowError::ExternalError(Box::new(err)))?;
+                    f.append_primitive(
+                        &re_log_types::Timestamp::from(timestamp).format(self.format),
+                    );
+                }
+
+                Ok(())
+            }
+
+            fn array(&self) -> &dyn Array {
+                self.array
+            }
+        }
+    };
+}
+
+show_timestamp_impl!(TimestampSecondArray, from_second);
+show_timestamp_impl!(TimestampMillisecondArray, from_millisecond);
+show_timestamp_impl!(TimestampMicrosecondArray, from_microsecond);
+show_timestamp_impl!(TimestampNanosecondArray, from_nanosecond);
 
 struct ShowBuiltIn<'a> {
     array: &'a dyn Array,
