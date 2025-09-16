@@ -9,6 +9,13 @@ use re_viewer::viewer_test_utils;
 /// Navigates from welcome to settings screen and snapshots it.
 #[tokio::test]
 async fn settings_screen() {
+    #![allow(unsafe_code)] // It's only a test
+
+    // SAFETY: it's only a test
+    unsafe {
+        std::env::set_var("TZ", "Europe/Stockholm");
+    }
+
     let mut harness = viewer_test_utils::viewer_harness();
     harness.get_by_label("Menu").click();
     harness.run_ok();
