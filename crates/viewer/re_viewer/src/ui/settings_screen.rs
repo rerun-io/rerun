@@ -104,7 +104,6 @@ This setting controls how timestamps are displayed and parsed in the viewer.
 #### UTC
 
 All timestamps are displayed in UTC, with the standard `Z` suffix.
-For example:
 
 ```
 {}
@@ -113,7 +112,6 @@ For example:
 #### Local (show time zone information)
 
 All timestamps are displayed in the local time zone (as provided by your OS).
-For example:
 
 ```
 {}
@@ -122,7 +120,6 @@ For example:
 #### Local (hide time zone information)
 
 All timestamps are displayed in the local time zone, but the time zone information is not displayed.
-For example:
 
 ```
 {}
@@ -134,7 +131,6 @@ They may lead to incorrect interpretation by third party systems, e.g. when copy
 #### Seconds since Unix epoch
 
 All timestamps are displayed as seconds since the Unix epoch (1970-01-01 00:00:00 UTC).
-For example:
 
 ```
 {}
