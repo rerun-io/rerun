@@ -9,10 +9,8 @@ use re_ui::{
 };
 use re_uri::Fragment;
 use re_viewer_context::{
-    DisplayMode, ItemCollection, RecordingConfig, StoreHub, UrlContext, ViewerContext,
+    DisplayMode, ItemCollection, RecordingConfig, StoreHub, ViewerContext, open_url::ViewerOpenUrl,
 };
-
-use crate::open_url::ViewerOpenUrl;
 
 pub struct ShareModal {
     modal: ModalHandler,
@@ -50,11 +48,13 @@ impl ShareModal {
         rec_cfg: Option<&RecordingConfig>,
         selection: &ItemCollection,
     ) -> anyhow::Result<ViewerOpenUrl> {
-        let url_context = {
-            let time_ctrl = rec_cfg.map(|cfg| cfg.time_ctrl.read());
-            UrlContext::from_context_expanded(display_mode, time_ctrl.as_deref(), selection)
-        };
-        ViewerOpenUrl::new(store_hub, url_context)
+        let time_ctrl = rec_cfg.map(|cfg| cfg.time_ctrl.read());
+        ViewerOpenUrl::from_context_expanded(
+            store_hub,
+            display_mode,
+            time_ctrl.as_deref(),
+            selection,
+        )
     }
 
     /// Opens the share modal with the current URL.
@@ -261,7 +261,7 @@ fn url_settings_ui(
         ui.add_space(8.0);
         time_range_ui(ui, url_time_range, ctx.rec_cfg);
     }
-    if let Some(fragments) = url.fragments_mut() {
+    if let Some(fragments) = url.fragment_mut() {
         ui.add_space(8.0);
 
         let timestamp_format = ctx.app_options().timestamp_format;
@@ -374,9 +374,9 @@ mod tests {
     use re_chunk::EntityPath;
     use re_log_types::{AbsoluteTimeRangeF, TimeCell, external::re_tuid};
     use re_test_context::TestContext;
-    use re_viewer_context::{DisplayMode, Item, ItemCollection};
+    use re_viewer_context::{DisplayMode, Item, ItemCollection, open_url::ViewerOpenUrl};
 
-    use crate::{open_url::ViewerOpenUrl, ui::ShareModal};
+    use crate::ui::ShareModal;
 
     #[test]
     fn test_share_modal() {

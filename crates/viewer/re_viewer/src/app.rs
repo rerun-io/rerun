@@ -15,8 +15,10 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
-    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, UrlContext,
-    ViewClass, ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
+    StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
+    ViewClassRegistry, ViewClassRegistryError, command_channel,
+    open_url::{ViewerOpenUrl, combine_with_base_url},
+    santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
@@ -26,7 +28,6 @@ use crate::{
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     event::ViewerEventDispatcher,
-    open_url::ViewerOpenUrl,
     startup_options::StartupOptions,
 };
 
@@ -557,18 +558,22 @@ impl App {
         let display_mode = self.state.navigation.peek();
         let selection = self.state.selection_state.selected_items();
 
-        let Ok(url) = crate::open_url::ViewerOpenUrl::new(
+        let Ok(url) = ViewerOpenUrl::from_context_expanded(
             store_hub,
-            UrlContext::from_context_expanded(
-                display_mode,
-                time_ctrl
-                    .as_deref()
-                    // Only update `when` fragment when paused.
-                    .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused)),
-                selection,
-            )
-            .without_time_range(),
+            display_mode,
+            time_ctrl
+                .as_deref()
+                // Only update `when` fragment when paused.
+                .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused)),
+            selection,
         )
+        // We don't want the time range in the web url, as that actually leads
+        // to a subset of the current data! And is not in the fragment so
+        // would be added to history.
+        .map(|mut url| {
+            url.clear_time_range();
+            url
+        })
         // History entries expect the url parameter, not the full url, therefore don't pass a base url.
         .and_then(|url| url.sharable_url(None)) else {
             return;
@@ -619,19 +624,15 @@ impl App {
                 // This adds new system commands, which will be handled later in the loop.
                 self.go_to_dataset_data(store_id, fragment);
             }
-            SystemCommand::CopyUrlWithContext {
-                display_mode,
-                time_range,
-                fragment,
-            } => {
-                self.run_copy_link_command(
-                    store_hub,
-                    UrlContext {
-                        display_mode,
-                        time_range,
-                        fragment,
-                    },
-                );
+            SystemCommand::CopyViewerUrl(url) => {
+                match combine_with_base_url(web_viewer_base_url().as_ref(), [url]) {
+                    Ok(url) => {
+                        self.copy_text(url);
+                    }
+                    Err(err) => {
+                        re_log::error!("{err}");
+                    }
+                }
             }
             SystemCommand::ActivateApp(app_id) => {
                 self.state.navigation.replace(DisplayMode::LocalRecordings);
@@ -1503,30 +1504,43 @@ impl App {
                 }
             }
             UICommand::CopyDirectLink => {
-                self.run_copy_link_command(
-                    storage_context.hub,
-                    UrlContext::new(display_mode.clone()),
-                );
+                match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode) {
+                    Ok(url) => self.run_copy_link_command(&url),
+                    Err(err) => re_log::error!("{err}"),
+                }
             }
 
             UICommand::CopyTimeRangeLink => {
-                let mut url_context = UrlContext::new(display_mode.clone());
+                match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode) {
+                    Ok(mut url) => {
+                        if let Some(time_range) = url.time_range_mut() {
+                            let rec_cfg = storage_context
+                                .hub
+                                .active_store_id()
+                                .and_then(|id| self.state.recording_config(id));
 
-                let rec_cfg = storage_context
-                    .hub
-                    .active_store_id()
-                    .and_then(|id| self.state.recording_config(id));
-                let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
+                            let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
 
-                if let Some(time_ctrl) = &time_ctrl {
-                    url_context = url_context.with_time_range(time_ctrl);
-                } else {
-                    re_log::warn!("No timeline in current mode");
+                            if let Some(time_ctrl) = &time_ctrl
+                                && let Some(loop_selection) = time_ctrl.loop_selection()
+                            {
+                                *time_range = Some(re_uri::TimeSelection {
+                                    timeline: *time_ctrl.timeline(),
+                                    range: loop_selection.to_int(),
+                                });
+                            } else {
+                                re_log::warn!("No timeline selection to copy");
+                            }
+                        } else {
+                            re_log::warn!(
+                                "The current recording doesn't support sharing a time range"
+                            );
+                        }
+
+                        self.run_copy_link_command(&url);
+                    }
+                    Err(err) => re_log::error!("{err}"),
                 }
-
-                drop(time_ctrl);
-
-                self.run_copy_link_command(storage_context.hub, url_context);
             }
 
             #[cfg(target_arch = "wasm32")]
@@ -1647,21 +1661,24 @@ impl App {
         }
     }
 
-    fn run_copy_link_command(&mut self, store_hub: &StoreHub, context: UrlContext) {
+    fn run_copy_link_command(&mut self, content_url: &ViewerOpenUrl) {
         let base_url = web_viewer_base_url();
 
-        match crate::open_url::ViewerOpenUrl::new(store_hub, context)
-            .and_then(|content_url| content_url.sharable_url(base_url.as_ref()))
-        {
+        match content_url.sharable_url(base_url.as_ref()) {
             Ok(url) => {
-                self.egui_ctx.copy_text(url.clone());
-                self.notifications
-                    .success(format!("Copied {url:?} to clipboard"));
+                self.copy_text(url);
             }
             Err(err) => {
                 re_log::error!("{err}");
             }
         }
+    }
+
+    /// Copies text to the clipboard, and gives a notification about it.
+    fn copy_text(&mut self, url: String) {
+        self.notifications
+            .success(format!("Copied {url:?} to clipboard"));
+        self.egui_ctx.copy_text(url);
     }
 
     fn copy_entity_hierarchy_to_clipboard(
@@ -2781,10 +2798,10 @@ impl eframe::App for App {
                 paint_native_window_frame(egui_ctx);
             }
 
-            if let Some(cmd) = self
-                .cmd_palette
-                .show(egui_ctx, &ViewerOpenUrl::command_palette_parse_url)
-            {
+            if let Some(cmd) = self.cmd_palette.show(
+                egui_ctx,
+                &crate::open_url_description::command_palette_parse_url,
+            ) {
                 match cmd {
                     re_ui::CommandPaletteAction::UiCommand(cmd) => {
                         self.command_sender.send_ui(cmd);

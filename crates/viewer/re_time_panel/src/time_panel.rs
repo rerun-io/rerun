@@ -18,6 +18,7 @@ use re_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_ui::{ContextExt as _, DesignTokens, Help, UiExt as _, filter_widget, icons, list_item};
 use re_ui::{IconText, filter_widget::format_matching_text};
+use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig,
     SystemCommand, SystemCommandSender as _, TimeControl, TimeView, UiLayout, ViewerContext,
@@ -567,6 +568,7 @@ impl TimePanel {
             &self.time_ranges_ui,
             time_ctrl,
             ui,
+            ctx,
             Some(&time_area_response),
             &time_area_painter,
             &timeline_rect,
@@ -1388,6 +1390,7 @@ impl TimePanel {
                     &time_ranges_ui,
                     time_ctrl,
                     ui,
+                    ctx,
                     None,
                     &painter,
                     &time_range_rect,
@@ -1404,7 +1407,9 @@ impl TimePanel {
         ui: &mut egui::Ui,
         time_ctrl: &mut TimeControl,
     ) {
-        if let Some(time_int) = time_ctrl.time_int() {
+        if let Some(time_int) = time_ctrl.time_int()
+            && let Some(time) = time_ctrl.time()
+        {
             let time_type = time_ctrl.time_type();
 
             let mut time_str = self
@@ -1426,11 +1431,11 @@ impl TimePanel {
                 }
                 self.time_edit_string = None;
             }
-            response
-                .on_hover_text(format!("Timestamp: {}", time_int.as_i64()))
-                .context_menu(|ui| {
-                    copy_time_properties_context_menu(ui, time_ctrl, None);
-                });
+            let response = response.on_hover_text(format!("Timestamp: {}", time_int.as_i64()));
+
+            response.context_menu(|ui| {
+                copy_time_properties_context_menu(ui, time);
+            });
         }
     }
 }
@@ -1776,29 +1781,79 @@ fn interact_with_streams_rect(
 }
 
 /// Context menu that shows up when interacting with the streams rect.
-fn copy_time_properties_context_menu(
+fn copy_timeline_properties_context_menu(
     ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
     time_ctrl: &TimeControl,
-    hovered_time: Option<TimeReal>,
+    hovered_time: TimeReal,
 ) {
-    if let Some(time) = hovered_time {
-        if ui.button("Copy hovered timestamp").clicked() {
-            let time = format!("{}", time.floor().as_i64());
-            re_log::info!("Copied hovered timestamp: {}", time);
-            ui.ctx().copy_text(time);
-        }
-    } else if let Some(time) = time_ctrl.time_int()
-        && ui.button("Copy current timestamp").clicked()
+    let mut url = ViewerOpenUrl::from_context(ctx);
+    if let Some(selected_time_range) = time_ctrl.active_loop_selection()
+        && selected_time_range.contains(hovered_time)
     {
-        let time = format!("{}", time.as_i64());
-        re_log::info!("Copied current timestamp: {}", time);
-        ui.ctx().copy_text(time);
+        let has_time_range = url.as_mut().is_ok_and(|url| url.fragment_mut().is_some());
+        let copy_command = url.and_then(|url| url.copy_url_command());
+        if ui
+            .add_enabled(
+                copy_command.is_ok() && has_time_range,
+                egui::Button::new("Copy link to trimmed range"),
+            )
+            .on_disabled_hover_text(if copy_command.is_err() {
+                "Can't share links to the current recording"
+            } else {
+                "The current recording doesn't support time range links"
+            })
+            .clicked()
+            && let Ok(copy_command) = copy_command
+        {
+            ctx.command_sender().send_system(copy_command);
+        }
+    } else {
+        let has_fragment = url.as_mut().is_ok_and(|url| {
+            if let Some(fragment) = url.fragment_mut() {
+                fragment.when = Some((
+                    *time_ctrl.timeline().name(),
+                    re_log_types::TimeCell {
+                        typ: time_ctrl.time_type(),
+                        value: hovered_time.floor().into(),
+                    },
+                ));
+                true
+            } else {
+                false
+            }
+        });
+        let copy_command = url.and_then(|url| url.copy_url_command());
+
+        if ui
+            .add_enabled(
+                copy_command.is_ok() && has_fragment,
+                egui::Button::new("Copy link to timestamp"),
+            )
+            .on_disabled_hover_text(if copy_command.is_err() {
+                "Can't share links to the current recording"
+            } else {
+                "The current recording doesn't support time stamp links"
+            })
+            .clicked()
+            && let Ok(copy_command) = copy_command
+        {
+            ctx.command_sender().send_system(copy_command);
+        }
     }
 
-    if ui.button("Copy current timeline name").clicked() {
-        let timeline = format!("{}", time_ctrl.timeline().name());
-        re_log::info!("Copied current timeline: {}", timeline);
-        ui.ctx().copy_text(timeline);
+    if ui.button("Copy timestamp").clicked() {
+        let time = format!("{}", hovered_time.floor().as_i64());
+        re_log::info!("Copied hovered timestamp: {}", time);
+        ui.ctx().copy_text(time);
+    }
+}
+
+fn copy_time_properties_context_menu(ui: &mut egui::Ui, time: TimeReal) {
+    if ui.button("Copy timestamp").clicked() {
+        let time = format!("{}", time.floor().as_i64());
+        re_log::info!("Copied hovered timestamp: {}", time);
+        ui.ctx().copy_text(time);
     }
 }
 
@@ -1807,6 +1862,7 @@ fn time_marker_ui(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
     ui: &egui::Ui,
+    ctx: &ViewerContext<'_>,
     time_area_response: Option<&egui::Response>,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
@@ -1869,19 +1925,38 @@ fn time_marker_ui(
         let is_pointer_in_timeline_rect =
             ui.ui_contains_pointer() && timeline_rect.contains(pointer_pos);
 
-        // Show preview?
-        if !is_hovering_time_cursor
+        let hovered_ctx_id = egui::Id::new("hovered timestamp context");
+
+        let on_timeline = !is_hovering_time_cursor
             && !time_area_double_clicked
             && is_pointer_in_time_area_rect
             && !is_anything_being_dragged
-            && !is_hovering_the_loop_selection
+            && !is_hovering_the_loop_selection;
+
+        if on_timeline {
+            ui.ctx().set_cursor_icon(timeline_cursor_icon);
+        }
+
+        // Show a preview bar at this position, if we have right-clicked
+        // on the time panel we want to still draw the line at the
+        // original position.
+        let hovered_x_pos = if let Some(hovered_time) =
+            ui.ctx().memory(|mem| mem.data.get_temp(hovered_ctx_id))
+            && let Some(x) = time_ranges_ui.x_from_time_f32(hovered_time)
         {
+            Some(x)
+        } else if on_timeline {
+            Some(pointer_pos.x)
+        } else {
+            None
+        };
+
+        if let Some(x) = hovered_x_pos {
             time_area_painter.vline(
-                pointer_pos.x,
+                x,
                 timeline_rect.top()..=ui.max_rect().bottom(),
                 ui.visuals().widgets.noninteractive.fg_stroke,
             );
-            ui.ctx().set_cursor_icon(timeline_cursor_icon); // preview!
         }
 
         // Click to move time here:
@@ -1920,8 +1995,25 @@ fn time_marker_ui(
             }
         }
 
-        time_area_response
-            .context_menu(|ui| copy_time_properties_context_menu(ui, time_ctrl, hovered_time));
+        if let Some(hovered_time) = ui
+            .ctx()
+            .memory(|mem| mem.data.get_temp(hovered_ctx_id))
+            .or(hovered_time)
+        {
+            if egui::Popup::context_menu(&time_area_response)
+                .width(300.0)
+                .show(|ui| {
+                    copy_timeline_properties_context_menu(ui, ctx, time_ctrl, hovered_time);
+                })
+                .is_some()
+            {
+                ui.ctx()
+                    .memory_mut(|mem| mem.data.insert_temp(hovered_ctx_id, hovered_time));
+            } else {
+                ui.ctx()
+                    .memory_mut(|mem| mem.data.remove::<TimeReal>(hovered_ctx_id));
+            }
+        }
     }
 }
 

@@ -2,8 +2,9 @@ use std::str::FromStr as _;
 
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{UICommand, UiExt as _};
+use re_viewer_context::open_url::ViewerOpenUrl;
 
-use crate::open_url::ViewerOpenUrl;
+use crate::open_url_description::ViewerOpenUrlDescription;
 
 #[derive(Default)]
 pub struct OpenUrlModal {
@@ -57,7 +58,7 @@ impl OpenUrlModal {
                 let open_url = ViewerOpenUrl::from_str(&self.url);
                 let can_import = match &open_url {
                     Ok(url) => {
-                        let description = url.open_description();
+                        let description = ViewerOpenUrlDescription::from_url(url);
                         if let Some(target_short) = description.target_short {
                             ui.horizontal(|ui| {
                                 ui.label(format!("{}:", description.category));

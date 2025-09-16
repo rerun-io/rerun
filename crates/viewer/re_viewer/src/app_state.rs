@@ -17,7 +17,7 @@ use re_viewer_context::{
     ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
     RecordingConfig, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
     SystemCommandSender as _, TableStore, ViewClassRegistry, ViewStates, ViewerContext,
-    blueprint_timeline,
+    blueprint_timeline, open_url,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -25,7 +25,7 @@ use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
     app::web_viewer_base_url, app_blueprint::AppBlueprint, event::ViewerEventDispatcher,
-    navigation::Navigation, open_url, ui::settings_screen_ui,
+    navigation::Navigation, ui::settings_screen_ui,
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
