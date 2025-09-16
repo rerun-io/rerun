@@ -1,11 +1,5 @@
 # Rerun changelog
 
-## Unreleased
-
-#### Deprecations
-
-- Python 3.9 has been deprecated and will be removed in 0.26.
-
 ## [0.25.0](https://github.com/rerun-io/rerun/compare/0.24.1...0.25.0) - 2025-09-16 - Syntax highlighting, table filtering, transparent objects
 
 -   📖 [Release blogpost](https://rerun.io/blog/release-0.25)
@@ -27,9 +21,16 @@ We are busy working on a powerful filtering feature for our arrow dataframe widg
 
 #### Transparent objects
 
-Set the opacity of 3D objects to make them transparent.
+We finally support transparency for meshes & various shapes (boxes, ellipsoids, etc.)!
 
 https://github.com/user-attachments/assets/5a78cf2c-1e11-4f5f-a8a4-4e5d503f4cd9
+
+Source of transparency ("alpha") is a bit limited for now:
+* color component on all of `Boxes3D`, `Ellipsoids3D`, `Capsules3D` & `Cylinders3D`
+* `Mesh3D`'s albedo factor
+* `Asset3D` albedo color (depends on the underlying model format)
+
+Naturally, there's still a lot of places missing where we'd like to add transparency support!
 
 #### Experimental MCAP support
 
