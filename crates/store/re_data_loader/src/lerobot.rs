@@ -242,8 +242,7 @@ impl LeRobotDatasetMetadata {
         let metadir = metadir.as_ref();
 
         let info = LeRobotDatasetInfo::load_from_json_file(metadir.join("info.json"))?;
-        let episodes_vec: Vec<LeRobotDatasetEpisode> =
-            load_jsonl_file(metadir.join("episodes.jsonl"))?;
+        let episodes_vec: Vec<LeRobotDatasetEpisode> = load_jsonl_file(metadir.join("episodes.jsonl"))?;
         let mut tasks = load_jsonl_file(metadir.join("tasks.jsonl"))?;
 
         // Convert episodes vec to HashMap for efficient lookup by index
