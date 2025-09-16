@@ -429,7 +429,7 @@ impl AppState {
                 //
 
                 if app_options.inspect_blueprint_timeline
-                    && *display_mode == DisplayMode::LocalRecordings
+                    && matches!(display_mode, DisplayMode::LocalRecordings(_))
                 {
                     let blueprint_db = ctx.store_context.blueprint;
 
@@ -495,7 +495,7 @@ impl AppState {
                 // Time panel
                 //
 
-                if *display_mode == DisplayMode::LocalRecordings {
+                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
                     time_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -511,7 +511,7 @@ impl AppState {
                 // Selection Panel
                 //
 
-                if *display_mode == DisplayMode::LocalRecordings {
+                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
                     selection_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -545,11 +545,12 @@ impl AppState {
                         ui.spacing_mut().item_spacing.y = 0.0;
 
                         match display_mode {
-                            DisplayMode::LocalRecordings
+                            DisplayMode::LocalRecordings(..)
                             | DisplayMode::LocalTable(..)
                             | DisplayMode::RedapEntry(..)
                             | DisplayMode::RedapServer(..) => {
-                                let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
+                                let show_blueprints =
+                                    matches!(display_mode, DisplayMode::LocalRecordings(_));
                                 let resizable = ctx.storage_context.bundle.recordings().count() > 3
                                     && show_blueprints;
 
@@ -618,7 +619,7 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::LocalRecordings => {
+                            DisplayMode::LocalRecordings(_) => {
                                 // If we are here and the "default" app id is selected,
                                 // we should instead switch to the welcome screen.
                                 if ctx.store_context.application_id()

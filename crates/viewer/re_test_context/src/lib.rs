@@ -435,7 +435,7 @@ impl TestContext {
                 render_ctx,
 
                 connection_registry: &self.connection_registry,
-                display_mode: &DisplayMode::LocalRecordings,
+                display_mode: &DisplayMode::LocalRecordings(None),
             },
             component_ui_registry: &self.component_ui_registry,
             view_class_registry: &self.view_class_registry,

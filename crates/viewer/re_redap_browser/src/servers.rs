@@ -463,7 +463,7 @@ impl RedapServers {
             viewer_ctx
                 .command_sender()
                 .send_system(SystemCommand::ChangeDisplayMode(
-                    DisplayMode::LocalRecordings,
+                    DisplayMode::LocalRecordings(None),
                 ));
         }
     }

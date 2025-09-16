@@ -12,6 +12,7 @@ use re_types::{
 };
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
+use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
 };
@@ -779,6 +780,23 @@ pub fn entity_db_button_ui(
         ctx.selection_state().set_hovered(item.clone());
     }
 
+    let new_entry: re_viewer_context::RecordingOrTable = store_id.clone().into();
+
+    response.context_menu(|ui| {
+        let url =
+            ViewerOpenUrl::from_display_mode(ctx.storage_context.hub, &new_entry.display_mode())
+                .and_then(|url| url.sharable_url(None));
+        if ui
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to partition"))
+            .on_disabled_hover_text("Can't copy a link to this partition")
+            .clicked()
+            && let Ok(url) = url
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+    });
+
     if response.clicked() {
         // When we click on a recording, we directly activate it. This is safe to do because
         // it's non-destructive and recordings are immutable. Switching back is easy.
@@ -789,9 +807,7 @@ pub fn entity_db_button_ui(
         // for the blueprint.
         if store_id.is_recording() {
             ctx.command_sender()
-                .send_system(SystemCommand::ActivateRecordingOrTable(
-                    store_id.clone().into(),
-                ));
+                .send_system(SystemCommand::ActivateRecordingOrTable(new_entry));
         }
     }
 
