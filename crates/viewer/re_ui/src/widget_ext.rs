@@ -18,6 +18,7 @@ pub struct OnResponse<'a, T> {
 macro_rules! response_ext_impl {
     ($target:path, $($pub:tt)*) => {
         /// Enable / disable the widget.
+        #[inline]
         $($pub)* fn enabled(self, enabled: bool) -> OnResponse<'a, $target> {
             let mut on_response = self.into_on_response();
             on_response.enabled = enabled;
@@ -25,6 +26,7 @@ macro_rules! response_ext_impl {
         }
 
         /// Add a callback that is called with the response of the widget once it's added.
+        #[inline]
         $($pub)* fn on_response(
             self,
             on_response: impl FnOnce(Response) -> Response + 'a,
@@ -35,6 +37,7 @@ macro_rules! response_ext_impl {
         }
 
         /// Add a callback that is called when the widget is clicked.
+        #[inline]
         $($pub)* fn on_click(self, on_click: impl FnOnce() + 'a) -> OnResponse<'a, $target> {
             self.on_response(move |response| {
                 if response.clicked() {
@@ -45,6 +48,7 @@ macro_rules! response_ext_impl {
         }
 
         /// Add some tooltip UI to the widget.
+        #[inline]
         $($pub)* fn on_hover_ui(
             self,
             on_hover_ui: impl FnOnce(&mut egui::Ui) + 'a,
@@ -53,6 +57,7 @@ macro_rules! response_ext_impl {
         }
 
         /// Add some tooltip UI to the widget when it's disabled.
+        #[inline]
         $($pub)* fn on_disabled_hover_ui(
             self,
             on_hover_ui: impl FnOnce(&mut egui::Ui) + 'a,
@@ -61,12 +66,14 @@ macro_rules! response_ext_impl {
         }
 
         /// Add some tooltip text to the widget.
+        #[inline]
         $($pub)* fn on_hover_text(self, hover_text: impl Into<WidgetText> + 'a) -> OnResponse<'a, $target> {
             let hover_text = hover_text.into();
             self.on_response(move |response| response.on_hover_text(hover_text.clone()))
         }
 
         /// Add some tooltip text to the widget when it's disabled.
+        #[inline]
         $($pub)* fn on_disabled_hover_text(
             self,
             hover_text: impl Into<WidgetText> + 'a,
@@ -76,11 +83,13 @@ macro_rules! response_ext_impl {
         }
 
         /// Show a menu on click.
+        #[inline]
         $($pub)* fn on_menu(self, add_contents: impl FnOnce(&mut egui::Ui) + 'a) -> OnResponse<'a, $target> {
             self.on_custom_menu(|popup| popup, add_contents)
         }
 
         /// Show a custom menu on click.
+        #[inline]
         $($pub)* fn on_custom_menu(
             self,
             customize: impl FnOnce(Popup<'_>) -> Popup<'_> + 'a,
@@ -95,6 +104,7 @@ macro_rules! response_ext_impl {
 }
 
 impl<'a, T> OnResponse<'a, T> {
+    #[inline]
     fn into_on_response(self) -> OnResponse<'a, T>
     where
         Self: Sized,
@@ -108,6 +118,7 @@ impl<'a, T> OnResponse<'a, T> {
 pub trait OnResponseExt<'a>: Sized {
     type Target;
 
+    #[inline]
     fn into_on_response(self) -> OnResponse<'a, Self::Target>
     where
         Self: Sized;
@@ -121,6 +132,7 @@ where
 {
     type Target = T;
 
+    #[inline]
     fn into_on_response(self) -> OnResponse<'a, Self::Target>
     where
         Self: Sized,
@@ -161,12 +173,14 @@ where
 impl<'a, T> std::ops::Deref for OnResponse<'a, T> {
     type Target = T;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
 impl<'a, T> std::ops::DerefMut for OnResponse<'a, T> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
