@@ -29,7 +29,7 @@ We are busy working on a powerful filtering feature for our arrow dataframe widg
 
 Set the opacity of 3D objects to make them transparent.
 
-https://static.rerun.io/transparent-objects/transparency.mp4
+https://github.com/user-attachments/assets/5a78cf2c-1e11-4f5f-a8a4-4e5d503f4cd9
 
 #### Experimental MCAP support
 
