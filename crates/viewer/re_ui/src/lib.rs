@@ -3,6 +3,7 @@
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 pub mod alert;
+pub mod boxed_widget;
 mod color_table;
 mod command;
 mod command_palette;
@@ -16,16 +17,18 @@ mod icon_text;
 pub mod icons;
 pub mod list_item;
 mod markdown_utils;
+pub mod menu;
 pub mod modal;
 pub mod notifications;
 mod section_collapsing_header;
 pub mod syntax_highlighting;
+pub mod time;
 mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
+mod widget_ext;
 
-use egui::{NumExt as _, Response, Ui, Widget};
-use std::ops::{Deref, DerefMut};
+use egui::NumExt as _;
 
 pub use self::{
     command::{UICommand, UICommandSender},
@@ -43,10 +46,8 @@ pub use self::{
     time_drag_value::TimeDragValue,
     ui_ext::UiExt,
     ui_layout::UiLayout,
+    widget_ext::*,
 };
-
-pub mod menu;
-pub mod time;
 
 // ---------------------------------------------------------------------------
 
@@ -238,149 +239,5 @@ fn is_in_resizable_panel(ui: &egui::Ui) -> bool {
         true // Our side-panels are resizable
     } else {
         false // Safe fallback
-    }
-}
-
-struct OnResponse<'a, T> {
-    inner: T,
-    on_response: smallvec::SmallVec<[Box<dyn FnOnce(Response) -> Response + Send + Sync + 'a>; 1]>,
-    enabled: bool,
-}
-
-// impl<'a, T> Deref for OnResponse<'a, T> {
-//     type Target = T;
-//
-//     fn deref(&self) -> &Self::Target {
-//         &self.inner
-//     }
-// }
-//
-// impl<'a, T> DerefMut for OnResponse<'a, T> {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         &mut self.inner
-//     }
-// }
-
-trait OnResponseExt<'a>: Sized {
-    /// Enable / disable the widget.
-    fn enabled(mut self, enabled: bool) -> OnResponse<'a, Self>;
-
-    /// Add a callback that is called with the response of the widget once it's added.
-    fn on_response(
-        self,
-        on_response: impl FnOnce(Response) -> Response + Send + Sync + 'a,
-    ) -> OnResponse<'a, Self>;
-
-    /// Add a callback that is called when the widget is clicked.
-    fn on_click(self, on_click: impl FnOnce() + Send + Sync + 'a) -> OnResponse<'a, Self>;
-
-    /// Add some tooltip UI to the widget.
-    fn on_hover_ui(
-        self,
-        on_hover_ui: impl FnOnce(&mut egui::Ui) + Send + Sync + 'a,
-    ) -> OnResponse<'a, Self>;
-}
-
-impl<'a, T> OnResponseExt<'a> for T
-where
-    T: Into<OnResponse<'a, T>>,
-{
-    fn enabled(self, enabled: bool) -> OnResponse<'a, Self> {
-        let mut widget: OnResponse<Self> = self.into();
-        widget.enabled = enabled;
-        widget
-    }
-
-    fn on_response(
-        self,
-        on_response: impl FnOnce(Response) -> Response + Send + Sync + 'a,
-    ) -> OnResponse<'a, Self> {
-        let mut widget = self.into();
-        widget.on_response.push(Box::new(on_response));
-        widget
-    }
-
-    fn on_click(self, on_click: impl FnOnce() + Send + Sync + 'a) -> OnResponse<'a, Self> {
-        self.on_response(move |response| {
-            if response.clicked() {
-                on_click();
-            }
-            response
-        })
-    }
-
-    fn on_hover_ui(
-        self,
-        on_hover_ui: impl FnOnce(&mut Ui) + Send + Sync + 'a,
-    ) -> OnResponse<'a, Self> {
-        self.on_response(move |response| response.on_hover_ui(on_hover_ui))
-    }
-}
-
-impl<'a, T: egui::Widget> egui::Widget for OnResponse<'a, T> {
-    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let mut response = ui.add_enabled(self.enabled, self.inner);
-
-        for on_response in self.on_response {
-            response = on_response(response);
-        }
-
-        response
-    }
-}
-
-impl<'a, T> From<T> for OnResponse<'a, T>
-where
-    T: egui::Widget,
-{
-    fn from(inner: T) -> Self {
-        Self {
-            inner,
-            on_response: smallvec::SmallVec::new(),
-            enabled: true,
-        }
-    }
-}
-
-fn test_ui(ui: &mut egui::Ui) {
-    ui.add(
-        egui::Button::new("Hi!")
-            .on_click(|| {
-                println!("Button clicked!");
-            })
-            .on_hover_ui(|ui| {
-                ui.label("This is a button");
-            })
-            .enabled(false)
-            .boxed(),
-    );
-}
-
-pub type BoxedWidget<'a> = Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + Send + Sync + 'a>;
-pub type BoxedWidgetLocal<'a> = Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + 'a>;
-
-trait BoxedWidgetExt<'a> {
-    fn boxed(self) -> BoxedWidget<'a>;
-}
-
-impl<'a, T: 'a> BoxedWidgetExt<'a> for T
-where
-    T: Widget + Send + Sync,
-{
-    fn boxed(self) -> BoxedWidget<'a> {
-        Box::new(move |ui: &mut egui::Ui| ui.add(self))
-    }
-}
-
-trait BoxedWidgetLocalExt<'a> {
-    fn boxed_local(self) -> BoxedWidgetLocal<'a>;
-}
-
-impl<'a, T: 'a> BoxedWidgetLocalExt<'a> for T
-where
-    T: Widget,
-{
-    fn boxed_local(self) -> BoxedWidgetLocal<'a> {
-        Box::new(move |ui: &mut egui::Ui| ui.add(self))
     }
 }

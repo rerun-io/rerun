@@ -1,5 +1,5 @@
-use crate::UiExt as _;
 use crate::list_item::ContentContext;
+use crate::{OnResponseExt, UiExt as _};
 use egui::Widget;
 
 type ButtonFn<'a> = Box<dyn FnOnce(&mut egui::Ui) + 'a>;
@@ -182,11 +182,14 @@ where
         on_click: impl FnOnce() + 'a,
     ) -> Self {
         let hover_text = alt_text.into();
-        self.with_button(
-            super::ItemActionButton::new(icon, &hover_text, on_click)
+        self.with_button(move |ui: &mut egui::Ui| {
+            let thing = ui
+                .small_icon_button_widget(icon, &hover_text)
+                .on_click(on_click)
                 .enabled(enabled)
-                .hover_text(hover_text),
-        )
+                .on_hover_text(hover_text);
+            ui.add(thing)
+        })
     }
 
     /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
@@ -204,9 +207,13 @@ where
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
         let hover_text = alt_text.into();
-        self.with_button(
-            super::ItemMenuButton::new(icon, &hover_text, add_contents).hover_text(hover_text),
-        )
+        self.with_button(|ui: &mut egui::Ui| {
+            ui.add(
+                ui.small_icon_button_widget(icon, &hover_text)
+                    .on_hover_text(hover_text)
+                    .on_menu(add_contents),
+            )
+        })
     }
 
     /// Set the help text tooltip to be shown in the header.

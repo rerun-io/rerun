@@ -9,7 +9,7 @@ use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
 use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
+use re_ui::{OnResponseExt, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     DataResult, QueryContext, UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection,
@@ -43,18 +43,20 @@ pub fn visualizer_ui(
         &all_visualizers,
     );
 
-    let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, "Add new visualizer…", |ui| {
-        menu_add_new_visualizer(
-            ctx,
-            ui,
-            &data_result,
-            &active_visualizers,
-            &available_inactive_visualizers,
-        );
-    })
-    .enabled(!available_inactive_visualizers.is_empty())
-    .hover_text("Add additional visualizers")
-    .disabled_hover_text("No additional visualizers available");
+    let button = ui
+        .small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
+        .on_menu(|ui| {
+            menu_add_new_visualizer(
+                ctx,
+                ui,
+                &data_result,
+                &active_visualizers,
+                &available_inactive_visualizers,
+            );
+        })
+        .enabled(!available_inactive_visualizers.is_empty())
+        .on_hover_text("Add additional visualizers")
+        .on_disabled_hover_text("No additional visualizers available");
 
     let markdown = "# Visualizers
 

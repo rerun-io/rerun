@@ -1,7 +1,8 @@
-use egui::{NumExt as _, Ui};
+use egui::{NumExt as _, Ui, Widget};
 
-use crate::UiExt as _;
+use crate::boxed_widget::{BoxedWidgetLocal, BoxedWidgetLocalExt};
 use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
+use crate::{OnResponseExt, UiExt as _};
 
 /// Control how the [`CustomContent`] advertises its width.
 #[derive(Debug, Clone, Copy)]
@@ -27,7 +28,7 @@ pub struct CustomContent<'a> {
     desired_width: CustomContentDesiredWidth,
 
     //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
-    button: Option<Box<dyn super::ItemButton + 'a>>,
+    button: Option<BoxedWidgetLocal<'a>>,
 }
 
 impl<'a> CustomContent<'a> {
@@ -59,19 +60,19 @@ impl<'a> CustomContent<'a> {
         self
     }
 
-    /// Add a right-aligned [`super::ItemButton`].
+    /// Add a right-aligned button.
     ///
     /// Note: for aesthetics, space is always reserved for the action button.
     // TODO(#6191): accept multiple calls for this function for multiple actions.
     #[inline]
-    pub fn button(mut self, button: impl super::ItemButton + 'a) -> Self {
+    pub fn button(mut self, button: impl Widget + 'a) -> Self {
         // TODO(#6191): support multiple action buttons
         assert!(
             self.button.is_none(),
             "Only one action button is supported right now"
         );
 
-        self.button = Some(Box::new(button));
+        self.button = Some(button.boxed_local());
         self
     }
 
@@ -105,7 +106,15 @@ impl<'a> CustomContent<'a> {
         enabled: bool,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
-        self.button(super::ItemActionButton::new(icon, alt_text, on_click).enabled(enabled))
+        let alt_text = alt_text.into();
+        self.button(move |ui: &mut Ui| {
+            ui.add(
+                ui.small_icon_button_widget(icon, &alt_text)
+                    .on_click(on_click)
+                    .enabled(enabled)
+                    .on_hover_text(alt_text),
+            )
+        })
     }
 
     /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
@@ -121,7 +130,14 @@ impl<'a> CustomContent<'a> {
         alt_text: impl Into<String>,
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
-        self.button(super::ItemMenuButton::new(icon, alt_text, add_contents))
+        let alt_text = alt_text.into();
+        self.button(|ui: &mut egui::Ui| {
+            ui.add(
+                ui.small_icon_button_widget(icon, &alt_text)
+                    .on_menu(add_contents)
+                    .on_hover_text(alt_text),
+            )
+        })
     }
 }
 

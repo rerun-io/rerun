@@ -429,15 +429,12 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
         if let Some(view) = viewport.view(view_id) {
             ui.section_collapsing_header("Entity path filter")
-                .with_button(
-                    list_item::ItemActionButton::new(
-                        &re_ui::icons::EDIT,
-                        "Add new entity…",
-                        || {
-                            self.view_entity_modal.open(*view_id);
-                        },
-                    )
-                    .hover_text("Modify the entity query using the editor"),
+                .with_action_button(
+                    &re_ui::icons::EDIT,
+                    "Modify the entity query using the editor",
+                    || {
+                        self.view_entity_modal.open(*view_id);
+                    },
                 )
                 .with_help_markdown(markdown)
                 .show(ui, |ui| {
@@ -711,11 +708,12 @@ fn container_children(
     };
 
     ui.section_collapsing_header("Contents")
-        .with_button(
-            list_item::ItemActionButton::new(&re_ui::icons::ADD, "Add to container", || {
+        .with_action_button(
+            &re_ui::icons::ADD,
+            "Add a new view or container to this container",
+            || {
                 show_add_view_or_container_modal(*container_id);
-            })
-            .hover_text("Add a new view or container to this container"),
+            },
         )
         .show(ui, show_content);
 }
