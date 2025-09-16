@@ -567,9 +567,8 @@ fn general_texture_creation_desc_from_image<'a>(
         // BGR->RGB conversion is done in the shader.
         ColorModel::RGB | ColorModel::BGR => {
             // There are no 3-channel textures in wgpu, so we need to pad to 4 channels.
-            // What should we pad with? It depends on whether or not the shader interprets these as alpha.
-            // To be safe, we pad with the MAX value of integers, and with 1.0 for floats.
-            // TODO(emilk): tell the shader to ignore the alpha channel instead!
+            // What should we pad with?
+            // It doesn't matter - we tell the shader to ignore the alpha channel.
 
             match datatype {
                 ChannelDatatype::U8 => (pad_rgb_to_rgba(buf, 0).into(), TextureFormat::Rgba8Uint),

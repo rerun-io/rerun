@@ -89,7 +89,7 @@ pub struct ColormappedTexture {
     /// Only applies to [`wgpu::TextureFormat::Rgba8Unorm`] and float textures.
     pub decode_srgb: bool,
 
-    /// How to treat the alpha channel
+    /// How to treat the alpha channel.
     pub texture_alpha: TextureAlpha,
 
     /// Raise the normalized values to this power (before any color mapping).
