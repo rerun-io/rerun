@@ -60,15 +60,17 @@ strum.workspace = true
 sublime_fuzzy.workspace = true
 url.workspace = true
 
-
-objc2 = "0.5"
-objc2-app-kit = "0.2"
-objc2-foundation = "0.2"
-raw-window-handle = "0.6"
-
 # Native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 notify.workspace = true # Only used with the `hot_reload_design_tokens` feature
+
+# Mac-specific
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit.workspace = true
+objc2-foundation.workspace = true
+objc2.workspace = true
+raw-window-handle.workspace = true
+
 
 [dev-dependencies]
 egui_kittest.workspace = true
