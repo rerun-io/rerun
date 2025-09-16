@@ -4,18 +4,18 @@
 use std::ops::Range;
 
 use arrow::array::cast::{
-    as_generic_list_array, as_map_array, as_struct_array, as_union_array, AsArray as _,
+    AsArray as _, as_generic_list_array, as_map_array, as_struct_array, as_union_array,
 };
 use arrow::array::types::{
-    ArrowDictionaryKeyType, Float16Type, Float32Type, Float64Type, Int16Type, Int32Type, Int64Type,
-    Int8Type, RunEndIndexType, UInt16Type, UInt32Type, UInt64Type, UInt8Type,
+    ArrowDictionaryKeyType, Float16Type, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
+    Int64Type, RunEndIndexType, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
 };
 use arrow::array::{
-    as_generic_binary_array, downcast_dictionary_array, downcast_integer_array, downcast_run_array,
     Array, ArrayAccessor as _, DictionaryArray, FixedSizeBinaryArray, FixedSizeListArray,
     GenericBinaryArray, GenericListArray, MapArray, OffsetSizeTrait, PrimitiveArray, RunArray,
     StructArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
-    TimestampSecondArray, UnionArray,
+    TimestampSecondArray, UnionArray, as_generic_binary_array, downcast_dictionary_array,
+    downcast_integer_array, downcast_run_array,
 };
 use arrow::datatypes::{ArrowNativeType as _, DataType, Field, TimeUnit, UnionMode};
 use arrow::error::ArrowError;
