@@ -118,9 +118,8 @@ impl McapChunkDecoder {
 
         let channel = msg.channel.as_ref();
         let channel_id = ChannelId(channel.id);
-        let log_time_cell = crate::util::TimestampCell::guess_from_nanos(msg.log_time, "log_time");
-        let publish_time_cell =
-            crate::util::TimestampCell::guess_from_nanos(msg.publish_time, "publish_time");
+        let log_time_cell = crate::util::TimestampCell::guess_from_nanos(msg.log_time);
+        let publish_time_cell = crate::util::TimestampCell::guess_from_nanos(msg.publish_time);
         let timepoint = re_chunk::TimePoint::from([
             ("log_time", log_time_cell.into_time_cell()),
             ("publish_time", publish_time_cell.into_time_cell()),

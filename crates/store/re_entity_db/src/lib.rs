@@ -20,7 +20,7 @@ pub use self::{
     instance_path::{InstancePath, InstancePathHash},
     store_bundle::{StoreBundle, StoreLoadError},
     time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline},
-    times_per_timeline::{TimeCounts, TimesPerTimeline},
+    times_per_timeline::{TimeCounts, TimelineStats, TimesPerTimeline},
     versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash},
 };
 

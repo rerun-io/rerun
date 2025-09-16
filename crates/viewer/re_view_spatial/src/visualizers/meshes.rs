@@ -96,7 +96,7 @@ impl Mesh3DVisualizer {
                             picking_layer_id: re_view::picking_layer_id_from_instance_path_hash(
                                 picking_instance_hash,
                             ),
-                            additive_tint: re_renderer::Color32::TRANSPARENT,
+                            additive_tint: re_renderer::Color32::BLACK,
                         }
                     }));
 

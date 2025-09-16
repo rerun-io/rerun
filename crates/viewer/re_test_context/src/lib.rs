@@ -744,7 +744,7 @@ mod test {
     fn test_edit_selection() {
         let test_context = TestContext::new();
 
-        let item = Item::InstancePath(InstancePath::entity_all("/entity/path".into()));
+        let item = Item::InstancePath(InstancePath::entity_all("/entity/path"));
 
         test_context.edit_selection(|selection_state| {
             selection_state.set_selection(item.clone());

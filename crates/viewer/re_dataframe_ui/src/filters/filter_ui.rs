@@ -9,7 +9,7 @@ use crate::TableBlueprint;
 
 /// Action to take based on the user interaction.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-enum FilterUiAction {
+pub enum FilterUiAction {
     #[default]
     None,
 
@@ -143,8 +143,20 @@ impl FilterState {
                 for row in rows {
                     ui.horizontal(|ui| {
                         for index in row {
-                            let filter_id = ui.make_persistent_id(index);
                             let filter = &mut self.filters[index];
+
+                            // egui uses this id to store the popup openness and size information,
+                            // so we must invalidate if the filter at a given index changes its
+                            // nature
+                            let filter_id = ui.make_persistent_id(egui::Id::new(index).with(
+                                match filter.operation {
+                                    FilterOperation::IntCompares { .. } => "int",
+                                    FilterOperation::FloatCompares { .. } => "float",
+                                    FilterOperation::StringContains(_) => "string",
+                                    FilterOperation::Boolean(_) => "bool",
+                                },
+                            ));
+
                             let prepared_ui = &prepared_uis[index];
 
                             let result =
@@ -239,7 +251,7 @@ impl Filter {
                 );
 
                 if ui
-                    .small_icon_button(&re_ui::icons::CLOSE, "Remove filter")
+                    .small_icon_button(&re_ui::icons::CLOSE_SMALL, "Remove filter")
                     .clicked()
                 {
                     should_delete_filter = true;
@@ -330,27 +342,68 @@ impl SyntaxHighlighting for FilterOperation {
 
         match self {
             Self::IntCompares { value, operator: _ } => {
-                builder.append_primitive(&re_format::format_int(*value))
+                if let Some(value) = value {
+                    builder.append_primitive(&re_format::format_int(*value));
+                } else {
+                    builder.append_primitive("…");
+                }
             }
+
             Self::FloatCompares { value, operator: _ } => {
-                builder.append_primitive(&re_format::format_f64(*value))
+                if let Some(value) = value {
+                    builder.append_primitive(&re_format::format_f64(*value));
+                } else {
+                    builder.append_primitive("…");
+                }
             }
-            Self::StringContains(query) => builder.append_string_value(query),
-            Self::BooleanEquals(query) => builder.append_primitive(&format!("{query}")),
-        };
+
+            Self::StringContains(query) => {
+                builder.append_string_value(query);
+            }
+
+            Self::Boolean(boolean_filter) => {
+                builder.append_primitive(&boolean_filter.operand_text());
+            }
+        }
     }
 }
 
-fn comparison_op_ui(ui: &mut egui::Ui, text: egui::WidgetText, op: &mut ComparisonOperator) {
-    egui::ComboBox::new("comp_op", "")
-        .selected_text(text)
-        .show_ui(ui, |ui| {
-            for possible_op in crate::filters::ComparisonOperator::ALL {
-                if ui.button(possible_op.to_string()).clicked() {
-                    *op = *possible_op;
+fn numerical_comparison_operator_ui(
+    ui: &mut egui::Ui,
+    column_name: &str,
+    operator_text: &str,
+    op: &mut ComparisonOperator,
+) {
+    ui.horizontal(|ui| {
+        ui.label(SyntaxHighlightedBuilder::body(column_name).into_widget_text(ui.style()));
+
+        egui::ComboBox::new("comp_op", "")
+            .selected_text(
+                SyntaxHighlightedBuilder::keyword(operator_text).into_widget_text(ui.style()),
+            )
+            .show_ui(ui, |ui| {
+                for possible_op in crate::filters::ComparisonOperator::ALL {
+                    if ui
+                        .button(
+                            SyntaxHighlightedBuilder::keyword(&possible_op.to_string())
+                                .into_widget_text(ui.style()),
+                        )
+                        .clicked()
+                    {
+                        *op = *possible_op;
+                    }
                 }
-            }
-        });
+            });
+    });
+}
+
+pub fn basic_operation_ui(ui: &mut egui::Ui, column_name: &str, operator_text: &str) {
+    ui.label(
+        SyntaxHighlightedBuilder::body(column_name)
+            .with_keyword(" ")
+            .with_keyword(operator_text)
+            .into_widget_text(ui.style()),
+    );
 }
 
 impl FilterOperation {
@@ -381,55 +434,57 @@ impl FilterOperation {
             }
         };
 
-        let mut top_text_builder = SyntaxHighlightedBuilder::new();
-        top_text_builder.append_body(column_name);
-        top_text_builder.append_keyword(" ");
-        top_text_builder.append_keyword(&self.operator_text());
-        let top_text = top_text_builder.into_widget_text(ui.style());
+        let operator_text = self.operator_text();
 
+        // Reduce the default width unnecessarily expands the popup width (queries as usually vers
+        // small).
+        ui.spacing_mut().text_edit_width = 150.0;
+
+        // TODO(ab): this is getting unwieldy. All arms should have an independent inner struct,
+        // which all handle their own UI.
         match self {
             Self::IntCompares { operator, value } => {
-                comparison_op_ui(ui, top_text, operator);
+                numerical_comparison_operator_ui(ui, column_name, &operator_text, operator);
 
-                let mut value_str = value.to_string();
+                let mut value_str = value.map(|v| v.to_string()).unwrap_or_default();
                 let response = ui.text_edit_singleline(&mut value_str);
-                if response.changed()
-                    && let Ok(parsed) = value_str.parse()
-                {
-                    *value = parsed;
+                if response.changed() {
+                    if value_str.is_empty() {
+                        *value = None;
+                    } else if let Ok(parsed) = value_str.parse() {
+                        *value = Some(parsed);
+                    }
                 }
 
                 process_text_edit_response(ui, &response);
             }
 
             Self::FloatCompares { operator, value } => {
-                comparison_op_ui(ui, top_text, operator);
+                numerical_comparison_operator_ui(ui, column_name, &operator_text, operator);
 
-                let mut value_str = value.to_string();
+                let mut value_str = value.map(|v| v.to_string()).unwrap_or_default();
                 let response = ui.text_edit_singleline(&mut value_str);
-                if response.changed()
-                    && let Ok(parsed) = value_str.parse()
-                {
-                    *value = parsed;
+                if response.changed() {
+                    if value_str.is_empty() {
+                        *value = None;
+                    } else if let Ok(parsed) = value_str.parse() {
+                        *value = Some(parsed);
+                    }
                 }
 
                 process_text_edit_response(ui, &response);
             }
 
             Self::StringContains(query) => {
-                ui.label(top_text);
+                basic_operation_ui(ui, column_name, &operator_text);
+
                 let response = ui.text_edit_singleline(query);
 
                 process_text_edit_response(ui, &response);
             }
 
-            Self::BooleanEquals(query) => {
-                ui.label(top_text);
-                if ui.re_radio_value(query, true, "true").clicked()
-                    || ui.re_radio_value(query, false, "false").clicked()
-                {
-                    action = FilterUiAction::CommitStateToBlueprint;
-                }
+            Self::Boolean(boolean_filter) => {
+                boolean_filter.popup_ui(ui, column_name, &mut action);
             }
         }
 
@@ -443,7 +498,7 @@ impl FilterOperation {
                 operator.to_string()
             }
             Self::StringContains(_) => "contains".to_owned(),
-            Self::BooleanEquals(_) => "is".to_owned(),
+            Self::Boolean(_) => "is".to_owned(),
         }
     }
 }
@@ -451,6 +506,7 @@ impl FilterOperation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::filters::BooleanFilter;
 
     fn test_cases() -> Vec<(FilterOperation, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
@@ -459,10 +515,7 @@ mod tests {
             use FilterOperation::*;
             let _op = StringContains(String::new());
             match _op {
-                IntCompares { .. }
-                | FloatCompares { .. }
-                | StringContains(_)
-                | BooleanEquals(_) => {}
+                IntCompares { .. } | FloatCompares { .. } | StringContains(_) | Boolean(_) => {}
             }
         };
 
@@ -470,16 +523,30 @@ mod tests {
             (
                 FilterOperation::IntCompares {
                     operator: ComparisonOperator::Eq,
-                    value: 100,
+                    value: Some(100),
                 },
                 "int_compare",
             ),
             (
+                FilterOperation::IntCompares {
+                    operator: ComparisonOperator::Eq,
+                    value: None,
+                },
+                "int_compare_none",
+            ),
+            (
                 FilterOperation::FloatCompares {
                     operator: ComparisonOperator::Ge,
-                    value: 10.5,
+                    value: Some(10.5),
                 },
                 "float_compares",
+            ),
+            (
+                FilterOperation::FloatCompares {
+                    operator: ComparisonOperator::Ge,
+                    value: None,
+                },
+                "float_compares_none",
             ),
             (
                 FilterOperation::StringContains("query".to_owned()),
@@ -489,10 +556,25 @@ mod tests {
                 FilterOperation::StringContains(String::new()),
                 "string_contains_empty",
             ),
-            (FilterOperation::BooleanEquals(true), "boolean_equals_true"),
             (
-                FilterOperation::BooleanEquals(false),
+                FilterOperation::Boolean(BooleanFilter::NonNullable(true)),
+                "boolean_equals_true",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::NonNullable(false)),
                 "boolean_equals_false",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::Nullable(Some(true))),
+                "nullable_boolean_equals_true",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::Nullable(Some(false))),
+                "nullable_boolean_equals_false",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::Nullable(None)),
+                "nullable_boolean_equals_null",
             ),
         ]
         .into_iter()

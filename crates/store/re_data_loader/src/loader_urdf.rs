@@ -84,7 +84,7 @@ impl DataLoader for UrdfDataLoader {
             robot,
             &filepath,
             &tx,
-            &settings.opened_store_id_or_recommended(),
+            &settings.recommended_store_id(),
             &settings.entity_path_prefix,
         )
         .with_context(|| "Failed to load URDF file!")?;
@@ -112,7 +112,7 @@ impl DataLoader for UrdfDataLoader {
             robot,
             &filepath,
             &tx,
-            &settings.opened_store_id_or_recommended(),
+            &settings.recommended_store_id(),
             &settings.entity_path_prefix,
         )
         .with_context(|| "Failed to load URDF file!")?;

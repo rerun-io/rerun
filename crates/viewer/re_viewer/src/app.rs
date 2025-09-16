@@ -625,7 +625,7 @@ impl App {
                 self.go_to_dataset_data(store_id, fragment);
             }
             SystemCommand::CopyViewerUrl(url) => {
-                match combine_with_base_url(base_url().as_ref(), [url]) {
+                match combine_with_base_url(web_viewer_base_url().as_ref(), [url]) {
                     Ok(url) => {
                         self.copy_text(url);
                     }
@@ -1488,6 +1488,21 @@ impl App {
                 re_ui::apply_style_and_install_loaders(egui_ctx);
             }
 
+            UICommand::Share => {
+                let selection = self.state.selection_state.selected_items();
+                let rec_cfg = storage_context
+                    .hub
+                    .active_store_id()
+                    .and_then(|id| self.state.recording_configs.get(id));
+                if let Err(err) = self.state.share_modal.open(
+                    storage_context.hub,
+                    display_mode,
+                    rec_cfg,
+                    selection,
+                ) {
+                    re_log::error!("Cannot share link to current screen: {err}");
+                }
+            }
             UICommand::CopyDirectLink => {
                 match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode) {
                     Ok(url) => self.run_copy_link_command(&url),
@@ -1501,8 +1516,8 @@ impl App {
                         if let Some(time_range) = url.time_range_mut() {
                             let rec_cfg = storage_context
                                 .hub
-                                .active_recording()
-                                .and_then(|db| self.state.recording_config(db.store_id()));
+                                .active_store_id()
+                                .and_then(|id| self.state.recording_config(id));
 
                             let time_ctrl = rec_cfg.as_ref().map(|cfg| cfg.time_ctrl.read());
 
@@ -1647,7 +1662,7 @@ impl App {
     }
 
     fn run_copy_link_command(&mut self, content_url: &ViewerOpenUrl) {
-        let base_url = base_url();
+        let base_url = web_viewer_base_url();
 
         match content_url.sharable_url(base_url.as_ref()) {
             Ok(url) => {
@@ -1785,6 +1800,7 @@ impl App {
                     self,
                     app_blueprint,
                     store_context,
+                    storage_context.hub,
                     gpu_resource_stats,
                     ui,
                 );
@@ -2278,12 +2294,12 @@ impl App {
                     // welcome screen would end up in different recordings!
 
                     // If we don't have any application ID to recommend (which means we are on the welcome screen),
-                    // then we use the file path as the application ID or generate a new one using a UUID.
+                    // then we use the file path as the application ID or the file name if there is no path (on web builds).
                     let application_id = file
                         .path
                         .clone()
                         .map(|p| ApplicationId::from(p.display().to_string()))
-                        .unwrap_or(ApplicationId::random());
+                        .unwrap_or(ApplicationId::from(file.name.clone()));
 
                     // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
                     // this can only be a recording.
@@ -3203,18 +3219,15 @@ async fn async_save_dialog(
     file_handle.write(&bytes).await.context("Failed to save")
 }
 
-fn base_url() -> Option<url::Url> {
-    // TODO(rerun-io/dataplatform#2663): Should take into account dataplatform URLs if any are provided.
-    let base_url;
+pub fn web_viewer_base_url() -> Option<url::Url> {
     #[cfg(target_arch = "wasm32")]
     {
-        use crate::web_tools::JsResultExt as _;
-        base_url = crate::web_tools::current_base_url().ok_or_log_js_error();
-    };
+        crate::web_tools::current_base_url().ok()
+    }
+
     #[cfg(not(target_arch = "wasm32"))]
     {
-        base_url = None;
-    };
-
-    base_url
+        // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
+        url::Url::parse("https://rerun.io/viewer").ok()
+    }
 }

@@ -181,7 +181,7 @@ fn load_mcap_mmap(
     load_mcap(&mmap, settings, tx, selected_layers, raw_fallback_enabled)
 }
 
-fn load_mcap(
+pub fn load_mcap(
     mcap: &[u8],
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
@@ -189,9 +189,7 @@ fn load_mcap(
     raw_fallback_enabled: bool,
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!();
-
-    // If there's an open store, use it. If there's no store yet, use the recommended id.
-    let store_id = settings.opened_store_id_or_recommended();
+    let store_id = settings.recommended_store_id();
 
     if tx
         .send(LoadedData::LogMsg(

@@ -146,8 +146,6 @@ pub type SharablePlayableVideoStream = Arc<RwLock<PlayableVideoStream>>;
 impl VideoStreamCache {
     /// Looks up a video stream + players.
     ///
-    /// Returns `None` if there was no video data for this entity on the given timeline.
-    ///
     /// The first time a video stream that is looked up that isn't in the cache,
     /// it creates all the necessary metadata.
     /// For any stream in the cache, metadata will be kept automatically up to date for incoming

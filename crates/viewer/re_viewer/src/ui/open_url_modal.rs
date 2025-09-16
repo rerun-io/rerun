@@ -25,7 +25,7 @@ impl OpenUrlModal {
     pub fn ui(&mut self, ui: &egui::Ui) {
         self.modal.ui(
             ui.ctx(),
-            || ModalWrapper::new("Open from URL").max_width(400.0),
+            || ModalWrapper::new("Open from URL"),
             |ui| {
                 ui.horizontal(|ui| {
                     ui.strong("Paste a URL below.");

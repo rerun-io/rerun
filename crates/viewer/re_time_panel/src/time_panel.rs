@@ -1359,6 +1359,14 @@ impl TimePanel {
                     );
                 }
 
+                time_selection_ui::collapsed_loop_selection_ui(
+                    time_ctrl,
+                    &painter,
+                    &time_ranges_ui,
+                    ui,
+                    time_range_rect,
+                );
+
                 painter.hline(
                     time_range_rect.x_range(),
                     time_range_rect.center().y,
@@ -1485,19 +1493,13 @@ fn paint_range_highlight(
     painter: &egui::Painter,
     rect: Rect,
 ) {
-    let x_from = time_ranges_ui.x_from_time_f32(highlighted_range.min().into());
-    let x_to = time_ranges_ui.x_from_time_f32(highlighted_range.max().into());
-
-    if let (Some(x_from), Some(x_to)) = (x_from, x_to) {
-        let visible_history_area_rect =
-            Rect::from_x_y_ranges(x_from..=x_to, rect.y_range()).intersect(rect);
-
-        painter.rect_filled(
-            visible_history_area_rect,
-            0.0,
-            painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1),
-        );
-    }
+    time_selection_ui::paint_timeline_range(
+        highlighted_range,
+        time_ranges_ui,
+        painter,
+        rect,
+        painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1),
+    );
 }
 
 fn help(os: egui::os::OperatingSystem) -> Help {

@@ -31,6 +31,25 @@ pub trait UiExt {
         crate::design_tokens_of(self.theme())
     }
 
+    #[inline]
+    #[track_caller]
+    fn sanity_check(&self) {
+        // TODO(emilk/egui#7537): add the contents of this function as a callback in egui instead.
+        let ui = self.ui();
+
+        if cfg!(debug_assertions)
+            && ui.is_tooltip()
+            && ui.spacing().tooltip_width + 1000.0 < ui.max_rect().width()
+        {
+            panic!("DEBUG ASSERT: Huge tooltip: {}", ui.max_rect().size());
+        }
+    }
+
+    #[inline]
+    fn is_tooltip(&self) -> bool {
+        self.ui().layer_id().order == egui::Order::Tooltip
+    }
+
     /// Shows a success label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].

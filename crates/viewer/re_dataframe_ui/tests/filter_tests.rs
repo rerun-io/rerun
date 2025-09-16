@@ -13,7 +13,7 @@ use arrow::record_batch::RecordBatch;
 use datafusion::catalog::MemTable;
 use datafusion::prelude::{DataFrame, SessionContext};
 
-use re_dataframe_ui::{ComparisonOperator, Filter, FilterOperation};
+use re_dataframe_ui::{BooleanFilter, ComparisonOperator, Filter, FilterOperation, Nullability};
 use re_viewer_context::external::tokio;
 
 const COLUMN_NAME: &str = "column";
@@ -52,11 +52,7 @@ impl TestColumn {
     }
 
     /// Create a list array with the provided data and automatically injecting nulls as required.
-    fn primitive_lists<T>(
-        data: &[Vec<T::Native>],
-        inner_nullable: bool,
-        outer_nullable: bool,
-    ) -> Self
+    fn primitive_lists<T>(data: &[Vec<T::Native>], nullability: Nullability) -> Self
     where
         T: ArrowPrimitiveType,
         T::Native: Copy,
@@ -74,12 +70,12 @@ impl TestColumn {
         }
 
         // inject outer null
-        if outer_nullable {
+        if nullability.outer {
             builder.append(false);
         }
 
         // inject inner nulls
-        if inner_nullable {
+        if nullability.inner {
             // lone null
             builder.values().append_null();
             builder.append(true);
@@ -107,7 +103,7 @@ impl TestColumn {
 
         let array = builder.finish();
 
-        Self::new(array, outer_nullable)
+        Self::new(array, nullability.outer)
     }
 
     fn strings() -> Self {
@@ -131,9 +127,9 @@ impl TestColumn {
         )
     }
 
-    fn strings_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
+    fn strings_lists(nullability: Nullability) -> Self {
         // the primitive array stuff doesn't work for strings, so we go the manual way.
-        let values = if inner_nullable {
+        let values = if nullability.inner {
             StringArray::from(vec![
                 Some("a"),
                 Some("b"),
@@ -147,14 +143,16 @@ impl TestColumn {
         };
         let offsets = OffsetBuffer::new(vec![0i32, 2, 4, 6].into());
         let strings_lists = ListArray::try_new(
-            Arc::new(Field::new("item", DataType::Utf8, inner_nullable)),
+            Arc::new(Field::new("item", DataType::Utf8, nullability.inner)),
             offsets,
             Arc::new(values),
-            outer_nullable.then(|| NullBuffer::from(vec![true, false, true])),
+            nullability
+                .outer
+                .then(|| NullBuffer::from(vec![true, false, true])),
         )
         .expect("failed to create a string list array");
 
-        Self::new(strings_lists, outer_nullable)
+        Self::new(strings_lists, nullability.outer)
     }
 
     fn bools() -> Self {
@@ -168,9 +166,9 @@ impl TestColumn {
         )
     }
 
-    fn bool_lists(inner_nullable: bool, outer_nullable: bool) -> Self {
+    fn bool_lists(nullability: Nullability) -> Self {
         // the primitive array stuff doesn't work for bools, so we go the manual way.
-        let values = if inner_nullable {
+        let values = if nullability.inner {
             BooleanArray::from(vec![
                 Some(true),
                 Some(false),
@@ -187,14 +185,16 @@ impl TestColumn {
 
         let offsets = OffsetBuffer::new(vec![0i32, 1, 2, 4, 6, 8].into());
         let bool_lists = ListArray::try_new(
-            Arc::new(Field::new("item", DataType::Boolean, inner_nullable)),
+            Arc::new(Field::new("item", DataType::Boolean, nullability.inner)),
             offsets,
             Arc::new(values),
-            outer_nullable.then(|| NullBuffer::from(vec![true, false, true, true, true])),
+            nullability
+                .outer
+                .then(|| NullBuffer::from(vec![true, false, true, true, true])),
         )
         .expect("failed to create a bool list array");
 
-        Self::new(bool_lists, outer_nullable)
+        Self::new(bool_lists, nullability.outer)
     }
 }
 
@@ -313,7 +313,7 @@ async fn test_int_compares() {
         filter_snapshot!(
             FilterOperation::IntCompares {
                 operator: *op,
-                value: 3
+                value: Some(3),
             },
             ints.clone(),
             format!("{}_3", op.as_ascii())
@@ -322,10 +322,19 @@ async fn test_int_compares() {
         filter_snapshot!(
             FilterOperation::IntCompares {
                 operator: *op,
-                value: 4
+                value: Some(4),
             },
             ints_nulls.clone(),
             format!("nulls_{}_4", op.as_ascii())
+        );
+
+        filter_snapshot!(
+            FilterOperation::IntCompares {
+                operator: *op,
+                value: None,
+            },
+            ints_nulls.clone(),
+            format!("nulls_{}_unspecified", op.as_ascii())
         );
     }
 }
@@ -338,7 +347,7 @@ async fn test_int_all_types() {
             filter_snapshot!(
                 FilterOperation::IntCompares {
                     operator: ComparisonOperator::Eq,
-                    value: 3
+                    value: Some(3),
                 },
                 TestColumn::primitive::<$ty>(vec![1, 2, 3, 4, 5]),
                 format!("{:?}", $ty {})
@@ -366,14 +375,14 @@ async fn test_int_lists() {
         vec![7, 4, 9],
         vec![5, 2, 1],
     ];
-    let int_lists = TestColumn::primitive_lists::<Int64Type>(&data, false, false);
-    let int_lists_nulls = TestColumn::primitive_lists::<Int64Type>(&data, true, true);
+    let int_lists = TestColumn::primitive_lists::<Int64Type>(&data, Nullability::NONE);
+    let int_lists_nulls = TestColumn::primitive_lists::<Int64Type>(&data, Nullability::BOTH);
 
     for op in ComparisonOperator::ALL {
         filter_snapshot!(
             FilterOperation::IntCompares {
                 operator: *op,
-                value: 2
+                value: Some(2),
             },
             int_lists.clone(),
             format!("{}_2", op.as_ascii())
@@ -382,7 +391,7 @@ async fn test_int_lists() {
         filter_snapshot!(
             FilterOperation::IntCompares {
                 operator: *op,
-                value: 2
+                value: Some(2),
             },
             int_lists_nulls.clone(),
             format!("nulls_{}_2", op.as_ascii())
@@ -405,7 +414,7 @@ async fn test_float_compares() {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: 3.0
+                value: Some(3.0),
             },
             floats.clone(),
             format!("{}_3.0", op.as_ascii())
@@ -414,7 +423,7 @@ async fn test_float_compares() {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: 4.0
+                value: Some(4.0),
             },
             floats_nulls.clone(),
             format!("nulls_{}_4", op.as_ascii())
@@ -430,7 +439,7 @@ async fn test_float_all_types() {
             filter_snapshot!(
                 FilterOperation::FloatCompares {
                     operator: ComparisonOperator::Eq,
-                    value: 3.0
+                    value: Some(3.0),
                 },
                 TestColumn::primitive::<$ty>(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
                 format!("{:?}", $ty {})
@@ -452,14 +461,14 @@ async fn test_float_lists() {
         vec![7.0, 4.0, 9.0],
         vec![5.0, 2.0, 1.0],
     ];
-    let float_lists = TestColumn::primitive_lists::<Float64Type>(&data, false, false);
-    let float_lists_nulls = TestColumn::primitive_lists::<Float64Type>(&data, true, true);
+    let float_lists = TestColumn::primitive_lists::<Float64Type>(&data, Nullability::NONE);
+    let float_lists_nulls = TestColumn::primitive_lists::<Float64Type>(&data, Nullability::BOTH);
 
     for op in ComparisonOperator::ALL {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: 2.0
+                value: Some(2.0)
             },
             float_lists.clone(),
             format!("{}_2.0", op.as_ascii())
@@ -468,7 +477,7 @@ async fn test_float_lists() {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: 2.0
+                value: Some(2.0)
             },
             float_lists_nulls.clone(),
             format!("nulls_{}_2.0", op.as_ascii())
@@ -517,81 +526,84 @@ async fn test_string_contains() {
 
 #[tokio::test]
 async fn test_string_contains_list() {
-    filter_snapshot!(
-        FilterOperation::StringContains("ab".to_owned()),
-        TestColumn::strings_lists(true, true),
-        "inner_outer_nullable_ab"
-    );
-
-    filter_snapshot!(
-        FilterOperation::StringContains("ab".to_owned()),
-        TestColumn::strings_lists(true, false),
-        "inner_nullable_ab"
-    );
-
-    filter_snapshot!(
-        FilterOperation::StringContains("ab".to_owned()),
-        TestColumn::strings_lists(false, true),
-        "outer_nullable_ab"
-    );
-
-    filter_snapshot!(
-        FilterOperation::StringContains("ab".to_owned()),
-        TestColumn::strings_lists(false, false),
-        "ab"
-    );
+    for &nullability in Nullability::ALL {
+        filter_snapshot!(
+            FilterOperation::StringContains("ab".to_owned()),
+            TestColumn::strings_lists(nullability),
+            format!("{nullability:?}_ab")
+        );
+    }
 }
 
+/// Non-nullable filter should work regardless of nullability.
 #[tokio::test]
-async fn test_boolean_equals() {
+async fn test_non_nullable_boolean_equals() {
     filter_snapshot!(
-        FilterOperation::BooleanEquals(true),
+        FilterOperation::Boolean(BooleanFilter::NonNullable(true)),
         TestColumn::bools(),
         "true"
     );
 
     filter_snapshot!(
-        FilterOperation::BooleanEquals(false),
+        FilterOperation::Boolean(BooleanFilter::NonNullable(false)),
         TestColumn::bools(),
         "false"
     );
 
     filter_snapshot!(
-        FilterOperation::BooleanEquals(true),
+        FilterOperation::Boolean(BooleanFilter::NonNullable(true)),
         TestColumn::bools_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
-        FilterOperation::BooleanEquals(false),
+        FilterOperation::Boolean(BooleanFilter::NonNullable(false)),
         TestColumn::bools_nulls(),
         "nulls_false"
     );
 }
 
 #[tokio::test]
-async fn test_boolean_equals_list() {
+async fn test_nullable_boolean_equals() {
     filter_snapshot!(
-        FilterOperation::BooleanEquals(true),
-        TestColumn::bool_lists(true, true),
-        "inner_outer_nullable_true"
+        FilterOperation::Boolean(BooleanFilter::Nullable(Some(true))),
+        TestColumn::bools_nulls(),
+        "nulls_true"
     );
 
     filter_snapshot!(
-        FilterOperation::BooleanEquals(true),
-        TestColumn::bool_lists(true, false),
-        "inner_nullable_true"
+        FilterOperation::Boolean(BooleanFilter::Nullable(Some(false))),
+        TestColumn::bools_nulls(),
+        "nulls_false"
     );
 
     filter_snapshot!(
-        FilterOperation::BooleanEquals(true),
-        TestColumn::bool_lists(false, true),
-        "nullable_true"
+        FilterOperation::Boolean(BooleanFilter::Nullable(None)),
+        TestColumn::bools_nulls(),
+        "nulls_null"
     );
+}
 
-    filter_snapshot!(
-        FilterOperation::BooleanEquals(true),
-        TestColumn::bool_lists(false, false),
-        "true"
-    );
+#[tokio::test]
+async fn test_boolean_equals_list_non_nullable() {
+    for &nullability in Nullability::ALL {
+        filter_snapshot!(
+            FilterOperation::Boolean(BooleanFilter::NonNullable(true)),
+            TestColumn::bool_lists(nullability),
+            format!("{nullability:?}_true")
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_boolean_equals_list_nullable() {
+    // Note: BooleanFilter::Nullable() doesn't support Nullability::NONE, but that's ok because
+    // BooleanFilter::NonNullable() is used in this case.
+    for nullability in [Nullability::BOTH, Nullability::INNER, Nullability::OUTER] {
+        filter_snapshot!(
+            FilterOperation::Boolean(BooleanFilter::Nullable(None)),
+            TestColumn::bool_lists(nullability),
+            format!("{nullability:?}")
+        );
+    }
 }

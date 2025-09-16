@@ -9,7 +9,75 @@ use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
     ScalarUDFImpl, Signature, TypeSignature, Volatility,
 };
-use datafusion::prelude::{Column, Expr, array_has, array_to_string, col, lit, lower};
+use datafusion::prelude::{Column, Expr, array_to_string, col, lit, lower};
+
+use super::BooleanFilter;
+
+/// The nullability of a nested arrow datatype.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Nullability {
+    /// The inner datatype is nullable (e.g. for a list array, one row's array may contain nulls).
+    pub inner: bool,
+
+    /// The outer datatype is nullable (e.g, the a list array, one row may have a null instead of an
+    /// array).
+    pub outer: bool,
+}
+
+// for test snapshot naming
+impl std::fmt::Debug for Nullability {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match (self.inner, self.outer) {
+            (false, false) => write!(f, "no_null"),
+            (false, true) => write!(f, "outer_null"),
+            (true, false) => write!(f, "inner_null"),
+            (true, true) => write!(f, "both_null"),
+        }
+    }
+}
+
+impl Nullability {
+    pub const NONE: Self = Self {
+        inner: false,
+        outer: false,
+    };
+
+    pub const BOTH: Self = Self {
+        inner: true,
+        outer: true,
+    };
+
+    pub const INNER: Self = Self {
+        inner: true,
+        outer: false,
+    };
+
+    pub const OUTER: Self = Self {
+        inner: false,
+        outer: true,
+    };
+
+    pub const ALL: &'static [Self] = &[Self::NONE, Self::INNER, Self::OUTER, Self::BOTH];
+
+    pub fn from_field(field: &Field) -> Self {
+        match field.data_type() {
+            DataType::List(inner_field) | DataType::ListView(inner_field) => Self {
+                inner: inner_field.is_nullable(),
+                outer: field.is_nullable(),
+            },
+
+            //TODO(ab): support other containers
+            _ => Self {
+                inner: field.is_nullable(),
+                outer: false,
+            },
+        }
+    }
+
+    pub fn is_either(&self) -> bool {
+        self.inner || self.outer
+    }
+}
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum FilterError {
@@ -18,6 +86,9 @@ pub enum FilterError {
 
     #[error("invalid filter operation {0:?} for field {1}")]
     InvalidFilterOperation(FilterOperation, Box<Field>),
+
+    #[error("invalid filter operation {0:?} for field {1}")]
+    InvalidBooleanFilterOperation(BooleanFilter, Box<Field>),
 }
 
 /// A filter applied to a table.
@@ -108,7 +179,7 @@ pub enum FilterOperation {
     /// For columns of lists of integers, only the first value is considered.
     IntCompares {
         operator: ComparisonOperator,
-        value: i128,
+        value: Option<i128>,
     },
 
     /// Compare a floating point value to a constant.
@@ -116,52 +187,53 @@ pub enum FilterOperation {
     /// For columns of lists of floats, only the first value is considered.
     FloatCompares {
         operator: ComparisonOperator,
-        value: f64,
+        value: Option<f64>,
     },
 
     //TODO(ab): parameterise that over multiple string ops, e.g. "contains", "starts with", etc.
     StringContains(String),
 
-    BooleanEquals(bool),
+    Boolean(BooleanFilter),
 }
 
 impl FilterOperation {
-    pub fn default_for_datatype(data_type: &DataType) -> Option<Self> {
+    fn default_for_primitive_datatype(
+        data_type: &DataType,
+        nullability: Nullability,
+    ) -> Option<Self> {
         match data_type {
             data_type if data_type.is_integer() => Some(Self::IntCompares {
                 operator: ComparisonOperator::Eq,
-                value: 0,
+                value: None,
             }),
-            DataType::List(field) | DataType::ListView(field) if field.data_type().is_integer() => {
-                Some(Self::IntCompares {
-                    operator: ComparisonOperator::Eq,
-                    value: 0,
-                })
-            }
-
-            DataType::Utf8 | DataType::Utf8View => Some(Self::StringContains(String::new())),
-            DataType::List(field) | DataType::ListView(field)
-                if field.data_type() == &DataType::Utf8
-                    || field.data_type() == &DataType::Utf8View =>
-            {
-                Some(Self::StringContains(String::new()))
-            }
-
-            DataType::Boolean => Some(Self::BooleanEquals(true)),
-            DataType::List(fields) | DataType::ListView(fields)
-                if fields.data_type() == &DataType::Boolean =>
-            {
-                Some(Self::BooleanEquals(true))
-            }
 
             DataType::Float16 | DataType::Float32 | DataType::Float64 => {
                 Some(Self::FloatCompares {
                     operator: ComparisonOperator::Eq,
-                    value: 0.0,
+                    value: None,
                 })
             }
 
+            DataType::Utf8 | DataType::Utf8View => Some(Self::StringContains(String::new())),
+
+            DataType::Boolean => Some(Self::Boolean(BooleanFilter::default_for_nullability(
+                nullability,
+            ))),
+
             _ => None,
+        }
+    }
+
+    pub fn default_for_column(field: &Field) -> Option<Self> {
+        let nullability = Nullability::from_field(field);
+        match field.data_type() {
+            DataType::List(inner_field) | DataType::ListView(inner_field) => {
+                // Note: we do not support double-nested types
+                Self::default_for_primitive_datatype(inner_field.data_type(), nullability)
+            }
+
+            //TODO(ab): support other nested types
+            _ => Self::default_for_primitive_datatype(field.data_type(), nullability),
         }
     }
 
@@ -211,21 +283,7 @@ impl FilterOperation {
                 Ok(contains_patch(lower(operand), lower(lit(query_string))))
             }
 
-            Self::BooleanEquals(value) => match field.data_type() {
-                DataType::Boolean => Ok(col(column.clone()).eq(lit(*value))),
-
-                DataType::List(field) | DataType::ListView(field)
-                    if field.data_type() == &DataType::Boolean =>
-                {
-                    // `ANY` semantics
-                    Ok(array_has(col(column.clone()), lit(*value)))
-                }
-
-                _ => Err(FilterError::InvalidFilterOperation(
-                    self.clone(),
-                    field.clone().into(),
-                )),
-            },
+            Self::Boolean(boolean_filter) => boolean_filter.as_filter_expression(column, field),
         }
     }
 }
@@ -312,7 +370,14 @@ impl FilterOperationUdf {
                 #[allow(trivial_numeric_casts)]
                 let result: BooleanArray = array
                     .iter()
-                    .map(|x| x.map(|v| operator.apply(v, *value as _)))
+                    .map(|x| {
+                        // accept everything if the value is not set
+                        let Some(value) = value else {
+                            return Some(true);
+                        };
+
+                        x.map(|x| operator.apply(x, *value as _))
+                    })
                     .collect();
 
                 Ok(result)
