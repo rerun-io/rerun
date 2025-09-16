@@ -9,6 +9,7 @@
 use egui::Widget;
 
 pub type BoxedWidget<'a> = Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + Send + Sync + 'a>;
+
 pub type BoxedWidgetLocal<'a> = Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + 'a>;
 
 pub trait BoxedWidgetExt<'a> {
