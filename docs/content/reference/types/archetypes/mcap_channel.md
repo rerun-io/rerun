@@ -10,8 +10,8 @@ Channels in MCAP files group messages by topic and define their encoding format.
 Each channel has a unique identifier and specifies the message schema and encoding used
 for all messages published to that topic.
 
-See also [`archetypes.McapMessage`](https://rerun.io/docs/reference/types/archetypes/mcap_message?speculative-link) for individual messages within a channel,
-[`archetypes.McapSchema`](https://rerun.io/docs/reference/types/archetypes/mcap_schema?speculative-link) for the data structure definitions, and the
+See also [`archetypes.McapMessage`](https://rerun.io/docs/reference/types/archetypes/mcap_message) for individual messages within a channel,
+[`archetypes.McapSchema`](https://rerun.io/docs/reference/types/archetypes/mcap_schema) for the data structure definitions, and the
 [MCAP specification](https://mcap.dev/) for complete format details.
 
 ## Fields
@@ -28,9 +28,9 @@ See also [`archetypes.McapMessage`](https://rerun.io/docs/reference/types/archet
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `McapChannel`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1McapChannel.html?speculative-link)
- * 🐍 [Python API docs for `McapChannel`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.McapChannel)
- * 🦀 [Rust API docs for `McapChannel`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapChannel.html?speculative-link)
+ * 🌊 [C++ API docs for `McapChannel`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1McapChannel.html)
+ * 🐍 [Python API docs for `McapChannel`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.McapChannel)
+ * 🦀 [Rust API docs for `McapChannel`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapChannel.html)
 
 ## Example
 
