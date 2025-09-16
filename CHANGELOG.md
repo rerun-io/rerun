@@ -24,12 +24,14 @@ Pretty colors for Arrow data. So much easier to read!
 We are busy working on a powerful filtering feature for our arrow dataframe widget used for tables (sent with `ViewerClient.send_table()`) as well as the Rerun server browser (entry list, partition list, and remote tables). This release introduces support for filtering boolean, integer, floating point, and string columns, with more coming in future releases. (Note that the text log views and dataframe views are using a different widget which does not support filtering.)
 
 ![table filtering](https://static.rerun.io/table_filtering/72d7b6cffea99787784678e9101e5a06514b85be/full.gif)
+![table_filtering](https://github.com/user-attachments/assets/13775e9a-b564-4faa-91ac-2c36379e8140)
 
 #### Transparent objects
 
 Set the opacity of 3D objects to make them transparent.
 
-![transparent objects](https://static.rerun.io/transparent-objects/transparency.mp4)
+https://static.rerun.io/transparent-objects/transparency.mp4
+https://github.com/user-attachments/assets/5a78cf2c-1e11-4f5f-a8a4-4e5d503f4cd9
 
 #### Experimental MCAP support
 
