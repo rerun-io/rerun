@@ -7644,7 +7644,6 @@ dependencies = [
  "static_assertions",
  "thiserror 1.0.69",
  "tokio",
- "vec1",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 use std::mem;
 
-use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense, Widget};
+use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense};
 
 use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
