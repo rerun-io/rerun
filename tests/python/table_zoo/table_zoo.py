@@ -1,4 +1,9 @@
-"""A table with all kinds of datatypes and nullability, for testing purposes."""
+"""A table with all kinds of datatypes and nullability, for testing purposes.
+
+```
+pixi run py-build
+pixi run -e py python tests/python/table_zoo/table_zoo.py
+"""
 
 import pyarrow as pa
 from datetime import datetime, timedelta
@@ -222,6 +227,6 @@ record_batch = pa.RecordBatch.from_arrays(arrays, schema=schema)
 
 client = rr.experimental.ViewerClient(addr="rerun+http://0.0.0.0:9876/proxy")
 client.send_table(
-    "dummy",
+    "table_zoo",
     record_batch,
 )

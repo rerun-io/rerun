@@ -1,13 +1,282 @@
-use jiff::{Timestamp, ToSpan as _};
+use std::str::FromStr as _;
 
-use re_ui::SyntaxHighlighting;
+use jiff::{Error, Timestamp, ToSpan as _};
+
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::{SyntaxHighlighting, UiExt as _};
 
-/// Timestamp filters.
-///
-/// The inner
+use super::FilterUiAction;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TimestampFilter {
+pub enum TemporalOperator {
+    Today,
+    Yesterday,
+    ThisWeek,
+    LastWeek,
+    Before,
+    After,
+    Between,
+}
+
+//TODO: docstrings
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TimestampFilter {
+    operator: TemporalOperator,
+    low_bound: String,
+    high_bound: String,
+    //TODO: add tz?
+}
+
+impl Default for TimestampFilter {
+    fn default() -> Self {
+        Self {
+            operator: TemporalOperator::Today,
+            low_bound: String::new(),
+            high_bound: String::new(),
+        }
+    }
+}
+
+impl SyntaxHighlighting for TimestampFilter {
+    //TODO: this stuff should use re_format
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        // normalize bounds
+        let low_bound = jiff::Timestamp::from_str(&self.low_bound)
+            .ok()
+            .map(|t| t.to_string())
+            .unwrap_or_else(|| "…".to_owned());
+        let high_bound = jiff::Timestamp::from_str(&self.high_bound)
+            .ok()
+            .map(|t| t.to_string())
+            .unwrap_or_else(|| "…".to_owned());
+
+        match self.operator {
+            TemporalOperator::Today => builder.append_keyword("is today"),
+            TemporalOperator::Yesterday => builder.append_keyword("is yesterday"),
+            TemporalOperator::ThisWeek => builder.append_keyword("is this week"),
+            TemporalOperator::LastWeek => builder.append_keyword("is last week"),
+            TemporalOperator::Before => {
+                builder.append_keyword("is before ");
+                builder.append_primitive(&high_bound)
+            }
+            TemporalOperator::After => {
+                builder.append_keyword("is after ");
+                builder.append_primitive(&low_bound)
+            }
+            TemporalOperator::Between => {
+                builder.append_keyword("between ");
+                builder.append_primitive(&low_bound);
+                builder.append_keyword(" and ");
+                builder.append_primitive(&high_bound)
+            }
+        };
+    }
+}
+
+impl TimestampFilter {
+    pub fn popup_ui(&mut self, ui: &mut egui::Ui, column_name: &str, action: &mut FilterUiAction) {
+        super::basic_operation_ui(ui, column_name, "is");
+
+        let mut validated = false;
+
+        validated |= ui
+            .re_radio_value(&mut self.operator, TemporalOperator::Today, "today")
+            .clicked();
+        validated |= ui
+            .re_radio_value(&mut self.operator, TemporalOperator::Yesterday, "yesterday")
+            .clicked();
+        validated |= ui
+            .re_radio_value(&mut self.operator, TemporalOperator::ThisWeek, "this week")
+            .clicked();
+        validated |= ui
+            .re_radio_value(&mut self.operator, TemporalOperator::LastWeek, "last week")
+            .clicked();
+
+        // note: we dont auto validate on click for these, as the user must enter a value
+        ui.re_radio_value(&mut self.operator, TemporalOperator::Before, "before")
+            .clicked();
+        ui.re_radio_value(&mut self.operator, TemporalOperator::After, "after")
+            .clicked();
+        ui.re_radio_value(&mut self.operator, TemporalOperator::Between, "between")
+            .clicked();
+
+        if self.operator == TemporalOperator::After || self.operator == TemporalOperator::Between {
+            ui.horizontal(|ui| {
+                let response = timestamp_ui(ui, &mut self.low_bound);
+
+                // match jiff::Timestamp::from_str(&self.low_bound) {
+                //     Ok(_) => {
+                //         ui.label("ok");
+                //
+                //         if response.lost_focus() {
+                //             validated = true;
+                //         }
+                //     }
+                //
+                //     Err(err) => {
+                //         ui.label("nok").on_hover_text(err.to_string());
+                //     }
+                // }
+            });
+        }
+
+        if self.operator == TemporalOperator::Before || self.operator == TemporalOperator::Between {
+            ui.horizontal(|ui| {
+                let response = timestamp_ui(ui, &mut self.high_bound);
+
+                // match jiff::Timestamp::from_str(&self.high_bound) {
+                //     Ok(_) => {
+                //         ui.label("ok");
+                //
+                //         if response.lost_focus() {
+                //             validated = true;
+                //         }
+                //     }
+                //
+                //     Err(err) => {
+                //         ui.label("nok").on_hover_text(err.to_string());
+                //     }
+                // }
+            });
+        }
+
+        if validated {
+            *action = FilterUiAction::CommitStateToBlueprint;
+        }
+    }
+
+    pub fn resolve(&self) -> ResolvedTimestampFilter {
+        let low_bound = jiff::Timestamp::from_str(&self.low_bound).ok();
+        let high_bound = jiff::Timestamp::from_str(&self.high_bound).ok();
+
+        match self.operator {
+            TemporalOperator::Today => ResolvedTimestampFilter::Today,
+            TemporalOperator::Yesterday => ResolvedTimestampFilter::Yesterday,
+            TemporalOperator::ThisWeek => ResolvedTimestampFilter::ThisWeek,
+            TemporalOperator::LastWeek => ResolvedTimestampFilter::LastWeek,
+            TemporalOperator::Before => {
+                if let Some(high_bound) = high_bound {
+                    ResolvedTimestampFilter::Before(high_bound)
+                } else {
+                    ResolvedTimestampFilter::All
+                }
+            }
+            TemporalOperator::After => {
+                if let Some(low_bound) = low_bound {
+                    ResolvedTimestampFilter::After(low_bound)
+                } else {
+                    ResolvedTimestampFilter::All
+                }
+            }
+            TemporalOperator::Between => {
+                if let (Some(low_bound), Some(high_bound)) = (low_bound, high_bound) {
+                    ResolvedTimestampFilter::Between(low_bound, high_bound)
+                } else {
+                    ResolvedTimestampFilter::All
+                }
+            }
+        }
+    }
+}
+
+fn timestamp_ui(ui: &mut egui::Ui, timestamp: &mut String) -> egui::Response {
+    let response = ui.text_edit_singleline(timestamp);
+
+    match best_effort_timestamp_parse(&timestamp) {
+        Ok(timestamp) => ui.label(timestamp.to_string()),
+        Err(err) => ui.label("invalid timestamp").on_hover_text(err.to_string()),
+    };
+
+    response
+}
+
+fn best_effort_timestamp_parse(value: &str) -> Result<jiff::Timestamp, jiff::Error> {
+    let err = match jiff::Timestamp::from_str(value) {
+        Ok(timestamp) => return Ok(timestamp),
+        Err(err) => err,
+    };
+
+    if let Ok(date_time) = jiff::civil::DateTime::from_str(value) {
+        return Ok(date_time.to_zoned(jiff::tz::TimeZone::UTC)?.timestamp());
+    }
+
+    if let Ok(date) = jiff::civil::Date::from_str(value) {
+        return Ok(date
+            .at(0, 0, 0, 0)
+            .to_zoned(jiff::tz::TimeZone::UTC)?
+            .timestamp());
+    }
+
+    if let Ok(time) = jiff::civil::Time::from_str(value) {
+        return Ok(jiff::Timestamp::now()
+            .to_zoned(jiff::tz::TimeZone::UTC)
+            .date()
+            .at(
+                time.hour(),
+                time.minute(),
+                time.second(),
+                time.subsec_nanosecond(),
+            )
+            .to_zoned(jiff::tz::TimeZone::UTC)?
+            .timestamp());
+    }
+
+    Err(err)
+}
+
+impl From<ResolvedTimestampFilter> for TimestampFilter {
+    fn from(value: ResolvedTimestampFilter) -> Self {
+        match value {
+            ResolvedTimestampFilter::All => Self {
+                operator: TemporalOperator::After,
+                low_bound: String::new(),
+                high_bound: String::new(),
+            },
+
+            ResolvedTimestampFilter::Today => Self {
+                operator: TemporalOperator::Today,
+                low_bound: String::new(),
+                high_bound: String::new(),
+            },
+            ResolvedTimestampFilter::Yesterday => Self {
+                operator: TemporalOperator::Yesterday,
+                low_bound: String::new(),
+                high_bound: String::new(),
+            },
+            ResolvedTimestampFilter::ThisWeek => Self {
+                operator: TemporalOperator::ThisWeek,
+                low_bound: String::new(),
+                high_bound: String::new(),
+            },
+            ResolvedTimestampFilter::LastWeek => Self {
+                operator: TemporalOperator::LastWeek,
+                low_bound: String::new(),
+                high_bound: String::new(),
+            },
+            ResolvedTimestampFilter::Before(high) => Self {
+                operator: TemporalOperator::Before,
+                low_bound: String::new(),
+                high_bound: high.to_string(),
+            },
+            ResolvedTimestampFilter::After(low) => Self {
+                operator: TemporalOperator::After,
+                low_bound: low.to_string(),
+                high_bound: String::new(),
+            },
+            ResolvedTimestampFilter::Between(low, high) => Self {
+                operator: TemporalOperator::Between,
+                low_bound: low.to_string(),
+                high_bound: high.to_string(),
+            },
+        }
+    }
+}
+
+/// Resolved timestamp filter used for the actual computation of the filter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResolvedTimestampFilter {
+    All,
+
     Today,
     Yesterday,
     ThisWeek,
@@ -23,56 +292,14 @@ pub enum TimestampFilter {
     Between(jiff::Timestamp, jiff::Timestamp),
 }
 
-impl SyntaxHighlighting for TimestampFilter {
-    //TODO: this stuff should use re_format
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        match self {
-            Self::Today => builder.append_keyword("is today"),
-            Self::Yesterday => builder.append_keyword("is yesterday"),
-            Self::ThisWeek => builder.append_keyword("is this week"),
-            Self::LastWeek => builder.append_keyword("is last week"),
-            Self::Before(high) => {
-                builder.append_keyword("is before ");
-                builder.append_primitive(&high.to_string())
-            }
-            Self::After(low) => {
-                builder.append_keyword("is after ");
-                builder.append_primitive(&low.to_string())
-            }
-            Self::Between(low, high) => {
-                builder.append_keyword("between ");
-                builder.append_primitive(&low.to_string());
-                builder.append_keyword(" and ");
-                builder.append_primitive(&high.to_string())
-            }
-        };
-    }
-}
-
-/// Convert day boundaries into timestamp boundaries.
-///
-/// Low timestamp is low date at midnight, and high timestamp is high date at midnight. Both using
-/// the system timezone.
-fn day_range_to_timestamp_range(
-    low: Option<jiff::civil::Date>,
-    high: Option<jiff::civil::Date>,
-) -> (Option<Timestamp>, Option<Timestamp>) {
-    let tz = jiff::tz::TimeZone::system();
-
-    (
-        low.and_then(|d| d.at(0, 0, 0, 0).to_zoned(tz.clone()).ok())
-            .map(|t| t.timestamp()),
-        high.and_then(|d| d.at(0, 0, 0, 0).to_zoned(tz).ok())
-            .map(|t| t.timestamp()),
-    )
-}
-
-impl TimestampFilter {
+impl ResolvedTimestampFilter {
     pub fn apply(&self, timestamp: jiff::Timestamp) -> bool {
         let tz = jiff::tz::TimeZone::system();
         let today = jiff::Timestamp::now().to_zoned(tz.clone()).date();
 
         let (low, high) = match self {
+            Self::All => (None, None),
+
             Self::Today => day_range_to_timestamp_range(Some(today), today.tomorrow().ok()),
 
             Self::Yesterday => day_range_to_timestamp_range(today.yesterday().ok(), Some(today)),
@@ -124,6 +351,24 @@ impl TimestampFilter {
     }
 }
 
+/// Convert day boundaries into timestamp boundaries.
+///
+/// Low timestamp is low date at midnight, and high timestamp is high date at midnight. Both using
+/// the system timezone.
+fn day_range_to_timestamp_range(
+    low: Option<jiff::civil::Date>,
+    high: Option<jiff::civil::Date>,
+) -> (Option<Timestamp>, Option<Timestamp>) {
+    let tz = jiff::tz::TimeZone::system();
+
+    (
+        low.and_then(|d| d.at(0, 0, 0, 0).to_zoned(tz.clone()).ok())
+            .map(|t| t.timestamp()),
+        high.and_then(|d| d.at(0, 0, 0, 0).to_zoned(tz).ok())
+            .map(|t| t.timestamp()),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -133,7 +378,7 @@ mod tests {
     #[test]
     fn test_before_filter() {
         let cutoff = Timestamp::from_second(1000000).unwrap();
-        let filter = TimestampFilter::Before(cutoff);
+        let filter = ResolvedTimestampFilter::Before(cutoff);
 
         // Should accept timestamps before the cutoff
         assert!(filter.apply(Timestamp::from_second(999999).unwrap()));
@@ -149,7 +394,7 @@ mod tests {
     #[test]
     fn test_after_filter() {
         let cutoff = Timestamp::from_second(1000000).unwrap();
-        let filter = TimestampFilter::After(cutoff);
+        let filter = ResolvedTimestampFilter::After(cutoff);
 
         // Should accept timestamps at or after the cutoff
         assert!(filter.apply(cutoff));
@@ -166,7 +411,7 @@ mod tests {
     fn test_between_filter() {
         let low = Timestamp::from_second(1000000).unwrap();
         let high = Timestamp::from_second(2000000).unwrap();
-        let filter = TimestampFilter::Between(low, high);
+        let filter = ResolvedTimestampFilter::Between(low, high);
 
         // Should accept timestamps in the range [low, high)
         assert!(filter.apply(low));
@@ -181,7 +426,7 @@ mod tests {
 
     #[test]
     fn test_today_filter() {
-        let filter = TimestampFilter::Today;
+        let filter = ResolvedTimestampFilter::Today;
         let tz = jiff::tz::TimeZone::system();
         let now = Timestamp::now();
         let today = now.to_zoned(tz.clone()).date();
@@ -231,7 +476,7 @@ mod tests {
 
     #[test]
     fn test_yesterday_filter() {
-        let filter = TimestampFilter::Yesterday;
+        let filter = ResolvedTimestampFilter::Yesterday;
         let tz = jiff::tz::TimeZone::system();
         let today = Timestamp::now().to_zoned(tz.clone()).date();
 
@@ -280,7 +525,7 @@ mod tests {
 
     #[test]
     fn test_this_week_filter() {
-        let filter = TimestampFilter::ThisWeek;
+        let filter = ResolvedTimestampFilter::ThisWeek;
         let tz = jiff::tz::TimeZone::system();
         let now = Timestamp::now();
         let today = now.to_zoned(tz.clone()).date();
@@ -339,7 +584,7 @@ mod tests {
 
     #[test]
     fn test_last_week_filter() {
-        let filter = TimestampFilter::LastWeek;
+        let filter = ResolvedTimestampFilter::LastWeek;
         let tz = jiff::tz::TimeZone::system();
         let today = Timestamp::now().to_zoned(tz.clone()).date();
 
@@ -404,7 +649,7 @@ mod tests {
         let week_start = wednesday.checked_sub(days_since_monday.days()).unwrap();
         let last_week_start = week_start.checked_sub(7.days()).unwrap();
 
-        // Test the calculation logic that TimestampFilter uses
+        // Test the calculation logic that ResolvedTimestampFilter uses
         assert_eq!(week_start, date(2024, 10, 28)); // Monday of that week
         assert_eq!(last_week_start, date(2024, 10, 21)); // Monday of previous week
     }
@@ -415,7 +660,7 @@ mod tests {
         let today = Timestamp::now().to_zoned(tz.clone()).date();
 
         // Test exact midnight boundaries for Today filter
-        let filter = TimestampFilter::Today;
+        let filter = ResolvedTimestampFilter::Today;
 
         let today_midnight = today
             .at(0, 0, 0, 0)

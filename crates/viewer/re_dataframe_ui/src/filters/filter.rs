@@ -227,7 +227,7 @@ impl FilterOperation {
                 if metadata.get(FIELD_METADATA_KEY_COMPONENT_TYPE)
                     == Some(&re_types::components::Timestamp::name().to_string()) =>
             {
-                Some(Self::Timestamp(TimestampFilter::Today))
+                Some(Self::Timestamp(TimestampFilter::default()))
             }
 
             data_type if data_type.is_integer() => Some(Self::IntCompares {
@@ -252,7 +252,7 @@ impl FilterOperation {
                 }
             }
 
-            DataType::Timestamp(_, _) => Some(Self::Timestamp(TimestampFilter::Today)),
+            DataType::Timestamp(_, _) => Some(Self::Timestamp(TimestampFilter::default())),
 
             _ => None,
         }
@@ -456,7 +456,7 @@ impl FilterOperationUdf {
                 let array = datafusion::common::cast::$conv_fun(array)?;
                 let result: BooleanArray = array
                     .iter()
-                    .map(|x| x.map(|v| timestamp_filter.$apply_fun(v)))
+                    .map(|x| x.map(|v| timestamp_filter.resolve().$apply_fun(v)))
                     .collect();
 
                 Ok(result)
