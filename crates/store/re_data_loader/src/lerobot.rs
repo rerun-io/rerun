@@ -10,6 +10,7 @@
 //! See [`LeRobotDataset`] for more information on the dataset format.
 
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
@@ -219,7 +220,7 @@ impl LeRobotDataset {
 #[allow(dead_code)] // TODO(gijsd): The list of tasks is not used yet!
 pub struct LeRobotDatasetMetadata {
     pub info: LeRobotDatasetInfo,
-    pub episodes: HashMap<EpisodeIndex, LeRobotDatasetEpisode>,
+    pub episodes: BTreeMap<EpisodeIndex, LeRobotDatasetEpisode>,
     pub tasks: Vec<LeRobotDatasetTask>,
 }
 
@@ -242,15 +243,17 @@ impl LeRobotDatasetMetadata {
         let metadir = metadir.as_ref();
 
         let info = LeRobotDatasetInfo::load_from_json_file(metadir.join("info.json"))?;
-        let episodes_vec: Vec<LeRobotDatasetEpisode> =
+        let mut episodes_vec: Vec<LeRobotDatasetEpisode> =
             load_jsonl_file(metadir.join("episodes.jsonl"))?;
         let mut tasks = load_jsonl_file(metadir.join("tasks.jsonl"))?;
 
+        // Sort episodes by index to ensure consistent ordering when loading
+        episodes_vec.sort_by_key(|e: &LeRobotDatasetEpisode| e.index);
         // Convert episodes vec to HashMap for efficient lookup by index
         let episodes = episodes_vec
             .into_iter()
             .map(|episode| (episode.index, episode))
-            .collect::<HashMap<EpisodeIndex, LeRobotDatasetEpisode>>();
+            .collect::<BTreeMap<EpisodeIndex, LeRobotDatasetEpisode>>();
 
         tasks.sort_by_key(|e: &LeRobotDatasetTask| e.index);
 
