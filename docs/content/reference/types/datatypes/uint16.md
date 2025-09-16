@@ -19,6 +19,6 @@ uint16
 
 ## Used by
 
-* [`ChannelCountPair`](../datatypes/channel_count_pair.md?speculative-link)
-* [`ChannelId`](../components/channel_id.md?speculative-link)
-* [`SchemaId`](../components/schema_id.md?speculative-link)
+* [`ChannelCountPair`](../datatypes/channel_count_pair.md)
+* [`ChannelId`](../components/channel_id.md)
+* [`SchemaId`](../components/schema_id.md)

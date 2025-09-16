@@ -12,8 +12,7 @@ table KeyValuePairs (
 
   /// TODO(#11107): Stabilize
   "attr.rerun.state": "unstable",
-  "attr.rust.derive": "Default, PartialEq, Eq",
-  "attr.docs.unreleased"
+  "attr.rust.derive": "Default, PartialEq, Eq"
 ) {
   /// The key-value pairs that make up this string map.
   pairs: [rerun.datatypes.Utf8Pair] (order: 100);

@@ -11,8 +11,8 @@ counts of messages, schemas, channels, and other records, as well as timing info
 spanning the full recording duration. It is typically logged once per recording to provide
 an overview of the dataset's structure and content.
 
-See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archetypes/mcap_channel?speculative-link) for individual channel definitions,
-[`archetypes.McapMessage`](https://rerun.io/docs/reference/types/archetypes/mcap_message?speculative-link) for message content, [`archetypes.McapSchema`](https://rerun.io/docs/reference/types/archetypes/mcap_schema?speculative-link) for schema definitions,
+See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archetypes/mcap_channel) for individual channel definitions,
+[`archetypes.McapMessage`](https://rerun.io/docs/reference/types/archetypes/mcap_message) for message content, [`archetypes.McapSchema`](https://rerun.io/docs/reference/types/archetypes/mcap_schema) for schema definitions,
 and the [MCAP specification](https://mcap.dev/) for complete format details.
 
 ## Fields
@@ -34,9 +34,9 @@ and the [MCAP specification](https://mcap.dev/) for complete format details.
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `McapStatistics`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1McapStatistics.html?speculative-link)
- * 🐍 [Python API docs for `McapStatistics`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.McapStatistics)
- * 🦀 [Rust API docs for `McapStatistics`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapStatistics.html?speculative-link)
+ * 🌊 [C++ API docs for `McapStatistics`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1McapStatistics.html)
+ * 🐍 [Python API docs for `McapStatistics`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.McapStatistics)
+ * 🦀 [Rust API docs for `McapStatistics`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapStatistics.html)
 
 ## Example
 
