@@ -17,8 +17,7 @@ table McapStatistics (
 
   /// TODO(#11107): Stabilize
   "attr.rerun.state": "unstable",
-  "attr.rust.derive": "PartialEq",
-  "attr.docs.unreleased"
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

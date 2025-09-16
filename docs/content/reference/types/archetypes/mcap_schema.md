@@ -11,8 +11,8 @@ They provide the blueprint for interpreting message payloads, specifying field n
 types, and organization. Each schema is referenced by channels to indicate how their
 messages should be decoded and understood.
 
-See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archetypes/mcap_channel?speculative-link) for channels that reference these schemas,
-[`archetypes.McapMessage`](https://rerun.io/docs/reference/types/archetypes/mcap_message?speculative-link) for the messages that conform to these schemas, and the
+See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archetypes/mcap_channel) for channels that reference these schemas,
+[`archetypes.McapMessage`](https://rerun.io/docs/reference/types/archetypes/mcap_message) for the messages that conform to these schemas, and the
 [MCAP specification](https://mcap.dev/) for complete format details.
 
 ## Fields
@@ -27,9 +27,9 @@ See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archet
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `McapSchema`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1McapSchema.html?speculative-link)
- * 🐍 [Python API docs for `McapSchema`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.McapSchema)
- * 🦀 [Rust API docs for `McapSchema`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapSchema.html?speculative-link)
+ * 🌊 [C++ API docs for `McapSchema`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1McapSchema.html)
+ * 🐍 [Python API docs for `McapSchema`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.McapSchema)
+ * 🦀 [Rust API docs for `McapSchema`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapSchema.html)
 
 ## Example
 
