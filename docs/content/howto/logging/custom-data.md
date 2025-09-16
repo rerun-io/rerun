@@ -9,8 +9,8 @@ Rerun comes with many pre-built [Types](../../reference/types.md) that you can u
 For Python and Rust we have helpers for this, called `AnyValues`, allowing you to easily attach custom values to any entity instance.
 You find the documentation for these helpers here:
 
-* [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/)
-* [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html)
+-   [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues?speculative-link)
+-   [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html?speculative-link)
 
 ```python
 rr.log(
@@ -20,13 +20,6 @@ rr.log(
         homepage="https://www.rerun.io",
         repository="https://github.com/rerun-io/rerun",
     )
-    # Using Rerun's builtin components.
-    .with_field(
-        rr.ComponentDescriptor("confidence", component_type=rr.components.ScalarBatch._COMPONENT_TYPE), [1.2, 3.4, 5.6]
-    )
-    .with_field(
-        rr.ComponentDescriptor("description", component_type=rr.components.TextBatch._COMPONENT_TYPE), "Bla bla bla…"
-    ),
 )
 ```
 
@@ -52,6 +45,50 @@ let any_values = rerun::AnyValues::default()
     .with_component::<rerun::components::Text>("description", vec!["Bla bla bla…"]);
 
 rec.log("my_entity", &any_values)?;
+```
+
+If your values should be grouped together and that grouping isn't referred to from many places that need to stay aligned we have a helpers for this called, `DynamicArchetype` which adds some structural grouping to multiple values.
+
+You find the documentation for these helpers here:
+
+-   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.DyanamicArchetype?speculative-link)
+-   [`DynamicArchetype` in Rust](https://docs.rs/rerun/latest/rerun/struct.DynamicArchetype.html?speculative-link)
+
+```python
+rr.log(
+    "my_entity",
+    rr.DynamicArchetype(
+        archetype="MySoftwareArchetype"
+        components = {
+            homepage="https://www.rerun.io",
+            repository="https://github.com/rerun-io/rerun",
+        }
+    )
+)
+```
+
+You can achieve the same thing in Rust:
+
+```rs
+let some_archetype = rerun::DynamicArchetype::new("MySoftwareArchetype")
+    // Using arbitrary Arrow data.
+    .with_field(
+        "homepage",
+        Arc::new(arrow::array::StringArray::from(vec![
+            "https://www.rerun.io",
+        ])),
+    )
+    .with_field(
+        "repository",
+        Arc::new(arrow::array::StringArray::from(vec![
+            "https://github.com/rerun-io/rerun",
+        ])),
+    )
+    // Using Rerun's builtin components.
+    .with_component::<rerun::components::Scalar>("confidence", [1.2, 3.4, 5.6])
+    .with_component::<rerun::components::Text>("description", vec!["Bla bla bla…"]);
+
+rec.log("my_entity", &some_archetype)?;
 ```
 
 You can also create your own component by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/0.9.0/common/interfaces/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.

@@ -89,6 +89,7 @@ pub enum UICommand {
     #[cfg(debug_assertions)]
     ResetEguiMemory,
 
+    Share,
     CopyDirectLink,
 
     CopyTimeRangeLink,
@@ -288,6 +289,7 @@ impl UICommand {
                 "Reset egui memory, useful for debugging UI code.",
             ),
 
+            Self::Share => ("Share…", "Share the current screen as a link"),
             Self::CopyDirectLink => (
                 "Copy direct link",
                 "Try to copy a shareable link to the current screen. This is not supported for all data sources & viewer states.",
@@ -436,6 +438,7 @@ impl UICommand {
             #[cfg(debug_assertions)]
             Self::ResetEguiMemory => smallvec![],
 
+            Self::Share => smallvec![cmd(Key::L)],
             Self::CopyDirectLink => smallvec![],
 
             Self::CopyTimeRangeLink => smallvec![],

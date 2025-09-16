@@ -46,6 +46,7 @@
 
 mod args;
 mod grpc;
+mod memory_telemetry;
 mod metrics_server;
 mod prometheus;
 mod shared_reader;
@@ -124,7 +125,7 @@ pub fn current_trace_headers() -> Option<TraceHeaders> {
     Some(carrier)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TraceHeaders {
     pub traceparent: String,
     pub tracestate: Option<String>,

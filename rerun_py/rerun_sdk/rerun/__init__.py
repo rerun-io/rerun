@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.25.0-alpha.1+dev"
-__version_info__ = (0, 25, 0, "alpha.1")
+__version__ = "0.25.0-alpha.6"
+__version_info__ = (0, 25, 0, "alpha.6")
 
 if sys.version_info < (3, 10):
     warnings.warn(
@@ -68,8 +68,10 @@ from ._send_columns import (
     TimeSequenceColumn as TimeSequenceColumn,
     send_columns as send_columns,
 )
-from .any_value import (
+from .any_batch_value import (
     AnyBatchValue as AnyBatchValue,
+)
+from .any_value import (
     AnyValues as AnyValues,
 )
 from .archetypes import (
@@ -145,6 +147,9 @@ from .datatypes import (
     TimeRange as TimeRange,
     TimeRangeBoundary as TimeRangeBoundary,
     VisibleTimeRange as VisibleTimeRange,
+)
+from .dynamic_archetype import (
+    DynamicArchetype as DynamicArchetype,
 )
 from .error_utils import (
     set_strict_mode as set_strict_mode,

@@ -1478,10 +1478,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Rotations via quaternion.\n\nIf no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.",
                     is_required : false, }, ArchetypeFieldReflection { name : "colors",
                     display_name : "Colors", component_type : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the boxes.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "radii", display_name :
-                    "Radii", component_type : "rerun.components.Radius".into(),
-                    docstring_md :
+                    .into(), docstring_md :
+                    "Optional colors for the boxes.\n\nAlpha channel is used for transparency for solid fill-mode.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "radii",
+                    display_name : "Radii", component_type : "rerun.components.Radius"
+                    .into(), docstring_md :
                     "Optional radii for the lines that make up the boxes.", is_required :
                     false, }, ArchetypeFieldReflection { name : "fill_mode", display_name
                     : "Fill mode", component_type : "rerun.components.FillMode".into(),
@@ -1533,7 +1534,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Rotations via quaternion.\n\nIf no rotation is specified, the capsules align with the +Z axis of the local coordinate system.",
                     is_required : false, }, ArchetypeFieldReflection { name : "colors",
                     display_name : "Colors", component_type : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the capsules.",
+                    .into(), docstring_md :
+                    "Optional colors for the capsules.\n\nAlpha channel is used for transparency for solid fill-mode.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "line_radii", display_name : "Line radii", component_type :
                     "rerun.components.Radius".into(), docstring_md :
@@ -1602,7 +1604,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Rotations via quaternion.\n\nIf no rotation is specified, the cylinders align with the +Z axis of the local coordinate system.",
                     is_required : false, }, ArchetypeFieldReflection { name : "colors",
                     display_name : "Colors", component_type : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the cylinders.",
+                    .into(), docstring_md :
+                    "Optional colors for the cylinders.\n\nAlpha channel is used for transparency for solid fill-mode.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "line_radii", display_name : "Line radii", component_type :
                     "rerun.components.Radius".into(), docstring_md :
@@ -1691,7 +1694,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Rotations via quaternion.\n\nIf no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.",
                     is_required : false, }, ArchetypeFieldReflection { name : "colors",
                     display_name : "Colors", component_type : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the ellipsoids.",
+                    .into(), docstring_md :
+                    "Optional colors for the ellipsoids.\n\nAlpha channel is used for transparency for solid fill-mode.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "line_radii", display_name : "Line radii", component_type :
                     "rerun.components.Radius".into(), docstring_md :
@@ -2105,19 +2109,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "An optional normal for each vertex.", is_required : false, },
                     ArchetypeFieldReflection { name : "vertex_colors", display_name :
                     "Vertex colors", component_type : "rerun.components.Color".into(),
-                    docstring_md : "An optional color for each vertex.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "vertex_texcoords",
-                    display_name : "Vertex texcoords", component_type :
-                    "rerun.components.Texcoord2D".into(), docstring_md :
+                    docstring_md :
+                    "An optional color for each vertex.\n\nThe alpha channel is ignored.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "vertex_texcoords", display_name : "Vertex texcoords", component_type
+                    : "rerun.components.Texcoord2D".into(), docstring_md :
                     "An optional uv texture coordinate for each vertex.", is_required :
                     false, }, ArchetypeFieldReflection { name : "albedo_factor",
                     display_name : "Albedo factor", component_type :
                     "rerun.components.AlbedoFactor".into(), docstring_md :
-                    "A color multiplier applied to the whole mesh.", is_required : false,
-                    }, ArchetypeFieldReflection { name : "albedo_texture_buffer",
-                    display_name : "Albedo texture buffer", component_type :
-                    "rerun.components.ImageBuffer".into(), docstring_md :
-                    "Optional albedo texture.\n\nUsed with the [`components.Texcoord2D`](https://rerun.io/docs/reference/types/components/texcoord2d) of the mesh.\n\nCurrently supports only sRGB(A) textures, ignoring alpha.\n(meaning that the tensor must have 3 or 4 channels and use the `u8` format)",
+                    "A color multiplier applied to the whole mesh.\n\nAlpha channel governs the overall mesh transparency.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "albedo_texture_buffer", display_name : "Albedo texture buffer",
+                    component_type : "rerun.components.ImageBuffer".into(), docstring_md
+                    :
+                    "Optional albedo texture.\n\nUsed with the [`components.Texcoord2D`](https://rerun.io/docs/reference/types/components/texcoord2d) of the mesh.\n\nCurrently supports only sRGB(A) textures, ignoring alpha.\n(meaning that the tensor must have 3 or 4 channels and use the `u8` format)\n\nThe alpha channel is ignored.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "albedo_texture_format", display_name : "Albedo texture format",
                     component_type : "rerun.components.ImageFormat".into(), docstring_md

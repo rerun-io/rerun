@@ -937,6 +937,9 @@ class ComponentDescriptor:
     def or_with_overrides(self, archetype: str | None = None, component_type: str | None = None) -> ComponentDescriptor:
         """Sets `archetype` and `component_type` to the given one iff it's not already set."""
 
+    def with_builtin_archetype(self, archetype: str) -> ComponentDescriptor:
+        """Sets `archetype` in a format similar to built-in archetypes."""
+
 #
 # sinks
 #
@@ -1514,7 +1517,8 @@ class DatasetEntry(Entry):
 
     def do_maintenance(
         self,
-        build_scalar_index: bool = False,
+        optimize_indexes: bool = False,
+        retrain_indexes: bool = False,
         compact_fragments: bool = False,
         cleanup_before: datetime | None = None,
         unsafe_allow_recent_cleanup: bool = False,
@@ -1735,6 +1739,10 @@ class CatalogClientInternal:
     def create_dataset(self, name: str) -> DatasetEntry: ...
     def register_table(self, name: str, url: str) -> TableEntry: ...
     def ctx(self) -> dfn.SessionContext: ...
+
+    # ---
+
+    def do_global_maintenance(self) -> None: ...
 
     # ---
 

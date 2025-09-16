@@ -4,11 +4,11 @@ use arrow::array::{
     UInt16Builder,
 };
 use re_chunk::{Chunk, ChunkId};
-use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor, SerializedComponentColumn, archetypes::GeoPoints, components::LatLon,
 };
 
+use super::super::Ros2MessageParser;
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
@@ -22,8 +22,6 @@ pub struct NavSatFixSchemaPlugin;
 
 pub struct NavSatFixMessageParser {
     geo_points: Vec<LatLon>,
-    latitude: FixedSizeListBuilder<Float64Builder>,
-    longitude: FixedSizeListBuilder<Float64Builder>,
     altitude: FixedSizeListBuilder<Float64Builder>,
     status: FixedSizeListBuilder<Int8Builder>,
     service: FixedSizeListBuilder<UInt16Builder>,
@@ -34,24 +32,24 @@ pub struct NavSatFixMessageParser {
 impl NavSatFixMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.NavSatFix";
 
-    pub fn new(num_rows: usize) -> Self {
-        Self {
-            geo_points: Vec::with_capacity(num_rows),
-            latitude: fixed_size_list_builder(1, num_rows),
-            longitude: fixed_size_list_builder(1, num_rows),
-            altitude: fixed_size_list_builder(1, num_rows),
-            status: fixed_size_list_builder(1, num_rows),
-            service: fixed_size_list_builder(1, num_rows),
-            position_covariance: fixed_size_list_builder(9, num_rows),
-            position_covariance_type: fixed_size_list_builder(1, num_rows),
-        }
-    }
-
     fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
         SerializedComponentColumn {
             list_array: array.into(),
             descriptor: ComponentDescriptor::partial(name)
                 .with_archetype(Self::ARCHETYPE_NAME.into()),
+        }
+    }
+}
+
+impl Ros2MessageParser for NavSatFixMessageParser {
+    fn new(num_rows: usize) -> Self {
+        Self {
+            geo_points: Vec::with_capacity(num_rows),
+            altitude: fixed_size_list_builder(1, num_rows),
+            status: fixed_size_list_builder(1, num_rows),
+            service: fixed_size_list_builder(1, num_rows),
+            position_covariance: fixed_size_list_builder(9, num_rows),
+            position_covariance_type: fixed_size_list_builder(1, num_rows),
         }
     }
 }
@@ -71,20 +69,13 @@ impl MessageParser for NavSatFixMessageParser {
             .context("Failed to decode sensor_msgs::NavSatFix message from CDR data")?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(header.stamp.as_nanos()),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
+            header.stamp.as_nanos() as u64,
+        ));
 
         // Store latitude/longitude as geographic points
         let geo_point = LatLon::new(latitude, longitude);
         self.geo_points.push(geo_point);
-
-        self.latitude.values().append_slice(&[latitude]);
-        self.latitude.append(true);
-
-        self.longitude.values().append_slice(&[longitude]);
-        self.longitude.append(true);
 
         self.altitude.values().append_slice(&[altitude]);
         self.altitude.append(true);
@@ -112,8 +103,6 @@ impl MessageParser for NavSatFixMessageParser {
         re_tracing::profile_function!();
         let Self {
             geo_points,
-            mut latitude,
-            mut longitude,
             mut altitude,
             mut status,
             mut service,
@@ -130,8 +119,6 @@ impl MessageParser for NavSatFixMessageParser {
             .collect();
 
         chunk_components.extend([
-            Self::create_metadata_column("latitude", latitude.finish()),
-            Self::create_metadata_column("longitude", longitude.finish()),
             Self::create_metadata_column("altitude", altitude.finish()),
             Self::create_metadata_column("status", status.finish()),
             Self::create_metadata_column("service", service.finish()),

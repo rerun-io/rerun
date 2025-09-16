@@ -132,6 +132,8 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
             If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
         colors:
             Optional colors for the ellipsoids.
+
+            Alpha channel is used for transparency for solid fill-mode.
         line_radii:
             Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
         fill_mode:
@@ -222,6 +224,8 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
             If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
         colors:
             Optional colors for the ellipsoids.
+
+            Alpha channel is used for transparency for solid fill-mode.
         line_radii:
             Optional radii for the lines used when the ellipsoid is rendered as a wireframe.
         fill_mode:
@@ -350,6 +354,8 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the ellipsoids.
+    #
+    # Alpha channel is used for transparency for solid fill-mode.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

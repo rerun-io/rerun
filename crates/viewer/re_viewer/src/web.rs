@@ -13,11 +13,10 @@ use wasm_bindgen::prelude::*;
 use re_log::ResultExt as _;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
-use re_viewer_context::AsyncRuntimeHandle;
+use re_viewer_context::{AsyncRuntimeHandle, open_url};
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
-use crate::open_url;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]

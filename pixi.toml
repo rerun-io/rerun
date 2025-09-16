@@ -109,7 +109,7 @@ py-docs = ["base", "python-docs"]
 cpp = ["base", "cpp"]
 
 # The wheel-test environment is for testing the python package when built from a wheel.
-# Thistenvironment is specifically used for validation of the wheel artifact in CI.
+# This environment is specifically used for validation of the wheel artifact in CI.
 # It does not include the features necessary for a source-build of the wheel.
 #
 # WARNING: wheel-test default depends on a published `rerun-sdk` version which will
@@ -618,6 +618,7 @@ tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
+gh = ">=2.79.0,<3"
 
 
 [feature.base.pypi-dependencies]
@@ -765,7 +766,7 @@ platforms = ["linux-64", "osx-arm64", "win-64"]
 
 
 [feature.examples-common.system-requirements]
-macos = "12.0" # needed for scipy
+macos = "13.0" # needed for scipy and opencv contrib wheels
 
 [feature.examples-common.dependencies]
 python = "=3.11"

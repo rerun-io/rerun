@@ -10,8 +10,8 @@ use re_entity_db::InstancePath;
 use re_types::ArrowString;
 use re_ui::list_item;
 use re_viewer_context::{
-    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, UiLayout, ViewHighlights,
-    ViewQuery, ViewerContext,
+    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SystemCommand,
+    SystemCommandSender as _, UiLayout, ViewHighlights, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -375,10 +375,14 @@ pub fn draw_graph(
                 // Warning! The order is very important here.
                 if response.double_clicked() {
                     // Select the entire entity
-                    ctx.selection_state().set_selection(Item::DataResult(
-                        query.view_id,
-                        instance_path.entity_path.clone().into(),
-                    ));
+                    ctx.command_sender()
+                        .send_system(SystemCommand::SetSelection(
+                            Item::DataResult(
+                                query.view_id,
+                                instance_path.entity_path.clone().into(),
+                            )
+                            .into(),
+                        ));
                 } else if response.hovered() || response.clicked() {
                     *hover_click_item = Some((
                         Item::DataResult(query.view_id, instance_path.clone()),

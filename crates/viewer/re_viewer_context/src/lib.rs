@@ -15,6 +15,7 @@ mod drag_and_drop;
 mod heuristics;
 mod image_info;
 mod maybe_mut_ref;
+pub mod open_url;
 mod query_context;
 mod query_range;
 mod selection_state;
@@ -62,8 +63,8 @@ pub use self::{
     },
     query_range::QueryRange,
     selection_state::{
-        ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
-        ItemContext, SelectionChange, SelectionHighlight,
+        ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectionChange,
+        SelectionHighlight,
     },
     storage_context::StorageContext,
     store_context::StoreContext,

@@ -110,10 +110,9 @@ pub struct Imu {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(try_from = "u8", into = "u8")]
 #[repr(u8)]
 pub enum PointFieldDatatype {
-    /// Does not exist in original spec.
-    Unknown = 0,
     Int8 = 1,
     UInt8 = 2,
     Int16 = 3,
@@ -122,6 +121,34 @@ pub enum PointFieldDatatype {
     UInt32 = 6,
     Float32 = 7,
     Float64 = 8,
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("unknown point field datatype: {0}")]
+pub struct UnknownPointFieldDatatype(u8);
+
+impl TryFrom<u8> for PointFieldDatatype {
+    type Error = UnknownPointFieldDatatype;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        Ok(match value {
+            1 => Self::Int8,
+            2 => Self::UInt8,
+            3 => Self::Int16,
+            4 => Self::UInt16,
+            5 => Self::Int32,
+            6 => Self::UInt32,
+            7 => Self::Float32,
+            8 => Self::Float64,
+            other => Err(UnknownPointFieldDatatype(other))?,
+        })
+    }
+}
+
+impl From<PointFieldDatatype> for u8 {
+    fn from(datatype: PointFieldDatatype) -> Self {
+        datatype as Self
+    }
 }
 
 /// This message holds the description of one point entry in the
@@ -303,6 +330,7 @@ pub struct NavSatStatus {
 
 /// Navigation satellite fix status values.
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(from = "i8", into = "i8")]
 #[repr(i8)]
 pub enum NavSatFixStatus {
     /// Unable to fix position.
@@ -318,8 +346,26 @@ pub enum NavSatFixStatus {
     GbasFix = 2,
 }
 
+impl From<i8> for NavSatFixStatus {
+    fn from(value: i8) -> Self {
+        match value {
+            0 => Self::Fix,
+            1 => Self::SbasFix,
+            2 => Self::GbasFix,
+            _ => Self::NoFix,
+        }
+    }
+}
+
+impl From<NavSatFixStatus> for i8 {
+    fn from(status: NavSatFixStatus) -> Self {
+        status as Self
+    }
+}
+
 /// Navigation satellite service type values.
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(try_from = "u16", into = "u16")]
 #[repr(u16)]
 pub enum NavSatService {
     Gps = 1,
@@ -328,14 +374,52 @@ pub enum NavSatService {
     Galileo = 8,
 }
 
+impl TryFrom<u16> for NavSatService {
+    type Error = u16;
+
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::Gps),
+            2 => Ok(Self::Glonass),
+            4 => Ok(Self::Compass),
+            8 => Ok(Self::Galileo),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<NavSatService> for u16 {
+    fn from(service: NavSatService) -> Self {
+        service as Self
+    }
+}
+
 /// Position covariance type for navigation satellite fix.
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[serde(from = "u8", into = "u8")]
 #[repr(u8)]
 pub enum CovarianceType {
     Unknown = 0,
     Approximated = 1,
     DiagonalKnown = 2,
     Known = 3,
+}
+
+impl From<u8> for CovarianceType {
+    fn from(value: u8) -> Self {
+        match value {
+            1 => Self::Approximated,
+            2 => Self::DiagonalKnown,
+            3 => Self::Known,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+impl From<CovarianceType> for u8 {
+    fn from(cov_type: CovarianceType) -> Self {
+        cov_type as Self
+    }
 }
 
 /// Navigation Satellite fix for any Global Navigation Satellite System

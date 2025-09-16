@@ -5,7 +5,6 @@
 mod datafusion_adapter;
 mod datafusion_table_widget;
 mod display_record_batch;
-mod filter_ui;
 mod filters;
 mod header_tooltip;
 mod requested_object;
@@ -21,4 +20,4 @@ pub use self::{
 };
 
 // for testing purposes
-pub use self::filters::{Filter, FilterOperation};
+pub use self::filters::{BooleanFilter, ComparisonOperator, Filter, FilterOperation, Nullability};

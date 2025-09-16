@@ -1,5 +1,6 @@
 use egui::Vec2;
 use egui_kittest::SnapshotOptions;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
 
 #[test]
@@ -112,8 +113,8 @@ pub fn test_list_items_should_match_snapshot() {
                 ui.list_item().show_hierarchical(
                     ui,
                     list_item::LabelContent::new("LabelContent with buttons").with_buttons(|ui| {
-                        ui.small_icon_button(&icons::ADD, "Add")
-                            | ui.small_icon_button(&icons::REMOVE, "Remove")
+                        ui.small_icon_button(&icons::ADD, "Add");
+                        ui.small_icon_button(&icons::REMOVE, "Remove");
                     }),
                 );
 
@@ -121,10 +122,10 @@ pub fn test_list_items_should_match_snapshot() {
                     ui,
                     list_item::LabelContent::new("LabelContent with buttons (always shown)")
                         .with_buttons(|ui| {
-                            ui.small_icon_button(&icons::ADD, "Add")
-                                | ui.small_icon_button(&icons::REMOVE, "Remove")
+                            ui.small_icon_button(&icons::ADD, "Add");
+                            ui.small_icon_button(&icons::REMOVE, "Remove");
                         })
-                        .always_show_buttons(true),
+                        .with_always_show_buttons(true),
                 );
             },
         );
@@ -165,16 +166,18 @@ pub fn test_list_items_should_match_snapshot() {
                         ui,
                         list_item::PropertyContent::new("Color")
                             .with_icon(&icons::VIEW_TEXT)
-                            .action_button(&icons::ADD, "Add", || {})
-                            .value_color(&color),
+                            .with_action_button(&icons::ADD, "Add", || {})
+                            .value_color(&color)
+                            .with_always_show_buttons(true),
                     );
 
                     ui.list_item().show_hierarchical(
                         ui,
                         list_item::PropertyContent::new("Color (editable)")
                             .with_icon(&icons::VIEW_TEXT)
-                            .action_button(&icons::ADD, "Add", || {})
-                            .value_color_mut(&mut color),
+                            .with_action_button(&icons::ADD, "Add", || {})
+                            .value_color_mut(&mut color)
+                            .with_always_show_buttons(true),
                     );
                 });
             },

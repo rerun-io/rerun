@@ -75,7 +75,7 @@ pub fn redap_uri_button(
             // Show it:
             ctx.command_sender()
                 .send_system(SystemCommand::SetSelection(
-                    re_viewer_context::Item::StoreId(loaded_recording_id),
+                    re_viewer_context::Item::StoreId(loaded_recording_id).into(),
                 ));
         }
     } else if is_loading {
