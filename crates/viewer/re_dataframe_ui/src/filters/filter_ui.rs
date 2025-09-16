@@ -457,8 +457,8 @@ impl FilterOperation {
                 boolean_filter.popup_ui(ui, column_name, &mut action);
             }
 
-            Self::Timestamp(_) => {
-                //todo!()
+            Self::Timestamp(timestamp_filter) => {
+                timestamp_filter.popup_ui(ui, column_name, &mut action);
             }
         }
 
@@ -482,7 +482,9 @@ impl FilterOperation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::filters::{NonNullableBooleanFilter, NullableBooleanFilter, TimestampFilter};
+    use crate::filters::{
+        NonNullableBooleanFilter, NullableBooleanFilter, ResolvedTimestampFilter,
+    };
 
     fn test_cases() -> Vec<(FilterOperation, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
@@ -558,9 +560,12 @@ mod tests {
                 "nullable_boolean_equals_null",
             ),
             (
-                FilterOperation::Timestamp(TimestampFilter::After(
-                    jiff::Timestamp::from_millisecond(1_000_000_000).unwrap(),
-                )),
+                FilterOperation::Timestamp(
+                    ResolvedTimestampFilter::After(
+                        jiff::Timestamp::from_millisecond(1_000_000_000).unwrap(),
+                    )
+                    .into(),
+                ),
                 "timestamp_after",
             ),
             //TODO: add more
