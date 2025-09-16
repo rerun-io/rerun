@@ -81,6 +81,8 @@ function(download_and_build_arrow)
         set(VERSION_PATCH "-DCMAKE_POLICY_VERSION_MINIMUM=${CMAKE_POLICY_VERSION_MINIMUM}")
     endif()
 
+    set(MIMALLOC_PATCH ${CMAKE_CURRENT_LIST_DIR}/patches/mimalloc_cmake4.patch)
+
     ExternalProject_Add(
         arrow_cpp
         PREFIX ${ARROW_DOWNLOAD_PATH}
@@ -89,6 +91,10 @@ function(download_and_build_arrow)
         GIT_SHALLOW ON
         GIT_PROGRESS OFF # Git progress sounds like a nice idea but is in practice very spammy.
         UPDATE_COMMAND "" # Prevent unnecessary rebuilds on every cmake --build
+
+        # Apply patch after checkout but before configure
+        # TODO(apache/arrow#45985): Arrow can't support CMake 4.0 yet
+        PATCH_COMMAND git apply --check ${MIMALLOC_PATCH} && git apply ${MIMALLOC_PATCH} || true
 
         # LOG_X ON means that the output of the command will
         # be logged to a file _instead_ of printed to the console.

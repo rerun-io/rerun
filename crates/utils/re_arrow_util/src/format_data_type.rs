@@ -5,6 +5,8 @@ use std::fmt::Formatter;
 use arrow::datatypes::{DataType, Field, IntervalUnit, TimeUnit};
 
 /// Compact format of an arrow data type.
+///
+/// TODO(emilk): upstream this to `arrow` instead.
 pub fn format_data_type(data_type: &DataType) -> String {
     DisplayDatatype(data_type).to_string()
 }

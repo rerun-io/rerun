@@ -47,7 +47,7 @@ fn colormap_preview_ui(
         texture: horizontal_gradient,
         range: [0.0, 1.0],
         decode_srgb: false,
-        multiply_rgb_with_alpha: false,
+        texture_alpha: re_renderer::renderer::TextureAlpha::Opaque,
         gamma: 1.0,
         shader_decoding: None,
         color_mapper: re_renderer::renderer::ColorMapper::Function(colormap_to_re_renderer(
