@@ -97,6 +97,8 @@ pub enum SystemCommand {
     },
 
     /// Copies the given url to the clipboard.
+    ///
+    /// On web this adds the viewer url as the base url.
     CopyViewerUrl(String),
 
     /// Set the item selection.
