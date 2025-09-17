@@ -19,7 +19,7 @@ fn rustfmt_once(source: &str) -> Option<String> {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .arg("--edition=2021")
+        .arg("--edition=2024")
         .spawn()
         .ok()?;
 

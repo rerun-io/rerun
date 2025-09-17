@@ -1,7 +1,7 @@
 [package]
 name = "snippets"
 version.workspace = true
-edition = "2021"              # TODO(#9943): Update to 2024
+edition = "2024"
 rust-version.workspace = true
 license.workspace = true
 publish = false
