@@ -117,33 +117,33 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.re_radio_value(
         &mut app_options.timestamp_format,
-        TimestampFormat::Utc,
+        TimestampFormat::utc(),
         "UTC",
     );
-    timestamp_example_ui(ui, timestamp, TimestampFormat::Utc);
+    timestamp_example_ui(ui, timestamp, TimestampFormat::utc());
     ui.re_radio_value(
         &mut app_options.timestamp_format,
-        TimestampFormat::LocalTimezone,
+        TimestampFormat::local_timezone(),
         "Local (show time zone)",
     );
-    timestamp_example_ui(ui, timestamp, TimestampFormat::LocalTimezone);
+    timestamp_example_ui(ui, timestamp, TimestampFormat::local_timezone());
     ui.re_radio_value(
         &mut app_options.timestamp_format,
-        TimestampFormat::LocalTimezoneImplicit,
+        TimestampFormat::local_timezone_implicit(),
         "Local (hide time zone)",
     );
     ui.horizontal(|ui| {
         ui.add_space(ui.spacing().icon_width + ui.spacing().icon_spacing);
         ui.label("Note: timestamps without time zone are ambiguous when copied elsewhere.");
     });
-    timestamp_example_ui(ui, timestamp, TimestampFormat::LocalTimezoneImplicit);
+    timestamp_example_ui(ui, timestamp, TimestampFormat::local_timezone_implicit());
 
     ui.re_radio_value(
         &mut app_options.timestamp_format,
-        TimestampFormat::UnixEpoch,
+        TimestampFormat::unix_epoch(),
         "Seconds since Unix epoch",
     );
-    timestamp_example_ui(ui, timestamp, TimestampFormat::UnixEpoch);
+    timestamp_example_ui(ui, timestamp, TimestampFormat::unix_epoch());
 
     //
     // Map view
