@@ -2,7 +2,7 @@ use std::any::Any;
 use std::fmt::Formatter;
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, BooleanArray, ListArray, as_list_array};
+use arrow::array::{Array as _, ArrayRef, BooleanArray, ListArray, as_list_array};
 use arrow::datatypes::{DataType, Field};
 use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
@@ -11,7 +11,7 @@ use datafusion::logical_expr::{
 };
 use datafusion::prelude::{Column, Expr, array_to_string, col, lit, lower};
 
-use super::BooleanFilter;
+use super::{NonNullableBooleanFilter, NullableBooleanFilter};
 
 /// The nullability of a nested arrow datatype.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -87,8 +87,11 @@ pub enum FilterError {
     #[error("invalid filter operation {0:?} for field {1}")]
     InvalidFilterOperation(FilterOperation, Box<Field>),
 
-    #[error("invalid filter operation {0:?} for field {1}")]
-    InvalidBooleanFilterOperation(BooleanFilter, Box<Field>),
+    #[error("invalid non-nullable boolean filter operation {0:?} for field {1}")]
+    InvalidNonNullableBooleanFilterOperation(NonNullableBooleanFilter, Box<Field>),
+
+    #[error("invalid nullable boolean filter operation {0:?} for field {1}")]
+    InvalidNullableBooleanFilterOperation(NullableBooleanFilter, Box<Field>),
 }
 
 /// A filter applied to a table.
@@ -171,7 +174,7 @@ impl ComparisonOperator {
     }
 }
 
-/// The kind of filter operation
+/// The UI state for a filter operation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum FilterOperation {
     /// Compare an integer value to a constant.
@@ -179,6 +182,10 @@ pub enum FilterOperation {
     /// For columns of lists of integers, only the first value is considered.
     IntCompares {
         operator: ComparisonOperator,
+
+        /// The value to compare to.
+        ///
+        /// `None` means that no input was provided by the user. In this case, we match everything.
         value: Option<i128>,
     },
 
@@ -187,13 +194,19 @@ pub enum FilterOperation {
     /// For columns of lists of floats, only the first value is considered.
     FloatCompares {
         operator: ComparisonOperator,
+
+        /// The value to compare to.
+        ///
+        /// `None` means that no input was provided by the user. In this case, we match everything.
         value: Option<f64>,
     },
 
     //TODO(ab): parameterise that over multiple string ops, e.g. "contains", "starts with", etc.
     StringContains(String),
 
-    Boolean(BooleanFilter),
+    NullableBoolean(NullableBooleanFilter),
+
+    NonNullableBoolean(NonNullableBooleanFilter),
 }
 
 impl FilterOperation {
@@ -216,9 +229,13 @@ impl FilterOperation {
 
             DataType::Utf8 | DataType::Utf8View => Some(Self::StringContains(String::new())),
 
-            DataType::Boolean => Some(Self::Boolean(BooleanFilter::default_for_nullability(
-                nullability,
-            ))),
+            DataType::Boolean => {
+                if nullability.is_either() {
+                    Some(Self::NullableBoolean(NullableBooleanFilter(Some(true))))
+                } else {
+                    Some(Self::NonNullableBoolean(NonNullableBooleanFilter(true)))
+                }
+            }
 
             _ => None,
         }
@@ -283,7 +300,12 @@ impl FilterOperation {
                 Ok(contains_patch(lower(operand), lower(lit(query_string))))
             }
 
-            Self::Boolean(boolean_filter) => boolean_filter.as_filter_expression(column, field),
+            Self::NullableBoolean(boolean_filter) => {
+                boolean_filter.as_filter_expression(column, field)
+            }
+            Self::NonNullableBoolean(boolean_filter) => {
+                boolean_filter.as_filter_expression(column, field)
+            }
         }
     }
 }

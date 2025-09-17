@@ -1,5 +1,5 @@
-mod boolean_filter;
+mod boolean;
 mod filter;
 mod filter_ui;
 
-pub use self::{boolean_filter::*, filter::*, filter_ui::*};
+pub use self::{boolean::*, filter::*, filter_ui::*};

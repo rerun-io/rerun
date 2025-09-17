@@ -20,4 +20,7 @@ pub use self::{
 };
 
 // for testing purposes
-pub use self::filters::{BooleanFilter, ComparisonOperator, Filter, FilterOperation, Nullability};
+pub use self::filters::{
+    ComparisonOperator, Filter, FilterOperation, NonNullableBooleanFilter, Nullability,
+    NullableBooleanFilter,
+};
