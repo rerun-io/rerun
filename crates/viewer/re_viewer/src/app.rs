@@ -869,9 +869,7 @@ impl App {
                         | Item::ComponentPath(_)
                         | Item::Container(_)
                         | Item::View(_)
-                        | Item::DataResult(_, _) => {
-                            self.state.navigation.push_start_mode();
-                        }
+                        | Item::DataResult(_, _) => {}
                     }
                 }
 
