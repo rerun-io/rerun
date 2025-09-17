@@ -31,7 +31,6 @@ similar-asserts.workspace = true
 re_build_tools.workspace = true
 
 itertools.workspace = true
-rust-format.workspace = true # TODO(#9943): Update or remove
 
 
 [package.metadata.cargo-shear]

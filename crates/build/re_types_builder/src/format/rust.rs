@@ -38,10 +38,8 @@ fn format_code(contents: &str) -> String {
         // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
 
         re_tracing::profile_scope!("rust-fmt");
-        use rust_format::Formatter as _;
 
-        // TODO(#9943): Use 2024 edition
-        if let Ok(formatted) = rust_format::RustFmt::default().format_str(&contents) {
+        if let Some(formatted) = re_build_tools::rustfmt_str(&contents) {
             contents = formatted;
         }
     }
