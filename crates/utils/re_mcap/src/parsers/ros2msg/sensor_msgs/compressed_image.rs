@@ -3,17 +3,19 @@ use re_chunk::{
     Chunk, ChunkId, RowId, TimePoint,
     external::arrow::array::{FixedSizeListBuilder, StringBuilder},
 };
-use re_log_types::TimeCell;
 use re_types::{
     ComponentDescriptor,
     archetypes::{EncodedImage, VideoStream},
     components::VideoCodec,
+    reflection::ComponentDescriptorExt as _,
 };
 
+use super::super::Ros2MessageParser;
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
 };
+use crate::util::TimestampCell;
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
 pub struct CompressedImageMessageParser {
@@ -27,8 +29,10 @@ pub struct CompressedImageMessageParser {
 
 impl CompressedImageMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.CompressedImage";
+}
 
-    pub fn new(num_rows: usize) -> Self {
+impl Ros2MessageParser for CompressedImageMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             blobs: Vec::with_capacity(num_rows),
             formats: FixedSizeListBuilder::with_capacity(StringBuilder::new(), 1, num_rows),
@@ -47,10 +51,9 @@ impl MessageParser for CompressedImageMessageParser {
         } = cdr::try_decode_message::<sensor_msgs::CompressedImage<'_>>(&msg.data)?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(header.stamp.as_nanos()),
-        );
+        ctx.add_timestamp_cell(TimestampCell::guess_from_nanos_ros2(
+            header.stamp.as_nanos() as u64,
+        ));
 
         self.blobs.push(data.into_owned());
 
@@ -100,7 +103,7 @@ impl MessageParser for CompressedImageMessageParser {
             entity_path.clone(),
             timelines,
             std::iter::once((
-                ComponentDescriptor::partial("format").with_archetype(Self::ARCHETYPE_NAME.into()),
+                ComponentDescriptor::partial("format").with_builtin_archetype(Self::ARCHETYPE_NAME),
                 formats.finish().into(),
             ))
             .collect(),

@@ -19,11 +19,6 @@ namespace rerun {
         /// The default is `rerun+http://127.0.0.1:9876/proxy`.
         std::string_view url = "rerun+http://127.0.0.1:9876/proxy";
 
-        /// The minimum time the SDK will wait during a flush before potentially
-        /// dropping data if progress is not being made. Passing a negative value indicates no timeout,
-        /// and can cause a call to `flush` to block indefinitely.
-        float flush_timeout_sec = 3.0;
-
         inline operator LogSink() const;
     };
 
@@ -70,5 +65,5 @@ namespace rerun {
 
     namespace detail {
         rr_log_sink to_rr_log_sink(LogSink sink);
-    };
-}; // namespace rerun
+    }
+} // namespace rerun

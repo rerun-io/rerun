@@ -7,7 +7,6 @@ from __future__ import annotations
 import os
 import subprocess
 
-cpp_build_dir = "./build/roundtrips"
 repo_root = None
 
 

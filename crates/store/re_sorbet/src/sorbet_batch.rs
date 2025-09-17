@@ -40,9 +40,10 @@ impl SorbetBatch {
     ) -> Result<Self, ArrowError> {
         let arrow_columns = itertools::chain!(row_ids, index_arrays, data_arrays).collect();
 
-        let batch = ArrowRecordBatch::try_new(
+        let batch = ArrowRecordBatch::try_new_with_options(
             std::sync::Arc::new(schema.to_arrow(batch_type)),
             arrow_columns,
+            &RecordBatchOptions::default(),
         )?;
 
         Ok(Self { schema, batch })
@@ -177,7 +178,7 @@ impl SorbetBatch {
         re_tracing::profile_function!();
 
         // First migrate the incoming batch to the latest format:
-        let batch = crate::migrations::migrate_record_batch(batch.clone());
+        let batch = crate::migrations::migrate_record_batch(batch.clone(), batch_type);
 
         let sorbet_schema =
             SorbetSchema::try_from_migrated_arrow_schema(batch.schema_ref().as_ref())?;

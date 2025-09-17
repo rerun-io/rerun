@@ -1,30 +1,31 @@
+use std::str::FromStr as _;
+
 use ahash::HashMap;
 use egui::{NumExt as _, Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{AbsoluteTimeRangeF, LogMsg, StoreId, TableId};
 use re_redap_browser::RedapServers;
+use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, UiExt as _};
-use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandSender,
     ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
     RecordingConfig, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
     SystemCommandSender as _, TableStore, ViewClassRegistry, ViewStates, ViewerContext,
-    blueprint_timeline,
+    blueprint_timeline, open_url,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
-    app_blueprint::AppBlueprint, event::ViewerEventDispatcher, navigation::Navigation, open_url,
-    ui::settings_screen_ui,
+    app::web_viewer_base_url, app_blueprint::AppBlueprint, event::ViewerEventDispatcher,
+    navigation::Navigation, ui::settings_screen_ui,
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -57,6 +58,11 @@ pub struct AppState {
 
     /// Redap server catalogs and browser UI
     pub(crate) redap_servers: RedapServers,
+
+    #[serde(skip)]
+    pub(crate) open_url_modal: crate::ui::OpenUrlModal,
+    #[serde(skip)]
+    pub(crate) share_modal: crate::ui::ShareModal,
 
     /// A stack of display modes that represents tab-like navigation of the user.
     #[serde(skip)]
@@ -101,6 +107,8 @@ impl Default for AppState {
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
             redap_servers: Default::default(),
+            open_url_modal: Default::default(),
+            share_modal: Default::default(),
             navigation: Default::default(),
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -130,19 +138,6 @@ impl AppState {
         &mut self.app_options
     }
 
-    pub fn add_redap_server(&self, command_sender: &CommandSender, origin: Origin) {
-        if !self.redap_servers.has_server(&origin) {
-            command_sender.send_system(SystemCommand::AddRedapServer(origin));
-        }
-    }
-
-    pub fn select_redap_entry(&self, command_sender: &CommandSender, uri: &re_uri::EntryUri) {
-        // make sure the server exists
-        self.add_redap_server(command_sender, uri.origin.clone());
-
-        command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
-    }
-
     /// Currently selected section of time, if any.
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub fn loop_selection(
@@ -162,6 +157,7 @@ impl AppState {
     #[expect(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
+        app_env: &crate::AppEnvironment,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
@@ -318,7 +314,7 @@ impl AppState {
                 let display_mode = self.navigation.peek();
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
-                        is_test: false,
+                        is_test: app_env.is_test(),
 
                         app_options,
                         reflection,
@@ -399,7 +395,7 @@ impl AppState {
                 // it's just a bunch of refs so not really that big of a deal in practice.
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
-                        is_test: false,
+                        is_test: app_env.is_test(),
 
                         app_options,
                         reflection,
@@ -433,7 +429,7 @@ impl AppState {
                 //
 
                 if app_options.inspect_blueprint_timeline
-                    && *display_mode == DisplayMode::LocalRecordings
+                    && matches!(display_mode, DisplayMode::LocalRecordings(_))
                 {
                     let blueprint_db = ctx.store_context.blueprint;
 
@@ -499,7 +495,7 @@ impl AppState {
                 // Time panel
                 //
 
-                if *display_mode == DisplayMode::LocalRecordings {
+                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
                     time_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -515,7 +511,7 @@ impl AppState {
                 // Selection Panel
                 //
 
-                if *display_mode == DisplayMode::LocalRecordings {
+                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
                     selection_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -549,11 +545,12 @@ impl AppState {
                         ui.spacing_mut().item_spacing.y = 0.0;
 
                         match display_mode {
-                            DisplayMode::LocalRecordings
+                            DisplayMode::LocalRecordings(..)
                             | DisplayMode::LocalTable(..)
                             | DisplayMode::RedapEntry(..)
                             | DisplayMode::RedapServer(..) => {
-                                let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
+                                let show_blueprints =
+                                    matches!(display_mode, DisplayMode::LocalRecordings(_));
                                 let resizable = ctx.storage_context.bundle.recordings().count() > 3
                                     && show_blueprints;
 
@@ -573,16 +570,16 @@ impl AppState {
                                             re_recording_panel::recordings_panel_ui(
                                                 &ctx,
                                                 ui,
-                                                welcome_screen_state.hide_examples,
                                                 redap_servers,
+                                                welcome_screen_state.hide_examples,
                                             );
                                         });
                                 } else {
                                     re_recording_panel::recordings_panel_ui(
                                         &ctx,
                                         ui,
-                                        welcome_screen_state.hide_examples,
                                         redap_servers,
+                                        welcome_screen_state.hide_examples,
                                     );
                                 }
 
@@ -622,7 +619,7 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::LocalRecordings => {
+                            DisplayMode::LocalRecordings(_) => {
                                 // If we are here and the "default" app id is selected,
                                 // we should instead switch to the welcome screen.
                                 if ctx.store_context.application_id()
@@ -638,7 +635,7 @@ impl AppState {
                             }
 
                             DisplayMode::RedapEntry(entry) => {
-                                redap_servers.entry_ui(&ctx, ui, *entry);
+                                redap_servers.entry_ui(&ctx, ui, entry.entry_id);
                             }
 
                             DisplayMode::RedapServer(origin) => {
@@ -660,6 +657,9 @@ impl AppState {
                 viewport_ui.save_to_blueprint_store(&ctx);
 
                 self.redap_servers.modals_ui(&ctx.global_context, ui);
+                self.open_url_modal.ui(ui);
+                self.share_modal
+                    .ui(&ctx, ui, web_viewer_base_url().as_ref());
             }
         }
 
@@ -676,7 +676,7 @@ impl AppState {
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
-            self.selection_state.clear_selection();
+            command_sender.send_system(SystemCommand::clear_selection());
         }
 
         // If there's no text edit or label selected, and the user triggers a copy command, copy a description of the current selection.
@@ -696,7 +696,6 @@ impl AppState {
         self.focused_item = None;
     }
 
-    #[cfg(target_arch = "wasm32")] // Only used in Wasm
     pub fn recording_config(&self, rec_id: &StoreId) -> Option<&RecordingConfig> {
         self.recording_configs.get(rec_id)
     }
@@ -871,24 +870,20 @@ pub(crate) fn recording_config_entry<'cfgs>(
 ///
 /// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
 fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &CommandSender) {
-    let mut opened_any_url = false;
     let follow_if_http = false;
 
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                let select_redap_source_when_loaded = open_url.new_tab;
+                if let Ok(url) = open_url::ViewerOpenUrl::from_str(&open_url.url) {
+                    let select_redap_source_when_loaded = !open_url.new_tab;
+                    url.open(
+                        egui_ctx,
+                        follow_if_http,
+                        select_redap_source_when_loaded,
+                        command_sender,
+                    );
 
-                if open_url::try_open_url_in_viewer(
-                    egui_ctx,
-                    &open_url.url,
-                    follow_if_http,
-                    select_redap_source_when_loaded,
-                    command_sender,
-                )
-                .is_ok()
-                {
-                    opened_any_url = true;
                     // We handled the URL, therefore egui shouldn't do anything anymore with it.
                     return false;
                 } else {
@@ -899,11 +894,6 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
             true
         });
     });
-
-    if opened_any_url {
-        // Make sure we process commands that were sent by the `try_open_content_url_in_viewer` call.
-        egui_ctx.request_repaint();
-    }
 }
 
 pub fn default_blueprint_panel_width(screen_width: f32) -> f32 {

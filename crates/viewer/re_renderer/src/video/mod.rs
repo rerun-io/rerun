@@ -49,16 +49,15 @@ pub enum VideoPlayerError {
 
     #[error("Failed to create gpu texture from decoded video data: {0}")]
     ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
+
+    #[error("Decoder unexpectedly exited")]
+    DecoderUnexpectedlyExited,
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<VideoPlayerError>() <= 64,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<VideoPlayerError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<VideoPlayerError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 impl VideoPlayerError {
     pub fn should_request_more_frames(&self) -> bool {

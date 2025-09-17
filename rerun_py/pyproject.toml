@@ -36,9 +36,9 @@ text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 tests = ["pytest==8.4.1"]
-notebook = ["rerun-notebook==0.25.0-alpha.1+dev"]
-datafusion = ["datafusion==47.0.0"]
-all = ["notebook", "datafusion"]
+notebook = ["rerun-notebook==0.26.0-alpha.1+dev"]
+datafusion = ["datafusion==48.0.0"]
+all = ["rerun-sdk[notebook]", "rerun-sdk[datafusion]"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"
@@ -69,8 +69,12 @@ lint.explicit-preview-rules = true
 
 extend-exclude = [
   # Automatically generated test artifacts
-  "venv/",
+  "target_pixi/",
+  "target_pixi_wasm/",
+  "target_ra/",
+  "target_wasm/",
   "target/",
+  "venv/",
 
   "scripts/ci/compare_path_digest.py",
 

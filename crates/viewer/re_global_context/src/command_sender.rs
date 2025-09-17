@@ -1,6 +1,6 @@
 use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
-use re_data_source::DataSource;
+use re_data_source::LogDataSource;
 use re_log_types::{AbsoluteTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
@@ -21,7 +21,7 @@ pub enum SystemCommand {
     /// Load data from a given data source.
     ///
     /// Will not load any new data if the source is already one of the active data sources.
-    LoadDataSource(DataSource),
+    LoadDataSource(LogDataSource),
 
     /// Add a new receiver for log messages.
     AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
@@ -30,6 +30,9 @@ pub enum SystemCommand {
     AddRedapServer(re_uri::Origin),
 
     ChangeDisplayMode(crate::DisplayMode),
+
+    /// Sets the display mode to what it is at startup.
+    ResetDisplayMode,
 
     /// Reset the `Viewer` to the default state
     ResetViewer,
@@ -90,8 +93,19 @@ pub enum SystemCommand {
     #[cfg(debug_assertions)]
     EnableInspectBlueprintTimeline(bool),
 
+    /// Navigate to time/entities/anchors/etc. that are set in a [`re_uri::Fragment`].
+    SetUrlFragment {
+        store_id: StoreId,
+        fragment: re_uri::Fragment,
+    },
+
+    /// Copies the given url to the clipboard.
+    ///
+    /// On web this adds the viewer url as the base url.
+    CopyViewerUrl(String),
+
     /// Set the item selection.
-    SetSelection(crate::Item),
+    SetSelection(crate::ItemCollection),
 
     /// Set the active timeline and time for the given recording.
     SetActiveTime {
@@ -123,9 +137,18 @@ pub enum SystemCommand {
     /// Just like selection highlighting, the exact behavior of focusing is up to the receiving views.
     SetFocus(crate::Item),
 
+    /// Show a notification to the user
+    ShowNotification(re_ui::notifications::Notification),
+
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
+}
+
+impl SystemCommand {
+    pub fn clear_selection() -> Self {
+        Self::SetSelection(crate::ItemCollection::default())
+    }
 }
 
 impl std::fmt::Debug for SystemCommand {

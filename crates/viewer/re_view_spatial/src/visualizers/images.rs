@@ -75,7 +75,7 @@ impl VisualizerSystem for ImageVisualizer {
             },
         )?;
 
-        // TODO(#702): draw order is translated to depth offset, which works fine for opaque images,
+        // TODO(#1025, #11156): draw order is translated to depth offset, which works fine for opaque images,
         // but for everything with transparency, actual drawing order is still important.
         // We mitigate this a bit by at least sorting the images within each other.
         // Sorting of Images vs DepthImage vs SegmentationImage uses the fact that
@@ -188,8 +188,8 @@ impl ImageVisualizer {
 
 impl TypedComponentFallbackProvider<Opacity> for ImageVisualizer {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
-        // Color images should be transparent whenever they're on top of other images,
-        // But fully opaque if there are no other images in the scene.
+        // Color images should be transparent whenever they're on top of other media,
+        // But fully opaque if there is no other media in the scene.
         let Some(view_state) = ctx.view_state().as_any().downcast_ref::<SpatialViewState>() else {
             return 1.0.into();
         };

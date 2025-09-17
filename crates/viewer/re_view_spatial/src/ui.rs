@@ -88,20 +88,24 @@ impl SpatialViewState {
 
         let view_systems = &system_output.view_systems;
 
+        // Reset the counts and start over.
+        self.image_counts_last_frame = Default::default();
+
         for data in view_systems.iter_visualizer_data::<SpatialViewVisualizerData>() {
             for pickable_rect in &data.pickable_rects {
-                let PickableRectSourceData::Image {
-                    image: ImageInfo { kind, .. },
-                    ..
-                } = &pickable_rect.source_data
-                else {
-                    continue;
-                };
-
-                match kind {
-                    ImageKind::Segmentation => self.image_counts_last_frame.segmentation += 1,
-                    ImageKind::Color => self.image_counts_last_frame.color += 1,
-                    ImageKind::Depth => self.image_counts_last_frame.depth += 1,
+                match &pickable_rect.source_data {
+                    PickableRectSourceData::Image {
+                        image: ImageInfo { kind, .. },
+                        ..
+                    } => match kind {
+                        ImageKind::Segmentation => self.image_counts_last_frame.segmentation += 1,
+                        ImageKind::Color => self.image_counts_last_frame.color += 1,
+                        ImageKind::Depth => self.image_counts_last_frame.depth += 1,
+                    },
+                    PickableRectSourceData::Video => {
+                        self.image_counts_last_frame.color += 1;
+                    }
+                    PickableRectSourceData::Placeholder => {}
                 }
             }
         }
@@ -166,7 +170,7 @@ impl SpatialViewState {
         match kind {
             ImageKind::Segmentation => {
                 if counts.color + counts.depth > 0 {
-                    // Segmentation images should always be opaque if there was more than one image in the view,
+                    // Segmentation images should always be transparent if there was more than one image in the view,
                     // excluding other segmentation images.
                     0.5
                 } else {

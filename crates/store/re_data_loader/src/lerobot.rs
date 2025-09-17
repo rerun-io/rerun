@@ -10,6 +10,7 @@
 //! See [`LeRobotDataset`] for more information on the dataset format.
 
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
@@ -169,7 +170,7 @@ impl LeRobotDataset {
 
     /// Read the Parquet data file for the provided episode.
     pub fn read_episode_data(&self, episode: EpisodeIndex) -> Result<RecordBatch, LeRobotError> {
-        if self.metadata.episodes.get(episode.0).is_none() {
+        if !self.metadata.episodes.contains_key(&episode) {
             return Err(LeRobotError::InvalidEpisodeIndex(episode));
         }
 
@@ -219,11 +220,21 @@ impl LeRobotDataset {
 #[allow(dead_code)] // TODO(gijsd): The list of tasks is not used yet!
 pub struct LeRobotDatasetMetadata {
     pub info: LeRobotDatasetInfo,
-    pub episodes: Vec<LeRobotDatasetEpisode>,
+    pub episodes: BTreeMap<EpisodeIndex, LeRobotDatasetEpisode>,
     pub tasks: Vec<LeRobotDatasetTask>,
 }
 
 impl LeRobotDatasetMetadata {
+    /// Get the number of episodes in the dataset.
+    pub fn episode_count(&self) -> usize {
+        self.episodes.len()
+    }
+
+    /// Get episode metadata by index.
+    pub fn get_episode(&self, episode: EpisodeIndex) -> Option<&LeRobotDatasetEpisode> {
+        self.episodes.get(&episode)
+    }
+
     /// Loads all metadata files from the provided directory.
     ///
     /// This method reads dataset metadata from JSON and JSONL files stored in the `meta/` directory.
@@ -232,10 +243,18 @@ impl LeRobotDatasetMetadata {
         let metadir = metadir.as_ref();
 
         let info = LeRobotDatasetInfo::load_from_json_file(metadir.join("info.json"))?;
-        let mut episodes = load_jsonl_file(metadir.join("episodes.jsonl"))?;
+        let mut episodes_vec: Vec<LeRobotDatasetEpisode> =
+            load_jsonl_file(metadir.join("episodes.jsonl"))?;
         let mut tasks = load_jsonl_file(metadir.join("tasks.jsonl"))?;
 
-        episodes.sort_by_key(|e: &LeRobotDatasetEpisode| e.index);
+        // Sort episodes by index to ensure consistent ordering when loading
+        episodes_vec.sort_by_key(|e: &LeRobotDatasetEpisode| e.index);
+        // Convert episodes vec to HashMap for efficient lookup by index
+        let episodes = episodes_vec
+            .into_iter()
+            .map(|episode| (episode.index, episode))
+            .collect::<BTreeMap<EpisodeIndex, LeRobotDatasetEpisode>>();
+
         tasks.sort_by_key(|e: &LeRobotDatasetTask| e.index);
 
         Ok(Self {
@@ -434,7 +453,7 @@ pub enum DType {
 /// The name metadata can consist of
 /// - A flat list of names for each dimension of a feature (e.g., `["height", "width", "channel"]`).
 /// - A nested list of names for each dimension of a feature (e.g., `[[""kLeftShoulderPitch", "kLeftShoulderRoll"]]`)
-/// - A map with a string array value (e.g., `{ "motors": ["motor_0", "motor_1", ...] }` or `{ "axes": ["x", "y", "z"] }`).
+/// - A map with a string array value (e.g., `{ "motors": ["motor_0", "motor_1", …] }` or `{ "axes": ["x", "y", "z"] }`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Names(Vec<String>);
 

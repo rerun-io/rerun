@@ -365,10 +365,7 @@ impl SeriesLinesSystem {
                 let instance_path = if num_series == 1 {
                     InstancePath::entity_all(data_result.entity_path.clone())
                 } else {
-                    InstancePath::instance(
-                        data_result.entity_path.clone(),
-                        (instance as u64).into(),
-                    )
+                    InstancePath::instance(data_result.entity_path.clone(), instance as u64)
                 };
 
                 points_to_series(

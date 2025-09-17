@@ -14,7 +14,7 @@ mod docker_detection;
 pub mod env_vars;
 pub mod event;
 mod navigation;
-mod open_url;
+mod open_url_description;
 mod saving;
 mod screenshotter;
 mod startup_options;
@@ -22,6 +22,10 @@ mod ui;
 
 #[cfg(feature = "analytics")]
 mod viewer_analytics;
+
+#[cfg(feature = "testing")]
+#[cfg(not(target_arch = "wasm32"))]
+pub mod viewer_test_utils;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod loading;
@@ -114,6 +118,9 @@ pub enum AppEnvironment {
 
     /// Some custom application wrapping `re_viewer`.
     Custom(String),
+
+    /// Running as part of a test.
+    Test,
 }
 
 impl AppEnvironment {
@@ -157,6 +164,7 @@ impl AppEnvironment {
             Self::RerunCli { .. } => "rerun_cli",
             Self::Web { .. } => "web_viewer",
             Self::Custom(_) => "custom",
+            Self::Test => "test",
         }
     }
 
@@ -165,6 +173,10 @@ impl AppEnvironment {
             Self::Web { url } => Some(url),
             _ => None,
         }
+    }
+
+    pub fn is_test(&self) -> bool {
+        matches!(self, Self::Test)
     }
 }
 

@@ -197,7 +197,7 @@ class catch_and_log_exceptions:
             # If there was an exception before returning from func
             return self.exception_return_value
 
-        return cast(_TFunc, wrapper)
+        return cast("_TFunc", wrapper)
 
     def __exit__(
         self,
@@ -266,12 +266,12 @@ def deprecated_param(name: str, *, use_instead: str | None = None, since: str | 
         # Preserve the original signature
         wrapper.__signature__ = sig  # type: ignore[attr-defined]
 
-        return cast(T, wrapper)
+        return cast("T", wrapper)
 
     return decorator
 
 
-class RerunOptionalDependencyError(ImportError):
+class RerunMissingDependencyError(ImportError):
     """Raised when an optional dependency is not installed."""
 
     def __init__(self, package: str, optional_dep: str) -> None:
@@ -279,4 +279,16 @@ class RerunOptionalDependencyError(ImportError):
             f"'{package}' could not be imported. "
             f"Please install it, or install rerun as rerun[{optional_dep}]/rerun[all] "
             "to use this functionality."
+        )
+
+
+class RerunIncompatibleDependencyVersionError(ImportError):
+    """Raised when a dependency has an incompatible version."""
+
+    def __init__(self, package: str, actual_version: str, compatible_versions: list[int]) -> None:
+        super().__init__(
+            f"'{package}' version {actual_version} is incompatible with rerun. "
+            f"Please install rerun as rerun[{package}]/rerun[all] "
+            f"to use this functionality. "
+            f"Compatible major version(s): {', '.join(map(str, compatible_versions))}"
         )

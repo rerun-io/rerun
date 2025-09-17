@@ -7,7 +7,6 @@ use ahash::HashMap;
 use arrow::buffer::Buffer as ArrowBuffer;
 use egui::NumExt as _;
 use parking_lot::RwLock;
-use web_time::Instant;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
@@ -17,7 +16,7 @@ use re_log_types::{EntityPathHash, TimeType};
 use re_types::{archetypes::VideoStream, components};
 use re_video::{DecodeSettings, StableIndexDeque};
 
-use crate::Cache;
+use crate::{Cache, CacheMemoryReport};
 
 /// A buffer of multiple video sample data from the datastore.
 ///
@@ -137,21 +136,15 @@ pub enum VideoStreamProcessingError {
     FailedReadingCodec(Box<re_chunk::ChunkError>),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<VideoStreamProcessingError>() <= 64,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<VideoStreamProcessingError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<VideoStreamProcessingError>() <= 64,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 pub type SharablePlayableVideoStream = Arc<RwLock<PlayableVideoStream>>;
 
 impl VideoStreamCache {
     /// Looks up a video stream + players.
-    ///
-    /// Returns `None` if there was no video data for this entity on the given timeline.
     ///
     /// The first time a video stream that is looked up that isn't in the cache,
     /// it creates all the necessary metadata.
@@ -244,7 +237,7 @@ fn load_video_data_from_chunks(
         .map_err(|err| VideoStreamProcessingError::FailedReadingCodec(Box::new(err)))?;
     let codec = match last_codec {
         components::VideoCodec::H264 => re_video::VideoCodec::H264,
-        // components::VideoCodec::H265 => re_video::VideoCodec::H265,
+        components::VideoCodec::H265 => re_video::VideoCodec::H265,
         // components::VideoCodec::VP8 => re_video::VideoCodec::Vp8,
         // components::VideoCodec::VP9 => re_video::VideoCodec::Vp9,
         // components::VideoCodec::AV1 => re_video::VideoCodec::Av1,
@@ -256,12 +249,11 @@ fn load_video_data_from_chunks(
         codec,
         encoding_details: None, // Unknown so far, we'll find out later.
         timescale: timescale_for_timeline(store, timeline),
-        duration: None, // Streams have to be assumed to be open ended, so we don't have a duration.
+        delivery_method: re_video::VideoDeliveryMethod::new_stream(),
         gops: StableIndexDeque::new(),
         samples: StableIndexDeque::with_capacity(sample_chunks.len()), // Number of video chunks is minimum number of samples.
         samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(#10090): No b-frames for now.
         mp4_tracks: Default::default(),
-        last_time_updated_samples: Some(Instant::now()),
     };
 
     for chunk in sample_chunks {
@@ -529,10 +521,6 @@ impl Cache for VideoStreamCache {
         }
     }
 
-    fn bytes_used(&self) -> u64 {
-        self.0.total_size_bytes()
-    }
-
     fn purge_memory(&mut self) {
         // We aggressively purge all unused video data every frame.
         // The expectation here is that parsing video data is fairly fast,
@@ -541,6 +529,18 @@ impl Cache for VideoStreamCache {
         // As of writing, in a debug wasm build with Chrome loading a 600MiB 1h video
         // this assumption holds up fine: There is a (sufferable) delay,
         // but it's almost entirely due to the decoder trying to retrieve a frame.
+    }
+
+    fn memory_report(&self) -> CacheMemoryReport {
+        CacheMemoryReport {
+            bytes_cpu: self.0.total_size_bytes(),
+            bytes_gpu: None,
+            per_cache_item_info: Vec::new(),
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        "Video Streams"
     }
 
     /// Keep existing cache entries up to date with new and removed video data.
@@ -571,7 +571,7 @@ impl Cache for VideoStreamCache {
                     video_sample_buffers,
                 } = &mut *video_stream;
                 let video_data = video_renderer.data_descr_mut();
-                video_data.last_time_updated_samples = Some(Instant::now());
+                video_data.delivery_method = re_video::VideoDeliveryMethod::new_stream();
 
                 match event.kind {
                     re_chunk_store::ChunkStoreDiffKind::Addition => {
@@ -765,17 +765,19 @@ mod tests {
             codec,
             encoding_details,
             timescale,
-            duration,
+            delivery_method,
             gops,
             samples,
             samples_statistics,
             mp4_tracks,
-            last_time_updated_samples: _,
         } = data_descr.clone();
 
         assert_eq!(codec, re_video::VideoCodec::H264);
         assert_eq!(timescale, None); // Sequence timeline doesn't have a timescale.
-        assert_eq!(duration, None); // Open ended video.
+        assert!(matches!(
+            delivery_method,
+            re_video::VideoDeliveryMethod::Stream { .. }
+        ));
         assert_eq!(samples_statistics, re_video::SamplesStatistics::NO_BFRAMES);
         assert!(mp4_tracks.is_empty());
 

@@ -1,9 +1,16 @@
+use std::any::Any;
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet};
+use std::str::FromStr as _;
+use std::sync::Arc;
+
 use arrow::array::{
     ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
     TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
     TimestampSecondArray, UInt64Array, new_null_array,
 };
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
+use arrow::record_batch::RecordBatchOptions;
 use async_trait::async_trait;
 use datafusion::catalog::{Session, TableProvider};
 use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusion_err};
@@ -11,27 +18,22 @@ use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
+
 use re_dataframe::external::re_chunk::ChunkId;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
-use re_grpc_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::Loggable as _;
+use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
+use re_protos::cloud::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest};
 use re_protos::common::v1alpha1::ext::ScanParameters;
-use re_protos::frontend::v1alpha1::{
-    GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest,
-};
-use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::manifest_registry::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
+use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_tuid::Tuid;
 use re_uri::Origin;
-use std::any::Any;
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
-use std::str::FromStr as _;
-use std::sync::Arc;
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
 /// The default for Data Fusion is 8192, which leads to a 256Kb record batch on average for
@@ -71,9 +73,11 @@ impl DataframeQueryTableProvider {
 
         let schema = client
             .inner()
-            .get_dataset_schema(GetDatasetSchemaRequest {
-                dataset_id: Some(dataset_id.into()),
-            })
+            .get_dataset_schema(
+                tonic::Request::new(GetDatasetSchemaRequest {})
+                    .with_entry_id(dataset_id)
+                    .map_err(|err| exec_datafusion_err!("{err}"))?,
+            )
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?
             .into_inner()
@@ -134,7 +138,6 @@ impl DataframeQueryTableProvider {
         };
 
         let dataset_query = QueryDatasetRequest {
-            dataset_id: Some(dataset_id.into()),
             partition_ids: partition_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
@@ -160,7 +163,11 @@ impl DataframeQueryTableProvider {
 
         let response_stream = client
             .inner()
-            .query_dataset(dataset_query)
+            .query_dataset(
+                tonic::Request::new(dataset_query)
+                    .with_entry_id(dataset_id)
+                    .map_err(|err| exec_datafusion_err!("{err}"))?,
+            )
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?
             .into_inner();
@@ -271,11 +278,14 @@ impl TableProvider for DataframeQueryTableProvider {
         let mut query_expression = self.query_expression.clone();
 
         // Find the first column selection that is a component
-        let filters = filters.iter().collect::<Vec<_>>();
-        query_expression.filtered_is_not_null = Self::compute_column_is_neq_null_filter(&filters)
-            .into_iter()
-            .flatten()
-            .next();
+        if query_expression.filtered_is_not_null.is_none() {
+            let filters = filters.iter().collect::<Vec<_>>();
+            query_expression.filtered_is_not_null =
+                Self::compute_column_is_neq_null_filter(&filters)
+                    .into_iter()
+                    .flatten()
+                    .next();
+        }
 
         crate::PartitionStreamExec::try_new(
             &self.schema,
@@ -406,9 +416,10 @@ pub fn align_record_batch_to_schema(
         }
     }
 
-    Ok(RecordBatch::try_new(
+    Ok(RecordBatch::try_new_with_options(
         target_schema.clone(),
         aligned_columns,
+        &RecordBatchOptions::new().with_row_count(Some(num_rows)),
     )?)
 }
 

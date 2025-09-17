@@ -17,6 +17,16 @@ pub use sender::Sender;
 
 // --- Source ---
 
+/// An error that can occur when flushing.
+#[derive(Debug, thiserror::Error)]
+pub enum FlushError {
+    #[error("Received closed before flushing completed")]
+    Closed,
+
+    #[error("Flush timed out - not all messages were sent.")]
+    Timeout,
+}
+
 /// Identifies in what context this smart channel was created, and who/what is holding its
 /// receiving end.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
@@ -54,7 +64,7 @@ pub enum SmartChannelSource {
 
     /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
     RedapGrpcStream {
-        uri: re_uri::DatasetDataUri,
+        uri: re_uri::DatasetPartitionUri,
 
         /// Switch to this recording once it has been loaded?
         select_when_loaded: bool,
@@ -120,6 +130,14 @@ impl SmartChannelSource {
         }
     }
 
+    /// Same as [`Self::redap_uri`], but strips any extra query or fragment from the uri.
+    pub fn stripped_redap_uri(&self) -> Option<RedapUri> {
+        self.redap_uri().map(|uri| match uri {
+            RedapUri::Catalog(_) | RedapUri::Entry(_) | RedapUri::Proxy(_) => uri,
+            RedapUri::DatasetData(uri) => RedapUri::DatasetData(uri.without_query_and_fragment()),
+        })
+    }
+
     /// Loading text for sources that load data from a specific source (e.g. a file or a URL).
     ///
     /// Returns `None` for any source that receives data dynamically through SDK calls or similar.
@@ -136,7 +154,7 @@ impl SmartChannelSource {
             | Self::MessageProxy { .. }
             | Self::Sdk
             | Self::Stdin => {
-                // For all of these esources we're not actively loading data, but rather waiting for data to be sent.
+                // For all of these sources we're not actively loading data, but rather waiting for data to be sent.
                 // These show up in the top panel - see `top_panel.rs`.
                 None
             }
@@ -224,7 +242,7 @@ pub enum SmartMessageSource {
 
     /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
     RedapGrpcStream {
-        uri: re_uri::DatasetDataUri,
+        uri: re_uri::DatasetPartitionUri,
 
         /// Switch to this recording once it has been loaded?
         select_when_loaded: bool,

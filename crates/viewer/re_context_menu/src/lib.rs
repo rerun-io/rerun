@@ -10,7 +10,8 @@ use re_entity_db::InstancePath;
 use re_log_types::TableId;
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    ContainerId, Contents, Item, ItemCollection, ItemContext, ViewId, ViewerContext,
+    ContainerId, Contents, Item, ItemCollection, ItemContext, SystemCommand,
+    SystemCommandSender as _, ViewId, ViewerContext,
 };
 use re_viewport_blueprint::{ContainerBlueprint, ViewportBlueprint};
 
@@ -121,7 +122,8 @@ fn context_menu_ui_for_item_with_context_impl(
                         // and, if not, we update the selection to include only the item that was clicked.
                         if item_response.hovered() && item_response.secondary_clicked() {
                             show_context_menu(&item_collection);
-                            ctx.selection_state().set_selection(item_collection);
+                            ctx.command_sender()
+                                .send_system(SystemCommand::SetSelection(item_collection));
                         } else {
                             show_context_menu(ctx.selection());
                         }
@@ -134,7 +136,8 @@ fn context_menu_ui_for_item_with_context_impl(
                     show_context_menu(&item_collection);
 
                     if item_response.secondary_clicked() {
-                        ctx.selection_state().set_selection(item_collection);
+                        ctx.command_sender()
+                            .send_system(SystemCommand::SetSelection(item_collection));
                     }
                 }
 
@@ -384,8 +387,8 @@ trait ContextMenuAction {
                 }
                 Item::Container(container_id) => self.process_container(ctx, container_id),
                 Item::RedapServer(origin) => self.process_redap_server(ctx, origin),
-                Item::RedapEntry(entry_id) => {
-                    self.process_redap_entry(ctx, entry_id);
+                Item::RedapEntry(entry) => {
+                    self.process_redap_entry(ctx, &entry.entry_id);
                 }
             }
         }

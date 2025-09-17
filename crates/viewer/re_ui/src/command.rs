@@ -17,6 +17,7 @@ pub trait UICommandSender {
 pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
     Open,
+    OpenUrl,
     Import,
 
     /// Save the current recording, or all selected recordings
@@ -88,10 +89,12 @@ pub enum UICommand {
     #[cfg(debug_assertions)]
     ResetEguiMemory,
 
-    #[cfg(target_arch = "wasm32")]
+    Share,
     CopyDirectLink,
 
     CopyTimeRangeLink,
+
+    CopyEntityHierarchy,
 
     // Graphics options:
     #[cfg(target_arch = "wasm32")]
@@ -133,8 +136,12 @@ impl UICommand {
                 "Open…",
                 "Open any supported files (.rrd, images, meshes, …) in a new recording",
             ),
+            Self::OpenUrl => (
+                "Open from URL…",
+                "Open or navigate to data from any supported URL",
+            ),
             Self::Import => (
-                "Import…",
+                "Import into current recording…",
                 "Import any supported files (.rrd, images, meshes, …) in the current recording",
             ),
 
@@ -282,15 +289,20 @@ impl UICommand {
                 "Reset egui memory, useful for debugging UI code.",
             ),
 
-            #[cfg(target_arch = "wasm32")]
+            Self::Share => ("Share…", "Share the current screen as a link"),
             Self::CopyDirectLink => (
                 "Copy direct link",
-                "Copy a link to the viewer with the URL parameter set to the current .rrd data source.",
+                "Try to copy a shareable link to the current screen. This is not supported for all data sources & viewer states.",
             ),
 
             Self::CopyTimeRangeLink => (
                 "Copy link to selected time range",
                 "Copy a link to the part of the active recording within the loop selection bounds.",
+            ),
+
+            Self::CopyEntityHierarchy => (
+                "Copy entity hierarchy",
+                "Copy the complete entity hierarchy tree of the currently active recording to the clipboard.",
             ),
 
             #[cfg(target_arch = "wasm32")]
@@ -305,7 +317,7 @@ impl UICommand {
             ),
 
             Self::AddRedapServer => (
-                "Add Redap server",
+                "Add Redap server…",
                 "Connect to a Redap server (experimental)",
             ),
         }
@@ -346,6 +358,10 @@ impl UICommand {
             Self::SaveRecordingSelection => smallvec![cmd_alt(Key::S)],
             Self::SaveBlueprint => smallvec![],
             Self::Open => smallvec![cmd(Key::O)],
+            // Some browsers have a "paste and go" action.
+            // But unfortunately there's no standard shortcut for this.
+            // Claude however thinks it's this one (it's not). Let's go with that anyways!
+            Self::OpenUrl => smallvec![cmd_shift(Key::L)],
             Self::Import => smallvec![cmd_shift(Key::O)],
             Self::CloseCurrentRecording => smallvec![],
             Self::CloseAllEntries => smallvec![],
@@ -422,10 +438,12 @@ impl UICommand {
             #[cfg(debug_assertions)]
             Self::ResetEguiMemory => smallvec![],
 
-            #[cfg(target_arch = "wasm32")]
+            Self::Share => smallvec![cmd(Key::L)],
             Self::CopyDirectLink => smallvec![],
 
             Self::CopyTimeRangeLink => smallvec![],
+
+            Self::CopyEntityHierarchy => smallvec![ctrl_shift(Key::E)],
 
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGl => smallvec![],
@@ -495,6 +513,8 @@ impl UICommand {
         egui_ctx.input_mut(|input| {
             for (kb_shortcut, command) in commands {
                 if input.consume_shortcut(&kb_shortcut) {
+                    // Clear the shortcut key from input to prevent it from propagating to other UI component.
+                    input.keys_down.remove(&kb_shortcut.logical_key);
                     return Some(command);
                 }
             }

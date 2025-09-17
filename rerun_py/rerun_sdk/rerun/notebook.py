@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 from rerun import bindings
-from rerun.error_utils import RerunOptionalDependencyError
+from rerun.error_utils import RerunMissingDependencyError
 
 from .event import (
     ViewerEvent as ViewerEvent,
@@ -120,7 +120,7 @@ class Viewer:
 
         """
         if not HAS_NOTEBOOK:
-            raise RerunOptionalDependencyError("rerun-notebook", "notebook")
+            raise RerunMissingDependencyError("rerun-notebook", "notebook")
         self._error_widget = _ErrorWidget()
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,

@@ -52,9 +52,14 @@ table VideoStream (
 
     // TODO(#3982): add orientation.
 
+	/// Opacity of the video stream, useful for layering several media.
+	///
+	/// Defaults to 1.0 (fully opaque).
+	opacity: rerun.components.Opacity ("attr.rerun.component_optional", nullable, order: 3000);
+
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `-15.0`.
-    draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3000);
+    draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 4000);
 }

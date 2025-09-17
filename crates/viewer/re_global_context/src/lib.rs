@@ -8,6 +8,7 @@ mod command_sender;
 mod contents;
 mod file_dialog;
 mod item;
+mod item_collection;
 mod recording_or_table;
 
 pub use self::{
@@ -19,10 +20,11 @@ pub use self::{
     contents::{Contents, ContentsName, blueprint_id_to_tile_id},
     file_dialog::santitize_file_name,
     item::{Item, resolve_mono_instance_path, resolve_mono_instance_path_item},
+    item_collection::{ItemCollection, ItemContext},
     recording_or_table::RecordingOrTable,
 };
 
-use re_log_types::TableId;
+use re_log_types::{StoreId, TableId};
 
 /// Application context that is shared across all parts of the viewer.
 pub struct GlobalContext<'a> {
@@ -53,7 +55,7 @@ pub struct GlobalContext<'a> {
     pub command_sender: &'a CommandSender,
 
     /// Registry of authenticated redap connections
-    pub connection_registry: &'a re_grpc_client::ConnectionRegistryHandle,
+    pub connection_registry: &'a re_redap_client::ConnectionRegistryHandle,
 
     /// The current display mode of the viewer.
     pub display_mode: &'a DisplayMode,
@@ -66,12 +68,12 @@ pub enum DisplayMode {
     Settings,
 
     /// Regular view of the local recordings, including the current recording's viewport.
-    LocalRecordings,
+    LocalRecordings(StoreId),
 
     LocalTable(TableId),
 
     /// The Redap server/catalog/collection browser.
-    RedapEntry(re_log_types::EntryId),
+    RedapEntry(re_uri::EntryUri),
     RedapServer(re_uri::Origin),
 
     /// The current recording's data store browser.

@@ -4,12 +4,19 @@ use re_renderer::{
     external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
     video::VideoFrameTexture,
 };
+use re_types::components::{MediaType, VideoTimestamp};
+use re_types::{Archetype as _, archetypes};
+use re_types_core::{ComponentDescriptor, RowId};
 use re_ui::{
     UiExt as _,
     list_item::{self, PropertyContent},
 };
 use re_video::{FrameInfo, StableIndexDeque, VideoDataDescription};
-use re_viewer_context::{SharablePlayableVideoStream, UiLayout, VideoStreamProcessingError};
+use re_viewer_context::{
+    SharablePlayableVideoStream, UiLayout, VideoStreamCache, VideoStreamProcessingError,
+    ViewerContext, video_stream_time_from_query,
+};
+use std::sync::Arc;
 
 pub fn video_asset_result_ui(
     ui: &mut egui::Ui,
@@ -34,16 +41,6 @@ pub fn video_asset_result_ui(
                     );
                 });
             }
-        }
-        Err(VideoLoadError::MimeTypeIsNotAVideo { .. }) => {
-            // Don't show an error if this wasn't a video in the first place.
-            // Unfortunately we can't easily detect here if the Blob was _supposed_ to be a video, for that we'd need tagged components!
-            // (User may have confidently logged a non-video format as Video, we should tell them that!)
-        }
-        Err(VideoLoadError::UnrecognizedMimeType) => {
-            // If we couldn't detect the media type,
-            // we can't show an error for unrecognized formats since maybe this wasn't a video to begin with.
-            // See also `MediaTypeIsNotAVideo` case above.
         }
         Err(err) => {
             let error_message = format!("Failed to play: {err}");
@@ -137,8 +134,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
     }
 
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("Frame count")
-            .value_text(re_format::format_uint(video_descr.num_samples())),
+        PropertyContent::new("Frame count").value_uint(video_descr.num_samples()),
     );
 
     if let Some(fps) = video_descr.average_fps() {
@@ -171,7 +167,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_descr: &VideoData
     ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("Number of GOPs")
-                    .value_text(video_descr.gops.num_elements().to_string()),
+                    .value_uint(video_descr.gops.num_elements()),
             )
             .on_hover_text("The total number of Group of Pictures (GOPs) in the video.");
 
@@ -570,6 +566,138 @@ fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat
                 )
                 .on_hover_text("Matrix coefficients used to convert the pixel data to RGB.");
             });
+        }
+    }
+}
+
+pub enum VideoUi {
+    Stream(Result<SharablePlayableVideoStream, VideoStreamProcessingError>),
+    Asset(
+        Arc<Result<re_renderer::video::Video, VideoLoadError>>,
+        Option<VideoTimestamp>,
+        re_types::datatypes::Blob,
+    ),
+}
+
+impl VideoUi {
+    pub fn from_blob(
+        ctx: &ViewerContext<'_>,
+        entity_path: &re_log_types::EntityPath,
+        blob_row_id: RowId,
+        blob_component_descriptor: &ComponentDescriptor,
+        blob: &re_types::datatypes::Blob,
+        media_type: Option<&MediaType>,
+        video_timestamp: Option<VideoTimestamp>,
+    ) -> Option<Self> {
+        let result =
+            ctx.store_context
+                .caches
+                .entry(|c: &mut re_viewer_context::VideoAssetCache| {
+                    let debug_name = entity_path.to_string();
+                    c.entry(
+                        debug_name,
+                        blob_row_id,
+                        blob_component_descriptor,
+                        blob,
+                        media_type,
+                        ctx.app_options().video_decoder_settings(),
+                    )
+                });
+
+        let certain_this_is_a_video =
+            blob_component_descriptor.archetype == Some(archetypes::AssetVideo::name());
+
+        if let Err(err) = &*result
+            && !certain_this_is_a_video
+            && matches!(
+                err,
+                VideoLoadError::MimeTypeIsNotAVideo { .. } | VideoLoadError::UnrecognizedMimeType
+            )
+        {
+            // Don't show an error if we weren't certain that this was a video and it turned out not to be one.
+            return None;
+        }
+
+        Some(Self::Asset(result, video_timestamp, blob.clone()))
+    }
+
+    pub fn from_components(
+        ctx: &ViewerContext<'_>,
+        query: &re_chunk_store::LatestAtQuery,
+        entity_path: &re_log_types::EntityPath,
+        descr: &ComponentDescriptor,
+    ) -> Option<Self> {
+        if descr != &archetypes::VideoStream::descriptor_sample() {
+            return None;
+        }
+
+        let video_stream_result = ctx.store_context.caches.entry(|c: &mut VideoStreamCache| {
+            c.entry(
+                ctx.recording(),
+                entity_path,
+                query.timeline(),
+                ctx.app_options().video_decoder_settings(),
+            )
+        });
+
+        Some(Self::Stream(video_stream_result))
+    }
+
+    pub fn data_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        ui_layout: UiLayout,
+        query: &re_chunk_store::LatestAtQuery,
+    ) {
+        match self {
+            Self::Stream(video_stream_result) => {
+                video_stream_result_ui(ui, ui_layout, video_stream_result);
+                if let Ok(video) = video_stream_result {
+                    let video = video.read();
+                    let time = video_stream_time_from_query(query);
+                    let buffers = video.sample_buffers();
+                    show_decoded_frame_info(
+                        ctx,
+                        ui,
+                        ui_layout,
+                        &video.video_renderer,
+                        time,
+                        &buffers,
+                    );
+                }
+            }
+            Self::Asset(video_result, timestamp, blob) => {
+                video_asset_result_ui(ui, ui_layout, video_result);
+                // Show a mini video player for video blobs:
+                if !ui_layout.is_single_line()
+                    && ui_layout != UiLayout::Tooltip
+                    && let Ok(video) = video_result.as_ref()
+                {
+                    let video_timestamp = timestamp.unwrap_or_else(|| {
+                        // TODO(emilk): Some time controls would be nice,
+                        // but the point here is not to have a nice viewer,
+                        // but to show the user what they have selected
+                        ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+                        let time = ui.input(|i| i.time);
+
+                        if let Some(duration) = video.data_descr().duration() {
+                            VideoTimestamp::from_secs(time % duration.as_secs_f64())
+                        } else {
+                            // Invalid video or unknown timescale.
+                            VideoTimestamp::from_nanos(0)
+                        }
+                    });
+                    let video_time = re_viewer_context::video_timestamp_component_to_video_time(
+                        ctx,
+                        video_timestamp,
+                        video.data_descr().timescale,
+                    );
+                    let video_buffers = std::iter::once(blob.as_ref()).collect();
+
+                    show_decoded_frame_info(ctx, ui, ui_layout, video, video_time, &video_buffers);
+                }
+            }
         }
     }
 }

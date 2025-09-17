@@ -13,11 +13,10 @@ use wasm_bindgen::prelude::*;
 use re_log::ResultExt as _;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
-use re_viewer_context::AsyncRuntimeHandle;
+use re_viewer_context::{AsyncRuntimeHandle, open_url};
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
-use crate::open_url::try_open_url_in_viewer;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]
@@ -40,7 +39,7 @@ pub struct WebHandle {
     tx_channels: HashMap<String, Channel>,
 
     /// The connection registry to use for the viewer.
-    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: re_redap_client::ConnectionRegistryHandle,
 
     app_options: AppOptions,
 }
@@ -54,7 +53,7 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
-        let connection_registry = re_grpc_client::ConnectionRegistry::new();
+        let connection_registry = re_redap_client::ConnectionRegistry::new();
 
         Ok(Self {
             runner: eframe::WebRunner::new(),
@@ -205,19 +204,19 @@ impl WebHandle {
         // TODO(andreas): should follow_if_http be part of the fragments?
         let follow_if_http = follow_if_http.unwrap_or(false);
         let select_redap_source_when_loaded = true;
-        if try_open_url_in_viewer(
-            &app.egui_ctx,
-            url,
-            follow_if_http,
-            select_redap_source_when_loaded,
-            &app.command_sender,
-        )
-        .is_err()
-        {
-            re_log::warn!("Failed to open URL: {url}");
-        } else {
-            // Make sure we process any commands from the url opening.
-            app.egui_ctx.request_repaint();
+
+        match url.parse::<open_url::ViewerOpenUrl>() {
+            Ok(url) => {
+                url.open(
+                    &app.egui_ctx,
+                    follow_if_http,
+                    select_redap_source_when_loaded,
+                    &app.command_sender,
+                );
+            }
+            Err(err) => {
+                re_log::warn!("Failed to open URL {url:?}: {err}");
+            }
         }
     }
 
@@ -710,7 +709,7 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 fn create_app(
     main_thread_token: crate::MainThreadToken,
     cc: &eframe::CreationContext<'_>,
-    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: re_redap_client::ConnectionRegistryHandle,
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
@@ -806,17 +805,20 @@ fn create_app(
     if let Some(urls) = url {
         let follow_if_http = false;
         let select_redap_source_when_loaded = true;
+
         for url in urls.into_inner() {
-            if try_open_url_in_viewer(
-                &app.egui_ctx,
-                &url,
-                follow_if_http,
-                select_redap_source_when_loaded,
-                &app.command_sender,
-            )
-            .is_err()
-            {
-                re_log::warn!("Failed to open URL: {url}");
+            match url.parse::<open_url::ViewerOpenUrl>() {
+                Ok(url) => {
+                    url.open(
+                        &app.egui_ctx,
+                        follow_if_http,
+                        select_redap_source_when_loaded,
+                        &app.command_sender,
+                    );
+                }
+                Err(err) => {
+                    re_log::warn!("Failed to open URL {url:?}: {err}");
+                }
             }
         }
     }
@@ -857,6 +859,7 @@ pub fn from_arrow_encoded(mut data: RecordBatch) -> Result<TableMsg, Box<dyn std
 mod tests {
     use super::*;
     use arrow::ArrowError;
+    use arrow::array::{RecordBatch, RecordBatchOptions};
 
     /// Returns the [`TableMsg`] encoded as a record batch.
     // This is required to send bytes to a viewer running in a notebook.
@@ -873,7 +876,11 @@ mod tests {
         ));
 
         // Create a new record batch with the same data but updated schema
-        RecordBatch::try_new(new_schema, table.data.columns().to_vec())
+        RecordBatch::try_new_with_options(
+            new_schema,
+            table.data.columns().to_vec(),
+            &RecordBatchOptions::default(),
+        )
     }
 
     #[test]
@@ -911,7 +918,8 @@ mod tests {
             ];
 
             // Create a RecordBatch
-            ArrowRecordBatch::try_new(schema, arrays).unwrap()
+            ArrowRecordBatch::try_new_with_options(schema, arrays, &RecordBatchOptions::default())
+                .unwrap()
         };
 
         let msg = TableMsg {

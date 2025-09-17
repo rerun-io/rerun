@@ -32,7 +32,8 @@ impl App {
         let image = re_ui::icons::RERUN_MENU
             .as_image()
             .max_height(desired_icon_height)
-            .tint(ui.tokens().strong_fg_color);
+            .tint(ui.tokens().strong_fg_color)
+            .alt_text("Menu");
 
         MenuButton::from_button(Button::image(image))
             .config(MenuConfig::new().style(menu_style()))
@@ -67,6 +68,7 @@ impl App {
         ui.add_space(SPACING);
 
         UICommand::Open.menu_button_ui(ui, &self.command_sender);
+        UICommand::OpenUrl.menu_button_ui(ui, &self.command_sender);
         UICommand::Import.menu_button_ui(ui, &self.command_sender);
 
         self.save_buttons_ui(ui, _store_context);
@@ -407,6 +409,11 @@ fn debug_menu_options_ui(
 
     #[cfg(not(target_arch = "wasm32"))]
     {
+        ui.horizontal(|ui| {
+            ui.label("Command line:");
+            ui.monospace(std::env::args().collect::<Vec<_>>().join(" "));
+        });
+
         if ui.button("Mobile size").clicked() {
             // let size = egui::vec2(375.0, 812.0); // iPhone 12 mini
             let size = egui::vec2(375.0, 667.0); //  iPhone SE 2nd gen

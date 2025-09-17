@@ -5,7 +5,7 @@ use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreEvent;
 use re_types::{Component as _, components, image::ImageKind};
 
-use crate::{Cache, ImageInfo, ImageStats, image_info::StoredBlobCacheKey};
+use crate::{Cache, CacheMemoryReport, ImageInfo, ImageStats, image_info::StoredBlobCacheKey};
 
 // Caches image stats (use e.g. `RowId` to generate cache key).
 #[derive(Default)]
@@ -25,9 +25,16 @@ impl Cache for ImageStatsCache {
         // Purging the image stats is not worth it - these are very small objects!
     }
 
-    /// Total memory used by this cache, in bytes.
-    fn bytes_used(&self) -> u64 {
-        self.0.total_size_bytes()
+    fn memory_report(&self) -> CacheMemoryReport {
+        CacheMemoryReport {
+            bytes_cpu: self.0.total_size_bytes(),
+            bytes_gpu: None,
+            per_cache_item_info: Vec::new(),
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        "Image Stats"
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent]) {

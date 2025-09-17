@@ -49,9 +49,20 @@ libc = "2.28"
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ""
 
+# Put pixi builds in its own build dir, otherwise `pixi run cargo build`
+# conflicts with vanilla`cargo build`, and running one invalidates (parts) of the other.
+# See https://github.com/rerun-io/rerun/issues/10934 for more.
+#
+# TODO(prefix-dev/pixi#4431): Environment variable resolving doesn't work with this on Windows,
+# which is why we have to use the `%` syntax for Windows instead of `$`.
+CARGO_TARGET_DIR = "$PIXI_PROJECT_ROOT/target_pixi"
+
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
+
+# See `target.unix.activation.env`.
+CARGO_TARGET_DIR = "%PIXI_PROJECT_ROOT%/target_pixi"
 
 # TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
 [target.osx-arm64.activation.env]
@@ -98,7 +109,7 @@ py-docs = ["base", "python-docs"]
 cpp = ["base", "cpp"]
 
 # The wheel-test environment is for testing the python package when built from a wheel.
-# Thistenvironment is specifically used for validation of the wheel artifact in CI.
+# This environment is specifically used for validation of the wheel artifact in CI.
 # It does not include the features necessary for a source-build of the wheel.
 #
 # WARNING: wheel-test default depends on a published `rerun-sdk` version which will
@@ -110,13 +121,14 @@ cpp = ["base", "cpp"]
 # pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
 # ```
 
-#  Just the deps for running roundtrips
+# Just the deps for running snippet comparisons.
 wheel-test-min = [
   "base",
-  "wheel-test",
-  "wheel-build",
+  "cpp",
   "py-test-deps",
   "python-pypi",
+  "wheel-build",
+  "wheel-test",
 ]
 
 # The full deps for running all examples
@@ -163,42 +175,44 @@ codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/stor
 
 # Generate the Rerun CLI manual.
 
-# NOTE:must be --all-features, otherwise we might miss some optional commands.
-man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/content/reference/cli.md"
+# NOTE: must be --all-features, otherwise we might miss some optional commands.
+man = { cmd = "cargo --quiet run --package rerun-cli --all-features -- man > docs/content/reference/cli.md", depends-on = [
+  "rerun-build-web", # Must have web-viewer to build `rerun-cli` with --all-features
+] }
 
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --"
+rerun = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --"
 
 # Compile and run the rerun viewer, with performance telemetry.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --"
+rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,perf_telemetry --"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer"
+rerun-build = "cargo build --package rerun-cli --no-default-features --features release_no_web_viewer"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features map_view,nasm,native_viewer"
+rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features release_no_web_viewer"
 
 # Compile and run the rerun viewer with --release.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-release = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --release --"
+rerun-release = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --release --"
 
 # Compile and run the rerun viewer in release, with performance telemetry.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-perf = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer,perf_telemetry --release --"
+rerun-perf = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,perf_telemetry --release --"
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
-rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends-on = [
+rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release_full --", depends-on = [
   "rerun-build-web",
 ] }
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
-rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release --release --", depends-on = [
+rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release_full --release --", depends-on = [
   "rerun-build-web-release",
 ] }
 
@@ -302,7 +316,7 @@ pb-lint = "buf lint --error-format=json"
 #   "pb-snapshot-main",
 # ]}
 
-pb-breaking = "buf breaking --error-format=json --against '.git#branch=origin/main'"
+pb-breaking = "echo 'ℹ️ If this CI step is failing even though you did not modify any Protobuf files, that means that somebody purposefully published breaking Protobuf changes onto the main branch in the meantime.\nℹ️ For that reason, the Protobuf definitions on your local branch are now incompatible with those on main.\nℹ️ When that happens, simply rebase your branch on latest main, and the errors will go away.' ; buf breaking --error-format=json --against '.git#branch=origin/main'"
 
 pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 
@@ -407,13 +421,13 @@ py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_
   "rerun-build-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
-# Build and install the `rerun-sdk` package with the `web_viewer` feature.
-py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends-on = [
+# Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
+py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
   "rerun-build-native-and-web", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
-# Build and install the `rerun-sdk` package with the `web_viewer` feature.
-py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends-on = [
+# Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
+py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
   "rerun-build-native-and-web-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
@@ -430,7 +444,7 @@ py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-
 
 # Build an installable wheel.
 # The wheel will contain the rerun executable including the web viewer.
-py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+py-build-wheel = { cmd = "cp target_pixi/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
 
@@ -467,7 +481,7 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 
 # Run the Python tests.
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends-on = [
-  "py-build",
+  "py-build-release",
 ] }
 
 snapshots = "python scripts/snapshots.py"
@@ -525,9 +539,6 @@ cpp-build-all-shared-libs = { cmd = "cmake --build build/debug --config Debug --
 ] }
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
 cpp-build-tests = { cmd = "cmake --build build/debug --config Debug --target rerun_sdk_tests", depends-on = [
-  "cpp-prepare",
-] }
-cpp-build-roundtrips = { cmd = "cmake --build build/debug --config Debug --target roundtrips", depends-on = [
   "cpp-prepare",
 ] }
 cpp-build-examples = { cmd = "cmake --build build/debug --config Debug --target examples", depends-on = [
@@ -600,13 +611,14 @@ pyarrow = "18.0.0.*"              # Whenever upgrading here, also make sure to u
 pytest = ">=8.4.1"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
-ruff = "0.9.6.*"
+ruff = "0.12.10.*"
 semver = ">=3.0,<3.1"
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
+gh = ">=2.79.0,<3"
 
 
 [feature.base.pypi-dependencies]
@@ -691,7 +703,7 @@ numpy = ">=2"   # Rerun still needs numpy <2. Enforce this outside of the pypi d
 # This is very similar to `pixi run py-build`, and dispatches to maturin by way of PEP621.
 # However, pixi doesn't know how to track the rust dependencies of the python package, so
 # you still need to `pixi run py-build` in the correct environment if you change the rust code.
-rerun-sdk = { path = "rerun_py", editable = true, extras = ["all"] }
+rerun-sdk = { path = "rerun_py", editable = true }
 
 # The same applies to the notebook.
 # However, in order to build rerun-notebook and thus to even activate environments with the
@@ -702,6 +714,7 @@ rerun-sdk = { path = "rerun_py", editable = true, extras = ["all"] }
 
 [feature.python-docs.pypi-dependencies]
 griffe = "==1.4.1"
+griffe-warnings-deprecated = "==1.1.0"
 mkdocs = "==1.6.1"
 mkdocs-gen-files = "==0.5.0"
 mkdocs-literate-nav = "==0.6.1"
@@ -719,13 +732,15 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
 [feature.py-test-deps.dependencies]
 # Used for some video examples.
 # Note that it comes with its own ffmpeg, see https://pyav.basswood-io.com/docs/stable/overview/installation.html.
-av = ">=14.2.0"
+av = "==14.2.0"
 
 [feature.py-test-deps.pypi-dependencies]
 # Torch is needed to run the rerun unit tests.
 # This dependency is here to get torch into the pixi cache because it's large and installing it
 # during the wheel-test task itself is otherwise painful.
 torch = "==2.8.0" # This must match the torch version in any package we install during `wheel-test`
+# DataFusion is needed to run integration tests, but it is an optional dependency for rerun sdk
+datafusion = "==48.0.0"
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
@@ -751,7 +766,7 @@ platforms = ["linux-64", "osx-arm64", "win-64"]
 
 
 [feature.examples-common.system-requirements]
-macos = "12.0" # needed for scipy
+macos = "13.0" # needed for scipy and opencv contrib wheels
 
 [feature.examples-common.dependencies]
 python = "=3.11"
@@ -764,8 +779,8 @@ umap-learn = "==0.5.7"
 
 [feature.examples-common.pypi-dependencies]
 # External deps
-av = ">=14.2.0"
-datafusion = "==47.0.0"
+av = "==14.2.0"
+datafusion = "==48.0.0"
 jupyter = ">=1.0"
 polars = ">=0.12.0"
 

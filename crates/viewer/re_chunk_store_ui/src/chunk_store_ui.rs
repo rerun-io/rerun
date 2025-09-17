@@ -448,13 +448,12 @@ impl DatastoreUi {
 
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Chunk max rows")
-                        .value_text(re_format::format_uint(chunk_store.config().chunk_max_rows)),
+                        .value_uint(chunk_store.config().chunk_max_rows),
                 );
 
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Chunk max rows (unsorted)").value_text(
-                        re_format::format_uint(chunk_store.config().chunk_max_rows_if_unsorted),
-                    ),
+                    list_item::PropertyContent::new("Chunk max rows (unsorted)")
+                        .value_uint(chunk_store.config().chunk_max_rows_if_unsorted),
                 );
             });
         });

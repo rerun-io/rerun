@@ -1,8 +1,7 @@
 //! Rerun dataloader for MCAP files.
 
-use std::{io::Cursor, sync::mpsc::Sender};
+use std::{io::Cursor, path::Path, sync::mpsc::Sender};
 
-use anyhow::Context as _;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
 use re_mcap::{LayerRegistry, SelectedLayers};
@@ -25,12 +24,14 @@ const MCAP_LOADER_NAME: &str = "McapLoader";
 /// - [`re_mcap::layers::McapRawLayer`]
 pub struct McapLoader {
     selected_layers: SelectedLayers,
+    raw_fallback_enabled: bool,
 }
 
 impl Default for McapLoader {
     fn default() -> Self {
         Self {
             selected_layers: SelectedLayers::All,
+            raw_fallback_enabled: true,
         }
     }
 }
@@ -38,7 +39,18 @@ impl Default for McapLoader {
 impl McapLoader {
     /// Creates a new [`McapLoader`] that only extracts the specified `layers`.
     pub fn new(selected_layers: SelectedLayers) -> Self {
-        Self { selected_layers }
+        Self {
+            selected_layers,
+            raw_fallback_enabled: true,
+        }
+    }
+
+    /// Creates a new [`McapLoader`] with configurable raw fallback.
+    pub fn with_raw_fallback(selected_layers: SelectedLayers, raw_fallback_enabled: bool) -> Self {
+        Self {
+            selected_layers,
+            raw_fallback_enabled,
+        }
     }
 }
 
@@ -54,11 +66,7 @@ impl DataLoader for McapLoader {
         path: std::path::PathBuf,
         tx: Sender<crate::LoadedData>,
     ) -> std::result::Result<(), DataLoaderError> {
-        if path.is_dir()
-            || path
-                .extension()
-                .is_none_or(|ext| !ext.eq_ignore_ascii_case("mcap"))
-        {
+        if !is_mcap_file(&path) {
             return Err(DataLoaderError::Incompatible(path)); // simply not interested
         }
 
@@ -71,16 +79,20 @@ impl DataLoader for McapLoader {
         // common rayon thread pool.
         let settings = settings.clone();
         let selected_layers = self.selected_layers.clone();
+        let raw_fallback_enabled = self.raw_fallback_enabled;
         std::thread::Builder::new()
             .name(format!("load_mcap({path:?}"))
-            .spawn(
-                move || match load_mcap_mmap(&path, &settings, &tx, selected_layers) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        re_log::error!("Failed to load MCAP file: {err}");
-                    }
-                },
-            )
+            .spawn(move || {
+                if let Err(err) = load_mcap_mmap(
+                    &path,
+                    &settings,
+                    &tx,
+                    &selected_layers,
+                    raw_fallback_enabled,
+                ) {
+                    re_log::error!("Failed to load MCAP file: {err}");
+                }
+            })
             .map_err(|err| DataLoaderError::Other(err.into()))?;
 
         Ok(())
@@ -94,7 +106,7 @@ impl DataLoader for McapLoader {
         _contents: std::borrow::Cow<'_, [u8]>,
         tx: Sender<crate::LoadedData>,
     ) -> std::result::Result<(), crate::DataLoaderError> {
-        if filepath.is_dir() || filepath.extension().is_none_or(|ext| ext != "mcap") {
+        if !is_mcap_file(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
         }
 
@@ -102,6 +114,7 @@ impl DataLoader for McapLoader {
 
         let settings = settings.clone();
         let selected_layers = self.selected_layers.clone();
+        let raw_fallback_enabled = self.raw_fallback_enabled;
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -110,14 +123,17 @@ impl DataLoader for McapLoader {
         // common rayon thread pool.
         std::thread::Builder::new()
             .name(format!("load_mcap({filepath:?}"))
-            .spawn(
-                move || match load_mcap_mmap(&filepath, &settings, &tx, selected_layers) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        re_log::error!("Failed to load MCAP file: {err}");
-                    }
-                },
-            )
+            .spawn(move || {
+                if let Err(err) = load_mcap_mmap(
+                    &filepath,
+                    &settings,
+                    &tx,
+                    &selected_layers,
+                    raw_fallback_enabled,
+                ) {
+                    re_log::error!("Failed to load MCAP file: {err}");
+                }
+            })
             .map_err(|err| DataLoaderError::Other(err.into()))?;
 
         Ok(())
@@ -127,13 +143,23 @@ impl DataLoader for McapLoader {
     fn load_from_file_contents(
         &self,
         settings: &crate::DataLoaderSettings,
-        _filepath: std::path::PathBuf,
+        filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: Sender<crate::LoadedData>,
     ) -> std::result::Result<(), DataLoaderError> {
+        if !is_mcap_file(&filepath) {
+            return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
+        }
+
         let contents = contents.into_owned();
 
-        load_mcap(&contents, settings, &tx, self.selected_layers.clone())
+        load_mcap(
+            &contents,
+            settings,
+            &tx,
+            &self.selected_layers,
+            self.raw_fallback_enabled,
+        )
     }
 }
 
@@ -142,7 +168,8 @@ fn load_mcap_mmap(
     filepath: &std::path::PathBuf,
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
-    selected_layers: SelectedLayers,
+    selected_layers: &SelectedLayers,
+    raw_fallback_enabled: bool,
 ) -> std::result::Result<(), DataLoaderError> {
     use std::fs::File;
     let file = File::open(filepath)?;
@@ -151,17 +178,17 @@ fn load_mcap_mmap(
     #[allow(unsafe_code)]
     let mmap = unsafe { memmap2::Mmap::map(&file)? };
 
-    load_mcap(&mmap, settings, tx, selected_layers)
+    load_mcap(&mmap, settings, tx, selected_layers, raw_fallback_enabled)
 }
 
-fn load_mcap(
+pub fn load_mcap(
     mcap: &[u8],
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
-    selected_layers: SelectedLayers,
+    selected_layers: &SelectedLayers,
+    raw_fallback_enabled: bool,
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!();
-
     let store_id = settings.recommended_store_id();
 
     if tx
@@ -199,21 +226,11 @@ fn load_mcap(
     let summary = re_mcap::read_summary(reader)?
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
-    let registry = LayerRegistry::all();
-
     // TODO(#10862): Add warning for channel that miss semantic information.
-
-    let mut empty = true;
-    for mut layer in registry.layers(selected_layers) {
-        re_tracing::profile_scope!("process-layer");
-        empty = false;
-        layer
-            .process(mcap, &summary, &mut send_chunk)
-            .with_context(|| "processing layers")?;
-    }
-    if empty {
-        re_log::warn_once!("No layers were selected");
-    }
+    LayerRegistry::all_builtin(raw_fallback_enabled)
+        .select(selected_layers)
+        .plan(&summary)?
+        .run(mcap, &summary, &mut send_chunk)?;
 
     Ok(())
 }
@@ -228,4 +245,13 @@ pub fn store_info(store_id: StoreId) -> SetStoreInfo {
             store_version: Some(re_build_info::CrateVersion::LOCAL),
         },
     }
+}
+
+/// Checks if a file is an MCAP file.
+fn is_mcap_file(filepath: &Path) -> bool {
+    !filepath.is_dir()
+        && filepath
+            .extension()
+            .map(|ext| ext.eq_ignore_ascii_case("mcap"))
+            .unwrap_or(false)
 }

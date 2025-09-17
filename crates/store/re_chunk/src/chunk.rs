@@ -12,7 +12,7 @@ use arrow::{
 use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_arrow_util::{ArrowArrayDowncastRef as _, widen_binary_arrays};
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
     AbsoluteTimeRange, EntityPath, NonMinI64, TimeInt, TimeType, Timeline, TimelineName,
@@ -62,14 +62,10 @@ pub enum ChunkError {
     InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<ChunkError>() <= 72,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<ChunkError>()
-    );
-}
+const _: () = assert!(
+    std::mem::size_of::<ChunkError>() <= 72,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 pub type ChunkResult<T> = Result<T, ChunkError>;
 
@@ -105,6 +101,8 @@ impl ChunkComponents {
             let Some(right_array) = right.get(descr) else {
                 anyhow::bail!("rhs is missing {descr:?}");
             };
+            let left_array = widen_binary_arrays(left_array);
+            let right_array = widen_binary_arrays(right_array);
             re_arrow_util::ensure_similar(&left_array.to_data(), &right_array.to_data())
                 .with_context(|| format!("Component {descr:?}"))?;
         }

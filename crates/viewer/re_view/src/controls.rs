@@ -11,7 +11,7 @@ pub const SELECTION_RECT_ZOOM_BUTTON: PointerButton = PointerButton::Secondary;
 /// Clicking this button moves the timeline to where the cursor is.
 pub const MOVE_TIME_CURSOR_BUTTON: PointerButton = PointerButton::Secondary;
 
-/// Which mouse button to drag for panning a 2D view.
+/// Which mouse button to drag for panning a 3D view.
 pub const DRAG_PAN3D_BUTTON: PointerButton = PointerButton::Secondary;
 
 /// Which mouse button to drag for rotating a 3D view.

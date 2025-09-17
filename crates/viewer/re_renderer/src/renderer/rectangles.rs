@@ -14,11 +14,12 @@ use itertools::{Itertools as _, izip};
 use smallvec::smallvec;
 
 use crate::{
-    Colormap, OutlineMaskPreference, PickingLayerProcessor, Rgba,
+    Colormap, DrawableCollector, OutlineMaskPreference, PickingLayerProcessor, Rgba,
     allocator::create_and_fill_uniform_buffer_batch,
     depth_offset::DepthOffset,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
+    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
     resource_managers::GpuTexture2D,
     view_builder::ViewBuilder,
     wgpu_resources::{
@@ -54,8 +55,25 @@ pub enum ShaderDecoding {
     Bgr,
 }
 
+/// How is the alpha channel in the texture?
+#[derive(Clone, Copy, Debug)]
+pub enum TextureAlpha {
+    /// Ignore the alpha channel and render the image opaquely.
+    ///
+    /// Use this for textures that don't have an alpha channel.
+    Opaque = 1,
+
+    /// The alpha in the texture is separate/unmulitplied.
+    ///
+    /// Use this for images with separate (unmulitplied) alpha channels (the normal kind).
+    SeparateAlpha = 2,
+
+    /// The RGB values have already been premultiplied with the alpha.
+    AlreadyPremultiplied = 3,
+}
+
 /// Describes a texture and how to map it to a color.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ColormappedTexture {
     pub texture: GpuTexture2D,
 
@@ -71,11 +89,8 @@ pub struct ColormappedTexture {
     /// Only applies to [`wgpu::TextureFormat::Rgba8Unorm`] and float textures.
     pub decode_srgb: bool,
 
-    /// Multiply color channels with the alpha channel before filtering?
-    ///
-    /// Set this to false for textures that don't have an alpha channel or are already pre-multiplied.
-    /// Applied after range normalization and srgb decoding, before filtering.
-    pub multiply_rgb_with_alpha: bool,
+    /// How to treat the alpha channel.
+    pub texture_alpha: TextureAlpha,
 
     /// Raise the normalized values to this power (before any color mapping).
     /// Acts like an inverse brightness.
@@ -136,7 +151,7 @@ impl ColormappedTexture {
             decode_srgb,
             range: [0.0, 1.0],
             gamma: 1.0,
-            multiply_rgb_with_alpha: true,
+            texture_alpha: TextureAlpha::SeparateAlpha,
             color_mapper: ColorMapper::OffRGB,
             shader_decoding: None,
         }
@@ -147,7 +162,7 @@ impl ColormappedTexture {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TexturedRect {
     /// Top left corner position in world space.
     pub top_left_corner_position: glam::Vec3,
@@ -183,7 +198,7 @@ impl TexturedRect {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RectangleOptions {
     pub texture_filter_magnification: TextureFilterMag,
     pub texture_filter_minification: TextureFilterMin,
@@ -281,7 +296,7 @@ mod gpu_data {
         magnification_filter: u32,
 
         decode_srgb: u32,
-        multiply_rgb_with_alpha: u32,
+        texture_alpha: u32,
         bgra_to_rgba: u32,
         _row_padding: [u32; 1],
 
@@ -310,7 +325,7 @@ mod gpu_data {
                 range,
                 gamma,
                 color_mapper,
-                multiply_rgb_with_alpha,
+                texture_alpha,
                 shader_decoding,
             } = colormapped_texture;
 
@@ -379,7 +394,7 @@ mod gpu_data {
                 minification_filter,
                 magnification_filter,
                 decode_srgb: *decode_srgb as _,
-                multiply_rgb_with_alpha: *multiply_rgb_with_alpha as _,
+                texture_alpha: *texture_alpha as _,
                 bgra_to_rgba: bgra_to_rgba as _,
                 _row_padding: Default::default(),
                 _end_padding: Default::default(),
@@ -390,6 +405,7 @@ mod gpu_data {
 
 #[derive(Clone)]
 struct RectangleInstance {
+    center_position: glam::Vec3A,
     bind_group: GpuBindGroup,
     draw_outline_mask: bool,
 }
@@ -401,6 +417,32 @@ pub struct RectangleDrawData {
 
 impl DrawData for RectangleDrawData {
     type Renderer = RectangleRenderer;
+
+    fn collect_drawables(
+        &self,
+        view_info: &DrawableCollectionViewInfo,
+        collector: &mut DrawableCollector<'_>,
+    ) {
+        // TODO(#1025, #4787, #11156): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
+        // This is extra hacky here since we actually have transparent objects, but putting them on the transparency layer messes with the
+        // 2D setup we have so far.
+
+        for (index, instance) in self.instances.iter().enumerate() {
+            let mut phases = DrawPhase::Opaque | DrawPhase::PickingLayer;
+            if instance.draw_outline_mask {
+                phases.insert(DrawPhase::OutlineMask);
+            }
+
+            collector.add_drawable(
+                phases,
+                DrawDataDrawable::from_world_position(
+                    view_info,
+                    instance.center_position,
+                    index as u32,
+                ),
+            );
+        }
+    }
 }
 
 impl RectangleDrawData {
@@ -470,6 +512,10 @@ impl RectangleDrawData {
                 };
 
             instances.push(RectangleInstance {
+                center_position: (rectangle.top_left_corner_position
+                    + rectangle.extent_u * 0.5
+                    + rectangle.extent_v * 0.5)
+                    .into(),
                 bind_group: ctx.gpu_resources.bind_groups.alloc(
                     &ctx.device,
                     &ctx.gpu_resources,
@@ -612,7 +658,7 @@ impl Renderer for RectangleRenderer {
                 cull_mode: None,
                 ..Default::default()
             },
-            depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
+            depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE),
             multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), false),
         };
         let render_pipeline_color =
@@ -653,12 +699,9 @@ impl Renderer for RectangleRenderer {
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'_>,
-        draw_data: &Self::RendererDrawData,
+        draw_instructions: &[DrawInstruction<'_, Self::RendererDrawData>],
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
-        if draw_data.instances.is_empty() {
-            return Ok(());
-        }
 
         let pipeline_handle = match phase {
             DrawPhase::Opaque => self.render_pipeline_color,
@@ -670,23 +713,18 @@ impl Renderer for RectangleRenderer {
 
         pass.set_pipeline(pipeline);
 
-        for rectangles in &draw_data.instances {
-            if phase == DrawPhase::OutlineMask && !rectangles.draw_outline_mask {
-                continue;
+        for DrawInstruction {
+            draw_data,
+            drawables,
+        } in draw_instructions
+        {
+            for drawable in *drawables {
+                let rectangles = &draw_data.instances[drawable.draw_data_payload as usize];
+                pass.set_bind_group(1, &rectangles.bind_group, &[]);
+                pass.draw(0..4, 0..1);
             }
-            pass.set_bind_group(1, &rectangles.bind_group, &[]);
-            pass.draw(0..4, 0..1);
         }
 
         Ok(())
-    }
-
-    fn participated_phases() -> &'static [DrawPhase] {
-        // TODO(andreas): This a hack. We have both opaque and transparent.
-        &[
-            DrawPhase::OutlineMask,
-            DrawPhase::Opaque,
-            DrawPhase::PickingLayer,
-        ]
     }
 }

@@ -3,13 +3,20 @@ from __future__ import annotations
 import functools
 import random
 import sys
+import warnings
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.25.0-alpha.1+dev"
-__version_info__ = (0, 25, 0, "alpha.1")
+__version__ = "0.26.0-alpha.1+dev"
+__version_info__ = (0, 26, 0, "alpha.1")
 
+if sys.version_info < (3, 10):
+    warnings.warn(
+        "Python 3.9 is past EOL (https://devguide.python.org/versions/). Rerun version 0.26 will drop support/testing of Python 3.9.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
 if sys.version_info < (3, 9):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.9 or later.")
@@ -48,6 +55,7 @@ from ._log import (
     log_file_from_path as log_file_from_path,
     new_entity_path as new_entity_path,
 )
+from ._numpy_compatibility import asarray as asarray
 from ._properties import (
     send_property as send_property,
     send_recording_name as send_recording_name,
@@ -60,8 +68,10 @@ from ._send_columns import (
     TimeSequenceColumn as TimeSequenceColumn,
     send_columns as send_columns,
 )
-from .any_value import (
+from .any_batch_value import (
     AnyBatchValue as AnyBatchValue,
+)
+from .any_value import (
     AnyValues as AnyValues,
 )
 from .archetypes import (
@@ -87,6 +97,10 @@ from .archetypes import (
     InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
     LineStrips3D as LineStrips3D,
+    McapChannel as McapChannel,
+    McapMessage as McapMessage,
+    McapSchema as McapSchema,
+    McapStatistics as McapStatistics,
     Mesh3D as Mesh3D,
     Pinhole as Pinhole,
     Points2D as Points2D,
@@ -133,6 +147,9 @@ from .datatypes import (
     TimeRange as TimeRange,
     TimeRangeBoundary as TimeRangeBoundary,
     VisibleTimeRange as VisibleTimeRange,
+)
+from .dynamic_archetype import (
+    DynamicArchetype as DynamicArchetype,
 )
 from .error_utils import (
     set_strict_mode as set_strict_mode,
@@ -408,7 +425,7 @@ def shutdown_at_exit(func: _TFunc) -> _TFunc:
         finally:
             rerun_shutdown()
 
-    return cast(_TFunc, wrapper)
+    return cast("_TFunc", wrapper)
 
 
 # ---

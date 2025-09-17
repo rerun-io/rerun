@@ -194,8 +194,18 @@ jobs:
           cat <<EOF > pr-body.txt
           ### Next steps
           - Test the release
-          - If this is an 'alpha' release, you can just merge the pull request.
-          - Otherwise:
+          - For alpha releases:
+            - [ ] Should the GH release be published for this alpha? Make a call (give extra love to alphas deployed to Rerun Cloud or when external testing is required).
+              - If yes:
+                - [ ] Edit and publish the GitHub release
+                - [ ] Stretch goal: generate a raw changelog and add it to the GH release with this disclamer:
+                      **DISCLAIMER**: This is an unreviewed, automatically generated changelog. We only provide fully reviewed changelogs for final releases.
+              - If no:
+                - [ ] Delete the GH release draft
+            - [ ] Merge or close the release PR
+              - **IFF** the release job succeeds and the link checker is happy, you may merge the PR.
+              - Otherwise, close the PR without merging. Cherrypick any interesting commit to `main`, but *not* the version bump one (it would introduce bad links).
+          - For non-alpha releases:
             - For any added commits, run the release workflow in 'rc' mode again
             - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'release' mode
             - Once the final release workflow finishes it will create a GitHub release for you. Then:

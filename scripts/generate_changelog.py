@@ -12,38 +12,23 @@ Finally, copy-paste the output into `CHANGELOG.md` and add a high-level summary 
 from __future__ import annotations
 
 import argparse
+import json
 import multiprocessing
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from typing import Any
 
-import requests
 from git import Repo  # pip install GitPython
 from tqdm import tqdm
 
 OWNER = "rerun-io"
 REPO = "rerun"
 INCLUDE_LABELS = False  # It adds quite a bit of visual noise
-OFFICIAL_RERUN_DEVS = [
-    "abey79",
-    "aedm",
-    "andrea-reale",
-    "emilk",
-    "gavrelina",
-    "grtlr",
-    "jleibs",
-    "jprochazk",
-    "lucasmerlin",
-    "nikolausWest",
-    "ntjohnson1",
-    "oxkitsune",
-    "teh-cmc",
-    "thz",
-    "timsaucer",
-    "Wumpf",
-    "zehiko",
-]
+
+# Cache for organization members to avoid repeated API calls
+_org_members_cache: set[str] | None = None
 
 
 def eprint(*args: Any, **kwargs: Any) -> None:
@@ -64,25 +49,38 @@ class CommitInfo:
     pr_number: int | None
 
 
-def get_github_token() -> str:
-    import os
+def get_rerun_org_members() -> set[str]:
+    """Fetch all members of the rerun-io GitHub organization."""
+    global _org_members_cache
 
-    token = os.environ.get("GH_ACCESS_TOKEN", "")
-    if token != "":
-        return token
-
-    home_dir = os.path.expanduser("~")
-    token_file = os.path.join(home_dir, ".githubtoken")
+    if _org_members_cache is not None:
+        return _org_members_cache
 
     try:
-        with open(token_file, encoding="utf8") as f:
-            token = f.read().strip()
-        return token
-    except Exception:
-        pass
+        # Use gh CLI to fetch organization members
+        result = subprocess.run(
+            ["gh", "api", f"/orgs/{OWNER}/members", "--paginate", "--jq", ".[].login"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
 
-    eprint("ERROR: expected a GitHub token in the environment variable GH_ACCESS_TOKEN or in ~/.githubtoken")
-    sys.exit(1)
+        members = set()
+        for line in result.stdout.strip().split("\n"):
+            if line.strip():  # Skip empty lines
+                members.add(line.strip())
+
+        _org_members_cache = members
+        eprint(f"Fetched {len(members)} members from rerun-io organization")
+        return members
+
+    except subprocess.CalledProcessError as e:
+        eprint(
+            f"ERROR fetching org members: {e.stderr.strip()}. You need to install the GitHub CLI tools: https://cli.github.com/ and authenticate with github."
+        )
+        # Return empty set as fallback to avoid breaking the script
+        _org_members_cache = set()
+        return _org_members_cache
 
 
 # Slow
@@ -95,19 +93,38 @@ def fetch_pr_info_from_commit_info(commit_info: CommitInfo) -> PrInfo | None:
 
 # Slow
 def fetch_pr_info(pr_number: int) -> PrInfo | None:
-    url = f"https://api.github.com/repos/{OWNER}/{REPO}/pulls/{pr_number}"
-    gh_access_token = get_github_token()
-    headers = {"Authorization": f"Token {gh_access_token}"}
-    response = requests.get(url, headers=headers)
-    json = response.json()
+    try:
+        # Use gh CLI to fetch PR info
+        result = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "view",
+                str(pr_number),
+                "--repo",
+                f"{OWNER}/{REPO}",
+                "--json",
+                "title,labels,author",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
 
-    # Check if the request was successful (status code 200)
-    if response.status_code == 200:
-        labels = [label["name"] for label in json["labels"]]
-        gh_user_name = json["user"]["login"]
-        return PrInfo(gh_user_name=gh_user_name, pr_title=json["title"], labels=labels)
-    else:
-        eprint(f"ERROR {url}: {response.status_code} - {json['message']}")
+        pr_data = json.loads(result.stdout)
+        labels = [label["name"] for label in pr_data["labels"]]
+        gh_user_name = pr_data["author"]["login"]
+        return PrInfo(gh_user_name=gh_user_name, pr_title=pr_data["title"], labels=labels)
+
+    except subprocess.CalledProcessError as e:
+        eprint(
+            f"ERROR fetching PR #{pr_number}: {e.stderr.strip()}. If none of these succeed, You need to install the GitHub CLI tools: https://cli.github.com/ and authenticate with github."
+        )
+        return None
+    except (json.JSONDecodeError, KeyError) as e:
+        eprint(
+            f"ERROR parsing PR #{pr_number} data: {e}. If none of these succeed, You need to install the GitHub CLI tools: https://cli.github.com/ and authenticate with github."
+        )
         return None
 
 
@@ -240,7 +257,7 @@ def main() -> None:
 
             if pr_info is not None:
                 gh_user_name = pr_info.gh_user_name
-                if gh_user_name not in OFFICIAL_RERUN_DEVS:
+                if gh_user_name not in get_rerun_org_members():
                     summary += f" (thanks [@{gh_user_name}](https://github.com/{gh_user_name})!)"
 
             if labels == ["⛴ release"]:
@@ -253,13 +270,13 @@ def main() -> None:
                 log_api.append(summary)
                 added = True
             else:
-                if "🌊 C++ API" in labels:
+                if "sdk-cpp" in labels:
                     cpp.append(summary)
                     added = True
-                if "🐍 Python API" in labels:
+                if "sdk-python" in labels:
                     python.append(summary)
                     added = True
-                if "🦀 Rust API" in labels:
+                if "sdk-rust" in labels:
                     rust.append(summary)
                     added = True
 

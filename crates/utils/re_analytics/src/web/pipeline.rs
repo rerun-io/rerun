@@ -86,8 +86,4 @@ impl Pipeline {
             },
         );
     }
-
-    pub fn flush_blocking(&self) {
-        // Can't block on the web… so all we can do is _hope_ that the outstanding requests made it through.
-    }
 }

@@ -203,6 +203,12 @@ impl AbsoluteTimeRangeF {
     pub fn length(&self) -> TimeReal {
         self.max - self.min
     }
+
+    /// Creates an [`AbsoluteTimeRange`] from self by rounding the start
+    /// of the range down, and rounding the end of the range up.
+    pub fn to_int(self) -> AbsoluteTimeRange {
+        AbsoluteTimeRange::new(self.min.floor(), self.max.ceil())
+    }
 }
 
 impl From<AbsoluteTimeRangeF> for RangeInclusive<TimeReal> {

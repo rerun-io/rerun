@@ -3,6 +3,8 @@
   "large_button_icon_size": 12,
   "large_button_corner_radius": 6,
   "small_icon_size": 14,
+  "modal_button_width": 50,
+  "default_modal_width": 400,
 
   "Alias": {
     "native_frame_stroke": {
@@ -268,6 +270,38 @@
     },
     "list_item_collapse_default": {
       "color": "{Gray.700}"
+    },
+
+    "code_index_color": {
+      "color": "#D176BF"
+    },
+    "code_primitive_color": {
+      "color": "#4ACB94"
+    },
+    "code_string_color": {
+      "color": "#818EF8"
+    },
+
+    // TODO(ab, katya): review these
+    "code_keyword_color": {
+      "color": "#D176BF",
+    },
+    "table_filter_frame_stroke": {
+      "color": "{Gray.400}",
+      "width": 1
+    },
+
+    "bg_fill_inverse": {
+      "color": "{Gray.800}"
+    },
+    "bg_fill_inverse-hover": {
+      "color": "{Gray.850}"
+    },
+    "text_inverse": {
+      "color": "{Gray.250}"
+    },
+    "icon_inverse": {
+      "color": "{Gray.250}"
     },
   },
 

@@ -81,6 +81,10 @@ pub struct RerunArgs {
     #[clap(long, default_value = "25%")]
     server_memory_limit: String,
 
+    /// If true, play back the most recent data first when new clients connect.
+    #[clap(long)]
+    newest_first: bool,
+
     /// What bind address IP to use.
     #[clap(long, default_value = "0.0.0.0")]
     bind: String,
@@ -98,7 +102,7 @@ pub struct ServeGuard {
 impl Drop for ServeGuard {
     fn drop(&mut self) {
         if self.block_on_drop {
-            eprintln!("Sleeping indefinitely while serving web viewer... Press ^C when done.");
+            eprintln!("Sleeping indefinitely while serving web viewer… Press ^C when done.");
             // TODO(andreas): It would be a lot better if we had a handle to the web server and could call `block_until_shutdown` on it.
             std::thread::sleep(std::time::Duration::from_secs(u64::MAX));
         }
@@ -116,8 +120,7 @@ impl RerunArgs {
             )),
 
             RerunBehavior::Connect(url) => Ok((
-                RecordingStreamBuilder::new(application_id)
-                    .connect_grpc_opts(url, re_sdk::default_flush_timeout())?,
+                RecordingStreamBuilder::new(application_id).connect_grpc_opts(url)?,
                 Default::default(),
             )),
 
@@ -133,15 +136,21 @@ impl RerunArgs {
 
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
-                let server_memory_limit = re_memory::MemoryLimit::parse(&self.server_memory_limit)
-                    .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
+                let server_options = re_sdk::ServerOptions {
+                    playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(
+                        self.newest_first,
+                    ),
+
+                    memory_limit: re_sdk::MemoryLimit::parse(&self.server_memory_limit)
+                        .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?,
+                };
 
                 let rec = RecordingStreamBuilder::new("rerun_example_minimal_serve")
-                    .serve_grpc_opts(&self.bind, crate::DEFAULT_SERVER_PORT, server_memory_limit)?;
+                    .serve_grpc_opts(&self.bind, crate::DEFAULT_SERVER_PORT, server_options)?;
 
                 crate::serve_web_viewer(crate::web_viewer::WebViewerConfig {
                     open_browser: true,
-                    connect_to: Some("rerun+http://localhost:9876/proxy".to_owned()),
+                    connect_to: vec!["rerun+http://localhost:9876/proxy".to_owned()],
                     ..Default::default()
                 })?
                 .detach();

@@ -3,14 +3,14 @@ use datafusion::{common::exec_datafusion_err, prelude::SessionContext};
 use itertools::multizip;
 use re_datafusion::DataFusionConnector;
 use re_log_types::external::re_types_core::Loggable as _;
-use re_protos::catalog::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::EntryKind;
 use re_tuid::Tuid;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let local_addr = "rerun+http:://127.0.0.1:51234";
 
-    let connection_registry = re_grpc_client::ConnectionRegistry::new();
+    let connection_registry = re_redap_client::ConnectionRegistry::new();
 
     let client = connection_registry.client(local_addr.parse()?).await?;
     let mut df_connector = DataFusionConnector::new(client).await?;

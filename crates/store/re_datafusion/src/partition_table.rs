@@ -8,14 +8,14 @@ use datafusion::{
 };
 use tracing::instrument;
 
-use re_grpc_client::ConnectionClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
-use re_protos::frontend::v1alpha1::GetPartitionTableSchemaRequest;
+use re_protos::cloud::v1alpha1::GetPartitionTableSchemaRequest;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
-    frontend::v1alpha1::ScanPartitionTableRequest,
-    manifest_registry::v1alpha1::ScanPartitionTableResponse,
+    cloud::v1alpha1::ScanPartitionTableRequest, cloud::v1alpha1::ScanPartitionTableResponse,
 };
+use re_redap_client::ConnectionClient;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
@@ -52,16 +52,16 @@ impl GrpcStreamToTable for PartitionTableProvider {
 
     #[instrument(skip(self), err)]
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
-        let request = GetPartitionTableSchemaRequest {
-            dataset_id: Some(self.dataset_id.into()),
-        };
+        let req = tonic::Request::new(GetPartitionTableSchemaRequest {})
+            .with_entry_id(self.dataset_id)
+            .map_err(|err| DataFusionError::External(Box::new(err)))?;
 
         let mut client = self.client.clone();
 
         Ok(Arc::new(
-            make_future_send(async move {
-                Ok(client.inner().get_partition_table_schema(request).await)
-            })
+            make_future_send(
+                async move { Ok(client.inner().get_partition_table_schema(req).await) },
+            )
             .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))?
             .into_inner()
@@ -77,10 +77,11 @@ impl GrpcStreamToTable for PartitionTableProvider {
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
-        let request = ScanPartitionTableRequest {
-            dataset_id: Some(self.dataset_id.into()),
-            scan_parameters: None,
-        };
+        let request = tonic::Request::new(ScanPartitionTableRequest {
+            columns: vec![], // all of them
+        })
+        .with_entry_id(self.dataset_id)
+        .map_err(|err| DataFusionError::External(Box::new(err)))?;
 
         let mut client = self.client.clone();
 

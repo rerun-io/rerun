@@ -17,3 +17,7 @@ uint64
  * 🦀 [Rust API docs for `UInt64`](https://docs.rs/rerun/latest/rerun/datatypes/struct.UInt64.html)
 
 
+## Used by
+
+* [`ChannelCountPair`](../datatypes/channel_count_pair.md)
+* [`Count`](../components/count.md)

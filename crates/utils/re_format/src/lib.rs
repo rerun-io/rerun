@@ -161,6 +161,16 @@ pub struct FloatFormatOptions {
 }
 
 impl FloatFormatOptions {
+    /// Default options for formatting an [`half::f16`].
+    #[allow(non_upper_case_globals)]
+    pub const DEFAULT_f16: Self = Self {
+        always_sign: false,
+        precision: 5,
+        num_decimals: None,
+        strip_trailing_zeros: true,
+        min_decimals_for_thousands_separators: 6,
+    };
+
     /// Default options for formatting an [`f32`].
     #[allow(non_upper_case_globals)]
     pub const DEFAULT_f32: Self = Self {
@@ -316,6 +326,14 @@ pub fn format_f32(value: f32) -> String {
     FloatFormatOptions::DEFAULT_f32.format(value)
 }
 
+/// Format a number with about 5 decimals of precision.
+///
+/// The returned value is for human eyes only, and can not be parsed
+/// by the normal `f64::from_str` function.
+pub fn format_f16(value: half::f16) -> String {
+    FloatFormatOptions::DEFAULT_f16.format(value)
+}
+
 /// Format a latitude or longitude value.
 ///
 /// For human eyes only.
@@ -390,6 +408,30 @@ fn test_format_f64() {
         let got = format_f64(value);
         assert!(
             got == expected,
+            "Expected to format {value} as '{expected}', but got '{got}'"
+        );
+    }
+}
+
+#[test]
+fn test_format_f16() {
+    use half::f16;
+
+    let cases = [
+        (f16::from_f32(f32::NAN), "NaN"),
+        (f16::INFINITY, "∞"),
+        (f16::NEG_INFINITY, "−∞"),
+        (f16::ZERO, "0"),
+        (f16::from_f32(42.0), "42"),
+        (f16::from_f32(-42.0), "−42"),
+        (f16::from_f32(-4.20), "−4.1992"), // f16 precision limitation
+        (f16::from_f32(12_345.0), "12 344"), // f16 precision limitation
+        (f16::PI, "3.1406"),               // f16 precision limitation
+    ];
+    for (value, expected) in cases {
+        let got = format_f16(value);
+        assert_eq!(
+            got, expected,
             "Expected to format {value} as '{expected}', but got '{got}'"
         );
     }
@@ -727,4 +769,31 @@ fn test_parse_duration() {
     assert_eq!(parse_duration("3.2s"), Ok(3.2));
     assert_eq!(parse_duration("250ms"), Ok(0.250));
     assert_eq!(parse_duration("3m"), Ok(3.0 * 60.0));
+}
+
+/// Remove the custom formatting
+///
+/// Removes the thin spaces and the special minus character. Useful when copying text.
+pub fn remove_number_formatting(copied_str: &str) -> String {
+    copied_str.replace('\u{2009}', "").replace('−', "-")
+}
+
+#[test]
+fn test_remove_number_formatting() {
+    assert_eq!(
+        remove_number_formatting(&format_f32(-123_456.78)),
+        "-123456.8"
+    );
+    assert_eq!(
+        remove_number_formatting(&format_f64(-123_456.78)),
+        "-123456.78"
+    );
+    assert_eq!(
+        remove_number_formatting(&format_int(-123_456_789_i32)),
+        "-123456789"
+    );
+    assert_eq!(
+        remove_number_formatting(&format_uint(123_456_789_u32)),
+        "123456789"
+    );
 }

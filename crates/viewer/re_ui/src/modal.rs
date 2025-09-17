@@ -60,6 +60,11 @@ impl ModalHandler {
             None
         }
     }
+
+    /// Whether the modal is currently open.
+    pub fn is_open(&self) -> bool {
+        self.modal.is_some()
+    }
 }
 
 /// Show a modal window with Rerun style using [`egui::Modal`].
@@ -74,6 +79,7 @@ impl ModalHandler {
 pub struct ModalWrapper {
     title: String,
     min_width: Option<f32>,
+    max_width: Option<f32>,
     min_height: Option<f32>,
     default_height: Option<f32>,
     full_span_content: bool,
@@ -87,6 +93,7 @@ impl ModalWrapper {
         Self {
             title: title.to_owned(),
             min_width: None,
+            max_width: None,
             min_height: None,
             default_height: None,
             full_span_content: false,
@@ -106,6 +113,13 @@ impl ModalWrapper {
     #[inline]
     pub fn min_height(mut self, min_height: f32) -> Self {
         self.min_height = Some(min_height);
+        self
+    }
+
+    /// Set the maximum width of the modal window.
+    #[inline]
+    pub fn max_width(mut self, max_width: f32) -> Self {
+        self.max_width = Some(max_width);
         self
     }
 
@@ -180,6 +194,11 @@ impl ModalWrapper {
 
                     if let Some(min_width) = self.min_width {
                         ui.set_min_width(min_width);
+                    }
+                    if let Some(max_width) = self.max_width {
+                        ui.set_max_width(max_width);
+                    } else {
+                        ui.set_max_width(tokens.default_modal_width);
                     }
 
                     if let Some(min_height) = self.min_height {

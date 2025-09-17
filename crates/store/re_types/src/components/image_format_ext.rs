@@ -14,6 +14,13 @@ impl ImageFormat {
         datatypes::ImageFormat::segmentation([width, height], datatype).into()
     }
 
+    /// Create a new grayscale image format with 8 bit for the single channel with the given
+    /// resolution.
+    #[inline]
+    pub fn l8([width, height]: [u32; 2]) -> Self {
+        datatypes::ImageFormat::l8([width, height]).into()
+    }
+
     /// Create a new rgb image format with 8 bit per channel with the given resolution.
     #[inline]
     pub fn rgb8([width, height]: [u32; 2]) -> Self {

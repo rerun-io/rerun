@@ -7,9 +7,9 @@ use re_chunk::{
     Chunk, ChunkId,
     external::arrow::array::{FixedSizeListBuilder, Float64Builder, StringBuilder, UInt32Builder},
 };
-use re_log_types::TimeCell;
-use re_types::{ComponentDescriptor, archetypes::Pinhole};
+use re_types::{ComponentDescriptor, archetypes::Pinhole, reflection::ComponentDescriptorExt as _};
 
+use super::super::Ros2MessageParser;
 use crate::{
     Error,
     parsers::{
@@ -41,8 +41,10 @@ pub struct CameraInfoMessageParser {
 
 impl CameraInfoMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.CameraInfo";
+}
 
-    pub fn new(num_rows: usize) -> Self {
+impl Ros2MessageParser for CameraInfoMessageParser {
+    fn new(num_rows: usize) -> Self {
         Self {
             distortion_models: fixed_size_list_builder(1, num_rows),
             k_matrices: fixed_size_list_builder(9, num_rows),
@@ -97,10 +99,9 @@ impl MessageParser for CameraInfoMessageParser {
         } = cdr::try_decode_message::<sensor_msgs::CameraInfo>(&msg.data)?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(header.stamp.as_nanos()),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
+            header.stamp.as_nanos() as u64,
+        ));
 
         self.distortion_models
             .values()
@@ -162,9 +163,24 @@ impl MessageParser for CameraInfoMessageParser {
         struct_builder.append(true);
         self.rois.append(true);
 
+        // ROS2 stores the intrinsic matrix K as a row-major 9-element array:
+        // [fx, 0, cx, 0, fy, cy, 0, 0, 1]
+        // this corresponds to the matrix:
+        // [fx,  0, cx]
+        // [ 0, fy, cy]
+        // [ 0,  0,  1]
+        //
+        // However, `glam::Mat3` expects column-major data, so we need to transpose
+        // the ROS2 row-major data to get the correct matrix layout in Rerun.
+        let k_transposed = [
+            k[0], k[3], k[6], // first column:  [fx, 0, 0]
+            k[1], k[4], k[7], // second column: [0, fy, 0]
+            k[2], k[5], k[8], // third column:  [cx, cy, 1]
+        ];
+
         // TODO(#2315): Rerun currently only supports the pinhole model (`plumb_bob` in ROS2)
         // so this does NOT take into account the camera model.
-        self.image_from_cameras.push(k.map(|x| x as f32));
+        self.image_from_cameras.push(k_transposed.map(|x| x as f32));
         self.resolutions.push((width as f32, height as f32));
 
         Ok(())
@@ -206,52 +222,53 @@ impl MessageParser for CameraInfoMessageParser {
             [
                 (
                     ComponentDescriptor::partial("distortion_model")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     distortion_models.finish().into(),
                 ),
                 (
-                    ComponentDescriptor::partial("k").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    ComponentDescriptor::partial("k").with_builtin_archetype(Self::ARCHETYPE_NAME),
                     k_matrices.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("width")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     widths.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("height")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     heights.finish().into(),
                 ),
                 (
-                    ComponentDescriptor::partial("d").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    ComponentDescriptor::partial("d").with_builtin_archetype(Self::ARCHETYPE_NAME),
                     d_array,
                 ),
                 (
-                    ComponentDescriptor::partial("r").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    ComponentDescriptor::partial("r").with_builtin_archetype(Self::ARCHETYPE_NAME),
                     r_matrices.finish().into(),
                 ),
                 (
-                    ComponentDescriptor::partial("p").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    ComponentDescriptor::partial("p").with_builtin_archetype(Self::ARCHETYPE_NAME),
                     p_matrices.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("binning_x")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     binning_x.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("binning_y")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     binning_y.finish().into(),
                 ),
                 (
-                    ComponentDescriptor::partial("roi").with_archetype(Self::ARCHETYPE_NAME.into()),
+                    ComponentDescriptor::partial("roi")
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     rois.finish().into(),
                 ),
                 (
                     ComponentDescriptor::partial("frame_id")
-                        .with_archetype(Self::ARCHETYPE_NAME.into()),
+                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
                     frame_ids.finish().into(),
                 ),
             ]

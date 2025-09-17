@@ -102,18 +102,17 @@ impl TypedComponentFallbackProvider<components::TensorData> for BarChartVisualiz
                 ctx.query,
                 &BarChart::descriptor_values(),
             )
+            && tensor.is_vector()
         {
-            if tensor.is_vector() {
-                let shape = tensor.shape();
-                if let Some(&length) = shape.first() {
-                    // Create a sequence from 0 to length-1
-                    let indices: Vec<i64> = (0..length as i64).collect();
-                    let tensor_data = datatypes::TensorData::new(
-                        vec![length],
-                        datatypes::TensorBuffer::I64(indices.into()),
-                    );
-                    return components::TensorData(tensor_data);
-                }
+            let shape = tensor.shape();
+            if let Some(&length) = shape.first() {
+                // Create a sequence from 0 to length-1
+                let indices: Vec<i64> = (0..length as i64).collect();
+                let tensor_data = datatypes::TensorData::new(
+                    vec![length],
+                    datatypes::TensorBuffer::I64(indices.into()),
+                );
+                return components::TensorData(tensor_data);
             }
         }
 

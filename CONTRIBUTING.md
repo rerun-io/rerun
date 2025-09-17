@@ -36,6 +36,41 @@ Members of the `rerun-io` organization and collaborators in the `rerun-io/rerun`
 
 ![PR comment with the text `@rerun-bot approve`](https://github.com/rerun-io/rerun/assets/1665677/b5f07f3f-ea95-44a4-8eb7-f07c905f96c3)
 
+
+### Labeling of PRs & changelog generation
+
+Members of the `rerun-io` organization _have_ to add label PRs since they're part of how we generate [changelogs](https://github.com/rerun-io/rerun/blob/main/CHANGELOG.md).
+
+If `include in changelog` is present, the **title** of the PR will be used as a line in the detailed section of the changelog.
+Therefore, make sure that it's informative & concise without any additional context other than the category.
+If a PR title should not be part of the changelog, you _have_ to label the PR with `exclude from changelog`.
+
+The category of the changelog entry is governed by additional labels of which you have to provide at least one.
+The exact list may change over time, see the [CI job](./.github/workflows/labels.yml) checking for it for a full list.
+
+Beyond changelog categorization, it's encouraged to add too many rather than too few labels as they help with search.
+
+#### What should go to the changelog?
+
+Whether a PR should be added to the changelog isn't always clear cut, but it's advised to err on the side of
+adding too many entries rather than too few!
+Generally, whenever you believe that this is a value-add for a user browsing the detailed changelog, add it.
+Also, credit where credit is due, be more generous adding contributions from outside the `rerun-io` org to the changelog!
+
+We typically don't include:
+pure refactors, testing, CI fixes, fixes for bugs that showed up since the last release, minor doc changes (like typos) etc.
+
+#### Other special labels
+
+* `deploy docs`:
+  PRs marked with this will automatically be cherry-picked to the `docs-latest` branch which then will kick off a rebuild of the public [doc page](https://www.rerun.io/docs)
+  Use this for landing doc fixes that are relevant to the latest release.
+* `do-not-merge`:
+  Will fail the CI unconditionally.
+  Useful e.g. for opening PRs that target branches other than `main` which you want to rebase prior to merging
+  or when you're still waiting on a test result.
+  Alternatively, you can also use checkboxes in the PR description - any unticked checkboxes will make the ci fail automatically ✨
+
 ## Contributing to CI
 
 Every CI job would in its ideal state consist of only a single `pixi` (or similar) script invocation that works locally as-is.
@@ -145,7 +180,7 @@ These tests work by rendering an image and then comparing it with a checked-in r
 They run as part of the regular Rust test suite, no extra action is required to include them in a test run.
 
 Comparison tests are driven by [egui_kittest](https://github.com/emilk/egui/tree/master/crates/egui_kittest)'s `Harness::snapshot` method.
-Typically, we use [TestContext](./crates/viewer/re_test_context/src/lib.rs?speculative-link) in order to mock
+Typically, we use [TestContext](./crates/viewer/re_test_context/src/lib.rs) in order to mock
 relevant parts of the Rerun viewer.
 
 ##### Comparing results & updating images
@@ -198,17 +233,6 @@ pixi run -e py docs/snippets/compare_snippet_output.py
 More details in the [README.md](./docs/snippets/README.md).
 
 Makes sure all of the snippets in the [snippets/](./docs/snippets/) folder are working and yield the same output in all of the supported languages, unless configured otherwise in the [snippets.toml](./docs/snippets/snippets.toml) file.
-
-### "Roundtrip" tests
-
-```sh
-pixi run -e py ./tests/roundtrips.py
-```
-
-A set of cross SDK language tests that makes sure that the same logging commands for a select group of archetypes
-yields the same output in all of the supported languages.
-
-Nowadays largely redundant with the snippet comparison tests.
 
 ### Release checklists
 

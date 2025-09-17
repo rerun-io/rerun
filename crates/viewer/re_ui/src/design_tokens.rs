@@ -58,6 +58,8 @@ pub struct DesignTokens {
     pub large_button_icon_size: Vec2,
     pub large_button_corner_radius: f32,
     pub small_icon_size: Vec2,
+    pub modal_button_width: f32,
+    pub default_modal_width: f32,
 
     // All these colors can be found in dark_theme.ron and light_theme.ron:
     pub top_bar_color: Color32,
@@ -208,6 +210,19 @@ pub struct DesignTokens {
     pub list_item_hovered_bg: Color32,
     pub list_item_active_bg: Color32,
     pub list_item_collapse_default: Color32,
+
+    pub code_index_color: Color32,
+    pub code_string_color: Color32,
+    pub code_primitive_color: Color32,
+    pub code_keyword_color: Color32,
+
+    // Table filter UI
+    pub table_filter_frame_stroke: Stroke,
+
+    pub bg_fill_inverse: Color32,
+    pub bg_fill_inverse_hover: Color32,
+    pub text_inverse: Color32,
+    pub icon_inverse: Color32,
 }
 
 impl DesignTokens {
@@ -234,6 +249,8 @@ impl DesignTokens {
             large_button_icon_size: Vec2::splat(get_scalar("large_button_icon_size")?),
             large_button_corner_radius: get_scalar("large_button_corner_radius")?,
             small_icon_size: Vec2::splat(get_scalar("small_icon_size")?),
+            modal_button_width: get_scalar("modal_button_width")?,
+            default_modal_width: get_scalar("default_modal_width")?,
 
             top_bar_color: get_color("top_bar_color"),
             bottom_bar_color: get_color("bottom_bar_color"),
@@ -341,6 +358,18 @@ impl DesignTokens {
             list_item_hovered_bg: get_color("list_item_hovered_bg"),
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
+
+            code_index_color: get_color("code_index_color"),
+            code_string_color: get_color("code_string_color"),
+            code_primitive_color: get_color("code_primitive_color"),
+
+            code_keyword_color: get_color("code_keyword_color"),
+            table_filter_frame_stroke: get_stroke("table_filter_frame_stroke"),
+
+            bg_fill_inverse: get_color("bg_fill_inverse"),
+            bg_fill_inverse_hover: get_color("bg_fill_inverse-hover"),
+            text_inverse: get_color("text_inverse"),
+            icon_inverse: get_color("icon_inverse"),
         })
     }
 
@@ -464,7 +493,7 @@ impl DesignTokens {
         egui_style.spacing.scroll.bar_width = 6.0;
         egui_style.spacing.scroll.bar_outer_margin = 2.0;
 
-        egui_style.spacing.tooltip_width = 720.0;
+        egui_style.spacing.tooltip_width = 600.0;
 
         egui_style.visuals.image_loading_spinners = false;
     }

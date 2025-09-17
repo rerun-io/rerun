@@ -1,0 +1,15 @@
+namespace rerun.datatypes;
+
+/// A pair representing a channel ID and its associated message count.
+table ChannelCountPair (
+  "attr.python.aliases": "Tuple[datatypes.UInt16Like, datatypes.UInt64Like]",
+
+  /// TODO(#11107): Stabilize
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord"
+) {
+  /// The channel ID.
+  channel_id: rerun.datatypes.UInt16 (order: 100);
+
+  /// The message count for this channel.
+  message_count: rerun.datatypes.UInt64 (order: 200);
+}

@@ -426,6 +426,7 @@ impl PythonCodeGenerator {
             import pyarrow as pa
             import uuid
 
+            from {rerun_path}_numpy_compatibility import asarray
             from {rerun_path}error_utils import catch_and_log_exceptions
             from {rerun_path}_baseclasses import (
                 Archetype,
@@ -1430,7 +1431,7 @@ fn quote_array_method_from_obj(
         "
         def __array__(self, dtype: npt.DTypeLike=None, copy: bool|None=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
-            return np.asarray(self.{field_name}, dtype=dtype, copy=copy)
+            return asarray(self.{field_name}, dtype=dtype, copy=copy)
         ",
         ext_class.name, ext_class.file_name
     ))
@@ -1618,17 +1619,17 @@ fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str) ->
         if from.starts_with("rerun.datatypes") {
             "from ... import datatypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.datatypes").as_str()) {
-            format!("from ...{scope} import datatypes as {scope}_datatypes")
+            format!("from ...{scope} import datatypes as {scope}_datatypes") // NOLINT
         } else if from.starts_with("rerun.components") {
             "from ... import components".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.components").as_str()) {
-            format!("from ...{scope} import components as {scope}_components")
+            format!("from ...{scope} import components as {scope}_components") // NOLINT
         } else if from.starts_with("rerun.archetypes") {
             // NOTE: This is assuming importing other archetypes is legal… which whether it is or
             // isn't for this code generator to say.
             "from ... import archetypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.archetytpes").as_str()) {
-            format!("from ...{scope} import archetypes as {scope}_archetypes")
+            format!("from ...{scope} import archetypes as {scope}_archetypes") // NOLINT
         } else if from.is_empty() {
             format!("from . import {class}")
         } else {
@@ -1673,6 +1674,7 @@ fn quote_field_type_from_field(
         | Type::Int64 => "int".to_owned(),
         Type::Bool => "bool".to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::Binary => "bytes".to_owned(),
         Type::String => "str".to_owned(),
         Type::Array {
             elem_type,
@@ -1691,6 +1693,7 @@ fn quote_field_type_from_field(
             ElementType::Float16 => "npt.NDArray[np.float16]".to_owned(),
             ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
             ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
+            ElementType::Binary => "list[bytes]".to_owned(),
             ElementType::String => "list[str]".to_owned(),
             ElementType::Object { .. } => {
                 let typ = quote_type_from_element_type(elem_type);
@@ -1750,6 +1753,13 @@ fn quote_field_converter_from_field(
                 "float_or_none".to_owned()
             } else {
                 "float".to_owned()
+            }
+        }
+        Type::Binary => {
+            if field.is_nullable {
+                "bytes_or_none".to_owned()
+            } else {
+                "bytes".to_owned()
             }
         }
         Type::String => {
@@ -1868,6 +1878,7 @@ fn quote_type_from_type(typ: &Type) -> String {
         | Type::Int64 => "int".to_owned(),
         Type::Bool => "bool".to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
+        Type::Binary => "bytes".to_owned(),
         Type::String => "str".to_owned(),
         Type::Object { fqname } => fqname_to_type(fqname),
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
@@ -2026,6 +2037,7 @@ fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
         Type::Float32 => Some("np.float32"),
         Type::Float64 => Some("np.float64"),
         Type::Unit
+        | Type::Binary
         | Type::String
         | Type::Array { .. }
         | Type::Vector { .. }
@@ -2122,7 +2134,11 @@ fn quote_arrow_serialization(
                         code.push_indented(2, &field_fwd, 1);
                     }
 
-                    Type::Unit | Type::String | Type::Array { .. } | Type::Vector { .. } => {
+                    Type::Unit
+                    | Type::Binary
+                    | Type::String
+                    | Type::Array { .. }
+                    | Type::Vector { .. } => {
                         return Err(
                             "We lack codegen for arrow-serialization of general structs".to_owned()
                         );
@@ -2249,6 +2265,7 @@ return pa.array(pa_data, type=data_type)
                     | Type::Float16
                     | Type::Float32
                     | Type::Float64
+                    | Type::Binary
                     | Type::String => {
                         let datatype = quote_arrow_datatype(&type_registry.get(&field.fqname));
                         format!("pa.array({variant_kind_list}, type={datatype})")
@@ -2267,10 +2284,10 @@ return pa.array(pa_data, type=data_type)
                 .into_iter()
                 .sorted() // Make order not dependent on hash shenanigans (also looks nicer often).
                 .filter(|typename| !typename.contains('[')) // If we keep these we unfortunately get: `TypeError: Subscripted generics cannot be used with class and instance checks`
-                .filter(|typename| !typename.ends_with("Like")) // `xLike` types are union types and checking those is not supported until Python 3.10.
+                .filter(|typename| !typename.ends_with("Like")) // TODO(#10959): `xLike` types are union types and checking those is not supported until Python 3.10.
                 .map(|typename| {
                     if typename == "None" {
-                        "type(None)".to_owned() // `NoneType` requires Python 3.10.
+                        "type(None)".to_owned() // TODO(#10959): `NoneType` requires Python 3.10.
                     } else {
                         typename
                     }
@@ -2806,7 +2823,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
         DataType::Atomic(AtomicDataType::Float32) => "pa.float32()".to_owned(),
         DataType::Atomic(AtomicDataType::Float64) => "pa.float64()".to_owned(),
 
-        DataType::Binary => "pa.binary()".to_owned(),
+        DataType::Binary => "pa.large_binary()".to_owned(),
 
         DataType::Utf8 => "pa.utf8()".to_owned(),
 

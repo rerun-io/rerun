@@ -5,14 +5,14 @@ use std::sync::{Arc, atomic::AtomicI64};
 use std::time::Duration;
 
 use ahash::HashMap;
-use crossbeam::channel::{Receiver, Sender};
+use crossbeam::channel::{Receiver, RecvTimeoutError, Sender};
 use itertools::Either;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
 use re_chunk::{
-    BatcherHooks, Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkComponents,
-    ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
+    BatcherFlushError, BatcherHooks, Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
+    ChunkComponents, ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
 };
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
@@ -26,8 +26,8 @@ use re_types::{AsComponents, SerializationError, SerializedComponentColumn};
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
-use crate::binary_stream_sink::BinaryStreamStorage;
 use crate::sink::{LogSink, MemorySinkStorage};
+use crate::{binary_stream_sink::BinaryStreamStorage, sink::SinkFlushError};
 
 // ---
 
@@ -407,33 +407,25 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect_grpc(self) -> RecordingStreamResult<RecordingStream> {
-        self.connect_grpc_opts(
-            format!(
-                "rerun+http://127.0.0.1:{}/proxy",
-                re_grpc_server::DEFAULT_SERVER_PORT
-            ),
-            crate::default_flush_timeout(),
-        )
+        self.connect_grpc_opts(format!(
+            "rerun+http://127.0.0.1:{}/proxy",
+            re_grpc_server::DEFAULT_SERVER_PORT
+        ))
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
-    /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
-    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
-    /// call to `flush` to block indefinitely if a connection cannot be established.
-    ///
     /// ## Example
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_grpc_opts("rerun+http://127.0.0.1:9876/proxy", re_sdk::default_flush_timeout())?;
+    ///     .connect_grpc_opts("rerun+http://127.0.0.1:9876/proxy")?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect_grpc_opts(
         self,
         url: impl Into<String>,
-        flush_timeout: Option<Duration>,
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
         if enabled {
@@ -447,7 +439,7 @@ impl RecordingStreamBuilder {
                 properties,
                 batcher_config,
                 batcher_hooks,
-                Box::new(crate::log_sink::GrpcSink::new(uri, flush_timeout)),
+                Box::new(crate::log_sink::GrpcSink::new(uri)),
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -465,18 +457,23 @@ impl RecordingStreamBuilder {
     /// To configure the gRPC server's IP and port, use [`Self::serve_grpc_opts`] instead.
     ///
     /// The gRPC server will buffer in memory so that late connecting viewers will still get all the data.
-    /// You can limit the amount of data buffered by the gRPC server using [`Self::serve_grpc_opts`],
-    /// with the `server_memory_limit` argument. Once the memory limit is reached, the earliest logged data
+    /// You can limit the amount of data buffered by the gRPC server using [`Self::serve_grpc_opts`].
+    /// Once the memory limit is reached, the earliest logged data
     /// will be dropped. Static data is never dropped.
     ///
     /// It is highly recommended that you use [`Self::serve_grpc_opts`] and set the memory limit to `0B`
     /// if both the server and client are running on the same machine, otherwise you're potentially
     /// doubling your memory usage!
     pub fn serve_grpc(self) -> RecordingStreamResult<RecordingStream> {
+        use re_grpc_server::ServerOptions;
+
         self.serve_grpc_opts(
             "0.0.0.0",
             crate::DEFAULT_SERVER_PORT,
-            re_memory::MemoryLimit::from_fraction_of_total(0.25),
+            ServerOptions {
+                memory_limit: re_memory::MemoryLimit::from_fraction_of_total(0.25),
+                ..Default::default()
+            },
         )
     }
 
@@ -490,7 +487,7 @@ impl RecordingStreamBuilder {
     /// `0.0.0.0` is a good default for `bind_ip`.
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
     /// It is highly recommended that you set the memory limit to `0B` if both the server and client are running
@@ -499,7 +496,7 @@ impl RecordingStreamBuilder {
         self,
         bind_ip: impl AsRef<str>,
         port: u16,
-        server_memory_limit: re_memory::MemoryLimit,
+        server_options: re_grpc_server::ServerOptions,
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, properties, batcher_config, batcher_hooks) = self.into_args();
         if enabled {
@@ -511,7 +508,7 @@ impl RecordingStreamBuilder {
                 Box::new(crate::grpc_server::GrpcServerSink::new(
                     bind_ip.as_ref(),
                     port,
-                    server_memory_limit,
+                    server_options,
                 )?),
             )
         } else {
@@ -604,7 +601,7 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn spawn(self) -> RecordingStreamResult<RecordingStream> {
-        self.spawn_opts(&Default::default(), crate::default_flush_timeout())
+        self.spawn_opts(&Default::default())
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
@@ -624,14 +621,10 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .spawn_opts(&re_sdk::SpawnOptions::default(), re_sdk::default_flush_timeout())?;
+    ///     .spawn_opts(&re_sdk::SpawnOptions::default())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn spawn_opts(
-        self,
-        opts: &crate::SpawnOptions,
-        flush_timeout: Option<Duration>,
-    ) -> RecordingStreamResult<RecordingStream> {
+    pub fn spawn_opts(self, opts: &crate::SpawnOptions) -> RecordingStreamResult<RecordingStream> {
         if !self.is_enabled() {
             re_log::debug!("Rerun disabled - call to spawn() ignored");
             return Ok(RecordingStream::disabled());
@@ -642,12 +635,12 @@ impl RecordingStreamBuilder {
         // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
         // what, thus spawning a viewer is pointless (and probably not intended).
         if forced_sink_path().is_some() {
-            return self.connect_grpc_opts(url, flush_timeout);
+            return self.connect_grpc_opts(url);
         }
 
         crate::spawn(opts)?;
 
-        self.connect_grpc_opts(url, flush_timeout)
+        self.connect_grpc_opts(url)
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -663,7 +656,7 @@ impl RecordingStreamBuilder {
     /// and then one gRPC server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
     /// Calling `serve_web` is equivalent to calling [`Self::serve_grpc`] followed by [`crate::serve_web_viewer`].
@@ -692,7 +685,7 @@ impl RecordingStreamBuilder {
         bind_ip: &str,
         web_port: WebViewerServerPort,
         grpc_port: u16,
-        server_memory_limit: re_memory::MemoryLimit,
+        server_options: re_grpc_server::ServerOptions,
         open_browser: bool,
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, recording_info, batcher_config, batcher_hooks) = self.into_args();
@@ -702,7 +695,7 @@ impl RecordingStreamBuilder {
                 bind_ip,
                 web_port,
                 grpc_port,
-                server_memory_limit,
+                server_options,
             )?;
             RecordingStream::new(
                 store_info,
@@ -927,7 +920,10 @@ impl Drop for RecordingStreamInner {
 
         // NOTE: The command channel is private, if we're here, nothing is currently capable of
         // sending data down the pipeline.
-        self.batcher.flush_blocking();
+        let timeout = Duration::MAX;
+        if let Err(err) = self.batcher.flush_blocking(timeout) {
+            re_log::error!("Failed to flush batcher: {err}");
+        }
         self.cmds_tx.send(Command::PopPendingChunks).ok();
         self.cmds_tx.send(Command::Shutdown).ok();
         if let Some(handle) = self.batcher_to_sink_handle.take() {
@@ -1042,20 +1038,28 @@ impl RecordingStreamInner {
 
 type InspectSinkFn = Box<dyn FnOnce(&dyn LogSink) + Send + 'static>;
 
+type FlushResult = Result<(), SinkFlushError>;
+
 enum Command {
     RecordMsg(LogMsg),
-    SwapSink(Box<dyn LogSink>),
+    SwapSink {
+        new_sink: Box<dyn LogSink>,
+        timeout: Duration,
+    },
     // TODO(#10444): This should go away with more explicit sinks.
     InspectSink(InspectSinkFn),
-    Flush(Sender<()>),
+    Flush {
+        on_done: Sender<FlushResult>,
+        timeout: Duration,
+    },
     PopPendingChunks,
     Shutdown,
 }
 
 impl Command {
-    fn flush() -> (Self, Receiver<()>) {
-        let (tx, rx) = crossbeam::channel::bounded(0); // oneshot
-        (Self::Flush(tx), rx)
+    fn flush(timeout: Duration) -> (Self, Receiver<FlushResult>) {
+        let (on_done, rx) = crossbeam::channel::bounded(1); // oneshot
+        (Self::Flush { on_done, timeout }, rx)
     }
 }
 
@@ -1519,7 +1523,7 @@ fn forwarding_thread(
             Command::RecordMsg(msg) => {
                 sink.send(msg);
             }
-            Command::SwapSink(new_sink) => {
+            Command::SwapSink { new_sink, timeout } => {
                 re_log::trace!("Swapping sink…");
 
                 let backlog = {
@@ -1527,8 +1531,9 @@ fn forwarding_thread(
                     let backlog = sink.drain_backlog();
 
                     // Flush the underlying sink if possible.
-                    sink.drop_if_disconnected();
-                    sink.flush_blocking();
+                    if let Err(err) = sink.flush_blocking(timeout) {
+                        re_log::error!("Failed to flush previous sink: {err}");
+                    }
 
                     backlog
                 };
@@ -1554,12 +1559,18 @@ fn forwarding_thread(
             Command::InspectSink(f) => {
                 f(sink.as_ref());
             }
-            Command::Flush(oneshot) => {
+            Command::Flush { on_done, timeout } => {
                 re_log::trace!("Flushing…");
-                // Flush the underlying sink if possible.
-                sink.drop_if_disconnected();
-                sink.flush_blocking();
-                drop(oneshot); // signals the oneshot
+
+                let result = sink.flush_blocking(timeout);
+
+                // Send back the result:
+                if let Err(crossbeam::channel::SendError(result)) = on_done.send(result)
+                    && let Err(err) = result
+                {
+                    // There was an error, and nobody received it:
+                    re_log::error!("Failed to flush sink: {err}");
+                }
             }
             Command::PopPendingChunks => {
                 // Wake up and skip the current iteration so that we can drain all pending chunks
@@ -1814,7 +1825,7 @@ impl RecordingStream {
     ///
     /// If the current sink is in a broken state (e.g. a gRPC sink with a broken connection that
     /// cannot be repaired), all pending data in its buffers will be dropped.
-    pub fn set_sink(&self, sink: Box<dyn LogSink>) {
+    pub fn set_sink(&self, new_sink: Box<dyn LogSink>) {
         if self.is_forked_child() {
             re_log::error_once!(
                 "Fork detected during set_sink. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
@@ -1822,29 +1833,36 @@ impl RecordingStream {
             return;
         }
 
+        let timeout = Duration::MAX; // The background thread should block forever if necessary
+
         let f = move |inner: &RecordingStreamInner| {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
 
             // Flush the batcher down the chunk channel
-            inner.batcher.flush_blocking();
+            if let Err(err) = inner.batcher.flush_blocking(timeout) {
+                re_log::warn!("Failed to flush batcher in `set_sink`: {err}");
+            }
 
             // Receive pending chunks from the batcher's channel
             inner.cmds_tx.send(Command::PopPendingChunks).ok();
 
             // Update the batcher's configuration if it's sink-dependent.
             if inner.sink_dependent_batcher_config {
-                let batcher_config = resolve_batcher_config(None, &*sink);
+                let batcher_config = resolve_batcher_config(None, &*new_sink);
                 inner.batcher.update_config(batcher_config);
             }
 
             // Swap the sink, which will internally make sure to re-ingest the backlog if needed
-            inner.cmds_tx.send(Command::SwapSink(sink)).ok();
+            inner
+                .cmds_tx
+                .send(Command::SwapSink { new_sink, timeout })
+                .ok();
 
             // Before we give control back to the caller, we need to make sure that the swap has
             // taken place: we don't want the user to send data to the old sink!
             re_log::trace!("Waiting for sink swap to complete…");
-            let (cmd, oneshot) = Command::flush();
+            let (cmd, oneshot) = Command::flush(timeout);
             inner.cmds_tx.send(cmd).ok();
             oneshot.recv().ok();
             re_log::trace!("Sink swap completed.");
@@ -1859,69 +1877,108 @@ impl RecordingStream {
     ///
     /// This does **not** wait for the flush to propagate (see [`Self::flush_blocking`]).
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
-    pub fn flush_async(&self) {
+    ///
+    /// This will never return [`SinkFlushError::Timeout`].
+    pub fn flush_async(&self) -> Result<(), SinkFlushError> {
+        re_tracing::profile_function!();
+        match self.flush(None) {
+            Err(SinkFlushError::Timeout) => Ok(()),
+            result => result,
+        }
+    }
+
+    /// Flush the batching pipeline and waits for it to propagate.
+    ///
+    /// The function will block until either the flush has completed successfully (`Ok`),
+    /// an error has occurred (`SinkFlushError::Failed`), or the timeout is reached (`SinkFlushError::Timeout`).
+    ///
+    /// Convenience for calling [`Self::flush_with_timeout`] with a timeout of [`Duration::MAX`]
+    pub fn flush_blocking(&self) -> Result<(), SinkFlushError> {
+        re_tracing::profile_function!();
+        self.flush_with_timeout(Duration::MAX)
+    }
+
+    /// Flush the batching pipeline and optionally waits for it to propagate.
+    /// If you don't want a timeout you can pass in [`Duration::MAX`].
+    ///
+    /// The function will block until that timeout is reached,
+    /// an error occurs, or the flush is complete.
+    /// The function will only block while there is some hope of progress.
+    /// For instance: if the underlying gRPC connection is disconnected (or never connected at all),
+    /// then [`SinkFlushError::Failed`] is returned.
+    ///
+    /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
+    pub fn flush_with_timeout(&self, timeout: Duration) -> Result<(), SinkFlushError> {
+        re_tracing::profile_function!();
+        self.flush(Some(timeout))
+    }
+
+    /// Flush the batching pipeline and optionally waits for it to propagate.
+    ///
+    /// If `timeout` is `None`, then this function will start the flush, but NOT wait for it to finish.
+    ///
+    /// If a `timeout` is given, then the function will block until that timeout is reached,
+    /// an error occurs, or the flush is complete.
+    ///
+    /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
+    fn flush(&self, timeout: Option<Duration>) -> Result<(), SinkFlushError> {
         if self.is_forked_child() {
-            re_log::error_once!(
-                "Fork detected during flush_async. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
-            );
-            return;
+            return Err(SinkFlushError::failed(
+                "Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the Rerun SDK.",
+            ));
         }
 
-        let f = move |inner: &RecordingStreamInner| {
-            // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
-            // are safe.
-
+        let f = move |inner: &RecordingStreamInner| -> Result<(), SinkFlushError> {
             // 1. Synchronously flush the batcher down the chunk channel
             //
             // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all chunks
             // are ready to be drained by the time this call returns.
             // It cannot block indefinitely and is fairly fast as it only requires compute (no I/O).
-            inner.batcher.flush_blocking();
+            inner
+                .batcher
+                .flush_blocking(Duration::MAX)
+                .map_err(|err| match err {
+                    BatcherFlushError::Closed => SinkFlushError::failed(err.to_string()),
+                    BatcherFlushError::Timeout => SinkFlushError::Timeout,
+                })?;
 
             // 2. Drain all pending chunks from the batcher's channel _before_ any other future command
-            inner.cmds_tx.send(Command::PopPendingChunks).ok();
+            inner
+                .cmds_tx
+                .send(Command::PopPendingChunks)
+                .map_err(|_ignored| {
+                    SinkFlushError::failed(
+                        "Sink shut down prematurely. This is likely a bug in the Rerun SDK.",
+                    )
+                })?;
 
             // 3. Asynchronously flush everything down the sink
-            let (cmd, _) = Command::flush();
-            inner.cmds_tx.send(cmd).ok();
+            let (cmd, on_done) = Command::flush(Duration::MAX); // The background thread should block forever if necessary
+            inner.cmds_tx.send(cmd).map_err(|_ignored| {
+                SinkFlushError::failed(
+                    "Sink shut down prematurely. This is likely a bug in the Rerun SDK.",
+                )
+            })?;
+
+            if let Some(timeout) = timeout {
+                on_done.recv_timeout(timeout).map_err(|err| match err {
+                    RecvTimeoutError::Timeout => SinkFlushError::Timeout,
+                    RecvTimeoutError::Disconnected => SinkFlushError::failed(
+                        "Flush never finished. This is likely a bug in the Rerun SDK.",
+                    ),
+                })??;
+            }
+
+            Ok(())
         };
 
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to flush_async() ignored");
-        }
-    }
-
-    /// Initiates a flush the batching pipeline and waits for it to propagate.
-    ///
-    /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
-    pub fn flush_blocking(&self) {
-        re_tracing::profile_function!();
-
-        if self.is_forked_child() {
-            re_log::error_once!(
-                "Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
-            );
-            return;
-        }
-
-        let f = move |inner: &RecordingStreamInner| {
-            // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
-            // are safe.
-
-            // 1. Flush the batcher down the chunk channel
-            inner.batcher.flush_blocking();
-
-            // 2. Drain all pending chunks from the batcher's channel _before_ any other future command
-            inner.cmds_tx.send(Command::PopPendingChunks).ok();
-
-            // 3. Wait for all chunks to have been forwarded down the sink
-            let (cmd, oneshot) = Command::flush();
-            inner.cmds_tx.send(cmd).ok();
-            oneshot.recv().ok();
-        };
-
-        if self.with(f).is_none() {
-            re_log::warn_once!("Recording disabled - call to flush_blocking() ignored");
+        match self.with(f) {
+            Some(Ok(())) => Ok(()),
+            Some(Err(err)) => Err(err),
+            None => {
+                re_log::warn_once!("Recording disabled - call to flush ignored");
+                Ok(())
+            }
         }
     }
 }
@@ -1975,13 +2032,10 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect_grpc(&self) -> RecordingStreamResult<()> {
-        self.connect_grpc_opts(
-            format!(
-                "rerun+http://127.0.0.1:{}/proxy",
-                re_grpc_server::DEFAULT_SERVER_PORT
-            ),
-            crate::default_flush_timeout(),
-        )
+        self.connect_grpc_opts(format!(
+            "rerun+http://127.0.0.1:{}/proxy",
+            re_grpc_server::DEFAULT_SERVER_PORT
+        ))
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::GrpcSink`] sink pre-configured to use
@@ -1994,11 +2048,7 @@ impl RecordingStream {
     /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
     /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
-    pub fn connect_grpc_opts(
-        &self,
-        url: impl Into<String>,
-        flush_timeout: Option<Duration>,
-    ) -> RecordingStreamResult<()> {
+    pub fn connect_grpc_opts(&self, url: impl Into<String>) -> RecordingStreamResult<()> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new GrpcSink since {ENV_FORCE_SAVE} is set");
             return Ok(());
@@ -2009,7 +2059,7 @@ impl RecordingStream {
             return Err(RecordingStreamError::NotAProxyEndpoint);
         };
 
-        let sink = crate::log_sink::GrpcSink::new(uri, flush_timeout);
+        let sink = crate::log_sink::GrpcSink::new(uri);
 
         self.set_sink(Box::new(sink));
         Ok(())
@@ -2024,13 +2074,13 @@ impl RecordingStream {
     /// You can connect a viewer to it with `rerun --connect`.
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     pub fn serve_grpc(
         &self,
-        server_memory_limit: re_memory::MemoryLimit,
+        server_options: re_grpc_server::ServerOptions,
     ) -> RecordingStreamResult<()> {
-        self.serve_grpc_opts("0.0.0.0", crate::DEFAULT_SERVER_PORT, server_memory_limit)
+        self.serve_grpc_opts("0.0.0.0", crate::DEFAULT_SERVER_PORT, server_options)
     }
 
     #[cfg(feature = "server")]
@@ -2040,21 +2090,20 @@ impl RecordingStream {
     /// `0.0.0.0` is a good default for `bind_ip`.
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_options` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     pub fn serve_grpc_opts(
         &self,
         bind_ip: impl AsRef<str>,
         port: u16,
-        server_memory_limit: re_memory::MemoryLimit,
+        server_options: re_grpc_server::ServerOptions,
     ) -> RecordingStreamResult<()> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting GrpcServerSink since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 
-        let sink =
-            crate::grpc_server::GrpcServerSink::new(bind_ip.as_ref(), port, server_memory_limit)?;
+        let sink = crate::grpc_server::GrpcServerSink::new(bind_ip.as_ref(), port, server_options)?;
 
         self.set_sink(Box::new(sink));
         Ok(())
@@ -2074,7 +2123,7 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn spawn(&self) -> RecordingStreamResult<()> {
-        self.spawn_opts(&Default::default(), crate::default_flush_timeout())
+        self.spawn_opts(&Default::default())
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
@@ -2094,11 +2143,7 @@ impl RecordingStream {
     /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
     /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
-    pub fn spawn_opts(
-        &self,
-        opts: &crate::SpawnOptions,
-        flush_timeout: Option<Duration>,
-    ) -> RecordingStreamResult<()> {
+    pub fn spawn_opts(&self, opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
             re_log::debug!("Rerun disabled - call to spawn() ignored");
             return Ok(());
@@ -2110,10 +2155,7 @@ impl RecordingStream {
 
         crate::spawn(opts)?;
 
-        self.connect_grpc_opts(
-            format!("rerun+http://{}/proxy", opts.connect_addr()),
-            flush_timeout,
-        )?;
+        self.connect_grpc_opts(format!("rerun+http://{}/proxy", opts.connect_addr()))?;
 
         Ok(())
     }
@@ -3088,8 +3130,8 @@ mod tests {
             // noop
         }
 
-        fn flush_blocking(&self) {
-            // noop
+        fn flush_blocking(&self, _timeout: Duration) -> Result<(), SinkFlushError> {
+            Ok(())
         }
 
         fn as_any(&self) -> &dyn std::any::Any {

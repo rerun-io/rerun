@@ -1,6 +1,6 @@
 use arrow::array::{ListBuilder, UInt8Builder};
 use re_chunk::{ChunkId, external::arrow::array::FixedSizeListBuilder};
-use re_types::{Component as _, ComponentDescriptor, components};
+use re_types::archetypes::McapMessage;
 
 use crate::{
     Error, LayerIdentifier, MessageLayer,
@@ -12,8 +12,6 @@ struct RawMcapMessageParser {
 }
 
 impl RawMcapMessageParser {
-    const ARCHETYPE_NAME: &str = "rerun.mcap.Message";
-
     fn new(num_rows: usize) -> Self {
         Self {
             data: blob_list_builder(num_rows),
@@ -45,15 +43,7 @@ impl MessageParser for RawMcapMessageParser {
             ChunkId::new(),
             entity_path.clone(),
             timelines,
-            std::iter::once((
-                ComponentDescriptor {
-                    archetype: Some(Self::ARCHETYPE_NAME.into()),
-                    component: "data".into(),
-                    component_type: Some(components::Blob::name()),
-                },
-                data.finish().into(),
-            ))
-            .collect(),
+            std::iter::once((McapMessage::descriptor_data(), data.finish().into())).collect(),
         )
         .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
@@ -65,12 +55,22 @@ impl MessageParser for RawMcapMessageParser {
 ///
 /// The result will be verbatim copies of the original messages without decoding
 /// or imposing any semantic meaning on the data.
-#[derive(Debug, Default)]
+#[derive(Default, Debug)]
 pub struct McapRawLayer;
 
 impl MessageLayer for McapRawLayer {
     fn identifier() -> LayerIdentifier {
         "raw".into()
+    }
+
+    fn init(&mut self, summary: &::mcap::Summary) -> Result<(), Error> {
+        let _ = summary; // nothing to do
+        Ok(())
+    }
+
+    fn supports_channel(&self, _channel: &mcap::Channel<'_>) -> bool {
+        // Raw can capture any channel
+        true
     }
 
     fn message_parser(

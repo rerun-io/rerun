@@ -34,3 +34,4 @@ Struct {
 ## Used by
 
 * [`GraphEdge`](../components/graph_edge.md)
+* [`KeyValuePairs`](../components/key_value_pairs.md)

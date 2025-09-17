@@ -9,6 +9,7 @@ mod command_palette;
 mod context_ext;
 mod design_tokens;
 pub mod drag_and_drop;
+pub mod egui_ext;
 pub mod filter_widget;
 mod help;
 mod hot_reload_design_tokens;
@@ -28,7 +29,7 @@ use egui::NumExt as _;
 
 pub use self::{
     command::{UICommand, UICommandSender},
-    command_palette::CommandPalette,
+    command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl},
     context_ext::ContextExt,
     design_tokens::{DesignTokens, TableStyle},
     help::*,
@@ -36,6 +37,7 @@ pub use self::{
     icon_text::*,
     icons::Icon,
     markdown_utils::*,
+    notifications::Link,
     section_collapsing_header::SectionCollapsingHeader,
     syntax_highlighting::SyntaxHighlighting,
     time_drag_value::TimeDragValue,
@@ -43,19 +45,16 @@ pub use self::{
     ui_layout::UiLayout,
 };
 
-#[cfg(feature = "arrow")]
-mod arrow_ui;
 pub mod menu;
 pub mod time;
-
-#[cfg(feature = "arrow")]
-pub use self::arrow_ui::arrow_ui;
 
 // ---------------------------------------------------------------------------
 
 /// If true, we fill the entire window, except for the close/maximize/minimize buttons in the top-left.
 /// See <https://github.com/emilk/egui/pull/2049>
-pub const FULLSIZE_CONTENT: bool = cfg!(target_os = "macos");
+pub fn fullsize_content(os: egui::os::OperatingSystem) -> bool {
+    os == egui::os::OperatingSystem::Mac
+}
 
 /// If true, we hide the native window decoration
 /// (the top bar with app title, close button etc),
@@ -64,7 +63,9 @@ pub const CUSTOM_WINDOW_DECORATIONS: bool = false; // !FULLSIZE_CONTENT; // TODO
 
 /// If true, we show the native window decorations/chrome with the
 /// close/maximize/minimize buttons and app title.
-pub const NATIVE_WINDOW_BAR: bool = !FULLSIZE_CONTENT && !CUSTOM_WINDOW_DECORATIONS;
+pub fn native_window_bar(os: egui::os::OperatingSystem) -> bool {
+    !fullsize_content(os) && !CUSTOM_WINDOW_DECORATIONS
+}
 
 // ----------------------------------------------------------------------------
 
@@ -97,6 +98,28 @@ pub fn design_tokens_of_visuals(visuals: &egui::Visuals) -> &'static DesignToken
         design_tokens_of(egui::Theme::Dark)
     } else {
         design_tokens_of(egui::Theme::Light)
+    }
+}
+
+pub trait HasDesignTokens {
+    fn tokens(&self) -> &'static DesignTokens;
+}
+
+impl HasDesignTokens for egui::Context {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of(self.theme())
+    }
+}
+
+impl HasDesignTokens for egui::Style {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of_visuals(&self.visuals)
+    }
+}
+
+impl HasDesignTokens for egui::Visuals {
+    fn tokens(&self) -> &'static DesignTokens {
+        design_tokens_of_visuals(self)
     }
 }
 

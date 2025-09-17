@@ -5,6 +5,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Log data as usual, thereby writing it into the file.
     loop {
-        rec.log("/", &rerun::TextLog::new("Logging things..."))?;
+        rec.log("/", &rerun::TextLog::new("Logging things…"))?;
     }
 }

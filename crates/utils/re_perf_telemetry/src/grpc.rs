@@ -1,3 +1,6 @@
+// See `re_protos::headers`.
+const RERUN_HTTP_HEADER_ENTRY_ID: &str = "x-rerun-entry-id";
+
 // --- Telemetry middlewares ---
 
 /// Implements [`tower_http::trace::MakeSpan`] where the trace name is the gRPC method name.
@@ -50,7 +53,7 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
 
         let dataset_id = request
             .headers()
-            .get("x-rerun-dataset-id")
+            .get(RERUN_HTTP_HEADER_ENTRY_ID)
             .and_then(|v| v.to_str().ok().map(ToOwned::to_owned));
 
         // NOTE: Remember: the span we're creating here will propagate no matter what -- there is
@@ -506,7 +509,7 @@ pub type ServerTelemetryLayer = tower::layer::util::Stack<
 pub fn new_server_telemetry_layer() -> ServerTelemetryLayer {
     use tower_http::propagate_header::PropagateHeaderLayer;
     let dataset_id_propagation_layer =
-        PropagateHeaderLayer::new(http::HeaderName::from_static("x-rerun-dataset-id"));
+        PropagateHeaderLayer::new(http::HeaderName::from_static(RERUN_HTTP_HEADER_ENTRY_ID));
     let request_id_propagation_layer =
         PropagateHeaderLayer::new(http::HeaderName::from_static("x-request-id"));
 
@@ -549,7 +552,7 @@ pub type ClientTelemetryLayer = tower::layer::util::Stack<
 pub fn new_client_telemetry_layer() -> ClientTelemetryLayer {
     use tower_http::propagate_header::PropagateHeaderLayer;
     let dataset_id_propagation_layer =
-        PropagateHeaderLayer::new(http::HeaderName::from_static("x-rerun-dataset-id"));
+        PropagateHeaderLayer::new(http::HeaderName::from_static(RERUN_HTTP_HEADER_ENTRY_ID));
     let request_id_propagation_layer =
         PropagateHeaderLayer::new(http::HeaderName::from_static("x-request-id"));
 

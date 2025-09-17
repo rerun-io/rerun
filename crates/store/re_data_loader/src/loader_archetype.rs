@@ -60,35 +60,37 @@ impl DataLoader for ArchetypeLoader {
 
         re_tracing::profile_function!(filepath.display().to_string());
 
-        let entity_path = EntityPath::from_file_path(&filepath);
+        let entity_path = settings
+            .entity_path_prefix
+            .clone()
+            .map(|prefix| prefix / EntityPath::from_file_path(&filepath))
+            .unwrap_or_else(|| EntityPath::from_file_path(&filepath));
 
         let mut timepoint = TimePoint::default();
         // TODO(cmc): log these once heuristics (I think?) are fixed
-        if false {
-            if let Ok(metadata) = filepath.metadata() {
-                use re_log_types::TimeCell;
+        if false && let Ok(metadata) = filepath.metadata() {
+            use re_log_types::TimeCell;
 
-                if let Some(created) = metadata
-                    .created()
-                    .ok()
-                    .and_then(|t| TimeCell::try_from(t).ok())
-                {
-                    timepoint.insert_cell("created_at", created);
-                }
-                if let Some(modified) = metadata
-                    .modified()
-                    .ok()
-                    .and_then(|t| TimeCell::try_from(t).ok())
-                {
-                    timepoint.insert_cell("modified_at", modified);
-                }
-                if let Some(accessed) = metadata
-                    .accessed()
-                    .ok()
-                    .and_then(|t| TimeCell::try_from(t).ok())
-                {
-                    timepoint.insert_cell("accessed_at", accessed);
-                }
+            if let Some(created) = metadata
+                .created()
+                .ok()
+                .and_then(|t| TimeCell::try_from(t).ok())
+            {
+                timepoint.insert_cell("created_at", created);
+            }
+            if let Some(modified) = metadata
+                .modified()
+                .ok()
+                .and_then(|t| TimeCell::try_from(t).ok())
+            {
+                timepoint.insert_cell("modified_at", modified);
+            }
+            if let Some(accessed) = metadata
+                .accessed()
+                .ok()
+                .and_then(|t| TimeCell::try_from(t).ok())
+            {
+                timepoint.insert_cell("accessed_at", accessed);
             }
         }
 
@@ -193,7 +195,10 @@ fn load_video(
         re_log_types::TimeCell::ZERO_DURATION,
     );
 
-    let video_asset = AssetVideo::new(contents);
+    let video_asset = {
+        re_tracing::profile_scope!("serialize-as-arrow");
+        AssetVideo::new(contents)
+    };
 
     let video_frame_reference_chunk = match video_asset.read_frame_timestamps_nanos() {
         Ok(frame_timestamps_nanos) => {

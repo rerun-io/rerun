@@ -90,11 +90,8 @@ jobs:
         # See tests/assets/rrd/README.md for more
         run: pixi run check-backwards-compatibility
 
-      - name: Compare man page to CLI docs
-        run: pixi run rerun-build-web && pixi run ./scripts/ci/check_cli_docs.py
-
   rs-tests:
-    name: Rust tests
+    name: Test on Linux
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
     runs-on: ubuntu-22.04-large
     env:
@@ -133,7 +130,7 @@ jobs:
       - name: Rust tests
         run: pixi run rs-check --only tests
 
-      - name: Rust tests without --all-features
+      - name: Rust tests without --all-features (`main`/`nightly` channel)
         if: ${{ inputs.CHANNEL != 'pr' }}
         run: pixi run rs-check --only tests_without_all_features
 
@@ -150,9 +147,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - runs_on: "macos-15-large"
+          - runs_on: "macos-15-xlarge"
             name: "macos"
-          - runs_on: "windows-latest-8-cores"
+          - runs_on: "windows-latest-32-cores"
             name: "windows"
 
     # Note: we can't use `matrix.runs_on` here because its evaluated before the matrix stuff.
@@ -190,11 +187,18 @@ jobs:
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
-      - name: Rust tests
+      - name: Rust tests (`main` channel)
         if: ${{ inputs.CHANNEL == 'main' }}
-        run: pixi run rs-check --only tests
+        # We've seen some jobs fail on macOS because of a rendering adapter.
+        # Let's retry and hope for the best.
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 2
+          retry_wait_seconds: 30
+          timeout_minutes: 60
+          command: pixi run rs-check --only tests
 
-      - name: Rust all checks & tests
+      - name: Rust all checks & tests (`nightly` channel)
         if: ${{ inputs.CHANNEL == 'nightly' }}
         run: pixi run rs-check
 

@@ -76,6 +76,16 @@ pub fn window() -> Result<Window, JsValue> {
     web_sys::window().ok_or_else(|| js_error("failed to get window object"))
 }
 
+/// Returns the base URL of the current page.
+///
+/// E.g. if the current URL is `https://rerun.io/viewer?url=https://example.com/recording.rrd`,
+/// this will return `https://rerun.io/viewer`.
+pub fn current_base_url() -> Result<url::Url, JsValue> {
+    let location = window()?.location().href()?;
+    let location = url::Url::parse(&location).map_err(JsError::from)?;
+    Ok(re_viewer_context::open_url::base_url(&location))
+}
+
 // Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
 #[derive(Clone, Deserialize)]
 #[repr(transparent)]

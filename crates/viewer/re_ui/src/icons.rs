@@ -1,16 +1,35 @@
+use std::fmt::Formatter;
+use std::hash::{DefaultHasher, Hash as _, Hasher as _};
+
 use egui::{Atom, Image, ImageSource};
 
 use crate::DesignTokens;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct Icon {
-    /// Human readable unique id.
+    /// Human-readable unique id.
     ///
     /// This usually ends with `.png` or `.svg`.
     uri: &'static str,
 
     /// The raw contents of e.g. a PNG or SVG file.
     image_bytes: &'static [u8],
+}
+
+impl std::fmt::Debug for Icon {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut hasher = DefaultHasher::new();
+        self.image_bytes.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        f.debug_struct("Icon")
+            .field("uri", &self.uri)
+            .field(
+                "image_bytes",
+                &format!("len: {}, hash: {:#x}", self.image_bytes.len(), hash),
+            )
+            .finish()
+    }
 }
 
 impl Icon {
@@ -111,6 +130,7 @@ pub const ARROW_RIGHT: Icon = icon_from_path!("../data/icons/arrow_right.svg");
 pub const ARROW_UP: Icon = icon_from_path!("../data/icons/arrow_up.svg");
 pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.svg");
 pub const LOOP: Icon = icon_from_path!("../data/icons/loop.svg");
+pub const FILTER: Icon = icon_from_path!("../data/icons/filter.svg");
 
 pub const NOTIFICATION: Icon = icon_from_path!("../data/icons/notification.svg");
 pub const RIGHT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/right_panel_toggle.svg");
@@ -144,6 +164,8 @@ pub const CLOSE_SMALL: Icon = icon_from_path!("../data/icons/close_small.svg");
 /// but don't add `.on_hover_text(url)`.
 pub const EXTERNAL_LINK: Icon = icon_from_path!("../data/icons/external_link.svg");
 pub const DISCORD: Icon = icon_from_path!("../data/icons/discord.svg");
+
+pub const URL: Icon = icon_from_path!("../data/icons/url.svg");
 
 pub const CONTAINER_HORIZONTAL: Icon = icon_from_path!("../data/icons/container_horizontal.svg");
 pub const CONTAINER_GRID: Icon = icon_from_path!("../data/icons/container_grid.svg");

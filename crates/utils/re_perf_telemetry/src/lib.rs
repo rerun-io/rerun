@@ -1,5 +1,12 @@
 //! Everything needed to set up telemetry (logs, traces, metrics) for both clients and servers.
 //!
+//! Despite the name `re_perf_telemetry`, this actually handles _all_ forms of telemetry,
+//! including all log output.
+//!
+//! This sort of telemetry is always disabled on our OSS binaries, and is only used for
+//! * The Rerun Cloud infrastructure
+//! * Profiling by Rerun developer
+//!
 //! Logging strategy
 //! ================
 //!
@@ -39,6 +46,10 @@
 
 mod args;
 mod grpc;
+mod memory_telemetry;
+mod metrics_server;
+mod prometheus;
+mod shared_reader;
 mod telemetry;
 mod utils;
 
@@ -114,7 +125,7 @@ pub fn current_trace_headers() -> Option<TraceHeaders> {
     Some(carrier)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TraceHeaders {
     pub traceparent: String,
     pub tracestate: Option<String>,

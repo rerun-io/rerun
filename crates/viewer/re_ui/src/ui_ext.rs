@@ -31,6 +31,25 @@ pub trait UiExt {
         crate::design_tokens_of(self.theme())
     }
 
+    #[inline]
+    #[track_caller]
+    fn sanity_check(&self) {
+        // TODO(emilk/egui#7537): add the contents of this function as a callback in egui instead.
+        let ui = self.ui();
+
+        if cfg!(debug_assertions)
+            && ui.is_tooltip()
+            && ui.spacing().tooltip_width + 1000.0 < ui.max_rect().width()
+        {
+            panic!("DEBUG ASSERT: Huge tooltip: {}", ui.max_rect().size());
+        }
+    }
+
+    #[inline]
+    fn is_tooltip(&self) -> bool {
+        self.ui().layer_id().order == egui::Order::Tooltip
+    }
+
     /// Shows a success label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
@@ -108,7 +127,12 @@ pub trait UiExt {
         rect
     }
 
-    fn medium_icon_toggle_button(&mut self, icon: &Icon, selected: &mut bool) -> egui::Response {
+    fn medium_icon_toggle_button(
+        &mut self,
+        icon: &Icon,
+        alt_text: impl Into<String>,
+        selected: &mut bool,
+    ) -> egui::Response {
         let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from design tokens
 
         let tint = if *selected {
@@ -116,9 +140,12 @@ pub trait UiExt {
         } else {
             self.ui().visuals().widgets.noninteractive.fg_stroke.color
         };
-        let mut response = self
-            .ui_mut()
-            .add(egui::ImageButton::new(icon.as_image().fit_to_exact_size(size_points)).tint(tint));
+        let mut response = self.ui_mut().add(egui::Button::new(
+            icon.as_image()
+                .fit_to_exact_size(size_points)
+                .alt_text(alt_text.into())
+                .tint(tint),
+        ));
         if response.clicked() {
             *selected = !*selected;
             response.mark_changed();
@@ -1246,6 +1273,22 @@ pub trait UiExt {
 
         ui.scope_builder(builder, |ui| content(ui, show_extras))
             .inner
+    }
+
+    /// Menu item with an icon and text.
+    fn icon_and_text_menu_item(
+        &mut self,
+        icon: &Icon,
+        text: impl Into<WidgetText>,
+    ) -> egui::Response {
+        let ui = self.ui_mut();
+        let tokens = ui.tokens();
+        ui.add(egui::Button::image_and_text(
+            icon.as_image()
+                .tint(tokens.label_button_icon_color)
+                .fit_to_exact_size(tokens.small_icon_size),
+            text,
+        ))
     }
 }
 

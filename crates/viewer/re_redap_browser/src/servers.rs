@@ -4,40 +4,37 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::task::Poll;
 
 use datafusion::prelude::{SessionContext, col, lit};
-use egui::{Frame, Margin, RichText, Widget as _};
+use egui::{Frame, Margin, RichText};
+
 use re_auth::Jwt;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
-use re_grpc_client::ConnectionRegistryHandle;
 use re_log_types::{EntityPathPart, EntryId};
-use re_protos::catalog::v1alpha1::EntryKind;
-use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_protos::cloud::v1alpha1::EntryKind;
+use re_redap_client::ConnectionRegistryHandle;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::alert::Alert;
-use re_ui::list_item::{ItemButton as _, ItemMenuButton};
-use re_ui::{UiExt as _, icons, list_item};
-use re_viewer_context::{
-    AsyncRuntimeHandle, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
-    ViewerContext,
-};
+use re_ui::{UiExt as _, icons};
+use re_viewer_context::{AsyncRuntimeHandle, GlobalContext, ViewerContext};
 
 use crate::context::Context;
 use crate::entries::{Dataset, Entries, Entry, Table};
 use crate::server_modal::{ServerModal, ServerModalMode};
 
-struct Server {
+pub struct Server {
     origin: re_uri::Origin,
     entries: Entries,
 
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: Arc<SessionContext>,
 
-    connection_registry: re_grpc_client::ConnectionRegistryHandle,
+    connection_registry: re_redap_client::ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
 }
 
 impl Server {
     fn new(
-        connection_registry: re_grpc_client::ConnectionRegistryHandle,
+        connection_registry: re_redap_client::ConnectionRegistryHandle,
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
@@ -72,6 +69,16 @@ impl Server {
             self.origin.clone(),
             self.tables_session_ctx.clone(),
         );
+    }
+
+    #[inline]
+    pub fn origin(&self) -> &re_uri::Origin {
+        &self.origin
+    }
+
+    #[inline]
+    pub fn entries(&self) -> &Entries {
+        &self.entries
     }
 
     fn on_frame_start(&mut self) {
@@ -171,7 +178,7 @@ impl Server {
                 blueprint
             })
             .generate_entry_links(ENTRY_LINK_COLUMN_NAME, "id", self.origin.clone())
-            .filter(
+            .prefilter(
                 col("entry_kind")
                     .in_list(
                         vec![lit(EntryKind::Table as i32), lit(EntryKind::Dataset as i32)],
@@ -260,84 +267,6 @@ impl Server {
             .title(table.name())
             .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
             .show(viewer_ctx, &self.runtime, ui);
-    }
-
-    fn panel_ui(
-        &self,
-        viewer_ctx: &ViewerContext<'_>,
-        ctx: &Context<'_>,
-        ui: &mut egui::Ui,
-        recordings: Option<re_entity_db::DatasetRecordings<'_>>,
-    ) {
-        let item = Item::RedapServer(self.origin.clone());
-        let is_selected = viewer_ctx.selection().contains_item(&item);
-        let is_active = matches!(
-            viewer_ctx.display_mode(),
-            DisplayMode::RedapServer(origin)
-            if origin == &self.origin
-        );
-
-        let content = list_item::LabelContent::header(self.origin.host.to_string())
-            .always_show_buttons(true)
-            .with_buttons(|ui| {
-                Box::new(ItemMenuButton::new(&icons::MORE, "Actions", |ui| {
-                    if icons::RESET
-                        .as_button_with_label(ui.tokens(), "Refresh")
-                        .ui(ui)
-                        .clicked()
-                    {
-                        ctx.command_sender
-                            .send(Command::RefreshCollection(self.origin.clone()))
-                            .ok();
-                    }
-                    if icons::SETTINGS
-                        .as_button_with_label(ui.tokens(), "Edit")
-                        .ui(ui)
-                        .clicked()
-                    {
-                        ctx.command_sender
-                            .send(Command::OpenEditServerModal(self.origin.clone()))
-                            .ok();
-                    }
-                    if icons::TRASH
-                        .as_button_with_label(ui.tokens(), "Remove")
-                        .ui(ui)
-                        .clicked()
-                    {
-                        ctx.command_sender
-                            .send(Command::RemoveServer(self.origin.clone()))
-                            .ok();
-                    }
-                }))
-                .ui(ui)
-            });
-
-        let item_response = ui
-            .list_item()
-            .header()
-            .selected(is_selected)
-            .active(is_active)
-            .show_hierarchical_with_children(
-                ui,
-                egui::Id::new(&self.origin).with("server_item"),
-                true,
-                content,
-                |ui| {
-                    self.entries.panel_ui(viewer_ctx, ctx, ui, recordings);
-                },
-            )
-            .item_response
-            .on_hover_text(self.origin.to_string());
-
-        viewer_ctx.handle_select_hover_drag_interactions(&item_response, item, false);
-
-        if item_response.clicked() {
-            viewer_ctx
-                .command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                    self.origin.clone(),
-                )));
-        }
     }
 }
 
@@ -434,6 +363,10 @@ impl RedapServers {
             .ok();
     }
 
+    pub fn iter_servers(&self) -> impl Iterator<Item = &Server> {
+        self.servers.values()
+    }
+
     /// Per-frame housekeeping.
     ///
     /// - Process commands from the queue.
@@ -460,7 +393,7 @@ impl RedapServers {
 
     fn handle_command(
         &mut self,
-        connection_registry: &re_grpc_client::ConnectionRegistryHandle,
+        connection_registry: &re_redap_client::ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         command: Command,
@@ -524,26 +457,8 @@ impl RedapServers {
                 server.server_ui(viewer_ctx, ctx, ui);
             });
         } else {
-            viewer_ctx
-                .command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(
-                    DisplayMode::LocalRecordings,
-                ));
+            viewer_ctx.revert_to_default_display_mode();
         }
-    }
-
-    pub fn server_list_ui(
-        &self,
-        viewer_ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        mut remote_recordings: re_entity_db::RemoteRecordings<'_>,
-    ) {
-        self.with_ctx(|ctx| {
-            for server in self.servers.values() {
-                let recordings = remote_recordings.remove(&server.origin);
-                server.panel_ui(viewer_ctx, ctx, ui, recordings);
-            }
-        });
     }
 
     pub fn open_add_server_modal(&self) {
@@ -561,9 +476,17 @@ impl RedapServers {
                 match entry.inner() {
                     Ok(crate::entries::EntryInner::Dataset(dataset)) => {
                         server.dataset_entry_ui(viewer_ctx, ui, dataset);
+
+                        // If we're connected twice to the same server, we will find this entry
+                        // multiple times. We avoid it by returning here.
+                        return;
                     }
                     Ok(crate::entries::EntryInner::Table(table)) => {
                         server.table_entry_ui(viewer_ctx, ui, table);
+
+                        // If we're connected twice to the same server, we will find this entry
+                        // multiple times. We avoid it by returning here.
+                        return;
                     }
                     Err(err) => {
                         Frame::new().inner_margin(16.0).show(ui, |ui| {
@@ -586,6 +509,14 @@ impl RedapServers {
         };
 
         self.server_modal_ui.ui(global_ctx, &ctx, ui);
+    }
+
+    pub fn send_command(&self, command: Command) {
+        let result = self.command_sender.send(command);
+
+        if let Err(err) = result {
+            re_log::warn_once!("Failed to send command: {}", err);
+        }
     }
 
     #[inline]

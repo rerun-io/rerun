@@ -6,46 +6,32 @@ use ahash::HashMap;
 use datafusion::catalog::TableProvider;
 use datafusion::common::DataFusionError;
 use datafusion::prelude::SessionContext;
-use egui::RichText;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
-use itertools::Itertools as _;
-use re_data_ui::DataUi as _;
-use re_data_ui::item_ui::entity_db_button_ui;
+
 use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
-use re_grpc_client::{ConnectionClient, ConnectionError, ConnectionRegistryHandle, StreamError};
 use re_log_encoding::codec::CodecError;
-use re_log_types::{ApplicationId, EntryId, natural_ordering};
+use re_log_types::EntryId;
 use re_protos::TypeConversionError;
-use re_protos::catalog::v1alpha1::ext::{EntryDetails, TableEntry};
-use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest, ext::DatasetEntry};
+use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableEntry};
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
 use re_protos::external::prost;
 use re_protos::external::prost::Name as _;
-use re_sorbet::SorbetError;
-use re_types::archetypes::RecordingInfo;
-use re_types::components::{Name, Timestamp};
-use re_ui::list_item::LabelContent;
-use re_ui::{Icon, UiExt as _, UiLayout, icons, list_item};
-use re_viewer_context::{
-    AsyncRuntimeHandle, DisplayMode, Item, RecordingOrTable, SystemCommand,
-    SystemCommandSender as _, ViewerContext, external::re_entity_db::EntityDb,
+use re_redap_client::{
+    ClientConnectionError, ConnectionClient, ConnectionRegistryHandle, StreamError,
 };
-
-use crate::context::Context;
+use re_sorbet::SorbetError;
+use re_ui::{Icon, icons};
+use re_viewer_context::AsyncRuntimeHandle;
 
 pub type EntryResult<T> = Result<T, EntryError>;
 
 #[expect(clippy::enum_variant_names)]
 #[derive(Debug, thiserror::Error)]
 pub enum EntryError {
-    /// You usually want to use [`EntryError::tonic_status`] instead
-    /// (there are multiple variants holding [`tonic::Status`]).
     #[error(transparent)]
-    TonicError(Box<tonic::Status>),
-
-    #[error(transparent)]
-    ConnectionError(#[from] ConnectionError),
+    ClientConnectionError(#[from] ClientConnectionError),
 
     #[error(transparent)]
     StreamError(#[from] StreamError),
@@ -63,20 +49,10 @@ pub enum EntryError {
     DataFusionError(Box<DataFusionError>),
 }
 
-#[test]
-fn test_error_size() {
-    assert!(
-        std::mem::size_of::<EntryError>() <= 80,
-        "Size of error is {} bytes. Let's try to keep errors small.",
-        std::mem::size_of::<EntryError>()
-    );
-}
-
-impl From<tonic::Status> for EntryError {
-    fn from(status: tonic::Status) -> Self {
-        Self::TonicError(Box::new(status))
-    }
-}
+const _: () = assert!(
+    std::mem::size_of::<EntryError>() <= 80,
+    "Error type is too large. Try to reduce its size by boxing some of its variants.",
+);
 
 impl From<DataFusionError> for EntryError {
     fn from(err: DataFusionError) -> Self {
@@ -85,28 +61,23 @@ impl From<DataFusionError> for EntryError {
 }
 
 impl EntryError {
-    fn tonic_status(&self) -> Option<&tonic::Status> {
+    fn client_connection_error(&self) -> Option<&ClientConnectionError> {
         // Be explicit here so we don't miss any future variants that might have a `tonic::Status`.
         match self {
-            Self::TonicError(status) => Some(status.as_ref()),
-            Self::StreamError(StreamError::TonicStatus(status)) => Some(status.as_ref()),
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::StreamError(StreamError::Transport(_)) => None,
+            Self::ClientConnectionError(err)
+            | Self::StreamError(StreamError::ClientConnectionError(err)) => Some(err),
+
             Self::StreamError(
-                StreamError::ConnectionError(_)
-                | StreamError::Tokio(_)
+                StreamError::Tokio(_)
                 | StreamError::CodecError(_)
                 | StreamError::ChunkError(_)
                 | StreamError::DecodeError(_)
-                | StreamError::InvalidUri(_)
-                | StreamError::InvalidSorbetSchema(_)
+                | StreamError::TonicStatus(_)
                 | StreamError::TypeConversionError(_)
-                | StreamError::MissingChunkData
                 | StreamError::MissingDataframeColumn(_)
                 | StreamError::MissingData(_)
                 | StreamError::ArrowError(_),
             )
-            | Self::ConnectionError(_)
             | Self::TypeConversionError(_)
             | Self::CodecError(_)
             | Self::SorbetError(_)
@@ -115,21 +86,17 @@ impl EntryError {
     }
 
     pub fn is_missing_token(&self) -> bool {
-        if let Some(status) = self.tonic_status() {
-            status.code() == tonic::Code::Unauthenticated
-                && status.message() == re_auth::ERROR_MESSAGE_MISSING_CREDENTIALS
-        } else {
-            false
-        }
+        matches!(
+            self.client_connection_error(),
+            Some(ClientConnectionError::UnauthenticatedMissingToken(_))
+        )
     }
 
     pub fn is_wrong_token(&self) -> bool {
-        if let Some(status) = self.tonic_status() {
-            status.code() == tonic::Code::Unauthenticated
-                && status.message() == re_auth::ERROR_MESSAGE_INVALID_CREDENTIALS
-        } else {
-            false
-        }
+        matches!(
+            self.client_connection_error(),
+            Some(ClientConnectionError::UnauthenticatedBadToken(_))
+        )
     }
 }
 
@@ -210,7 +177,7 @@ pub struct Entries {
 }
 
 impl Entries {
-    pub fn new(
+    pub(crate) fn new(
         connection_registry: ConnectionRegistryHandle,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
@@ -225,7 +192,7 @@ impl Entries {
         }
     }
 
-    pub fn on_frame_start(&mut self) {
+    pub(crate) fn on_frame_start(&mut self) {
         self.entries.on_frame_start();
     }
 
@@ -241,239 +208,6 @@ impl Entries {
                 Err(err) => Poll::Ready(Err(err)),
             })
     }
-
-    /// [`list_item::ListItem`]-based UI for the datasets.
-    pub fn panel_ui(
-        &self,
-        viewer_context: &ViewerContext<'_>,
-        _ctx: &Context<'_>,
-        ui: &mut egui::Ui,
-        mut recordings: Option<re_entity_db::DatasetRecordings<'_>>,
-    ) {
-        match self.entries.try_as_ref() {
-            None => {
-                // TODO(#10568): these loading and error status should be displayed as a spinner/icon on the
-                // parent item instead (server), but that requires improving the `list_item` API.
-                ui.list_item_flat_noninteractive(
-                    list_item::LabelContent::new("Loading entries…").italics(true),
-                );
-            }
-
-            Some(Err(err)) => {
-                ui.list_item_flat_noninteractive(list_item::LabelContent::new(
-                    egui::RichText::new("Failed to load entries")
-                        .color(ui.visuals().error_fg_color),
-                ))
-                .on_hover_text(err.to_string());
-            }
-
-            Some(Ok(entries)) => {
-                for entry in entries.values().sorted_by_key(|entry| entry.name()) {
-                    match entry.inner() {
-                        Ok(EntryInner::Dataset(dataset)) => {
-                            let recordings = recordings
-                                .as_mut()
-                                .and_then(|r| r.remove(&dataset.id()))
-                                .unwrap_or_default();
-
-                            dataset_list_item_and_its_recordings_ui(
-                                ui,
-                                viewer_context,
-                                &DatasetKind::Remote {
-                                    origin: dataset.origin.clone(),
-                                    entry_id: dataset.id(),
-                                    name: dataset.name().to_owned(),
-                                },
-                                recordings,
-                            );
-                        }
-                        Ok(EntryInner::Table(_)) | Err(_) => {
-                            entry_list_item_ui(ui, viewer_context, entry);
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[derive(Clone, Hash)]
-pub enum DatasetKind {
-    Remote {
-        origin: re_uri::Origin,
-        entry_id: EntryId,
-        name: String,
-    },
-    Local(ApplicationId),
-}
-
-impl DatasetKind {
-    fn name(&self) -> String {
-        match self {
-            Self::Remote {
-                origin: _,
-                entry_id: _,
-                name,
-            } => name.clone(),
-            Self::Local(app_id) => app_id.to_string(),
-        }
-    }
-
-    fn select(&self, ctx: &ViewerContext<'_>) {
-        ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(self.item()));
-        match self {
-            Self::Remote { entry_id, .. } => {
-                ctx.command_sender()
-                    .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                        *entry_id,
-                    )));
-            }
-            Self::Local(app) => {
-                ctx.command_sender()
-                    .send_system(SystemCommand::ActivateApp(app.clone()));
-            }
-        }
-    }
-
-    fn item(&self) -> Item {
-        match self {
-            Self::Remote {
-                name: _,
-                origin: _,
-                entry_id,
-            } => Item::RedapEntry(*entry_id),
-            Self::Local(app_id) => Item::AppId(app_id.clone()),
-        }
-    }
-
-    fn is_active(&self, ctx: &ViewerContext<'_>) -> bool {
-        match self {
-            Self::Remote { entry_id, .. } => ctx.active_redap_entry() == Some(entry_id),
-            // TODO(lucasmerlin): Update this when local datasets have a view like remote datasets
-            Self::Local(_) => false,
-        }
-    }
-
-    fn close(&self, ctx: &ViewerContext<'_>, dbs: &Vec<&EntityDb>) {
-        match self {
-            Self::Remote { .. } => {
-                for db in dbs {
-                    ctx.command_sender()
-                        .send_system(SystemCommand::CloseRecordingOrTable(
-                            RecordingOrTable::Recording {
-                                store_id: db.store_id().clone(),
-                            },
-                        ));
-                }
-            }
-            Self::Local(app_id) => {
-                ctx.command_sender()
-                    .send_system(SystemCommand::CloseApp(app_id.clone()));
-            }
-        }
-    }
-}
-
-pub fn dataset_list_item_and_its_recordings_ui(
-    ui: &mut egui::Ui,
-    ctx: &ViewerContext<'_>,
-    kind: &DatasetKind,
-    mut entity_dbs: Vec<&EntityDb>,
-) {
-    entity_dbs.sort_by_cached_key(|entity_db| {
-        (
-            entity_db
-                .recording_info_property::<Name>(&RecordingInfo::descriptor_name())
-                .map(|s| natural_ordering::OrderedString(s.to_string())),
-            entity_db.recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time()),
-        )
-    });
-
-    let item = kind.item();
-    let selected = ctx.selection().contains_item(&item);
-
-    let dataset_list_item = ui
-        .list_item()
-        .selected(selected)
-        .active(kind.is_active(ctx));
-    let mut dataset_list_item_content =
-        re_ui::list_item::LabelContent::new(kind.name()).with_icon(&icons::DATASET);
-
-    let id = ui.make_persistent_id(kind);
-    if !entity_dbs.is_empty() {
-        dataset_list_item_content = dataset_list_item_content.with_buttons(|ui| {
-            // Close-button:
-            let resp = ui
-                .small_icon_button(&icons::CLOSE_SMALL, "Close all recordings in this dataset")
-                .on_hover_text("Close all recordings in this dataset. This cannot be undone.");
-            if resp.clicked() {
-                kind.close(ctx, &entity_dbs);
-            }
-            resp
-        });
-    }
-
-    let mut item_response = if !entity_dbs.is_empty() {
-        dataset_list_item
-            .show_hierarchical_with_children(ui, id, true, dataset_list_item_content, |ui| {
-                for entity_db in &entity_dbs {
-                    let include_app_id = false; // we already show it in the parent
-                    entity_db_button_ui(
-                        ctx,
-                        ui,
-                        entity_db,
-                        UiLayout::SelectionPanel,
-                        include_app_id,
-                    );
-                }
-            })
-            .item_response
-    } else {
-        dataset_list_item.show_hierarchical(ui, dataset_list_item_content)
-    };
-
-    if let DatasetKind::Local(app) = &kind {
-        item_response = item_response.on_hover_ui(|ui| {
-            app.data_ui_recording(ctx, ui, UiLayout::Tooltip);
-        });
-
-        ctx.handle_select_hover_drag_interactions(&item_response, Item::AppId(app.clone()), false);
-    }
-
-    if item_response.clicked() {
-        kind.select(ctx);
-    }
-}
-
-pub fn entry_list_item_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, entry: &Entry) {
-    let item = Item::RedapEntry(entry.id());
-    let selected = ctx.selection().contains_item(&item);
-    let is_active = ctx.active_redap_entry() == Some(&entry.id());
-    let is_error = entry.inner().is_err();
-
-    let mut text = RichText::new(entry.name());
-    if is_error {
-        text = text.color(ui.visuals().error_fg_color);
-    }
-    let table_list_item = ui.list_item().selected(selected).active(is_active);
-    let icon = entry.icon();
-    let table_list_item_content = LabelContent::new(text).with_icon(&icon);
-
-    let item_response = table_list_item.show_hierarchical(ui, table_list_item_content);
-
-    if item_response.clicked() {
-        ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
-        ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                entry.id(),
-            )));
-    }
-
-    if let Err(err) = entry.inner() {
-        item_response.on_hover_text(err.to_string());
-    }
 }
 
 async fn fetch_entries_and_register_tables(
@@ -484,20 +218,12 @@ async fn fetch_entries_and_register_tables(
     let mut client = connection_registry.client(origin.clone()).await?;
 
     let entries = client
-        .inner()
-        .find_entries(FindEntriesRequest {
-            filter: Some(EntryFilter {
-                id: None,
-                name: None,
-                entry_kind: None,
-            }),
+        .find_entries(EntryFilter {
+            id: None,
+            name: None,
+            entry_kind: None,
         })
-        .await?
-        .into_inner()
-        .entries
-        .into_iter()
-        .map(TryInto::try_into)
-        .collect::<Result<Vec<EntryDetails>, _>>()?;
+        .await?;
 
     let origin_ref = &origin;
     let futures_iter = entries
@@ -517,7 +243,7 @@ async fn fetch_entries_and_register_tables(
         let is_system_table = match &inner_result {
             Ok(EntryInner::Table(table)) => {
                 table.table_entry.provider_details.type_url
-                    == re_protos::catalog::v1alpha1::SystemTable::type_url()
+                    == re_protos::cloud::v1alpha1::SystemTable::type_url()
             }
             Err(_) | Ok(EntryInner::Dataset(_)) => false,
         };

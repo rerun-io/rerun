@@ -50,6 +50,10 @@ class VideoStream(Archetype):
     width = 480
     height = 320
     ball_radius = 30
+    codec = rr.VideoCodec.H265  # rr.VideoCodec.H264
+
+    formats = {rr.VideoCodec.H265: "hevc", rr.VideoCodec.H264: "h264"}
+    encoders = {rr.VideoCodec.H265: "libx265", rr.VideoCodec.H264: "libx264"}
 
 
     def create_example_video_frame(frame_i: int) -> npt.NDArray[np.uint8]:
@@ -70,8 +74,8 @@ class VideoStream(Archetype):
 
     # Setup encoding pipeline.
     av.logging.set_level(av.logging.VERBOSE)
-    container = av.open("/dev/null", "w", format="h264")  # Use AnnexB H.264 stream.
-    stream = container.add_stream("libx264", rate=fps)
+    container = av.open("/dev/null", "w", format=formats[codec])  # Use AnnexB H.265 stream.
+    stream = container.add_stream(encoders[codec], rate=fps)
     # Type narrowing
     assert isinstance(stream, av.video.stream.VideoStream)
     stream.width = width
@@ -81,7 +85,7 @@ class VideoStream(Archetype):
     stream.max_b_frames = 0
 
     # Log codec only once as static data (it naturally never changes). This isn't strictly necessary, but good practice.
-    rr.log("video_stream", rr.VideoStream(codec=rr.VideoCodec.H264), static=True)
+    rr.log("video_stream", rr.VideoStream(codec=codec), static=True)
 
     # Generate frames and stream them directly to Rerun.
     for frame_i in range(fps * duration_seconds):
@@ -117,6 +121,7 @@ class VideoStream(Archetype):
         codec: components.VideoCodecLike,
         *,
         sample: datatypes.BlobLike | None = None,
+        opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> None:
         """
@@ -149,6 +154,10 @@ class VideoStream(Archetype):
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        opacity:
+            Opacity of the video stream, useful for layering several media.
+
+            Defaults to 1.0 (fully opaque).
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -159,7 +168,7 @@ class VideoStream(Archetype):
 
         # You can define your own __init__ function as a member of VideoStreamExt in video_stream_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(codec=codec, sample=sample, draw_order=draw_order)
+            self.__attrs_init__(codec=codec, sample=sample, opacity=opacity, draw_order=draw_order)
             return
         self.__attrs_clear__()
 
@@ -168,6 +177,7 @@ class VideoStream(Archetype):
         self.__attrs_init__(
             codec=None,
             sample=None,
+            opacity=None,
             draw_order=None,
         )
 
@@ -185,6 +195,7 @@ class VideoStream(Archetype):
         clear_unset: bool = False,
         codec: components.VideoCodecLike | None = None,
         sample: datatypes.BlobLike | None = None,
+        opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> VideoStream:
         """
@@ -219,6 +230,10 @@ class VideoStream(Archetype):
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        opacity:
+            Opacity of the video stream, useful for layering several media.
+
+            Defaults to 1.0 (fully opaque).
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -232,6 +247,7 @@ class VideoStream(Archetype):
             kwargs = {
                 "codec": codec,
                 "sample": sample,
+                "opacity": opacity,
                 "draw_order": draw_order,
             }
 
@@ -255,6 +271,7 @@ class VideoStream(Archetype):
         *,
         codec: components.VideoCodecArrayLike | None = None,
         sample: datatypes.BlobArrayLike | None = None,
+        opacity: datatypes.Float32ArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
@@ -292,6 +309,10 @@ class VideoStream(Archetype):
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        opacity:
+            Opacity of the video stream, useful for layering several media.
+
+            Defaults to 1.0 (fully opaque).
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -305,6 +326,7 @@ class VideoStream(Archetype):
             inst.__attrs_init__(
                 codec=codec,
                 sample=sample,
+                opacity=opacity,
                 draw_order=draw_order,
             )
 
@@ -312,7 +334,12 @@ class VideoStream(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"VideoStream:codec": codec, "VideoStream:sample": sample, "VideoStream:draw_order": draw_order}
+        kwargs = {
+            "VideoStream:codec": codec,
+            "VideoStream:sample": sample,
+            "VideoStream:opacity": opacity,
+            "VideoStream:draw_order": draw_order,
+        }
         columns = []
 
         for batch in batches:
@@ -378,6 +405,17 @@ class VideoStream(Archetype):
     # previous samples which may be required to decode an image.
     #
     # See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    opacity: components.OpacityBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.OpacityBatch._converter,  # type: ignore[misc]
+    )
+    # Opacity of the video stream, useful for layering several media.
+    #
+    # Defaults to 1.0 (fully opaque).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
