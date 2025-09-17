@@ -106,7 +106,7 @@ where
     /// [`Self::with_always_show_buttons`] to change that.
     ///
     /// Usually you want to add an [`crate::UiExt::small_icon_button`] and use the helpers from
-    /// [`OnResponseExt`] to add actions / menus.
+    /// [`crate::OnResponseExt`] to add actions / menus.
     ///
     /// Notes:
     /// - If buttons are used, the item will allocate the full available width of the parent. If the
@@ -126,7 +126,7 @@ where
     /// [`Self::with_always_show_buttons`] to change that.
     ///
     /// Usually you want to add an [`crate::UiExt::small_icon_button`] and use the helpers from
-    /// [`OnResponseExt`] to add actions / menus.
+    /// [`crate::OnResponseExt`] to add actions / menus.
     ///
     /// Notes:
     /// - If buttons are used, the item will allocate the full available width of the parent. If the
