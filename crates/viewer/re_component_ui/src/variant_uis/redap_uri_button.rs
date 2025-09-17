@@ -3,7 +3,7 @@ use std::str::FromStr as _;
 
 use egui::{Align, Layout, Link, Ui, UiBuilder};
 use re_types_core::{ComponentDescriptor, RowId};
-use re_ui::UiExt;
+use re_ui::UiExt as _;
 use re_uri::RedapUri;
 use re_viewer_context::{
     SystemCommand, SystemCommandSender as _, ViewerContext, open_url::ViewerOpenUrl,
@@ -55,18 +55,37 @@ pub fn redap_uri_button(
             .any(|source| source.redap_uri().as_ref() == Some(&uri));
 
     let uri_clone = uri.clone();
-    // Show the link left aligned and justified, so the whole cell is clickable.
-    let put_justified_left_aligned = |ui: &mut Ui, link| {
-        ui.scope_builder(
-            UiBuilder::new().max_rect(ui.max_rect()).layout(
-                Layout::right_to_left(Align::Center)
-                    .with_cross_justify(true)
-                    .with_main_align(Align::Min),
-            ),
-            |ui| {
-                let rect = if ui.rect_contains_pointer(ui.max_rect()) {
-                    let res = ui.small_icon_button(&re_ui::icons::COPY, "Copy link");
-                    if res.clicked() {
+    // Show the link left aligned, and add a copy button.
+    let link_with_copy = |ui: &mut Ui, link| {
+        let rect = ui.max_rect();
+        let contains_pointer = ui.rect_contains_pointer(rect);
+        egui::Sides::new()
+            .shrink_left()
+            .show(
+                ui,
+                |ui| {
+                    ui.scope_builder(
+                        UiBuilder::new()
+                            .max_rect(egui::Rect::from_x_y_ranges(
+                                ui.max_rect().x_range(),
+                                rect.y_range(),
+                            ))
+                            .layout(
+                                Layout::left_to_right(Align::Center)
+                                    .with_main_justify(true)
+                                    .with_cross_justify(true)
+                                    .with_main_align(Align::Min),
+                            ),
+                        |ui| ui.add(link),
+                    )
+                    .inner
+                },
+                |ui| {
+                    if contains_pointer
+                        && ui
+                            .small_icon_button(&re_ui::icons::COPY, "Copy link")
+                            .clicked()
+                    {
                         if let Ok(url) = ViewerOpenUrl::from(uri_clone).sharable_url(None) {
                             ctx.command_sender()
                                 .send_system(SystemCommand::CopyViewerUrl(url));
@@ -74,31 +93,13 @@ pub fn redap_uri_button(
                             re_log::error!("Failed to create a sharable url for recording");
                         }
                     }
-
-                    let mut rect = ui.max_rect();
-                    rect.max.x = res.rect.min.x;
-                    rect
-                } else {
-                    ui.max_rect()
-                };
-
-                ui.scope_builder(
-                    UiBuilder::new().max_rect(rect).layout(
-                        Layout::left_to_right(Align::Center)
-                            .with_main_justify(true)
-                            .with_cross_justify(true)
-                            .with_main_align(Align::Min),
-                    ),
-                    |ui| ui.add(link),
-                )
-                .inner
-            },
-        )
-        .inner
+                },
+            )
+            .0
     };
 
     if let Some(loaded_recording_id) = loaded_recording_id {
-        let response = put_justified_left_aligned(ui, Link::new("Switch to")).on_hover_ui(|ui| {
+        let response = link_with_copy(ui, Link::new("Switch to")).on_hover_ui(|ui| {
             ui.label("This recording is already loaded. Click to switch to it.");
         });
 
@@ -122,7 +123,7 @@ pub fn redap_uri_button(
             }
         });
     } else {
-        let response = put_justified_left_aligned(ui, Link::new("Open")).on_hover_ui(|ui| {
+        let response = link_with_copy(ui, Link::new("Open")).on_hover_ui(|ui| {
             ui.label(uri.to_string());
         });
 
