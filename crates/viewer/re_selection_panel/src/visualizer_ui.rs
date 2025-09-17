@@ -9,7 +9,7 @@ use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
 use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{OnResponseExt, UiExt as _, design_tokens_of_visuals, list_item};
+use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     DataResult, QueryContext, UiLayout, ViewContext, ViewSystemIdentifier, VisualizerCollection,

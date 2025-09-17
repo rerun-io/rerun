@@ -8,7 +8,7 @@ use egui::{Modifiers, os};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
     CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
-    IconText, OnResponseExt, UICommand, UICommandSender, UiExt as _,
+    IconText, OnResponseExt as _, UICommand, UICommandSender, UiExt as _,
     filter_widget::{FilterState, format_matching_text},
     icons, list_item,
     notifications::NotificationUi,

@@ -8,7 +8,7 @@ use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
 use re_smart_channel::SmartChannelSource;
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
-use re_ui::{OnResponseExt, UiExt as _, UiLayout, icons, list_item};
+use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::{
     DisplayMode, Item, RecordingOrTable, SystemCommand, SystemCommandSender as _, ViewerContext,
 };

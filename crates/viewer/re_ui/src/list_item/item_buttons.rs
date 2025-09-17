@@ -1,5 +1,5 @@
 use crate::list_item::ContentContext;
-use crate::{OnResponseExt, UiExt as _};
+use crate::{OnResponseExt as _, UiExt as _};
 use egui::Widget;
 
 type ButtonFn<'a> = Box<dyn FnOnce(&mut egui::Ui) + 'a>;

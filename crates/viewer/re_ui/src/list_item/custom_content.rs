@@ -1,8 +1,8 @@
 use egui::{NumExt as _, Ui, Widget};
 
-use crate::egui_ext::boxed_widget::{BoxedWidgetLocal, BoxedWidgetLocalExt};
+use crate::egui_ext::boxed_widget::{BoxedWidgetLocal, BoxedWidgetLocalExt as _};
 use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
-use crate::{OnResponseExt, UiExt as _};
+use crate::{OnResponseExt as _, UiExt as _};
 
 /// Control how the [`CustomContent`] advertises its width.
 #[derive(Debug, Clone, Copy)]

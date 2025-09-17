@@ -1,8 +1,11 @@
 use egui::{Popup, Response, Widget, WidgetText};
 
+type ResponseCallbacks<'a> = smallvec::SmallVec<[Box<dyn FnOnce(Response) -> Response + 'a>; 1]>;
+
+/// Wrap a [`Widget`] and register actions on its [`Response`].
 pub struct OnResponse<'a, T> {
     inner: T,
-    on_response: smallvec::SmallVec<[Box<dyn FnOnce(Response) -> Response + 'a>; 1]>,
+    on_response: ResponseCallbacks<'a>,
     enabled: bool,
 }
 
@@ -11,10 +14,10 @@ pub struct OnResponse<'a, T> {
 /// `Widget`. So a macro will have to do.
 ///
 /// We could also remove the implementations for `OnResponse` and most code should still work,
-/// but then every further call to one of the OnResponseExt methods would introduce another layer of
+/// but then every further call to one of the `OnResponseExt` methods would introduce another layer of
 /// `OnResponse<OnResponse<OnResponse<T>>>`, which would be annoying.
 /// On the other hand, maybe that would be nice and more efficient?
-/// We could remove the smallvec and instead be generic over the Widget and an FnOnce.
+/// We could remove the smallvec and instead be generic over the Widget and an `FnOnce`.
 macro_rules! response_ext_impl {
     ($target:path, $($pub:tt)*) => {
         /// Enable / disable the widget.
@@ -105,7 +108,7 @@ macro_rules! response_ext_impl {
 
 impl<'a, T> OnResponse<'a, T> {
     #[inline]
-    fn into_on_response(self) -> OnResponse<'a, T>
+    fn into_on_response(self) -> Self
     where
         Self: Sized,
     {
@@ -115,12 +118,13 @@ impl<'a, T> OnResponse<'a, T> {
     response_ext_impl!(T, pub);
 }
 
-pub trait OnResponseExt<'a>: Sized {
+pub trait OnResponseExt<'a>
+where
+    Self: Sized,
+{
     type Target;
 
-    fn into_on_response(self) -> OnResponse<'a, Self::Target>
-    where
-        Self: Sized;
+    fn into_on_response(self) -> OnResponse<'a, Self::Target>;
 
     response_ext_impl!(Self::Target,);
 }
@@ -144,7 +148,7 @@ where
     }
 }
 
-impl<'a, T: egui::Widget> egui::Widget for OnResponse<'a, T> {
+impl<T: egui::Widget> egui::Widget for OnResponse<'_, T> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let mut response = ui.add_enabled(self.enabled, self.inner);
 
@@ -156,7 +160,7 @@ impl<'a, T: egui::Widget> egui::Widget for OnResponse<'a, T> {
     }
 }
 
-impl<'a, T> From<T> for OnResponse<'a, T>
+impl<T> From<T> for OnResponse<'_, T>
 where
     T: egui::Widget,
 {
@@ -169,7 +173,7 @@ where
     }
 }
 
-impl<'a, T> std::ops::Deref for OnResponse<'a, T> {
+impl<T> std::ops::Deref for OnResponse<'_, T> {
     type Target = T;
 
     #[inline]
@@ -178,7 +182,7 @@ impl<'a, T> std::ops::Deref for OnResponse<'a, T> {
     }
 }
 
-impl<'a, T> std::ops::DerefMut for OnResponse<'a, T> {
+impl<T> std::ops::DerefMut for OnResponse<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner

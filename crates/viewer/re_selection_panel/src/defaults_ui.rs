@@ -10,7 +10,7 @@ use re_log_types::EntityPath;
 use re_types_core::ComponentDescriptor;
 use re_types_core::reflection::ComponentDescriptorExt as _;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{OnResponseExt, SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
+use re_ui::{OnResponseExt as _, SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
 use re_viewer_context::{
     ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewContext,
     ViewSystemIdentifier, VisualizerCollection, blueprint_timeline,
