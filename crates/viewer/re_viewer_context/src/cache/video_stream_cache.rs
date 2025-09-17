@@ -489,6 +489,7 @@ fn read_samples_from_chunk(
         sample_index_range: sample_base_idx..samples.next_index(),
     });
 
+    #[expect(clippy::panic)] // Debug only.
     if cfg!(debug_assertions)
         && let Err(err) = video_descr.sanity_check()
     {
@@ -654,6 +655,7 @@ impl Cache for VideoStreamCache {
                                     .sum::<usize>()
                             );
 
+                            #[expect(clippy::panic)] // Debug only.
                             if cfg!(debug_assertions)
                                 && let Err(err) = video_data.sanity_check()
                             {

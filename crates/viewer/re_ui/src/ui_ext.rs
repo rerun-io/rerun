@@ -37,11 +37,12 @@ pub trait UiExt {
         // TODO(emilk/egui#7537): add the contents of this function as a callback in egui instead.
         let ui = self.ui();
 
-        if cfg!(debug_assertions)
-            && ui.is_tooltip()
-            && ui.spacing().tooltip_width + 1000.0 < ui.max_rect().width()
-        {
-            panic!("DEBUG ASSERT: Huge tooltip: {}", ui.max_rect().size());
+        if ui.is_tooltip() && ui.spacing().tooltip_width + 1000.0 < ui.max_rect().width() {
+            assert!(
+                cfg!(debug_assertions),
+                "DEBUG ASSERT: Huge tooltip: {}",
+                ui.max_rect().size()
+            );
         }
     }
 

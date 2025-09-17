@@ -1274,12 +1274,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         ) {
             Ok(batch) => Some(batch),
             Err(err) => {
-                if cfg!(debug_assertions) {
-                    panic!("Failed to create record batch: {err}");
-                } else {
-                    re_log::error_once!("Failed to create record batch: {err}");
-                    None
-                }
+                assert!(
+                    cfg!(debug_assertions),
+                    "Failed to create record batch: {err}"
+                );
+                re_log::error_once!("Failed to create record batch: {err}");
+                None
             }
         }
     }
