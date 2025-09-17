@@ -90,7 +90,7 @@ pub enum FilterError {
     ColumnNotFound(Column),
 
     #[error("invalid filter operation {0:?} for field {1}")]
-    InvalidFilterOperation(FilterOperation, Box<Field>),
+    InvalidFilterOperation(Box<FilterOperation>, Box<Field>),
 
     #[error("invalid non-nullable boolean filter operation {0:?} for field {1}")]
     InvalidNonNullableBooleanFilterOperation(NonNullableBooleanFilter, Box<Field>),
@@ -182,6 +182,7 @@ impl ComparisonOperator {
 /// The UI state for a filter operation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum FilterOperation {
+    //TODO: order by complexity
     /// Compare an integer value to a constant.
     ///
     /// For columns of lists of integers, only the first value is considered.
@@ -316,7 +317,7 @@ impl FilterOperation {
 
                     _ => {
                         return Err(FilterError::InvalidFilterOperation(
-                            self.clone(),
+                            self.clone().into(),
                             field.clone().into(),
                         ));
                     }

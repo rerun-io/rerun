@@ -127,7 +127,7 @@ impl ServerModal {
                 ui.scope(|ui| {
                     // make field red if host is invalid
                     if host.is_err() {
-                        style_invalid_field(ui);
+                        ui.style_invalid_field();
                     }
                     ui.add(egui::TextEdit::singleline(&mut self.host).lock_focus(false))
                         .labelled_by(host_label_response.id);
@@ -144,7 +144,7 @@ impl ServerModal {
                             .transpose();
 
                         if token.is_err() {
-                            style_invalid_field(ui);
+                            ui.style_invalid_field();
                         }
 
                         ui.add(egui::TextEdit::singleline(&mut self.token));
@@ -210,12 +210,4 @@ impl ServerModal {
             },
         );
     }
-}
-
-fn style_invalid_field(ui: &mut egui::Ui) {
-    ui.visuals_mut().widgets.active.bg_stroke = egui::Stroke::new(1.0, ui.visuals().error_fg_color);
-    ui.visuals_mut().widgets.hovered.bg_stroke =
-        egui::Stroke::new(1.0, ui.visuals().error_fg_color);
-    ui.visuals_mut().widgets.inactive.bg_stroke =
-        egui::Stroke::new(1.0, ui.visuals().error_fg_color);
 }

@@ -1,14 +1,16 @@
 use std::str::FromStr as _;
 
-use jiff::{Error, Timestamp, ToSpan as _};
+use jiff::{Timestamp, ToSpan as _};
 
+use re_log_types::{TimestampFormat, TimestampFormatKind};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{SyntaxHighlighting, UiExt as _};
 
-use super::FilterUiAction;
+use super::{FilterUiAction, TimestampFormatted};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
 pub enum TemporalOperator {
+    #[default]
     Today,
     Yesterday,
     ThisWeek,
@@ -18,49 +20,166 @@ pub enum TemporalOperator {
     Between,
 }
 
-//TODO: docstrings
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TimestampFilter {
-    operator: TemporalOperator,
-    low_bound: String,
-    high_bound: String,
-    //TODO: add tz?
+/// A timestamp that can be entered/edited by the user.
+#[derive(Debug, Clone)]
+pub struct EditableTimestamp {
+    /// The timestamp as entered/edited by the user.
+    timestamp: String,
+
+    /// The resolved timestamp (if valid).
+    resolved_timestamp: Result<jiff::Timestamp, jiff::Error>,
 }
 
-impl Default for TimestampFilter {
+impl Default for EditableTimestamp {
     fn default() -> Self {
         Self {
-            operator: TemporalOperator::Today,
-            low_bound: String::new(),
-            high_bound: String::new(),
+            timestamp: String::new(),
+            resolved_timestamp: jiff::Timestamp::from_str(""),
         }
     }
 }
 
-impl SyntaxHighlighting for TimestampFilter {
-    //TODO: this stuff should use re_format
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        // normalize bounds
-        let low_bound = jiff::Timestamp::from_str(&self.low_bound)
-            .ok()
-            .map(|t| t.to_string())
-            .unwrap_or_else(|| "…".to_owned());
-        let high_bound = jiff::Timestamp::from_str(&self.high_bound)
-            .ok()
-            .map(|t| t.to_string())
-            .unwrap_or_else(|| "…".to_owned());
+impl PartialEq for EditableTimestamp {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            timestamp,
+            resolved_timestamp,
+        } = self;
 
-        match self.operator {
-            TemporalOperator::Today => builder.append_keyword("is today"),
-            TemporalOperator::Yesterday => builder.append_keyword("is yesterday"),
-            TemporalOperator::ThisWeek => builder.append_keyword("is this week"),
-            TemporalOperator::LastWeek => builder.append_keyword("is last week"),
+        if !timestamp.eq(&other.timestamp) {
+            return false;
+        }
+
+        match resolved_timestamp {
+            Ok(val) => other
+                .resolved_timestamp
+                .as_ref()
+                .is_ok_and(|other_val| val.eq(other_val)),
+
+            // We can't compare the error because it's not PartialEq, but if everything else is
+            // equal, the error should be the same as well.
+            Err(_) => other.resolved_timestamp.is_err(),
+        }
+    }
+}
+
+impl EditableTimestamp {
+    pub fn new_from_timestamp(
+        timestamp: jiff::Timestamp,
+        timestamp_format: TimestampFormat,
+    ) -> Self {
+        let timestamp = re_log_types::Timestamp::from(timestamp).format(timestamp_format);
+        Self {
+            resolved_timestamp: best_effort_timestamp_parse(&timestamp, timestamp_format),
+            timestamp,
+        }
+    }
+
+    pub fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
+        auto_fill_value: Option<&str>,
+        is_editable: bool,
+    ) -> egui::Response {
+        if self.timestamp.is_empty()
+            && is_editable
+            && let Some(auto_fill_value) = auto_fill_value
+        {
+            self.timestamp = auto_fill_value.to_owned();
+            self.update_resolved_timestamp(timestamp_format);
+        }
+
+        let (response, parsed) = ui
+            .add_enabled_ui(is_editable, |ui| {
+                let mut default_string;
+                let timestamp_to_edit = if let Some(auto_fill_value) = auto_fill_value
+                    && !is_editable
+                {
+                    default_string = auto_fill_value.to_owned();
+                    &mut default_string
+                } else {
+                    &mut self.timestamp
+                };
+
+                let parsed = best_effort_timestamp_parse(timestamp_to_edit, timestamp_format);
+
+                if parsed.is_err() {
+                    ui.style_invalid_field();
+                }
+
+                let response = ui.text_edit_singleline(timestamp_to_edit);
+
+                if response.changed() {
+                    self.update_resolved_timestamp(timestamp_format);
+                }
+
+                (response, parsed)
+            })
+            .inner;
+
+        match parsed {
+            Ok(timestamp) => {
+                ui.label(re_log_types::Timestamp::from(timestamp).format(timestamp_format))
+            }
+            Err(err) => ui
+                .label("YYYY-MM-DD HH:MM:SS")
+                .on_hover_text(err.to_string()),
+        };
+
+        response
+    }
+
+    fn update_resolved_timestamp(&mut self, timestamp_format: TimestampFormat) {
+        self.resolved_timestamp = best_effort_timestamp_parse(&self.timestamp, timestamp_format);
+    }
+
+    pub fn resolved(&self) -> Result<jiff::Timestamp, &jiff::Error> {
+        self.resolved_timestamp.as_ref().map(|ts| *ts)
+    }
+
+    pub fn resolved_formatted(
+        &self,
+        timestamp_format: TimestampFormat,
+    ) -> Result<String, &jiff::Error> {
+        self.resolved_timestamp
+            .as_ref()
+            .map(|t| re_log_types::Timestamp::from(*t).format(timestamp_format))
+    }
+}
+
+//TODO: docstrings
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct TimestampFilter {
+    operator: TemporalOperator,
+    low_bound_timestamp: EditableTimestamp,
+    high_bound_timestamp: EditableTimestamp,
+}
+
+impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
+    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
+        let low_bound = self
+            .inner
+            .low_bound_timestamp
+            .resolved_formatted(self.timestamp_format)
+            .unwrap_or("…".to_owned());
+        let high_bound = self
+            .inner
+            .high_bound_timestamp
+            .resolved_formatted(self.timestamp_format)
+            .unwrap_or("…".to_owned());
+
+        match self.inner.operator {
+            TemporalOperator::Today => builder.append_keyword("today"),
+            TemporalOperator::Yesterday => builder.append_keyword("yesterday"),
+            TemporalOperator::ThisWeek => builder.append_keyword("this week"),
+            TemporalOperator::LastWeek => builder.append_keyword("last week"),
             TemporalOperator::Before => {
-                builder.append_keyword("is before ");
+                builder.append_keyword("before ");
                 builder.append_primitive(&high_bound)
             }
             TemporalOperator::After => {
-                builder.append_keyword("is after ");
+                builder.append_keyword("after ");
                 builder.append_primitive(&low_bound)
             }
             TemporalOperator::Between => {
@@ -74,70 +193,79 @@ impl SyntaxHighlighting for TimestampFilter {
 }
 
 impl TimestampFilter {
-    pub fn popup_ui(&mut self, ui: &mut egui::Ui, column_name: &str, action: &mut FilterUiAction) {
+    pub fn popup_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        column_name: &str,
+        action: &mut FilterUiAction,
+        timestamp_format: TimestampFormat,
+    ) {
         super::basic_operation_ui(ui, column_name, "is");
+
+        // these are used as default when:
+        // - switching from e.g. "today" to "between"
+        // - the user didn't previously enter a value
+        let default_timestamp_range = match self.operator {
+            TemporalOperator::Today => ResolvedTimestampFilter::Today.timestamp_range(),
+            TemporalOperator::Yesterday => ResolvedTimestampFilter::Yesterday.timestamp_range(),
+            TemporalOperator::ThisWeek => ResolvedTimestampFilter::ThisWeek.timestamp_range(),
+            TemporalOperator::LastWeek => ResolvedTimestampFilter::LastWeek.timestamp_range(),
+            _ => (None, None),
+        };
+        let (default_low_string, default_high_string) = (
+            default_timestamp_range
+                .0
+                .map(|t| format_timestamp(t, timestamp_format)),
+            default_timestamp_range
+                .1
+                .map(|t| format_timestamp(t, timestamp_format)),
+        );
+
+        ui.re_radio_value(&mut self.operator, TemporalOperator::Today, "today");
+        ui.re_radio_value(&mut self.operator, TemporalOperator::Yesterday, "yesterday");
+        ui.re_radio_value(&mut self.operator, TemporalOperator::ThisWeek, "this week");
+        ui.re_radio_value(&mut self.operator, TemporalOperator::LastWeek, "last week");
+        ui.re_radio_value(&mut self.operator, TemporalOperator::Before, "before");
+        ui.re_radio_value(&mut self.operator, TemporalOperator::After, "after");
+        ui.re_radio_value(&mut self.operator, TemporalOperator::Between, "between");
+
+        let low_visible = self.operator != TemporalOperator::Before;
+        let high_visible = self.operator != TemporalOperator::After;
+        let low_is_editable =
+            self.operator == TemporalOperator::Between || self.operator == TemporalOperator::After;
+        let high_is_editable =
+            self.operator == TemporalOperator::Between || self.operator == TemporalOperator::Before;
 
         let mut validated = false;
 
-        validated |= ui
-            .re_radio_value(&mut self.operator, TemporalOperator::Today, "today")
-            .clicked();
-        validated |= ui
-            .re_radio_value(&mut self.operator, TemporalOperator::Yesterday, "yesterday")
-            .clicked();
-        validated |= ui
-            .re_radio_value(&mut self.operator, TemporalOperator::ThisWeek, "this week")
-            .clicked();
-        validated |= ui
-            .re_radio_value(&mut self.operator, TemporalOperator::LastWeek, "last week")
-            .clicked();
+        if low_visible {
+            ui.label("From:");
 
-        // note: we dont auto validate on click for these, as the user must enter a value
-        ui.re_radio_value(&mut self.operator, TemporalOperator::Before, "before")
-            .clicked();
-        ui.re_radio_value(&mut self.operator, TemporalOperator::After, "after")
-            .clicked();
-        ui.re_radio_value(&mut self.operator, TemporalOperator::Between, "between")
-            .clicked();
+            let response = self.low_bound_timestamp.ui(
+                ui,
+                timestamp_format,
+                default_low_string.as_deref(),
+                low_is_editable,
+            );
 
-        if self.operator == TemporalOperator::After || self.operator == TemporalOperator::Between {
-            ui.horizontal(|ui| {
-                let response = timestamp_ui(ui, &mut self.low_bound);
-
-                // match jiff::Timestamp::from_str(&self.low_bound) {
-                //     Ok(_) => {
-                //         ui.label("ok");
-                //
-                //         if response.lost_focus() {
-                //             validated = true;
-                //         }
-                //     }
-                //
-                //     Err(err) => {
-                //         ui.label("nok").on_hover_text(err.to_string());
-                //     }
-                // }
-            });
+            if response.lost_focus() && self.low_bound_timestamp.resolved().is_ok() {
+                validated = true;
+            }
         }
 
-        if self.operator == TemporalOperator::Before || self.operator == TemporalOperator::Between {
-            ui.horizontal(|ui| {
-                let response = timestamp_ui(ui, &mut self.high_bound);
+        if high_visible {
+            ui.label("To:");
 
-                // match jiff::Timestamp::from_str(&self.high_bound) {
-                //     Ok(_) => {
-                //         ui.label("ok");
-                //
-                //         if response.lost_focus() {
-                //             validated = true;
-                //         }
-                //     }
-                //
-                //     Err(err) => {
-                //         ui.label("nok").on_hover_text(err.to_string());
-                //     }
-                // }
-            });
+            let response = self.high_bound_timestamp.ui(
+                ui,
+                timestamp_format,
+                default_high_string.as_deref(),
+                high_is_editable,
+            );
+
+            if response.lost_focus() && self.high_bound_timestamp.resolved().is_ok() {
+                validated = true;
+            }
         }
 
         if validated {
@@ -146,8 +274,8 @@ impl TimestampFilter {
     }
 
     pub fn resolve(&self) -> ResolvedTimestampFilter {
-        let low_bound = jiff::Timestamp::from_str(&self.low_bound).ok();
-        let high_bound = jiff::Timestamp::from_str(&self.high_bound).ok();
+        let low_bound = self.low_bound_timestamp.resolved().ok();
+        let high_bound = self.high_bound_timestamp.resolved().ok();
 
         match self.operator {
             TemporalOperator::Today => ResolvedTimestampFilter::Today,
@@ -179,18 +307,24 @@ impl TimestampFilter {
     }
 }
 
-fn timestamp_ui(ui: &mut egui::Ui, timestamp: &mut String) -> egui::Response {
-    let response = ui.text_edit_singleline(timestamp);
+fn best_effort_timestamp_parse(
+    value: &str,
+    timestamp_format: TimestampFormat,
+) -> Result<jiff::Timestamp, jiff::Error> {
+    // TODO(#11279): ideally we could use `re_log_types::Timestamp::parse` here, but it is currently
+    // bugged and parses nano instead of seconds.
+    if timestamp_format.kind() == TimestampFormatKind::UnixEpoch {
+        if let Ok(seconds) = value.parse::<f64>() {
+            return jiff::Timestamp::from_nanosecond((seconds * 1e9).round() as _);
+        } else {
+            return Err(jiff::Error::from_args(format_args!(
+                "could not parse seconds since unix epoch"
+            )));
+        };
+    }
 
-    match best_effort_timestamp_parse(&timestamp) {
-        Ok(timestamp) => ui.label(timestamp.to_string()),
-        Err(err) => ui.label("invalid timestamp").on_hover_text(err.to_string()),
-    };
+    //TODO: use `re_log_types::Timestamp::parse` here?
 
-    response
-}
-
-fn best_effort_timestamp_parse(value: &str) -> Result<jiff::Timestamp, jiff::Error> {
     let err = match jiff::Timestamp::from_str(value) {
         Ok(timestamp) => return Ok(timestamp),
         Err(err) => err,
@@ -224,55 +358,74 @@ fn best_effort_timestamp_parse(value: &str) -> Result<jiff::Timestamp, jiff::Err
     Err(err)
 }
 
+fn format_timestamp(timestamp: Timestamp, timestamp_format: TimestampFormat) -> String {
+    re_log_types::Timestamp::from(timestamp).format(timestamp_format)
+}
+
+// NOTE: we have hardcoded `TimestampFormat` here, but it's ok because this conversion is only used
+// in tests.
 impl From<ResolvedTimestampFilter> for TimestampFilter {
     fn from(value: ResolvedTimestampFilter) -> Self {
         match value {
             ResolvedTimestampFilter::All => Self {
                 operator: TemporalOperator::After,
-                low_bound: String::new(),
-                high_bound: String::new(),
+                low_bound_timestamp: Default::default(),
+                high_bound_timestamp: Default::default(),
             },
 
             ResolvedTimestampFilter::Today => Self {
                 operator: TemporalOperator::Today,
-                low_bound: String::new(),
-                high_bound: String::new(),
+                low_bound_timestamp: Default::default(),
+                high_bound_timestamp: Default::default(),
             },
             ResolvedTimestampFilter::Yesterday => Self {
                 operator: TemporalOperator::Yesterday,
-                low_bound: String::new(),
-                high_bound: String::new(),
+                low_bound_timestamp: Default::default(),
+                high_bound_timestamp: Default::default(),
             },
             ResolvedTimestampFilter::ThisWeek => Self {
                 operator: TemporalOperator::ThisWeek,
-                low_bound: String::new(),
-                high_bound: String::new(),
+                low_bound_timestamp: Default::default(),
+                high_bound_timestamp: Default::default(),
             },
             ResolvedTimestampFilter::LastWeek => Self {
                 operator: TemporalOperator::LastWeek,
-                low_bound: String::new(),
-                high_bound: String::new(),
+                low_bound_timestamp: Default::default(),
+                high_bound_timestamp: Default::default(),
             },
             ResolvedTimestampFilter::Before(high) => Self {
                 operator: TemporalOperator::Before,
-                low_bound: String::new(),
-                high_bound: high.to_string(),
+                low_bound_timestamp: Default::default(),
+                high_bound_timestamp: EditableTimestamp::new_from_timestamp(
+                    high,
+                    TimestampFormat::utc(),
+                ),
             },
             ResolvedTimestampFilter::After(low) => Self {
                 operator: TemporalOperator::After,
-                low_bound: low.to_string(),
-                high_bound: String::new(),
+                low_bound_timestamp: EditableTimestamp::new_from_timestamp(
+                    low,
+                    TimestampFormat::utc(),
+                ),
+                high_bound_timestamp: Default::default(),
             },
             ResolvedTimestampFilter::Between(low, high) => Self {
                 operator: TemporalOperator::Between,
-                low_bound: low.to_string(),
-                high_bound: high.to_string(),
+                low_bound_timestamp: EditableTimestamp::new_from_timestamp(
+                    low,
+                    TimestampFormat::utc(),
+                ),
+                high_bound_timestamp: EditableTimestamp::new_from_timestamp(
+                    high,
+                    TimestampFormat::utc(),
+                ),
             },
         }
     }
 }
 
 /// Resolved timestamp filter used for the actual computation of the filter.
+//TODO: make private?
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResolvedTimestampFilter {
     All,
@@ -293,11 +446,11 @@ pub enum ResolvedTimestampFilter {
 }
 
 impl ResolvedTimestampFilter {
-    pub fn apply(&self, timestamp: jiff::Timestamp) -> bool {
+    pub fn timestamp_range(&self) -> (Option<Timestamp>, Option<Timestamp>) {
         let tz = jiff::tz::TimeZone::system();
         let today = jiff::Timestamp::now().to_zoned(tz.clone()).date();
 
-        let (low, high) = match self {
+        match self {
             Self::All => (None, None),
 
             Self::Today => day_range_to_timestamp_range(Some(today), today.tomorrow().ok()),
@@ -319,7 +472,11 @@ impl ResolvedTimestampFilter {
             Self::Before(high) => (None, Some(*high)),
             Self::After(low) => (Some(*low), None),
             Self::Between(low, high) => (Some(*low), Some(*high)),
-        };
+        }
+    }
+
+    pub fn apply(&self, timestamp: jiff::Timestamp) -> bool {
+        let (low, high) = self.timestamp_range();
 
         let mut result = true;
 

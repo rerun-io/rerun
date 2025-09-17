@@ -2,9 +2,10 @@ use std::mem;
 
 use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense};
 
+use re_log_types::TimestampFormat;
 use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
-use super::{ComparisonOperator, Filter, FilterOperation};
+use super::{ComparisonOperator, Filter, FilterOperation, TimestampFormatted};
 use crate::TableBlueprint;
 
 /// Action to take based on the user interaction.
@@ -80,8 +81,17 @@ impl FilterState {
     /// Display the filter bar UI.
     ///
     /// This handles committing and/or restoring the state from the blueprint.
-    pub fn filter_bar_ui(&mut self, ui: &mut egui::Ui, table_blueprint: &mut TableBlueprint) {
-        let action = self.filter_bar_ui_impl(ui);
+    pub fn filter_bar_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
+        table_blueprint: &mut TableBlueprint,
+    ) {
+        // From there on, we always want to show the "today" date, because not doing so leads
+        // to some very confusing display.
+        let timestamp_format = timestamp_format.with_hide_today_date(false);
+
+        let action = self.filter_bar_ui_impl(ui, timestamp_format);
 
         match action {
             FilterUiAction::None => {}
@@ -98,7 +108,11 @@ impl FilterState {
     }
 
     #[must_use]
-    fn filter_bar_ui_impl(&mut self, ui: &mut egui::Ui) -> FilterUiAction {
+    fn filter_bar_ui_impl(
+        &mut self,
+        ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
+    ) -> FilterUiAction {
         if self.filters.is_empty() {
             return Default::default();
         }
@@ -123,6 +137,7 @@ impl FilterState {
                         // so we must invalidate if the filter at a given index changes its
                         // nature
                         let filter_id = ui.make_persistent_id(egui::Id::new(index).with(
+                            //TODO: order by complexity
                             match filter.operation {
                                 FilterOperation::IntCompares { .. } => "int",
                                 FilterOperation::FloatCompares { .. } => "float",
@@ -133,7 +148,8 @@ impl FilterState {
                             },
                         ));
 
-                        let result = filter.ui(ui, filter_id, Some(index) == active_index);
+                        let result =
+                            filter.ui(ui, timestamp_format, filter_id, Some(index) == active_index);
 
                         action = action.merge(result.filter_action);
 
@@ -170,6 +186,7 @@ impl Filter {
     fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
         filter_id: egui::Id,
         activate_filter: bool,
     ) -> DisplayFilterUiResult {
@@ -181,7 +198,7 @@ impl Filter {
         let layout_job = SyntaxHighlightedBuilder::new()
             .with_body_default(&self.column_name)
             .with_keyword(" ")
-            .with(&self.operation)
+            .with(&TimestampFormatted::new(&self.operation, timestamp_format))
             .into_job(ui.style());
 
         atoms.push_right(layout_job);
@@ -242,9 +259,12 @@ impl Filter {
             .open_bool(&mut popup_open);
 
         let popup_response = popup.show(|ui| {
-            let action = self
-                .operation
-                .popup_ui(ui, self.column_name.as_ref(), popup_was_closed);
+            let action = self.operation.popup_ui(
+                ui,
+                timestamp_format,
+                self.column_name.as_ref(),
+                popup_was_closed,
+            );
 
             // Ensure we close the popup if the popup ui decided on an action.
             if action != FilterUiAction::None {
@@ -293,13 +313,14 @@ impl Filter {
     }
 }
 
-impl SyntaxHighlighting for FilterOperation {
+impl SyntaxHighlighting for TimestampFormatted<'_, FilterOperation> {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_keyword(&self.operator_text());
+        builder.append_keyword(&self.inner.operator_text());
         builder.append_keyword(" ");
 
-        match self {
-            Self::IntCompares { value, operator: _ } => {
+        match self.inner {
+            //TODO: order by complexity
+            FilterOperation::IntCompares { value, operator: _ } => {
                 if let Some(value) = value {
                     builder.append_primitive(&re_format::format_int(*value));
                 } else {
@@ -307,7 +328,7 @@ impl SyntaxHighlighting for FilterOperation {
                 }
             }
 
-            Self::FloatCompares { value, operator: _ } => {
+            FilterOperation::FloatCompares { value, operator: _ } => {
                 if let Some(value) = value {
                     builder.append_primitive(&re_format::format_f64(*value));
                 } else {
@@ -315,20 +336,21 @@ impl SyntaxHighlighting for FilterOperation {
                 }
             }
 
-            Self::StringContains(query) => {
+            FilterOperation::StringContains(query) => {
                 builder.append_string_value(query);
             }
 
-            Self::NonNullableBoolean(boolean_filter) => {
+            FilterOperation::NonNullableBoolean(boolean_filter) => {
                 builder.append_primitive(&boolean_filter.operand_text());
             }
 
-            Self::NullableBoolean(boolean_filter) => {
+            FilterOperation::NullableBoolean(boolean_filter) => {
                 builder.append_primitive(&boolean_filter.operand_text());
             }
 
-            Self::Timestamp(timestamp_filter) => {
-                builder.append(timestamp_filter);
+            FilterOperation::Timestamp(timestamp_filter) => {
+                //timestamp_filter.syntax_highlighted(timestamp_filter)
+                builder.append(&self.convert(timestamp_filter));
             }
         }
     }
@@ -377,6 +399,7 @@ impl FilterOperation {
     fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
         column_name: &str,
         popup_just_opened: bool,
     ) -> FilterUiAction {
@@ -458,7 +481,7 @@ impl FilterOperation {
             }
 
             Self::Timestamp(timestamp_filter) => {
-                timestamp_filter.popup_ui(ui, column_name, &mut action);
+                timestamp_filter.popup_ui(ui, column_name, &mut action, timestamp_format);
             }
         }
 
@@ -493,6 +516,7 @@ mod tests {
             use FilterOperation::*;
             let _op = StringContains(String::new());
             match _op {
+                //TODO: order by complexity
                 IntCompares { .. }
                 | FloatCompares { .. }
                 | StringContains(_)
@@ -503,6 +527,7 @@ mod tests {
         };
 
         [
+            //TODO: order by complexity
             (
                 FilterOperation::IntCompares {
                     operator: ComparisonOperator::Eq,
@@ -587,7 +612,7 @@ mod tests {
                         active_filter: None,
                     };
 
-                    let _res = filter_state.filter_bar_ui_impl(ui);
+                    let _res = filter_state.filter_bar_ui_impl(ui, TimestampFormat::utc());
                 });
 
             harness.run();
@@ -604,7 +629,7 @@ mod tests {
                 .build_ui(|ui| {
                     re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                    let _res = filter_op.popup_ui(ui, "column:name", true);
+                    let _res = filter_op.popup_ui(ui, TimestampFormat::utc(), "column:name", true);
                 });
 
             harness.run();
@@ -648,7 +673,7 @@ mod tests {
             .build_ui(|ui| {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                filters.filter_bar_ui(ui, &mut TableBlueprint::default());
+                filters.filter_bar_ui(ui, TimestampFormat::utc(), &mut TableBlueprint::default());
             });
 
         harness.run();
