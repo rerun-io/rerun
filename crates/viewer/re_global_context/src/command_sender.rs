@@ -31,6 +31,9 @@ pub enum SystemCommand {
 
     ChangeDisplayMode(crate::DisplayMode),
 
+    /// Sets the display mode to what it is at startup.
+    ResetDisplayMode,
+
     /// Reset the `Viewer` to the default state
     ResetViewer,
 

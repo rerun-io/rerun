@@ -631,25 +631,29 @@ impl App {
                 }
             }
             SystemCommand::ActivateApp(app_id) => {
-                self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
+                if let Some(recording_id) = store_hub.active_store_id() {
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::LocalRecordings(recording_id.clone()));
+                } else {
+                    self.state.navigation.push_start_mode();
+                }
             }
 
             SystemCommand::CloseApp(app_id) => {
                 store_hub.close_app(&app_id);
             }
 
-            SystemCommand::ActivateRecordingOrTable(entry) => match &entry {
-                RecordingOrTable::Recording { store_id } => {
-                    self.state.navigation.replace(DisplayMode::LocalRecordings);
-                    store_hub.set_active_recording_id(store_id.clone());
+            SystemCommand::ActivateRecordingOrTable(entry) => {
+                match &entry {
+                    RecordingOrTable::Recording { store_id } => {
+                        store_hub.set_active_recording_id(store_id.clone());
+                    }
+                    RecordingOrTable::Table { .. } => {}
                 }
-                RecordingOrTable::Table { table_id } => {
-                    self.state
-                        .navigation
-                        .replace(DisplayMode::LocalTable(table_id.clone()));
-                }
-            },
+                self.state.navigation.replace(entry.display_mode());
+            }
 
             SystemCommand::CloseRecordingOrTable(entry) => {
                 // TODO(#9464): Find a better successor here.
@@ -722,6 +726,11 @@ impl App {
                 }
 
                 self.state.navigation.replace(display_mode);
+
+                egui_ctx.request_repaint(); // Make sure we actually see the new mode.
+            }
+            SystemCommand::ResetDisplayMode => {
+                self.state.navigation.push_start_mode();
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
@@ -844,7 +853,9 @@ impl App {
                         }
 
                         Item::StoreId(store_id) => {
-                            self.state.navigation.replace(DisplayMode::LocalRecordings);
+                            self.state
+                                .navigation
+                                .replace(DisplayMode::LocalRecordings(store_id.clone()));
                             store_hub.set_active_recording_id(store_id.clone());
                         }
 
@@ -854,9 +865,7 @@ impl App {
                         | Item::ComponentPath(_)
                         | Item::Container(_)
                         | Item::View(_)
-                        | Item::DataResult(_, _) => {
-                            self.state.navigation.replace(DisplayMode::LocalRecordings);
-                        }
+                        | Item::DataResult(_, _) => {}
                     }
                 }
 
@@ -1365,7 +1374,7 @@ impl App {
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.navigation.peek() {
-                DisplayMode::LocalRecordings
+                DisplayMode::LocalRecordings(_)
                 | DisplayMode::RedapEntry(_)
                 | DisplayMode::RedapServer(_) => {
                     self.state.navigation.push(DisplayMode::ChunkStoreBrowser);

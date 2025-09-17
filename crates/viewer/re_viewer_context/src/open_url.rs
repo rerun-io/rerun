@@ -86,6 +86,17 @@ pub enum ViewerOpenUrl {
     },
 }
 
+impl From<re_uri::RedapUri> for ViewerOpenUrl {
+    fn from(value: re_uri::RedapUri) -> Self {
+        match value {
+            re_uri::RedapUri::Catalog(uri) => Self::RedapCatalog(uri),
+            re_uri::RedapUri::Entry(uri) => Self::RedapEntry(uri),
+            re_uri::RedapUri::DatasetData(uri) => Self::RedapDatasetPartition(uri),
+            re_uri::RedapUri::Proxy(uri) => Self::RedapProxy(uri),
+        }
+    }
+}
+
 impl std::str::FromStr for ViewerOpenUrl {
     type Err = anyhow::Error;
 
@@ -245,15 +256,16 @@ impl ViewerOpenUrl {
                 Err(anyhow::anyhow!("Can't share links to the settings screen."))
             }
 
-            DisplayMode::LocalRecordings => {
+            DisplayMode::LocalRecordings(store_id) => {
                 // Local recordings includes those downloaded from rrd urls
                 // (as of writing this includes the sample recordings!)
                 // If it's one of those we want to update the address bar accordingly.
 
-                let active_recording = store_hub
-                    .active_recording()
-                    .ok_or(anyhow::anyhow!("No active recording"))?;
-                let data_source = active_recording
+                let recording = store_hub
+                    .store_bundle()
+                    .get(store_id)
+                    .ok_or(anyhow::anyhow!("No data for active recording"))?;
+                let data_source = recording
                     .data_source
                     .as_ref()
                     .ok_or(anyhow::anyhow!("No data source"))?;
@@ -828,28 +840,30 @@ mod tests {
     fn test_viewer_open_url_from_local_recordings_display_mode() {
         let mut store_hub = StoreHub::test_hub();
 
-        fn add_store(store_hub: &mut StoreHub, data_source: Option<SmartChannelSource>) {
+        fn add_store(store_hub: &mut StoreHub, data_source: Option<SmartChannelSource>) -> StoreId {
             let store_id = StoreId::random(StoreKind::Recording, "test");
             let mut entity_db = EntityDb::new(store_id.clone());
             entity_db.data_source = data_source;
             store_hub.insert_entity_db(entity_db);
-            store_hub.set_active_recording(store_id);
+            store_hub.set_active_recording(store_id.clone());
+            store_id
         }
 
         // originating from a file.
-        add_store(
+        let id = add_store(
             &mut store_hub,
             Some(SmartChannelSource::File(std::path::PathBuf::from(
                 "/path/to/test.rrd",
             ))),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+                .unwrap(),
             ViewerOpenUrl::FilePath(std::path::PathBuf::from("/path/to/test.rrd"))
         );
 
         // originating from HTTP stream.
-        add_store(
+        let id = add_store(
             &mut store_hub,
             Some(SmartChannelSource::RrdHttpStream {
                 url: "https://example.com/recording.rrd".to_owned(),
@@ -857,47 +871,52 @@ mod tests {
             }),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+                .unwrap(),
             ViewerOpenUrl::RrdHttpUrl("https://example.com/recording.rrd".parse().unwrap())
         );
 
         // originating from SDK (not possible).
-        add_store(&mut store_hub, Some(SmartChannelSource::Sdk));
+        let id = add_store(&mut store_hub, Some(SmartChannelSource::Sdk));
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).is_err(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+                .is_err(),
         );
 
         // originating from stdin (not possible).
-        add_store(&mut store_hub, Some(SmartChannelSource::Stdin));
+        let id = add_store(&mut store_hub, Some(SmartChannelSource::Stdin));
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).is_err(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+                .is_err(),
         );
 
         // originating from web event listener.
-        add_store(
+        let id = add_store(
             &mut store_hub,
             Some(SmartChannelSource::RrdWebEventListener),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+                .unwrap(),
             ViewerOpenUrl::WebEventListener
         );
 
         // originating from JS channel (not possible).
-        add_store(
+        let id = add_store(
             &mut store_hub,
             Some(SmartChannelSource::JsChannel {
                 channel_name: "test_channel".to_owned(),
             }),
         );
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).is_err(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+                .is_err(),
         );
 
         // originating from Redap gRPC stream.
         let entry_id = EntryId::new();
         let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
-        add_store(
+        let id = add_store(
             &mut store_hub,
             Some(SmartChannelSource::RedapGrpcStream {
                 uri: uri.parse().unwrap(),
@@ -908,7 +927,8 @@ mod tests {
         let mut uri: re_uri::DatasetPartitionUri = uri.parse().unwrap();
 
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id.clone()))
+                .unwrap(),
             ViewerOpenUrl::RedapDatasetPartition(uri.clone())
         );
 
@@ -930,7 +950,8 @@ mod tests {
         uri.fragment = fragment.clone();
 
         let mut url =
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap();
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+                .unwrap();
 
         *url.fragment_mut().unwrap() = fragment;
 
@@ -938,19 +959,21 @@ mod tests {
 
         // originating from message proxy.
         let uri = "rerun://localhost:51234/proxy";
-        add_store(
+        let id = add_store(
             &mut store_hub,
             Some(SmartChannelSource::MessageProxy(uri.parse().unwrap())),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+                .unwrap(),
             ViewerOpenUrl::RedapProxy(uri.parse().unwrap())
         );
 
         // with no data source (not possible).
-        add_store(&mut store_hub, None);
+        let id = add_store(&mut store_hub, None);
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).is_err(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+                .is_err(),
         );
     }
 
