@@ -242,11 +242,11 @@ where
 }
 
 impl<'a> ListItemContentButtonsExt<'a> for ItemButtons<'a> {
-    fn buttons(&self) -> &ItemButtons<'a> {
+    fn buttons(&self) -> &Self {
         self
     }
 
-    fn buttons_mut(&mut self) -> &mut ItemButtons<'a> {
+    fn buttons_mut(&mut self) -> &mut Self {
         self
     }
 }
