@@ -231,9 +231,9 @@ impl FilterOperation {
 
             DataType::Boolean => {
                 if nullability.is_either() {
-                    Some(Self::NullableBoolean(NullableBooleanFilter(Some(true))))
+                    Some(Self::NullableBoolean(NullableBooleanFilter::IsTrue))
                 } else {
-                    Some(Self::NonNullableBoolean(NonNullableBooleanFilter(true)))
+                    Some(Self::NonNullableBoolean(NonNullableBooleanFilter::IsTrue))
                 }
             }
 

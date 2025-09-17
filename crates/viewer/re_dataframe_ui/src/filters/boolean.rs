@@ -12,22 +12,32 @@ use super::{FilterError, FilterUiAction};
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NonNullableBooleanFilter(pub bool);
+pub enum NonNullableBooleanFilter {
+    IsTrue,
+    IsFalse,
+}
 
 impl NonNullableBooleanFilter {
+    pub fn as_bool(&self) -> bool {
+        match self {
+            Self::IsTrue => true,
+            Self::IsFalse => false,
+        }
+    }
+
     pub fn as_filter_expression(
         &self,
         column: &Column,
         field: &Field,
     ) -> Result<Expr, FilterError> {
         match field.data_type() {
-            DataType::Boolean => Ok(col(column.clone()).eq(lit(self.0))),
+            DataType::Boolean => Ok(col(column.clone()).eq(lit(self.as_bool()))),
 
             DataType::List(field) | DataType::ListView(field)
                 if field.data_type() == &DataType::Boolean =>
             {
                 // `ANY` semantics""
-                Ok(array_has(col(column.clone()), lit(self.0)))
+                Ok(array_has(col(column.clone()), lit(self.as_bool())))
             }
 
             _ => Err(FilterError::InvalidNonNullableBooleanFilterOperation(
@@ -38,7 +48,7 @@ impl NonNullableBooleanFilter {
     }
 
     pub fn operand_text(&self) -> String {
-        self.0.to_string()
+        self.as_bool().to_string()
     }
 
     pub fn popup_ui(
@@ -52,11 +62,11 @@ impl NonNullableBooleanFilter {
         let mut clicked = false;
 
         clicked |= ui
-            .re_radio_value(&mut self.0, true, primitive_widget_text(ui, "true"))
+            .re_radio_value(self, Self::IsTrue, primitive_widget_text(ui, "true"))
             .clicked();
 
         clicked |= ui
-            .re_radio_value(&mut self.0, false, primitive_widget_text(ui, "false"))
+            .re_radio_value(self, Self::IsFalse, primitive_widget_text(ui, "false"))
             .clicked();
 
         if clicked {
@@ -69,9 +79,22 @@ impl NonNullableBooleanFilter {
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NullableBooleanFilter(pub Option<bool>); //TODO: make this a full enum
+#[expect(clippy::enum_variant_names)]
+pub enum NullableBooleanFilter {
+    IsTrue,
+    IsFalse,
+    IsNull,
+}
 
 impl NullableBooleanFilter {
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Self::IsTrue => Some(true),
+            Self::IsFalse => Some(false),
+            Self::IsNull => None,
+        }
+    }
+
     pub fn as_filter_expression(
         &self,
         column: &Column,
@@ -79,7 +102,7 @@ impl NullableBooleanFilter {
     ) -> Result<Expr, FilterError> {
         match field.data_type() {
             DataType::Boolean => {
-                if let Some(value) = self.0 {
+                if let Some(value) = self.as_bool() {
                     Ok(col(column.clone()).eq(lit(value)))
                 } else {
                     Ok(col(column.clone()).is_null())
@@ -90,7 +113,7 @@ impl NullableBooleanFilter {
                 if field.data_type() == &DataType::Boolean =>
             {
                 // `ANY` semantics
-                if let Some(value) = self.0 {
+                if let Some(value) = self.as_bool() {
                     Ok(array_has(col(column.clone()), lit(value)))
                 } else {
                     Ok(col(column.clone()).is_null().or(array_element(
@@ -109,7 +132,7 @@ impl NullableBooleanFilter {
     }
 
     pub fn operand_text(&self) -> String {
-        if let Some(value) = self.0 {
+        if let Some(value) = self.as_bool() {
             value.to_string()
         } else {
             "null".to_owned()
@@ -127,13 +150,13 @@ impl NullableBooleanFilter {
         let mut clicked = false;
 
         clicked |= ui
-            .re_radio_value(&mut self.0, Some(true), primitive_widget_text(ui, "true"))
+            .re_radio_value(self, Self::IsTrue, primitive_widget_text(ui, "true"))
             .clicked();
         clicked |= ui
-            .re_radio_value(&mut self.0, Some(false), primitive_widget_text(ui, "false"))
+            .re_radio_value(self, Self::IsFalse, primitive_widget_text(ui, "false"))
             .clicked();
         clicked |= ui
-            .re_radio_value(&mut self.0, None, primitive_widget_text(ui, "null"))
+            .re_radio_value(self, Self::IsNull, primitive_widget_text(ui, "null"))
             .clicked();
 
         if clicked {

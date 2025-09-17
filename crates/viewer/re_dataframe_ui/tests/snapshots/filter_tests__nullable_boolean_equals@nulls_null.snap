@@ -4,9 +4,7 @@ expression: test_results
 ---
 TestResult {
     op: NullableBoolean(
-        NullableBooleanFilter(
-            None,
-        ),
+        IsNull,
     ),
     field: Field {
         name: "column",

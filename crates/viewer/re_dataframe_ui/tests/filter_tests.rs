@@ -542,25 +542,25 @@ async fn test_string_contains_list() {
 #[tokio::test]
 async fn test_non_nullable_boolean_equals() {
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter(true)),
+        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
         TestColumn::bools(),
         "true"
     );
 
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter(false)),
+        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
         TestColumn::bools(),
         "false"
     );
 
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter(true)),
+        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
         TestColumn::bools_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
-        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter(false)),
+        FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
         TestColumn::bools_nulls(),
         "nulls_false"
     );
@@ -569,19 +569,19 @@ async fn test_non_nullable_boolean_equals() {
 #[tokio::test]
 async fn test_nullable_boolean_equals() {
     filter_snapshot!(
-        FilterOperation::NullableBoolean(NullableBooleanFilter(Some(true))),
+        FilterOperation::NullableBoolean(NullableBooleanFilter::IsTrue),
         TestColumn::bools_nulls(),
         "nulls_true"
     );
 
     filter_snapshot!(
-        FilterOperation::NullableBoolean(NullableBooleanFilter(Some(false))),
+        FilterOperation::NullableBoolean(NullableBooleanFilter::IsFalse),
         TestColumn::bools_nulls(),
         "nulls_false"
     );
 
     filter_snapshot!(
-        FilterOperation::NullableBoolean(NullableBooleanFilter(None)),
+        FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
         TestColumn::bools_nulls(),
         "nulls_null"
     );
@@ -591,7 +591,7 @@ async fn test_nullable_boolean_equals() {
 async fn test_boolean_equals_list_non_nullable() {
     for &nullability in Nullability::ALL {
         filter_snapshot!(
-            FilterOperation::NonNullableBoolean(NonNullableBooleanFilter(true)),
+            FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
             TestColumn::bool_lists(nullability),
             format!("{nullability:?}_true")
         );
@@ -604,7 +604,7 @@ async fn test_boolean_equals_list_nullable() {
     // NonNullableBooleanFilter is used in this case.
     for nullability in [Nullability::BOTH, Nullability::INNER, Nullability::OUTER] {
         filter_snapshot!(
-            FilterOperation::NullableBoolean(NullableBooleanFilter(None)),
+            FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
             TestColumn::bool_lists(nullability),
             format!("{nullability:?}")
         );

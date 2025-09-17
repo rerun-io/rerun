@@ -526,23 +526,23 @@ mod tests {
                 "string_contains_empty",
             ),
             (
-                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter(true)),
+                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
                 "boolean_equals_true",
             ),
             (
-                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter(false)),
+                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
                 "boolean_equals_false",
             ),
             (
-                FilterOperation::NullableBoolean(NullableBooleanFilter(Some(true))),
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsTrue),
                 "nullable_boolean_equals_true",
             ),
             (
-                FilterOperation::NullableBoolean(NullableBooleanFilter(Some(false))),
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsFalse),
                 "nullable_boolean_equals_false",
             ),
             (
-                FilterOperation::NullableBoolean(NullableBooleanFilter(None)),
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
                 "nullable_boolean_equals_null",
             ),
         ]
