@@ -1,5 +1,12 @@
 /// Run `rustfmt` on some Rust code.
 pub fn rustfmt_str(source: &str) -> Option<String> {
+    // We need to run `cago fmt` several times because it is not idempotent;
+    // see https://github.com/rust-lang/rustfmt/issues/5824
+    let source = rustfmt_once(source)?;
+    rustfmt_once(&source)
+}
+
+fn rustfmt_once(source: &str) -> Option<String> {
     use std::io::Write as _;
     use std::process::Stdio;
 
