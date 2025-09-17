@@ -3153,8 +3153,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark"
 version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26c9caff9c964af1e3d913acd85e86d2170e3169a43cf4ff84eea3106691c14d"
+source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=lucas%2Fupdate-egui-main#361af065d90fd9c04c232aa50701aefdf956dc46"
 dependencies = [
  "egui",
  "egui_commonmark_backend",
@@ -3165,8 +3164,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark_backend"
 version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e317aa4031f27be77d4c1c33cb038cdf02d77790c28e5cf1283a66cceb88695"
+source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=lucas%2Fupdate-egui-main#361af065d90fd9c04c232aa50701aefdf956dc46"
 dependencies = [
  "egui",
  "egui_extras",

@@ -210,7 +210,7 @@ impl Filter {
             .with(&self.operation)
             .into_job(ui.style());
 
-        let galley = ui.fonts(|f| f.layout_job(layout_job));
+        let galley = ui.fonts_mut(|f| f.layout_job(layout_job));
 
         let frame = Frame::new()
             .inner_margin(Margin::symmetric(4, 4))

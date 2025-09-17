@@ -817,7 +817,7 @@ egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 # egui_tiles = { path = "../egui_tiles" }
 
-# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" }
+egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "lucas/update-egui-main" }
 
 # egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 

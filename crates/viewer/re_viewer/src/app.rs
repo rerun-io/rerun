@@ -333,10 +333,6 @@ impl App {
             "remove copied text formatting",
             Arc::new(|ctx| {
                 ctx.output_mut(|o| {
-                    #[expect(deprecated)]
-                    if !o.copied_text.is_empty() {
-                        o.copied_text = re_format::remove_number_formatting(&o.copied_text);
-                    }
                     for command in &mut o.commands {
                         if let egui::output::OutputCommand::CopyText(text) = command {
                             *text = re_format::remove_number_formatting(text);
