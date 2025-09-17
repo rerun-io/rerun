@@ -86,6 +86,17 @@ pub enum ViewerOpenUrl {
     },
 }
 
+impl From<re_uri::RedapUri> for ViewerOpenUrl {
+    fn from(value: re_uri::RedapUri) -> Self {
+        match value {
+            re_uri::RedapUri::Catalog(uri) => Self::RedapCatalog(uri),
+            re_uri::RedapUri::Entry(uri) => Self::RedapEntry(uri),
+            re_uri::RedapUri::DatasetData(uri) => Self::RedapDatasetPartition(uri),
+            re_uri::RedapUri::Proxy(uri) => Self::RedapProxy(uri),
+        }
+    }
+}
+
 impl std::str::FromStr for ViewerOpenUrl {
     type Err = anyhow::Error;
 

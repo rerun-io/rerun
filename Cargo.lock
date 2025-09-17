@@ -7445,6 +7445,7 @@ dependencies = [
  "re_arrow_util",
  "re_data_ui",
  "re_format",
+ "re_log",
  "re_log_types",
  "re_protos",
  "re_test_context",

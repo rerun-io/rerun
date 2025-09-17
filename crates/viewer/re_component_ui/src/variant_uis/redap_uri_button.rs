@@ -3,9 +3,11 @@ use std::str::FromStr as _;
 
 use egui::{Align, Layout, Link, Ui, UiBuilder};
 use re_types_core::{ComponentDescriptor, RowId};
-use re_ui::UiExt as _;
+use re_ui::UiExt;
 use re_uri::RedapUri;
-use re_viewer_context::{SystemCommand, SystemCommandSender as _, ViewerContext};
+use re_viewer_context::{
+    SystemCommand, SystemCommandSender as _, ViewerContext, open_url::ViewerOpenUrl,
+};
 
 /// Display an URL as an `Open` button (instead of spelling the full URL).
 ///
@@ -33,6 +35,7 @@ pub fn redap_uri_button(
         .value(0);
 
     let uri = RedapUri::from_str(url_str)?;
+    let uri_clone = uri.clone();
 
     let loaded_recording_id = ctx.storage_context.bundle.recordings().find_map(|db| {
         if db
@@ -54,16 +57,42 @@ pub fn redap_uri_button(
 
     // Show the link left aligned and justified, so the whole cell is clickable.
     let put_justified_left_aligned = |ui: &mut Ui, link| {
-        ui.scope_builder(
-            UiBuilder::new().max_rect(ui.max_rect()).layout(
-                Layout::left_to_right(Align::Center)
-                    .with_main_justify(true)
-                    .with_cross_justify(true)
-                    .with_main_align(Align::Min),
+        let res = ui
+            .scope_builder(
+                UiBuilder::new().max_rect(ui.max_rect()).layout(
+                    Layout::left_to_right(Align::Center)
+                        .with_main_justify(true)
+                        .with_cross_justify(true)
+                        .with_main_align(Align::Min),
+                ),
+                |ui| ui.add(link),
+            )
+            .inner;
+
+        let copy_icon_rect = egui::Rect {
+            min: egui::pos2(
+                ui.max_rect().max.x - ui.max_rect().height(),
+                ui.max_rect().min.y,
             ),
-            |ui| ui.add(link),
-        )
-        .inner
+            max: ui.max_rect().max,
+        };
+        if ui.ui_contains_pointer()
+            && ui
+                .place(
+                    copy_icon_rect,
+                    ui.small_icon_button_widget(&re_ui::icons::COPY, "Copy link"),
+                )
+                .clicked()
+        {
+            if let Ok(url) = ViewerOpenUrl::from(uri_clone).sharable_url(None) {
+                ctx.command_sender()
+                    .send_system(SystemCommand::CopyViewerUrl(url));
+            } else {
+                re_log::error!("Failed to create a sharable url for recording");
+            }
+        }
+
+        res
     };
 
     if let Some(loaded_recording_id) = loaded_recording_id {
