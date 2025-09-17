@@ -4,20 +4,23 @@
 use std::ops::Range;
 
 use arrow::array::cast::{
-    AsArray as _, as_generic_list_array, as_map_array, as_struct_array, as_union_array,
+    as_generic_list_array, as_map_array, as_struct_array, as_union_array, AsArray as _,
 };
 use arrow::array::types::{
-    ArrowDictionaryKeyType, Float16Type, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
-    Int64Type, RunEndIndexType, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
+    ArrowDictionaryKeyType, Float16Type, Float32Type, Float64Type, Int16Type, Int32Type, Int64Type,
+    Int8Type, RunEndIndexType, UInt16Type, UInt32Type, UInt64Type, UInt8Type,
 };
 use arrow::array::{
+    as_generic_binary_array, downcast_dictionary_array, downcast_integer_array, downcast_run_array,
     Array, ArrayAccessor as _, DictionaryArray, FixedSizeBinaryArray, FixedSizeListArray,
     GenericBinaryArray, GenericListArray, MapArray, OffsetSizeTrait, PrimitiveArray, RunArray,
     StructArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
-    TimestampSecondArray, UnionArray, as_generic_binary_array, downcast_dictionary_array,
-    downcast_integer_array, downcast_run_array,
+    TimestampSecondArray, UnionArray,
 };
-use arrow::datatypes::{ArrowNativeType as _, DataType, Field, TimeUnit, UnionMode};
+use arrow::datatypes::{
+    ArrowNativeType as _, DataType, Field, TimeUnit, TimestampMicrosecondType,
+    TimestampMillisecondType, TimestampNanosecondType, TimestampSecondType, UnionMode,
+};
 use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::{RichText, Ui};
@@ -172,30 +175,17 @@ fn make_ui<'a>(
             show_arrow_builtin(array, options)
         }
         DataType::Timestamp(TimeUnit::Second, _) => {
-            Ok(show_timestamp(array
-                .as_any()
-                .downcast_ref::<TimestampSecondArray>()
-                .expect("TimestampSecondArray downcast failed"), options.timestamp_format))
+            show_custom(array.as_primitive::<TimestampSecondType>(), options)
         }
         DataType::Timestamp(TimeUnit::Millisecond, _) => {
-            Ok(show_timestamp(array
-                .as_any()
-                .downcast_ref::<TimestampMillisecondArray>()
-                .expect("TimestampMillisecondArray downcast failed"), options.timestamp_format))
+            show_custom(array.as_primitive::<TimestampMillisecondType>(), options)
         }
         DataType::Timestamp(TimeUnit::Microsecond, _) => {
-            Ok(show_timestamp(array
-                .as_any()
-                .downcast_ref::<TimestampMicrosecondArray>()
-                .expect("TimestampMicrosecondArray downcast failed"), options.timestamp_format))
+           show_custom(array.as_primitive::<TimestampMicrosecondType>(), options)
         }
         DataType::Timestamp(TimeUnit::Nanosecond, _) => {
-            Ok(show_timestamp(array
-                .as_any()
-                .downcast_ref::<TimestampNanosecondArray>()
-                .expect("TimestampNanosecondArray downcast failed"), options.timestamp_format))
+            show_custom(array.as_primitive::<TimestampNanosecondType>(), options)
         }
-
         DataType::FixedSizeBinary(_) => {
             let a = array
             .as_any()
@@ -236,49 +226,6 @@ fn make_ui<'a>(
         }
     }
 }
-
-fn show_timestamp<'a, T>(array: T, format: TimestampFormat) -> Box<dyn ShowIndex + 'a>
-where
-    T: Array + 'a,
-    ShowTimestamp<T>: ShowIndex,
-{
-    Box::new(ShowTimestamp { array, format })
-}
-
-struct ShowTimestamp<T: Array> {
-    array: T,
-    format: TimestampFormat,
-}
-
-macro_rules! show_timestamp_impl {
-    ($array_ty:ty, $conv_fn:ident) => {
-        impl ShowIndex for ShowTimestamp<&$array_ty> {
-            fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult {
-                if self.array.is_null(idx) {
-                    f.append_primitive("null");
-                } else {
-                    #[allow(trivial_numeric_casts)]
-                    let timestamp = jiff::Timestamp::$conv_fn(self.array.value(idx) as _)
-                        .map_err(|err| ArrowError::ExternalError(Box::new(err)))?;
-                    f.append_primitive(
-                        &re_log_types::Timestamp::from(timestamp).format(self.format),
-                    );
-                }
-
-                Ok(())
-            }
-
-            fn array(&self) -> &dyn Array {
-                self.array
-            }
-        }
-    };
-}
-
-show_timestamp_impl!(TimestampSecondArray, from_second);
-show_timestamp_impl!(TimestampMillisecondArray, from_millisecond);
-show_timestamp_impl!(TimestampMicrosecondArray, from_microsecond);
-show_timestamp_impl!(TimestampNanosecondArray, from_nanosecond);
 
 struct ShowBuiltIn<'a> {
     array: &'a dyn Array,
@@ -471,7 +418,7 @@ impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
     }
 }
 
-macro_rules! primitive_display {
+macro_rules! numeric_primitive_display {
     ($fmt:path: $($t:ty),+) => {
         $(impl<'a> ShowIndex for &'a PrimitiveArray<$t>
         {
@@ -489,11 +436,46 @@ macro_rules! primitive_display {
     };
 }
 
-primitive_display!(re_format::format_int: Int8Type, Int16Type, Int32Type, Int64Type);
-primitive_display!(re_format::format_uint: UInt8Type, UInt16Type, UInt32Type, UInt64Type);
-primitive_display!(re_format::format_f32: Float32Type);
-primitive_display!(re_format::format_f64: Float64Type);
-primitive_display!(re_format::format_f16: Float16Type);
+numeric_primitive_display!(re_format::format_int: Int8Type, Int16Type, Int32Type, Int64Type);
+numeric_primitive_display!(re_format::format_uint: UInt8Type, UInt16Type, UInt32Type, UInt64Type);
+numeric_primitive_display!(re_format::format_f32: Float32Type);
+numeric_primitive_display!(re_format::format_f64: Float64Type);
+numeric_primitive_display!(re_format::format_f16: Float16Type);
+
+macro_rules! timestamp_primitive_display {
+    ($t:ty, $conv_fn:ident ) => {
+        impl<'a> ShowIndexState<'a> for &'a $t {
+            type State = TimestampFormat;
+
+            fn prepare(&self, options: &DisplayOptions<'a>) -> Result<Self::State, ArrowError> {
+                Ok(options.timestamp_format)
+            }
+
+            fn write(
+                &self,
+                state: &Self::State,
+                idx: usize,
+                f: &mut SyntaxHighlightedBuilder,
+            ) -> EmptyArrowResult {
+                if self.is_null(idx) {
+                    f.append_primitive("null");
+                } else {
+                    #[allow(trivial_numeric_casts)]
+                    let timestamp = jiff::Timestamp::$conv_fn(self.value(idx) as _)
+                        .map_err(|err| ArrowError::ExternalError(Box::new(err)))?;
+                    f.append_primitive(&re_log_types::Timestamp::from(timestamp).format(*state));
+                }
+
+                Ok(())
+            }
+        }
+    };
+}
+
+timestamp_primitive_display!(TimestampSecondArray, from_second);
+timestamp_primitive_display!(TimestampMillisecondArray, from_millisecond);
+timestamp_primitive_display!(TimestampMicrosecondArray, from_microsecond);
+timestamp_primitive_display!(TimestampNanosecondArray, from_nanosecond);
 
 impl<OffsetSize: OffsetSizeTrait> ShowIndex for &GenericBinaryArray<OffsetSize> {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult {
