@@ -19,7 +19,9 @@ impl SectionCollapsingHeader<'_> {
         Self {
             label: label.into(),
             default_open: true,
-            buttons: ItemButtons::default(),
+            buttons: ItemButtons::default()
+                // Section headers should always show buttons
+                .with_always_show_buttons(true),
         }
     }
 
