@@ -38,7 +38,7 @@ pub fn redap_uri_button(
         if db
             .data_source
             .as_ref()
-            .is_some_and(|source| source.redap_uri().as_ref() == Some(&uri))
+            .is_some_and(|source| source.stripped_redap_uri().as_ref() == Some(&uri))
         {
             Some(db.store_id().clone())
         } else {
@@ -50,7 +50,7 @@ pub fn redap_uri_button(
             .connected_receivers
             .sources()
             .iter()
-            .any(|source| source.redap_uri().as_ref() == Some(&uri));
+            .any(|source| source.stripped_redap_uri().as_ref() == Some(&uri));
 
     // Show the link left aligned and justified, so the whole cell is clickable.
     let put_justified_left_aligned = |ui: &mut Ui, link| {

@@ -130,6 +130,14 @@ impl SmartChannelSource {
         }
     }
 
+    /// Same as [`Self::redap_uri`], but strips any extra query or fragment from the uri.
+    pub fn stripped_redap_uri(&self) -> Option<RedapUri> {
+        self.redap_uri().map(|uri| match uri {
+            RedapUri::Catalog(_) | RedapUri::Entry(_) | RedapUri::Proxy(_) => uri,
+            RedapUri::DatasetData(uri) => RedapUri::DatasetData(uri.without_query_and_fragment()),
+        })
+    }
+
     /// Loading text for sources that load data from a specific source (e.g. a file or a URL).
     ///
     /// Returns `None` for any source that receives data dynamically through SDK calls or similar.
