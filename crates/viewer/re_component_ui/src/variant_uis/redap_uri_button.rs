@@ -5,7 +5,9 @@ use egui::{Align, Layout, Link, Ui, UiBuilder};
 use re_types_core::{ComponentDescriptor, RowId};
 use re_ui::UiExt as _;
 use re_uri::RedapUri;
-use re_viewer_context::{SystemCommand, SystemCommandSender as _, ViewerContext};
+use re_viewer_context::{
+    SystemCommand, SystemCommandSender as _, ViewerContext, open_url::ViewerOpenUrl,
+};
 
 /// Display an URL as an `Open` button (instead of spelling the full URL).
 ///
@@ -38,7 +40,7 @@ pub fn redap_uri_button(
         if db
             .data_source
             .as_ref()
-            .is_some_and(|source| source.redap_uri().as_ref() == Some(&uri))
+            .is_some_and(|source| source.stripped_redap_uri().as_ref() == Some(&uri))
         {
             Some(db.store_id().clone())
         } else {
@@ -50,24 +52,52 @@ pub fn redap_uri_button(
             .connected_receivers
             .sources()
             .iter()
-            .any(|source| source.redap_uri().as_ref() == Some(&uri));
+            .any(|source| source.stripped_redap_uri().as_ref() == Some(&uri));
 
-    // Show the link left aligned and justified, so the whole cell is clickable.
-    let put_justified_left_aligned = |ui: &mut Ui, link| {
-        ui.scope_builder(
-            UiBuilder::new().max_rect(ui.max_rect()).layout(
-                Layout::left_to_right(Align::Center)
-                    .with_main_justify(true)
-                    .with_cross_justify(true)
-                    .with_main_align(Align::Min),
-            ),
-            |ui| ui.add(link),
-        )
-        .inner
+    let uri_clone = uri.clone();
+    // Show the link left aligned and justified so the whole cell is clickable.
+    //
+    // And add a button to copy the link.
+    let link_with_copy = |ui: &mut Ui, link| {
+        let rect = ui.max_rect();
+        let contains_pointer = ui.rect_contains_pointer(rect);
+        egui::Sides::new()
+            .shrink_left()
+            .height(ui.max_rect().height())
+            .show(
+                ui,
+                |ui| {
+                    ui.scope_builder(
+                        UiBuilder::new().max_rect(ui.max_rect()).layout(
+                            Layout::left_to_right(Align::Center)
+                                .with_main_justify(true)
+                                .with_cross_justify(true)
+                                .with_main_align(Align::Min),
+                        ),
+                        |ui| ui.add(link),
+                    )
+                    .inner
+                },
+                |ui| {
+                    if contains_pointer
+                        && ui
+                            .small_icon_button(&re_ui::icons::COPY, "Copy link")
+                            .clicked()
+                    {
+                        if let Ok(url) = ViewerOpenUrl::from(uri_clone).sharable_url(None) {
+                            ctx.command_sender()
+                                .send_system(SystemCommand::CopyViewerUrl(url));
+                        } else {
+                            re_log::error!("Failed to create a sharable url for recording");
+                        }
+                    }
+                },
+            )
+            .0
     };
 
     if let Some(loaded_recording_id) = loaded_recording_id {
-        let response = put_justified_left_aligned(ui, Link::new("Switch to")).on_hover_ui(|ui| {
+        let response = link_with_copy(ui, Link::new("Switch to")).on_hover_ui(|ui| {
             ui.label("This recording is already loaded. Click to switch to it.");
         });
 
@@ -91,7 +121,7 @@ pub fn redap_uri_button(
             }
         });
     } else {
-        let response = put_justified_left_aligned(ui, Link::new("Open")).on_hover_ui(|ui| {
+        let response = link_with_copy(ui, Link::new("Open")).on_hover_ui(|ui| {
             ui.label(uri.to_string());
         });
 

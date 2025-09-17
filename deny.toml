@@ -54,6 +54,7 @@ deny = [
 skip = [
   { name = "base64" },           # Too popular
   { name = "block2" },           # Old version via rfd
+  { name = "cargo-platform" },   # Older version used by ply-rs. It's build-time only!
   { name = "cargo_metadata" },   # Older version used by ply-rs. It's small, and it's build-time only!
   { name = "core-foundation" },  # Currently, e.g. `webbrowser` and `winit` use different versions.
   { name = "hashbrown" },        # Old version used by polar-rs

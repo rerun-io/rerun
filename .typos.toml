@@ -23,6 +23,7 @@ somes = "somes" # many `Some`
 teh = "teh"     # part of @teh-cmc
 trak = "trak"   # mp4 crate spelling
 typ = "typ"     # We cannot write "type" in rust
+Yoh = "Yoh"     # Part of @YohDeadfall
 
 # Use the more common spelling
 adaptor = "adapter"

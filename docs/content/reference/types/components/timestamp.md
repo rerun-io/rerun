@@ -24,5 +24,5 @@ int64
 
 ## Used by
 
-* [`McapStatistics`](../archetypes/mcap_statistics.md?speculative-link)
+* [`McapStatistics`](../archetypes/mcap_statistics.md)
 * [`RecordingInfo`](../archetypes/recording_info.md)
