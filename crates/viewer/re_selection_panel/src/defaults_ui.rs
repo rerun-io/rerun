@@ -10,7 +10,7 @@ use re_log_types::EntityPath;
 use re_types_core::ComponentDescriptor;
 use re_types_core::reflection::ComponentDescriptorExt as _;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
+use re_ui::{OnResponseExt as _, SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
 use re_viewer_context::{
     ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewContext,
     ViewSystemIdentifier, VisualizerCollection, blueprint_timeline,
@@ -62,8 +62,9 @@ pub fn view_components_defaults_section_ui(
     let reason_we_cannot_add_more = components_to_show_in_add_menu.as_ref().err().cloned();
 
     let mut add_button_is_open = false;
-    let mut add_button =
-        re_ui::list_item::ItemMenuButton::new(&re_ui::icons::ADD, "Add overrides…", |ui| {
+    let mut add_button = ui
+        .small_icon_button_widget(&re_ui::icons::ADD, "Add overrides…")
+        .on_menu(|ui| {
             add_button_is_open = true;
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             add_popup_ui(
@@ -75,10 +76,10 @@ pub fn view_components_defaults_section_ui(
                 &visualizers,
             );
         })
-        .hover_text("Add more component defaults");
+        .on_hover_text("Add more component defaults");
 
     if let Some(reason) = reason_we_cannot_add_more {
-        add_button = add_button.enabled(false).disabled_hover_text(reason);
+        add_button = add_button.enabled(false).on_disabled_hover_text(reason);
     }
 
     let markdown = "# Component defaults\n

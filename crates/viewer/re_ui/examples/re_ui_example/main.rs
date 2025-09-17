@@ -8,7 +8,7 @@ use egui::{Modifiers, os};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
     CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
-    IconText, UICommand, UICommandSender, UiExt as _,
+    IconText, OnResponseExt as _, UICommand, UICommandSender, UiExt as _,
     filter_widget::{FilterState, format_matching_text},
     icons, list_item,
     notifications::NotificationUi,
@@ -253,13 +253,12 @@ impl eframe::App for ExampleApp {
             // ---
 
             ui.section_collapsing_header("Data")
-                .with_button(list_item::ItemMenuButton::new(
-                    &re_ui::icons::ADD,
-                    "Add",
-                    |ui| {
-                        ui.weak("empty");
-                    },
-                ))
+                .with_button(
+                    ui.small_icon_button_widget(&re_ui::icons::ADD, "Add")
+                        .on_menu(|ui| {
+                            ui.weak("empty");
+                        }),
+                )
                 .show(ui, |ui| {
                     ui.label("Some data here");
                 });
