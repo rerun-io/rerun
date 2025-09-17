@@ -85,7 +85,19 @@ pub fn redap_uri_button(
                 |ui| {
                     if contains_pointer
                         && ui
-                            .small_icon_button(&re_ui::icons::COPY, "Copy link")
+                            .scope_builder(
+                                UiBuilder::new()
+                                    .max_rect(egui::Rect::from_x_y_ranges(
+                                        ui.max_rect().x_range(),
+                                        rect.y_range(),
+                                    ))
+                                    .layout(
+                                        Layout::right_to_left(Align::Center)
+                                            .with_cross_justify(true),
+                                    ),
+                                |ui| ui.small_icon_button(&re_ui::icons::COPY, "Copy link"),
+                            )
+                            .inner
                             .clicked()
                     {
                         if let Ok(url) = ViewerOpenUrl::from(uri_clone).sharable_url(None) {
