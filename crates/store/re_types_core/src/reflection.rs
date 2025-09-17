@@ -95,7 +95,7 @@ pub fn generic_placeholder_for_datatype(
 
             TimeUnit::Microsecond | TimeUnit::Nanosecond => {
                 re_log::debug_once!(
-                    "Attempted to create a placeholder for out-of-spec datatype: {datatype:?}"
+                    "Attempted to create a placeholder for out-of-spec datatype: {datatype}"
                 );
                 array::new_empty_array(datatype)
             }
@@ -112,7 +112,7 @@ pub fn generic_placeholder_for_datatype(
 
             TimeUnit::Second | TimeUnit::Millisecond => {
                 re_log::debug_once!(
-                    "Attempted to create a placeholder for out-of-spec datatype: {datatype:?}"
+                    "Attempted to create a placeholder for out-of-spec datatype: {datatype}"
                 );
                 array::new_empty_array(datatype)
             }
@@ -198,7 +198,7 @@ pub fn generic_placeholder_for_datatype(
             {
                 Arc::new(array::FixedSizeListArray::from(list_data))
             } else {
-                re_log::warn_once!("Bug in FixedSizeListArray of {:?}", field.data_type());
+                re_log::warn_once!("Bug in FixedSizeListArray of {}", field.data_type());
                 array::new_empty_array(datatype)
             }
         }
@@ -245,7 +245,7 @@ pub fn generic_placeholder_for_datatype(
         | DataType::LargeListView { .. }
         | DataType::RunEndEncoded { .. } => {
             // TODO(emilk)
-            re_log::debug_once!("Unimplemented: placeholder value for: {datatype:?}");
+            re_log::debug_once!("Unimplemented: placeholder value for: {datatype}");
             array::new_empty_array(datatype) // TODO(emilk)
         }
     }

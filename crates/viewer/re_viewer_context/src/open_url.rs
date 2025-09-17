@@ -1,19 +1,32 @@
-use url::Url;
-use vec1::{Vec1, vec1};
+use std::sync::LazyLock;
 
 use re_data_source::LogDataSource;
-use re_redap_browser::EXAMPLES_ORIGIN;
-use re_smart_channel::SmartChannelSource;
-use re_ui::CommandPaletteUrl;
-use re_viewer_context::{
-    CommandSender, DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _, UrlContext,
+use re_global_context::{
+    CommandSender, DisplayMode, Item, SystemCommand, SystemCommandSender as _,
 };
+use re_smart_channel::SmartChannelSource;
+use re_uri::{
+    Scheme,
+    external::url::{self, Url},
+};
+use vec1::{Vec1, vec1};
+
+use crate::{StoreHub, ViewerContext};
 
 /// A URL that points to a selection (typically an entity) within the currently active recording.
 pub const INTRA_RECORDING_URL_SCHEME: &str = "recording://";
 
 /// An eventListener for rrd posted from containing html
 pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
+
+/// Origin used to show the examples ui in the redap browser.
+///
+/// Not actually a valid origin.
+pub static EXAMPLES_ORIGIN: LazyLock<re_uri::Origin> = LazyLock::new(|| re_uri::Origin {
+    scheme: Scheme::RerunHttps,
+    host: url::Host::Domain(String::from("_examples.rerun.io")),
+    port: 443,
+});
 
 /// Types of URLs that can be opened directly in the viewer.
 ///
@@ -31,7 +44,7 @@ pub enum ViewerOpenUrl {
     ///
     /// Could be either an `.rrd` recording or a `.rbl` blueprint.
     /// See also [`LogDataSource::RrdHttpUrl`].
-    RrdHttpUrl(url::Url),
+    RrdHttpUrl(Url),
 
     /// A path to a local file.
     ///
@@ -63,7 +76,7 @@ pub enum ViewerOpenUrl {
     /// A web viewer URL with one or more url parameters which all individually can be opened.
     WebViewerUrl {
         /// The base URL of the web viewer (this no longer includes any queries and fragments).
-        base_url: url::Url,
+        base_url: Url,
 
         /// The url parameter(s) that can be opened individually.
         ///
@@ -161,36 +174,60 @@ fn parse_webviewer_url(url: &str) -> anyhow::Result<ViewerOpenUrl> {
 }
 
 /// URL stripped of query and fragment.
-pub fn base_url(url: &url::Url) -> url::Url {
+pub fn base_url(url: &Url) -> Url {
     let mut base_url = url.clone();
     base_url.set_query(None);
     base_url.set_fragment(None);
     base_url
 }
 
-/// A description of what happens when opening a [`ViewerOpenUrl`].
-pub struct ViewerOpenUrlDescription {
-    /// The general category of this URL.
-    pub category: &'static str,
-
-    /// The specific target of this URL if known.
-    ///
-    /// This is always shorter than the original URL.
-    pub target_short: Option<String>,
-}
-
-impl std::fmt::Display for ViewerOpenUrlDescription {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(target) = &self.target_short {
-            write!(f, "{}: {target}", self.category)
-        } else {
-            write!(f, "{}", self.category)
-        }
-    }
-}
-
 impl ViewerOpenUrl {
-    /// Tries to create a viewer import URL for the given [`UrlContext`] (typically for sharing purposes).
+    pub fn from_context(ctx: &ViewerContext<'_>) -> anyhow::Result<Self> {
+        let time_ctrl = ctx.rec_cfg.time_ctrl.read();
+        Self::from_context_expanded(
+            ctx.storage_context.hub,
+            ctx.display_mode(),
+            Some(&time_ctrl),
+            ctx.selection(),
+        )
+    }
+
+    pub fn from_context_expanded(
+        store_hub: &StoreHub,
+        display_mode: &DisplayMode,
+        time_ctrl: Option<&crate::TimeControl>,
+        selection: &re_global_context::ItemCollection,
+    ) -> anyhow::Result<Self> {
+        let mut this = Self::from_display_mode(store_hub, display_mode)?;
+
+        if let Some(fragment) = this.fragment_mut() {
+            fragment.selection = selection.first_item().and_then(|item| item.to_data_path());
+            fragment.when = time_ctrl.and_then(|time_ctrl| {
+                let time = time_ctrl.time_int()?;
+                Some((
+                    *time_ctrl.timeline().name(),
+                    re_log_types::TimeCell {
+                        typ: time_ctrl.time_type(),
+                        value: time.into(),
+                    },
+                ))
+            });
+        }
+
+        if let Some(time_range) = this.time_range_mut()
+            && let Some(time_ctrl) = time_ctrl
+            && let Some(loop_selection) = time_ctrl.loop_selection()
+        {
+            *time_range = Some(re_uri::TimeSelection {
+                timeline: *time_ctrl.timeline(),
+                range: loop_selection.to_int(),
+            });
+        }
+
+        Ok(this)
+    }
+
+    /// Tries to create a viewer import URL for a [`DisplayMode`] (typically for sharing purposes).
     ///
     /// Conceptually, this is the inverse of [`Self::open`]. However, some import URLs like
     /// intra-recording links aren't stand-alone enough to be returned by this function.
@@ -198,8 +235,11 @@ impl ViewerOpenUrl {
     /// To produce a sharable url, from this result, call [`Self::sharable_url`].
     ///
     /// Returns Err(reason) if the current state can't be shared with a url.
-    pub fn new(store_hub: &StoreHub, context: UrlContext) -> anyhow::Result<Self> {
-        match context.display_mode {
+    pub fn from_display_mode(
+        store_hub: &StoreHub,
+        display_mode: &DisplayMode,
+    ) -> anyhow::Result<Self> {
+        match display_mode {
             DisplayMode::Settings => {
                 // Not much point in updating address for the settings screen.
                 Err(anyhow::anyhow!("Can't share links to the settings screen."))
@@ -223,7 +263,7 @@ impl ViewerOpenUrl {
                 // we just preserve as much as possible here.
                 match data_source {
                     SmartChannelSource::RrdHttpStream { url, follow: _ } => {
-                        Ok(Self::RrdHttpUrl(url.parse::<url::Url>()?))
+                        Ok(Self::RrdHttpUrl(url.parse::<Url>()?))
                     }
 
                     SmartChannelSource::File(path_buf) => {
@@ -257,11 +297,7 @@ impl ViewerOpenUrl {
                     SmartChannelSource::RedapGrpcStream {
                         uri,
                         select_when_loaded: _,
-                    } => Ok(Self::RedapDatasetPartition(re_uri::DatasetPartitionUri {
-                        time_range: context.time_range.or(uri.time_range.clone()),
-                        fragment: context.fragment.clone(),
-                        ..uri.clone()
-                    })),
+                    } => Ok(Self::RedapDatasetPartition(uri.clone())),
 
                     SmartChannelSource::MessageProxy(proxy_uri) => {
                         Ok(Self::RedapProxy(proxy_uri.clone()))
@@ -297,8 +333,7 @@ impl ViewerOpenUrl {
     /// in the browser (this does *not* exclude native, web viewer URLs can still be opened there as well!)
     ///
     /// This is roughly the inverse of `Self::from_str`.
-    #[allow(unused)] // TODO(rerun/dataplatform#1336): Only used on the web. About to change!
-    pub fn sharable_url(&self, web_viewer_base_url: Option<&url::Url>) -> anyhow::Result<String> {
+    pub fn sharable_url(&self, web_viewer_base_url: Option<&Url>) -> anyhow::Result<String> {
         let urls = match self {
             Self::IntraRecordingSelection(item) => {
                 let data_path = item.to_data_path().ok_or_else(|| {
@@ -362,26 +397,16 @@ impl ViewerOpenUrl {
             }
         };
 
-        // Combine the URL(s) with the web viewer base URL if provided.
-        if let Some(web_viewer_base_url) = web_viewer_base_url {
-            let mut share_url = web_viewer_base_url.clone();
+        combine_with_base_url(web_viewer_base_url, urls)
+    }
 
-            // Use the form_urlencoded::Serializer to build the query string with multiple "url" parameters.
-            // It's important to not just append the strings, since we have to take care of correctly escaping.
-            let mut serializer = url::form_urlencoded::Serializer::new(String::new());
-            for url in &urls {
-                serializer.append_pair("url", url);
-            }
-            share_url.set_query(Some(&serializer.finish()));
-
-            Ok(share_url.to_string())
-        } else if urls.len() == 1 {
-            Ok(urls.split_off_first().0)
-        } else {
-            Err(anyhow::anyhow!(
-                "Can't share more than one URL without a web viewer base URL"
-            ))
-        }
+    /// Try to create a system command for copying this URL.
+    ///
+    /// This command ([`SystemCommand::CopyViewerUrl`]) makes sure
+    /// that if this is in a web-viewer the web-viewer base url is
+    /// also correctly copied.
+    pub fn copy_url_command(&self) -> anyhow::Result<SystemCommand> {
+        self.sharable_url(None).map(SystemCommand::CopyViewerUrl)
     }
 
     /// Opens a content URL or file inside the viewer.
@@ -490,77 +515,92 @@ impl ViewerOpenUrl {
         }
     }
 
-    pub fn command_palette_parse_url(url: &str) -> Option<CommandPaletteUrl> {
-        let Ok(open_url) = url.parse::<Self>() else {
-            return None;
-        };
-
-        Some(CommandPaletteUrl {
-            url: url.to_owned(),
-            command_text: format!("Open {}", open_url.open_description()),
-        })
-    }
-
-    /// Describes what happens when calling [`Self::open`] with this URL.
-    pub fn open_description(&self) -> ViewerOpenUrlDescription {
+    /// Fragments of the URL if supported.
+    pub fn fragment_mut(&mut self) -> Option<&mut re_uri::Fragment> {
         match self {
-            Self::IntraRecordingSelection(item) => ViewerOpenUrlDescription {
-                category: "Selection",
-                target_short: item.entity_path().map(|p| p.to_string()),
-            },
-
-            Self::RrdHttpUrl(url) => {
-                let path = url.path();
-                let rrd_file_name = path.split('/').next_back().map(|s| s.to_owned());
-
-                ViewerOpenUrlDescription {
-                    category: "RRD from link",
-                    target_short: rrd_file_name,
-                }
-            }
-
+            Self::IntraRecordingSelection(..) => None,
+            Self::RrdHttpUrl(..) => None,
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(path) => ViewerOpenUrlDescription {
-                category: "File",
-                target_short: path.file_name().map(|s| s.display().to_string()),
-            },
-
-            Self::RedapDatasetPartition(uri) => ViewerOpenUrlDescription {
-                category: "Partition",
-                target_short: Some(uri.partition_id.clone()),
-            },
-
-            Self::RedapProxy(_) => ViewerOpenUrlDescription {
-                category: "GRPC proxy",
-                target_short: None,
-            },
-
-            Self::RedapCatalog(uri) => ViewerOpenUrlDescription {
-                category: "Catalog",
-                target_short: Some(uri.origin.host.to_string()),
-            },
-
-            Self::RedapEntry(uri) => ViewerOpenUrlDescription {
-                category: "Redap Entry",
-                target_short: Some(uri.entry_id.to_string()),
-            },
-
-            Self::WebEventListener => ViewerOpenUrlDescription {
-                category: "Web event listener",
-                target_short: None,
-            },
-
-            Self::WebViewerUrl { url_parameters, .. } => {
+            Self::FilePath(..) => None,
+            Self::RedapDatasetPartition(uri) => Some(&mut uri.fragment),
+            Self::RedapProxy(..) => None,
+            Self::RedapCatalog(..) => None,
+            Self::RedapEntry(..) => None,
+            Self::WebEventListener => None,
+            Self::WebViewerUrl {
+                base_url: _,
+                url_parameters,
+            } => {
                 if url_parameters.len() == 1 {
-                    url_parameters.first().open_description()
+                    url_parameters.first_mut().fragment_mut()
                 } else {
-                    ViewerOpenUrlDescription {
-                        category: "Several URLs",
-                        target_short: Some(format!("{} URLs", url_parameters.len())),
-                    }
+                    None
                 }
             }
         }
+    }
+
+    /// Time selection embedded in the URL if supported.
+    pub fn time_range_mut(&mut self) -> Option<&mut Option<re_uri::TimeSelection>> {
+        match self {
+            Self::IntraRecordingSelection(..) => None,
+            Self::RrdHttpUrl(..) => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::FilePath(..) => None,
+            Self::RedapDatasetPartition(uri) => Some(&mut uri.time_range),
+            Self::RedapProxy(..) => None,
+            Self::RedapCatalog(..) => None,
+            Self::RedapEntry(..) => None,
+            Self::WebEventListener => None,
+            Self::WebViewerUrl {
+                base_url: _,
+                url_parameters,
+            } => {
+                if url_parameters.len() == 1 {
+                    url_parameters.first_mut().time_range_mut()
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    /// If there is a time range in this url, set it to none.
+    pub fn clear_time_range(&mut self) {
+        if let Some(time_range) = self.time_range_mut() {
+            *time_range = None;
+        }
+    }
+}
+
+/// Combines a base url, for example a web viewer url
+/// with a list of content urls to open.
+pub fn combine_with_base_url(
+    base_url: Option<&Url>,
+    urls: impl IntoIterator<Item = String>,
+) -> anyhow::Result<String> {
+    let mut urls = urls.into_iter();
+    // Combine the URL(s) with the web viewer base URL if provided.
+    if let Some(base_url) = base_url {
+        let mut share_url = base_url.clone();
+
+        // Use the form_urlencoded::Serializer to build the query string with multiple "url" parameters.
+        // It's important to not just append the strings, since we have to take care of correctly escaping.
+        let mut serializer = url::form_urlencoded::Serializer::new(String::new());
+        for url in urls {
+            serializer.append_pair("url", &url);
+        }
+        share_url.set_query(Some(&serializer.finish()));
+
+        Ok(share_url.to_string())
+    } else if let Some(url) = urls.next()
+        && urls.next().is_none()
+    {
+        Ok(url)
+    } else {
+        Err(anyhow::anyhow!(
+            "Can't share more than one URL without a web viewer base URL"
+        ))
     }
 }
 
@@ -616,12 +656,14 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
 mod tests {
     use std::str::FromStr as _;
 
+    use crate::{DisplayMode, Item, StoreHub};
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
     use re_smart_channel::SmartChannelSource;
-    use re_uri::Fragment;
-    use re_viewer_context::{DisplayMode, Item, StoreHub, UrlContext};
-    use url::Url;
+    use re_uri::{
+        Fragment,
+        external::url::{self, Url},
+    };
 
     use super::ViewerOpenUrl;
 
@@ -740,15 +782,13 @@ mod tests {
         let store_hub = StoreHub::test_hub();
 
         // Settings
-        assert!(ViewerOpenUrl::new(&store_hub, UrlContext::new(DisplayMode::Settings)).is_err());
+        assert!(ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::Settings).is_err());
 
         // RedapServer
         assert_eq!(
-            ViewerOpenUrl::new(
+            ViewerOpenUrl::from_display_mode(
                 &store_hub,
-                UrlContext::new(DisplayMode::RedapServer(
-                    "rerun://localhost:51234".parse().unwrap(),
-                )),
+                &DisplayMode::RedapServer("rerun://localhost:51234".parse().unwrap()),
             )
             .unwrap(),
             ViewerOpenUrl::RedapCatalog("rerun://localhost:51234".parse().unwrap())
@@ -756,11 +796,9 @@ mod tests {
 
         // LocalTable
         assert!(
-            ViewerOpenUrl::new(
+            ViewerOpenUrl::from_display_mode(
                 &store_hub,
-                UrlContext::new(DisplayMode::LocalTable(TableId::new(
-                    "test_table".to_owned()
-                ))),
+                &DisplayMode::LocalTable(TableId::new("test_table".to_owned())),
             )
             .is_err()
         );
@@ -769,9 +807,9 @@ mod tests {
         let origin = "rerun://localhost:51234".parse().unwrap();
         let entry_uri = re_uri::EntryUri::new(origin, EntryId::new());
         assert_eq!(
-            ViewerOpenUrl::new(
+            ViewerOpenUrl::from_display_mode(
                 &store_hub,
-                UrlContext::new(DisplayMode::RedapEntry(entry_uri.clone())),
+                &DisplayMode::RedapEntry(entry_uri.clone()),
             )
             .unwrap(),
             ViewerOpenUrl::RedapEntry(entry_uri)
@@ -779,8 +817,7 @@ mod tests {
 
         // ChunkStoreBrowser
         assert!(
-            ViewerOpenUrl::new(&store_hub, UrlContext::new(DisplayMode::ChunkStoreBrowser),)
-                .is_err(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::ChunkStoreBrowser).is_err(),
             "ChunkStoreBrowser should not be convertible to ViewerOpenUrl"
         );
 
@@ -807,7 +844,7 @@ mod tests {
             ))),
         );
         assert_eq!(
-            ViewerOpenUrl::new(&store_hub, UrlContext::new(DisplayMode::LocalRecordings)).unwrap(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap(),
             ViewerOpenUrl::FilePath(std::path::PathBuf::from("/path/to/test.rrd"))
         );
 
@@ -820,20 +857,20 @@ mod tests {
             }),
         );
         assert_eq!(
-            ViewerOpenUrl::new(&store_hub, UrlContext::new(DisplayMode::LocalRecordings)).unwrap(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap(),
             ViewerOpenUrl::RrdHttpUrl("https://example.com/recording.rrd".parse().unwrap())
         );
 
         // originating from SDK (not possible).
         add_store(&mut store_hub, Some(SmartChannelSource::Sdk));
         assert!(
-            ViewerOpenUrl::new(&store_hub, UrlContext::new(DisplayMode::LocalRecordings)).is_err(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).is_err(),
         );
 
         // originating from stdin (not possible).
         add_store(&mut store_hub, Some(SmartChannelSource::Stdin));
         assert!(
-            ViewerOpenUrl::new(&store_hub, UrlContext::new(DisplayMode::LocalRecordings)).is_err(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).is_err(),
         );
 
         // originating from web event listener.
@@ -842,7 +879,7 @@ mod tests {
             Some(SmartChannelSource::RrdWebEventListener),
         );
         assert_eq!(
-            ViewerOpenUrl::new(&store_hub, UrlContext::new(DisplayMode::LocalRecordings)).unwrap(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap(),
             ViewerOpenUrl::WebEventListener
         );
 
@@ -854,7 +891,7 @@ mod tests {
             }),
         );
         assert!(
-            ViewerOpenUrl::new(&store_hub, UrlContext::new(DisplayMode::LocalRecordings)).is_err(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).is_err(),
         );
 
         // originating from Redap gRPC stream.
@@ -871,7 +908,7 @@ mod tests {
         let mut uri: re_uri::DatasetPartitionUri = uri.parse().unwrap();
 
         assert_eq!(
-            ViewerOpenUrl::new(&store_hub, UrlContext::new(DisplayMode::LocalRecordings)).unwrap(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap(),
             ViewerOpenUrl::RedapDatasetPartition(uri.clone())
         );
 
@@ -892,14 +929,12 @@ mod tests {
 
         uri.fragment = fragment.clone();
 
-        assert_eq!(
-            ViewerOpenUrl::new(
-                &store_hub,
-                UrlContext::new(DisplayMode::LocalRecordings).with_fragment(fragment)
-            )
-            .unwrap(),
-            ViewerOpenUrl::RedapDatasetPartition(uri),
-        );
+        let mut url =
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap();
+
+        *url.fragment_mut().unwrap() = fragment;
+
+        assert_eq!(url, ViewerOpenUrl::RedapDatasetPartition(uri),);
 
         // originating from message proxy.
         let uri = "rerun://localhost:51234/proxy";
@@ -908,14 +943,14 @@ mod tests {
             Some(SmartChannelSource::MessageProxy(uri.parse().unwrap())),
         );
         assert_eq!(
-            ViewerOpenUrl::new(&store_hub, UrlContext::new(DisplayMode::LocalRecordings)).unwrap(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).unwrap(),
             ViewerOpenUrl::RedapProxy(uri.parse().unwrap())
         );
 
         // with no data source (not possible).
         add_store(&mut store_hub, None);
         assert!(
-            ViewerOpenUrl::new(&store_hub, UrlContext::new(DisplayMode::LocalRecordings)).is_err(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings).is_err(),
         );
     }
 

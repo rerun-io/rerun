@@ -283,7 +283,7 @@ fn run_time_panel_and_save_snapshot(
                     re_context_menu::collapse_expand::collapse_expand_instance_path(
                         viewer_ctx,
                         viewer_ctx.recording(),
-                        &InstancePath::entity_all("/".into()),
+                        &InstancePath::entity_all("/"),
                         CollapseScope::StreamsTree,
                         true,
                     );

@@ -110,11 +110,9 @@ pub struct Imu {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-#[serde(from = "u8", into = "u8")]
+#[serde(try_from = "u8", into = "u8")]
 #[repr(u8)]
 pub enum PointFieldDatatype {
-    /// Does not exist in original spec.
-    Unknown = 0,
     Int8 = 1,
     UInt8 = 2,
     Int16 = 3,
@@ -125,9 +123,15 @@ pub enum PointFieldDatatype {
     Float64 = 8,
 }
 
-impl From<u8> for PointFieldDatatype {
-    fn from(value: u8) -> Self {
-        match value {
+#[derive(Debug, thiserror::Error)]
+#[error("unknown point field datatype: {0}")]
+pub struct UnknownPointFieldDatatype(u8);
+
+impl TryFrom<u8> for PointFieldDatatype {
+    type Error = UnknownPointFieldDatatype;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        Ok(match value {
             1 => Self::Int8,
             2 => Self::UInt8,
             3 => Self::Int16,
@@ -136,8 +140,8 @@ impl From<u8> for PointFieldDatatype {
             6 => Self::UInt32,
             7 => Self::Float32,
             8 => Self::Float64,
-            _ => Self::Unknown,
-        }
+            other => Err(UnknownPointFieldDatatype(other))?,
+        })
     }
 }
 

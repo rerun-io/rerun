@@ -125,7 +125,7 @@ pub fn current_trace_headers() -> Option<TraceHeaders> {
     Some(carrier)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TraceHeaders {
     pub traceparent: String,
     pub tracestate: Option<String>,
