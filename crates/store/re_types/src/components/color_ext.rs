@@ -32,17 +32,17 @@ impl Color {
     #[inline]
     pub fn to_array(self) -> [u8; 4] {
         [
-            (self.0 .0 >> 24) as u8,
-            (self.0 .0 >> 16) as u8,
-            (self.0 .0 >> 8) as u8,
-            self.0 .0 as u8,
+            (self.0.0 >> 24) as u8,
+            (self.0.0 >> 16) as u8,
+            (self.0.0 >> 8) as u8,
+            self.0.0 as u8,
         ]
     }
 
     /// Most significant byte is `r`, least significant byte is `a`.
     #[inline]
     pub fn to_u32(self) -> u32 {
-        self.0 .0
+        self.0.0
     }
 }
 
