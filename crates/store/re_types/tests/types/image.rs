@@ -1,8 +1,4 @@
-
-
-use re_types::{archetypes::Image, datatypes::ColorModel, Archetype as _, AsComponents as _};
-
-
+use re_types::{Archetype as _, AsComponents as _, archetypes::Image, datatypes::ColorModel};
 
 #[test]
 fn image_roundtrip() {

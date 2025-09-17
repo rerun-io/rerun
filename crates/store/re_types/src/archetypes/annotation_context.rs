@@ -35,7 +35,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### Segmentation
 /// ```ignore
-/// use ndarray::{s, Array, ShapeBuilder as _};
+/// use ndarray::{Array, ShapeBuilder as _, s};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_segmentation")
