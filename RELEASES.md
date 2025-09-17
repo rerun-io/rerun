@@ -168,3 +168,9 @@ first place.
 
 For alpha release, it's fine to merge **iff** the release job was successful. Otherwise, do not merge, as this would
 introduce broken links in the docs. If needed, cherry-pick any commit back to `main`.
+
+### 9. Optional: write a post mortem about the release
+
+Summarize your experience with the release process to our [Release Postmortems](https://www.notion.so/rerunio/Release-Postmortems-271b24554b1980589770df810d2e4ed5) Notion page.
+
+Create tickets if you think we can improve the process, put them into the `Actionable items` section.
