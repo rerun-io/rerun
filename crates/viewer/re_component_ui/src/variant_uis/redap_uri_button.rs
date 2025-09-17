@@ -55,7 +55,9 @@ pub fn redap_uri_button(
             .any(|source| source.redap_uri().as_ref() == Some(&uri));
 
     let uri_clone = uri.clone();
-    // Show the link left aligned, and add a copy button.
+    // Show the link left aligned and justified so the whole cell is clickable.
+    //
+    // And add a button to copy the link.
     let link_with_copy = |ui: &mut Ui, link| {
         let rect = ui.max_rect();
         let contains_pointer = ui.rect_contains_pointer(rect);
