@@ -177,7 +177,7 @@ impl Filter {
         let mut atoms = Atoms::default();
 
         let layout_job = SyntaxHighlightedBuilder::new()
-            .with_body(&self.column_name)
+            .with_body_default(&self.column_name)
             .with_keyword(" ")
             .with(&self.operation)
             .into_job(ui.style());
@@ -331,7 +331,7 @@ fn numerical_comparison_operator_ui(
     op: &mut ComparisonOperator,
 ) {
     ui.horizontal(|ui| {
-        ui.label(SyntaxHighlightedBuilder::body(column_name).into_widget_text(ui.style()));
+        ui.label(SyntaxHighlightedBuilder::body_default(column_name).into_widget_text(ui.style()));
 
         egui::ComboBox::new("comp_op", "")
             .selected_text(
@@ -355,7 +355,7 @@ fn numerical_comparison_operator_ui(
 
 pub fn basic_operation_ui(ui: &mut egui::Ui, column_name: &str, operator_text: &str) {
     ui.label(
-        SyntaxHighlightedBuilder::body(column_name)
+        SyntaxHighlightedBuilder::body_default(column_name)
             .with_keyword(" ")
             .with_keyword(operator_text)
             .into_widget_text(ui.style()),
