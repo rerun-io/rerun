@@ -105,8 +105,8 @@ where
     /// By default, buttons are only shown on hover or when selected, use
     /// [`Self::with_always_show_buttons`] to change that.
     ///
-    /// Usually you want to add an [`crate::list_item::ItemMenuButton`] or
-    /// [`crate::list_item::ItemActionButton`].
+    /// Usually you want to add an [`crate::UiExt::small_icon_button`] and use the helpers from
+    /// [`OnResponseExt`] to add actions / menus.
     ///
     /// Notes:
     /// - If buttons are used, the item will allocate the full available width of the parent. If the
@@ -125,8 +125,8 @@ where
     /// By default, buttons are only shown on hover or when selected, use
     /// [`Self::with_always_show_buttons`] to change that.
     ///
-    /// Usually you want to add [`crate::list_item::ItemMenuButton`]s or
-    /// [`crate::list_item::ItemActionButton`]s.
+    /// Usually you want to add an [`crate::UiExt::small_icon_button`] and use the helpers from
+    /// [`OnResponseExt`] to add actions / menus.
     ///
     /// Notes:
     /// - If buttons are used, the item will allocate the full available width of the parent. If the
@@ -149,7 +149,7 @@ where
         self
     }
 
-    /// Helper to add an [`super::ItemActionButton`] to the right of the item.
+    /// Helper to add a button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
@@ -166,7 +166,7 @@ where
         self.with_action_button_enabled(icon, alt_text, true, on_click)
     }
 
-    /// Helper to add an enabled/disabled [`super::ItemActionButton`] to the right of the item.
+    /// Helper to add an enabled/disabled button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
@@ -192,7 +192,7 @@ where
         })
     }
 
-    /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
+    /// Helper to add a menu button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.

@@ -76,7 +76,7 @@ impl<'a> CustomContent<'a> {
         self
     }
 
-    /// Helper to add an [`super::ItemActionButton`] to the right of the item.
+    /// Helper to add a button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
@@ -92,7 +92,7 @@ impl<'a> CustomContent<'a> {
         self.action_button_with_enabled(icon, alt_text, true, on_click)
     }
 
-    /// Helper to add an enabled/disabled [`super::ItemActionButton`] to the right of the item.
+    /// Helper to add an enabled/disabled button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
@@ -117,7 +117,7 @@ impl<'a> CustomContent<'a> {
         })
     }
 
-    /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
+    /// Helper to add a menu button to the right of the item.
     ///
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
     /// and is also how we can query the button in tests.
