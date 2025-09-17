@@ -106,6 +106,8 @@ impl SizeBytes for DataType {
             | Self::Utf8
             | Self::LargeUtf8
             | Self::BinaryView
+            | Self::Decimal32(_, _)
+            | Self::Decimal64(_, _)
             | Self::Decimal128(_, _)
             | Self::Decimal256(_, _)
             | Self::FixedSizeBinary(_)

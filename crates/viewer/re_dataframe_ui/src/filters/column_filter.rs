@@ -72,7 +72,7 @@ impl Nullability {
 }
 
 /// A filter applied to a table's column.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ColumnFilter {
     pub field: FieldRef,
     pub filter: TypedFilter,

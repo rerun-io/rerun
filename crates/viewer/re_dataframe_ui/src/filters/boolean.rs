@@ -14,7 +14,7 @@ use super::{Filter, FilterError, FilterUiAction};
 /// Filter for non-nullable boolean columns.
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub enum NonNullableBooleanFilter {
     #[default]
     IsTrue,
@@ -87,7 +87,7 @@ impl SyntaxHighlighting for NonNullableBooleanFilter {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::VariantArray)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, strum::VariantArray)]
 #[expect(clippy::enum_variant_names)]
 pub enum NullableBooleanValue {
     #[default]
@@ -106,7 +106,7 @@ impl NullableBooleanValue {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::VariantArray)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, strum::VariantArray)]
 pub enum NullableBooleanOperator {
     #[default]
     Is,
@@ -125,7 +125,7 @@ impl std::fmt::Display for NullableBooleanOperator {
 /// Filter for nullable boolean columns.
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
-#[derive(Clone, Default, PartialEq, Eq)]
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct NullableBooleanFilter {
     value: NullableBooleanValue,
     operator: NullableBooleanOperator,
