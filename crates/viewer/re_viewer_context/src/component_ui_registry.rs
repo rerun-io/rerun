@@ -290,7 +290,12 @@ impl ComponentUiRegistry {
                         "UI for variant {variant_name} failed to display the provided data {err}"
                     );
 
-                    fallback_ui(ui, UiLayout::List, value);
+                    fallback_ui(
+                        ui,
+                        UiLayout::List,
+                        ctx.app_options().timestamp_format,
+                        value,
+                    );
                 }
 
                 None
@@ -356,7 +361,12 @@ impl ComponentUiRegistry {
 
         // Component UI can only show a single instance.
         if array.is_empty() || (instance.is_all() && array.len() > 1) {
-            fallback_ui(ui, ui_layout, array.as_ref());
+            fallback_ui(
+                ui,
+                ui_layout,
+                ctx.app_options().timestamp_format,
+                array.as_ref(),
+            );
             return;
         }
 
@@ -404,7 +414,12 @@ impl ComponentUiRegistry {
         re_tracing::profile_function!(component_descr.display_name());
 
         if component_raw.len() != 1 {
-            fallback_ui(ui, ui_layout, component_raw);
+            fallback_ui(
+                ui,
+                ui_layout,
+                ctx.app_options().timestamp_format,
+                component_raw,
+            );
             return;
         }
 
@@ -454,7 +469,12 @@ impl ComponentUiRegistry {
             }
         }
 
-        fallback_ui(ui, ui_layout, component_raw);
+        fallback_ui(
+            ui,
+            ui_layout,
+            ctx.app_options().timestamp_format,
+            component_raw,
+        );
     }
 
     /// Show a UI corresponding to the provided variant name.
@@ -503,7 +523,12 @@ impl ComponentUiRegistry {
             //TODO(ab): should we instead revert to using the component based ui?
         }
 
-        fallback_ui(ui, ui_layout, component_raw);
+        fallback_ui(
+            ui,
+            ui_layout,
+            ctx.app_options().timestamp_format,
+            component_raw,
+        );
     }
 
     /// Show a multi-line editor for this instance of this component.
@@ -740,6 +765,11 @@ fn try_deserialize<C: re_types::Component>(value: &dyn arrow::array::Array) -> O
 }
 
 /// The ui we fall back to if everything else fails.
-fn fallback_ui(ui: &mut egui::Ui, ui_layout: UiLayout, component: &dyn arrow::array::Array) {
-    re_arrow_ui::arrow_ui(ui, ui_layout, component);
+fn fallback_ui(
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    timestamp_format: re_log_types::TimestampFormat,
+    component: &dyn arrow::array::Array,
+) {
+    re_arrow_ui::arrow_ui(ui, ui_layout, timestamp_format, component);
 }

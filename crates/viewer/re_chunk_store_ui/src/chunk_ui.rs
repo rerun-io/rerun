@@ -153,7 +153,12 @@ impl ChunkUi {
                     let component_data = chunk.component_batch_raw(component_desc, row_index);
                     match component_data {
                         Some(Ok(data)) => {
-                            re_arrow_ui::arrow_ui(ui, re_ui::UiLayout::List, &*data);
+                            re_arrow_ui::arrow_ui(
+                                ui,
+                                re_ui::UiLayout::List,
+                                timestamp_format,
+                                &*data,
+                            );
                         }
                         Some(Err(err)) => {
                             ui.error_with_details_on_hover(err.to_string());

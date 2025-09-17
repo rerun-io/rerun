@@ -1,6 +1,9 @@
+use std::str::FromStr as _;
+
 use egui::{NumExt as _, Ui};
 
-use re_log_types::TimestampFormat;
+use re_log_types::{Timestamp, TimestampFormat};
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::AppOptions;
 
@@ -86,25 +89,61 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     separator_with_some_space(ui);
 
-    ui.strong("Timezone");
+    ui.strong("Timestamp format");
+
+    fn timestamp_example_ui(
+        ui: &mut egui::Ui,
+        timestamp: Timestamp,
+        timestamp_format: TimestampFormat,
+    ) {
+        ui.horizontal(|ui| {
+            ui.add_space(ui.spacing().icon_width + ui.spacing().icon_spacing);
+            egui::Frame::new()
+                .fill(ui.visuals().text_edit_bg_color())
+                .corner_radius(2.0)
+                .inner_margin(egui::Margin::symmetric(4, 2))
+                .show(ui, |ui| {
+                    ui.label(
+                        SyntaxHighlightedBuilder::primitive(&timestamp.format(timestamp_format))
+                            .into_widget_text(ui.style()),
+                    );
+                });
+        });
+    }
+
+    let timestamp = re_log_types::Timestamp::from(
+        jiff::Timestamp::from_str("2023-02-14 21:47:18Z").expect("the timestamp is valid"),
+    );
+
     ui.re_radio_value(
         &mut app_options.timestamp_format,
         TimestampFormat::Utc,
         "UTC",
-    )
-    .on_hover_text("Display timestamps in UTC");
+    );
+    timestamp_example_ui(ui, timestamp, TimestampFormat::Utc);
     ui.re_radio_value(
         &mut app_options.timestamp_format,
         TimestampFormat::LocalTimezone,
-        "Local",
-    )
-    .on_hover_text("Display timestamps in the local timezone");
+        "Local (show time zone)",
+    );
+    timestamp_example_ui(ui, timestamp, TimestampFormat::LocalTimezone);
+    ui.re_radio_value(
+        &mut app_options.timestamp_format,
+        TimestampFormat::LocalTimezoneImplicit,
+        "Local (hide time zone)",
+    );
+    ui.horizontal(|ui| {
+        ui.add_space(ui.spacing().icon_width + ui.spacing().icon_spacing);
+        ui.label("Note: timestamps without time zone are ambiguous when copied elsewhere.");
+    });
+    timestamp_example_ui(ui, timestamp, TimestampFormat::LocalTimezoneImplicit);
+
     ui.re_radio_value(
         &mut app_options.timestamp_format,
         TimestampFormat::UnixEpoch,
-        "Unix epoch",
-    )
-    .on_hover_text("Display timestamps in seconds since unix epoch");
+        "Seconds since Unix epoch",
+    );
+    timestamp_example_ui(ui, timestamp, TimestampFormat::UnixEpoch);
 
     //
     // Map view
