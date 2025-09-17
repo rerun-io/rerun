@@ -118,7 +118,6 @@ impl<'a, T> OnResponse<'a, T> {
 pub trait OnResponseExt<'a>: Sized {
     type Target;
 
-    #[inline]
     fn into_on_response(self) -> OnResponse<'a, Self::Target>
     where
         Self: Sized;

@@ -1,6 +1,6 @@
 use egui::{NumExt as _, Ui, Widget};
 
-use crate::boxed_widget::{BoxedWidgetLocal, BoxedWidgetLocalExt};
+use crate::egui_ext::boxed_widget::{BoxedWidgetLocal, BoxedWidgetLocalExt};
 use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
 use crate::{OnResponseExt, UiExt as _};
 

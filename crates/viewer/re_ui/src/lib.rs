@@ -3,7 +3,6 @@
 #![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 pub mod alert;
-pub mod boxed_widget;
 mod color_table;
 mod command;
 mod command_palette;
@@ -27,7 +26,6 @@ pub mod time;
 mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
-mod widget_ext;
 
 use egui::NumExt as _;
 
@@ -36,6 +34,7 @@ pub use self::{
     command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl},
     context_ext::ContextExt,
     design_tokens::{DesignTokens, TableStyle},
+    egui_ext::widget_ext::*,
     help::*,
     hot_reload_design_tokens::design_tokens_of,
     icon_text::*,
@@ -47,7 +46,6 @@ pub use self::{
     time_drag_value::TimeDragValue,
     ui_ext::UiExt,
     ui_layout::UiLayout,
-    widget_ext::*,
 };
 
 // ---------------------------------------------------------------------------
