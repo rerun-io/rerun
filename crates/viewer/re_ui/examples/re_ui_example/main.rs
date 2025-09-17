@@ -1,3 +1,5 @@
+// Run the example with `cargo r -p re_ui --example re_ui_example`
+
 mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
@@ -157,7 +159,7 @@ impl eframe::App for ExampleApp {
 
         self.show_text_logs_as_notifications();
 
-        self.top_bar(egui_ctx);
+        self.top_bar(_frame, egui_ctx);
 
         egui::TopBottomPanel::bottom("bottom_panel")
             .frame(egui_ctx.tokens().bottom_panel_frame())
@@ -412,8 +414,8 @@ fn parse_url(url: &str) -> Option<CommandPaletteUrl> {
 }
 
 impl ExampleApp {
-    fn top_bar(&mut self, egui_ctx: &egui::Context) {
-        let top_bar_style = egui_ctx.top_bar_style(false);
+    fn top_bar(&mut self, frame: &eframe::Frame, egui_ctx: &egui::Context) {
+        let top_bar_style = egui_ctx.top_bar_style(frame, false);
 
         egui::TopBottomPanel::top("top_bar")
             .frame(egui_ctx.tokens().top_panel_frame())

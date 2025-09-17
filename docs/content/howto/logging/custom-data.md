@@ -9,8 +9,8 @@ Rerun comes with many pre-built [Types](../../reference/types.md) that you can u
 For Python and Rust we have helpers for this, called `AnyValues`, allowing you to easily attach custom values to any entity instance.
 You find the documentation for these helpers here:
 
--   [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues?speculative-link)
--   [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html?speculative-link)
+-   [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues)
+-   [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html)
 
 ```python
 rr.log(
@@ -51,8 +51,8 @@ If your values should be grouped together and that grouping isn't referred to fr
 
 You find the documentation for these helpers here:
 
--   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.DyanamicArchetype?speculative-link)
--   [`DynamicArchetype` in Rust](https://docs.rs/rerun/latest/rerun/struct.DynamicArchetype.html?speculative-link)
+-   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.DyanamicArchetype)
+-   [`DynamicArchetype` in Rust](https://docs.rs/rerun/latest/rerun/struct.DynamicArchetype.html)
 
 ```python
 rr.log(

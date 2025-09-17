@@ -15,11 +15,11 @@ uint16
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `SchemaId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1SchemaId.html?speculative-link)
- * 🐍 [Python API docs for `SchemaId`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.SchemaId)
- * 🦀 [Rust API docs for `SchemaId`](https://docs.rs/rerun/latest/rerun/components/struct.SchemaId.html?speculative-link)
+ * 🌊 [C++ API docs for `SchemaId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1SchemaId.html)
+ * 🐍 [Python API docs for `SchemaId`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.SchemaId)
+ * 🦀 [Rust API docs for `SchemaId`](https://docs.rs/rerun/latest/rerun/components/struct.SchemaId.html)
 
 
 ## Used by
 
-* [`McapSchema`](../archetypes/mcap_schema.md?speculative-link)
+* [`McapSchema`](../archetypes/mcap_schema.md)

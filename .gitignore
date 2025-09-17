@@ -59,6 +59,9 @@ example_data
 dist
 wheels
 
+# VSCode local tasks
+.vscode/tasks.json
+
 # Screenshot comparison build
 /compare_screenshot
 **/tests/snapshots/**/*.diff.png

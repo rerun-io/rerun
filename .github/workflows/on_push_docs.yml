@@ -44,7 +44,8 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     strategy:
       matrix:
-        toolchain: ["nightly-2025-02-05"]
+        # We have to use a nightly version because rustdoc json format is unstable.
+        toolchain: ["nightly-2025-09-16"]
     needs: [get-version]
     steps:
       - uses: actions/checkout@v4
