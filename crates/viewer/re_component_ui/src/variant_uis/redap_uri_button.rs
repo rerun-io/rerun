@@ -35,7 +35,6 @@ pub fn redap_uri_button(
         .value(0);
 
     let uri = RedapUri::from_str(url_str)?;
-    let uri_clone = uri.clone();
 
     let loaded_recording_id = ctx.storage_context.bundle.recordings().find_map(|db| {
         if db
@@ -55,6 +54,7 @@ pub fn redap_uri_button(
             .iter()
             .any(|source| source.redap_uri().as_ref() == Some(&uri));
 
+    let uri_clone = uri.clone();
     // Show the link left aligned and justified, so the whole cell is clickable.
     let put_justified_left_aligned = |ui: &mut Ui, link| {
         let res = ui
