@@ -4,12 +4,13 @@ use std::sync::Arc;
 
 use arrow::array::{ArrayRef, BooleanArray, ListArray, as_list_array};
 use arrow::datatypes::{DataType, Field};
-use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err};
+use datafusion::common::{DFSchema, ExprSchema as _, Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
     ScalarUDFImpl, Signature, TypeSignature, Volatility,
 };
 use datafusion::prelude::{Column, Expr, array_to_string, col, lit, lower};
+use ordered_float::OrderedFloat;
 
 use super::BooleanFilter;
 
@@ -92,7 +93,7 @@ pub enum FilterError {
 }
 
 /// A filter applied to a table.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Filter {
     pub column_name: String,
     pub operation: FilterOperation,
@@ -119,7 +120,7 @@ impl Filter {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ComparisonOperator {
     Eq,
     Ne,
@@ -172,7 +173,7 @@ impl ComparisonOperator {
 }
 
 /// The kind of filter operation
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FilterOperation {
     /// Compare an integer value to a constant.
     ///
@@ -187,7 +188,7 @@ pub enum FilterOperation {
     /// For columns of lists of floats, only the first value is considered.
     FloatCompares {
         operator: ComparisonOperator,
-        value: Option<f64>,
+        value: Option<OrderedFloat<f64>>,
     },
 
     //TODO(ab): parameterise that over multiple string ops, e.g. "contains", "starts with", etc.
@@ -280,7 +281,10 @@ impl FilterOperation {
                     }
                 };
 
-                Ok(contains_patch(lower(operand), lower(lit(query_string))))
+                Ok(datafusion::prelude::contains(
+                    lower(operand),
+                    lower(lit(query_string)),
+                ))
             }
 
             Self::Boolean(boolean_filter) => boolean_filter.as_filter_expression(column, field),
@@ -290,7 +294,7 @@ impl FilterOperation {
 
 /// Custom UDF for evaluating filter operations.
 //TODO(ab): consider splitting the vectorized filtering part from the `any`/`all` aggregation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct FilterOperationUdf {
     op: FilterOperation,
     signature: Signature,
@@ -375,8 +379,8 @@ impl FilterOperationUdf {
                         let Some(value) = value else {
                             return Some(true);
                         };
-
-                        x.map(|x| operator.apply(x, *value as _))
+                        use num_traits::AsPrimitive as _;
+                        x.map(|x| operator.apply(x, value.as_()))
                     })
                     .collect();
 
@@ -458,7 +462,7 @@ impl ScalarUDFImpl for FilterOperationUdf {
         }
     }
 
-    fn invoke_with_args(&self, args: ScalarFunctionArgs<'_>) -> DataFusionResult<ColumnarValue> {
+    fn invoke_with_args(&self, args: ScalarFunctionArgs) -> DataFusionResult<ColumnarValue> {
         let ColumnarValue::Array(input_array) = &args.args[0] else {
             return exec_err!("FilterOperation expected array inputs, not scalar values");
         };
@@ -489,15 +493,4 @@ impl ScalarUDFImpl for FilterOperationUdf {
             }
         }
     }
-}
-
-// TODO(ab): this is a workaround for https://github.com/apache/datafusion/pull/16046. Next time we
-// update datafusion, this should break compilation. Remove this function and replace
-// `contains_patch` by `datafusion::prelude::contains` in the method above.
-fn contains_patch(arg1: Expr, arg2: Expr) -> Expr {
-    // make sure we break compilation when we update datafusion
-    #[cfg(debug_assertions)]
-    let _ = datafusion::prelude::contains();
-
-    datafusion::functions::string::contains().call(<[_]>::into_vec(Box::new([arg1, arg2])))
 }

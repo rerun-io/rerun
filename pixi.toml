@@ -740,7 +740,8 @@ av = "==14.2.0"
 # during the wheel-test task itself is otherwise painful.
 torch = "==2.8.0" # This must match the torch version in any package we install during `wheel-test`
 # DataFusion is needed to run integration tests, but it is an optional dependency for rerun sdk
-datafusion = "==48.0.0"
+# TODO:
+datafusion = "==49.0.0"
 
 [feature.wheel-test.dependencies]
 pip = ">=23"
@@ -780,7 +781,8 @@ umap-learn = "==0.5.7"
 [feature.examples-common.pypi-dependencies]
 # External deps
 av = "==14.2.0"
-datafusion = "==48.0.0"
+# TODO
+datafusion = "==49.0.0"
 jupyter = ">=1.0"
 polars = ">=0.12.0"
 

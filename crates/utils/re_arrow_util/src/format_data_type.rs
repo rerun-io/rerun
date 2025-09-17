@@ -110,6 +110,8 @@ impl std::fmt::Display for DisplayDatatype<'_> {
             DataType::Dictionary(key, value) => {
                 return write!(f, "Dictionary{{{}: {}}}", Self(key), Self(value));
             }
+            DataType::Decimal32(_, _) => "Decimal32",
+            DataType::Decimal64(_, _) => "Decimal64",
             DataType::Decimal128(_, _) => "Decimal128",
             DataType::Decimal256(_, _) => "Decimal256",
             DataType::BinaryView => "BinaryView",

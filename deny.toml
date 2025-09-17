@@ -29,7 +29,6 @@ all-features = true
 [advisories]
 version = 2
 ignore = [
-  "RUSTSEC-2024-0384", # Waiting for https://github.com/console-rs/indicatif/pull/666
   "RUSTSEC-2024-0436", # https://rustsec.org/advisories/RUSTSEC-2024-0436 - paste is unmaintained - https://github.com/dtolnay/paste
   "RUSTSEC-2024-0014", # https://rustsec.org/advisories/RUSTSEC-2024-0014 - generational-arena is unmaintained
 ]
@@ -54,6 +53,7 @@ deny = [
 skip = [
   { name = "base64" },           # Too popular
   { name = "block2" },           # Old version via rfd
+  { name = "bzip2" },            # Remove after https://github.com/apache/datafusion/pull/17509 closes
   { name = "cargo-platform" },   # Older version used by ply-rs. It's build-time only!
   { name = "cargo_metadata" },   # Older version used by ply-rs. It's small, and it's build-time only!
   { name = "core-foundation" },  # Currently, e.g. `webbrowser` and `winit` use different versions.
@@ -63,7 +63,7 @@ skip = [
   { name = "objc2-foundation" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "objc2" },            # `accesskit_macos` uses a different version than `arboard`
   { name = "ordered-float" },    # Old version being used by parquet, but super small!
-  { name = "pollster" },         # rfd is still on 0.3
+  { name = "petgraph" },         # Remove after https://github.com/tokio-rs/prost/pull/1268 resolves
   { name = "pulldown-cmark" },   # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
   { name = "redox_syscall" },    # Plenty of versions in the wild
   { name = "rustc-hash" },       # numpy with compatible pyo3 requires different version than wgpu
@@ -95,8 +95,8 @@ allow = [
   "OFL-1.1",                        # https://spdx.org/licenses/OFL-1.1.html
   "Ubuntu-font-1.0",                # https://ubuntu.com/legal/font-licence
   "Unicode-3.0",                    # https://www.unicode.org/license.txt
-  "Unicode-DFS-2016",               # https://spdx.org/licenses/Unicode-DFS-2016.html
   "Zlib",                           # https://tldrlegal.com/license/zlib-libpng-license-(zlib)
+  "bzip2-1.0.6",                    # https://github.com/trifectatechfoundation/libbzip2-rs/blob/v0.2.2/COPYING
 ]
 exceptions = []
 
@@ -109,7 +109,6 @@ license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
 name = "ring"
 expression = "MIT AND ISC AND OpenSSL"
 license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
-
 
 [sources]
 unknown-registry = "deny"

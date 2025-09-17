@@ -8,7 +8,7 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use super::{FilterError, FilterUiAction, Nullability};
 
 /// A filter for a boolean column.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BooleanFilter {
     /// Filter for strictly non-nullable columns.
     ///

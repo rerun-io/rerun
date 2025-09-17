@@ -13,6 +13,7 @@ use arrow::record_batch::RecordBatch;
 use datafusion::catalog::MemTable;
 use datafusion::prelude::{DataFrame, SessionContext};
 
+use ordered_float::OrderedFloat;
 use re_dataframe_ui::{BooleanFilter, ComparisonOperator, Filter, FilterOperation, Nullability};
 use re_viewer_context::external::tokio;
 
@@ -414,7 +415,7 @@ async fn test_float_compares() {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: Some(3.0),
+                value: Some(OrderedFloat(3.0)),
             },
             floats.clone(),
             format!("{}_3.0", op.as_ascii())
@@ -423,7 +424,7 @@ async fn test_float_compares() {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: Some(4.0),
+                value: Some(OrderedFloat(4.0)),
             },
             floats_nulls.clone(),
             format!("nulls_{}_4", op.as_ascii())
@@ -439,7 +440,7 @@ async fn test_float_all_types() {
             filter_snapshot!(
                 FilterOperation::FloatCompares {
                     operator: ComparisonOperator::Eq,
-                    value: Some(3.0),
+                    value: Some(OrderedFloat(3.0)),
                 },
                 TestColumn::primitive::<$ty>(vec![1.0, 2.0, 3.0, 4.0, 5.0]),
                 format!("{:?}", $ty {})
@@ -468,7 +469,7 @@ async fn test_float_lists() {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: Some(2.0)
+                value: Some(OrderedFloat(2.0))
             },
             float_lists.clone(),
             format!("{}_2.0", op.as_ascii())
@@ -477,7 +478,7 @@ async fn test_float_lists() {
         filter_snapshot!(
             FilterOperation::FloatCompares {
                 operator: *op,
-                value: Some(2.0)
+                value: Some(OrderedFloat(2.0))
             },
             float_lists_nulls.clone(),
             format!("nulls_{}_2.0", op.as_ascii())

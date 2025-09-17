@@ -307,7 +307,7 @@ impl SyntaxHighlighting for FilterOperation {
 
             Self::FloatCompares { value, operator: _ } => {
                 if let Some(value) = value {
-                    builder.append_primitive(&re_format::format_f64(*value));
+                    builder.append_primitive(&re_format::format_f64(value.into_inner()));
                 } else {
                     builder.append_primitive("…");
                 }
@@ -461,6 +461,8 @@ impl FilterOperation {
 
 #[cfg(test)]
 mod tests {
+    use ordered_float::OrderedFloat;
+
     use super::*;
     use crate::filters::BooleanFilter;
 
@@ -493,7 +495,7 @@ mod tests {
             (
                 FilterOperation::FloatCompares {
                     operator: ComparisonOperator::Ge,
-                    value: Some(10.5),
+                    value: Some(OrderedFloat(10.5)),
                 },
                 "float_compares",
             ),

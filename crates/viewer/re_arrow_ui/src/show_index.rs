@@ -160,7 +160,7 @@ fn make_ui<'a>(
         | DataType::Utf8View | DataType::BinaryView
         | DataType::Date32 | DataType::Date64 | DataType::Time32(_) | DataType::Time64(_)
         | DataType::Timestamp(_, _) | DataType::Duration(_) | DataType::Interval(_)
-        | DataType::Decimal128(_, _) | DataType::Decimal256(_, _)
+        | DataType::Decimal32(_,_) | DataType::Decimal64(_,_) | DataType::Decimal128(_, _) | DataType::Decimal256(_, _)
         => {
             show_arrow_builtin(array, options)
         }
