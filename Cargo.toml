@@ -276,6 +276,7 @@ notify = { version = "6.1.1", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
 numpy = "0.24"
+objc2-app-kit = "0.3"
 opentelemetry = { version = "0.30", features = ["metrics"] }
 opentelemetry-appender-tracing = "0.30"
 opentelemetry-otlp = "0.30"
@@ -305,6 +306,7 @@ pyo3-build-config = "0.24.1"
 quote = "1.0"
 rand = { version = "0.8", default-features = false, features = ["small_rng"] }
 rand_distr = { version = "0.4", default-features = false }
+raw-window-handle = "0.6"
 rayon = "1.7"
 regex-lite = "0.1.6"
 rexif = "0.7.5"
@@ -318,8 +320,8 @@ rust-format = "0.3"
 rustdoc-json = "0.9.4"
 rustdoc-types = "0.35.0"
 rustls = { version = "0.23", default-features = false }
-seq-macro = "0.3"
 semver = "1.0.26"
+seq-macro = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_bytes = "0.11"
 serde_json = { version = "1", default-features = false, features = ["std"] }
