@@ -118,8 +118,8 @@ Update the change log. It should include:
 -   A multi-line summary of the release
     - You may ask feature leads to write a summary for each highlighted item
 -   A gif or screenshot showing one or more major new features
-    - Try to avoid `mp4`s, gifs have a better experience on Github
-    - You can upload images to a PR, use the link it generates to use Github as an image hosting service.
+    - Try to avoid `mp4`s, gifs have a better experience on GitHub
+    - You can upload images to a PR, use the link it generates to use GitHub as an image hosting service.
 -   Run `pip install GitPython && scripts/generate_changelog.py > new_changelog.md`
 -   Edit PR descriptions/labels to improve the generated changelog
 -   Copy-paste the results into `CHANGELOG.md`.
@@ -168,3 +168,9 @@ first place.
 
 For alpha release, it's fine to merge **iff** the release job was successful. Otherwise, do not merge, as this would
 introduce broken links in the docs. If needed, cherry-pick any commit back to `main`.
+
+### 9. Optional: write a post mortem about the release
+
+Summarize your experience with the release process to our [Release Postmortems](https://www.notion.so/rerunio/Release-Postmortems-271b24554b1980589770df810d2e4ed5) Notion page.
+
+Create tickets if you think we can improve the process, put them into the `Actionable items` section.
