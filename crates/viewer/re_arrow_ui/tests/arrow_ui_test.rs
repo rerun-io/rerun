@@ -73,7 +73,7 @@ fn arrow_list_ui(ui: &mut egui::Ui) {
         for (name, arrow_result) in tests {
             ui.grid_left_hand_label(name);
             let arrow = arrow_result.expect("Failed to convert to arrow");
-            re_arrow_ui::arrow_ui(ui, UiLayout::List, &arrow);
+            re_arrow_ui::arrow_ui(ui, UiLayout::List, Default::default(), &arrow);
             ui.end_row();
         }
     });
@@ -91,7 +91,7 @@ fn arrow_tree_ui() {
             .build_ui(|ui| {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                re_arrow_ui::arrow_ui(ui, UiLayout::SelectionPanel, &arrow);
+                re_arrow_ui::arrow_ui(ui, UiLayout::SelectionPanel, Default::default(), &arrow);
             });
 
         harness.run();

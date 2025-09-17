@@ -91,9 +91,7 @@ impl ItemTitle {
                 .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
             {
                 let time = re_log_types::Timestamp::from(started.0)
-                    .to_jiff_zoned(ctx.app_options().timestamp_format)
-                    .strftime("%H:%M:%S")
-                    .to_string();
+                    .format_time_compact(ctx.app_options().timestamp_format);
                 format!("{} - {time}", store_id.application_id())
             } else {
                 store_id.application_id().to_string()
