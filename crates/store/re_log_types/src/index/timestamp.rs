@@ -173,11 +173,13 @@ impl Timestamp {
                 )
             }
 
-            TimestampFormat::LocalTimezone | TimestampFormat::Utc => {
+            TimestampFormat::LocalTimezone
+            | TimestampFormat::LocalTimezoneImplicit
+            | TimestampFormat::Utc => {
                 let tz = timestamp_format.to_jiff_time_zone();
                 let zoned = timestamp.to_zoned(tz.clone());
 
-                let is_today = zoned.date() == jiff::Timestamp::now().to_zoned(tz).date();
+                let is_today = zoned.date() == jiff::Timestamp::now().to_zoned(tz.clone()).date();
 
                 let formatted = if is_today {
                     zoned.strftime("%H:%M:%S").to_string()
@@ -186,8 +188,9 @@ impl Timestamp {
                 };
 
                 let suffix = match timestamp_format {
-                    TimestampFormat::LocalTimezone => "",
-                    TimestampFormat::Utc | TimestampFormat::UnixEpoch => "Z",
+                    TimestampFormat::LocalTimezone => tz.to_offset(timestamp).to_string(),
+                    TimestampFormat::LocalTimezoneImplicit => String::new(),
+                    TimestampFormat::Utc | TimestampFormat::UnixEpoch => "Z".to_owned(),
                 };
 
                 format!(
@@ -216,7 +219,9 @@ impl Timestamp {
                 }
             }
 
-            TimestampFormat::LocalTimezone | TimestampFormat::Utc => {
+            TimestampFormat::LocalTimezone
+            | TimestampFormat::LocalTimezoneImplicit
+            | TimestampFormat::Utc => {
                 let zoned = self.to_jiff_zoned(timestamp_format);
                 if zoned.time() == jiff::civil::Time::MIN {
                     // Exactly midnight - show only the date:

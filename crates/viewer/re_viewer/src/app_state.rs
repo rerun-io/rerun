@@ -17,15 +17,15 @@ use re_viewer_context::{
     ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
     RecordingConfig, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
     SystemCommandSender as _, TableStore, ViewClassRegistry, ViewStates, ViewerContext,
-    blueprint_timeline,
+    blueprint_timeline, open_url,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
-    app_blueprint::AppBlueprint, event::ViewerEventDispatcher, navigation::Navigation, open_url,
-    ui::settings_screen_ui,
+    app::web_viewer_base_url, app_blueprint::AppBlueprint, event::ViewerEventDispatcher,
+    navigation::Navigation, ui::settings_screen_ui,
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -61,6 +61,8 @@ pub struct AppState {
 
     #[serde(skip)]
     pub(crate) open_url_modal: crate::ui::OpenUrlModal,
+    #[serde(skip)]
+    pub(crate) share_modal: crate::ui::ShareModal,
 
     /// A stack of display modes that represents tab-like navigation of the user.
     #[serde(skip)]
@@ -106,6 +108,7 @@ impl Default for AppState {
             datastore_ui: Default::default(),
             redap_servers: Default::default(),
             open_url_modal: Default::default(),
+            share_modal: Default::default(),
             navigation: Default::default(),
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -426,7 +429,7 @@ impl AppState {
                 //
 
                 if app_options.inspect_blueprint_timeline
-                    && *display_mode == DisplayMode::LocalRecordings
+                    && matches!(display_mode, DisplayMode::LocalRecordings(_))
                 {
                     let blueprint_db = ctx.store_context.blueprint;
 
@@ -492,7 +495,7 @@ impl AppState {
                 // Time panel
                 //
 
-                if *display_mode == DisplayMode::LocalRecordings {
+                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
                     time_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -508,7 +511,7 @@ impl AppState {
                 // Selection Panel
                 //
 
-                if *display_mode == DisplayMode::LocalRecordings {
+                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
                     selection_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -542,11 +545,12 @@ impl AppState {
                         ui.spacing_mut().item_spacing.y = 0.0;
 
                         match display_mode {
-                            DisplayMode::LocalRecordings
+                            DisplayMode::LocalRecordings(..)
                             | DisplayMode::LocalTable(..)
                             | DisplayMode::RedapEntry(..)
                             | DisplayMode::RedapServer(..) => {
-                                let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
+                                let show_blueprints =
+                                    matches!(display_mode, DisplayMode::LocalRecordings(_));
                                 let resizable = show_blueprints;
                                 if resizable {
                                     // Ensure Blueprint panel has at least 150px minimum height, because now it doesn't autogrow (as it does without resizing=active)
@@ -556,7 +560,9 @@ impl AppState {
 
                                     // Calculate the maximum height for recordings panel
                                     // Allow full space usage minus the blueprint minimum height, so that the blueprint panel can grow below existing content
-                                    let max_recordings_height = (available_height - blueprint_min_height).max(recordings_min_height);
+                                    let max_recordings_height = (available_height
+                                        - blueprint_min_height)
+                                        .max(recordings_min_height);
 
                                     egui::TopBottomPanel::top("recording_panel")
                                         .frame(egui::Frame::new())
@@ -616,7 +622,7 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::LocalRecordings => {
+                            DisplayMode::LocalRecordings(_) => {
                                 // If we are here and the "default" app id is selected,
                                 // we should instead switch to the welcome screen.
                                 if ctx.store_context.application_id()
@@ -655,6 +661,8 @@ impl AppState {
 
                 self.redap_servers.modals_ui(&ctx.global_context, ui);
                 self.open_url_modal.ui(ui);
+                self.share_modal
+                    .ui(&ctx, ui, web_viewer_base_url().as_ref());
             }
         }
 

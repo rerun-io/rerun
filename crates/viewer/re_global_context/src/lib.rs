@@ -24,7 +24,7 @@ pub use self::{
     recording_or_table::RecordingOrTable,
 };
 
-use re_log_types::TableId;
+use re_log_types::{StoreId, TableId};
 
 /// Application context that is shared across all parts of the viewer.
 pub struct GlobalContext<'a> {
@@ -68,7 +68,7 @@ pub enum DisplayMode {
     Settings,
 
     /// Regular view of the local recordings, including the current recording's viewport.
-    LocalRecordings,
+    LocalRecordings(StoreId),
 
     LocalTable(TableId),
 

@@ -55,8 +55,25 @@ pub enum ShaderDecoding {
     Bgr,
 }
 
+/// How is the alpha channel in the texture?
+#[derive(Clone, Copy, Debug)]
+pub enum TextureAlpha {
+    /// Ignore the alpha channel and render the image opaquely.
+    ///
+    /// Use this for textures that don't have an alpha channel.
+    Opaque = 1,
+
+    /// The alpha in the texture is separate/unmulitplied.
+    ///
+    /// Use this for images with separate (unmulitplied) alpha channels (the normal kind).
+    SeparateAlpha = 2,
+
+    /// The RGB values have already been premultiplied with the alpha.
+    AlreadyPremultiplied = 3,
+}
+
 /// Describes a texture and how to map it to a color.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ColormappedTexture {
     pub texture: GpuTexture2D,
 
@@ -72,11 +89,8 @@ pub struct ColormappedTexture {
     /// Only applies to [`wgpu::TextureFormat::Rgba8Unorm`] and float textures.
     pub decode_srgb: bool,
 
-    /// Multiply color channels with the alpha channel before filtering?
-    ///
-    /// Set this to false for textures that don't have an alpha channel or are already pre-multiplied.
-    /// Applied after range normalization and srgb decoding, before filtering.
-    pub multiply_rgb_with_alpha: bool,
+    /// How to treat the alpha channel.
+    pub texture_alpha: TextureAlpha,
 
     /// Raise the normalized values to this power (before any color mapping).
     /// Acts like an inverse brightness.
@@ -137,7 +151,7 @@ impl ColormappedTexture {
             decode_srgb,
             range: [0.0, 1.0],
             gamma: 1.0,
-            multiply_rgb_with_alpha: true,
+            texture_alpha: TextureAlpha::SeparateAlpha,
             color_mapper: ColorMapper::OffRGB,
             shader_decoding: None,
         }
@@ -148,7 +162,7 @@ impl ColormappedTexture {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TexturedRect {
     /// Top left corner position in world space.
     pub top_left_corner_position: glam::Vec3,
@@ -184,7 +198,7 @@ impl TexturedRect {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RectangleOptions {
     pub texture_filter_magnification: TextureFilterMag,
     pub texture_filter_minification: TextureFilterMin,
@@ -282,7 +296,7 @@ mod gpu_data {
         magnification_filter: u32,
 
         decode_srgb: u32,
-        multiply_rgb_with_alpha: u32,
+        texture_alpha: u32,
         bgra_to_rgba: u32,
         _row_padding: [u32; 1],
 
@@ -311,7 +325,7 @@ mod gpu_data {
                 range,
                 gamma,
                 color_mapper,
-                multiply_rgb_with_alpha,
+                texture_alpha,
                 shader_decoding,
             } = colormapped_texture;
 
@@ -380,7 +394,7 @@ mod gpu_data {
                 minification_filter,
                 magnification_filter,
                 decode_srgb: *decode_srgb as _,
-                multiply_rgb_with_alpha: *multiply_rgb_with_alpha as _,
+                texture_alpha: *texture_alpha as _,
                 bgra_to_rgba: bgra_to_rgba as _,
                 _row_padding: Default::default(),
                 _end_padding: Default::default(),

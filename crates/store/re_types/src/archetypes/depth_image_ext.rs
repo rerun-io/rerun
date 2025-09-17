@@ -50,7 +50,7 @@ impl DepthImage {
         let num_expected_bytes = image_format.num_bytes();
         if buffer.len() != num_expected_bytes {
             re_log::warn_once!(
-                "Expected {width}x{height} {} {datatype:?} image to be {num_expected_bytes} B, but got {} B",
+                "Expected {width}x{height} {} {datatype} image to be {num_expected_bytes} B, but got {} B",
                 ColorModel::L,
                 buffer.len()
             );

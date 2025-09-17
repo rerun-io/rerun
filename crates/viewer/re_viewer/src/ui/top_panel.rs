@@ -5,7 +5,7 @@ use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UiExt as _};
-use re_viewer_context::StoreContext;
+use re_viewer_context::{StoreContext, StoreHub};
 
 use crate::{App, app_blueprint::AppBlueprint};
 
@@ -14,13 +14,14 @@ pub fn top_panel(
     app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
+    store_hub: &StoreHub,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
     ui: &mut egui::Ui,
 ) {
     re_tracing::profile_function!();
 
     let style_like_web = app.is_screenshotting();
-    let top_bar_style = ui.ctx().top_bar_style(style_like_web);
+    let top_bar_style = ui.ctx().top_bar_style(frame, style_like_web);
     let top_panel_frame = ui.tokens().top_panel_frame();
 
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
@@ -55,6 +56,7 @@ pub fn top_panel(
                     app,
                     app_blueprint,
                     store_context,
+                    store_hub,
                     ui,
                     gpu_resource_stats,
                 );
@@ -81,6 +83,7 @@ fn top_bar_ui(
     app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
+    store_hub: &StoreHub,
     ui: &mut egui::Ui,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
@@ -147,7 +150,7 @@ fn top_bar_ui(
             ui.add_space(extra_margin);
         }
 
-        panel_buttons_r2l(app, app_blueprint, ui);
+        panel_buttons_r2l(app, app_blueprint, ui, store_hub);
 
         if !app.is_screenshotting() {
             connection_status_ui(ui, app.msg_receive_set());
@@ -333,7 +336,12 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 }
 
 /// Lay out the panel button right-to-left
-fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
+fn panel_buttons_r2l(
+    app: &mut App,
+    app_blueprint: &AppBlueprint<'_>,
+    ui: &mut egui::Ui,
+    store_hub: &StoreHub,
+) {
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
         let (icon, label) = if app.is_fullscreen_mode() {
@@ -394,6 +402,18 @@ fn panel_buttons_r2l(app: &mut App, app_blueprint: &AppBlueprint<'_>, ui: &mut e
     }
 
     app.notifications.notification_toggle_button(ui);
+
+    let selection = app.state.selection_state.selected_items();
+    let rec_cfg = store_hub
+        .active_store_id()
+        .and_then(|id| app.state.recording_configs.get(id));
+    app.state.share_modal.button_ui(
+        ui,
+        store_hub,
+        app.state.navigation.peek(),
+        rec_cfg,
+        selection,
+    );
 }
 
 /// Shows clickable website link as an image (text doesn't look as nice)

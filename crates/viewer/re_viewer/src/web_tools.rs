@@ -83,7 +83,7 @@ pub fn window() -> Result<Window, JsValue> {
 pub fn current_base_url() -> Result<url::Url, JsValue> {
     let location = window()?.location().href()?;
     let location = url::Url::parse(&location).map_err(JsError::from)?;
-    Ok(crate::open_url::base_url(&location))
+    Ok(re_viewer_context::open_url::base_url(&location))
 }
 
 // Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.

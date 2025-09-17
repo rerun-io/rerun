@@ -18,11 +18,11 @@ uint64
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Count`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Count.html?speculative-link)
- * 🐍 [Python API docs for `Count`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Count)
- * 🦀 [Rust API docs for `Count`](https://docs.rs/rerun/latest/rerun/components/struct.Count.html?speculative-link)
+ * 🌊 [C++ API docs for `Count`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Count.html)
+ * 🐍 [Python API docs for `Count`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Count)
+ * 🦀 [Rust API docs for `Count`](https://docs.rs/rerun/latest/rerun/components/struct.Count.html)
 
 
 ## Used by
 
-* [`McapStatistics`](../archetypes/mcap_statistics.md?speculative-link)
+* [`McapStatistics`](../archetypes/mcap_statistics.md)

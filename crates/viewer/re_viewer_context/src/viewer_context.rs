@@ -396,6 +396,12 @@ impl ViewerContext<'_> {
     pub fn has_active_recording(&self) -> bool {
         self.recording().application_id() != &StoreHub::welcome_screen_app_id()
     }
+
+    /// Reverts to the default display mode
+    pub fn revert_to_default_display_mode(&self) {
+        self.command_sender()
+            .send_system(SystemCommand::ResetDisplayMode);
+    }
 }
 
 // ----------------------------------------------------------------------------

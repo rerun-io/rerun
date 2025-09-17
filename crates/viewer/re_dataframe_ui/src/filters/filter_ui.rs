@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::mem;
 
-use egui::{Frame, Margin};
+use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense};
 
 use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
@@ -9,7 +9,7 @@ use crate::TableBlueprint;
 
 /// Action to take based on the user interaction.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-enum FilterUiAction {
+pub enum FilterUiAction {
     #[default]
     None,
 
@@ -117,65 +117,35 @@ impl FilterState {
                 let active_index = self.active_filter.take();
                 let mut remove_idx = None;
 
-                // TODO(#11194): ideally, egui would allow wrapping `Frame` widget itself. Remove
-                // this when it does.
-                let prepared_uis = self
-                    .filters
-                    .iter()
-                    .map(|filter| filter.prepare_ui(ui))
-                    .collect::<Vec<_>>();
-                let item_spacing = ui.style().spacing.item_spacing.x;
-                let available_width = ui.available_width();
-                let mut rows = vec1::vec1![vec![]];
-                let mut current_left_position = 0.0;
-                for (index, prepared_ui) in prepared_uis.iter().enumerate() {
-                    if current_left_position > 0.0
-                        && current_left_position + prepared_ui.desired_width() > available_width
-                    {
-                        rows.push(vec![]);
-                        current_left_position = 0.0;
+                ui.horizontal_wrapped(|ui| {
+                    for (index, filter) in self.filters.iter_mut().enumerate() {
+                        // egui uses this id to store the popup openness and size information,
+                        // so we must invalidate if the filter at a given index changes its
+                        // nature
+                        let filter_id = ui.make_persistent_id(egui::Id::new(index).with(
+                            match filter.operation {
+                                FilterOperation::IntCompares { .. } => "int",
+                                FilterOperation::FloatCompares { .. } => "float",
+                                FilterOperation::StringContains(_) => "string",
+                                FilterOperation::Boolean(_) => "bool",
+                            },
+                        ));
+
+                        let result = filter.ui(ui, filter_id, Some(index) == active_index);
+
+                        action = action.merge(result.filter_action);
+
+                        if result.should_delete_filter {
+                            remove_idx = Some(index);
+                        }
                     }
 
-                    rows.last_mut().push(index);
-                    current_left_position += prepared_ui.desired_width() + item_spacing;
-                }
-
-                for row in rows {
-                    ui.horizontal(|ui| {
-                        for index in row {
-                            let filter = &mut self.filters[index];
-
-                            // egui uses this id to store the popup openness and size information,
-                            // so we must invalidate if the filter at a given index changes its
-                            // nature
-                            let filter_id = ui.make_persistent_id(egui::Id::new(index).with(
-                                match filter.operation {
-                                    FilterOperation::IntCompares { .. } => "int",
-                                    FilterOperation::FloatCompares { .. } => "float",
-                                    FilterOperation::StringContains(_) => "string",
-                                    FilterOperation::BooleanEquals(_) => "bool",
-                                },
-                            ));
-
-                            let prepared_ui = &prepared_uis[index];
-
-                            let result =
-                                filter.ui(ui, prepared_ui, filter_id, Some(index) == active_index);
-
-                            action = action.merge(result.filter_action);
-
-                            if result.should_delete_filter {
-                                remove_idx = Some(index);
-                            }
-                        }
-                    });
-                }
-
-                if let Some(remove_idx) = remove_idx {
-                    self.active_filter = None;
-                    self.filters.remove(remove_idx);
-                    should_commit = true;
-                }
+                    if let Some(remove_idx) = remove_idx {
+                        self.active_filter = None;
+                        self.filters.remove(remove_idx);
+                        should_commit = true;
+                    }
+                });
             });
 
         action
@@ -188,45 +158,9 @@ struct DisplayFilterUiResult {
     should_delete_filter: bool,
 }
 
-// TODO(#11194): used by the manual wrapping code. Remove when no longer needed.
-struct FilterPreparedUi {
-    frame: Frame,
-    galley: Arc<egui::Galley>,
-    desired_width: f32,
-}
-
-impl FilterPreparedUi {
-    fn desired_width(&self) -> f32 {
-        self.desired_width
-    }
-}
-
 impl Filter {
-    /// Prepare the UI for this filter
-    fn prepare_ui(&self, ui: &egui::Ui) -> FilterPreparedUi {
-        let layout_job = SyntaxHighlightedBuilder::new()
-            .with_body(&self.column_name)
-            .with_keyword(" ")
-            .with(&self.operation)
-            .into_job(ui.style());
-
-        let galley = ui.fonts(|f| f.layout_job(layout_job));
-
-        let frame = Frame::new()
-            .inner_margin(Margin::symmetric(4, 4))
-            .stroke(ui.tokens().table_filter_frame_stroke)
-            .corner_radius(2.0);
-
-        let desired_width = galley.size().x
-            + ui.style().spacing.item_spacing.x
-            + ui.tokens().small_icon_size.x
-            + frame.total_margin().sum().x;
-
-        FilterPreparedUi {
-            frame,
-            galley,
-            desired_width,
-        }
+    pub fn close_button_id() -> egui::Id {
+        egui::Id::new("filter_close_button")
     }
 
     /// UI for a single filter.
@@ -234,33 +168,55 @@ impl Filter {
     fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        prepared_ui: &FilterPreparedUi,
         filter_id: egui::Id,
         activate_filter: bool,
     ) -> DisplayFilterUiResult {
         let mut should_delete_filter = false;
         let mut action_due_to_filter_deletion = FilterUiAction::None;
 
-        let response = prepared_ui
-            .frame
-            .show(ui, |ui| {
-                let text_response = ui.add(
-                    egui::Label::new(Arc::clone(&prepared_ui.galley))
-                        .selectable(false)
-                        .sense(egui::Sense::click()),
-                );
+        let mut atoms = Atoms::default();
 
-                if ui
-                    .small_icon_button(&re_ui::icons::CLOSE_SMALL, "Remove filter")
-                    .clicked()
-                {
-                    should_delete_filter = true;
-                    action_due_to_filter_deletion = FilterUiAction::CommitStateToBlueprint;
-                }
+        let layout_job = SyntaxHighlightedBuilder::new()
+            .with_body_default(&self.column_name)
+            .with_keyword(" ")
+            .with(&self.operation)
+            .into_job(ui.style());
 
-                text_response
-            })
-            .inner;
+        atoms.push_right(layout_job);
+
+        atoms.push_right(Atom::custom(
+            Self::close_button_id(),
+            ui.tokens().small_icon_size,
+        ));
+
+        let frame = Frame::new()
+            .inner_margin(Margin::symmetric(4, 4))
+            .stroke(ui.tokens().table_filter_frame_stroke)
+            .corner_radius(2.0);
+
+        let atom_layout = AtomLayout::new(atoms).sense(Sense::click()).frame(frame);
+
+        let atom_response = atom_layout.show(ui);
+
+        if let Some(rect) = atom_response.rect(Self::close_button_id()) {
+            // The default padding is (1.0, 0.0), making the button look weird
+            let button_padding = mem::take(&mut ui.style_mut().spacing.button_padding);
+            if ui
+                .place(
+                    rect,
+                    ui.small_icon_button_widget(&re_ui::icons::CLOSE_SMALL, "Remove filter")
+                        // Without small the button would grow to interact_size and be off-center
+                        .small(),
+                )
+                .clicked()
+            {
+                should_delete_filter = true;
+                action_due_to_filter_deletion = FilterUiAction::CommitStateToBlueprint;
+            }
+            ui.style_mut().spacing.button_padding = button_padding;
+        }
+
+        let response = atom_response.response;
 
         // Should the popup be open?
         //
@@ -361,8 +317,8 @@ impl SyntaxHighlighting for FilterOperation {
                 builder.append_string_value(query);
             }
 
-            Self::BooleanEquals(query) => {
-                builder.append_primitive(&format!("{query}"));
+            Self::Boolean(boolean_filter) => {
+                builder.append_primitive(&boolean_filter.operand_text());
             }
         }
     }
@@ -375,7 +331,7 @@ fn numerical_comparison_operator_ui(
     op: &mut ComparisonOperator,
 ) {
     ui.horizontal(|ui| {
-        ui.label(SyntaxHighlightedBuilder::body(column_name).into_widget_text(ui.style()));
+        ui.label(SyntaxHighlightedBuilder::body_default(column_name).into_widget_text(ui.style()));
 
         egui::ComboBox::new("comp_op", "")
             .selected_text(
@@ -383,7 +339,13 @@ fn numerical_comparison_operator_ui(
             )
             .show_ui(ui, |ui| {
                 for possible_op in crate::filters::ComparisonOperator::ALL {
-                    if ui.button(possible_op.to_string()).clicked() {
+                    if ui
+                        .button(
+                            SyntaxHighlightedBuilder::keyword(&possible_op.to_string())
+                                .into_widget_text(ui.style()),
+                        )
+                        .clicked()
+                    {
                         *op = *possible_op;
                     }
                 }
@@ -391,9 +353,9 @@ fn numerical_comparison_operator_ui(
     });
 }
 
-fn basic_operation_ui(ui: &mut egui::Ui, column_name: &str, operator_text: &str) {
+pub fn basic_operation_ui(ui: &mut egui::Ui, column_name: &str, operator_text: &str) {
     ui.label(
-        SyntaxHighlightedBuilder::body(column_name)
+        SyntaxHighlightedBuilder::body_default(column_name)
             .with_keyword(" ")
             .with_keyword(operator_text)
             .into_widget_text(ui.style()),
@@ -429,6 +391,10 @@ impl FilterOperation {
         };
 
         let operator_text = self.operator_text();
+
+        // Reduce the default width unnecessarily expands the popup width (queries as usually vers
+        // small).
+        ui.spacing_mut().text_edit_width = 150.0;
 
         // TODO(ab): this is getting unwieldy. All arms should have an independent inner struct,
         // which all handle their own UI.
@@ -473,14 +439,8 @@ impl FilterOperation {
                 process_text_edit_response(ui, &response);
             }
 
-            Self::BooleanEquals(query) => {
-                basic_operation_ui(ui, column_name, &operator_text);
-
-                if ui.re_radio_value(query, true, "true").clicked()
-                    || ui.re_radio_value(query, false, "false").clicked()
-                {
-                    action = FilterUiAction::CommitStateToBlueprint;
-                }
+            Self::Boolean(boolean_filter) => {
+                boolean_filter.popup_ui(ui, column_name, &mut action);
             }
         }
 
@@ -494,7 +454,7 @@ impl FilterOperation {
                 operator.to_string()
             }
             Self::StringContains(_) => "contains".to_owned(),
-            Self::BooleanEquals(_) => "is".to_owned(),
+            Self::Boolean(_) => "is".to_owned(),
         }
     }
 }
@@ -502,6 +462,7 @@ impl FilterOperation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::filters::BooleanFilter;
 
     fn test_cases() -> Vec<(FilterOperation, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
@@ -510,10 +471,7 @@ mod tests {
             use FilterOperation::*;
             let _op = StringContains(String::new());
             match _op {
-                IntCompares { .. }
-                | FloatCompares { .. }
-                | StringContains(_)
-                | BooleanEquals(_) => {}
+                IntCompares { .. } | FloatCompares { .. } | StringContains(_) | Boolean(_) => {}
             }
         };
 
@@ -554,10 +512,25 @@ mod tests {
                 FilterOperation::StringContains(String::new()),
                 "string_contains_empty",
             ),
-            (FilterOperation::BooleanEquals(true), "boolean_equals_true"),
             (
-                FilterOperation::BooleanEquals(false),
+                FilterOperation::Boolean(BooleanFilter::NonNullable(true)),
+                "boolean_equals_true",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::NonNullable(false)),
                 "boolean_equals_false",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::Nullable(Some(true))),
+                "nullable_boolean_equals_true",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::Nullable(Some(false))),
+                "nullable_boolean_equals_false",
+            ),
+            (
+                FilterOperation::Boolean(BooleanFilter::Nullable(None)),
+                "nullable_boolean_equals_null",
             ),
         ]
         .into_iter()

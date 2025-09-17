@@ -14,7 +14,13 @@ The `ros2msg` layer provides automatic visualization for common ROS2 message typ
 - **`geometry_msgs`**
 - **`builtin_interfaces`**
 
-We are continually adding support for more standard ROS2 message types. For the complete list of currently supported messages, see the [ROS2 message parsers in our codebase](../../../../crates/utils/re_mcap/src/layers/ros2.rs).
+We are continually adding support for more standard ROS2 message types. For the complete list of currently supported messages, see the [ROS2 message parsers in our codebase](https://github.com/rerun-io/rerun/blob/latest/crates/utils/re_mcap/src/layers/ros2.rs).
+
+### Timelines
+
+In addition to the `log_time` and `publish_time` timestamps that are part of an MCAP message, some ROS message payloads can have an additional [`Header`]( https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Header.html) that may also contain timestamp information. These timestamps are put onto specific `ros2_*` timelines.
+
+Timestamps within Unix time range (1990-2100) create a `ros2_timestamp` timeline. Values outside this range create a `ros2_duration` timeline representing relative time from custom epochs.
 
 ### Limitations
 

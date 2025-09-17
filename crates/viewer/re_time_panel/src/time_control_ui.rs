@@ -25,14 +25,24 @@ impl TimeControlUi {
             ui.visuals_mut().widgets.hovered.expansion = 0.0;
             ui.visuals_mut().widgets.open.expansion = 0.0;
 
-            egui::ComboBox::from_id_salt("timeline")
+            let response = egui::ComboBox::from_id_salt("timeline")
                 .selected_text(time_control.timeline().name().as_str())
                 .show_ui(ui, |ui| {
-                    for timeline in times_per_timeline.timelines() {
+                    for timeline_stats in times_per_timeline.timelines_with_stats() {
+                        let timeline = &timeline_stats.timeline;
                         if ui
                             .selectable_label(
                                 timeline == time_control.timeline(),
-                                timeline.name().as_str(),
+                                (
+                                    timeline.name().as_str(),
+                                    egui::Atom::grow(),
+                                    egui::RichText::new(format!(
+                                        "{} events",
+                                        re_format::format_uint(timeline_stats.num_events())
+                                    ))
+                                    .size(10.0)
+                                    .color(ui.tokens().text_subdued),
+                                ),
                             )
                             .clicked()
                         {
@@ -65,6 +75,28 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                             true,
                         );
                     });
+                });
+            // Sort of an inline of the `egui::Response::context_menu` function.
+            // This is required to assign an id to the context menu, which would
+            // otherwise conflict with the popup of this `ComboBox`'s popup menu.
+            egui::Popup::menu(&response)
+                .id(egui::Id::new("timeline select context menu"))
+                .open_memory(if response.secondary_clicked() {
+                    Some(egui::SetOpenCommand::Bool(true))
+                } else if response.clicked() {
+                    // Explicitly close the menu if the widget was clicked
+                    // Without this, the context menu would stay open if the user clicks the widget
+                    Some(egui::SetOpenCommand::Bool(false))
+                } else {
+                    None
+                })
+                .at_pointer_fixed()
+                .show(|ui| {
+                    if ui.button("Copy timeline name").clicked() {
+                        let timeline = format!("{}", time_control.timeline().name());
+                        re_log::info!("Copied timeline: {}", timeline);
+                        ui.ctx().copy_text(timeline);
+                    }
                 })
         });
     }

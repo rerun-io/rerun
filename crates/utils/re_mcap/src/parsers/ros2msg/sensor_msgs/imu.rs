@@ -74,9 +74,8 @@ impl MessageParser for ImuMessageParser {
             .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos(
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
             imu.header.stamp.as_nanos() as u64,
-            msg.channel.topic.clone(),
         ));
 
         self.orientation.values().append_slice(&[

@@ -140,7 +140,7 @@ impl Verifier {
             }
 
             let list_array = column.as_list_opt::<i32>().ok_or_else(|| {
-                anyhow::anyhow!("Expected list array, found {:?}", column.data_type())
+                anyhow::anyhow!("Expected list array, found {}", column.data_type())
             })?;
 
             assert_eq!(column.len() + 1, list_array.offsets().len());
