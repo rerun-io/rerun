@@ -252,12 +252,7 @@ impl ViewerOpenUrl {
 
                 let recording = store_hub
                     .store_bundle()
-                    .get(
-                        store_id
-                            .as_ref()
-                            .or(store_hub.active_store_id())
-                            .ok_or(anyhow::anyhow!("No active recording"))?,
-                    )
+                    .get(store_id)
                     .ok_or(anyhow::anyhow!("No data for active recording"))?;
                 let data_source = recording
                     .data_source
@@ -851,7 +846,7 @@ mod tests {
             ))),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(Some(id)))
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .unwrap(),
             ViewerOpenUrl::FilePath(std::path::PathBuf::from("/path/to/test.rrd"))
         );
@@ -865,7 +860,7 @@ mod tests {
             }),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(Some(id)))
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .unwrap(),
             ViewerOpenUrl::RrdHttpUrl("https://example.com/recording.rrd".parse().unwrap())
         );
@@ -873,14 +868,14 @@ mod tests {
         // originating from SDK (not possible).
         let id = add_store(&mut store_hub, Some(SmartChannelSource::Sdk));
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(Some(id)))
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .is_err(),
         );
 
         // originating from stdin (not possible).
         let id = add_store(&mut store_hub, Some(SmartChannelSource::Stdin));
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(Some(id)))
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .is_err(),
         );
 
@@ -890,7 +885,7 @@ mod tests {
             Some(SmartChannelSource::RrdWebEventListener),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(Some(id)))
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .unwrap(),
             ViewerOpenUrl::WebEventListener
         );
@@ -903,7 +898,7 @@ mod tests {
             }),
         );
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(Some(id)))
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .is_err(),
         );
 
@@ -921,11 +916,8 @@ mod tests {
         let mut uri: re_uri::DatasetPartitionUri = uri.parse().unwrap();
 
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
-                &store_hub,
-                &DisplayMode::LocalRecordings(Some(id.clone()))
-            )
-            .unwrap(),
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id.clone()))
+                .unwrap(),
             ViewerOpenUrl::RedapDatasetPartition(uri.clone())
         );
 
@@ -947,7 +939,7 @@ mod tests {
         uri.fragment = fragment.clone();
 
         let mut url =
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(Some(id)))
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .unwrap();
 
         *url.fragment_mut().unwrap() = fragment;
@@ -961,7 +953,7 @@ mod tests {
             Some(SmartChannelSource::MessageProxy(uri.parse().unwrap())),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(Some(id)))
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .unwrap(),
             ViewerOpenUrl::RedapProxy(uri.parse().unwrap())
         );
@@ -969,7 +961,7 @@ mod tests {
         // with no data source (not possible).
         let id = add_store(&mut store_hub, None);
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(Some(id)))
+            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .is_err(),
         );
     }

@@ -68,7 +68,7 @@ pub enum DisplayMode {
     Settings,
 
     /// Regular view of the local recordings, including the current recording's viewport.
-    LocalRecordings(Option<StoreId>),
+    LocalRecordings(StoreId),
 
     LocalTable(TableId),
 

@@ -435,7 +435,7 @@ impl TestContext {
                 render_ctx,
 
                 connection_registry: &self.connection_registry,
-                display_mode: &DisplayMode::LocalRecordings(None),
+                display_mode: &DisplayMode::LocalRecordings(self.active_store_id()),
             },
             component_ui_registry: &self.component_ui_registry,
             view_class_registry: &self.view_class_registry,
@@ -643,6 +643,7 @@ impl TestContext {
                 | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
                 | SystemCommand::ChangeDisplayMode(_)
+                | SystemCommand::ResetDisplayMode
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }
