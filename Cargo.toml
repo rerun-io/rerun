@@ -315,8 +315,8 @@ rfd = { version = "0.15", default-features = false, features = [
 ron = { version = "0.10.1", features = ["integer128"] }
 roxmltree = "0.19.0"
 rust-format = "0.3"
-rustdoc-json = "0.9.4"
-rustdoc-types = "0.35.0"
+rustdoc-json = "0.9.7"
+rustdoc-types = "0.56.0"
 rustls = { version = "0.23", default-features = false }
 seq-macro = "0.3"
 semver = "1.0.26"
