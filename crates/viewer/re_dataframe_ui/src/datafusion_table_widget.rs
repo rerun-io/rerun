@@ -388,7 +388,11 @@ impl<'a> DataFusionTableWidget<'a> {
             title_ui(ui, Some(&mut table_config), title, url, should_show_spinner);
         }
 
-        filter_state.filter_bar_ui(ui, &mut new_blueprint);
+        filter_state.filter_bar_ui(
+            ui,
+            viewer_ctx.app_options().timestamp_format,
+            &mut new_blueprint,
+        );
 
         apply_table_style_fixes(ui.style_mut());
 

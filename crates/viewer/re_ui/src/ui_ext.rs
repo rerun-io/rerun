@@ -1290,6 +1290,18 @@ pub trait UiExt {
             text,
         ))
     }
+
+    /// Set the current style for a text field that has invalid content.
+    fn style_invalid_field(&mut self) {
+        let ui = self.ui_mut();
+        ui.visuals_mut().selection.stroke.color = ui.visuals().error_fg_color;
+        ui.visuals_mut().widgets.active.bg_stroke =
+            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+        ui.visuals_mut().widgets.hovered.bg_stroke =
+            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+        ui.visuals_mut().widgets.inactive.bg_stroke =
+            egui::Stroke::new(1.0, ui.visuals().error_fg_color);
+    }
 }
 
 impl UiExt for egui::Ui {
