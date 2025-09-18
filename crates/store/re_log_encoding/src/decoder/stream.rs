@@ -110,8 +110,17 @@ impl StreamDecoder {
         match self.state {
             State::StreamHeader => {
                 if let Some(header) = self.chunks.try_read(FileHeader::SIZE) {
+                    re_log::trace!(?header, "Decoding StreamHeader");
+
                     // header contains version and compression options
                     let (version, options) = options_from_bytes(header)?;
+
+                    re_log::trace!(
+                        version = version.to_string(),
+                        ?options,
+                        "Found Stream Header"
+                    );
+
                     self.version = Some(version);
                     self.options = options;
 
@@ -131,6 +140,9 @@ impl StreamDecoder {
                     .try_read(crate::codec::file::MessageHeader::SIZE_BYTES)
                 {
                     let header = crate::codec::file::MessageHeader::from_bytes(bytes)?;
+
+                    re_log::trace!(?header, "MessageHeader");
+
                     self.state = State::Message(header);
                     // we might have data left in the current chunk,
                     // immediately try to read the message content
@@ -139,16 +151,32 @@ impl StreamDecoder {
             }
             State::Message(header) => {
                 if let Some(bytes) = self.chunks.try_read(header.len as usize) {
+                    re_log::trace!(?header, "Read message");
+
                     let message = crate::codec::file::decoder::decode_bytes_to_app(
                         &mut self.app_id_cache,
                         header.kind,
                         bytes,
                     )?;
+
                     if let Some(mut message) = message {
+                        re_log::trace!(
+                            "LogMsg::{}",
+                            match message {
+                                LogMsg::SetStoreInfo { .. } => "SetStoreInfo",
+                                LogMsg::ArrowMsg { .. } => "ArrowMsg",
+                                LogMsg::BlueprintActivationCommand { .. } => {
+                                    "BlueprintActivationCommand"
+                                }
+                            }
+                        );
+
                         propagate_version(&mut message, self.version);
                         self.state = State::MessageHeader;
                         return Ok(Some(message));
                     } else {
+                        re_log::trace!("End of stream - expecting a new Streamheader");
+
                         // `None` means end of stream, but there might be concatenated streams,
                         // so try to read another one.
                         self.state = State::StreamHeader;
