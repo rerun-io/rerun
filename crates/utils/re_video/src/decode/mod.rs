@@ -207,7 +207,7 @@ pub fn new_decoder(
     debug_name: &str,
     video: &crate::VideoDataDescription,
     decode_settings: &DecodeSettings,
-    output_sender: &crossbeam::channel::Sender<FrameResult>,
+    output_sender: crossbeam::channel::Sender<FrameResult>,
 ) -> Result<Box<dyn AsyncDecoder>> {
     #![allow(unused_variables, clippy::needless_return)] // With some feature flags
 
