@@ -8697,7 +8697,6 @@ dependencies = [
  "re_error",
  "re_log",
  "re_tracing",
- "rust-format",
  "serde",
  "syn 2.0.104",
  "tempfile",
@@ -9725,12 +9724,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-format"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60e7c00b6c3bf5e38a880eec01d7e829d12ca682079f8238a464def3c4b31627"
-
-[[package]]
 name = "rust-fuzzy-search"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10310,7 +10303,6 @@ dependencies = [
  "rand_distr",
  "re_build_tools",
  "rerun",
- "rust-format",
  "similar-asserts",
 ]
 

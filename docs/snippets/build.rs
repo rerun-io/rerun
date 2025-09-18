@@ -12,7 +12,6 @@
 use std::{fs, path::Path};
 
 use itertools::Itertools as _;
-use rust_format::Formatter as _;
 
 fn main() {
     let crate_path =
@@ -135,9 +134,7 @@ fn main() {
             .join(",\n"),
     );
 
-    let source = rust_format::RustFmt::default()
-        .format_str(source)
-        .expect("Failed to format");
+    let source = re_build_tools::rustfmt_str(&source).expect("Failed to format");
 
     re_build_tools::write_file_if_necessary(snippets_path.join("mod.rs"), source.as_bytes())
         .unwrap();

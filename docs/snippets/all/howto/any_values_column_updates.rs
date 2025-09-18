@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use rerun::{external::arrow, TimeColumn};
+use rerun::{TimeColumn, external::arrow};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec =
