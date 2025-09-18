@@ -123,7 +123,7 @@ impl StreamDecoder {
                             if is_first_header {
                                 return Err(err);
                             } else {
-                                re_log::error!("Trailing bytes in rrd stream: {header:?}");
+                                re_log::error!("Trailing bytes in rrd stream: {header:?} ({err})");
                                 self.state = State::Done;
                                 return Ok(None);
                             }
