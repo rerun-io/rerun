@@ -418,11 +418,14 @@ impl<R: std::io::Read> Decoder<R> {
                 }
 
                 let mut read = std::io::Cursor::new(read.buffer());
-                if FileHeader::decode(&mut read).is_err() {
-                    return false;
+                match FileHeader::decode(&mut read) {
+                    Ok(_) => true,
+                    Err(DecodeError::Read { .. }) => false,
+                    Err(err) => {
+                        re_log::warn_once!("Error when expecting rrd header: {err}");
+                        false
+                    }
                 }
-
-                true
             }
         }
     }
