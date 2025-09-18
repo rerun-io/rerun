@@ -9,7 +9,11 @@ use re_sorbet::{ComponentColumnDescriptor, ComponentColumnSelector};
 /// Column descriptors are used to describe the columns in a
 /// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select a component
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
-#[pyclass(frozen, name = "ComponentColumnDescriptor")]
+#[pyclass(
+    frozen,
+    name = "ComponentColumnDescriptor",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
 pub struct PyComponentColumnDescriptor(pub ComponentColumnDescriptor);
 
@@ -97,7 +101,11 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 ///     The entity path to select.
 /// component : str
 ///     The component to select
-#[pyclass(frozen, name = "ComponentColumnSelector")]
+#[pyclass(
+    frozen,
+    name = "ComponentColumnSelector",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
 pub struct PyComponentColumnSelector(pub ComponentColumnSelector);
 
