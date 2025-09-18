@@ -390,7 +390,7 @@ impl SyntaxHighlighting for ComponentType {
 
 impl SyntaxHighlighting for ArchetypeName {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(self.as_str());
+        builder.append_identifier(self.short_name());
     }
 }
 
