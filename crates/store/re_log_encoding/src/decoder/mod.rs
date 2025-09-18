@@ -394,20 +394,29 @@ impl<R: std::io::Read> Decoder<R> {
             },
         };
 
-        let Some(msg) = msg else {
+        if let Some(msg) = msg {
+            Some(Ok(msg))
+        } else {
             // we might have a concatenated stream, so we peek beyond end of file marker to see
             if self.peek_file_header() {
                 re_log::debug!(
                     "Reached end of stream, but it seems we have a concatenated file, continuing"
                 );
-                return self.next_impl(decoder);
+                self.next_impl(decoder)
+            } else {
+                re_log::trace!("Reached end of stream, iterator complete");
+
+                if cfg!(debug_assertions) {
+                    let mut trailing_bytes = vec![];
+                    self.read.read_to_end(&mut trailing_bytes).ok();
+                    if !trailing_bytes.is_empty() {
+                        re_log::warn!("Found {} trailing bytes after rrd", trailing_bytes.len());
+                    }
+                }
+
+                None
             }
-
-            re_log::trace!("Reached end of stream, iterator complete");
-            return None;
-        };
-
-        Some(Ok(msg))
+        }
     }
 
     /// Peeks ahead in search of additional `FileHeader`s in the stream.
