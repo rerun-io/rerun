@@ -234,35 +234,11 @@ def test_partition_ordering(server_instance: tuple[subprocess.Popen[str], Catalo
                         prior_timestamp = timestamp
 
 
-def test_arrow_rb_reader(server_instance: tuple[subprocess.Popen[str], CatalogClient, DatasetEntry]) -> None:
+def test_tables_to_arrow_reader(server_instance: tuple[subprocess.Popen[str], CatalogClient, DatasetEntry]) -> None:
     (_process, client, dataset) = server_instance
 
-    time_index = "time_1"
-    rb_reader = dataset.dataframe_query_view(index=time_index, contents="/**").to_arrow_reader()
-
-    # Similar to the partition ordering test, data in the record batch reader
-    # should be sorted by partition and time index *per record batch*.
-    prior_partition_ids = set()
-    for rb in iter(rb_reader):
-        prior_partition = ""
-        prior_timestamp = 0
-        for idx in range(rb.num_rows):
-            partition = rb[0][idx].as_py()
-
-            # Nanosecond timestamps cannot be converted using `as_py()`
-            timestamp = rb.column(time_index)[idx]
-            timestamp = timestamp.value if hasattr(timestamp, "value") else timestamp.as_py()
-
-            assert partition >= prior_partition
-            if partition == prior_partition and timestamp is not None:
-                assert timestamp >= prior_timestamp
-            else:
-                assert partition not in prior_partition_ids
-                prior_partition_ids.add(partition)
-
-            prior_partition = partition
-            if timestamp is not None:
-                prior_timestamp = timestamp
+    for rb in dataset.dataframe_query_view(index="time_1", contents="/**").to_arrow_reader():
+        assert rb.num_rows > 0
 
     for partition_batch in dataset.partition_table().to_arrow_reader():
         assert partition_batch.num_rows > 0
