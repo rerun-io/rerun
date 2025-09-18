@@ -64,6 +64,9 @@ enum State {
     /// Compression is only applied to individual `ArrowMsg`s, instead of
     /// the entire stream.
     Message(crate::codec::file::MessageHeader),
+
+    /// Stop reading
+    Done,
 }
 
 impl StreamDecoder {
@@ -109,11 +112,23 @@ impl StreamDecoder {
     fn try_read_impl(&mut self) -> Result<Option<LogMsg>, DecodeError> {
         match self.state {
             State::StreamHeader => {
+                let is_first_header = self.chunks.num_read() == 0;
                 if let Some(header) = self.chunks.try_read(FileHeader::SIZE) {
                     re_log::trace!(?header, "Decoding StreamHeader");
 
                     // header contains version and compression options
-                    let (version, options) = options_from_bytes(header)?;
+                    let (version, options) = match options_from_bytes(header) {
+                        Ok(ok) => ok,
+                        Err(err) => {
+                            if is_first_header {
+                                return Err(err);
+                            } else {
+                                re_log::error!("Trailing bytes in rrd stream: {header:?}");
+                                self.state = State::Done;
+                                return Ok(None);
+                            }
+                        }
+                    };
 
                     re_log::trace!(
                         version = version.to_string(),
@@ -184,6 +199,9 @@ impl StreamDecoder {
                     }
                 }
             }
+            State::Done => {
+                return Ok(None);
+            }
         }
 
         Ok(None)
@@ -210,6 +228,9 @@ struct ChunkBuffer {
 
     /// How many bytes of valid data are currently in `self.buffer`.
     buffer_fill: usize,
+
+    /// How many bytes have been read with [`Self::try_read`] so far?
+    num_read: usize,
 }
 
 impl ChunkBuffer {
@@ -218,6 +239,7 @@ impl ChunkBuffer {
             queue: VecDeque::with_capacity(16),
             buffer: Vec::with_capacity(1024),
             buffer_fill: 0,
+            num_read: 0,
         }
     }
 
@@ -226,6 +248,11 @@ impl ChunkBuffer {
             return;
         }
         self.queue.push_back(Chunk::new(chunk));
+    }
+
+    /// How many bytes have been read with [`Self::try_read`] so far?
+    fn num_read(&self) -> usize {
+        self.num_read
     }
 
     /// Attempt to read exactly `n` bytes out of the queued chunks.
@@ -267,7 +294,7 @@ impl ChunkBuffer {
             // followed by another call to `try_read(N)` with the same `N`
             // won't erroneously return the same bytes
             self.buffer_fill = 0;
-
+            self.num_read += n;
             Some(&self.buffer[..])
         } else {
             None

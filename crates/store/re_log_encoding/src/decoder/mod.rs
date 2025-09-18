@@ -410,7 +410,7 @@ impl<R: std::io::Read> Decoder<R> {
                     let mut trailing_bytes = vec![];
                     self.read.read_to_end(&mut trailing_bytes).ok();
                     if !trailing_bytes.is_empty() {
-                        re_log::warn!("Found {} trailing bytes after rrd", trailing_bytes.len());
+                        re_log::error!("Found {} trailing bytes after rrd", trailing_bytes.len());
                     }
                 }
 
