@@ -101,11 +101,13 @@ def wait_for_server_ready(timeout: int = 30) -> None:
     else:
         raise TimeoutError(f"Server port {PORT} not ready within {timeout}s")
 
+
 class ServerInstance:
-    def __init__(self, proc: subprocess.Popen[str], client: CatalogClient, dataset: DatasetEntry):
+    def __init__(self, proc: subprocess.Popen[str], client: CatalogClient, dataset: DatasetEntry) -> None:
         self.proc = proc
         self.client = client
         self.dataset = dataset
+
 
 @pytest.fixture(scope="module")
 def server_instance() -> Generator[ServerInstance, None, None]:
