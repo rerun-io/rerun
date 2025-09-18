@@ -334,7 +334,7 @@ impl ExecutionPlan for PartitionStreamExec {
 
     fn with_new_children(
         self: Arc<Self>,
-        _children: Vec<Arc<dyn ExecutionPlan>>,
+        children: Vec<Arc<dyn ExecutionPlan>>,
     ) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
         if children.is_empty() {
             Ok(self)
