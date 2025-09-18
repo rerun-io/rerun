@@ -413,6 +413,7 @@ async fn chunk_stream_io_loop(
         .map(|batch| batch.encode())
         .collect::<Result<Vec<_>, _>>()
         .map_err(|err| exec_datafusion_err!("{err}"))?;
+
     let fetch_chunks_request = FetchChunksRequest { chunk_infos };
 
     let fetch_chunks_response_stream = client
@@ -481,6 +482,12 @@ impl ExecutionPlan for PartitionStreamExec {
             .map(|(k, v)| (k.clone(), v.clone()))
             .unzip();
         let chunk_infos = chunk_infos.into_iter().flatten().collect::<Vec<_>>();
+
+        // if no chunks match this datafusion partition, return an empty stream
+        if chunk_infos.is_empty() {
+            let stream = DataframePartitionStream { inner: None };
+            return Ok(Box::pin(stream));
+        }
 
         let client = self.client.clone();
 
