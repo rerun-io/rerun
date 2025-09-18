@@ -336,7 +336,11 @@ impl ExecutionPlan for PartitionStreamExec {
         self: Arc<Self>,
         _children: Vec<Arc<dyn ExecutionPlan>>,
     ) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
-        plan_err!("PartitionStreamExec does not support children")
+        if children.is_empty() {
+            Ok(self)
+        } else {
+            plan_err!("PartitionStreamExec does not support children")
+        }
     }
 
     fn repartitioned(
