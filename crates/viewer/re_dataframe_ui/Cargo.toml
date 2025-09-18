@@ -46,7 +46,6 @@ nohash-hasher.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-vec1.workspace = true
 
 
 [dev-dependencies]

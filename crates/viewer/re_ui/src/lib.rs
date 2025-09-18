@@ -9,6 +9,7 @@ mod command_palette;
 mod context_ext;
 mod design_tokens;
 pub mod drag_and_drop;
+pub mod egui_ext;
 pub mod filter_widget;
 mod help;
 mod hot_reload_design_tokens;
