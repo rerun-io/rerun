@@ -5,11 +5,11 @@ use datafusion::catalog::{CatalogProvider, SchemaProvider, TableProvider};
 use datafusion::common::{
     DataFusionError, Result as DataFusionResult, TableReference, exec_datafusion_err,
 };
-use re_protos::cloud::v1alpha1::ext::EntryDetails;
+use parking_lot::Mutex;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_redap_client::ConnectionClient;
 use std::any::Any;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 const DEFAULT_CATALOG_NAME: &str = "rerun";
 const DEFAULT_SCHEMA_NAME: &str = "default";
@@ -18,7 +18,7 @@ const DEFAULT_SCHEMA_NAME: &str = "default";
 pub struct GrpcCatalogProvider {
     catalog_name: Option<String>,
     client: ConnectionClient,
-    schemas: Mutex<HashMap<Option<String>, GrpcSchemaProvider>>,
+    schemas: Mutex<HashMap<Option<String>, Arc<GrpcSchemaProvider>>>,
 }
 
 fn get_table_refs(client: &ConnectionClient) -> DataFusionResult<Vec<TableReference>> {
@@ -58,20 +58,18 @@ impl GrpcCatalogProvider {
             .map(|table_ref| table_ref.schema().map(|s| s.to_owned()))
             .collect();
 
-        let mut schemas = self
-            .schemas
-            .lock()
-            .map_err(|err| exec_datafusion_err!("Unable to get lock on schema providers: {err}"))?;
+        let mut schemas = self.schemas.lock();
 
         schemas.retain(|k, _| schema_names.contains(k));
         for schema_name in schema_names {
-            let _ = schemas
-                .entry(schema_name.clone())
-                .or_insert(GrpcSchemaProvider {
+            let _ = schemas.entry(schema_name.clone()).or_insert(
+                GrpcSchemaProvider {
                     catalog_name: self.catalog_name.clone(),
                     schema_name,
                     client: self.client.clone(),
-                });
+                }
+                .into(),
+            );
         }
 
         Ok(())
@@ -80,10 +78,7 @@ impl GrpcCatalogProvider {
     fn get_schema_names(&self) -> DataFusionResult<Vec<String>> {
         self.update_from_server()?;
 
-        let schemas = self
-            .schemas
-            .lock()
-            .map_err(|err| exec_datafusion_err!("Unable to get lock on schema providers: {err}"))?;
+        let schemas = self.schemas.lock();
         Ok(schemas
             .keys()
             .map(|k| k.as_deref().unwrap_or(DEFAULT_SCHEMA_NAME).to_owned())
@@ -104,7 +99,12 @@ impl CatalogProvider for GrpcCatalogProvider {
     }
 
     fn schema(&self, name: &str) -> Option<Arc<dyn SchemaProvider>> {
-        let schemas = self.schema_names();
+        if let Err(err) = self.update_from_server() {
+            log::error!("Error updating table references from server: {err}");
+            return None;
+        }
+
+        let schemas = self.schemas.lock();
 
         let schema_name = if name == DEFAULT_SCHEMA_NAME {
             None
@@ -112,15 +112,9 @@ impl CatalogProvider for GrpcCatalogProvider {
             Some(name.to_owned())
         };
 
-        if schemas.contains(&name.to_owned()) {
-            Some(Arc::new(GrpcSchemaProvider {
-                catalog_name: self.catalog_name.clone(),
-                schema_name,
-                client: self.client.clone(),
-            }))
-        } else {
-            None
-        }
+        schemas
+            .get(&schema_name)
+            .map(|s| Arc::clone(s) as Arc<dyn SchemaProvider>)
     }
 }
 

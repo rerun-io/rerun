@@ -8668,6 +8668,7 @@ dependencies = [
  "getrandom 0.3.3",
  "itertools 0.14.0",
  "log",
+ "parking_lot",
  "re_arrow_util",
  "re_dataframe",
  "re_log_encoding",
