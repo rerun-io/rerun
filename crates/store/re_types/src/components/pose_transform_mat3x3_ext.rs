@@ -8,7 +8,7 @@ impl From<PoseTransformMat3x3> for glam::Affine3A {
     #[inline]
     fn from(v: PoseTransformMat3x3) -> Self {
         Self {
-            matrix3: glam::Mat3A::from_cols_slice(&v.0 .0),
+            matrix3: glam::Mat3A::from_cols_slice(&v.0.0),
             translation: glam::Vec3A::ZERO,
         }
     }

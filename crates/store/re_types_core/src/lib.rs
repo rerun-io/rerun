@@ -46,8 +46,8 @@ pub use self::{
         UnorderedComponentDescriptorSet,
     },
     result::{
-        DeserializationError, DeserializationResult, ResultExt, SerializationError,
-        SerializationResult, _Backtrace,
+        _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,
+        SerializationResult,
     },
     tuid::tuids_to_arrow,
     view::{View, ViewClassIdentifier},

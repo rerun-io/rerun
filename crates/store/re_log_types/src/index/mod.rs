@@ -23,5 +23,5 @@ pub use self::{
     time_type::TimeType,
     timeline::{Timeline, TimelineName},
     timestamp::Timestamp,
-    timestamp_format::TimestampFormat,
+    timestamp_format::{TimestampFormat, TimestampFormatKind},
 };

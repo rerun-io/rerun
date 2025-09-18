@@ -423,7 +423,7 @@ impl ComponentDescriptorExt for ComponentDescriptor {
 mod test {
     use crate::ArchetypeName;
 
-    use super::{with_field, ComponentDescriptor, ComponentDescriptorExt as _};
+    use super::{ComponentDescriptor, ComponentDescriptorExt as _, with_field};
 
     #[test]
     fn component_descriptor_manipulation() {

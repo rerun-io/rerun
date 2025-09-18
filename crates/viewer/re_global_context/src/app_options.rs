@@ -80,7 +80,7 @@ impl Default for AppOptions {
 
             blueprint_gc: true,
 
-            timestamp_format: TimestampFormat::Utc,
+            timestamp_format: TimestampFormat::default(),
 
             video_decoder_hw_acceleration: DecodeHardwareAcceleration::default(),
             video_decoder_override_ffmpeg_path: false,

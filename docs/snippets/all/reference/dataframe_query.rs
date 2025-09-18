@@ -1,9 +1,9 @@
 //! Query and display the first 10 rows of a recording.
 
 use rerun::{
+    ChunkStoreConfig,
     dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},
     external::re_format_arrow::format_record_batch,
-    ChunkStoreConfig,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
