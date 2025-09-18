@@ -1,8 +1,5 @@
-use std::ops::Deref;
 use std::sync::Arc;
 
-use arrow::array::RecordBatchReader;
-use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::prelude::PyAnyMethods as _;
@@ -10,9 +7,8 @@ use pyo3::types::PyCapsule;
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use tracing::instrument;
 
-use crate::arrow::datafusion_table_provider_to_arrow_reader;
 use crate::catalog::PyCatalogClientInternal;
-use crate::utils::{get_tokio_runtime, wait_for_future};
+use crate::utils::get_tokio_runtime;
 
 #[pyclass(frozen, name = "DataFusionTable")]
 pub struct PyDataFusionTable {

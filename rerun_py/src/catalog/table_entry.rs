@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use arrow::array::RecordBatchReader;
-use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::{
@@ -14,7 +12,6 @@ use tracing::instrument;
 
 use re_datafusion::TableEntryTableProvider;
 
-use crate::arrow::datafusion_table_provider_to_arrow_reader;
 use crate::catalog::to_py_err;
 use crate::{
     catalog::PyEntry,
