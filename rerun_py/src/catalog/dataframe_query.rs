@@ -402,28 +402,12 @@ impl PyDataframeQueryView {
     fn to_arrow_reader<'py>(
         self_: PyRef<'py, Self>,
         py: Python<'py>,
-    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
-        let table_provider = self_.as_table_provider(py)?;
-        let schema = table_provider.schema();
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let df = Self::df(self_)?;
 
-        let session_context = SessionContext::new();
-        session_context
-            .register_table("__table__", table_provider)
-            .map_err(to_py_err)?;
-
-        let record_batches = wait_for_future(py, async move {
-            session_context
-                .table("__table__")
-                .await
-                .map_err(to_py_err)?
-                .collect()
-                .await
-                .map_err(to_py_err)
-        })?;
-
-        let reader = RecordBatchIterator::new(record_batches.into_iter().map(Result::Ok), schema);
-
-        Ok(PyArrowType(Box::new(reader)))
+        py.import("pyarrow")?
+            .getattr("RecordBatchReader")?
+            .call_method1("from_stream", (df,))
     }
 
     /// Register this view to the global DataFusion context and return a DataFrame.

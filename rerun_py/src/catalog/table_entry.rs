@@ -75,17 +75,14 @@ impl PyTableEntry {
     /// Convert this table to a [`pyarrow.RecordBatchReader`][].
     #[instrument(skip_all)]
     fn to_arrow_reader<'py>(
-        self_: PyRefMut<'py, Self>,
+        self_: PyRef<'py, Self>,
         py: Python<'py>,
-    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
-        let table_provider = Self::table_provider(self_)?;
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let df = Self::df(self_)?;
 
-        let reader = wait_for_future(
-            py,
-            datafusion_table_provider_to_arrow_reader(table_provider),
-        )?;
-
-        Ok(PyArrowType(reader))
+        py.import("pyarrow")?
+            .getattr("RecordBatchReader")?
+            .call_method1("from_stream", (df,))
     }
 }
 
