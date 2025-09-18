@@ -926,6 +926,9 @@ impl RerunCloudService for RerunCloudHandler {
         }
         drop(store);
 
+        // sort storage engines by partition ID to ensure consistent ordering
+        storage_engines.sort_by(|a, b| a.1.cmp(&b.1));
+
         // now find and return only the requested chunks
         let mut matching_chunks = Vec::new();
         let compression = re_log_encoding::Compression::Off;
