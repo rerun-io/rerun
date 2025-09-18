@@ -319,6 +319,7 @@ async fn send_next_row(
     Ok(Some(()))
 }
 
+// TODO(#10781) - support for sending intermediate results/chunks
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_store_cpu_worker_thread(
     mut input_channel: Receiver<ChunksWithPartition>,
@@ -487,9 +488,6 @@ impl ExecutionPlan for PartitionStreamExec {
         let query_expression = self.query_expression.clone();
         let projected_schema = self.projected_schema.clone();
         let cpu_join_handle = Some(self.worker_runtime.handle().spawn(
-            // TODO(zehiko) - do we really need chunk infos inside the cpu worker thread? It seems it was only
-            // used to check if received chunks are those we expected, but that's a server side check.
-            // Remaining usage was tracking if all were received, but that was not used for anything.
             chunk_store_cpu_worker_thread(chunk_rx, batches_tx, query_expression, projected_schema),
         ));
 
