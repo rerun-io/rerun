@@ -405,15 +405,6 @@ impl<R: std::io::Read> Decoder<R> {
                 self.next_impl(decoder)
             } else {
                 re_log::trace!("Reached end of stream, iterator complete");
-
-                if cfg!(debug_assertions) {
-                    let mut trailing_bytes = vec![];
-                    self.read.read_to_end(&mut trailing_bytes).ok();
-                    if !trailing_bytes.is_empty() {
-                        re_log::error!("Found {} trailing bytes after rrd", trailing_bytes.len());
-                    }
-                }
-
                 None
             }
         }
