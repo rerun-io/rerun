@@ -26,17 +26,27 @@ impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
 #[pymethods]
 impl PyComponentColumnDescriptor {
     pub fn __repr__(&self) -> String {
+        // We could print static state all the time
+        // but in schema non-static print out with IndexColumnDescriptors
+        // so it looks a bit noisy.
+        let static_info = if self.is_static() {
+            "\n\tStatic: true"
+        } else {
+            ""
+        };
+
         format!(
             "Column name: {col}\n\
              \tEntity path: {path}\n\
              \tArchetype: {arch}\n\
              \tComponent type: {ctype}\n\
-             \tComponent: {comp}",
+             \tComponent: {comp}{static_info}",
             col = self.0.column_name(re_sorbet::BatchType::Dataframe),
             path = self.entity_path(),
             arch = self.archetype().unwrap_or("None"),
             ctype = self.component_type().unwrap_or(""),
             comp = self.component(),
+            static_info = static_info,
         )
     }
 
