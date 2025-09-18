@@ -11,7 +11,7 @@ use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
 use crate::{
-    EncodingOptions, FileHeader, OLD_RRD_HEADERS, Serializer,
+    EncodingOptions, FileHeader, Serializer,
     app_id_injector::CachingApplicationIdInjector,
     codec::{self, file::decoder},
 };
@@ -46,11 +46,39 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError>
 
 // ----------------------------------------------------------------------------
 
+/// When the file does not have the expected .rrd [FourCC](https://en.wikipedia.org/wiki/FourCC) header
+#[derive(Debug)]
+pub struct NotAnRrdError {
+    pub expected_fourcc: [u8; 4],
+    pub actual_fourcc: [u8; 4],
+}
+
+impl std::fmt::Display for NotAnRrdError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fn format_fourcc(fourcc: [u8; 4]) -> String {
+            String::from_utf8(fourcc.to_vec()).unwrap_or_else(|_err| {
+                // Show as hex instead
+                format!(
+                    "0x{:02X}{:02X}{:02X}{:02X}",
+                    fourcc[0], fourcc[1], fourcc[2], fourcc[3]
+                )
+            })
+        }
+
+        write!(
+            f,
+            "Not an RRD file: expected FourCC header {:?}, got {:?}",
+            format_fourcc(self.expected_fourcc),
+            format_fourcc(self.actual_fourcc),
+        )
+    }
+}
+
 /// On failure to encode or serialize a [`LogMsg`].
 #[derive(thiserror::Error, Debug)]
 pub enum DecodeError {
-    #[error("Not an .rrd file")]
-    NotAnRrd,
+    #[error("{0}")]
+    NotAnRrd(NotAnRrdError),
 
     #[error("Data was from an old, incompatible Rerun version")]
     OldRrdVersion,
@@ -169,16 +197,10 @@ pub fn options_from_bytes(bytes: &[u8]) -> Result<(CrateVersion, EncodingOptions
     let mut read = std::io::Cursor::new(bytes);
 
     let FileHeader {
-        magic,
+        fourcc: _, // Checked in FileHeader::decode
         version,
         options,
     } = FileHeader::decode(&mut read)?;
-
-    if OLD_RRD_HEADERS.contains(&magic) {
-        return Err(DecodeError::OldRrdVersion);
-    } else if &magic != crate::RRD_HEADER {
-        return Err(DecodeError::NotAnRrd);
-    }
 
     warn_on_version_mismatch(version)?;
 
