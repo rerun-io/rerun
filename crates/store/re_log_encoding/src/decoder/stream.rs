@@ -269,6 +269,7 @@ mod tests {
                 cloned_from: None,
                 store_source: StoreSource::Unknown,
                 store_version: Some(CrateVersion::LOCAL),
+                cropping_range: None,
             },
         })
     }

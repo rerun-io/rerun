@@ -557,6 +557,19 @@ pub struct SetStoreInfo {
     pub info: StoreInfo,
 }
 
+/// Describes how a store should crop/discard incoming data.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StoreCroppingRange {
+    /// On which timeline to crop.
+    pub timeline: TimelineName,
+
+    /// The range to crop to.
+    ///
+    /// Note that we keep data at or before the start of the range such that `latest_at` queries
+    /// at `range.min` will return data as-if all data was present.
+    pub range: AbsoluteTimeRange,
+}
+
 /// Information about a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StoreInfo {
@@ -583,6 +596,13 @@ pub struct StoreInfo {
     // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
     // would probably only lead to more issues down the line.
     pub store_version: Option<CrateVersion>,
+
+    /// If present, will crop incoming data to the specified range for a single given timeline.
+    /// Data for all other timelines will be discarded.
+    ///
+    /// A cropped store gets always a new unique ID.
+    /// TODO: make it happen.
+    pub cropping_range: Option<StoreCroppingRange>,
 }
 
 impl StoreInfo {
@@ -918,6 +938,7 @@ impl SizeBytes for StoreInfo {
             cloned_from: _,
             store_source,
             store_version,
+            cropping_range: _,
         } = self;
 
         store_id.heap_size_bytes()

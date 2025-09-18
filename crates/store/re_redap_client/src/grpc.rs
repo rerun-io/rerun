@@ -424,6 +424,7 @@ pub async fn stream_blueprint_and_partition_from_server(
             cloned_from: None,
             store_source: StoreSource::Unknown,
             store_version: None,
+            cropping_range: None,
         };
 
         stream_partition_from_server(
@@ -461,6 +462,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         cloned_from: None,
         store_source: StoreSource::Unknown,
         store_version: None,
+        cropping_range: None, // TODO: make it happen.
     };
 
     let re_uri::DatasetPartitionUri {

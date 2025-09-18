@@ -103,6 +103,7 @@ impl StoreBundle {
                     cloned_from: None,
                     store_source: re_log_types::StoreSource::Other("viewer".to_owned()),
                     store_version: Some(re_build_info::CrateVersion::LOCAL),
+                    cropping_range: None,
                 },
             });
 

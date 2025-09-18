@@ -53,6 +53,7 @@ impl crate::DataUi for EntityDb {
                     cloned_from,
                     store_source,
                     store_version,
+                    cropping_range, // TODO: make use of this here
                 } = store_info;
 
                 if let Some(cloned_from) = cloned_from {

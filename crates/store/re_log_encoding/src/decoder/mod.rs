@@ -521,6 +521,7 @@ mod tests {
                         llvm_version: String::new(),
                     },
                     store_version: Some(CrateVersion::LOCAL),
+                    cropping_range: None,
                 },
             }),
             LogMsg::ArrowMsg(store_id.clone(), arrow_msg),

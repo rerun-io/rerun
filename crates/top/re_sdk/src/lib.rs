@@ -224,5 +224,6 @@ pub fn new_store_info(
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         },
         store_version: Some(re_build_info::CrateVersion::LOCAL),
+        cropping_range: None,
     }
 }

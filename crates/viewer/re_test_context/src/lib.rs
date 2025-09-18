@@ -103,6 +103,7 @@ impl TestContext {
                 cloned_from: None,
                 store_source: StoreSource::Other("test".into()),
                 store_version: None,
+                cropping_range: None,
             },
         });
         {

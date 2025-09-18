@@ -71,6 +71,7 @@ pub fn open_recording(
             store_source,
             store_version,
             cloned_from: _,
+            cropping_range: _,
         } = store_info;
 
         let application_id = store_id.application_id();
