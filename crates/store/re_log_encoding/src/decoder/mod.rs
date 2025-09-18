@@ -46,14 +46,39 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError>
 
 // ----------------------------------------------------------------------------
 
+/// When the file does not have the expected .rrd [FourCC](https://en.wikipedia.org/wiki/FourCC) header
+#[derive(Debug)]
+pub struct NotAnRrdError {
+    pub expected_fourcc: [u8; 4],
+    pub actual_fourcc: [u8; 4],
+}
+
+impl std::fmt::Display for NotAnRrdError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fn format_fourcc(fourcc: [u8; 4]) -> String {
+            String::from_utf8(fourcc.to_vec()).unwrap_or_else(|_err| {
+                // Show as hex instead
+                format!(
+                    "0x{:02X}{:02X}{:02X}{:02X}",
+                    fourcc[0], fourcc[1], fourcc[2], fourcc[3]
+                )
+            })
+        }
+
+        write!(
+            f,
+            "Not an RRD file: expected FourCC header {:?}, got {:?}",
+            format_fourcc(self.expected_fourcc),
+            format_fourcc(self.actual_fourcc),
+        )
+    }
+}
+
 /// On failure to encode or serialize a [`LogMsg`].
 #[derive(thiserror::Error, Debug)]
 pub enum DecodeError {
-    #[error("Not an .rrd file (wrong FourCC)")]
-    NotAnRrd {
-        expected_fourcc: [u8; 4],
-        actual_fourcc: [u8; 4],
-    },
+    #[error("{0}")]
+    NotAnRrd(NotAnRrdError),
 
     #[error("Data was from an old, incompatible Rerun version")]
     OldRrdVersion,

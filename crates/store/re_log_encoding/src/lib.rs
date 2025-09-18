@@ -167,10 +167,12 @@ impl FileHeader {
         if OLD_RRD_FOURCC.contains(&fourcc) {
             return Err(decoder::DecodeError::OldRrdVersion);
         } else if fourcc != crate::RRD_FOURCC {
-            return Err(decoder::DecodeError::NotAnRrd {
-                expected_fourcc: crate::RRD_FOURCC,
-                actual_fourcc: fourcc,
-            });
+            return Err(decoder::DecodeError::NotAnRrd(
+                crate::decoder::NotAnRrdError {
+                    expected_fourcc: crate::RRD_FOURCC,
+                    actual_fourcc: fourcc,
+                },
+            ));
         }
 
         let version = to_array_4b(&buffer[4..8]);
