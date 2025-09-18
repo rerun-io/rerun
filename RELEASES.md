@@ -92,10 +92,11 @@ from the previous release's tag.
 
 Note: you do not need to create a PR for this branch -- the release workflow will do that for you.
 
-For patch releases, immediately bump the crate versions to dev version, so that any testing done against this branch will not look like the old version:
+For patch releases, immediately bump the crate versions to a dev version, so that any testing done against this branch will not look like the old version:
 ```sh
-pixi run python scripts/ci/crates.py version --exact 0.x.y --dev
+pixi run python scripts/ci/crates.py version --exact 0.x.y-alpha.0 --dev
 ```
+It is **not** enough to just set `--dev`!
 
 ### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch.
 
