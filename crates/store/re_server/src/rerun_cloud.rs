@@ -866,9 +866,7 @@ impl RerunCloudService for RerunCloudHandler {
         // worth noting that FetchChunks is not per-dataset request, it simply contains chunk infos
         let request = request.into_inner();
 
-        // extract both chunk IDs and partition IDs from the request as this is what we'll filter on
-        let mut requested_chunk_ids = std::collections::HashSet::new();
-        let mut requested_partitions = std::collections::HashSet::new();
+        let mut chunk_partition_pairs = Vec::new();
 
         for chunk_info_data in request.chunk_infos {
             let chunk_info_batch = chunk_info_data.decode().map_err(|err| {
@@ -899,77 +897,83 @@ impl RerunCloudService for RerunCloudHandler {
             })?;
 
             for (i, chunk_id) in chunk_id_array.into_iter().enumerate() {
-                requested_chunk_ids.insert(chunk_id);
                 if let Some(partition_id_str) = partition_ids.value(i).to_owned().into() {
-                    requested_partitions.insert(PartitionId::from(partition_id_str));
+                    let partition_id = PartitionId::from(partition_id_str);
+                    chunk_partition_pairs.push((chunk_id, partition_id));
                 }
             }
         }
 
-        // get only the storage engines for the requested partitions
+        // get storage engines only for the partitions we actually need
         let store = self.store.read().await;
-        let mut storage_engines = Vec::new();
-
-        for dataset in store.iter_datasets() {
-            let dataset_id = dataset.id();
-            for partition_id in dataset.partition_ids() {
-                if requested_partitions.contains(&partition_id) {
-                    if let Some(partition) = dataset.partition(&partition_id) {
-                        #[expect(unsafe_code)]
-                        // Safety: no viewer is running, and we've locked the store for the duration
-                        // of the handler already.
-                        let storage_engine = unsafe { partition.storage_engine_raw() }.clone();
-                        storage_engines.push((dataset_id, partition_id, storage_engine));
+        let storage_engines: std::collections::HashMap<_, _> = store
+            .iter_datasets()
+            .flat_map(|dataset| {
+                let dataset_id = dataset.id();
+                let chunk_partition_pairs = &chunk_partition_pairs;
+                dataset.partition_ids().filter_map(move |partition_id| {
+                    if chunk_partition_pairs
+                        .iter()
+                        .any(|(_, pid)| pid == &partition_id)
+                    {
+                        dataset.partition(&partition_id).map(|partition| {
+                            #[expect(unsafe_code)]
+                            // Safety: no viewer is running, and we've locked the store for the duration
+                            // of the handler already.
+                            let storage_engine = unsafe { partition.storage_engine_raw() }.clone();
+                            (partition_id, (dataset_id, storage_engine))
+                        })
+                    } else {
+                        None
                     }
-                }
-            }
-        }
+                })
+            })
+            .collect();
         drop(store);
 
-        // sort storage engines by partition ID to ensure consistent ordering
-        storage_engines.sort_by(|a, b| a.1.cmp(&b.1));
-
-        // now find and return only the requested chunks
-        let mut matching_chunks = Vec::new();
+        let mut chunks = Vec::new();
         let compression = re_log_encoding::Compression::Off;
 
-        for (dataset_id, partition_id, storage_engine) in storage_engines {
+        for (chunk_id, partition_id) in chunk_partition_pairs {
+            let (dataset_id, storage_engine) =
+                storage_engines.get(&partition_id).ok_or_else(|| {
+                    tonic::Status::internal(format!(
+                        "Storage engine not found for partition {partition_id}"
+                    ))
+                })?;
+
             let storage_read = storage_engine.read();
             let chunk_store = storage_read.store();
 
-            let store_id = StoreId::new(
-                StoreKind::Recording,
-                dataset_id.to_string(),
-                partition_id.id.as_str(),
-            );
+            if let Some(chunk) = chunk_store.chunk(&chunk_id) {
+                let store_id = StoreId::new(
+                    StoreKind::Recording,
+                    dataset_id.to_string(),
+                    partition_id.id.as_str(),
+                );
 
-            for chunk in chunk_store.iter_chunks() {
-                if requested_chunk_ids.contains(&chunk.id()) {
-                    let arrow_msg = re_log_types::ArrowMsg {
-                        chunk_id: *chunk.id(),
-                        batch: chunk.to_record_batch().map_err(|err| {
-                            tonic::Status::internal(format!(
-                                "failed to convert chunk to record batch: {err:#}"
-                            ))
-                        })?,
-                        on_release: None,
-                    };
+                let arrow_msg = re_log_types::ArrowMsg {
+                    chunk_id: *chunk.id(),
+                    batch: chunk.to_record_batch().map_err(|err| {
+                        tonic::Status::internal(format!(
+                            "failed to convert chunk to record batch: {err:#}"
+                        ))
+                    })?,
+                    on_release: None,
+                };
 
-                    let proto_msg = re_log_encoding::protobuf_conversions::arrow_msg_to_proto(
-                        &arrow_msg,
-                        store_id.clone(),
-                        compression,
-                    )
-                    .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))?;
+                let proto_msg = re_log_encoding::protobuf_conversions::arrow_msg_to_proto(
+                    &arrow_msg,
+                    store_id,
+                    compression,
+                )
+                .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))?;
 
-                    matching_chunks.push(proto_msg);
-                }
+                chunks.push(proto_msg);
             }
         }
 
-        let response = re_protos::cloud::v1alpha1::FetchChunksResponse {
-            chunks: matching_chunks,
-        };
+        let response = re_protos::cloud::v1alpha1::FetchChunksResponse { chunks };
 
         let stream = futures::stream::once(async move { Ok(response) });
 
