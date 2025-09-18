@@ -257,13 +257,7 @@ impl<R: std::io::Read> Decoder<R> {
 
         let (version, options) = options_from_bytes(&data)?;
 
-        Ok(Self {
-            version,
-            options,
-            read: Reader::Raw(read),
-            size_bytes: FileHeader::SIZE as _,
-            app_id_cache: CachingApplicationIdInjector::default(),
-        })
+        Ok(Self::new_with_options(options, version, read))
     }
 
     pub fn new_with_options(options: EncodingOptions, version: CrateVersion, read: R) -> Self {
