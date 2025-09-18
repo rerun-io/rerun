@@ -11,7 +11,7 @@ use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
 use crate::{
-    EncodingOptions, FileHeader, OLD_RRD_HEADERS, Serializer,
+    EncodingOptions, FileHeader, Serializer,
     app_id_injector::CachingApplicationIdInjector,
     codec::{self, file::decoder},
 };
@@ -49,8 +49,11 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError>
 /// On failure to encode or serialize a [`LogMsg`].
 #[derive(thiserror::Error, Debug)]
 pub enum DecodeError {
-    #[error("Not an .rrd file")]
-    NotAnRrd,
+    #[error("Not an .rrd file (wrong FourCC)")]
+    NotAnRrd {
+        expected_fourcc: [u8; 4],
+        actual_fourcc: [u8; 4],
+    },
 
     #[error("Data was from an old, incompatible Rerun version")]
     OldRrdVersion,
@@ -169,16 +172,10 @@ pub fn options_from_bytes(bytes: &[u8]) -> Result<(CrateVersion, EncodingOptions
     let mut read = std::io::Cursor::new(bytes);
 
     let FileHeader {
-        magic,
+        fourcc: _, // Checked in FileHeader::decode
         version,
         options,
     } = FileHeader::decode(&mut read)?;
-
-    if OLD_RRD_HEADERS.contains(&magic) {
-        return Err(DecodeError::OldRrdVersion);
-    } else if &magic != crate::RRD_HEADER {
-        return Err(DecodeError::NotAnRrd);
-    }
 
     warn_on_version_mismatch(version)?;
 

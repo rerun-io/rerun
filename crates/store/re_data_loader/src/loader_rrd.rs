@@ -124,7 +124,7 @@ impl crate::DataLoader for RrdLoader {
             Ok(decoder) => decoder,
             Err(err) => match err {
                 // simply not interested
-                re_log_encoding::decoder::DecodeError::NotAnRrd
+                re_log_encoding::decoder::DecodeError::NotAnRrd { .. }
                 | re_log_encoding::decoder::DecodeError::Options(_) => return Ok(()),
                 _ => return Err(err.into()),
             },
