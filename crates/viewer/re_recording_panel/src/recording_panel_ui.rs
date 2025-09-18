@@ -41,7 +41,7 @@ pub fn recordings_panel_ui(
 
     egui::ScrollArea::both()
         .id_salt("recordings_scroll_area")
-        .auto_shrink([false, false]) //shinking forces to limit maximum height of the recording panel
+        .auto_shrink([false, false]) // shrinking forces to limit maximum height of the recording panel
         .show(ui, |ui| {
             ui.panel_content(|ui| {
                 re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {

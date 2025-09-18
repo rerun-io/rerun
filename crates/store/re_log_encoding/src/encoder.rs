@@ -150,7 +150,7 @@ impl<W: std::io::Write> Encoder<W> {
         mut write: W,
     ) -> Result<Self, EncodeError> {
         FileHeader {
-            magic: *crate::RRD_HEADER,
+            fourcc: crate::RRD_FOURCC,
             version: version.to_bytes(),
             options,
         }
