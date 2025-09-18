@@ -9,7 +9,7 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
 };
 use prost_reflect::{
-    DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, Value,
+    DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, ReflectMessage, Value,
 };
 use re_chunk::{Chunk, ChunkId};
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
@@ -23,7 +23,7 @@ struct ProtobufMessageParser {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum ProtobufError {
+enum ProtobufError {
     #[error("invalid message on channel {channel} for schema {schema}: {source}")]
     InvalidMessage {
         schema: String,
@@ -31,13 +31,25 @@ pub enum ProtobufError {
         source: prost_reflect::prost::DecodeError,
     },
 
-    #[error("expected type {expected_type}, but found value {value}")]
+    #[error("expected type {expected}, but found value {actual}")]
     UnexpectedValue {
-        expected_type: &'static str,
-        value: Value,
+        expected: &'static str,
+        actual: Value,
     },
 
-    #[error("type {0} is not supported yyet")]
+    #[error("expected type {expected}, but found kind {actual:?}")]
+    UnexpectedType {
+        expected: &'static str,
+        actual: prost_reflect::Kind,
+    },
+
+    #[error("unknown enum number {0}")]
+    UnknownEnumNumber(i32),
+
+    #[error("unknown field name {0}")]
+    UnknownFieldName(String),
+
+    #[error("type {0} is not supported yet")]
     UnsupportedType(&'static str),
 
     #[error("missing protobuf field {field}")]
@@ -94,9 +106,13 @@ impl MessageParser for ProtobufMessageParser {
         // a field is missing from the message that we received.
         for (field, builder) in &mut self.fields {
             if let Some(val) = dynamic_message.get_field_by_name(field.as_str()) {
-                append_value(builder.values(), val.as_ref())?;
+                let field = dynamic_message
+                    .descriptor()
+                    .get_field_by_name(field)
+                    .ok_or_else(|| ProtobufError::UnknownFieldName(field.to_owned()))?;
+                append_value(builder.values(), &field, val.as_ref())?;
                 builder.append(true);
-                re_log::trace!("Field {}: Finished writing to builders", field);
+                re_log::trace!("Field {}: Finished writing to builders", field.full_name());
             } else {
                 builder.append(false);
             }
@@ -143,13 +159,17 @@ fn downcast_err<'a, T: std::any::Any>(
     builder.as_any_mut().downcast_mut::<T>().ok_or_else(|| {
         let type_name = std::any::type_name::<T>();
         ProtobufError::UnexpectedValue {
-            expected_type: type_name.strip_suffix("Builder").unwrap_or(type_name),
-            value: val.clone(),
+            expected: type_name.strip_suffix("Builder").unwrap_or(type_name),
+            actual: val.clone(),
         }
     })
 }
 
-fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), ProtobufError> {
+fn append_value(
+    builder: &mut dyn ArrayBuilder,
+    field: &FieldDescriptor,
+    val: &Value,
+) -> Result<(), ProtobufError> {
     match val {
         Value::Bool(x) => downcast_err::<BooleanBuilder>(builder, val)?.append_value(*x),
         Value::I32(x) => downcast_err::<Int32Builder>(builder, val)?.append_value(*x),
@@ -187,7 +207,13 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Proto
                         field: protobuf_number,
                     })?;
                 re_log::trace!("Written field ({protobuf_number}) with val: {val}");
-                append_value(field_builder, val.as_ref())?;
+                let field = dynamic_message
+                    .descriptor()
+                    .get_field(protobuf_number)
+                    .ok_or_else(|| ProtobufError::MissingField {
+                        field: protobuf_number,
+                    })?;
+                append_value(field_builder, &field, val.as_ref())?;
             }
             struct_builder.append(true);
         }
@@ -196,7 +222,9 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Proto
             let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
 
             for val in vec {
-                append_value(list_builder.values(), val)?;
+                // All of these values still belong to the same field,
+                // which is why we forward the descriptor.
+                append_value(list_builder.values(), field, val)?;
             }
             list_builder.append(true);
             re_log::trace!("Finished append on list with elements {val}");
@@ -206,9 +234,17 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Proto
             return Err(ProtobufError::UnsupportedType("HashMap"));
         }
         Value::EnumNumber(x) => {
-            // Change this to a `UnionBuilder`:
-            // https://github.com/apache/arrow-rs/issues/8033
-            downcast_err::<Int32Builder>(builder, val)?.append_value(*x);
+            let kind = field.kind();
+            let enum_descriptor = kind
+                .as_enum()
+                .ok_or_else(|| ProtobufError::UnexpectedType {
+                    expected: "enum",
+                    actual: kind.clone(),
+                })?;
+            let value = enum_descriptor
+                .get_value(*x)
+                .ok_or_else(|| ProtobufError::UnknownEnumNumber(*x))?;
+            downcast_err::<StringBuilder>(builder, val)?.append_value(value.name());
         }
     }
 
@@ -250,10 +286,11 @@ fn arrow_builder_from_field(descr: &FieldDescriptor) -> Box<dyn ArrayBuilder> {
             Box::new(struct_builder_from_message(&message_descriptor)) as Box<dyn ArrayBuilder>
         }
         Kind::Enum(_) => {
-            re_log::warn_once!(
-                "Enum support is still limited, falling back to Int32 representation"
-            );
-            Box::new(Int32Builder::new())
+            // TODO(grtlr): It would be great to improve our `enum` support. Using `Utf8`
+            // means a lot of excess memory / storage usage. Ideally we would use something
+            // like `StringDictionary`, but it's not clear right now how this works with
+            // `dyn ArrayBuilder` and sharing entries across lists.
+            Box::new(StringBuilder::new())
         }
     };
 
@@ -287,8 +324,8 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
             DataType::Struct(fields)
         }
         Kind::Enum(_) => {
-            // TODO(apache/arrow-rs#8033): Implement enum support when `UnionBuilder` implements `ArrayBuilder`.
-            DataType::Int32
+            // TODO(grtlr): Explanation see above.
+            DataType::Utf8
         }
     };
 
