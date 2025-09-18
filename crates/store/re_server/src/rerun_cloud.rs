@@ -866,7 +866,7 @@ impl RerunCloudService for RerunCloudHandler {
         // worth noting that FetchChunks is not per-dataset request, it simply contains chunk infos
         let request = request.into_inner();
 
-        // extract both chunk IDs and partition IDs from the request for efficient filtering
+        // extract both chunk IDs and partition IDs from the request as this is what we'll filter on
         let mut requested_chunk_ids = std::collections::HashSet::new();
         let mut requested_partitions = std::collections::HashSet::new();
 
@@ -906,19 +906,21 @@ impl RerunCloudService for RerunCloudHandler {
             }
         }
 
-        // get all storage engines from all datasets (since fetch_chunks is dataset-agnostic)
+        // get only the storage engines for the requested partitions
         let store = self.store.read().await;
         let mut storage_engines = Vec::new();
 
         for dataset in store.iter_datasets() {
             let dataset_id = dataset.id();
             for partition_id in dataset.partition_ids() {
-                if let Some(partition) = dataset.partition(&partition_id) {
-                    #[expect(unsafe_code)]
-                    // Safety: no viewer is running, and we've locked the store for the duration
-                    // of the handler already.
-                    let storage_engine = unsafe { partition.storage_engine_raw() }.clone();
-                    storage_engines.push((dataset_id, partition_id, storage_engine));
+                if requested_partitions.contains(&partition_id) {
+                    if let Some(partition) = dataset.partition(&partition_id) {
+                        #[expect(unsafe_code)]
+                        // Safety: no viewer is running, and we've locked the store for the duration
+                        // of the handler already.
+                        let storage_engine = unsafe { partition.storage_engine_raw() }.clone();
+                        storage_engines.push((dataset_id, partition_id, storage_engine));
+                    }
                 }
             }
         }
@@ -929,9 +931,6 @@ impl RerunCloudService for RerunCloudHandler {
         let compression = re_log_encoding::Compression::Off;
 
         for (dataset_id, partition_id, storage_engine) in storage_engines {
-            if !requested_partitions.contains(&partition_id) {
-                continue;
-            }
             let storage_read = storage_engine.read();
             let chunk_store = storage_read.store();
 
