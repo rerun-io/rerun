@@ -251,7 +251,7 @@ impl ListItemContent for PropertyContent<'_> {
             egui::FontSelection::Default,
             Align::LEFT,
         ));
-        let desired_galley = ui.fonts(|fonts| fonts.layout_job(layout_job.clone()));
+        let desired_galley = ui.fonts_mut(|fonts| fonts.layout_job(layout_job.clone()));
         let desired_width =
             (content_indent + icon_extra + desired_galley.size().x + Self::COLUMN_SPACING / 2.0)
                 .ceil();
@@ -264,7 +264,7 @@ impl ListItemContent for PropertyContent<'_> {
             desired_galley
         } else {
             layout_job.wrap = TextWrapping::truncate_at_width(label_rect.width());
-            ui.fonts(|fonts| fonts.layout_job(layout_job))
+            ui.fonts_mut(|fonts| fonts.layout_job(layout_job))
         };
 
         // this happens here to avoid cloning the text

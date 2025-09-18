@@ -179,7 +179,7 @@ pub trait UiExt {
         }
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
-        response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ImageButton));
+        response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::Button));
 
         if ui.is_rect_visible(rect) {
             let visuals = ui.style().interact(&response);

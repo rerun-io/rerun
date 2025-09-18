@@ -131,7 +131,7 @@ impl UiLayout {
                 // Ugly hack that may or may not work correctly.
                 let mut layout_job = Arc::unwrap_or_clone(galley.job.clone());
                 layout_job.wrap.max_width = ui.spacing().tooltip_width;
-                galley = ui.fonts(|f| f.layout_job(layout_job));
+                galley = ui.fonts_mut(|f| f.layout_job(layout_job));
             }
         }
 
@@ -192,7 +192,7 @@ impl UiLayout {
             Self::SelectionPanel => {}
         }
 
-        let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
+        let galley = ui.fonts_mut(|f| f.layout_job(layout_job)); // We control the text layout; not the label
 
         Self::decorate_url(ui, galley)
     }

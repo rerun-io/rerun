@@ -210,7 +210,7 @@ impl ListItemContent for LabelContent<'_> {
         ));
         layout_job.wrap = TextWrapping::from_wrap_mode_and_width(text_wrap_mode, text_rect.width());
 
-        let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
+        let galley = ui.fonts_mut(|fonts| fonts.layout_job(layout_job));
 
         // this happens here to avoid cloning the text
         context.response.widget_info(|| {
@@ -245,7 +245,7 @@ impl ListItemContent for LabelContent<'_> {
                 egui::FontSelection::Default,
                 Align::LEFT,
             ));
-            let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
+            let galley = ui.fonts_mut(|fonts| fonts.layout_job(layout_job));
 
             let mut desired_width = galley.size().x;
 

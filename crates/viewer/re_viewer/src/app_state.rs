@@ -687,7 +687,11 @@ impl AppState {
             .memory(|mem| mem.focused())
             .and_then(|id| TextEditState::load(ui.ctx(), id))
             .is_none()
-            && !LabelSelectionState::load(ui.ctx()).has_selection()
+            && ui
+                .ctx()
+                .plugin::<LabelSelectionState>()
+                .lock()
+                .has_selection()
             && ui.input(|input| input.events.iter().any(|e| e == &egui::Event::Copy))
         {
             self.selection_state

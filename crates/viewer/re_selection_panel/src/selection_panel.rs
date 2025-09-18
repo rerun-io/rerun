@@ -631,7 +631,7 @@ fn entity_path_filter_ui(
         let mut layout_job =
             syntax_highlight_entity_path_filter(ui.tokens(), ui.style(), text.as_str());
         layout_job.wrap.max_width = wrap_width;
-        ui.fonts(|f| f.layout_job(layout_job))
+        ui.fonts_mut(|f| f.layout_job(layout_job))
     }
 
     // We store the string we are temporarily editing in the `Ui`'s temporary data storage.

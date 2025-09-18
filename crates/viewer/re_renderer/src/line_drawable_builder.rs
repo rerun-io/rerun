@@ -506,7 +506,7 @@ impl<'a, 'ctx> LineStripBuilder<'a, 'ctx> {
 
     #[inline]
     pub fn color(mut self, color: Color32) -> Self {
-        self.strip.color = color;
+        self.strip.color = color.to_array();
         self
     }
 

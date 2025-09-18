@@ -259,7 +259,7 @@ pub fn create_labels(
         };
         let format = egui::TextFormat::simple(font_id, text_color);
 
-        let galley = parent_ui.fonts(|fonts| {
+        let galley = parent_ui.fonts_mut(|fonts| {
             fonts.layout_job({
                 egui::text::LayoutJob {
                     sections: vec![egui::text::LayoutSection {

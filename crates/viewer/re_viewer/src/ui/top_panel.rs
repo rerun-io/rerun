@@ -429,7 +429,7 @@ fn website_link_ui(ui: &mut egui::Ui) {
 
     let url = "https://rerun.io/";
     let response = ui
-        .add(egui::ImageButton::new(image))
+        .add(egui::Button::image(image))
         .on_hover_cursor(egui::CursorIcon::PointingHand);
     if response.clicked() {
         ui.ctx().open_url(egui::output::OpenUrl {

@@ -131,7 +131,8 @@ pub mod gpu_data {
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineStripInfo {
-        pub color: Color32, // alpha unused right now
+        /// [`ecolor::Color32`] is `repr(align(4))` so we can't use it in `repr(packed)`.
+        pub color: [u8; 4], // alpha unused right now
         pub stippling: u8,
         pub flags: LineStripFlags,
         pub radius: SizeHalf,
@@ -142,7 +143,7 @@ pub mod gpu_data {
         fn default() -> Self {
             Self {
                 radius: crate::Size::new_ui_points(1.5).into(),
-                color: Color32::WHITE,
+                color: Color32::WHITE.to_array(),
                 stippling: 0,
                 flags: LineStripFlags::empty(),
             }
