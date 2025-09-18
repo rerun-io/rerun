@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.25.0"
-__version_info__ = (0, 25, 0, None)
+__version__ = "0.25.1-alpha.0+dev"
+__version_info__ = (0, 25, 1, "alpha.0")
 
 if sys.version_info < (3, 10):
     warnings.warn(

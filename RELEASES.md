@@ -95,6 +95,9 @@ Note: you do not need to create a PR for this branch -- the release workflow wil
 For patch releases, immediately bump the crate versions to a dev version, so that any testing done against this branch will not look like the old version:
 ```sh
 pixi run python scripts/ci/crates.py version --exact 0.x.y-alpha.0 --dev
+pixi run python scripts/ci/update_rerun_notebook_version.py 0.x.y-alpha.0+dev
+pixi run node rerun_js/scripts/version.mjs 0.x.y-alpha.0+dev
+pixi run python scripts/ci/update_rerun_py_and_c_version.py 0.x.y-alpha.0+dev
 ```
 It is **not** enough to just set `--dev`!
 
