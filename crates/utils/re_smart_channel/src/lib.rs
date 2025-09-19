@@ -142,12 +142,12 @@ impl SmartChannelSource {
     ///
     /// Returns `None` for any source that receives data dynamically through SDK calls or similar.
     /// For a status string that applies to all sources, see [`Self::status_string`].
-    pub fn loading_string(&self) -> Option<String> {
+    pub fn loading_name(&self) -> Option<String> {
         match self {
             // We only show things we know are very-soon-to-be recordings:
-            Self::File(path) => Some(format!("Loading {}…", path.display())),
-            Self::RrdHttpStream { url, .. } => Some(format!("Loading {url}…")),
-            Self::RedapGrpcStream { uri, .. } => Some(format!("Loading {uri}…")),
+            Self::File(path) => Some(path.to_string_lossy().into_owned()),
+            Self::RrdHttpStream { url, .. } => Some(url.clone()),
+            Self::RedapGrpcStream { uri, .. } => Some(uri.partition_id.clone()),
 
             Self::RrdWebEventListener
             | Self::JsChannel { .. }

@@ -194,7 +194,7 @@ impl<'a> AppIdData<'a> {
         });
 
         let is_active = false;
-        let is_selected = ctx.selection().contains_item(&Item::AppId(app_id.clone()));
+        let is_selected = ctx.is_selected(&Item::AppId(app_id.clone()));
 
         let loaded_recordings = entity_dbs
             .into_iter()
@@ -252,7 +252,7 @@ impl<'a> ServerData<'a> {
         let origin = server.origin();
         let item = Item::RedapServer(origin.clone());
 
-        let is_selected = ctx.selection().contains_item(&item);
+        let is_selected = ctx.is_selected(&item);
         let is_active = matches!(
             ctx.display_mode(),
             DisplayMode::RedapServer(current_origin)
@@ -310,12 +310,10 @@ impl<'a> ServerEntriesData<'a> {
                         entry_id: entry.id(),
                         name: entry.name().to_owned(),
                         icon: entry.icon(),
-                        is_selected: ctx.selection().contains_item(&Item::RedapEntry(
-                            re_uri::EntryUri {
-                                origin: origin.clone(),
-                                entry_id: entry.id(),
-                            },
-                        )),
+                        is_selected: ctx.is_selected(&Item::RedapEntry(re_uri::EntryUri {
+                            origin: origin.clone(),
+                            entry_id: entry.id(),
+                        })),
                         is_active: ctx.active_redap_entry() == Some(entry.id()),
                     };
 

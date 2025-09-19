@@ -156,14 +156,15 @@ fn handle_popstate(
         unreachable!();
     };
 
-    let follow_if_http = false;
-    let select_redap_source_when_loaded = true;
     match entry.url.parse::<open_url::ViewerOpenUrl>() {
         Ok(url) => {
             url.open(
                 egui_ctx,
-                follow_if_http,
-                select_redap_source_when_loaded,
+                &open_url::OpenUrlOptions {
+                    follow_if_http: false,
+                    select_redap_source_when_loaded: true,
+                    show_loader: true,
+                },
                 command_sender,
             );
         }

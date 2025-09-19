@@ -192,6 +192,15 @@ pub fn base_url(url: &Url) -> Url {
     base_url
 }
 
+#[derive(Clone, Copy, Default)]
+pub struct OpenUrlOptions {
+    pub follow_if_http: bool,
+    pub select_redap_source_when_loaded: bool,
+
+    /// Shows the loading screen.
+    pub show_loader: bool,
+}
+
 impl ViewerOpenUrl {
     pub fn from_context(ctx: &ViewerContext<'_>) -> anyhow::Result<Self> {
         let time_ctrl = ctx.rec_cfg.time_ctrl.read();
@@ -238,6 +247,52 @@ impl ViewerOpenUrl {
         Ok(this)
     }
 
+    pub fn from_data_source(data_source: &SmartChannelSource) -> anyhow::Result<Self> {
+        // Note that some of these data sources aren't actually sharable URLs.
+        // But since we have to handles this for `open_url` and `sharable_url` anyways,
+        // we just preserve as much as possible here.
+        match data_source {
+            SmartChannelSource::RrdHttpStream { url, follow: _ } => {
+                Ok(Self::RrdHttpUrl(url.parse::<Url>()?))
+            }
+
+            SmartChannelSource::File(path_buf) => {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    Ok(Self::FilePath(path_buf.clone()))
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    _ = path_buf;
+                    Err(anyhow::anyhow!(
+                        "Can't share links to local files on the web."
+                    ))
+                }
+            }
+
+            SmartChannelSource::RrdWebEventListener => Ok(Self::WebEventListener),
+
+            SmartChannelSource::JsChannel { .. } => Err(anyhow::anyhow!(
+                "Can't share links to recordings streamed from the web."
+            )),
+
+            SmartChannelSource::Sdk => Err(anyhow::anyhow!(
+                "Can't share links to recordings streamed from the SDKs."
+            )),
+
+            SmartChannelSource::Stdin => Err(anyhow::anyhow!(
+                "Can't share links to recordings streamed from stdin."
+            )),
+
+            SmartChannelSource::RedapGrpcStream {
+                uri,
+                select_when_loaded: _,
+            } => Ok(Self::RedapDatasetPartition(uri.clone())),
+
+            SmartChannelSource::MessageProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri.clone())),
+        }
+    }
+
     /// Tries to create a viewer import URL for a [`DisplayMode`] (typically for sharing purposes).
     ///
     /// Conceptually, this is the inverse of [`Self::open`]. However, some import URLs like
@@ -256,6 +311,8 @@ impl ViewerOpenUrl {
                 Err(anyhow::anyhow!("Can't share links to the settings screen."))
             }
 
+            DisplayMode::Loading(source) => source.parse(),
+
             DisplayMode::LocalRecordings(store_id) => {
                 // Local recordings includes those downloaded from rrd urls
                 // (as of writing this includes the sample recordings!)
@@ -270,51 +327,7 @@ impl ViewerOpenUrl {
                     .as_ref()
                     .ok_or(anyhow::anyhow!("No data source"))?;
 
-                // Note that some of these data sources aren't actually sharable URLs.
-                // But since we have to handles this for `open_url` and `sharable_url` anyways,
-                // we just preserve as much as possible here.
-                match data_source {
-                    SmartChannelSource::RrdHttpStream { url, follow: _ } => {
-                        Ok(Self::RrdHttpUrl(url.parse::<Url>()?))
-                    }
-
-                    SmartChannelSource::File(path_buf) => {
-                        #[cfg(not(target_arch = "wasm32"))]
-                        {
-                            Ok(Self::FilePath(path_buf.clone()))
-                        }
-                        #[cfg(target_arch = "wasm32")]
-                        {
-                            _ = path_buf;
-                            Err(anyhow::anyhow!(
-                                "Can't share links to local files on the web."
-                            ))
-                        }
-                    }
-
-                    SmartChannelSource::RrdWebEventListener => Ok(Self::WebEventListener),
-
-                    SmartChannelSource::JsChannel { .. } => Err(anyhow::anyhow!(
-                        "Can't share links to recordings streamed from the web."
-                    )),
-
-                    SmartChannelSource::Sdk => Err(anyhow::anyhow!(
-                        "Can't share links to recordings streamed from the SDKs."
-                    )),
-
-                    SmartChannelSource::Stdin => Err(anyhow::anyhow!(
-                        "Can't share links to recordings streamed from stdin."
-                    )),
-
-                    SmartChannelSource::RedapGrpcStream {
-                        uri,
-                        select_when_loaded: _,
-                    } => Ok(Self::RedapDatasetPartition(uri.clone())),
-
-                    SmartChannelSource::MessageProxy(proxy_uri) => {
-                        Ok(Self::RedapProxy(proxy_uri.clone()))
-                    }
-                }
+                Self::from_data_source(data_source)
             }
 
             DisplayMode::LocalTable(_table_id) => {
@@ -436,11 +449,16 @@ impl ViewerOpenUrl {
     pub fn open(
         self,
         egui_ctx: &egui::Context,
-        follow_if_http: bool,
-        select_redap_source_when_loaded: bool,
+        options: &OpenUrlOptions,
         command_sender: &CommandSender,
     ) {
         re_log::debug!("Opening URL: {:?}", &self);
+
+        if options.show_loader
+            && let Ok(url) = self.sharable_url(None)
+        {
+            command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::Loading(url)));
+        }
 
         match self {
             Self::IntraRecordingSelection(item) => {
@@ -451,7 +469,7 @@ impl ViewerOpenUrl {
                     LogDataSource::RrdHttpUrl {
                         url,
                         // `follow` is not encoded in the url itself right now.
-                        follow: follow_if_http,
+                        follow: options.follow_if_http,
                     },
                 ));
             }
@@ -467,7 +485,7 @@ impl ViewerOpenUrl {
                     LogDataSource::RedapDatasetPartition {
                         uri,
                         // `select_when_loaded` is not encoded in the url itself right now.
-                        select_when_loaded: select_redap_source_when_loaded,
+                        select_when_loaded: options.select_redap_source_when_loaded,
                     },
                 ));
             }
@@ -518,8 +536,10 @@ impl ViewerOpenUrl {
                 for url in url_parameters {
                     url.open(
                         egui_ctx,
-                        follow_if_http,
-                        select_redap_source_when_loaded,
+                        &OpenUrlOptions {
+                            show_loader: false,
+                            ..*options
+                        },
                         command_sender,
                     );
                 }

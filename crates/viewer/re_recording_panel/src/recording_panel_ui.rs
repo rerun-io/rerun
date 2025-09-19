@@ -167,7 +167,7 @@ fn all_sections_ui(
 
     if recording_panel_data.show_example_section {
         let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
-        let selected = ctx.selection().contains_item(&item);
+        let selected = ctx.is_selected(&item);
         let active = matches!(
             ctx.display_mode(),
             DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
@@ -569,23 +569,32 @@ fn receiver_ui(
     receiver: &SmartChannelSource,
     show_hierarchal: bool,
 ) {
-    let Some(string) = receiver.loading_string() else {
+    let Some(string) = receiver.loading_name() else {
         return;
     };
 
-    let label_content = re_ui::list_item::LabelContent::new(string).with_buttons(|ui| {
-        let resp = ui
-            .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
-            .on_hover_text("Disconnect from this source");
+    let label_content = re_ui::list_item::LabelContent::new(string)
+        .with_icon_fn(|ui, rect, _| {
+            ui.put(rect, egui::Spinner::new());
+        })
+        .with_buttons(|ui| {
+            let resp = ui
+                .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
+                .on_hover_text("Disconnect from this source");
 
-        if resp.clicked() {
-            ctx.connected_receivers.remove(receiver);
-        }
-    });
+            if resp.clicked() {
+                ctx.connected_receivers.remove(receiver);
+            }
+        });
 
+    let selected = ctx.is_selected(&Item::DataSource(receiver.clone()));
     if show_hierarchal {
-        ui.list_item().show_hierarchical(ui, label_content);
+        ui.list_item()
+            .selected(selected)
+            .show_hierarchical(ui, label_content);
     } else {
-        ui.list_item().show_flat(ui, label_content);
+        ui.list_item()
+            .selected(selected)
+            .show_flat(ui, label_content);
     }
 }
