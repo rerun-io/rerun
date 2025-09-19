@@ -350,21 +350,6 @@ impl ViewerOpenUrl {
         }
     }
 
-    pub fn from_data_log_source(source: &LogDataSource) -> anyhow::Result<Self> {
-        match source {
-            LogDataSource::RrdHttpUrl { url, .. } => Ok(Self::RrdHttpUrl(url.clone())),
-            LogDataSource::FilePath(_, path_buf) => Ok(Self::FilePath(path_buf.clone())),
-            LogDataSource::FileContents(..) => {
-                Err(anyhow::anyhow!("Can't share file contents with a link"))
-            }
-            LogDataSource::Stdin => Err(anyhow::anyhow!("Can't share stdin with a link")),
-            LogDataSource::RedapDatasetPartition { uri, .. } => {
-                Ok(Self::RedapDatasetPartition(uri.clone()))
-            }
-            LogDataSource::RedapProxy(uri) => Ok(Self::RedapProxy(uri.clone())),
-        }
-    }
-
     /// Returns a URL for sharing purposes.
     ///
     /// Whenever possible you should provide a web viewer base URL so that the URL can be opened

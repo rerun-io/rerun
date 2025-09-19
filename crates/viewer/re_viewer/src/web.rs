@@ -201,16 +201,16 @@ impl WebHandle {
             return;
         };
 
-        // TODO(andreas): should follow_if_http be part of the fragments?
-        let follow_if_http = follow_if_http.unwrap_or(false);
-        let select_redap_source_when_loaded = true;
-
         match url.parse::<open_url::ViewerOpenUrl>() {
             Ok(url) => {
                 url.open(
                     &app.egui_ctx,
-                    follow_if_http,
-                    select_redap_source_when_loaded,
+                    &open_url::OpenUrlOptions {
+                        // TODO(andreas): should follow_if_http be part of the fragments?
+                        follow_if_http: follow_if_http.unwrap_or(false),
+                        select_redap_source_when_loaded: true,
+                        show_loader: false,
+                    },
                     &app.command_sender,
                 );
             }
@@ -803,16 +803,16 @@ fn create_app(
     }
 
     if let Some(urls) = url {
-        let follow_if_http = false;
-        let select_redap_source_when_loaded = true;
-
         for url in urls.into_inner() {
             match url.parse::<open_url::ViewerOpenUrl>() {
                 Ok(url) => {
                     url.open(
                         &app.egui_ctx,
-                        follow_if_http,
-                        select_redap_source_when_loaded,
+                        &open_url::OpenUrlOptions {
+                            follow_if_http: false,
+                            select_redap_source_when_loaded: true,
+                            show_loader: false,
+                        },
                         &app.command_sender,
                     );
                 }
