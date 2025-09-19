@@ -130,6 +130,7 @@ pub enum OptionsError {
 #[cfg(any(feature = "encoder", feature = "decoder"))]
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct FileHeader {
+    #[allow(dead_code)] // only used with the "encoder" feature
     pub fourcc: [u8; 4],
     pub version: [u8; 4],
     pub options: EncodingOptions,
