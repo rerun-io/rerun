@@ -33,15 +33,20 @@ fn create_chunk() -> anyhow::Result<Chunk> {
 
 #[test]
 /// We don't use [`crate::RecordBatchFormatOpts::redact_non_deterministic`] here because
-/// most values are set deterministically for this test.
+/// this should test printing `RowId` and `ChunkId`.
 fn format_chunk() -> anyhow::Result<()> {
     let chunk = create_chunk()?;
 
     let mut settings = Settings::clone_current();
-    // Replace the version number by [`**REDACTED**`] and pad the new string so that everything formats nicely.
+    // Replace the `version` number and `heap_size_bytes` by [`**REDACTED**`] and pad the new
+    // string so that everything formats nicely.
     settings.add_filter(
         r"\* version: \d+\.\d+\.\d+(\s*)│",
-        "* version: [**REDACTED**]<>│".replace("<>", &" ".repeat(149)),
+        "* version: [**REDACTED**]<>│".replace("<>", &" ".repeat(150)),
+    );
+    settings.add_filter(
+        r"\* heap_size_bytes: \d+(\s*)│",
+        "* heap_size_bytes: [**REDACTED**]<>│".replace("<>", &" ".repeat(142)),
     );
     settings.bind(|| {
         insta::assert_snapshot!("format_chunk", format!("{:240}", chunk));
