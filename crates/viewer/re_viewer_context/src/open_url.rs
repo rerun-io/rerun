@@ -196,6 +196,7 @@ pub fn base_url(url: &Url) -> Url {
 pub struct OpenUrlOptions {
     pub follow_if_http: bool,
     pub select_redap_source_when_loaded: bool,
+
     /// Shows the loading screen.
     pub show_loader: bool,
 }
