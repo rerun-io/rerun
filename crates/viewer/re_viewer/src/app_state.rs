@@ -34,19 +34,29 @@ const WATERMARK: bool = false; // Nice for recording media material
 #[serde(default)]
 pub struct AppState {
     /// Global options for the whole viewer.
+    #[serde(default)]
     pub(crate) app_options: AppOptions,
 
     /// Configuration for the current recording (found in [`EntityDb`]).
+    #[serde(default)]
     pub recording_configs: HashMap<StoreId, RecordingConfig>,
+
+    #[serde(default)]
     pub blueprint_cfg: RecordingConfig,
 
     /// Maps blueprint id to the current undo state for it.
     #[serde(skip)]
     pub blueprint_undo_state: HashMap<StoreId, BlueprintUndoState>,
 
+    #[serde(default)]
     selection_panel: re_selection_panel::SelectionPanel,
+
+    #[serde(default)]
     time_panel: re_time_panel::TimePanel,
+
+    #[serde(default)]
     blueprint_time_panel: re_time_panel::TimePanel,
+
     #[serde(skip)]
     blueprint_tree: re_blueprint_tree::BlueprintTree,
 
@@ -57,6 +67,7 @@ pub struct AppState {
     datastore_ui: re_chunk_store_ui::DatastoreUi,
 
     /// Redap server catalogs and browser UI
+    #[serde(default)]
     pub(crate) redap_servers: RedapServers,
 
     #[serde(skip)]
