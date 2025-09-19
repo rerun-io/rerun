@@ -738,6 +738,12 @@ impl App {
                     return;
                 }
 
+                if matches!(display_mode, DisplayMode::Loading(_)) {
+                    self.state
+                        .selection_state
+                        .set_selection(re_viewer_context::ItemCollection::default());
+                }
+
                 self.state.navigation.replace(display_mode);
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.

@@ -247,6 +247,52 @@ impl ViewerOpenUrl {
         Ok(this)
     }
 
+    pub fn from_data_source(data_source: &SmartChannelSource) -> anyhow::Result<Self> {
+        // Note that some of these data sources aren't actually sharable URLs.
+        // But since we have to handles this for `open_url` and `sharable_url` anyways,
+        // we just preserve as much as possible here.
+        match data_source {
+            SmartChannelSource::RrdHttpStream { url, follow: _ } => {
+                Ok(Self::RrdHttpUrl(url.parse::<Url>()?))
+            }
+
+            SmartChannelSource::File(path_buf) => {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    Ok(Self::FilePath(path_buf.clone()))
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    _ = path_buf;
+                    Err(anyhow::anyhow!(
+                        "Can't share links to local files on the web."
+                    ))
+                }
+            }
+
+            SmartChannelSource::RrdWebEventListener => Ok(Self::WebEventListener),
+
+            SmartChannelSource::JsChannel { .. } => Err(anyhow::anyhow!(
+                "Can't share links to recordings streamed from the web."
+            )),
+
+            SmartChannelSource::Sdk => Err(anyhow::anyhow!(
+                "Can't share links to recordings streamed from the SDKs."
+            )),
+
+            SmartChannelSource::Stdin => Err(anyhow::anyhow!(
+                "Can't share links to recordings streamed from stdin."
+            )),
+
+            SmartChannelSource::RedapGrpcStream {
+                uri,
+                select_when_loaded: _,
+            } => Ok(Self::RedapDatasetPartition(uri.clone())),
+
+            SmartChannelSource::MessageProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri.clone())),
+        }
+    }
+
     /// Tries to create a viewer import URL for a [`DisplayMode`] (typically for sharing purposes).
     ///
     /// Conceptually, this is the inverse of [`Self::open`]. However, some import URLs like
@@ -281,51 +327,7 @@ impl ViewerOpenUrl {
                     .as_ref()
                     .ok_or(anyhow::anyhow!("No data source"))?;
 
-                // Note that some of these data sources aren't actually sharable URLs.
-                // But since we have to handles this for `open_url` and `sharable_url` anyways,
-                // we just preserve as much as possible here.
-                match data_source {
-                    SmartChannelSource::RrdHttpStream { url, follow: _ } => {
-                        Ok(Self::RrdHttpUrl(url.parse::<Url>()?))
-                    }
-
-                    SmartChannelSource::File(path_buf) => {
-                        #[cfg(not(target_arch = "wasm32"))]
-                        {
-                            Ok(Self::FilePath(path_buf.clone()))
-                        }
-                        #[cfg(target_arch = "wasm32")]
-                        {
-                            _ = path_buf;
-                            Err(anyhow::anyhow!(
-                                "Can't share links to local files on the web."
-                            ))
-                        }
-                    }
-
-                    SmartChannelSource::RrdWebEventListener => Ok(Self::WebEventListener),
-
-                    SmartChannelSource::JsChannel { .. } => Err(anyhow::anyhow!(
-                        "Can't share links to recordings streamed from the web."
-                    )),
-
-                    SmartChannelSource::Sdk => Err(anyhow::anyhow!(
-                        "Can't share links to recordings streamed from the SDKs."
-                    )),
-
-                    SmartChannelSource::Stdin => Err(anyhow::anyhow!(
-                        "Can't share links to recordings streamed from stdin."
-                    )),
-
-                    SmartChannelSource::RedapGrpcStream {
-                        uri,
-                        select_when_loaded: _,
-                    } => Ok(Self::RedapDatasetPartition(uri.clone())),
-
-                    SmartChannelSource::MessageProxy(proxy_uri) => {
-                        Ok(Self::RedapProxy(proxy_uri.clone()))
-                    }
-                }
+                Self::from_data_source(data_source)
             }
 
             DisplayMode::LocalTable(_table_id) => {

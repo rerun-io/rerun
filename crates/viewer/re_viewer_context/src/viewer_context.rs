@@ -163,6 +163,43 @@ impl ViewerContext<'_> {
         self.selection_state.selected_items()
     }
 
+    /// Returns if this item should be displayed as selected or not.
+    ///
+    /// This does not always line up with [`Self::selection`], if we
+    /// are currently loading something that will be prioritized here.
+    pub fn is_selected(&self, item: &Item) -> bool {
+        use crate::open_url::ViewerOpenUrl;
+
+        if let DisplayMode::Loading(source) = self.display_mode() {
+            if let Ok(url) = source.parse::<ViewerOpenUrl>() {
+                match item {
+                    Item::DataSource(source) => ViewerOpenUrl::from_data_source(source)
+                        .is_ok_and(|source_url| source_url == url),
+                    Item::RedapEntry(uri) => {
+                        if let ViewerOpenUrl::RedapEntry(entry) = url {
+                            entry == *uri
+                        } else {
+                            false
+                        }
+                    }
+                    Item::AppId(..)
+                    | Item::StoreId(..)
+                    | Item::TableId(..)
+                    | Item::InstancePath(..)
+                    | Item::ComponentPath(..)
+                    | Item::Container(..)
+                    | Item::View(..)
+                    | Item::DataResult(..)
+                    | Item::RedapServer(..) => false,
+                }
+            } else {
+                false
+            }
+        } else {
+            self.selection().contains_item(item)
+        }
+    }
+
     /// Returns the currently hovered objects.
     pub fn hovered(&self) -> &ItemCollection {
         self.selection_state.hovered_items()
