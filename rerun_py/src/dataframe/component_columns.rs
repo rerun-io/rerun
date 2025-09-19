@@ -52,10 +52,6 @@ impl PyComponentColumnDescriptor {
         )
     }
 
-    // fn __eq__(&self, other: &Self) -> bool {
-    //     self.0 == other.0
-    // }
-
     /// The entity path.
     ///
     /// This property is read-only.
