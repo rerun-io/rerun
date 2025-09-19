@@ -95,7 +95,7 @@
     },
 
     "panel_bg_color": {
-      "color": "{Gray.100}"
+      "color": "{Red.100}"
     },
     "text_edit_bg_color": {
       "color": "{Gray.200}"
@@ -203,10 +203,10 @@
       "color": "{Gray.550}"
     },
     "text_default": {
-      "color": "{Gray.775}"
+      "color": "{Gray.355}"
     },
     "text_strong": {
-      "color": "{Gray.1000}"
+      "color": "{Green.1000}"
     },
     "error_fg_color": {
       "color": "#AB0116"
