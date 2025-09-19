@@ -9,7 +9,8 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
 };
 use prost_reflect::{
-    DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, ReflectMessage, Value,
+    DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, ReflectMessage as _,
+    Value,
 };
 use re_chunk::{Chunk, ChunkId};
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
@@ -532,39 +533,6 @@ mod test {
         Ok(())
     }
 
-    /// Wrapper to help with creating nicely formatted chunks to use with `insta`.
-    struct ChunkSnapshot<'a>(&'a Chunk);
-
-    impl std::fmt::Display for ChunkSnapshot<'_> {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let batch = self.0.to_record_batch().unwrap();
-            re_format_arrow::format_record_batch_opts(
-                &batch,
-                &RecordBatchFormatOpts {
-                    transposed: false,
-                    width: f.width(),
-                    include_metadata: true,
-                    include_column_metadata: true,
-                    trim_field_names: false,
-                    trim_metadata_keys: true,
-                    trim_metadata_values: false,
-                    redact_non_deterministic: true,
-                },
-            )
-            .fmt(f)
-        }
-    }
-
-    fn redact_settings() -> insta::Settings {
-        let mut settings = insta::Settings::clone_current();
-        // Replace the non-deterministic information by [`**REDACTED**`] and pad the new string so that everything formats nicely.
-        settings.add_filter(
-            r"│ row_[a-zA-z0-9]+(\s*)┆",
-            "│ row_[**REDACTED**]<>┆".replace("<>", &" ".repeat(27)),
-        );
-        settings
-    }
-
     fn run_layer(summary: &mcap::Summary, buffer: &[u8]) -> Vec<Chunk> {
         let mut chunks = Vec::new();
 
@@ -580,6 +548,32 @@ mod test {
             .expect("failed to run layer");
 
         chunks
+    }
+
+    /// Wrapper to help with creating nicely formatted chunks to use with `insta`.
+    struct ChunkRedacted<'a>(&'a Chunk);
+
+    impl std::fmt::Display for ChunkRedacted<'_> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let batch = self.0.to_record_batch().map_err(|err| {
+                re_log::error_once!("couldn't display Chunk: {err}");
+                std::fmt::Error
+            })?;
+            re_format_arrow::format_record_batch_opts(
+                &batch,
+                &re_format_arrow::RecordBatchFormatOpts {
+                    transposed: false,
+                    width: f.width(),
+                    include_metadata: true,
+                    include_column_metadata: true,
+                    trim_field_names: false,
+                    trim_metadata_keys: false,
+                    trim_metadata_values: false,
+                    redact_non_deterministic: true,
+                },
+            )
+            .fmt(f)
+        }
     }
 
     #[test]
@@ -624,11 +618,9 @@ mod test {
         let chunks = run_layer(&summary, buffer.as_slice());
         assert_eq!(chunks.len(), 1);
 
-        redact_settings().bind(|| {
-            insta::assert_snapshot!(
-                "two_simple_rows",
-                format!("{:240}", ChunkSnapshot(&chunks[0]))
-            );
-        });
+        insta::assert_snapshot!(
+            "two_simple_rows",
+            format!("{:240}", ChunkRedacted(&chunks[0]))
+        );
     }
 }
