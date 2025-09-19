@@ -13,6 +13,7 @@ pub enum TemporalOperator {
     #[default]
     Today,
     Yesterday,
+    Last24Hours,
     ThisWeek,
     LastWeek,
     Before,
@@ -82,6 +83,16 @@ impl EditableTimestamp {
         auto_fill_value: Option<&str>,
         is_editable: bool,
     ) -> egui::Response {
+        if let Ok(resolved) = self.resolved()
+            && !best_effort_timestamp_parse(&self.timestamp, timestamp_format)
+                .is_ok_and(|t| t == resolved)
+        {
+            // This inconsistency can be caused by the user switching timestamp formats in the
+            // settings. In this case, we set the string to a formatted version of the resolved
+            // timestamp.
+            self.timestamp = re_log_types::Timestamp::from(resolved).format(timestamp_format);
+        }
+
         if self.timestamp.is_empty()
             && is_editable
             && let Some(auto_fill_value) = auto_fill_value
@@ -172,6 +183,7 @@ impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
         match self.inner.operator {
             TemporalOperator::Today => builder.append_keyword("today"),
             TemporalOperator::Yesterday => builder.append_keyword("yesterday"),
+            TemporalOperator::Last24Hours => builder.append_keyword("last 24 hours"),
             TemporalOperator::ThisWeek => builder.append_keyword("this week"),
             TemporalOperator::LastWeek => builder.append_keyword("last week"),
             TemporalOperator::Before => {
@@ -208,6 +220,7 @@ impl TimestampFilter {
         let default_timestamp_range = match self.operator {
             TemporalOperator::Today => ResolvedTimestampFilter::Today.timestamp_range(),
             TemporalOperator::Yesterday => ResolvedTimestampFilter::Yesterday.timestamp_range(),
+            TemporalOperator::Last24Hours => ResolvedTimestampFilter::Last24Hours.timestamp_range(),
             TemporalOperator::ThisWeek => ResolvedTimestampFilter::ThisWeek.timestamp_range(),
             TemporalOperator::LastWeek => ResolvedTimestampFilter::LastWeek.timestamp_range(),
             _ => (None, None),
@@ -223,6 +236,11 @@ impl TimestampFilter {
 
         ui.re_radio_value(&mut self.operator, TemporalOperator::Today, "today");
         ui.re_radio_value(&mut self.operator, TemporalOperator::Yesterday, "yesterday");
+        ui.re_radio_value(
+            &mut self.operator,
+            TemporalOperator::Last24Hours,
+            "last 24 hours",
+        );
         ui.re_radio_value(&mut self.operator, TemporalOperator::ThisWeek, "this week");
         ui.re_radio_value(&mut self.operator, TemporalOperator::LastWeek, "last week");
         ui.re_radio_value(&mut self.operator, TemporalOperator::Before, "before");
@@ -280,6 +298,7 @@ impl TimestampFilter {
         match self.operator {
             TemporalOperator::Today => ResolvedTimestampFilter::Today,
             TemporalOperator::Yesterday => ResolvedTimestampFilter::Yesterday,
+            TemporalOperator::Last24Hours => ResolvedTimestampFilter::Last24Hours,
             TemporalOperator::ThisWeek => ResolvedTimestampFilter::ThisWeek,
             TemporalOperator::LastWeek => ResolvedTimestampFilter::LastWeek,
             TemporalOperator::Before => {
@@ -331,19 +350,21 @@ fn best_effort_timestamp_parse(
     };
 
     if let Ok(date_time) = jiff::civil::DateTime::from_str(value) {
-        return Ok(date_time.to_zoned(jiff::tz::TimeZone::UTC)?.timestamp());
+        return Ok(date_time
+            .to_zoned(timestamp_format.to_jiff_time_zone())?
+            .timestamp());
     }
 
     if let Ok(date) = jiff::civil::Date::from_str(value) {
         return Ok(date
             .at(0, 0, 0, 0)
-            .to_zoned(jiff::tz::TimeZone::UTC)?
+            .to_zoned(timestamp_format.to_jiff_time_zone())?
             .timestamp());
     }
 
     if let Ok(time) = jiff::civil::Time::from_str(value) {
         return Ok(jiff::Timestamp::now()
-            .to_zoned(jiff::tz::TimeZone::UTC)
+            .to_zoned(timestamp_format.to_jiff_time_zone())
             .date()
             .at(
                 time.hour(),
@@ -351,7 +372,7 @@ fn best_effort_timestamp_parse(
                 time.second(),
                 time.subsec_nanosecond(),
             )
-            .to_zoned(jiff::tz::TimeZone::UTC)?
+            .to_zoned(timestamp_format.to_jiff_time_zone())?
             .timestamp());
     }
 
@@ -380,6 +401,11 @@ impl From<ResolvedTimestampFilter> for TimestampFilter {
             },
             ResolvedTimestampFilter::Yesterday => Self {
                 operator: TemporalOperator::Yesterday,
+                low_bound_timestamp: Default::default(),
+                high_bound_timestamp: Default::default(),
+            },
+            ResolvedTimestampFilter::Last24Hours => Self {
+                operator: TemporalOperator::Last24Hours,
                 low_bound_timestamp: Default::default(),
                 high_bound_timestamp: Default::default(),
             },
@@ -432,6 +458,7 @@ pub enum ResolvedTimestampFilter {
 
     Today,
     Yesterday,
+    Last24Hours,
     ThisWeek,
     LastWeek,
 
@@ -448,7 +475,8 @@ pub enum ResolvedTimestampFilter {
 impl ResolvedTimestampFilter {
     pub fn timestamp_range(&self) -> (Option<Timestamp>, Option<Timestamp>) {
         let tz = jiff::tz::TimeZone::system();
-        let today = jiff::Timestamp::now().to_zoned(tz.clone()).date();
+        let now = Timestamp::now();
+        let today = now.to_zoned(tz.clone()).date();
 
         match self {
             Self::All => (None, None),
@@ -456,6 +484,8 @@ impl ResolvedTimestampFilter {
             Self::Today => day_range_to_timestamp_range(Some(today), today.tomorrow().ok()),
 
             Self::Yesterday => day_range_to_timestamp_range(today.yesterday().ok(), Some(today)),
+
+            Self::Last24Hours => (Some(now), Some(now - 24.hours())),
 
             Self::ThisWeek => {
                 let days_since_monday = today.weekday().to_monday_zero_offset();
@@ -477,6 +507,12 @@ impl ResolvedTimestampFilter {
 
     pub fn apply(&self, timestamp: jiff::Timestamp) -> bool {
         let (low, high) = self.timestamp_range();
+
+        if let (Some(low), Some(high)) = (low, high)
+            && high < low
+        {
+            return false;
+        }
 
         let mut result = true;
 
