@@ -1,7 +1,7 @@
 # Rerun changelog
 
 
-## [0.25.1](https://github.com/rerun-io/rerun/compare/0.25.0...0.25.1) - 2025-09-18 - Bug fixes
+## [0.25.1](https://github.com/rerun-io/rerun/compare/0.25.0...0.25.1) - 2025-09-19 - Bug fixes
 - Fix vector search [#11259](https://github.com/rerun-io/rerun/pull/11259)
 - Fix space origin editor resetting & closing immediately [#11251](https://github.com/rerun-io/rerun/pull/11251)
 - Fix some menu buttons closing unexpectedly [#11247](https://github.com/rerun-io/rerun/pull/11247)
