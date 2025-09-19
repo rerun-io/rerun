@@ -2,14 +2,10 @@
 
 
 ## [0.25.1](https://github.com/rerun-io/rerun/compare/0.25.0...0.25.1) - 2025-09-18 - Bug fixes
-
-#### 🪳 Bug fixes
+- Fix vector search [#11259](https://github.com/rerun-io/rerun/pull/11259)
 - Fix space origin editor resetting & closing immediately [#11251](https://github.com/rerun-io/rerun/pull/11251)
-- Add entry id to resolve api update (Fix Vector Search) [#11259](https://github.com/rerun-io/rerun/pull/11259)
 - Fix some menu buttons closing unexpectedly [#11247](https://github.com/rerun-io/rerun/pull/11247)
 - Fix table UI not saying switch to when opening a certain links [#11237](https://github.com/rerun-io/rerun/pull/11237)
-
-#### 🖼 UI improvements
 - Use short name in component defaults menu [#11264](https://github.com/rerun-io/rerun/pull/11264)
 
 
