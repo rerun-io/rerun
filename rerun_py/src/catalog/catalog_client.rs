@@ -7,9 +7,13 @@ use pyo3::{
 };
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
+use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
 use crate::catalog::{
     ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyRerunHtmlTable, PyTableEntry, to_py_err,
 };
+use crate::utils::wait_for_future;
+
+const DEFAULT_CATALOG_NAME: &str = "datafusion";
 
 /// Client for a remote Rerun catalog server.
 #[pyclass(name = "CatalogClientInternal")] // NOLINT: skip pyclass_eq, non-trivial implementation
@@ -73,6 +77,17 @@ impl PyCatalogClientInternal {
             .import("datafusion")
             .and_then(|datafusion| datafusion.getattr("dataframe_formatter"))
             .and_then(|df_formatter| df_formatter.getattr("set_formatter"));
+
+        let client = wait_for_future(py, connection.client())?;
+        let catalog_provider =
+            PyDataFusionCatalogProvider::new(Some(DEFAULT_CATALOG_NAME.to_owned()), client);
+        if let Some(ctx) = datafusion_ctx.as_ref() {
+            ctx.call_method1(
+                py,
+                "register_catalog_provider",
+                (DEFAULT_CATALOG_NAME, catalog_provider),
+            )?;
+        }
 
         if let Ok(format_fn) = format_fn {
             let _ = format_fn.call1((html_renderer,))?;

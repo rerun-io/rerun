@@ -1,18 +1,16 @@
-use crate::{DataframeQueryTableProvider, TableEntryTableProvider};
+use crate::TableEntryTableProvider;
 use ahash::{HashMap, HashSet};
 use async_trait::async_trait;
 use datafusion::catalog::{CatalogProvider, SchemaProvider, TableProvider};
-use datafusion::common::{
-    DataFusionError, Result as DataFusionResult, TableReference, exec_datafusion_err,
-};
+use datafusion::common::{DataFusionError, Result as DataFusionResult, TableReference, exec_err};
 use parking_lot::Mutex;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_redap_client::ConnectionClient;
 use std::any::Any;
+use std::iter;
 use std::sync::Arc;
 
-const DEFAULT_CATALOG_NAME: &str = "rerun";
-const DEFAULT_SCHEMA_NAME: &str = "default";
+const DEFAULT_SCHEMA_NAME: &str = "public";
 
 #[derive(Debug)]
 pub struct GrpcCatalogProvider {
@@ -49,6 +47,22 @@ fn get_table_refs(client: &ConnectionClient) -> DataFusionResult<Vec<TableRefere
 }
 
 impl GrpcCatalogProvider {
+    pub fn new(name: Option<&str>, client: ConnectionClient) -> Self {
+        let default_schema = Arc::new(GrpcSchemaProvider {
+            catalog_name: name.map(ToOwned::to_owned),
+            schema_name: None,
+            client: client.clone(),
+            in_memory_tables: Default::default(),
+        });
+        let schemas: HashMap<_, _> = iter::once((None, default_schema)).collect();
+
+        Self {
+            catalog_name: name.map(ToOwned::to_owned),
+            client,
+            schemas: Mutex::new(schemas),
+        }
+    }
+
     fn update_from_server(&self) -> DataFusionResult<()> {
         let table_names = get_table_refs(&self.client)?;
 
@@ -60,13 +74,14 @@ impl GrpcCatalogProvider {
 
         let mut schemas = self.schemas.lock();
 
-        schemas.retain(|k, _| schema_names.contains(k));
+        schemas.retain(|k, _| schema_names.contains(k) || k.is_none());
         for schema_name in schema_names {
             let _ = schemas.entry(schema_name.clone()).or_insert(
                 GrpcSchemaProvider {
                     catalog_name: self.catalog_name.clone(),
                     schema_name,
                     client: self.client.clone(),
+                    in_memory_tables: Default::default(),
                 }
                 .into(),
             );
@@ -118,11 +133,12 @@ impl CatalogProvider for GrpcCatalogProvider {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct GrpcSchemaProvider {
     catalog_name: Option<String>,
     schema_name: Option<String>,
     client: ConnectionClient,
+    in_memory_tables: Mutex<HashMap<String, Arc<dyn TableProvider>>>,
 }
 
 impl GrpcSchemaProvider {}
@@ -143,20 +159,28 @@ impl SchemaProvider for GrpcSchemaProvider {
             vec![]
         });
 
-        table_refs
+        let mut table_names = table_refs
             .into_iter()
             .filter(|table_ref| {
                 table_ref.catalog() == self.catalog_name.as_deref()
                     && table_ref.schema() == self.schema_name.as_deref()
             })
             .map(|table_ref| table_ref.table().to_owned())
-            .collect()
+            .collect::<Vec<_>>();
+
+        table_names.extend(self.in_memory_tables.lock().keys().cloned());
+
+        table_names
     }
 
     async fn table(
         &self,
         table_name: &str,
     ) -> DataFusionResult<Option<Arc<dyn TableProvider>>, DataFusionError> {
+        if let Some(table) = self.in_memory_tables.lock().get(table_name) {
+            return Ok(Some(Arc::clone(table)));
+        }
+
         let table_name = match (&self.catalog_name, &self.schema_name) {
             (Some(catalog_name), Some(schema_name)) => {
                 format!("{catalog_name}.{schema_name}.{table_name}")
@@ -175,14 +199,24 @@ impl SchemaProvider for GrpcSchemaProvider {
         name: String,
         table: Arc<dyn TableProvider>,
     ) -> DataFusionResult<Option<Arc<dyn TableProvider>>> {
-        todo!()
+        let server_tables = get_table_refs(&self.client)?;
+        if server_tables.into_iter().any(|table_ref| {
+            table_ref.catalog() == self.catalog_name.as_deref()
+                && table_ref.schema() == self.schema_name.as_deref()
+                && table_ref.table() == name
+        }) {
+            return exec_err!("{name} already exists on the server catalog");
+        }
+
+        self.in_memory_tables.lock().insert(name, table);
+        Ok(None)
     }
 
     fn deregister_table(&self, name: &str) -> DataFusionResult<Option<Arc<dyn TableProvider>>> {
-        todo!()
+        Ok(self.in_memory_tables.lock().remove(name))
     }
 
     fn table_exist(&self, name: &str) -> bool {
-        todo!()
+        self.table_names().into_iter().any(|t| t == name)
     }
 }
