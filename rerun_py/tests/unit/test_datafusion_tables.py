@@ -278,3 +278,26 @@ def test_url_generation(server_instance: ServerInstance) -> None:
         "partition_id=0cd72aae349f46bc97540d144582ff15#when=time_1@2024-01-15T10:30:45.123457000Z"
         in results[0][0][0].as_py()
     )
+
+
+def test_query_view_from_schema(server_instance: ServerInstance) -> None:
+    """Verify Our Schema is sufficiently descriptive to extract all contents from dataset."""
+    from rerun_bindings import IndexColumnDescriptor
+
+    dataset = server_instance.dataset
+
+    # TODO(nick): This only works for a single shared index column
+    # We should consider if our schema is sufficiently descriptive for
+    # multi-indices
+    index_column = None
+    for entry in dataset.schema():
+        if isinstance(entry, IndexColumnDescriptor):
+            index_column = entry.name
+        else:
+            local_index_column = index_column
+            if entry.is_static:
+                local_index_column = None
+            contents = dataset.dataframe_query_view(
+                index=local_index_column, contents={entry.entity_path: entry.component}
+            ).df()
+            assert contents.count() > 0
