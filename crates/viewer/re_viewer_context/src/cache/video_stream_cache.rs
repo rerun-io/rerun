@@ -304,6 +304,10 @@ fn read_samples_from_chunk(
         return Ok(());
     };
 
+    let min_presentation_timestamp = samples
+        .front()
+        .map_or(re_video::Time::MIN, |s| s.presentation_timestamp);
+
     let mut previous_max_presentation_timestamp = samples
         .back()
         .map_or(re_video::Time::MIN, |s| s.presentation_timestamp);
@@ -316,9 +320,22 @@ fn read_samples_from_chunk(
         .and_then(|time_range| time_range.get(&sample_descr))
     {
         Some(time_range) => {
-            if time_range.min().as_i64() < previous_max_presentation_timestamp.0 {
+            // If the whole chunk is before the current stream time range, insert
+            // it at the start.
+            if time_range.max().as_i64() < min_presentation_timestamp.0 {
                 re_log::warn_once!(
-                    "Out of order logging on video streams is not supported. Ignoring any out of order samples."
+                    "Video stream data recieved out of order, some logged \
+                     streams will not work. This can happen if a video stream \
+                     was first logged at one point in time, and then logged at \
+                     an earlier point in time. Or two recordings have been \
+                     merged where the trailing recording was at an earlier \
+                     point in time than the later one."
+                );
+
+                return Ok(());
+            } else if time_range.min().as_i64() < previous_max_presentation_timestamp.0 {
+                re_log::warn_once!(
+                    "Overlapping video streams are not supported, some logged streams have been ignored."
                 );
                 return Ok(());
             }
