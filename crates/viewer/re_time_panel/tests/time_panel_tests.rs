@@ -34,6 +34,8 @@ pub fn time_panel_two_sections_should_match_snapshot() {
         });
     }
 
+    test_context.set_timeline(Timeline::new("timeline_a", TimeType::Sequence));
+
     run_time_panel_and_save_snapshot(
         test_context,
         TimePanel::default(),
@@ -73,6 +75,8 @@ pub fn time_panel_dense_data_should_match_snapshot() {
 
         builder
     });
+
+    test_context.set_timeline(Timeline::new("timeline_a", TimeType::Sequence));
 
     run_time_panel_and_save_snapshot(
         test_context,
@@ -135,6 +139,8 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
         time_panel.activate_filter(query);
     }
 
+    test_context.set_timeline(Timeline::new("timeline_a", TimeType::Sequence));
+
     run_time_panel_and_save_snapshot(test_context, time_panel, 300.0, false, snapshot_name);
 }
 
@@ -193,6 +199,8 @@ pub fn test_focused_item_is_focused() {
         Some(EntityPath::from("/parent_with_data/of/entity").into());
 
     let time_panel = TimePanel::default();
+
+    test_context.set_timeline(Timeline::new("timeline_a", TimeType::Sequence));
 
     run_time_panel_and_save_snapshot(
         test_context,
