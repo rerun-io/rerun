@@ -324,7 +324,7 @@ fn read_samples_from_chunk(
             // it at the start.
             if time_range.max().as_i64() < min_presentation_timestamp.0 {
                 re_log::warn_once!(
-                    "Video stream data recieved out of order, some logged \
+                    "Video stream data received out of order, some logged \
                      streams will not work. This can happen if a video stream \
                      was first logged at one point in time, and then logged at \
                      an earlier point in time. Or two recordings have been \
