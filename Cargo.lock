@@ -7448,6 +7448,7 @@ dependencies = [
  "crossbeam",
  "document-features",
  "half",
+ "insta",
  "itertools 0.14.0",
  "nohash-hasher",
  "rand 0.8.5",
