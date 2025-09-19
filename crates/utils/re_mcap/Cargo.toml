@@ -14,7 +14,6 @@ version.workspace = true
 [lints]
 workspace = true
 
-
 [dependencies]
 re_chunk.workspace = true
 re_log.workspace = true
@@ -32,3 +31,9 @@ prost-reflect.workspace = true
 serde.workspace = true
 serde_bytes.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+re_format_arrow.workspace = true
+
+insta = { workspace = true, features = ["filters", "redactions"] }
+prost-reflect = { workspace = true, features = ["text-format"] }
