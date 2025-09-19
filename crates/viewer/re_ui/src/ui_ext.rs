@@ -784,11 +784,16 @@ pub trait UiExt {
         response
     }
 
-    fn loading_screen(&mut self, text: &str) {
+    fn loading_screen(&mut self, header: &str, source: &str) {
         self.ui_mut().center("loading spinner", |ui| {
             ui.vertical_centered(|ui| {
                 ui.spinner();
-                ui.label(text);
+                ui.add(egui::Label::new(
+                    egui::RichText::from(header)
+                        .heading()
+                        .color(ui.style().visuals.weak_text_color()),
+                ));
+                ui.strong(source);
             });
         });
     }

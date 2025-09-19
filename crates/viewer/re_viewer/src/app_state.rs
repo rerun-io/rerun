@@ -652,12 +652,12 @@ impl AppState {
                             }
 
                             DisplayMode::Loading(source) => {
-                                let explainer = if let Ok(url) = source.parse::<ViewerOpenUrl>() {
+                                let source = if let Ok(url) = source.parse::<ViewerOpenUrl>() {
                                     Cow::Owned(ViewerOpenUrlDescription::from_url(&url).to_string())
                                 } else {
                                     Cow::Borrowed(source.as_str())
                                 };
-                                ui.loading_screen(&format!("Loading {explainer}"));
+                                ui.loading_screen("Loading data source:", &source);
                             }
 
                             DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // Handled above
