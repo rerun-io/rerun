@@ -39,7 +39,10 @@ pub use self::{
     arrow_string::ArrowString,
     as_components::AsComponents,
     component_batch::{ComponentBatch, SerializedComponentBatch, SerializedComponentColumn},
-    component_descriptor::ComponentDescriptor,
+    component_descriptor::{
+        ComponentDescriptor, FIELD_METADATA_KEY_ARCHETYPE, FIELD_METADATA_KEY_COMPONENT,
+        FIELD_METADATA_KEY_COMPONENT_TYPE,
+    },
     id::{ChunkId, RowId},
     loggable::{
         Component, ComponentDescriptorSet, ComponentType, DatatypeName, Loggable,

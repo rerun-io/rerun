@@ -7713,6 +7713,7 @@ dependencies = [
  "egui_table",
  "insta",
  "itertools 0.14.0",
+ "jiff",
  "nohash-hasher",
  "parking_lot",
  "re_arrow_util",
