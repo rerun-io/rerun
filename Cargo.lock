@@ -7750,6 +7750,7 @@ dependencies = [
  "getrandom 0.3.3",
  "itertools 0.14.0",
  "log",
+ "re_arrow_util",
  "re_dataframe",
  "re_log_encoding",
  "re_log_types",

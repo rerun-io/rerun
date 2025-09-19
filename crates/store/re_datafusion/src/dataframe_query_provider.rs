@@ -401,7 +401,11 @@ async fn chunk_store_cpu_worker_thread(
 /// to the gRPC channel for chunks coming in from the data platform. This loop is started
 /// up by the execute fn of the physical plan, so we will start one per output partition,
 /// which is different from the `partition_id`. The sorting by time index will happen within
-///  the cpu worker thread.
+/// the cpu worker thread.
+/// `chunk_infos` is a list of batches with chunk information where each batch has info for
+/// a *single partition*. We also expect these to be previously sorted by partition id, otherwise
+/// our suggestion to the query planner that inputs are sorted by partition id will be incorrect.
+/// See `group_chunk_infos_by_partition_id` and `execute` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
@@ -414,25 +418,35 @@ async fn chunk_stream_io_loop(
         .collect::<Result<Vec<_>, _>>()
         .map_err(|err| exec_datafusion_err!("{err}"))?;
 
-    let fetch_chunks_request = FetchChunksRequest { chunk_infos };
+    // TODO(zehiko) same as previously with get_chunks, we keep sending 1 request per partition.
+    // As these batches are sorted per partition (see docs above), this ensures that ordering by
+    // partition id is preserved regardless of how server might order responses (in the case of having
+    // batches with different partitions in the same request). However, quick testing shows that this
+    // is at least 2x slower than sending all partitions in one request. Consider providing ordering
+    // guarantees server side in the future.
+    for chunk_info in chunk_infos {
+        let fetch_chunks_request = FetchChunksRequest {
+            chunk_infos: vec![chunk_info],
+        };
 
-    let fetch_chunks_response_stream = client
-        .inner()
-        .fetch_chunks(fetch_chunks_request)
-        .instrument(tracing::trace_span!("chunk_stream_io_loop"))
-        .await
-        .map_err(|err| exec_datafusion_err!("{err}"))?
-        .into_inner();
+        let fetch_chunks_response_stream = client
+            .inner()
+            .fetch_chunks(fetch_chunks_request)
+            .instrument(tracing::trace_span!("chunk_stream_io_loop"))
+            .await
+            .map_err(|err| exec_datafusion_err!("{err}"))?
+            .into_inner();
 
-    // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
-    // and the app layer (Arrow).
-    let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_partition_id(
-        fetch_chunks_response_stream,
-    );
+        // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
+        // and the app layer (Arrow).
+        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_partition_id(
+            fetch_chunks_response_stream,
+        );
 
-    while let Some(Ok(chunk_and_partition_id)) = chunk_stream.next().await {
-        if output_channel.send(chunk_and_partition_id).await.is_err() {
-            break;
+        while let Some(Ok(chunk_and_partition_id)) = chunk_stream.next().await {
+            if output_channel.send(chunk_and_partition_id).await.is_err() {
+                break;
+            }
         }
     }
 
@@ -485,7 +499,13 @@ impl ExecutionPlan for PartitionStreamExec {
             })
             .map(|(k, v)| (k.clone(), v.clone()))
             .unzip();
-        let chunk_infos = chunk_infos.into_iter().flatten().collect::<Vec<_>>();
+        // we end up with 1 batch per (rerun) partition. Order is important and must be preserved.
+        // See PartitionStreamExec::try_new for details on ordering.
+        let chunk_infos = chunk_infos
+            .into_iter()
+            .map(|batches| re_arrow_util::concat_polymorphic_batches(&batches))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| exec_datafusion_err!("{err}"))?;
 
         // if no chunks match this datafusion partition, return an empty stream
         if chunk_infos.is_empty() {

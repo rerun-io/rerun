@@ -406,7 +406,8 @@ pub fn align_record_batch_to_schema(
 /// these partition IDs, just to be certain they match partitioning generated
 /// from sources other than Rerun gRPC services.
 /// This function will do the relevant grouping of chunk infos by chunk's partition id
-/// and we will eventually fire individual queries for each group.
+/// and we will eventually fire individual queries for each group. Partitions must be ordered,
+/// see `PartitionStreamExec::try_new` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn group_chunk_infos_by_partition_id(
     chunk_info_batches: &Arc<Vec<RecordBatch>>,
