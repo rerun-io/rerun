@@ -67,6 +67,8 @@ pub enum DisplayMode {
     /// The settings dialog for application-wide configuration.
     Settings,
 
+    Loading(String),
+
     /// Regular view of the local recordings, including the current recording's viewport.
     LocalRecordings(StoreId),
 

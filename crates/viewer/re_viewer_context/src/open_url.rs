@@ -192,6 +192,14 @@ pub fn base_url(url: &Url) -> Url {
     base_url
 }
 
+#[derive(Clone, Copy, Default)]
+pub struct OpenUrlOptions {
+    pub follow_if_http: bool,
+    pub select_redap_source_when_loaded: bool,
+    /// Shows the loading screen.
+    pub show_loader: bool,
+}
+
 impl ViewerOpenUrl {
     pub fn from_context(ctx: &ViewerContext<'_>) -> anyhow::Result<Self> {
         let time_ctrl = ctx.rec_cfg.time_ctrl.read();
@@ -255,6 +263,8 @@ impl ViewerOpenUrl {
                 // Not much point in updating address for the settings screen.
                 Err(anyhow::anyhow!("Can't share links to the settings screen."))
             }
+
+            DisplayMode::Loading(source) => source.parse(),
 
             DisplayMode::LocalRecordings(store_id) => {
                 // Local recordings includes those downloaded from rrd urls
@@ -336,6 +346,21 @@ impl ViewerOpenUrl {
                     "Can't share links to the chunk store browser."
                 ))
             }
+        }
+    }
+
+    pub fn from_data_log_source(source: &LogDataSource) -> anyhow::Result<Self> {
+        match source {
+            LogDataSource::RrdHttpUrl { url, .. } => Ok(Self::RrdHttpUrl(url.clone())),
+            LogDataSource::FilePath(_, path_buf) => Ok(Self::FilePath(path_buf.clone())),
+            LogDataSource::FileContents(..) => {
+                Err(anyhow::anyhow!("Can't share file contents with a link"))
+            }
+            LogDataSource::Stdin => Err(anyhow::anyhow!("Can't share stdin with a link")),
+            LogDataSource::RedapDatasetPartition { uri, .. } => {
+                Ok(Self::RedapDatasetPartition(uri.clone()))
+            }
+            LogDataSource::RedapProxy(uri) => Ok(Self::RedapProxy(uri.clone())),
         }
     }
 
@@ -436,11 +461,16 @@ impl ViewerOpenUrl {
     pub fn open(
         self,
         egui_ctx: &egui::Context,
-        follow_if_http: bool,
-        select_redap_source_when_loaded: bool,
+        options: &OpenUrlOptions,
         command_sender: &CommandSender,
     ) {
         re_log::debug!("Opening URL: {:?}", &self);
+
+        if options.show_loader
+            && let Ok(url) = self.sharable_url(None)
+        {
+            command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::Loading(url)));
+        }
 
         match self {
             Self::IntraRecordingSelection(item) => {
@@ -451,7 +481,7 @@ impl ViewerOpenUrl {
                     LogDataSource::RrdHttpUrl {
                         url,
                         // `follow` is not encoded in the url itself right now.
-                        follow: follow_if_http,
+                        follow: options.follow_if_http,
                     },
                 ));
             }
@@ -467,7 +497,7 @@ impl ViewerOpenUrl {
                     LogDataSource::RedapDatasetPartition {
                         uri,
                         // `select_when_loaded` is not encoded in the url itself right now.
-                        select_when_loaded: select_redap_source_when_loaded,
+                        select_when_loaded: options.select_redap_source_when_loaded,
                     },
                 ));
             }
@@ -518,8 +548,10 @@ impl ViewerOpenUrl {
                 for url in url_parameters {
                     url.open(
                         egui_ctx,
-                        follow_if_http,
-                        select_redap_source_when_loaded,
+                        &OpenUrlOptions {
+                            show_loader: false,
+                            ..*options
+                        },
                         command_sender,
                     );
                 }
