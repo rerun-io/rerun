@@ -127,7 +127,8 @@ impl FilterState {
                                 FilterOperation::IntCompares { .. } => "int",
                                 FilterOperation::FloatCompares { .. } => "float",
                                 FilterOperation::StringContains(_) => "string",
-                                FilterOperation::Boolean(_) => "bool",
+                                FilterOperation::NonNullableBoolean(_) => "non_nullable_bool",
+                                FilterOperation::NullableBoolean(_) => "nullable_bool",
                             },
                         ));
 
@@ -317,7 +318,11 @@ impl SyntaxHighlighting for FilterOperation {
                 builder.append_string_value(query);
             }
 
-            Self::Boolean(boolean_filter) => {
+            Self::NonNullableBoolean(boolean_filter) => {
+                builder.append_primitive(&boolean_filter.operand_text());
+            }
+
+            Self::NullableBoolean(boolean_filter) => {
                 builder.append_primitive(&boolean_filter.operand_text());
             }
         }
@@ -439,7 +444,11 @@ impl FilterOperation {
                 process_text_edit_response(ui, &response);
             }
 
-            Self::Boolean(boolean_filter) => {
+            Self::NonNullableBoolean(boolean_filter) => {
+                boolean_filter.popup_ui(ui, column_name, &mut action);
+            }
+
+            Self::NullableBoolean(boolean_filter) => {
                 boolean_filter.popup_ui(ui, column_name, &mut action);
             }
         }
@@ -454,7 +463,7 @@ impl FilterOperation {
                 operator.to_string()
             }
             Self::StringContains(_) => "contains".to_owned(),
-            Self::Boolean(_) => "is".to_owned(),
+            Self::NonNullableBoolean(_) | Self::NullableBoolean(_) => "is".to_owned(),
         }
     }
 }
@@ -462,7 +471,7 @@ impl FilterOperation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::filters::BooleanFilter;
+    use crate::filters::{NonNullableBooleanFilter, NullableBooleanFilter};
 
     fn test_cases() -> Vec<(FilterOperation, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
@@ -471,7 +480,11 @@ mod tests {
             use FilterOperation::*;
             let _op = StringContains(String::new());
             match _op {
-                IntCompares { .. } | FloatCompares { .. } | StringContains(_) | Boolean(_) => {}
+                IntCompares { .. }
+                | FloatCompares { .. }
+                | StringContains(_)
+                | NonNullableBoolean(_)
+                | NullableBoolean(_) => {}
             }
         };
 
@@ -513,23 +526,23 @@ mod tests {
                 "string_contains_empty",
             ),
             (
-                FilterOperation::Boolean(BooleanFilter::NonNullable(true)),
+                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
                 "boolean_equals_true",
             ),
             (
-                FilterOperation::Boolean(BooleanFilter::NonNullable(false)),
+                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
                 "boolean_equals_false",
             ),
             (
-                FilterOperation::Boolean(BooleanFilter::Nullable(Some(true))),
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsTrue),
                 "nullable_boolean_equals_true",
             ),
             (
-                FilterOperation::Boolean(BooleanFilter::Nullable(Some(false))),
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsFalse),
                 "nullable_boolean_equals_false",
             ),
             (
-                FilterOperation::Boolean(BooleanFilter::Nullable(None)),
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
                 "nullable_boolean_equals_null",
             ),
         ]
