@@ -1,0 +1,24 @@
+---
+source: crates/store/re_chunk/tests/formatting.rs
+expression: "format!(\"{:240}\", ChunkRedacted(chunk))"
+---
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                                                                                                                        │
+│ * rerun:entity_path: /this/that                                                                                                                                                                  │
+│ * rerun:heap_size_bytes: [**REDACTED**]                                                                                                                                                          │
+│ * rerun:id: [**REDACTED**]                                                                                                                                                                       │
+│ * sorbet:version: [**REDACTED**]                                                                                                                                                                 │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌──────────────────────────────────────────────┬────────────────────────────┬───────────────────────────────┬───────────────────────────────────────┬──────────────────────────────────────────┐ │
+│ │ rerun.controls.RowId                         ┆ frame_nr                   ┆ log_time                      ┆ my_index                              ┆ example.MyPoints:colors                  │ │
+│ │ ---                                          ┆ ---                        ┆ ---                           ┆ ---                                   ┆ ---                                      │ │
+│ │ type: FixedSizeBinary[16]                    ┆ type: i64                  ┆ type: Timestamp(ns)           ┆ type: List[nullable u64]              ┆ type: List[nullable u32]                 │ │
+│ │ ARROW:extension:metadata:                    ┆ rerun:index_name: frame_nr ┆ rerun:index_name: log_time    ┆ rerun:component: my_index             ┆ rerun:archetype: example.MyPoints        │ │
+│ │ {"namespace":"row"}                          ┆ rerun:is_sorted: true      ┆ rerun:is_sorted: true         ┆ rerun:component_type: example.MyIndex ┆ rerun:component: example.MyPoints:colors │ │
+│ │ ARROW:extension:name: rerun.datatypes.TUID   ┆ rerun:kind: index          ┆ rerun:kind: index             ┆ rerun:kind: data                      ┆ rerun:component_type: example.MyColor    │ │
+│ │ rerun:is_sorted: true                        ┆                            ┆                               ┆                                       ┆ rerun:kind: data                         │ │
+│ │ rerun:kind: control                          ┆                            ┆                               ┆                                       ┆                                          │ │
+│ ╞══════════════════════════════════════════════╪════════════════════════════╪═══════════════════════════════╪═══════════════════════════════════════╪══════════════════════════════════════════╡ │
+│ │ row_[**REDACTED**]                           ┆ 1                          ┆ 2025-01-10T18:43:42.123456789 ┆ [0, 1, 2]                             ┆ [0, 1, 2]                                │ │
+│ └──────────────────────────────────────────────┴────────────────────────────┴───────────────────────────────┴───────────────────────────────────────┴──────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘

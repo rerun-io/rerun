@@ -135,6 +135,7 @@ impl Options {
             trim_field_names: !self.full_metadata,
             trim_metadata_keys: !self.full_metadata,
             trim_metadata_values: !self.full_metadata,
+            redact_non_deterministic: false,
         };
 
         if self.verbose <= 2 {

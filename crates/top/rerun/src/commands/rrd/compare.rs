@@ -109,6 +109,7 @@ impl CompareCommand {
                     trim_field_names: false,
                     trim_metadata_keys: false,
                     trim_metadata_values: false,
+                    redact_non_deterministic: false,
                 },
             )
             .to_string()
