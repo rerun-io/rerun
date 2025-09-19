@@ -96,7 +96,7 @@ impl PyComponentColumnDescriptor {
         self.0.is_static
     }
 
-    /// The name of the column.
+    /// The name of this column.
     ///
     /// This property is read-only.
     #[getter]

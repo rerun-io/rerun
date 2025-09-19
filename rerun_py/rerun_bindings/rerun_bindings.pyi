@@ -1336,6 +1336,9 @@ class DatasetEntry(Entry):
         Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
         """
 
+    def schema(self) -> Schema:
+        """Return the schema of the data contained in the dataset."""
+
     def partition_ids(self) -> list[str]:
         """Returns a list of partitions IDs for the dataset."""
 
