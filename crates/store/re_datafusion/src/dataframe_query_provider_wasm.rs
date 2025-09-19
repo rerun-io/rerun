@@ -26,14 +26,14 @@ use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
-use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_log_encoding::codec::wire::encoder::Encode as _;
+use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::cloud::v1alpha1::GetChunksRequest;
-use re_protos::common::v1alpha1::PartitionId;
+use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_redap_client::ConnectionClient;
 
 use crate::dataframe_query_common::{
-    ChunkInfo, align_record_batch_to_schema, compute_partition_stream_chunk_info,
+    align_record_batch_to_schema, group_chunk_infos_by_partition_id,
 };
 
 #[derive(Debug)]
@@ -46,22 +46,20 @@ pub(crate) struct PartitionStreamExec {
     /// reuse multiple times in theory. We may also need to recompute if the
     /// user asks for a different target partition. These are generally not
     /// too large.
-    chunk_info: Arc<BTreeMap<String, Vec<ChunkInfo>>>,
+    chunk_info: Arc<BTreeMap<String, Vec<RecordBatch>>>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     target_partitions: usize,
     client: ConnectionClient,
-    chunk_request: GetChunksRequest,
 }
 
 pub struct DataframePartitionStream {
     projected_schema: SchemaRef,
     client: ConnectionClient,
-    chunk_request: GetChunksRequest,
+    chunk_infos: Vec<RecordBatch>,
     current_query: Option<(String, QueryHandle<StorageEngine>)>,
     query_expression: QueryExpression,
     remaining_partition_ids: Vec<String>,
-    dataset_id: EntryId, // TODO(tsaucer) delete?
 }
 
 impl DataframePartitionStream {
@@ -69,29 +67,32 @@ impl DataframePartitionStream {
         &mut self,
         partition_id: &str,
     ) -> Result<ChunkStoreHandle, DataFusionError> {
-        let mut get_chunks_request = self.chunk_request.clone();
-        get_chunks_request.partition_ids = vec![PartitionId::from(partition_id)];
+        let chunk_infos = self
+            .chunk_infos
+            .iter()
+            .map(|batch| batch.encode())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| exec_datafusion_err!("{err}"))?;
+        let fetch_chunks_request = FetchChunksRequest { chunk_infos };
 
-        let get_chunks_response_stream = self
+        let fetch_chunks_response_stream = self
             .client
             .inner()
-            .get_chunks(get_chunks_request)
+            .fetch_chunks(fetch_chunks_request)
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?
             .into_inner();
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
-        let mut chunk_stream = re_redap_client::get_chunks_response_to_chunk_and_partition_id(
-            get_chunks_response_stream,
+        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_partition_id(
+            fetch_chunks_response_stream,
         );
 
-        // TODO(tsaucer) Verify if we can just remove StoreInfo
         let store_info = StoreInfo {
-            // Note: normally we use dataset name as application id,
-            // but we don't have it here, and it doesn't really
+            // Note: using partition id as the store id, shouldn't really
             // matter since this is just a temporary store.
-            store_id: StoreId::random(StoreKind::Recording, self.dataset_id.to_string()),
+            store_id: StoreId::random(StoreKind::Recording, partition_id),
             cloned_from: None,
             store_source: StoreSource::Unknown,
             store_version: None,
@@ -200,7 +201,6 @@ impl PartitionStreamExec {
         chunk_info_batches: Arc<Vec<RecordBatch>>,
         query_expression: QueryExpression,
         client: ConnectionClient,
-        chunk_request: GetChunksRequest,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
             Some(p) => Arc::new(table_schema.project(p)?),
@@ -255,7 +255,7 @@ impl PartitionStreamExec {
             Boundedness::Bounded,
         );
 
-        let chunk_info = compute_partition_stream_chunk_info(&chunk_info_batches)?;
+        let chunk_info = group_chunk_infos_by_partition_id(&chunk_info_batches)?;
 
         Ok(Self {
             props,
@@ -265,7 +265,6 @@ impl PartitionStreamExec {
             projected_schema,
             target_partitions: num_partitions,
             client,
-            chunk_request,
         })
     }
 }
@@ -360,7 +359,6 @@ impl ExecutionPlan for PartitionStreamExec {
             projected_schema: self.projected_schema.clone(),
             target_partitions,
             client: self.client.clone(),
-            chunk_request: self.chunk_request.clone(),
         };
 
         plan.props.partitioning = match plan.props.partitioning {
@@ -394,24 +392,23 @@ impl ExecutionPlan for PartitionStreamExec {
         remaining_partition_ids.reverse();
 
         let client = self.client.clone();
-        let chunk_request = self.chunk_request.clone();
+
+        let chunk_infos: Vec<RecordBatch> = remaining_partition_ids
+            .iter()
+            .filter_map(|pid| self.chunk_info.get(pid))
+            .flatten()
+            .cloned()
+            .collect();
 
         let query_expression = self.query_expression.clone();
-
-        let dataset_id = chunk_request
-            .dataset_id
-            .ok_or(exec_datafusion_err!("Missing dataset id"))?
-            .try_into()
-            .map_err(|err| exec_datafusion_err!("{err}"))?;
 
         let stream = DataframePartitionStream {
             projected_schema: self.projected_schema.clone(),
             client,
-            chunk_request,
+            chunk_infos,
             remaining_partition_ids,
             current_query: None,
             query_expression,
-            dataset_id,
         };
 
         Ok(Box::pin(stream))
