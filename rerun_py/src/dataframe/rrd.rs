@@ -11,7 +11,7 @@ use super::PyRecording;
 /// An archive loaded from an RRD.
 ///
 /// RRD archives may include 1 or more recordings or blueprints.
-#[pyclass(frozen, name = "RRDArchive")]
+#[pyclass(frozen, name = "RRDArchive", module = "rerun_bindings.rerun_bindings")]
 #[derive(Clone)]
 pub struct PyRRDArchive {
     pub datasets: BTreeMap<StoreId, ChunkStoreHandle>,

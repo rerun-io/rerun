@@ -144,6 +144,7 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
 
 /// The python module is called "rerun_bindings".
 #[pymodule]
+#[pyo3(name = "rerun_bindings")]
 fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
         // TODO(tracing/issues#2499): allow installing multiple tracing sinks (https://github.com/tokio-rs/tracing/issues/2499)
@@ -1633,7 +1634,7 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 /// Every component at a given entity path is uniquely identified by the
 /// `component` field of the descriptor. The `archetype` and `component_type`
 /// fields provide additional information about the semantics of the data.
-#[pyclass(name = "ComponentDescriptor")]
+#[pyclass(name = "ComponentDescriptor", module = "rerun_bindings.rerun_bindings")]
 #[derive(Clone)]
 struct PyComponentDescriptor(pub ComponentDescriptor);
 

@@ -9,7 +9,11 @@ use re_sorbet::{ComponentColumnDescriptor, ComponentColumnSelector};
 /// Column descriptors are used to describe the columns in a
 /// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select a component
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
-#[pyclass(frozen, name = "ComponentColumnDescriptor")]
+#[pyclass(
+    frozen,
+    name = "ComponentColumnDescriptor",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
 pub struct PyComponentColumnDescriptor(pub ComponentColumnDescriptor);
 
@@ -22,17 +26,27 @@ impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
 #[pymethods]
 impl PyComponentColumnDescriptor {
     pub fn __repr__(&self) -> String {
+        // We could print static state all the time
+        // but in schema non-static print out with IndexColumnDescriptors
+        // so it looks a bit noisy.
+        let static_info = if self.is_static() {
+            "\n\tStatic: true"
+        } else {
+            ""
+        };
+
         format!(
             "Column name: {col}\n\
              \tEntity path: {path}\n\
              \tArchetype: {arch}\n\
              \tComponent type: {ctype}\n\
-             \tComponent: {comp}",
+             \tComponent: {comp}{static_info}",
             col = self.0.column_name(re_sorbet::BatchType::Dataframe),
             path = self.entity_path(),
             arch = self.archetype().unwrap_or("None"),
             ctype = self.component_type().unwrap_or(""),
             comp = self.component(),
+            static_info = static_info,
         )
     }
 
@@ -97,7 +111,11 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 ///     The entity path to select.
 /// component : str
 ///     The component to select
-#[pyclass(frozen, name = "ComponentColumnSelector")]
+#[pyclass(
+    frozen,
+    name = "ComponentColumnSelector",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
 pub struct PyComponentColumnSelector(pub ComponentColumnSelector);
 

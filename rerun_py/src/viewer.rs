@@ -17,7 +17,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 }
 
 /// A connection to an instance of a Rerun viewer.
-#[pyclass(name = "ViewerClient")]
+#[pyclass(name = "ViewerClient", module = "rerun_bindings.rerun_bindings")]
 pub struct PyViewerClient {
     conn: ViewerConnectionHandle,
 }

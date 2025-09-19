@@ -31,7 +31,7 @@ use crate::utils::py_rerun_warn_cstr;
 /// included in the view, as determined by the `row_id` column. This will
 /// generally be the last value logged, as row_ids are guaranteed to be
 /// monotonically increasing when data is sent from a single process.
-#[pyclass(name = "RecordingView")]
+#[pyclass(name = "RecordingView", module = "rerun_bindings.rerun_bindings")]
 #[derive(Clone)]
 pub struct PyRecordingView {
     pub(crate) recording: PyRecordingHandle,
