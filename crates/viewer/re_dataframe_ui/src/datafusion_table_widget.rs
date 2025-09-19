@@ -220,7 +220,7 @@ impl<'a> DataFusionTableWidget<'a> {
         match session_ctx.table_exist(table_ref.clone()) {
             Ok(true) => {}
             Ok(false) => {
-                ui.loading_screen("Loading table...");
+                ui.loading_screen("Loading table…");
                 return;
             }
             Err(err) => {
@@ -277,7 +277,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 // still processing, nothing yet to show
                 //TODO(ab): it can happen that we're stuck in the state. We should detect it and
                 //produce an error
-                ui.loading_screen("Loading table...");
+                ui.loading_screen("Loading table…");
                 return;
             }
         };
