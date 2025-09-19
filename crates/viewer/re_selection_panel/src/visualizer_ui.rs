@@ -258,25 +258,24 @@ fn visualizer_components(
                 // TODO(andreas): Unfortunately, display ui needs db & query. (fix that!)
                 // In fact some display UIs will struggle since they try to query additional data from the store.
                 // so we have to figure out what store and path things come from.
-                #[allow(clippy::unwrap_used)] // We checked earlier that these values are valid!
                 let (query, db, entity_path, latest_at_unit) = match value_source {
                     ValueSource::Override => (
                         ctx.blueprint_query(),
                         ctx.blueprint_db(),
                         override_path.clone(),
-                        result_override.unwrap(),
+                        result_override.expect("This value was validated earlier."),
                     ),
                     ValueSource::Store => (
                         &store_query,
                         ctx.recording(),
                         data_result.entity_path.clone(),
-                        result_store.unwrap(),
+                        result_store.expect("This value was validated earlier."),
                     ),
                     ValueSource::Default => (
                         ctx.blueprint_query(),
                         ctx.blueprint_db(),
                         ViewBlueprint::defaults_path(ctx.view_id),
-                        result_default.unwrap(),
+                        result_default.expect("This value was validated earlier."),
                     ),
                     ValueSource::FallbackOrPlaceholder => {
                         // Fallback values are always single values, so we can directly go to the component ui.
