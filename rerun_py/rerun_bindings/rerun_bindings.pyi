@@ -120,6 +120,14 @@ class ComponentColumnDescriptor:
         This property is read-only.
         """
 
+    @property
+    def name(self) -> str:
+        """
+        The name of this column.
+
+        This property is read-only.
+        """
+
 class ComponentColumnSelector:
     """
     A selector for a component column.

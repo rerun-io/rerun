@@ -9,8 +9,14 @@ use re_sorbet::{ComponentColumnDescriptor, ComponentColumnSelector};
 /// Column descriptors are used to describe the columns in a
 /// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select a component
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
-#[pyclass(frozen, name = "ComponentColumnDescriptor")]
-#[derive(Clone)]
+#[pyclass(
+    frozen,
+    hash,
+    eq,
+    name = "ComponentColumnDescriptor",
+    module = "rerun_bindings.rerun_bindings"
+)]
+#[derive(Clone, PartialEq, Hash)]
 pub struct PyComponentColumnDescriptor(pub ComponentColumnDescriptor);
 
 impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
@@ -37,7 +43,7 @@ impl PyComponentColumnDescriptor {
              \tArchetype: {arch}\n\
              \tComponent type: {ctype}\n\
              \tComponent: {comp}{static_info}",
-            col = self.0.column_name(re_sorbet::BatchType::Dataframe),
+            col = self.name(),
             path = self.entity_path(),
             arch = self.archetype().unwrap_or("None"),
             ctype = self.component_type().unwrap_or(""),
@@ -46,9 +52,9 @@ impl PyComponentColumnDescriptor {
         )
     }
 
-    fn __eq__(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
+    // fn __eq__(&self, other: &Self) -> bool {
+    //     self.0 == other.0
+    // }
 
     /// The entity path.
     ///
@@ -88,6 +94,14 @@ impl PyComponentColumnDescriptor {
     #[getter]
     fn is_static(&self) -> bool {
         self.0.is_static
+    }
+
+    /// The name of the column.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn name(&self) -> String {
+        self.0.column_name(re_sorbet::BatchType::Dataframe)
     }
 }
 
