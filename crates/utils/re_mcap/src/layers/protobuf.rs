@@ -406,3 +406,229 @@ impl MessageLayer for McapProtobufLayer {
         )))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::io;
+
+    use prost_reflect::{
+        DescriptorPool, DynamicMessage, MessageDescriptor,
+        prost::Message as _,
+        prost_types::{
+            DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
+            FileDescriptorProto, FileDescriptorSet, field_descriptor_proto,
+        },
+    };
+    use re_chunk::Chunk;
+    use re_format_arrow::RecordBatchFormatOpts;
+
+    use crate::{LayerRegistry, layers::McapProtobufLayer};
+
+    fn create_pool() -> DescriptorPool {
+        // TODO: use `prost_reflect_derive`
+
+        let flag = EnumDescriptorProto {
+            name: Some("Status".into()),
+            value: vec![
+                EnumValueDescriptorProto {
+                    name: Some("UNKNOWN".into()),
+                    number: Some(0),
+                    options: None,
+                },
+                EnumValueDescriptorProto {
+                    name: Some("ACTIVE".into()),
+                    number: Some(1),
+                    options: None,
+                },
+                EnumValueDescriptorProto {
+                    name: Some("INACTIVE".into()),
+                    number: Some(2),
+                    options: None,
+                },
+            ],
+            options: None,
+            reserved_range: vec![],
+            reserved_name: vec![],
+        };
+
+        // Create a simple message descriptor
+        let person_message = DescriptorProto {
+            name: Some("Person".into()),
+            field: vec![
+                FieldDescriptorProto {
+                    name: Some("name".into()),
+                    number: Some(1),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("id".into()),
+                    number: Some(2),
+                    r#type: Some(field_descriptor_proto::Type::Int32 as i32),
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("status".into()),
+                    number: Some(3),
+                    r#type: Some(field_descriptor_proto::Type::Enum as i32),
+                    type_name: Some("Status".into()),
+                    ..Default::default()
+                },
+            ],
+            enum_type: vec![flag],
+            ..Default::default()
+        };
+
+        let file_proto = FileDescriptorProto {
+            name: Some("person.proto".into()),
+            package: Some("com.example".into()),
+            message_type: vec![person_message],
+            syntax: Some("proto3".into()),
+            ..Default::default()
+        };
+
+        let file_descriptor_set = FileDescriptorSet {
+            file: vec![file_proto],
+        };
+
+        let encoded = file_descriptor_set.encode_to_vec();
+
+        DescriptorPool::decode(encoded.as_slice()).expect("failed to decode descriptor pool")
+    }
+
+    /// Returns a channel id.
+    fn add_schema_and_channel<W: io::Write + io::Seek>(
+        writer: &mut mcap::Writer<W>,
+        message_descriptor: &MessageDescriptor,
+        topic: &str,
+    ) -> mcap::McapResult<u16> {
+        let data = message_descriptor.parent_pool().encode_to_vec();
+
+        let schema_id =
+            writer.add_schema(message_descriptor.full_name(), "protobuf", data.as_slice())?;
+
+        let channel_id = writer.add_channel(schema_id, topic, "protobuf", &Default::default())?;
+        Ok(channel_id)
+    }
+
+    fn write_message<W: io::Write + io::Seek>(
+        writer: &mut mcap::Writer<W>,
+        channel_id: u16,
+        message: &DynamicMessage,
+        timestamp: u64, // nanoseconds since epoch
+    ) -> mcap::McapResult<()> {
+        // Encode the dynamic message to protobuf bytes
+        let data = message.encode_to_vec();
+
+        let header = mcap::records::MessageHeader {
+            channel_id,
+            sequence: 0,
+            log_time: timestamp,
+            publish_time: timestamp,
+        };
+
+        writer.write_to_known_channel(&header, data.as_slice())?;
+
+        Ok(())
+    }
+
+    /// Wrapper to help with creating nicely formatted chunks to use with `insta`.
+    struct ChunkSnapshot<'a>(&'a Chunk);
+
+    impl std::fmt::Display for ChunkSnapshot<'_> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let batch = self.0.to_record_batch().unwrap();
+            re_format_arrow::format_record_batch_opts(
+                &batch,
+                &RecordBatchFormatOpts {
+                    transposed: false,
+                    width: f.width(),
+                    include_metadata: true,
+                    include_column_metadata: true,
+                    trim_field_names: false,
+                    trim_metadata_keys: true,
+                    trim_metadata_values: false,
+                    redact_non_deterministic: true,
+                },
+            )
+            .fmt(f)
+        }
+    }
+
+    fn redact_settings() -> insta::Settings {
+        let mut settings = insta::Settings::clone_current();
+        // Replace the non-deterministic information by [`**REDACTED**`] and pad the new string so that everything formats nicely.
+        settings.add_filter(
+            r"│ row_[a-zA-z0-9]+(\s*)┆",
+            "│ row_[**REDACTED**]<>┆".replace("<>", &" ".repeat(27)),
+        );
+        settings
+    }
+
+    fn run_layer(summary: &mcap::Summary, buffer: &[u8]) -> Vec<Chunk> {
+        let mut chunks = Vec::new();
+
+        let mut send_chunk = |chunk| {
+            chunks.push(chunk);
+        };
+
+        let registry = LayerRegistry::empty().register_message_layer::<McapProtobufLayer>();
+        registry
+            .plan(summary)
+            .expect("failed to plan")
+            .run(buffer, summary, &mut send_chunk)
+            .expect("failed to run layer");
+
+        chunks
+    }
+
+    #[test]
+    fn two_simple_rows() {
+        // Writing to the MCAP buffer.
+        let (summary, buffer) = {
+            let pool = create_pool();
+            let person_message = pool
+                .get_message_by_name("com.example.Person")
+                .expect("missing message descriptor");
+
+            let buffer = Vec::new();
+            let cursor = io::Cursor::new(buffer);
+            let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+
+            let channel_id = add_schema_and_channel(&mut writer, &person_message, "test_topic")
+                .expect("failed to add schema and channel");
+
+            let dynamic_message_1 =
+                DynamicMessage::parse_text_format(person_message.clone(), "name: \"Bob\"status:2")
+                    .expect("failed to parse text format");
+
+            let dynamic_message_2 =
+                DynamicMessage::parse_text_format(person_message.clone(), "name: \"Alice\"id:123")
+                    .expect("failed to parse text format");
+
+            write_message(&mut writer, channel_id, &dynamic_message_1, 42)
+                .expect("failed to write message");
+            write_message(&mut writer, channel_id, &dynamic_message_2, 43)
+                .expect("failed to write message");
+
+            let summary = writer.finish().expect("finishing writer failed");
+
+            (summary, writer.into_inner().into_inner())
+        };
+        assert_eq!(
+            summary.chunk_indexes.len(),
+            1,
+            "there should be only one chunk"
+        );
+
+        let chunks = run_layer(&summary, buffer.as_slice());
+        assert_eq!(chunks.len(), 1);
+
+        redact_settings().bind(|| {
+            insta::assert_snapshot!(
+                "two_simple_rows",
+                format!("{:240}", ChunkSnapshot(&chunks[0]))
+            );
+        });
+    }
+}
