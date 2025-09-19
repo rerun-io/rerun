@@ -446,6 +446,7 @@ fn debug_menu_options_ui(
         `debug_overlay.wgsl` shader.",
     );
 
+    #[expect(clippy::panic)]
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]
         if ui.button("panic!").clicked() {

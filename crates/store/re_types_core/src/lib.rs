@@ -158,6 +158,7 @@ pub fn try_serialize_field<L: Loggable>(
         Ok(array) => Some(SerializedComponentBatch::new(array, descriptor)),
 
         #[cfg(debug_assertions)]
+        #[expect(clippy::panic)]
         Err(err) => {
             panic!(
                 "failed to serialize data for {descriptor}: {}",

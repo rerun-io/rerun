@@ -514,6 +514,7 @@ fn transform_info_for_downward_propagation(
 }
 
 #[cfg(debug_assertions)]
+#[expect(clippy::panic)]
 fn debug_assert_transform_field_order(reflection: &re_types::reflection::Reflection) {
     use re_types::{Archetype as _, Component as _, components};
 
