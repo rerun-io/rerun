@@ -421,14 +421,11 @@ mod test {
         },
     };
     use re_chunk::Chunk;
-    use re_format_arrow::RecordBatchFormatOpts;
 
     use crate::{LayerRegistry, layers::McapProtobufLayer};
 
     fn create_pool() -> DescriptorPool {
-        // TODO: use `prost_reflect_derive`
-
-        let flag = EnumDescriptorProto {
+        let status = EnumDescriptorProto {
             name: Some("Status".into()),
             value: vec![
                 EnumValueDescriptorProto {
@@ -476,7 +473,7 @@ mod test {
                     ..Default::default()
                 },
             ],
-            enum_type: vec![flag],
+            enum_type: vec![status],
             ..Default::default()
         };
 
