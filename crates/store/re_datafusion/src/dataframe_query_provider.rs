@@ -32,7 +32,7 @@ use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
-use re_log_types::{ApplicationId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::{DATASET_MANIFEST_ID_FIELD_NAME, FetchChunksRequest};
 use re_redap_client::ConnectionClient;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
@@ -351,19 +351,11 @@ async fn chunk_store_cpu_worker_thread(
             }
 
             let current_stores = current_stores.get_or_insert({
-                let store_info = StoreInfo {
-                    store_id: StoreId::random(
-                        StoreKind::Recording,
-                        ApplicationId::from(partition_id.as_str()),
-                    ),
-                    cloned_from: None,
-                    store_source: StoreSource::Unknown,
-                    store_version: None,
-                };
-
-                let mut store = ChunkStore::new(store_info.store_id.clone(), Default::default());
-                store.set_store_info(store_info);
-                let store = ChunkStoreHandle::new(store);
+                let store_id = StoreId::random(
+                    StoreKind::Recording,
+                    ApplicationId::from(partition_id.as_str()),
+                );
+                let store = ChunkStore::new_handle(store_id.clone(), Default::default());
 
                 let query_engine =
                     QueryEngine::new(store.clone(), QueryCache::new_handle(store.clone()));
