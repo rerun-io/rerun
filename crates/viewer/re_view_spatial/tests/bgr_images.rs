@@ -24,7 +24,7 @@ fn run_bgr_test<T: ImageChannelType>(
     is_light_theme: bool,
 ) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
-    test_context.log_entity("2d_layering/middle_blue", |builder| {
+    test_context.log_entity("bgr_image", |builder| {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
@@ -143,7 +143,9 @@ fn run_all_formats(image: &[u8], size: [u32; 2], color_model: ColorModel, is_lig
 
 #[test]
 fn test_bgr_images() {
-    let test_image = image::load_from_memory(include_bytes!("assets/grinda.jpg")).unwrap();
+    let test_image =
+        image::load_from_memory(include_bytes!("../../../../tests/assets/image/grinda.jpg"))
+            .unwrap();
     let size = test_image.dimensions().into();
     let rgb_u8 = test_image.to_rgb8().into_raw();
 
