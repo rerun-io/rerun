@@ -1607,19 +1607,25 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
 }
 
 /// Block until outstanding data has been flushed to the sink.
+// TODO(#11294): remove `blocking` argument and put the `*` first
 #[pyfunction]
-#[pyo3(signature = (blocking, recording=None))]
-fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+#[pyo3(signature = (blocking = true, recording = None, *, timeout_sec = 1e38))] // Can't use infinity here because of python_check_signatures.py
+fn flush(
+    py: Python<'_>,
+    blocking: bool,
+    recording: Option<&PyRecordingStream>,
+    timeout_sec: f32,
+) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
 
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| -> Result<(), SinkFlushError> {
-        if blocking {
-            recording.flush_blocking()?;
-        } else {
+        if !blocking || timeout_sec == 0.0 {
             recording.flush_async()?;
+        } else {
+            recording.flush_with_timeout(std::time::Duration::from_secs_f32(timeout_sec))?;
         }
         flush_garbage_queue();
         Ok(())

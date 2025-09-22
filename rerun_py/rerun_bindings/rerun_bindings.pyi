@@ -1083,7 +1083,8 @@ def disconnect(recording: PyRecordingStream | None = None) -> None:
     Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
     """
 
-def flush(blocking: bool, recording: PyRecordingStream | None = None) -> None:
+# TODO(#11294): remove `blocking` argument and put the `*` first
+def flush(blocking: bool = True, recording: PyRecordingStream | None = None, *, timeout_sec: float = 1e38) -> None:
     """Block until outstanding data has been flushed to the sink."""
 
 #
