@@ -224,7 +224,7 @@ datafusion = { version = "47", default-features = false, features = [
   "nested_expressions",
 ] }
 datafusion-ffi = "47"
-directories = "5"
+directories = "6"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes
 ehttp = "0.5.0"
@@ -273,7 +273,7 @@ ndarray = "0.16"
 ndarray-rand = "0.15"
 never = "0.1"
 nohash-hasher = "0.2"
-notify = { version = "6.1.1", features = ["macos_kqueue"] }
+notify = { version = "8", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
 numpy = "0.24"
@@ -793,13 +793,13 @@ unnecessary_debug_formatting = "allow"
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
 
-# ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
-# emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
+eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
+emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -811,13 +811,13 @@ unnecessary_debug_formatting = "allow"
 # emath = { path = "../../egui/crates/emath" }
 # wgpu = { path = "../../wgpu/wgpu" }
 
-# egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
+egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 # egui_tiles = { path = "../egui_tiles" }
 
-# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" }
+egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "lucas/update-egui-main" }
 
 # egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 

@@ -67,6 +67,7 @@ skip = [
   { name = "pulldown-cmark" },   # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
   { name = "redox_syscall" },    # Plenty of versions in the wild
   { name = "rustc-hash" },       # numpy with compatible pyo3 requires different version than wgpu
+  { name = "unicode-width" },    # walkers depends on 0.1 via http-cache-request / cacache
 ]
 skip-tree = [
   { name = "re_perf_telemetry" }, # All the telemetry stack (tracing, otel, etc) carry a lot of old dependencies, it's all feature flagged though.
