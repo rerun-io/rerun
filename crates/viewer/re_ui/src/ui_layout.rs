@@ -122,17 +122,18 @@ impl UiLayout {
             && ui.spacing().tooltip_width < galley.size().x
         {
             // This will make the tooltip too wide.
-            if cfg!(debug_assertions) {
-                panic!(
-                    "DEBUG ASSERT: adding galley with width: {} to a tooltip.",
-                    galley.size().x
-                );
-            } else {
-                // Ugly hack that may or may not work correctly.
-                let mut layout_job = Arc::unwrap_or_clone(galley.job.clone());
-                layout_job.wrap.max_width = ui.spacing().tooltip_width;
-                galley = ui.fonts_mut(|f| f.layout_job(layout_job));
-            }
+            // TODO(#11211): do proper fix
+
+            debug_assert!(
+                galley.size().x < ui.spacing().tooltip_width + 1000.0,
+                "DEBUG ASSERT: adding huge galley with width: {} to a tooltip.",
+                galley.size().x
+            );
+
+            // Ugly hack that may or may not work correctly.
+            let mut layout_job = Arc::unwrap_or_clone(galley.job.clone());
+            layout_job.wrap.max_width = ui.spacing().tooltip_width;
+            galley = ui.fonts_mut(|f| f.layout_job(layout_job));
         }
 
         let text = galley.text();

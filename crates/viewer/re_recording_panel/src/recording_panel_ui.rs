@@ -41,7 +41,7 @@ pub fn recordings_panel_ui(
 
     egui::ScrollArea::both()
         .id_salt("recordings_scroll_area")
-        .auto_shrink([false, true])
+        .auto_shrink([false, false]) // shrinking forces to limit maximum height of the recording panel
         .show(ui, |ui| {
             ui.panel_content(|ui| {
                 re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
@@ -202,6 +202,9 @@ fn all_sections_ui(
     //
 
     loading_receivers_ui(ctx, ui, &recording_panel_data.loading_receivers);
+
+    // Add space at the end of the recordings panel
+    ui.add_space(8.0);
 }
 
 // ---

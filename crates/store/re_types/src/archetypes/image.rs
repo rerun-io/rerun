@@ -13,8 +13,8 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
@@ -38,7 +38,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### `image_simple`:
 /// ```ignore
-/// use ndarray::{s, Array, ShapeBuilder as _};
+/// use ndarray::{Array, ShapeBuilder as _, s};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image").spawn()?;

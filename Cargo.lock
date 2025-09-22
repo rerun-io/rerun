@@ -7357,8 +7357,10 @@ dependencies = [
  "egui",
  "egui_kittest",
  "insta",
+ "jiff",
  "re_arrow_util",
  "re_format",
+ "re_log_types",
  "re_tracing",
  "re_types",
  "re_ui",
@@ -7483,6 +7485,7 @@ dependencies = [
  "crossbeam",
  "document-features",
  "half",
+ "insta",
  "itertools 0.14.0",
  "nohash-hasher",
  "rand 0.8.5",
@@ -7785,6 +7788,7 @@ dependencies = [
  "getrandom 0.3.3",
  "itertools 0.14.0",
  "log",
+ "re_arrow_util",
  "re_dataframe",
  "re_log_encoding",
  "re_log_types",
@@ -8732,7 +8736,6 @@ dependencies = [
  "re_error",
  "re_log",
  "re_tracing",
- "rust-format",
  "serde",
  "syn 2.0.106",
  "tempfile",
@@ -9132,6 +9135,7 @@ dependencies = [
  "glam",
  "image",
  "itertools 0.14.0",
+ "jiff",
  "js-sys",
  "parking_lot",
  "poll-promise",
@@ -9772,12 +9776,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-format"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60e7c00b6c3bf5e38a880eec01d7e829d12ca682079f8238a464def3c4b31627"
-
-[[package]]
 name = "rust-fuzzy-search"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10361,7 +10359,6 @@ dependencies = [
  "rand_distr",
  "re_build_tools",
  "rerun",
- "rust-format",
  "similar-asserts",
 ]
 

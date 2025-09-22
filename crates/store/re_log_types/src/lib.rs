@@ -42,7 +42,8 @@ pub use self::{
     entry_id::{EntryId, EntryIdOrName},
     index::{
         AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
-        TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat, TryFromIntError,
+        TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat,
+        TimestampFormatKind, TryFromIntError,
     },
     instance::Instance,
     path::*,

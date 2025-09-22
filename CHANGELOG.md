@@ -2,8 +2,7 @@
 
 ## [0.25.0](https://github.com/rerun-io/rerun/compare/0.24.1...0.25.0) - 2025-09-16 - Syntax highlighting, table filtering, transparent objects
 
--   📖 [Release blogpost](https://rerun.io/blog/release-0.25)
--   🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-25)
+🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-25)
 
 ### ✨ Overview & highlights
 

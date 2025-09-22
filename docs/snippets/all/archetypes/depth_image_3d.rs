@@ -1,5 +1,5 @@
 //! Create and log a depth image.
-use ndarray::{s, Array, ShapeBuilder as _};
+use ndarray::{Array, ShapeBuilder as _, s};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_depth_image_3d").spawn()?;

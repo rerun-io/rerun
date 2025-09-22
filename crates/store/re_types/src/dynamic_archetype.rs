@@ -3,10 +3,10 @@
 use nohash_hasher::IntMap;
 
 use crate::{
-    reflection::ComponentDescriptorExt as _, ArchetypeName, Component, ComponentDescriptor,
-    ComponentIdentifier, SerializedComponentBatch,
+    ArchetypeName, Component, ComponentDescriptor, ComponentIdentifier, SerializedComponentBatch,
+    reflection::ComponentDescriptorExt as _,
 };
-use re_types_core::{try_serialize_field, AsComponents, ComponentType, Loggable};
+use re_types_core::{AsComponents, ComponentType, Loggable, try_serialize_field};
 
 /// A helper for logging a dynamically defined archetype to Rerun.
 /// component names will be modified in a way similar to Rerun

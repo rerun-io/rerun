@@ -20,6 +20,7 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use datafusion::{error::DataFusionError, execution::SendableRecordBatchStream};
 use futures_util::{Stream, StreamExt as _};
+use re_log_encoding::codec::wire::encoder::Encode as _;
 use tokio::runtime::Handle;
 use tokio::sync::Notify;
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -32,15 +33,12 @@ use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
 use re_log_types::{ApplicationId, StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_protos::cloud::v1alpha1::GetChunksRequest;
-use re_protos::common::v1alpha1::PartitionId;
+use re_protos::cloud::v1alpha1::{DATASET_MANIFEST_ID_FIELD_NAME, FetchChunksRequest};
 use re_redap_client::ConnectionClient;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 
 use crate::dataframe_query_common::{
-    ChunkInfo, align_record_batch_to_schema, compute_partition_stream_chunk_info,
-    prepend_string_column_schema,
+    align_record_batch_to_schema, group_chunk_infos_by_partition_id, prepend_string_column_schema,
 };
 
 /// This parameter sets the back pressure that either the streaming provider
@@ -58,13 +56,12 @@ pub(crate) struct PartitionStreamExec {
     /// reuse multiple times in theory. We may also need to recompute if the
     /// user asks for a different target partition. These are generally not
     /// too large.
-    chunk_info: Arc<BTreeMap<String, Vec<ChunkInfo>>>,
+    chunk_info: Arc<BTreeMap<String, Vec<RecordBatch>>>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     target_partitions: usize,
     worker_runtime: Arc<CpuRuntime>,
     client: ConnectionClient,
-    chunk_request: GetChunksRequest,
 }
 
 type ChunksWithPartition = Vec<(Chunk, Option<String>)>;
@@ -72,8 +69,7 @@ type ChunksWithPartition = Vec<(Chunk, Option<String>)>;
 pub struct DataframePartitionStreamInner {
     projected_schema: SchemaRef,
     client: ConnectionClient,
-    chunk_request: GetChunksRequest,
-    rerun_partition_ids: Vec<String>,
+    chunk_infos: Vec<RecordBatch>,
 
     chunk_tx: Option<Sender<ChunksWithPartition>>,
     store_output_channel: Receiver<RecordBatch>,
@@ -139,8 +135,7 @@ impl Stream for DataframePartitionStream {
 
             this.io_join_handle = Some(io_handle.spawn(chunk_stream_io_loop(
                 this.client.clone(),
-                this.chunk_request.clone(),
-                this.rerun_partition_ids.clone(),
+                this.chunk_infos.clone(),
                 chunk_tx,
             )));
         }
@@ -178,7 +173,6 @@ impl PartitionStreamExec {
         chunk_info_batches: Arc<Vec<RecordBatch>>,
         mut query_expression: QueryExpression,
         client: ConnectionClient,
-        chunk_request: GetChunksRequest,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
             Some(p) => Arc::new(table_schema.project(p)?),
@@ -259,7 +253,7 @@ impl PartitionStreamExec {
             Boundedness::Bounded,
         );
 
-        let chunk_info = compute_partition_stream_chunk_info(&chunk_info_batches)?;
+        let chunk_info = group_chunk_infos_by_partition_id(&chunk_info_batches)?;
 
         let worker_runtime = Arc::new(CpuRuntime::try_new(num_partitions)?);
 
@@ -272,7 +266,6 @@ impl PartitionStreamExec {
             target_partitions: num_partitions,
             worker_runtime,
             client,
-            chunk_request,
         })
     }
 }
@@ -326,26 +319,21 @@ async fn send_next_row(
     Ok(Some(()))
 }
 
+// TODO(#10781) - support for sending intermediate results/chunks
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_store_cpu_worker_thread(
     mut input_channel: Receiver<ChunksWithPartition>,
     output_channel: Sender<RecordBatch>,
-    chunk_info: Arc<BTreeMap<String, Vec<ChunkInfo>>>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
 ) -> Result<(), DataFusionError> {
-    let mut current_stores: Option<(
-        String,
-        ChunkStoreHandle,
-        QueryHandle<StorageEngine>,
-        Vec<ChunkInfo>,
-    )> = None;
+    let mut current_stores: Option<(String, ChunkStoreHandle, QueryHandle<StorageEngine>)> = None;
     while let Some(chunks_and_partition_ids) = input_channel.recv().await {
         for (chunk, partition_id) in chunks_and_partition_ids {
             let partition_id = partition_id
                 .ok_or_else(|| exec_datafusion_err!("Received chunk without a partition id"))?;
 
-            if let Some((current_partition, _, query_handle, _)) = &current_stores {
+            if let Some((current_partition, _, query_handle)) = &current_stores {
                 // When we change partitions, flush the outputs
                 if current_partition != &partition_id {
                     while send_next_row(
@@ -381,41 +369,20 @@ async fn chunk_store_cpu_worker_thread(
                     QueryEngine::new(store.clone(), QueryCache::new_handle(store.clone()));
                 let query_handle = query_engine.query(query_expression.clone());
 
-                let mut chunks_to_receive = chunk_info
-                    .get(&partition_id)
-                    .ok_or(exec_datafusion_err!(
-                        "No chunk info for partition id {partition_id}"
-                    ))?
-                    .clone();
-                chunks_to_receive.sort();
-
-                (partition_id.clone(), store, query_handle, chunks_to_receive)
+                (partition_id.clone(), store, query_handle)
             });
 
-            let (_, store, _, remaining_chunks) = current_stores;
-
-            let chunk_id = chunk.id();
-            let Some((chunk_idx, _)) = remaining_chunks
-                .iter()
-                .enumerate()
-                .find(|(_, info)| info.chunk_id == chunk_id)
-            else {
-                return exec_err!("Unable to locate chunk ID in expected return values");
-            };
+            let (_, store, _) = current_stores;
 
             store
                 .write()
                 .insert_chunk(&Arc::new(chunk))
                 .map_err(|err| exec_datafusion_err!("{err}"))?;
-
-            // TODO(tsaucer) we should be able to send out intermediate rows as we are getting
-            // data in, but the prior attempts to validate these were invalid
-            remaining_chunks.remove(chunk_idx);
         }
     }
 
     // Flush out remaining of last partition
-    if let Some((final_partition, _, query_handle, _)) = &mut current_stores.as_mut() {
+    if let Some((final_partition, _, query_handle)) = &mut current_stores.as_mut() {
         while send_next_row(
             query_handle,
             final_partition,
@@ -433,24 +400,38 @@ async fn chunk_store_cpu_worker_thread(
 /// This is the function that will run on the IO (main) tokio runtime that will listen
 /// to the gRPC channel for chunks coming in from the data platform. This loop is started
 /// up by the execute fn of the physical plan, so we will start one per output partition,
-/// which is different from the `partition_id`. The output of this loop will be sorted
-/// by `rerun_partition_id`. The sorting by time index will happen within the cpu worker
-/// thread.
+/// which is different from the `partition_id`. The sorting by time index will happen within
+/// the cpu worker thread.
+/// `chunk_infos` is a list of batches with chunk information where each batch has info for
+/// a *single partition*. We also expect these to be previously sorted by partition id, otherwise
+/// our suggestion to the query planner that inputs are sorted by partition id will be incorrect.
+/// See `group_chunk_infos_by_partition_id` and `execute` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
-    base_request: GetChunksRequest,
-    mut rerun_partition_ids: Vec<String>,
+    chunk_infos: Vec<RecordBatch>,
     output_channel: Sender<ChunksWithPartition>,
 ) -> Result<(), DataFusionError> {
-    rerun_partition_ids.sort();
-    for partition_id in rerun_partition_ids {
-        let mut get_chunks_request = base_request.clone();
-        get_chunks_request.partition_ids = vec![PartitionId::from(partition_id)];
+    let chunk_infos = chunk_infos
+        .into_iter()
+        .map(|batch| batch.encode())
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| exec_datafusion_err!("{err}"))?;
 
-        let get_chunks_response_stream = client
+    // TODO(zehiko) same as previously with get_chunks, we keep sending 1 request per partition.
+    // As these batches are sorted per partition (see docs above), this ensures that ordering by
+    // partition id is preserved regardless of how server might order responses (in the case of having
+    // batches with different partitions in the same request). However, quick testing shows that this
+    // is at least 2x slower than sending all partitions in one request. Consider providing ordering
+    // guarantees server side in the future.
+    for chunk_info in chunk_infos {
+        let fetch_chunks_request = FetchChunksRequest {
+            chunk_infos: vec![chunk_info],
+        };
+
+        let fetch_chunks_response_stream = client
             .inner()
-            .get_chunks(get_chunks_request)
+            .fetch_chunks(fetch_chunks_request)
             .instrument(tracing::trace_span!("chunk_stream_io_loop"))
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?
@@ -458,8 +439,8 @@ async fn chunk_stream_io_loop(
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
-        let mut chunk_stream = re_redap_client::get_chunks_response_to_chunk_and_partition_id(
-            get_chunks_response_stream,
+        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_partition_id(
+            fetch_chunks_response_stream,
         );
 
         while let Some(Ok(chunk_and_partition_id)) = chunk_stream.next().await {
@@ -491,9 +472,13 @@ impl ExecutionPlan for PartitionStreamExec {
 
     fn with_new_children(
         self: Arc<Self>,
-        _children: Vec<Arc<dyn ExecutionPlan>>,
+        children: Vec<Arc<dyn ExecutionPlan>>,
     ) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
-        plan_err!("PartitionStreamExec does not support children")
+        if children.is_empty() {
+            Ok(self)
+        } else {
+            plan_err!("PartitionStreamExec does not support children")
+        }
     }
 
     #[tracing::instrument(level = "info", skip_all)]
@@ -505,38 +490,43 @@ impl ExecutionPlan for PartitionStreamExec {
         let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
 
         let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
-        let rerun_partition_ids = self
+        let (_, chunk_infos): (Vec<_>, Vec<_>) = self
             .chunk_info
-            .keys()
-            .filter(|partition_id| {
+            .iter()
+            .filter(|(partition_id, _)| {
                 let hash_value = partition_id.hash_one(&random_state) as usize;
                 hash_value % self.target_partitions == partition
             })
-            .cloned()
-            .collect::<Vec<_>>();
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .unzip();
+        // we end up with 1 batch per (rerun) partition. Order is important and must be preserved.
+        // See PartitionStreamExec::try_new for details on ordering.
+        let chunk_infos = chunk_infos
+            .into_iter()
+            .map(|batches| re_arrow_util::concat_polymorphic_batches(&batches))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| exec_datafusion_err!("{err}"))?;
+
+        // if no chunks match this datafusion partition, return an empty stream
+        if chunk_infos.is_empty() {
+            let stream = DataframePartitionStream { inner: None };
+            return Ok(Box::pin(stream));
+        }
 
         let client = self.client.clone();
-        let chunk_request = self.chunk_request.clone();
 
         let (batches_tx, batches_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
         let query_expression = self.query_expression.clone();
         let projected_schema = self.projected_schema.clone();
         let cpu_join_handle = Some(self.worker_runtime.handle().spawn(
-            chunk_store_cpu_worker_thread(
-                chunk_rx,
-                batches_tx,
-                Arc::clone(&self.chunk_info),
-                query_expression,
-                projected_schema,
-            ),
+            chunk_store_cpu_worker_thread(chunk_rx, batches_tx, query_expression, projected_schema),
         ));
 
         let stream = DataframePartitionStreamInner {
             projected_schema: self.projected_schema.clone(),
             store_output_channel: batches_rx,
             client,
-            chunk_request,
-            rerun_partition_ids,
+            chunk_infos,
             chunk_tx: Some(chunk_tx),
             io_join_handle: None,
             cpu_join_handle,
@@ -567,7 +557,6 @@ impl ExecutionPlan for PartitionStreamExec {
             target_partitions,
             worker_runtime: Arc::new(CpuRuntime::try_new(target_partitions)?),
             client: self.client.clone(),
-            chunk_request: self.chunk_request.clone(),
         };
 
         plan.props.partitioning = match plan.props.partitioning {

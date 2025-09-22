@@ -41,7 +41,7 @@ impl TimeType {
     }
 
     pub fn format_sequence(time_int: TimeInt) -> String {
-        Self::Sequence.format(time_int, TimestampFormat::Utc)
+        Self::Sequence.format(time_int, TimestampFormat::utc())
     }
 
     pub fn parse_sequence(s: &str) -> Option<TimeInt> {
@@ -116,7 +116,7 @@ impl TimeType {
 
     #[inline]
     pub fn format_utc(&self, time_int: TimeInt) -> String {
-        self.format(time_int, TimestampFormat::Utc)
+        self.format(time_int, TimestampFormat::utc())
     }
 
     #[inline]
@@ -134,7 +134,7 @@ impl TimeType {
 
     #[inline]
     pub fn format_range_utc(&self, time_range: AbsoluteTimeRange) -> String {
-        self.format_range(time_range, TimestampFormat::Utc)
+        self.format_range(time_range, TimestampFormat::utc())
     }
 
     /// Returns the appropriate arrow datatype to represent this timeline.

@@ -557,16 +557,25 @@ impl App {
         let Ok(url) = ViewerOpenUrl::from_context_expanded(
             store_hub,
             display_mode,
-            time_ctrl
-                .as_deref()
-                // Only update `when` fragment when paused.
-                .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused)),
+            time_ctrl.as_deref(),
             selection,
         )
-        // We don't want the time range in the web url, as that actually leads
-        // to a subset of the current data! And is not in the fragment so
-        // would be added to history.
         .map(|mut url| {
+            // We don't want to update the url while playing, so we use the last paused time.
+            if let Some(fragment) = url.fragment_mut() {
+                fragment.when = time_ctrl.as_deref().and_then(|time_ctrl| {
+                    Some((
+                        *time_ctrl.timeline().name(),
+                        re_log_types::TimeCell {
+                            typ: time_ctrl.time_type(),
+                            value: time_ctrl.last_paused_time()?.floor().into(),
+                        },
+                    ))
+                });
+            }
+            // We don't want the time range in the web url, as that actually leads
+            // to a subset of the current data! And is not in the fragment so
+            // would be added to history.
             url.clear_time_range();
             url
         })
