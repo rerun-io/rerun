@@ -286,7 +286,9 @@ def denied_sdk_deps(results: list[Result]) -> None:
     for target in deny_targets:
         result = run_cargo(
             "tree",
-            f"-p rerun --target {target}",
+            # -f '{lib}' is used here because otherwise cargo tree would print links to repositories of patched crates
+            # which would cause false positives e.g. when checking for egui.
+            f"-p rerun --target {target} -f '{{lib}}'",
             output_checks=check_sdk_tree_with_default_features,
         )
         result.command = f"Check dependencies in `{result.command}`"
