@@ -70,6 +70,12 @@ namespace rerun::components {
         /// It is especially suited for visualizing signed values.
         /// It interpolates from cyan to blue to dark gray to brass to yellow.
         CyanToYellow = 7,
+
+        /// The Spectral colormap from Matplotlib.
+        ///
+        /// This is a diverging colormap with cool colors on the ends and warm colors in the middle.
+        /// It interpolates from dark blue to light blue to green to yellow to orange to dark red.
+        Spectral = 8,
     };
 } // namespace rerun::components
 

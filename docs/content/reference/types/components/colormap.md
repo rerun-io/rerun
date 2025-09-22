@@ -54,6 +54,12 @@ This is a perceptually uniform colormap which is robust to color blindness.
 It is especially suited for visualizing signed values.
 It interpolates from cyan to blue to dark gray to brass to yellow.
 
+#### `Spectral` = 8
+The Spectral colormap from Matplotlib.
+
+This is a diverging colormap with cool colors on the ends and warm colors in the middle.
+It interpolates from dark blue to light blue to green to yellow to orange to dark red.
+
 
 ## Arrow datatype
 ```

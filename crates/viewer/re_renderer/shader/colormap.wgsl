@@ -9,6 +9,7 @@ const COLORMAP_PLASMA:         u32 = 4u;
 const COLORMAP_TURBO:          u32 = 5u;
 const COLORMAP_VIRIDIS:        u32 = 6u;
 const COLORMAP_CYAN_TO_YELLOW: u32 = 7u;
+const COLORMAP_SPECTRAL:       u32 = 8u;
 
 /// Returns a gamma-space sRGB in 0-1 range.
 ///
@@ -31,6 +32,8 @@ fn colormap_srgb(which: u32, t_unsaturated: f32) -> vec3f {
         return colormap_viridis_srgb(t);
     } else if which == COLORMAP_CYAN_TO_YELLOW {
         return colormap_cyan_to_yellow_srgb(t);
+    } else if which == COLORMAP_SPECTRAL {
+        return colormap_spectral_srgb(t);
     } else {
         return ERROR_RGBA.rgb;
     }
@@ -161,4 +164,18 @@ fn colormap_inferno_srgb(t: f32) -> vec3f {
 fn colormap_cyan_to_yellow_srgb(t: f32) -> vec3f {
     let u = t * 2. - 1.;
     return saturate(vec3f(1. + 3. * u, (1. + 3. * u * u) , 1. - 3. * u) / 4.);
+}
+
+/// Returns a gamma-space sRGB in 0-1 range.
+/// This is a polynomial approximation from Spectral color map, assuming `t` is
+/// normalized (it will be saturated no matter what).
+fn colormap_spectral_srgb(t: f32) -> vec3f {
+    let c0 = vec3f(0.584384543712538, 0.006424432561482, 0.231061410304836);
+    let c1 = vec3f(3.768572852617221, 2.487082885717158, 2.821174312084977);
+    let c2 = vec3f(-16.262574054760623, -6.243215992229093, -37.292187460541960);
+    let c3 = vec3f(39.821464952234010, 39.932449794574126, 186.340471613899751);
+    let c4 = vec3f(-46.140976850412727, -99.423798167148249, -388.532539629914481);
+    let c5 = vec3f(12.716626092708825, 96.954180217298671, 360.627239851094203);
+    let c6 = vec3f(5.942343111972585, -33.440386037285862, -123.635206049211334);
+    return c0 + t * (c1 + t * (c2 + t * (c3 + t * (c4 + t * (c5 + t * c6)))));
 }

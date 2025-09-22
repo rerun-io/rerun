@@ -72,6 +72,12 @@ pub enum Colormap {
     /// It is especially suited for visualizing signed values.
     /// It interpolates from cyan to blue to dark gray to brass to yellow.
     CyanToYellow = 7,
+
+    /// The Spectral colormap from Matplotlib.
+    ///
+    /// This is a diverging colormap with cool colors on the ends and warm colors in the middle.
+    /// It interpolates from dark blue to light blue to green to yellow to orange to dark red.
+    Spectral = 8,
 }
 
 impl ::re_types_core::Component for Colormap {
@@ -153,6 +159,7 @@ impl ::re_types_core::Loggable for Colormap {
                 Some(5) => Ok(Some(Self::Turbo)),
                 Some(6) => Ok(Some(Self::Viridis)),
                 Some(7) => Ok(Some(Self::CyanToYellow)),
+                Some(8) => Ok(Some(Self::Spectral)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -175,6 +182,7 @@ impl std::fmt::Display for Colormap {
             Self::Turbo => write!(f, "Turbo"),
             Self::Viridis => write!(f, "Viridis"),
             Self::CyanToYellow => write!(f, "CyanToYellow"),
+            Self::Spectral => write!(f, "Spectral"),
         }
     }
 }
@@ -190,6 +198,7 @@ impl ::re_types_core::reflection::Enum for Colormap {
             Self::Turbo,
             Self::Viridis,
             Self::CyanToYellow,
+            Self::Spectral,
         ]
     }
 
@@ -216,6 +225,9 @@ impl ::re_types_core::reflection::Enum for Colormap {
             }
             Self::CyanToYellow => {
                 "Rasmusgo's Cyan to Yellow colormap\n\nThis is a perceptually uniform colormap which is robust to color blindness.\nIt is especially suited for visualizing signed values.\nIt interpolates from cyan to blue to dark gray to brass to yellow."
+            }
+            Self::Spectral => {
+                "The Spectral colormap from Matplotlib.\n\nThis is a diverging colormap with cool colors on the ends and warm colors in the middle.\nIt interpolates from dark blue to light blue to green to yellow to orange to dark red."
             }
         }
     }
