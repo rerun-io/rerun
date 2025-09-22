@@ -1747,7 +1747,7 @@ checksum = "fe6d2e5af09e8c8ad56c969f2157a3d4238cebc7c55f0a517728c38f7b200f81"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.2.1",
+ "unicode-width 0.1.14",
 ]
 
 [[package]]
@@ -1769,7 +1769,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
 dependencies = [
  "lazy_static",
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -1945,7 +1945,7 @@ checksum = "c07782be35f9e1140080c6b96f0d44b739e2278479f64e02fdab4e32dfd8b081"
 dependencies = [
  "bitflags 1.3.2",
  "core-foundation 0.9.4",
- "core-graphics-types 0.1.3",
+ "core-graphics-types",
  "foreign-types",
  "libc",
 ]
@@ -1958,17 +1958,6 @@ checksum = "45390e6114f68f718cc7a830514a96f903cccd70d02a8f6d9f643ac4ba45afaf"
 dependencies = [
  "bitflags 1.3.2",
  "core-foundation 0.9.4",
- "libc",
-]
-
-[[package]]
-name = "core-graphics-types"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d44a101f213f6c4cdc1853d4b78aef6db6bdfa3468798cc1d9912f4735013eb"
-dependencies = [
- "bitflags 2.9.1",
- "core-foundation 0.10.1",
  "libc",
 ]
 
@@ -3020,7 +3009,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.8.8",
+ "libloading 0.7.4",
 ]
 
 [[package]]
@@ -3062,7 +3051,7 @@ checksum = "d6add3b8cff394282be81f3fc1a0605db594ed69890078ca6e2cab1c408bcf04"
 [[package]]
 name = "ecolor"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#6ac155c5cd3ee9d194579edc964c5659dfe70ab0"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -3079,7 +3068,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#6ac155c5cd3ee9d194579edc964c5659dfe70ab0"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3109,7 +3098,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
- "wgpu 26.0.1",
+ "wgpu",
  "windows-sys 0.60.2",
  "winit",
 ]
@@ -3117,7 +3106,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#6ac155c5cd3ee9d194579edc964c5659dfe70ab0"
 dependencies = [
  "accesskit",
  "ahash",
@@ -3137,7 +3126,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#6ac155c5cd3ee9d194579edc964c5659dfe70ab0"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3149,14 +3138,14 @@ dependencies = [
  "thiserror 1.0.69",
  "type-map",
  "web-time",
- "wgpu 26.0.1",
+ "wgpu",
  "winit",
 ]
 
 [[package]]
 name = "egui-winit"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#6ac155c5cd3ee9d194579edc964c5659dfe70ab0"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -3185,9 +3174,8 @@ dependencies = [
 
 [[package]]
 name = "egui_commonmark"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5e0f0a2945c9c4572ca1d3d2d27df9237afb6995b9a0d2aedf55fd252699c61"
+version = "0.21.1"
+source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=lucas%2Fupdate-egui-main#361af065d90fd9c04c232aa50701aefdf956dc46"
 dependencies = [
  "egui",
  "egui_commonmark_backend",
@@ -3198,8 +3186,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark_backend"
 version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e317aa4031f27be77d4c1c33cb038cdf02d77790c28e5cf1283a66cceb88695"
+source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=lucas%2Fupdate-egui-main#361af065d90fd9c04c232aa50701aefdf956dc46"
 dependencies = [
  "egui",
  "egui_extras",
@@ -3221,7 +3208,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#6ac155c5cd3ee9d194579edc964c5659dfe70ab0"
 dependencies = [
  "ahash",
  "egui",
@@ -3238,7 +3225,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#6ac155c5cd3ee9d194579edc964c5659dfe70ab0"
 dependencies = [
  "bytemuck",
  "egui",
@@ -3254,7 +3241,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#6ac155c5cd3ee9d194579edc964c5659dfe70ab0"
 dependencies = [
  "dify",
  "eframe",
@@ -3263,7 +3250,7 @@ dependencies = [
  "image",
  "kittest",
  "pollster",
- "wgpu 26.0.1",
+ "wgpu",
 ]
 
 [[package]]
@@ -3328,7 +3315,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 [[package]]
 name = "emath"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#6ac155c5cd3ee9d194579edc964c5659dfe70ab0"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3445,7 +3432,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#6ac155c5cd3ee9d194579edc964c5659dfe70ab0"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -3464,7 +3451,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#6ac155c5cd3ee9d194579edc964c5659dfe70ab0"
 
 [[package]]
 name = "equivalent"
@@ -3490,7 +3477,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "778e2ac28f6c47af28e4907f13ffd1e1ddbd400980a9abd7c8df189bf578a5ad"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -5054,7 +5041,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07033963ba89ebaf1584d767badaa2e8fcec21aedea6b8c0346d487d49c28667"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.53.3",
 ]
 
 [[package]]
@@ -5364,22 +5351,7 @@ checksum = "f569fb946490b5743ad69813cb19629130ce9374034abe31614a36402d18f99e"
 dependencies = [
  "bitflags 2.9.1",
  "block",
- "core-graphics-types 0.1.3",
- "foreign-types",
- "log",
- "objc",
- "paste",
-]
-
-[[package]]
-name = "metal"
-version = "0.32.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00c15a6f673ff72ddcc22394663290f870fb224c1bfce55734a75c414150e605"
-dependencies = [
- "bitflags 2.9.1",
- "block",
- "core-graphics-types 0.2.0",
+ "core-graphics-types",
  "foreign-types",
  "log",
  "objc",
@@ -5541,32 +5513,6 @@ dependencies = [
  "rustc-hash 1.1.0",
  "spirv",
  "strum",
- "thiserror 2.0.12",
- "unicode-ident",
-]
-
-[[package]]
-name = "naga"
-version = "26.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "916cbc7cb27db60be930a4e2da243cf4bc39569195f22fd8ee419cd31d5b662c"
-dependencies = [
- "arrayvec",
- "bit-set",
- "bitflags 2.9.1",
- "cfg-if",
- "cfg_aliases",
- "codespan-reporting",
- "half",
- "hashbrown 0.15.4",
- "hexf-parse",
- "indexmap 2.10.0",
- "libm",
- "log",
- "num-traits",
- "once_cell",
- "rustc-hash 1.1.0",
- "spirv",
  "thiserror 2.0.12",
  "unicode-ident",
 ]
@@ -8390,7 +8336,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
- "wgpu 25.0.2",
+ "wgpu",
 ]
 
 [[package]]
@@ -8412,7 +8358,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
- "wgpu 25.0.2",
+ "wgpu",
  "winit",
 ]
 
@@ -8596,7 +8542,7 @@ dependencies = [
  "re_ui",
  "re_uri",
  "re_viewer_context",
- "wgpu 25.0.2",
+ "wgpu",
 ]
 
 [[package]]
@@ -9049,7 +8995,7 @@ dependencies = [
  "re_viewer_context",
  "re_viewport_blueprint",
  "thiserror 1.0.69",
- "wgpu 25.0.2",
+ "wgpu",
 ]
 
 [[package]]
@@ -9203,7 +9149,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
- "wgpu 25.0.2",
+ "wgpu",
 ]
 
 [[package]]
@@ -9263,7 +9209,7 @@ dependencies = [
  "vec1",
  "wasm-bindgen-futures",
  "web-sys",
- "wgpu 25.0.2",
+ "wgpu",
 ]
 
 [[package]]
@@ -11973,7 +11919,7 @@ dependencies = [
  "hashbrown 0.15.4",
  "js-sys",
  "log",
- "naga 25.0.1",
+ "naga",
  "parking_lot",
  "portable-atomic",
  "profiling",
@@ -11983,38 +11929,9 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "wgpu-core 25.0.2",
- "wgpu-hal 25.0.2",
- "wgpu-types 25.0.0",
-]
-
-[[package]]
-name = "wgpu"
-version = "26.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70b6ff82bbf6e9206828e1a3178e851f8c20f1c9028e74dd3a8090741ccd5798"
-dependencies = [
- "arrayvec",
- "bitflags 2.9.1",
- "cfg-if",
- "cfg_aliases",
- "document-features",
- "hashbrown 0.15.4",
- "js-sys",
- "log",
- "naga 26.0.0",
- "parking_lot",
- "portable-atomic",
- "profiling",
- "raw-window-handle",
- "smallvec",
- "static_assertions",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "wgpu-core 26.0.1",
- "wgpu-hal 26.0.4",
- "wgpu-types 26.0.0",
+ "wgpu-core",
+ "wgpu-hal",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -12032,7 +11949,7 @@ dependencies = [
  "hashbrown 0.15.4",
  "indexmap 2.10.0",
  "log",
- "naga 25.0.1",
+ "naga",
  "once_cell",
  "parking_lot",
  "portable-atomic",
@@ -12041,43 +11958,12 @@ dependencies = [
  "rustc-hash 1.1.0",
  "smallvec",
  "thiserror 2.0.12",
- "wgpu-core-deps-apple 25.0.0",
- "wgpu-core-deps-emscripten 25.0.0",
+ "wgpu-core-deps-apple",
+ "wgpu-core-deps-emscripten",
  "wgpu-core-deps-wasm",
- "wgpu-core-deps-windows-linux-android 25.0.0",
- "wgpu-hal 25.0.2",
- "wgpu-types 25.0.0",
-]
-
-[[package]]
-name = "wgpu-core"
-version = "26.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5f62f1053bd28c2268f42916f31588f81f64796e2ff91b81293515017ca8bd9"
-dependencies = [
- "arrayvec",
- "bit-set",
- "bit-vec",
- "bitflags 2.9.1",
- "cfg_aliases",
- "document-features",
- "hashbrown 0.15.4",
- "indexmap 2.10.0",
- "log",
- "naga 26.0.0",
- "once_cell",
- "parking_lot",
- "portable-atomic",
- "profiling",
- "raw-window-handle",
- "rustc-hash 1.1.0",
- "smallvec",
- "thiserror 2.0.12",
- "wgpu-core-deps-apple 26.0.0",
- "wgpu-core-deps-emscripten 26.0.0",
- "wgpu-core-deps-windows-linux-android 26.0.0",
- "wgpu-hal 26.0.4",
- "wgpu-types 26.0.0",
+ "wgpu-core-deps-windows-linux-android",
+ "wgpu-hal",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -12086,16 +11972,7 @@ version = "25.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfd488b3239b6b7b185c3b045c39ca6bf8af34467a4c5de4e0b1a564135d093d"
 dependencies = [
- "wgpu-hal 25.0.2",
-]
-
-[[package]]
-name = "wgpu-core-deps-apple"
-version = "26.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18ae5fbde6a4cbebae38358aa73fcd6e0f15c6144b67ef5dc91ded0db125dbdf"
-dependencies = [
- "wgpu-hal 26.0.4",
+ "wgpu-hal",
 ]
 
 [[package]]
@@ -12104,16 +11981,7 @@ version = "25.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f09ad7aceb3818e52539acc679f049d3475775586f3f4e311c30165cf2c00445"
 dependencies = [
- "wgpu-hal 25.0.2",
-]
-
-[[package]]
-name = "wgpu-core-deps-emscripten"
-version = "26.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7670e390f416006f746b4600fdd9136455e3627f5bd763abf9a65daa216dd2d"
-dependencies = [
- "wgpu-hal 26.0.4",
+ "wgpu-hal",
 ]
 
 [[package]]
@@ -12122,7 +11990,7 @@ version = "25.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eca8809ad123f6c7f2c5e01a2c7117c4fdfd02f70bd422ee2533f69dfa98756c"
 dependencies = [
- "wgpu-hal 25.0.2",
+ "wgpu-hal",
 ]
 
 [[package]]
@@ -12131,16 +11999,7 @@ version = "25.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cba5fb5f7f9c98baa7c889d444f63ace25574833df56f5b817985f641af58e46"
 dependencies = [
- "wgpu-hal 25.0.2",
-]
-
-[[package]]
-name = "wgpu-core-deps-windows-linux-android"
-version = "26.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "720a5cb9d12b3d337c15ff0e24d3e97ed11490ff3f7506e7f3d98c68fa5d6f14"
-dependencies = [
- "wgpu-hal 26.0.4",
+ "wgpu-hal",
 ]
 
 [[package]]
@@ -12152,56 +12011,13 @@ dependencies = [
  "android_system_properties",
  "arrayvec",
  "ash",
- "bitflags 2.9.1",
- "block",
- "bytemuck",
- "cfg-if",
- "cfg_aliases",
- "core-graphics-types 0.1.3",
- "glow",
- "glutin_wgl_sys",
- "gpu-alloc",
- "gpu-descriptor",
- "hashbrown 0.15.4",
- "js-sys",
- "khronos-egl",
- "libc",
- "libloading 0.8.8",
- "log",
- "metal 0.31.0",
- "naga 25.0.1",
- "ndk-sys 0.5.0+25.2.9519653",
- "objc",
- "ordered-float 4.6.0",
- "parking_lot",
- "portable-atomic",
- "profiling",
- "raw-window-handle",
- "renderdoc-sys",
- "smallvec",
- "thiserror 2.0.12",
- "wasm-bindgen",
- "web-sys",
- "wgpu-types 25.0.0",
- "windows 0.58.0",
-]
-
-[[package]]
-name = "wgpu-hal"
-version = "26.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7df2c64ac282a91ad7662c90bc4a77d4a2135bc0b2a2da5a4d4e267afc034b9e"
-dependencies = [
- "android_system_properties",
- "arrayvec",
- "ash",
  "bit-set",
  "bitflags 2.9.1",
  "block",
  "bytemuck",
  "cfg-if",
  "cfg_aliases",
- "core-graphics-types 0.2.0",
+ "core-graphics-types",
  "glow",
  "glutin_wgl_sys",
  "gpu-alloc",
@@ -12213,14 +12029,13 @@ dependencies = [
  "libc",
  "libloading 0.8.8",
  "log",
- "metal 0.32.0",
- "naga 26.0.0",
- "ndk-sys 0.6.0+11769913",
+ "metal",
+ "naga",
+ "ndk-sys 0.5.0+25.2.9519653",
  "objc",
  "ordered-float 4.6.0",
  "parking_lot",
  "portable-atomic",
- "portable-atomic-util",
  "profiling",
  "range-alloc",
  "raw-window-handle",
@@ -12229,7 +12044,7 @@ dependencies = [
  "thiserror 2.0.12",
  "wasm-bindgen",
  "web-sys",
- "wgpu-types 26.0.0",
+ "wgpu-types",
  "windows 0.58.0",
  "windows-core 0.58.0",
 ]
@@ -12239,20 +12054,6 @@ name = "wgpu-types"
 version = "25.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2aa49460c2a8ee8edba3fca54325540d904dd85b2e086ada762767e17d06e8bc"
-dependencies = [
- "bitflags 2.9.1",
- "bytemuck",
- "js-sys",
- "log",
- "thiserror 2.0.12",
- "web-sys",
-]
-
-[[package]]
-name = "wgpu-types"
-version = "26.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eca7a8d8af57c18f57d393601a1fb159ace8b2328f1b6b5f80893f7d672c9ae2"
 dependencies = [
  "bitflags 2.9.1",
  "bytemuck",
@@ -12284,7 +12085,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -13273,8 +13074,3 @@ dependencies = [
  "syn 2.0.104",
  "winnow",
 ]
-
-[[patch.unused]]
-name = "egui_commonmark"
-version = "0.21.1"
-source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=lucas%2Fupdate-egui-main#361af065d90fd9c04c232aa50701aefdf956dc46"
