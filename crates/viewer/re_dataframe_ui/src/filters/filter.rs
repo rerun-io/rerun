@@ -10,7 +10,7 @@ use datafusion::logical_expr::{
     ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
     ScalarUDFImpl, Signature, TypeSignature, Volatility,
 };
-use datafusion::prelude::{Column, Expr, array_to_string, col, lit, lower, contains};
+use datafusion::prelude::{Column, Expr, array_to_string, col, contains, lit, lower};
 
 use super::{NonNullableBooleanFilter, NullableBooleanFilter};
 
