@@ -63,6 +63,7 @@ impl Ros2MessageParser for ImageMessageParser {
 impl MessageParser for ImageMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
+        // save raw message content for debugging:
         let sensor_msgs::Image {
             header,
             data,
