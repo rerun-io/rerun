@@ -563,9 +563,9 @@ mod test {
                     width: f.width(),
                     include_metadata: true,
                     include_column_metadata: true,
-                    trim_field_names: false,
-                    trim_metadata_keys: false,
-                    trim_metadata_values: false,
+                    trim_field_names: true,
+                    trim_metadata_keys: true,
+                    trim_metadata_values: true,
                     redact_non_deterministic: true,
                 },
             )

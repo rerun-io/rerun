@@ -1,6 +1,6 @@
 ---
 source: crates/utils/re_mcap/src/layers/protobuf.rs
-expression: "format!(\"{:240}\", ChunkSnapshot(&chunks[0]))"
+expression: "format!(\"{:240}\", ChunkRedacted(&chunks[0]))"
 ---
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                                               │
@@ -10,14 +10,13 @@ expression: "format!(\"{:240}\", ChunkSnapshot(&chunks[0]))"
 │ * version: [**REDACTED**]                                                                                                                                                                               │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────────────────────┬──────────────────────┬──────────────────────────┬──────────────────────────────────┬────────────────────────────────────┬─────────────────────────────────────┐ │
-│ │ rerun.controls.RowId                ┆ log_time             ┆ publish_time             ┆ com.example.Person:id            ┆ com.example.Person:name            ┆ com.example.Person:status           │ │
+│ │ RowId                               ┆ log_time             ┆ publish_time             ┆ com.example.Person:id            ┆ com.example.Person:name            ┆ com.example.Person:status           │ │
 │ │ ---                                 ┆ ---                  ┆ ---                      ┆ ---                              ┆ ---                                ┆ ---                                 │ │
 │ │ type: FixedSizeBinary[16]           ┆ type: Duration(ns)   ┆ type: Duration(ns)       ┆ type: List[nullable i32]         ┆ type: List[nullable Utf8]          ┆ type: List[nullable Utf8]           │ │
 │ │ ARROW:extension:metadata:           ┆ index_name: log_time ┆ index_name: publish_time ┆ archetype: com.example.Person    ┆ archetype: com.example.Person      ┆ archetype: com.example.Person       │ │
 │ │ {"namespace":"row"}                 ┆ is_sorted: true      ┆ is_sorted: true          ┆ component: com.example.Person:id ┆ component: com.example.Person:name ┆ component:                          │ │
-│ │ ARROW:extension:name:               ┆ kind: index          ┆ kind: index              ┆ kind: data                       ┆ kind: data                         ┆ com.example.Person:status           │ │
-│ │ rerun.datatypes.TUID                ┆                      ┆                          ┆                                  ┆                                    ┆ kind: data                          │ │
-│ │ is_sorted: true                     ┆                      ┆                          ┆                                  ┆                                    ┆                                     │ │
+│ │ ARROW:extension:name: TUID          ┆ kind: index          ┆ kind: index              ┆ kind: data                       ┆ kind: data                         ┆ com.example.Person:status           │ │
+│ │ is_sorted: true                     ┆                      ┆                          ┆                                  ┆                                    ┆ kind: data                          │ │
 │ │ kind: control                       ┆                      ┆                          ┆                                  ┆                                    ┆                                     │ │
 │ ╞═════════════════════════════════════╪══════════════════════╪══════════════════════════╪══════════════════════════════════╪════════════════════════════════════╪═════════════════════════════════════╡ │
 │ │ row_[**REDACTED**]                  ┆ PT0.000000042S       ┆ PT0.000000042S           ┆ [0]                              ┆ [Bob]                              ┆ [INACTIVE]                          │ │
