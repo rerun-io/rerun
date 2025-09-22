@@ -1,6 +1,7 @@
 //! [`BoxedWidget`] and [`BoxedWidgetExt::boxed`] helpers.
 //!
-//! [`Box<dyn Widget>`] cannot work because dyn Widget is not `Sized`.
+//! [`Box<dyn Widget>`] cannot work because [`Widget`] is not dyn compatible (we can't move out of the
+//! Box for the `self` param).
 //! Fortunately,  `Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + 'a>` _does_ implement [`Widget`]
 //! (Since [`Widget`] is implemented for all `FnOnce(&mut Ui) -> Response`, and `FnOnce` is
 //! implemented for all `Box<dyn FnOnce(...)>`).
