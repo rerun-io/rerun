@@ -16,7 +16,7 @@ use re_sorbet::{ComponentColumnDescriptor, ComponentColumnSelector};
     name = "ComponentColumnDescriptor",
     module = "rerun_bindings.rerun_bindings"
 )]
-#[derive(Clone, PartialEq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct PyComponentColumnDescriptor(pub ComponentColumnDescriptor);
 
 impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
