@@ -7,9 +7,14 @@
 //! arrays, names, constants, default values).
 use anyhow::{Context as _, Result, bail};
 
+pub mod deserializer;
+
 /// A parsed ROS 2 message.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MessageSpec {
+    /// Name of the message type.
+    pub name: String,
+
     /// Fields that make up the message payload.
     pub fields: Vec<Field>,
 
@@ -18,7 +23,7 @@ pub struct MessageSpec {
 }
 
 impl MessageSpec {
-    pub fn parse(input: &str) -> anyhow::Result<Self> {
+    pub fn parse(name: &str, input: &str) -> anyhow::Result<Self> {
         let mut fields = Vec::new();
         let mut constants = Vec::new();
 
@@ -43,7 +48,11 @@ impl MessageSpec {
             }
         }
 
-        Ok(Self { fields, constants })
+        Ok(Self {
+            name: name.to_owned(),
+            fields,
+            constants,
+        })
     }
 }
 
@@ -388,12 +397,12 @@ impl MessageSchema {
         let main_spec_content = extract_main_msg_spec(input);
         let specs = extract_msg_specs(input);
 
-        let main_spec = MessageSpec::parse(&main_spec_content)
+        let main_spec = MessageSpec::parse(&name, &main_spec_content)
             .with_context(|| format!("failed to parse main message spec `{name}`"))?;
 
         let mut dependencies = Vec::new();
         for (dep_name, dep_content) in specs {
-            let dep_spec = MessageSpec::parse(&dep_content)
+            let dep_spec = MessageSpec::parse(&dep_name, &dep_content)
                 .with_context(|| format!("failed to parse dependent message spec `{dep_name}`"))?;
             dependencies.push(dep_spec);
         }
@@ -465,7 +474,10 @@ mod tests {
     use cdr_encoding::CdrDeserializer;
     use serde::Deserializer;
 
-    use crate::parsers::dds;
+    use crate::{
+        cdr,
+        parsers::{dds, ros2msg::definitions::sensor_msgs},
+    };
 
     use super::*;
 
@@ -485,95 +497,75 @@ mod tests {
     uint32 CONST1=42 # inline comment
     "#;
 
-        MessageSpec::parse(input).unwrap();
+        MessageSpec::parse("test", input).unwrap();
     }
 
     #[test]
     fn test_parse_message_schema() {
         let input = r#"
-    geometry_msgs/TransformStamped[] transforms
+# This message contains an uncompressed image
+# (0, 0) is at top-left corner of image
 
-    ================================================================================
-    MSG: geometry_msgs/TransformStamped
-    # This expresses a transform from coordinate frame header.frame_id
-    # to the coordinate frame child_frame_id at the time of header.stamp
-    #
-    # This message is mostly used by the
-    # <a href="https://index.ros.org/p/tf2/">tf2</a> package.
-    # See its documentation for more information.
-    #
-    # The child_frame_id is necessary in addition to the frame_id
-    # in the Header to communicate the full reference for the transform
-    # in a self contained message.
+std_msgs/Header header # Header timestamp should be acquisition time of image
+                             # Header frame_id should be optical frame of camera
+                             # origin of frame should be optical center of cameara
+                             # +x should point to the right in the image
+                             # +y should point down in the image
+                             # +z should point into to plane of the image
+                             # If the frame_id here and the frame_id of the CameraInfo
+                             # message associated with the image conflict
+                             # the behavior is undefined
 
-    # The frame id in the header is used as the reference frame of this transform.
-    std_msgs/Header header
+uint32 height                # image height, that is, number of rows
+uint32 width                 # image width, that is, number of columns
 
-    # The frame id of the child frame to which this transform points.
-    string child_frame_id
+# The legal values for encoding are in file src/image_encodings.cpp
+# If you want to standardize a new string format, join
+# ros-users@lists.ros.org and send an email proposing a new encoding.
 
-    # Translation and rotation in 3-dimensions of child_frame_id from header.frame_id.
-    Transform transform
+string encoding       # Encoding of pixels -- channel meaning, ordering, size
+                      # taken from the list of strings in include/sensor_msgs/image_encodings.hpp
 
-    ================================================================================
-    MSG: geometry_msgs/Transform
-    # This represents the transform between two coordinate frames in free space.
+uint8 is_bigendian    # is this data bigendian?
+uint32 step           # Full row length in bytes
+uint8[] data          # actual matrix data, size is (step * rows)
 
-    Vector3 translation
-    Quaternion rotation
+================================================================================
+MSG: std_msgs/Header
+# Standard metadata for higher-level stamped data types.
+# This is generally used to communicate timestamped data
+# in a particular coordinate frame.
 
-    ================================================================================
-    MSG: geometry_msgs/Quaternion
-    # This represents an orientation in free space in quaternion form.
+# Two-integer timestamp that is expressed as seconds and nanoseconds.
+builtin_interfaces/Time stamp
 
-    float64 x 0
-    float64 y 0
-    float64 z 0
-    float64 w 1
+# Transform frame with which this data is associated.
+string frame_id
 
-    ================================================================================
-    MSG: geometry_msgs/Vector3
-    # This represents a vector in free space.
+================================================================================
+MSG: builtin_interfaces/Time
+# This message communicates ROS Time defined here:
+# https://design.ros2.org/articles/clock_and_time.html
 
-    # This is semantically different than a point.
-    # A vector is always anchored at the origin.
-    # When a transform is applied to a vector, only the rotational component is applied.
+# The seconds component, valid over all int32 values.
+int32 sec
 
-    float64 x
-    float64 y
-    float64 z
+# The nanoseconds component, valid in the range [0, 10e9).
+uint32 nanosec
 
-    ================================================================================
-    MSG: std_msgs/Header
-    # Standard metadata for higher-level stamped data types.
-    # This is generally used to communicate timestamped data
-    # in a particular coordinate frame.
-
-    # Two-integer timestamp that is expressed as seconds and nanoseconds.
-    builtin_interfaces/Time stamp
-
-    # Transform frame with which this data is associated.
-    string frame_id
-
-    ================================================================================
-    MSG: builtin_interfaces/Time
-    # This message communicates ROS Time defined here:
-    # https://design.ros2.org/articles/clock_and_time.html
-
-    # The seconds component, valid over all int32 values.
-    int32 sec
-
-    # The nanoseconds component, valid in the range [0, 10e9).
-    uint32 nanosec
         "#;
-        const RAW_MSG: &[u8] = include_bytes!("../../../../../../../tf2_message.bin");
+        const RAW_MSG: &[u8] = include_bytes!("../../../../../../../last_image_msg.bin");
 
-        let spec = MessageSchema::parse("tf2_msgs/msg/TFMessage".to_owned(), input);
+        let spec = MessageSchema::parse("tf2_msgs/msg/TFMessage".to_owned(), input).unwrap();
         let representation_identifier =
             dds::RepresentationIdentifier::from_bytes(RAW_MSG[0..2].try_into().unwrap()).unwrap();
 
         let payload = &RAW_MSG[4..];
-        let mut deser = CdrDeserializer::<byteorder::LittleEndian>::new(payload);
-        println!("representation_identifier: {representation_identifier:?}");
+        let mut de = CdrDeserializer::<byteorder::LittleEndian>::new(payload);
+
+        let mut resolver = std::collections::HashMap::new();
+        for dep in &spec.dependencies {
+            resolver.insert(dep.name.clone(), dep);
+        }
     }
 }
