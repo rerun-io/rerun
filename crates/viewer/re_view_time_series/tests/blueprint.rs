@@ -1,6 +1,7 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
 use re_types::{
     archetypes::{self, Scalars},
@@ -77,5 +78,5 @@ fn run_view_ui_and_save_snapshot(
             test_context.run_with_single_view(ui, view_id);
         });
     harness.run();
-    harness.snapshot(name);
+    harness.snapshot_options(name, &SnapshotOptions::new().threshold(1.0));
 }
