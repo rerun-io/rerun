@@ -57,8 +57,9 @@ It interpolates from cyan to blue to dark gray to brass to yellow.
 #### `Spectral` = 8
 The Spectral colormap from Matplotlib.
 
-This is a diverging colormap with cool colors on the ends and warm colors in the middle.
-It interpolates from dark blue to light blue to green to yellow to orange to dark red.
+This is a diverging colormap, often used to visualize data with a meaningful center point,
+where deviations from that center are important to highlight.
+It interpolates from red to orange to yellow to green to blue to violet.
 
 
 ## Arrow datatype
