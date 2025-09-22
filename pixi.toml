@@ -544,7 +544,7 @@ cpp-build-tests = { cmd = "cmake --build build/debug --config Debug --target rer
 cpp-build-examples = { cmd = "cmake --build build/debug --config Debug --target examples", depends-on = [
   "cpp-prepare",
 ] }
-cpp-build-snippets = { cmd = "cmake --build build/debug --config Debug --target snippets -DCMAKE_BUILD_PARALLEL_LEVEL=4", depends-on = [
+cpp-build-snippets = { cmd = "cmake --build build/debug --config Debug --target snippets", depends-on = [
   "cpp-prepare",
 ] }
 cpp-build-log-benchmark = { cmd = "cmake --build build/release --config Release --target log_benchmark", depends-on = [
@@ -568,6 +568,11 @@ cpp-fmt = "fd --extension h --extension hpp --extension c  --extension cpp --exe
 
 [feature.cpp.target.win-64.tasks]
 cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
+
+[feature.cpp.target.linux-aarch64.tasks]
+cpp-build-snippets = { cmd = "cmake --build build/debug --config Debug --target snippets --parallel 4", depends-on = [
+  "cpp-prepare",
+] }
 
 ################################################################################
 # DEPENDENCIES
