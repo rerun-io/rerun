@@ -600,6 +600,9 @@ pub struct StoreInfo {
     /// If present, will crop incoming data to the specified range for a single given timeline.
     /// Data for all other timelines will be discarded.
     ///
+    /// ⚠️ Does not discard any chunk whose time ranges are entirely before the range.
+    /// This is because on a per-chunk level it's not known whether it is relevant for latest-at queries within the range.
+    ///
     /// A cropped store gets always a new unique ID.
     /// TODO: make it happen.
     pub cropping_range: Option<StoreCroppingRange>,

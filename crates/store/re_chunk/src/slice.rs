@@ -179,6 +179,21 @@ impl Chunk {
     #[must_use]
     #[inline]
     pub fn component_sliced(&self, component_descr: &ComponentDescriptor) -> Self {
+        self.components_sliced(&[component_descr])
+    }
+
+    /// Slices the [`Chunk`] horizontally by keeping only the selected `component_descrs`.
+    ///
+    /// The result is a new [`Chunk`] with the same rows and at most only the selected component columns.
+    /// All non-component columns will be kept as-is.
+    ///
+    /// If none of the `component_descrs` are found within the [`Chunk`], the end result will be the same as the
+    /// current chunk but without any component column.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
+    #[must_use]
+    #[inline]
+    pub fn components_sliced(&self, component_descrs: &[&ComponentDescriptor]) -> Self {
         let Self {
             id,
             entity_path,
@@ -197,10 +212,14 @@ impl Chunk {
             row_ids: row_ids.clone(),
             timelines: timelines.clone(),
             components: crate::ChunkComponents(
-                components
-                    .get(component_descr)
-                    .map(|list_array| (component_descr.clone(), list_array.clone()))
-                    .into_iter()
+                component_descrs
+                    .iter()
+                    .flat_map(|component_descr| {
+                        components
+                            .get(component_descr)
+                            .map(|list_array| ((*component_descr).clone(), list_array.clone()))
+                            .into_iter()
+                    })
                     .collect(),
             ),
         };

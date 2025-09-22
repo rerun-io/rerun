@@ -391,7 +391,7 @@ impl ChunkStoreHandle {
 /// A complete chunk store: covers all timelines, all entities, everything.
 ///
 /// The chunk store _always_ works at the chunk level, whether it is for write & read queries or
-/// garbage collection. It is completely oblivious to individual rows.
+/// garbage collection. It is completely oblivious to individual rows other than for optionally cropping incoming data.
 ///
 /// Use the `Display` implementation for a detailed view of the internals.
 #[derive(Debug)]

@@ -5,7 +5,7 @@ use arrow::array::Array as _;
 use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
-use re_chunk::{Chunk, EntityPath, RowId};
+use re_chunk::{Chunk, EntityPath, RangeQuery, RowId};
 
 use crate::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreError,
@@ -27,6 +27,9 @@ impl ChunkStore {
     /// * Trying to insert an unsorted chunk ([`Chunk::is_sorted`]) will fail with an error.
     /// * Inserting a duplicated [`ChunkId`] will result in a no-op.
     /// * Inserting an empty [`Chunk`] will result in a no-op.
+    ///
+    /// If the store has a cropping range, each incoming chunk will be range queried
+    /// to the specified cropping range. If the reuslting chunk is empty after this operation, it will be discarded.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
         if chunk.components().is_empty() {
             // This can happen in 2 scenarios: A) a badly manually crafted chunk or B) an Indicator
@@ -41,6 +44,27 @@ impl ChunkStore {
             // The solution is simple: just drop it.
             return Ok(vec![]);
         }
+
+        // Crop chunk if requested. We do this via a range query on the cropping range.
+        let cropped_chunk_arc;
+        dbg!(&self.store_info);
+        let chunk = if let Some(cropping_range) = self
+            .store_info
+            .as_ref()
+            .and_then(|info| info.cropping_range.as_ref())
+        {
+            dbg!(&cropping_range);
+
+            let range_query = RangeQuery::new(cropping_range.timeline, cropping_range.range);
+            let cropped_chunk = chunk.range_all_components(&range_query);
+            if cropped_chunk.is_empty() {
+                return Ok(vec![]);
+            }
+            cropped_chunk_arc = Arc::new(cropped_chunk);
+            &cropped_chunk_arc
+        } else {
+            chunk
+        };
 
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
             // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.

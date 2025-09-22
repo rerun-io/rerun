@@ -53,7 +53,7 @@ impl crate::DataUi for EntityDb {
                     cloned_from,
                     store_source,
                     store_version,
-                    cropping_range, // TODO: make use of this here
+                    cropping_range,
                 } = store_info;
 
                 if let Some(cloned_from) = cloned_from {
@@ -78,6 +78,17 @@ impl crate::DataUi for EntityDb {
                     re_log::debug_once!(
                         "store version is undefined for this recording, this is a bug"
                     );
+                }
+
+                if let Some(cropping_range) = cropping_range {
+                    ui.grid_left_hand_label("Cropped timeline");
+                    ui.label(format!("{}", cropping_range.timeline));
+                    ui.end_row();
+
+                    // TODO: time fmt
+                    ui.grid_left_hand_label("Cropping range");
+                    ui.label(format!("{:?} - {:?}", cropping_range.range.min, cropping_range.range.max));
+                    ui.end_row();
                 }
 
                 ui.grid_left_hand_label("Kind");
