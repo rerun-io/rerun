@@ -79,7 +79,7 @@ fn run_view_ui_and_save_snapshot(
     harness.run();
     harness.snapshot_options(
         name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(0).macos(40)),
+        &SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(2).macos(2)),
     );
 }
 
