@@ -9,10 +9,7 @@ use re_test_context::{
     external::egui_kittest::{OsThreshold, SnapshotOptions},
 };
 use re_test_viewport::TestContextExt as _;
-use re_types::{
-    datatypes::{self, ColorModel},
-    image::ImageChannelType,
-};
+use re_types::{datatypes::ColorModel, image::ImageChannelType};
 use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -36,11 +33,13 @@ fn run_bgr_test<T: ImageChannelType>(image: &[T], size: [u32; 2], color_model: C
         ))
     });
 
-    let type_name = std::any::type_name::<T>();
+    // type_name of half is "half::binary16::f16"
+    let pixel_type_name = std::any::type_name::<T>().split("::").last().unwrap();
+
     let snapshot_name = format!(
         "bgr_images_{}_{}",
         color_model.to_string().to_lowercase(),
-        type_name
+        pixel_type_name
     );
 
     run_view_ui_and_save_snapshot(
@@ -59,7 +58,7 @@ fn run_all_formats(image: &[u8], size: [u32; 2], color_model: ColorModel) {
     run_bgr_test(&convert_pixels_to::<i16>(image), size, color_model);
     run_bgr_test(&convert_pixels_to::<i32>(image), size, color_model);
     run_bgr_test(&convert_pixels_to::<i64>(image), size, color_model);
-    // run_bgr_test(&convert_pixels_to::<f16>(image), size, color_model);
+    run_bgr_test(&convert_pixels_to::<half::f16>(image), size, color_model);
     run_bgr_test(&convert_pixels_to::<f32>(image), size, color_model);
     run_bgr_test(&convert_pixels_to::<f64>(image), size, color_model);
 }
