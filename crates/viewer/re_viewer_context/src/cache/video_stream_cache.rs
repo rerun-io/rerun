@@ -304,10 +304,6 @@ fn read_samples_from_chunk(
         return Ok(());
     };
 
-    let min_presentation_timestamp = samples
-        .front()
-        .map_or(re_video::Time::MIN, |s| s.presentation_timestamp);
-
     let mut previous_max_presentation_timestamp = samples
         .back()
         .map_or(re_video::Time::MIN, |s| s.presentation_timestamp);
@@ -320,6 +316,10 @@ fn read_samples_from_chunk(
         .and_then(|time_range| time_range.get(&sample_descr))
     {
         Some(time_range) => {
+            let min_presentation_timestamp = samples
+                .front()
+                .map_or(re_video::Time::MIN, |s| s.presentation_timestamp);
+
             // If the whole chunk is before the current stream time range, insert
             // it at the start.
             if time_range.max().as_i64() < min_presentation_timestamp.0 {
