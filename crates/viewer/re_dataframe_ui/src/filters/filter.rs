@@ -466,6 +466,9 @@ impl FilterOperationUdf {
             DataType::Int8 => int_float_case!(IntCompares, as_int8_array, self.op),
             DataType::Int16 => int_float_case!(IntCompares, as_int16_array, self.op),
             DataType::Int32 => int_float_case!(IntCompares, as_int32_array, self.op),
+
+            // Note: although `TimeInt` is Int64, by now we casted it to `Timestamp`, see
+            // `invoke_list_array` impl.
             DataType::Int64 => int_float_case!(IntCompares, as_int64_array, self.op),
             DataType::UInt8 => int_float_case!(IntCompares, as_uint8_array, self.op),
             DataType::UInt16 => int_float_case!(IntCompares, as_uint16_array, self.op),
