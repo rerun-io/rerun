@@ -259,26 +259,14 @@ fn load_video_data_from_chunks(
         mp4_tracks: Default::default(),
     };
 
-    let mut chunks = sample_chunks.iter().enumerate().collect::<Vec<_>>();
-
-    chunks.sort_by_cached_key(|(_, c)| {
-        c.time_range_per_component()
-            .get(&timeline)
-            .and_then(|t| Some(t.get(&sample_descr)?.max().as_i64()))
-    });
-
-    if !chunks.is_sorted_by_key(|(i, _)| *i) {
-        re_log::info!("Chunks were sorted");
-    }
-
-    for (_, chunk) in chunks {
+    for chunk in sample_chunks {
         if let Err(err) =
             read_samples_from_chunk(timeline, chunk, &mut video_descr, &mut video_sample_buffers)
         {
             match err {
                 VideoStreamProcessingError::OutOfOrderSamples => {
-                    re_log::error_once!(
-                        "Out of order video stream samples, some chunks of samples have been ignored."
+                    re_log::warn_once!(
+                        "Late insertions of video frames within an established video stream is not supported, some video data has been ignored."
                     );
                 }
                 err => return Err(err),
