@@ -1,0 +1,64 @@
+use re_chunk_store::RowId;
+use re_log_types::TimePoint;
+use re_test_context::TestContext;
+use re_test_viewport::TestContextExt as _;
+use re_types::{archetypes, datatypes::TensorBuffer};
+use re_view_tensor::TensorView;
+use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewport_blueprint::ViewBlueprint;
+
+// Fun little xor texture for testing
+fn make_test_tensor_2d(size: usize) -> archetypes::Tensor {
+    let scale = (256 / size) as u8;
+    let data = (0..size)
+        .flat_map(|i| (0..size).map(move |j| (i ^ j) as u8 * scale))
+        .collect::<Vec<_>>();
+    archetypes::Tensor::new(re_types::datatypes::TensorData::new(
+        vec![size as u64, size as u64],
+        TensorBuffer::U8(data.into()),
+    ))
+}
+
+#[test]
+fn test_tensor() {
+    let mut test_context = TestContext::new_with_view_class::<TensorView>();
+
+    test_context.log_entity("tensors/t1", |builder| {
+        builder.with_archetype(RowId::new(), TimePoint::STATIC, &make_test_tensor_2d(16))
+    });
+    test_context.log_entity("tensors/t2", |builder| {
+        builder.with_archetype(RowId::new(), TimePoint::STATIC, &make_test_tensor_2d(8))
+    });
+
+    let view_id = setup_blueprint(&mut test_context);
+    run_view_ui_and_save_snapshot(
+        &mut test_context,
+        view_id,
+        "tensor_2d",
+        egui::vec2(300.0, 300.0),
+    );
+}
+
+fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
+    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
+            TensorView::identifier(),
+        ))
+    })
+}
+
+fn run_view_ui_and_save_snapshot(
+    test_context: &mut TestContext,
+    view_id: ViewId,
+    name: &str,
+    size: egui::Vec2,
+) {
+    let mut harness = test_context
+        .setup_kittest_for_rendering()
+        .with_size(size)
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+    harness.run();
+    harness.snapshot(name);
+}
