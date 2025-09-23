@@ -32,7 +32,7 @@ The timeout behavior is also improved: it will only block as long as there is _h
 
 Removed:
  * Python: `flush_timeout_sec` argument of `connect_grpc`
- * Rust: `flush_timeout_sec` argument of `connect_grpc_opts`
+ * Rust: `flush_timeout` argument of `connect_grpc_opts`
  * C++: `rerun::GrpcSink::flush_timeout_sec`
 
 
