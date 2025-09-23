@@ -48,6 +48,10 @@ impl Ros2ReflectionMessageParser {
 
         // Build Arrow builders for each field in the message
         for field in &message_schema.spec.fields {
+            println!(
+                "Creating builder for field: {} of type {:?}",
+                field.name, field.ty
+            );
             let name = field.name.clone();
             let builder = arrow_builder_from_type(&field.ty, &message_schema.dependencies);
             fields.insert(
@@ -78,20 +82,21 @@ impl MessageParser for Ros2ReflectionMessageParser {
 
         println!("{}: {:#?}", msg.channel.topic, value);
 
-        // if let Value::Message(message_fields) = value {
-        //     // Iterate over all our builders, adding null values for missing fields
-        //     for (field_name, builder) in &mut self.fields {
-        //         if let Some(field_value) = message_fields.get(field_name) {
-        //             append_value(builder.values(), field_value)?;
-        //             builder.append(true);
-        //         } else {
-        //             append_null_value(builder.values(), field_name, &self.message_schema.spec)?;
-        //             builder.append(false);
-        //         }
-        //     }
-        // } else {
-        //     return Err(anyhow::anyhow!("Expected message value, got {:?}", value));
-        // }
+        if let Value::Message(message_fields) = value {
+            // Iterate over all our builders, adding null values for missing fields
+            for (field_name, builder) in &mut self.fields {
+                println!("Appending field: {}", field_name);
+                if let Some(field_value) = message_fields.get(field_name) {
+                    append_value(builder.values(), field_value)?;
+                    builder.append(true);
+                } else {
+                    append_null_value(builder.values(), field_name, &self.message_schema.spec)?;
+                    builder.append(false);
+                }
+            }
+        } else {
+            return Err(anyhow::anyhow!("Expected message value, got {:?}", value));
+        }
 
         Ok(())
     }
@@ -100,6 +105,8 @@ impl MessageParser for Ros2ReflectionMessageParser {
         re_tracing::profile_function!();
         let entity_path = ctx.entity_path().clone();
         let timelines = ctx.build_timelines();
+
+        panic!("done!");
 
         let Self {
             message_schema,
