@@ -734,6 +734,17 @@ impl App {
                     return;
                 }
 
+                // Suppress loading screen if we're loading a recording that's already loaded, even if only partially.
+                if let DisplayMode::Loading(source) = &display_mode
+                    && let Some(re_uri::RedapUri::DatasetData(dataset_uri)) = source.redap_uri()
+                    && store_hub
+                        .store_bundle()
+                        .entity_dbs()
+                        .any(|db| db.store_id() == &dataset_uri.store_id())
+                {
+                    return;
+                }
+
                 if matches!(display_mode, DisplayMode::Loading(_)) {
                     self.state
                         .selection_state
