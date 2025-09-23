@@ -12,7 +12,7 @@ use re_chunk_store::{ChunkStore, QueryExpression};
 use re_dataframe::ChunkStoreHandle;
 use re_datafusion::query_from_query_expression;
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
     cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
@@ -626,25 +626,11 @@ impl ConnectionHandle {
 
                                 let store =
                                     stores.entry(partition_id.clone()).or_insert_with(|| {
-                                        let store_info = StoreInfo {
-                                            // Note: normally we use dataset name as application id,
-                                            // but we don't have it here, and it doesn't really
-                                            // matter since this is just a temporary store.
-                                            store_id: StoreId::random(
-                                                StoreKind::Recording,
-                                                dataset_id.to_string(),
-                                            ),
-                                            cloned_from: None,
-                                            store_source: StoreSource::Unknown,
-                                            store_version: None,
-                                        };
-
-                                        let mut store = ChunkStore::new(
-                                            store_info.store_id.clone(),
-                                            Default::default(),
+                                        let store_id = StoreId::random(
+                                            StoreKind::Recording,
+                                            dataset_id.to_string(),
                                         );
-                                        store.set_store_info(store_info);
-                                        ChunkStoreHandle::new(store)
+                                        ChunkStore::new_handle(store_id, Default::default())
                                     });
 
                                 store
