@@ -8965,6 +8965,7 @@ dependencies = [
  "bytemuck",
  "egui",
  "glam",
+ "half",
  "hexasphere",
  "image",
  "insta",
