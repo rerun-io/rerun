@@ -24,6 +24,7 @@ enum TimestampFilterKind {
 /// A filter for [`arrow::datatypes::DataType::Timestamp`] columns.
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
+//TODO(ab): a nicer `Debug` implementation would make snapshot tests cleaner.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TimestampFilter {
     /// The kind of temporal filter to use.
@@ -416,8 +417,6 @@ fn best_effort_timestamp_parse(
         };
     }
 
-    //TODO: use `re_log_types::Timestamp::parse` here?
-
     let err = match jiff::Timestamp::from_str(value) {
         Ok(timestamp) => return Ok(timestamp),
         Err(err) => err,
@@ -527,7 +526,7 @@ impl ResolvedTimestampFilter {
 
             Self::Yesterday => day_range_to_timestamp_range(today.yesterday().ok(), Some(today)),
 
-            Self::Last24Hours => (Some(now), Some(now - 24.hours())),
+            Self::Last24Hours => (Some(now - 24.hours()), Some(now)),
 
             Self::ThisWeek => {
                 let days_since_monday = today.weekday().to_monday_zero_offset();
@@ -747,6 +746,7 @@ mod tests {
         let filter = ResolvedTimestampFilter::Last24Hours;
         let now = Timestamp::now();
 
+        std::thread::sleep(std::time::Duration::from_millis(100));
         // Should accept timestamps within the last 24 hours
         assert!(filter.apply(now));
         assert!(filter.apply(now.checked_sub(1.hours()).unwrap()));

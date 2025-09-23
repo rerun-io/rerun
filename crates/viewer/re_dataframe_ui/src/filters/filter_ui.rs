@@ -580,18 +580,17 @@ mod tests {
             ),
             (
                 FilterOperation::Timestamp(TimestampFilter::after(
-                    jiff::Timestamp::from_millisecond(1_000_000_000).unwrap(),
+                    jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
                 )),
                 "timestamp_after",
             ),
             (
                 FilterOperation::Timestamp(TimestampFilter::between(
-                    jiff::Timestamp::from_millisecond(1_000_000_000).unwrap(),
-                    jiff::Timestamp::from_millisecond(1_000_000_000).unwrap(),
+                    jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
+                    jiff::Timestamp::from_millisecond(110_000_000_000).unwrap(),
                 )),
-                "timestamp_after",
+                "timestamp_between",
             ),
-            //TODO: add more
         ]
         .into_iter()
         .collect()
@@ -601,7 +600,7 @@ mod tests {
     fn test_filter_ui() {
         for (filter_op, test_name) in test_cases() {
             let mut harness = egui_kittest::Harness::builder()
-                .with_size(egui::Vec2::new(500.0, 80.0))
+                .with_size(egui::Vec2::new(800.0, 80.0))
                 .build_ui(|ui| {
                     re_ui::apply_style_and_install_loaders(ui.ctx());
 

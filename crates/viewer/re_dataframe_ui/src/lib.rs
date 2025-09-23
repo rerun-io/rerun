@@ -22,5 +22,5 @@ pub use self::{
 // for testing purposes
 pub use self::filters::{
     ComparisonOperator, Filter, FilterOperation, NonNullableBooleanFilter, Nullability,
-    NullableBooleanFilter,
+    NullableBooleanFilter, TimestampFilter,
 };

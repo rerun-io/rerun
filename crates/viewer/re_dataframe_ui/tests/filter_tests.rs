@@ -1,3 +1,4 @@
+use std::str::FromStr as _;
 use std::sync::Arc;
 
 use arrow::array::{
@@ -5,21 +6,25 @@ use arrow::array::{
     StringArray,
 };
 use arrow::buffer::{NullBuffer, OffsetBuffer};
+use arrow::compute::cast;
 use arrow::datatypes::{
     ArrowPrimitiveType, DataType, Field, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
-    Int64Type, Schema, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
+    Int64Type, Schema, TimeUnit, TimestampNanosecondType, UInt8Type, UInt16Type, UInt32Type,
+    UInt64Type,
 };
 use arrow::record_batch::RecordBatch;
 use datafusion::catalog::MemTable;
 use datafusion::prelude::{DataFrame, SessionContext};
+use jiff::ToSpan as _;
 
 use re_dataframe_ui::{
     ComparisonOperator, Filter, FilterOperation, NonNullableBooleanFilter, Nullability,
-    NullableBooleanFilter,
+    NullableBooleanFilter, TimestampFilter,
 };
 use re_viewer_context::external::tokio;
 
 const COLUMN_NAME: &str = "column";
+const SOME_TIMESTAMP: &str = "2025-09-23T11:47Z";
 
 /// A single column of test data, with convenient constructors.
 #[derive(Debug, Clone)]
@@ -198,6 +203,95 @@ impl TestColumn {
         .expect("failed to create a bool list array");
 
         Self::new(bool_lists, nullability.outer)
+    }
+
+    fn timestamps(unit: TimeUnit) -> Self {
+        let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
+
+        let nano_column = Self::primitive::<TimestampNanosecondType>(vec![
+            timestamp_to_nanos(some_date),
+            timestamp_to_nanos(some_date - 1.hours()),
+            timestamp_to_nanos(some_date - 24.hours()),
+            timestamp_to_nanos(some_date - 8760.hours()),
+            timestamp_to_nanos(some_date + 1.hours()),
+            timestamp_to_nanos(some_date + 24.hours()),
+            timestamp_to_nanos(some_date + 8760.hours()),
+        ]);
+
+        convert_timestamp_column(nano_column, unit)
+    }
+
+    fn timestamps_nulls(unit: TimeUnit) -> Self {
+        let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
+
+        let nano_column = Self::primitive_nulls::<TimestampNanosecondType>(vec![
+            Some(timestamp_to_nanos(some_date)),
+            Some(timestamp_to_nanos(some_date - 1.hours())),
+            Some(timestamp_to_nanos(some_date - 24.hours())),
+            Some(timestamp_to_nanos(some_date - 8760.hours())),
+            None,
+            Some(timestamp_to_nanos(some_date + 1.hours())),
+            Some(timestamp_to_nanos(some_date + 24.hours())),
+            None,
+            Some(timestamp_to_nanos(some_date + 8760.hours())),
+        ]);
+
+        convert_timestamp_column(nano_column, unit)
+    }
+
+    fn timestamps_lists(unit: TimeUnit, nullability: Nullability) -> Self {
+        let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
+
+        let nano_column = Self::primitive_lists::<TimestampNanosecondType>(
+            &[
+                vec![],
+                vec![timestamp_to_nanos(some_date)],
+                vec![
+                    timestamp_to_nanos(some_date - 1.hours()),
+                    timestamp_to_nanos(some_date - 24.hours()),
+                ],
+                vec![
+                    timestamp_to_nanos(some_date),
+                    timestamp_to_nanos(some_date - 168.hours()),
+                    timestamp_to_nanos(some_date - 8760.hours()),
+                ],
+                vec![
+                    timestamp_to_nanos(some_date + 1.hours()),
+                    timestamp_to_nanos(some_date + 24.hours()),
+                ],
+                vec![
+                    timestamp_to_nanos(some_date),
+                    timestamp_to_nanos(some_date + 168.hours()),
+                    timestamp_to_nanos(some_date + 8760.hours()),
+                ],
+                vec![
+                    timestamp_to_nanos(some_date),
+                    timestamp_to_nanos(some_date - 8760.hours()),
+                    timestamp_to_nanos(some_date + 8760.hours()),
+                ],
+            ],
+            nullability,
+        );
+
+        convert_timestamp_column(nano_column, unit)
+    }
+}
+
+fn timestamp_to_nanos(ts: jiff::Timestamp) -> i64 {
+    ts.as_nanosecond()
+        .try_into()
+        .expect("timestamp is too large")
+}
+
+fn convert_timestamp_column(nano_column: TestColumn, unit: TimeUnit) -> TestColumn {
+    if unit == TimeUnit::Nanosecond {
+        nano_column
+    } else {
+        TestColumn::new(
+            cast(nano_column.array.as_ref(), &DataType::Timestamp(unit, None))
+                .expect("timestamp column cast failed"),
+            nano_column.field.is_nullable(),
+        )
     }
 }
 
@@ -608,5 +702,93 @@ async fn test_boolean_equals_list_nullable() {
             TestColumn::bool_lists(nullability),
             format!("{nullability:?}")
         );
+    }
+}
+
+const ALL_TIME_UNITS: &[TimeUnit] = &[
+    TimeUnit::Second,
+    TimeUnit::Millisecond,
+    TimeUnit::Microsecond,
+    TimeUnit::Nanosecond,
+];
+
+#[tokio::test]
+async fn test_timestamps() {
+    // Note: this test intends to cover all column datatypes. It does not intend to cover all kinds
+    // of timestamp filtering, which is already covered by unit tests.
+
+    let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
+
+    let all_filters = [
+        (
+            FilterOperation::Timestamp(TimestampFilter::after(some_date)),
+            "after",
+        ),
+        (
+            FilterOperation::Timestamp(TimestampFilter::after(some_date + 1.seconds())),
+            "after_strict",
+        ),
+        (
+            FilterOperation::Timestamp(TimestampFilter::between(
+                some_date - 168.hours(),
+                some_date - 2.hours(),
+            )),
+            "between",
+        ),
+    ];
+
+    for time_unit in ALL_TIME_UNITS {
+        for (filter, case) in &all_filters {
+            for nullable in [true, false] {
+                filter_snapshot!(
+                    filter.clone(),
+                    if nullable {
+                        TestColumn::timestamps_nulls(*time_unit)
+                    } else {
+                        TestColumn::timestamps(*time_unit)
+                    },
+                    format!(
+                        "{case}_{time_unit:?}{}",
+                        if nullable { "_nulls" } else { "" }
+                    )
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_timestamps_list() {
+    // Note: this test intends to cover all column datatypes. It does not intend to cover all kinds
+    // of timestamp filtering, which is already covered by unit tests.
+
+    let some_date = jiff::Timestamp::from_str(SOME_TIMESTAMP).expect("valid");
+
+    let all_filters = [
+        (
+            FilterOperation::Timestamp(TimestampFilter::after(some_date)),
+            "after",
+        ),
+        (
+            FilterOperation::Timestamp(TimestampFilter::after(some_date + 1.seconds())),
+            "after_strict",
+        ),
+        (
+            FilterOperation::Timestamp(TimestampFilter::between(
+                some_date - 168.hours(),
+                some_date - 2.hours(),
+            )),
+            "between",
+        ),
+    ];
+
+    for (filter, case) in &all_filters {
+        for &nullability in Nullability::ALL {
+            filter_snapshot!(
+                filter.clone(),
+                TestColumn::timestamps_lists(TimeUnit::Nanosecond, nullability),
+                format!("{case}_{nullability:?}")
+            );
+        }
     }
 }
