@@ -945,10 +945,8 @@ fn quote_trait_impls_for_datatype_or_component(
 
                 // This code-path cannot have null fields.
                 // If it does have a nulls-array, all bits must indicate valid data.
-                if let Some(nulls) = arrow_data.nulls() {
-                    if nulls.null_count() != 0 {
-                        return Err(DeserializationError::missing_data());
-                    }
+                if let Some(nulls) = arrow_data.nulls() && nulls.null_count() != 0 {
+                    return Err(DeserializationError::missing_data());
                 }
 
                 Ok(#quoted_deserializer)
