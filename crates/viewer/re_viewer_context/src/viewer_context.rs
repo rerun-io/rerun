@@ -168,30 +168,9 @@ impl ViewerContext<'_> {
     /// This does not always line up with [`Self::selection`], if we
     /// are currently loading something that will be prioritized here.
     pub fn is_selected_or_loading(&self, item: &Item) -> bool {
-        use crate::open_url::ViewerOpenUrl;
-
         if let DisplayMode::Loading(source) = self.display_mode() {
-            if let Ok(url) = source.parse::<ViewerOpenUrl>() {
-                match item {
-                    Item::DataSource(source) => ViewerOpenUrl::from_data_source(source)
-                        .is_ok_and(|source_url| source_url == url),
-                    Item::RedapEntry(uri) => {
-                        if let ViewerOpenUrl::RedapEntry(entry) = url {
-                            entry == *uri
-                        } else {
-                            false
-                        }
-                    }
-                    Item::AppId(..)
-                    | Item::StoreId(..)
-                    | Item::TableId(..)
-                    | Item::InstancePath(..)
-                    | Item::ComponentPath(..)
-                    | Item::Container(..)
-                    | Item::View(..)
-                    | Item::DataResult(..)
-                    | Item::RedapServer(..) => false,
-                }
+            if let Item::DataSource(other_source) = item {
+                source.is_same_ignoring_uri_fragments(other_source)
             } else {
                 false
             }

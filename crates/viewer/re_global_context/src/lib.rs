@@ -70,9 +70,7 @@ pub enum DisplayMode {
     // TODO(isse): It would be nice to only switch to newly loaded items if we
     // are on the loading screen for that specific item.
     /// A loading screen to some source.
-    ///
-    /// The string is an url to what we're loading.
-    Loading(String),
+    Loading(Box<re_smart_channel::SmartChannelSource>),
 
     /// Regular view of the local recordings, including the current recording's viewport.
     LocalRecordings(StoreId),

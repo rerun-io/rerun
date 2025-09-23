@@ -314,7 +314,7 @@ impl ViewerOpenUrl {
                 Err(anyhow::anyhow!("Can't share links to the settings screen."))
             }
 
-            DisplayMode::Loading(source) => source.parse(),
+            DisplayMode::Loading(source) => Self::from_data_source(source),
 
             DisplayMode::LocalRecordings(store_id) => {
                 // Local recordings includes those downloaded from rrd urls
@@ -437,6 +437,26 @@ impl ViewerOpenUrl {
         self.sharable_url(None).map(SystemCommand::CopyViewerUrl)
     }
 
+    pub fn get_data_source(&self) -> Option<SmartChannelSource> {
+        match &self {
+            Self::RedapCatalog(_) | Self::RedapEntry(_) | Self::IntraRecordingSelection(_) => None,
+            Self::RrdHttpUrl(url) => Some(SmartChannelSource::RrdHttpStream {
+                url: url.to_string(),
+                follow: false,
+            }),
+            Self::FilePath(path_buf) => Some(SmartChannelSource::File(path_buf.clone())),
+            Self::RedapDatasetPartition(uri) => Some(SmartChannelSource::RedapGrpcStream {
+                uri: uri.clone(),
+                select_when_loaded: false,
+            }),
+            Self::RedapProxy(uri) => Some(SmartChannelSource::MessageProxy(uri.clone())),
+            Self::WebEventListener => Some(SmartChannelSource::RrdWebEventListener),
+            Self::WebViewerUrl { url_parameters, .. } => (url_parameters.len() == 1)
+                .then(|| url_parameters.first().get_data_source())
+                .flatten(),
+        }
+    }
+
     /// Opens a content URL or file inside the viewer.
     ///
     /// This is for handling opening arbitrary URLs inside the viewer
@@ -458,11 +478,13 @@ impl ViewerOpenUrl {
         re_log::debug!("Opening URL: {:?}", &self);
 
         if options.show_loader
-            && let Ok(url) = self.sharable_url(None)
+            && let Some(data_source) = self.get_data_source()
         {
             // It doesn't matter if this is overriden by some command below, as that most likely
             // means we want to skip the loading screen anyway.
-            command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::Loading(url)));
+            command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::Loading(
+                Box::new(data_source),
+            )));
         }
 
         match self {

@@ -652,10 +652,13 @@ impl AppState {
                             }
 
                             DisplayMode::Loading(source) => {
-                                let source = if let Ok(url) = source.parse::<ViewerOpenUrl>() {
+                                let source = if let Ok(url) =
+                                    ViewerOpenUrl::from_data_source(source)
+                                {
                                     Cow::Owned(ViewerOpenUrlDescription::from_url(&url).to_string())
                                 } else {
-                                    Cow::Borrowed(source.as_str())
+                                    // In practice this shouldn't happen.
+                                    Cow::Borrowed("<unknown>")
                                 };
                                 ui.loading_screen("Loading data source:", &source);
                             }
