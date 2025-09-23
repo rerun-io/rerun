@@ -227,7 +227,10 @@ impl<'a> DataFusionTableWidget<'a> {
                 return;
             }
             Err(err) => {
-                ui.loading_screen("Error while loading table:", &err.to_string());
+                ui.loading_screen(
+                    "Error while loading table:",
+                    RichText::from(err.to_string()).color(ui.style().visuals.error_fg_color),
+                );
                 return;
             }
         }

@@ -660,7 +660,7 @@ impl AppState {
                                     // In practice this shouldn't happen.
                                     Cow::Borrowed("<unknown>")
                                 };
-                                ui.loading_screen("Loading data source:", &source);
+                                ui.loading_screen("Loading data source:", &*source);
                             }
 
                             DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // Handled above
