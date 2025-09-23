@@ -45,6 +45,19 @@ impl ChunkStore {
             return Ok(vec![]);
         }
 
+        // If this chunk was previously cropped, remove it from the store.
+        // This is not just needed to keep memory usage down, but also to avoid row id collisions.
+        //
+        // Note that we do this before performing cropping which means that we might replace one cropped chunk with another.
+        // That's not perfectly accurate, since we want to keep the old cropping around, but good enough until we solve
+        // this in a better way https://github.com/rerun-io/rerun/issues/11315.
+        if let Some(cropped_chunk_id) = self
+            .cropped_chunk_id_per_source_chunk_id
+            .remove(&chunk.id())
+        {
+            self.remove_chunk(cropped_chunk_id);
+        }
+
         // Crop chunk if requested. We do this via a range query on the cropping range.
         let cropped_chunk_arc;
         let chunk = if let Some(cropping_range) = self.config.cropping_range {
@@ -66,8 +79,11 @@ impl ChunkStore {
             match cropped_chunk {
                 std::borrow::Cow::Borrowed(_) => chunk,
                 std::borrow::Cow::Owned(new_chunk) => {
-                    // Give the new chunk a new unique chunk ID.
-                    let new_chunk = new_chunk.with_id(ChunkId::new());
+                    // Give the new chunk a new unique chunk ID and memorize where it came from.
+                    let new_chunk_id = ChunkId::new();
+                    self.cropped_chunk_id_per_source_chunk_id
+                        .insert(chunk.id(), new_chunk_id);
+                    let new_chunk = new_chunk.with_id(new_chunk_id);
                     cropped_chunk_arc = Arc::new(new_chunk);
                     &cropped_chunk_arc
                 }
@@ -645,6 +661,7 @@ impl ChunkStore {
             type_registry: _,
             per_column_metadata,
             chunks_per_chunk_id,
+            cropped_chunk_id_per_source_chunk_id,
             chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
@@ -718,7 +735,16 @@ impl ChunkStore {
             .collect_vec();
 
         let dropped_temporal_chunks = dropped_temporal_chunks
-            .filter_map(|chunk_id| chunks_per_chunk_id.remove(&chunk_id))
+            .filter_map(|chunk_id| {
+                let chunk = chunks_per_chunk_id.remove(&chunk_id);
+
+                // Remove from map of cropped chunk IDs.
+                // Only need to do this for temporal chunks, as static chunks are never cropped.
+                cropped_chunk_id_per_source_chunk_id
+                    .retain(|_, cropped_chunk_id| *cropped_chunk_id != chunk_id);
+
+                chunk
+            })
             .inspect(|chunk| {
                 *temporal_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
             });

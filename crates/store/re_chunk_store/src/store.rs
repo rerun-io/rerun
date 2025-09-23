@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
+use ahash::HashMap;
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
@@ -440,6 +441,10 @@ pub struct ChunkStore {
 
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
+    /// For all cropped chunks (see [`ChunkStoreConfig::cropping_range`]),
+    /// this maps from their source chunk ID to the ID of the cropped chunk ID.
+    pub(crate) cropped_chunk_id_per_source_chunk_id: HashMap<ChunkId, ChunkId>,
+
     /// All [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
@@ -512,6 +517,7 @@ impl Clone for ChunkStore {
             type_registry: self.type_registry.clone(),
             per_column_metadata: self.per_column_metadata.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
+            cropped_chunk_id_per_source_chunk_id: self.cropped_chunk_id_per_source_chunk_id.clone(),
             chunk_ids_per_min_row_id: self.chunk_ids_per_min_row_id.clone(),
             temporal_chunk_ids_per_entity_per_component: self
                 .temporal_chunk_ids_per_entity_per_component
@@ -536,6 +542,7 @@ impl std::fmt::Display for ChunkStore {
             type_registry: _,
             per_column_metadata: _,
             chunks_per_chunk_id,
+            cropped_chunk_id_per_source_chunk_id: _,
             chunk_ids_per_min_row_id: chunk_id_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component: _,
             temporal_chunk_ids_per_entity: _,
@@ -598,6 +605,7 @@ impl ChunkStore {
             per_column_metadata: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),
             chunks_per_chunk_id: Default::default(),
+            cropped_chunk_id_per_source_chunk_id: Default::default(),
             temporal_chunk_ids_per_entity_per_component: Default::default(),
             temporal_chunk_ids_per_entity: Default::default(),
             temporal_chunks_stats: Default::default(),
