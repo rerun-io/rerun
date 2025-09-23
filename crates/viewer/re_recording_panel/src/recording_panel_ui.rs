@@ -167,7 +167,7 @@ fn all_sections_ui(
 
     if recording_panel_data.show_example_section {
         let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
-        let selected = ctx.is_selected(&item);
+        let selected = ctx.is_selected_or_loading(&item);
         let active = matches!(
             ctx.display_mode(),
             DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
@@ -587,7 +587,7 @@ fn receiver_ui(
             }
         });
 
-    let selected = ctx.is_selected(&Item::DataSource(receiver.clone()));
+    let selected = ctx.is_selected_or_loading(&Item::DataSource(receiver.clone()));
     if show_hierarchal {
         ui.list_item()
             .selected(selected)

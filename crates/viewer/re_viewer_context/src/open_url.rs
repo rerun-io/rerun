@@ -247,6 +247,9 @@ impl ViewerOpenUrl {
         Ok(this)
     }
 
+    /// Create a link for a channel source.
+    ///
+    /// Refer to [`Self::from_display_mode`] for more information.
     pub fn from_data_source(data_source: &SmartChannelSource) -> anyhow::Result<Self> {
         // Note that some of these data sources aren't actually sharable URLs.
         // But since we have to handles this for `open_url` and `sharable_url` anyways,
@@ -457,6 +460,8 @@ impl ViewerOpenUrl {
         if options.show_loader
             && let Ok(url) = self.sharable_url(None)
         {
+            // It doesn't matter if this is overriden by some command below, as that most likely
+            // means we want to skip the loading screen anyway.
             command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::Loading(url)));
         }
 

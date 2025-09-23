@@ -167,7 +167,7 @@ impl ViewerContext<'_> {
     ///
     /// This does not always line up with [`Self::selection`], if we
     /// are currently loading something that will be prioritized here.
-    pub fn is_selected(&self, item: &Item) -> bool {
+    pub fn is_selected_or_loading(&self, item: &Item) -> bool {
         use crate::open_url::ViewerOpenUrl;
 
         if let DisplayMode::Loading(source) = self.display_mode() {

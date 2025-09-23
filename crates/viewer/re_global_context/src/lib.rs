@@ -67,9 +67,11 @@ pub enum DisplayMode {
     /// The settings dialog for application-wide configuration.
     Settings,
 
-    // TODO(isse): Use this to know what to switch to when sources are
-    // done loading.
+    // TODO(isse): It would be nice to only switch to newly loaded items if we
+    // are on the loading screen for that specific item.
     /// A loading screen to some source.
+    ///
+    /// The string is an url to what we're loading.
     Loading(String),
 
     /// Regular view of the local recordings, including the current recording's viewport.
