@@ -209,13 +209,14 @@ where
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
         let hover_text = alt_text.into();
-        self.with_always_show_buttons(true).with_button(|ui: &mut egui::Ui| {
-            ui.add(
-                ui.small_icon_button_widget(icon, &hover_text)
-                    .on_hover_text(hover_text)
-                    .on_menu(add_contents),
-            )
-        })
+        self.with_always_show_buttons(true)
+            .with_button(|ui: &mut egui::Ui| {
+                ui.add(
+                    ui.small_icon_button_widget(icon, &hover_text)
+                        .on_hover_text(hover_text)
+                        .on_menu(add_contents),
+                )
+            })
     }
 
     /// Set the help text tooltip to be shown in the header.
