@@ -1,14 +1,16 @@
-"""A table with all kinds of datatypes and nullability, for testing purposes.
+"""
+A table with all kinds of datatypes and nullability, for testing purposes.
 
 ```
 pixi run py-build
 pixi run -e py python tests/python/table_zoo/table_zoo.py
 """
+from __future__ import annotations
+
+from datetime import datetime, timedelta
 
 import pyarrow as pa
-from datetime import datetime, timedelta
 import rerun as rr
-
 
 # Expanded to 10 rows
 string_non_null = ["hello", "world", "python", "arrow", "data", "test", "rerun", "viewer", "table", "query"]
