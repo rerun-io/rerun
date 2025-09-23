@@ -458,7 +458,17 @@ impl DatastoreUi {
                         .value_uint(compaction_config.chunk_max_rows_if_unsorted),
                 );
 
-                // TODO: cropping range
+                // If ranges are added over time the cropping range becomes a list that we don't keep
+                // track of right now.
+                // TODO(#11315): In the future we will want to reduce this to a mere highlighting feature and no longer need this at the store level
+                // as all data will be pulled on-demand from a server.
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Partial store")
+                        .value_bool(chunk_store.config().cropping_range.is_some()),
+                )
+                .on_hover_text(
+                    "If true, only a subset of the recording is presented in the viewer.",
+                );
             });
         });
 

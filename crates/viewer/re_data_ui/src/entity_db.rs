@@ -80,16 +80,14 @@ impl crate::DataUi for EntityDb {
                     );
                 }
 
-                if let Some(cropping_range) = cropping_range {
-                    ui.grid_left_hand_label("Cropped timeline");
-                    ui.label(format!("{}", cropping_range.timeline));
-                    ui.end_row();
-
-                    // TODO: time fmt
-                    ui.grid_left_hand_label("Cropping range");
-                    ui.label(format!("{:?} - {:?}", cropping_range.range.min, cropping_range.range.max));
-                    ui.end_row();
-                }
+                // TODO(#11315): In the future we will want to reduce this to a mere highlighting feature and no longer need this at the store level
+                // as all data will be pulled on-demand from a server.
+                ui.grid_left_hand_label("Partial store");
+                ui.monospace(format!("{:?}", cropping_range.is_some()))
+                .on_hover_text(
+                    "If true, only a subset of the recording is presented in the viewer.",
+                );
+                ui.end_row();
 
                 ui.grid_left_hand_label("Kind");
                 ui.label(store_id.kind().to_string());
