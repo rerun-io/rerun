@@ -5,7 +5,10 @@ use std::time::Duration;
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
 
+use re_test_context::TestContext;
+use re_types::components::Colormap;
 use re_viewer::viewer_test_utils;
+use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 /// Navigates from welcome to settings screen and snapshots it.
 #[tokio::test]
@@ -39,12 +42,10 @@ async fn settings_screen() {
 }
 
 /// Tests the colormap selector UI with snapshot testing.
+/// This is defined here instead of in re_viewer/tests because it depends on `re_test_context`,
+/// which depends on `re_viewer_context`.
 #[tokio::test]
 async fn colormap_selector_ui() {
-    use re_test_context::TestContext;
-    use re_types::components::Colormap;
-    use re_viewer_context::{MaybeMutRef, ViewerContext};
-
     let mut test_context = TestContext::new();
     test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
     re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
@@ -73,6 +74,7 @@ async fn colormap_selector_ui() {
     harness.fit_contents();
     harness.snapshot("colormap_selector_closed");
 
+    // give the combo box some room to open
     harness.set_size(egui::Vec2::new(200.0, 250.0));
     harness.get_by_role(Role::ComboBox).click(); // open combo box
     harness.run();
