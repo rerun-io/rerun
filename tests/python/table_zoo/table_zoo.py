@@ -5,6 +5,7 @@ A table with all kinds of datatypes and nullability, for testing purposes.
 pixi run py-build
 pixi run -e py python tests/python/table_zoo/table_zoo.py
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -185,6 +186,7 @@ schema = pa.schema([
         metadata={"rerun:component_type": "rerun.components.Timestamp"},
     ),
 ])
+
 
 # Create arrays for each column
 arrays = [

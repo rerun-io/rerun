@@ -2,11 +2,11 @@ use std::str::FromStr as _;
 
 use jiff::{Timestamp, ToSpan as _};
 
-use re_log_types::{TimestampFormat, TimestampFormatKind};
+use re_log_types::TimestampFormat;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{SyntaxHighlighting, UiExt as _};
 
-use super::{FilterUiAction, TimestampFormatted};
+use super::{FilterUiAction, TimestampFormatted, parse_timestamp};
 
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
 enum TimestampFilterKind {
@@ -334,8 +334,7 @@ impl EditableTimestamp {
                     self.timestamp_string.clone().unwrap_or_default()
                 };
 
-                let parsed =
-                    best_effort_timestamp_parse(&timestamp_string_to_edit, timestamp_format);
+                let parsed = parse_timestamp(&timestamp_string_to_edit, timestamp_format);
                 if parsed.is_err() {
                     ui.style_invalid_field();
                 }
@@ -368,8 +367,7 @@ impl EditableTimestamp {
     fn validate_timestamp_string(&mut self, timestamp_format: TimestampFormat) {
         if let Ok(resolved) = self.resolved() {
             if let Some(timestamp_string) = self.timestamp_string.as_mut() {
-                if !best_effort_timestamp_parse(timestamp_string, timestamp_format)
-                    .is_ok_and(|t| t == resolved)
+                if !parse_timestamp(timestamp_string, timestamp_format).is_ok_and(|t| t == resolved)
                 {
                     *timestamp_string = format_timestamp(resolved, timestamp_format);
                 }
@@ -385,7 +383,7 @@ impl EditableTimestamp {
         timestamp_format: TimestampFormat,
     ) {
         let timestamp_string = timestamp_string.into();
-        self.resolved_timestamp = best_effort_timestamp_parse(&timestamp_string, timestamp_format);
+        self.resolved_timestamp = parse_timestamp(&timestamp_string, timestamp_format);
         self.timestamp_string = Some(timestamp_string);
     }
 
@@ -401,57 +399,6 @@ impl EditableTimestamp {
             .as_ref()
             .map(|t| re_log_types::Timestamp::from(*t).format(timestamp_format))
     }
-}
-
-fn best_effort_timestamp_parse(
-    value: &str,
-    timestamp_format: TimestampFormat,
-) -> Result<jiff::Timestamp, jiff::Error> {
-    // TODO(#11279): ideally we could use `re_log_types::Timestamp::parse` here, but it is currently
-    // bugged and parses nano instead of seconds.
-    if timestamp_format.kind() == TimestampFormatKind::UnixEpoch {
-        if let Ok(seconds) = value.parse::<f64>() {
-            return jiff::Timestamp::from_nanosecond((seconds * 1e9).round() as _);
-        } else {
-            return Err(jiff::Error::from_args(format_args!(
-                "could not parse seconds since unix epoch"
-            )));
-        };
-    }
-
-    let err = match jiff::Timestamp::from_str(value) {
-        Ok(timestamp) => return Ok(timestamp),
-        Err(err) => err,
-    };
-
-    if let Ok(date_time) = jiff::civil::DateTime::from_str(value) {
-        return Ok(date_time
-            .to_zoned(timestamp_format.to_jiff_time_zone())?
-            .timestamp());
-    }
-
-    if let Ok(date) = jiff::civil::Date::from_str(value) {
-        return Ok(date
-            .at(0, 0, 0, 0)
-            .to_zoned(timestamp_format.to_jiff_time_zone())?
-            .timestamp());
-    }
-
-    if let Ok(time) = jiff::civil::Time::from_str(value) {
-        return Ok(jiff::Timestamp::now()
-            .to_zoned(timestamp_format.to_jiff_time_zone())
-            .date()
-            .at(
-                time.hour(),
-                time.minute(),
-                time.second(),
-                time.subsec_nanosecond(),
-            )
-            .to_zoned(timestamp_format.to_jiff_time_zone())?
-            .timestamp());
-    }
-
-    Err(err)
 }
 
 fn format_timestamp(timestamp: Timestamp, timestamp_format: TimestampFormat) -> String {
