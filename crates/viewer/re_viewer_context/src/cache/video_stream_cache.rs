@@ -365,20 +365,25 @@ fn read_samples_from_chunk(
         chunk
             .iter_component_offsets(&sample_descr)
             .zip(chunk.iter_component_indices(&timeline, &sample_descr))
-            .filter_map(move |(Span { start, len }, (time, _row_id))| {
-                if len == 0 {
+            .enumerate()
+            .filter_map(move |(idx, (component_offset, (time, _row_id)))| {
+                if component_offset.len == 0 {
                     // Ignore empty samples.
                     return None;
                 }
-                if len != 1 {
+                if component_offset.len != 1 {
                     re_log::warn_once!(
                         "Expected only a single VideoSample per row (it is a mono-component)"
                     );
                     return None;
                 }
 
-                let sample_idx = sample_base_idx + start;
-                let byte_span = Span { start:offsets[start] as usize, len: lengths[start] };
+                // Do **not** use the `component_offset.start` for determining the sample index
+                // as it is only for the offset in the underlying arrow arrays which means that
+                // it may in theory step arbitrarily through the data.
+                let sample_idx = sample_base_idx + idx;
+
+                let byte_span = Span { start:offsets[component_offset.start] as usize, len: lengths[component_offset.start] };
                 let sample_bytes = &values[byte_span.range()];
 
                 // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
