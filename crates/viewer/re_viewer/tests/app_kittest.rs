@@ -44,8 +44,8 @@ async fn settings_screen() {
 /// Tests the colormap selector UI with snapshot testing.
 /// This is defined here instead of in re_viewer/tests because it depends on `re_test_context`,
 /// which depends on `re_viewer_context`.
-#[tokio::test]
-async fn colormap_selector_ui() {
+#[test]
+fn colormap_selector_ui() {
     let mut test_context = TestContext::new();
     test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
     re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
