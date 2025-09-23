@@ -328,7 +328,6 @@ impl RetryableFileReader {
 
 #[cfg(test)]
 mod tests {
-    use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_encoding::encoder::DroppableEncoder;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
@@ -371,13 +370,11 @@ mod tests {
                 row_id: *RowId::new(),
                 info: StoreInfo {
                     store_id: StoreId::random(StoreKind::Recording, "test_app"),
-                    cloned_from: None,
                     store_source: StoreSource::RustSdk {
                         rustc_version: String::new(),
                         llvm_version: String::new(),
                     },
-                    store_version: Some(CrateVersion::LOCAL),
-                    cropping_range: None,
+                    ..Default::default()
                 },
             })
         }

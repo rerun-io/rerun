@@ -602,10 +602,19 @@ pub struct StoreInfo {
     ///
     /// ⚠️ Does not discard any chunk whose time ranges are entirely before the range.
     /// This is because on a per-chunk level it's not known whether it is relevant for latest-at queries within the range.
-    ///
-    /// A cropped store gets always a new unique ID.
-    /// TODO: make it happen.
     pub cropping_range: Option<StoreCroppingRange>,
+}
+
+impl Default for StoreInfo {
+    fn default() -> Self {
+        Self {
+            store_id: StoreId::empty_recording(),
+            cloned_from: None,
+            store_source: StoreSource::Unknown,
+            store_version: Some(CrateVersion::LOCAL),
+            cropping_range: None,
+        }
+    }
 }
 
 impl StoreInfo {

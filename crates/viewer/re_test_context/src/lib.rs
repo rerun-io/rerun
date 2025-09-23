@@ -100,10 +100,8 @@ impl TestContext {
             row_id: Tuid::new(),
             info: StoreInfo {
                 store_id: recording_store.store_id().clone(),
-                cloned_from: None,
                 store_source: StoreSource::Other("test".into()),
-                store_version: None,
-                cropping_range: None,
+                ..Default::default()
             },
         });
         {

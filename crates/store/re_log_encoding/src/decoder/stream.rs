@@ -254,7 +254,7 @@ fn is_chunk_empty(chunk: &Chunk) -> bool {
 #[cfg(test)]
 mod tests {
     use re_chunk::RowId;
-    use re_log_types::{ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use re_log_types::{ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind};
 
     use crate::EncodingOptions;
     use crate::encoder::Encoder;
@@ -266,10 +266,7 @@ mod tests {
             row_id: *RowId::ZERO,
             info: StoreInfo {
                 store_id: StoreId::new(StoreKind::Recording, ApplicationId::unknown(), "test"),
-                cloned_from: None,
-                store_source: StoreSource::Unknown,
-                store_version: Some(CrateVersion::LOCAL),
-                cropping_range: None,
+                ..Default::default()
             },
         })
     }

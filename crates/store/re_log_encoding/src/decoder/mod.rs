@@ -515,13 +515,11 @@ mod tests {
                 row_id: *RowId::new(),
                 info: StoreInfo {
                     store_id: store_id.clone(),
-                    cloned_from: None,
                     store_source: StoreSource::RustSdk {
                         rustc_version: String::new(),
                         llvm_version: String::new(),
                     },
-                    store_version: Some(CrateVersion::LOCAL),
-                    cropping_range: None,
+                    ..Default::default()
                 },
             }),
             LogMsg::ArrowMsg(store_id.clone(), arrow_msg),

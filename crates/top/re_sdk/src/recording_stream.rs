@@ -751,10 +751,8 @@ impl RecordingStreamBuilder {
 
         let store_info = StoreInfo {
             store_id,
-            cloned_from: None,
             store_source,
-            store_version: Some(re_build_info::CrateVersion::LOCAL),
-            cropping_range: None,
+            ..Default::default()
         };
 
         (
