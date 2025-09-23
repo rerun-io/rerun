@@ -661,6 +661,7 @@ impl From<PanelState> for re_types::blueprint::components::PanelState {
 // Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
 pub struct AppOptions {
+    viewer_url: Option<String>,
     url: Option<StringOrStringArray>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
@@ -713,11 +714,9 @@ fn create_app(
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
-    let app_env = crate::AppEnvironment::Web {
-        url: cc.integration_info.web_info.location.url.clone(),
-    };
 
     let AppOptions {
+        viewer_url,
         url,
         manifest_url,
         render_backend,
@@ -733,6 +732,10 @@ fn create_app(
 
         fallback_token,
     } = app_options;
+
+    let app_env = crate::AppEnvironment::Web {
+        url: viewer_url.unwrap_or_else(|| cc.integration_info.web_info.location.url.clone()),
+    };
 
     if let Some(fallback_token) = fallback_token {
         match re_auth::Jwt::try_from(fallback_token) {

@@ -175,6 +175,22 @@ impl AppEnvironment {
         }
     }
 
+    /// The url to use for the web viewer when sharing links.
+    pub fn web_viewer_base_url(&self) -> Option<url::Url> {
+        self.url().and_then(|url| url.parse().ok()).or_else(|| {
+            #[cfg(target_arch = "wasm32")]
+            {
+                crate::web_tools::current_base_url().ok()
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
+                url::Url::parse("https://rerun.io/viewer").ok()
+            }
+        })
+    }
+
     pub fn is_test(&self) -> bool {
         matches!(self, Self::Test)
     }

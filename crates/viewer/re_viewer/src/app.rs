@@ -630,7 +630,7 @@ impl App {
                 self.go_to_dataset_data(store_id, fragment);
             }
             SystemCommand::CopyViewerUrl(url) => {
-                match combine_with_base_url(web_viewer_base_url().as_ref(), [url]) {
+                match combine_with_base_url(self.app_env.web_viewer_base_url().as_ref(), [url]) {
                     Ok(url) => {
                         self.copy_text(url);
                     }
@@ -1683,7 +1683,7 @@ impl App {
     }
 
     fn run_copy_link_command(&mut self, content_url: &ViewerOpenUrl) {
-        let base_url = web_viewer_base_url();
+        let base_url = self.app_env.web_viewer_base_url();
 
         match content_url.sharable_url(base_url.as_ref()) {
             Ok(url) => {
@@ -3242,17 +3242,4 @@ async fn async_save_dialog(
         messages,
     )?;
     file_handle.write(&bytes).await.context("Failed to save")
-}
-
-pub fn web_viewer_base_url() -> Option<url::Url> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        crate::web_tools::current_base_url().ok()
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
-        url::Url::parse("https://rerun.io/viewer").ok()
-    }
 }

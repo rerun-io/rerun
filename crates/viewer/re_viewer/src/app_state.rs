@@ -25,8 +25,8 @@ use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
-    app::web_viewer_base_url, app_blueprint::AppBlueprint, event::ViewerEventDispatcher,
-    navigation::Navigation, open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
+    app_blueprint::AppBlueprint, event::ViewerEventDispatcher, navigation::Navigation,
+    open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -676,7 +676,7 @@ impl AppState {
                 self.redap_servers.modals_ui(&ctx.global_context, ui);
                 self.open_url_modal.ui(ui);
                 self.share_modal
-                    .ui(&ctx, ui, web_viewer_base_url().as_ref());
+                    .ui(&ctx, ui, app_env.web_viewer_base_url().as_ref());
             }
         }
 
