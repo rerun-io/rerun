@@ -52,8 +52,9 @@ fn colormap_selector_ui() {
 
     let mut harness = test_context
         .setup_kittest_for_rendering()
-        .with_size((200.0, 300.0))
         .build_ui(|ui| {
+            re_ui::apply_style_and_install_loaders(ui.ctx());
+
             test_context.run(&ui.ctx().clone(), |ctx: &ViewerContext<'_>| {
                 ui.horizontal(|ui| {
                     ui.label("Colormap:");
