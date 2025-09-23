@@ -273,9 +273,11 @@ impl Chunk {
 
     /// TODO: doc string
     /// TODO: add tests
-    pub fn range_all_components(&self, query: &RangeQuery) -> Self {
+    ///
+    /// Returns an owned chunk only if any slicing on any timeline was required.
+    pub fn range_all_components(&self, query: &RangeQuery) -> Cow<'_, Self> {
         if self.is_empty() {
-            return self.clone();
+            return Cow::Borrowed(self);
         }
 
         re_tracing::profile_function!(format!("{query:?}"));
@@ -288,23 +290,34 @@ impl Chunk {
 
         // Pre-slice the data if the caller allowed us: this will make further slicing
         // (e.g. the range query itself) much cheaper to compute.
-        let chunk = if !keep_extra_timelines {
-            Cow::Owned(self.timeline_sliced(*query.timeline()))
-        } else {
+        let chunk = if keep_extra_timelines
+            || self.timelines.len() == 1 && self.timelines.contains_key(query.timeline())
+        {
             Cow::Borrowed(self)
+        } else {
+            Cow::Owned(self.timeline_sliced(*query.timeline()))
         };
 
         if chunk.is_static() {
             // If a chunk is static there'snothing to do here.
             // (unlike on range queries for a single component, there's nothing to filter out here)
-            chunk.into_owned()
+            chunk
         } else {
+            // Is the chunk fully contained in the query's range?
+            if chunk
+                .timelines
+                .get(query.timeline())
+                .is_none_or(|time_column| query.range().contains_range(time_column.time_range))
+            {
+                return chunk;
+            }
+
             let Some(is_sorted_by_time) = chunk
                 .timelines
                 .get(query.timeline())
                 .map(|time_column| time_column.is_sorted())
             else {
-                return chunk.emptied();
+                return chunk;
             };
 
             let chunk = if is_sorted_by_time {
@@ -320,7 +333,7 @@ impl Chunk {
                 .get(query.timeline())
                 .map(|time_column| time_column.times_raw())
             else {
-                return chunk.emptied();
+                return Cow::Owned(chunk.emptied());
             };
 
             let mut start_index =
@@ -333,7 +346,7 @@ impl Chunk {
                 end_index = usize::min(self.num_rows(), end_index.saturating_add(1));
             }
 
-            chunk.row_sliced(start_index, end_index.saturating_sub(start_index))
+            Cow::Owned(chunk.row_sliced(start_index, end_index.saturating_sub(start_index)))
         }
     }
 }

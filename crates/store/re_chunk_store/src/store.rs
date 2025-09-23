@@ -25,11 +25,10 @@ pub struct ChunkStoreConfig {
     /// How incoming chunks will be compacted.
     pub compaction: ChunkStoreCompactionConfig,
 
-    /// If present, will crop incoming data to the specified range for a single given timeline.
-    /// Data for all other timelines will be discarded.
+    /// If present, will crop incoming chunks to the specified range for a single given timeline.
     ///
-    /// ⚠️ Does not discard any chunk whose time ranges are entirely before the range.
-    /// This is because on a per-chunk level it's not known whether it is relevant for latest-at queries within the range.
+    /// Data for other timelines remains untouched.
+    /// Practically this affects only the index of a chunk and is not very effective at saving memory.
     ///
     /// This property is typically set via [`re_log_types::StoreInfo::cropping_range`].
     pub cropping_range: Option<StoreCroppingRange>,
@@ -644,7 +643,7 @@ impl ChunkStore {
 
     /// Sets the chunk cropping range that should be used from now on.
     ///
-    /// Does *not* affect existing chunks.
+    /// Does *not* affect existing chunks, only newly incoming chunks.
     #[inline]
     pub fn set_cropping_range(&mut self, cropping_range: Option<StoreCroppingRange>) {
         self.config.cropping_range = cropping_range;

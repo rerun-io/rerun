@@ -597,11 +597,10 @@ pub struct StoreInfo {
     // would probably only lead to more issues down the line.
     pub store_version: Option<CrateVersion>,
 
-    /// If present, will crop incoming data to the specified range for a single given timeline.
-    /// Data for all other timelines will be discarded.
+    /// If present, will crop incoming chunks to the specified range for a single given timeline.
     ///
-    /// ⚠️ Does not discard any chunk whose time ranges are entirely before the range.
-    /// This is because on a per-chunk level it's not known whether it is relevant for latest-at queries within the range.
+    /// Data for other timelines remains untouched.
+    /// Practically this affects only the index of a chunk and is not very effective at saving memory.
     pub cropping_range: Option<StoreCroppingRange>,
 }
 

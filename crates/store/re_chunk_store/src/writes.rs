@@ -29,7 +29,7 @@ impl ChunkStore {
     /// * Inserting an empty [`Chunk`] will result in a no-op.
     ///
     /// If the store has a cropping range, each incoming chunk will be range queried
-    /// to the specified cropping range. If the reuslting chunk is empty after this operation, it will be discarded.
+    /// to the specified cropping range on the specified timeline.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
         if chunk.components().is_empty() {
             // This can happen in 2 scenarios: A) a badly manually crafted chunk or B) an Indicator
@@ -48,14 +48,30 @@ impl ChunkStore {
         // Crop chunk if requested. We do this via a range query on the cropping range.
         let cropped_chunk_arc;
         let chunk = if let Some(cropping_range) = self.config.cropping_range {
-            let range_query =
-                re_chunk::RangeQuery::new(cropping_range.timeline, cropping_range.range);
+            let range_query = re_chunk::RangeQuery {
+                timeline: cropping_range.timeline,
+                range: cropping_range.range,
+                options: re_chunk::RangeQueryOptions {
+                    keep_extra_timelines: true,     // Don't change other timelines.
+                    keep_extra_components: true,    // Not applicable, as we query all components.
+                    include_extended_bounds: false, // Not needed.
+                },
+            };
+
             let cropped_chunk = chunk.range_all_components(&range_query);
             if cropped_chunk.is_empty() {
                 return Ok(vec![]);
             }
-            cropped_chunk_arc = Arc::new(cropped_chunk);
-            &cropped_chunk_arc
+
+            match cropped_chunk {
+                std::borrow::Cow::Borrowed(_) => chunk,
+                std::borrow::Cow::Owned(new_chunk) => {
+                    // Give the new chunk a new unique chunk ID.
+                    let new_chunk = new_chunk.with_id(ChunkId::new());
+                    cropped_chunk_arc = Arc::new(new_chunk);
+                    &cropped_chunk_arc
+                }
+            }
         } else {
             chunk
         };
