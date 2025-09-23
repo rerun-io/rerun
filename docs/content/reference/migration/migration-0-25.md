@@ -28,6 +28,14 @@ In the C++ and Python APIs, negative timeouts used to have special meaning. Now 
 
 The Python flush calls now raises an error if the flushing did not complete successfully.
 
+The timeout behavior is also improved: it will only block as long as there is _hope of progress_. If the gRPC connection is severed, the flush will aborted with an error. This means it should be very rare that you need to configure a flush timeout, as it will only block for a long time if there is a very slow connection.
+
+Removed:
+ * Python: `flush_timeout_sec` argument of `connect_grpc`
+ * Rust: `flush_timeout` argument of `connect_grpc_opts`
+ * C++: `rerun::GrpcSink::flush_timeout_sec`
+
+
 ## ❗ Deprecations
 
 ### Python 3.9

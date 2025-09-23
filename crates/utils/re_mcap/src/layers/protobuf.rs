@@ -9,7 +9,8 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
 };
 use prost_reflect::{
-    DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, Value,
+    DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, ReflectMessage as _,
+    Value,
 };
 use re_chunk::{Chunk, ChunkId};
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
@@ -23,7 +24,7 @@ struct ProtobufMessageParser {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum ProtobufError {
+enum ProtobufError {
     #[error("invalid message on channel {channel} for schema {schema}: {source}")]
     InvalidMessage {
         schema: String,
@@ -31,13 +32,25 @@ pub enum ProtobufError {
         source: prost_reflect::prost::DecodeError,
     },
 
-    #[error("expected type {expected_type}, but found value {value}")]
+    #[error("expected type {expected}, but found value {actual}")]
     UnexpectedValue {
-        expected_type: &'static str,
-        value: Value,
+        expected: &'static str,
+        actual: Value,
     },
 
-    #[error("type {0} is not supported yyet")]
+    #[error("expected type {expected}, but found kind {actual:?}")]
+    UnexpectedType {
+        expected: &'static str,
+        actual: prost_reflect::Kind,
+    },
+
+    #[error("unknown enum number {0}")]
+    UnknownEnumNumber(i32),
+
+    #[error("unknown field name {0}")]
+    UnknownFieldName(String),
+
+    #[error("type {0} is not supported yet")]
     UnsupportedType(&'static str),
 
     #[error("missing protobuf field {field}")]
@@ -94,9 +107,13 @@ impl MessageParser for ProtobufMessageParser {
         // a field is missing from the message that we received.
         for (field, builder) in &mut self.fields {
             if let Some(val) = dynamic_message.get_field_by_name(field.as_str()) {
-                append_value(builder.values(), val.as_ref())?;
+                let field = dynamic_message
+                    .descriptor()
+                    .get_field_by_name(field)
+                    .ok_or_else(|| ProtobufError::UnknownFieldName(field.to_owned()))?;
+                append_value(builder.values(), &field, val.as_ref())?;
                 builder.append(true);
-                re_log::trace!("Field {}: Finished writing to builders", field);
+                re_log::trace!("Field {}: Finished writing to builders", field.full_name());
             } else {
                 builder.append(false);
             }
@@ -143,13 +160,17 @@ fn downcast_err<'a, T: std::any::Any>(
     builder.as_any_mut().downcast_mut::<T>().ok_or_else(|| {
         let type_name = std::any::type_name::<T>();
         ProtobufError::UnexpectedValue {
-            expected_type: type_name.strip_suffix("Builder").unwrap_or(type_name),
-            value: val.clone(),
+            expected: type_name.strip_suffix("Builder").unwrap_or(type_name),
+            actual: val.clone(),
         }
     })
 }
 
-fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), ProtobufError> {
+fn append_value(
+    builder: &mut dyn ArrayBuilder,
+    field: &FieldDescriptor,
+    val: &Value,
+) -> Result<(), ProtobufError> {
     match val {
         Value::Bool(x) => downcast_err::<BooleanBuilder>(builder, val)?.append_value(*x),
         Value::I32(x) => downcast_err::<Int32Builder>(builder, val)?.append_value(*x),
@@ -187,7 +208,13 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Proto
                         field: protobuf_number,
                     })?;
                 re_log::trace!("Written field ({protobuf_number}) with val: {val}");
-                append_value(field_builder, val.as_ref())?;
+                let field = dynamic_message
+                    .descriptor()
+                    .get_field(protobuf_number)
+                    .ok_or_else(|| ProtobufError::MissingField {
+                        field: protobuf_number,
+                    })?;
+                append_value(field_builder, &field, val.as_ref())?;
             }
             struct_builder.append(true);
         }
@@ -196,7 +223,9 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Proto
             let list_builder = downcast_err::<ListBuilder<Box<dyn ArrayBuilder>>>(builder, val)?;
 
             for val in vec {
-                append_value(list_builder.values(), val)?;
+                // All of these values still belong to the same field,
+                // which is why we forward the descriptor.
+                append_value(list_builder.values(), field, val)?;
             }
             list_builder.append(true);
             re_log::trace!("Finished append on list with elements {val}");
@@ -206,9 +235,17 @@ fn append_value(builder: &mut dyn ArrayBuilder, val: &Value) -> Result<(), Proto
             return Err(ProtobufError::UnsupportedType("HashMap"));
         }
         Value::EnumNumber(x) => {
-            // Change this to a `UnionBuilder`:
-            // https://github.com/apache/arrow-rs/issues/8033
-            downcast_err::<Int32Builder>(builder, val)?.append_value(*x);
+            let kind = field.kind();
+            let enum_descriptor = kind
+                .as_enum()
+                .ok_or_else(|| ProtobufError::UnexpectedType {
+                    expected: "enum",
+                    actual: kind.clone(),
+                })?;
+            let value = enum_descriptor
+                .get_value(*x)
+                .ok_or_else(|| ProtobufError::UnknownEnumNumber(*x))?;
+            downcast_err::<StringBuilder>(builder, val)?.append_value(value.name());
         }
     }
 
@@ -250,10 +287,11 @@ fn arrow_builder_from_field(descr: &FieldDescriptor) -> Box<dyn ArrayBuilder> {
             Box::new(struct_builder_from_message(&message_descriptor)) as Box<dyn ArrayBuilder>
         }
         Kind::Enum(_) => {
-            re_log::warn_once!(
-                "Enum support is still limited, falling back to Int32 representation"
-            );
-            Box::new(Int32Builder::new())
+            // TODO(grtlr): It would be great to improve our `enum` support. Using `Utf8`
+            // means a lot of excess memory / storage usage. Ideally we would use something
+            // like `StringDictionary`, but it's not clear right now how this works with
+            // `dyn ArrayBuilder` and sharing entries across lists.
+            Box::new(StringBuilder::new())
         }
     };
 
@@ -287,8 +325,8 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
             DataType::Struct(fields)
         }
         Kind::Enum(_) => {
-            // TODO(apache/arrow-rs#8033): Implement enum support when `UnionBuilder` implements `ArrayBuilder`.
-            DataType::Int32
+            // TODO(grtlr): Explanation see above.
+            DataType::Utf8
         }
     };
 
@@ -367,5 +405,219 @@ impl MessageLayer for McapProtobufLayer {
             num_rows,
             message_descriptor.clone(),
         )))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::io;
+
+    use prost_reflect::{
+        DescriptorPool, DynamicMessage, MessageDescriptor,
+        prost::Message as _,
+        prost_types::{
+            DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
+            FileDescriptorProto, FileDescriptorSet, field_descriptor_proto,
+        },
+    };
+    use re_chunk::Chunk;
+
+    use crate::{LayerRegistry, layers::McapProtobufLayer};
+
+    fn create_pool() -> DescriptorPool {
+        let status = EnumDescriptorProto {
+            name: Some("Status".into()),
+            value: vec![
+                EnumValueDescriptorProto {
+                    name: Some("UNKNOWN".into()),
+                    number: Some(0),
+                    options: None,
+                },
+                EnumValueDescriptorProto {
+                    name: Some("ACTIVE".into()),
+                    number: Some(1),
+                    options: None,
+                },
+                EnumValueDescriptorProto {
+                    name: Some("INACTIVE".into()),
+                    number: Some(2),
+                    options: None,
+                },
+            ],
+            options: None,
+            reserved_range: vec![],
+            reserved_name: vec![],
+        };
+
+        // Create a simple message descriptor
+        let person_message = DescriptorProto {
+            name: Some("Person".into()),
+            field: vec![
+                FieldDescriptorProto {
+                    name: Some("name".into()),
+                    number: Some(1),
+                    r#type: Some(field_descriptor_proto::Type::String as i32),
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("id".into()),
+                    number: Some(2),
+                    r#type: Some(field_descriptor_proto::Type::Int32 as i32),
+                    ..Default::default()
+                },
+                FieldDescriptorProto {
+                    name: Some("status".into()),
+                    number: Some(3),
+                    r#type: Some(field_descriptor_proto::Type::Enum as i32),
+                    type_name: Some("Status".into()),
+                    ..Default::default()
+                },
+            ],
+            enum_type: vec![status],
+            ..Default::default()
+        };
+
+        let file_proto = FileDescriptorProto {
+            name: Some("person.proto".into()),
+            package: Some("com.example".into()),
+            message_type: vec![person_message],
+            syntax: Some("proto3".into()),
+            ..Default::default()
+        };
+
+        let file_descriptor_set = FileDescriptorSet {
+            file: vec![file_proto],
+        };
+
+        let encoded = file_descriptor_set.encode_to_vec();
+
+        DescriptorPool::decode(encoded.as_slice()).expect("failed to decode descriptor pool")
+    }
+
+    /// Returns a channel id.
+    fn add_schema_and_channel<W: io::Write + io::Seek>(
+        writer: &mut mcap::Writer<W>,
+        message_descriptor: &MessageDescriptor,
+        topic: &str,
+    ) -> mcap::McapResult<u16> {
+        let data = message_descriptor.parent_pool().encode_to_vec();
+
+        let schema_id =
+            writer.add_schema(message_descriptor.full_name(), "protobuf", data.as_slice())?;
+
+        let channel_id = writer.add_channel(schema_id, topic, "protobuf", &Default::default())?;
+        Ok(channel_id)
+    }
+
+    fn write_message<W: io::Write + io::Seek>(
+        writer: &mut mcap::Writer<W>,
+        channel_id: u16,
+        message: &DynamicMessage,
+        timestamp: u64, // nanoseconds since epoch
+    ) -> mcap::McapResult<()> {
+        // Encode the dynamic message to protobuf bytes
+        let data = message.encode_to_vec();
+
+        let header = mcap::records::MessageHeader {
+            channel_id,
+            sequence: 0,
+            log_time: timestamp,
+            publish_time: timestamp,
+        };
+
+        writer.write_to_known_channel(&header, data.as_slice())?;
+
+        Ok(())
+    }
+
+    fn run_layer(summary: &mcap::Summary, buffer: &[u8]) -> Vec<Chunk> {
+        let mut chunks = Vec::new();
+
+        let mut send_chunk = |chunk| {
+            chunks.push(chunk);
+        };
+
+        let registry = LayerRegistry::empty().register_message_layer::<McapProtobufLayer>();
+        registry
+            .plan(summary)
+            .expect("failed to plan")
+            .run(buffer, summary, &mut send_chunk)
+            .expect("failed to run layer");
+
+        chunks
+    }
+
+    /// Wrapper to help with creating nicely formatted chunks to use with `insta`.
+    struct ChunkRedacted<'a>(&'a Chunk);
+
+    impl std::fmt::Display for ChunkRedacted<'_> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let batch = self.0.to_record_batch().map_err(|err| {
+                re_log::error_once!("couldn't display Chunk: {err}");
+                std::fmt::Error
+            })?;
+            re_format_arrow::format_record_batch_opts(
+                &batch,
+                &re_format_arrow::RecordBatchFormatOpts {
+                    transposed: false,
+                    width: f.width(),
+                    include_metadata: true,
+                    include_column_metadata: true,
+                    trim_field_names: true,
+                    trim_metadata_keys: true,
+                    trim_metadata_values: true,
+                    redact_non_deterministic: true,
+                },
+            )
+            .fmt(f)
+        }
+    }
+
+    #[test]
+    fn two_simple_rows() {
+        // Writing to the MCAP buffer.
+        let (summary, buffer) = {
+            let pool = create_pool();
+            let person_message = pool
+                .get_message_by_name("com.example.Person")
+                .expect("missing message descriptor");
+
+            let buffer = Vec::new();
+            let cursor = io::Cursor::new(buffer);
+            let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
+
+            let channel_id = add_schema_and_channel(&mut writer, &person_message, "test_topic")
+                .expect("failed to add schema and channel");
+
+            let dynamic_message_1 =
+                DynamicMessage::parse_text_format(person_message.clone(), "name: \"Bob\"status:2")
+                    .expect("failed to parse text format");
+
+            let dynamic_message_2 =
+                DynamicMessage::parse_text_format(person_message.clone(), "name: \"Alice\"id:123")
+                    .expect("failed to parse text format");
+
+            write_message(&mut writer, channel_id, &dynamic_message_1, 42)
+                .expect("failed to write message");
+            write_message(&mut writer, channel_id, &dynamic_message_2, 43)
+                .expect("failed to write message");
+
+            let summary = writer.finish().expect("finishing writer failed");
+
+            (summary, writer.into_inner().into_inner())
+        };
+        assert_eq!(
+            summary.chunk_indexes.len(),
+            1,
+            "there should be only one chunk"
+        );
+
+        let chunks = run_layer(&summary, buffer.as_slice());
+        assert_eq!(chunks.len(), 1);
+
+        insta::assert_snapshot!(
+            "two_simple_rows",
+            format!("{:240}", ChunkRedacted(&chunks[0]))
+        );
     }
 }

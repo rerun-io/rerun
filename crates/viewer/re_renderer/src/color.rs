@@ -20,3 +20,25 @@ impl Rgba32Unmul {
         Self(rgba_unmul)
     }
 }
+
+/// [`ecolor::Color32`] but without `repr(align(4))`, since that is not compatible
+/// with `repr(packed)`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(C)]
+pub struct UnalignedColor32(pub [u8; 4]);
+
+impl From<ecolor::Color32> for UnalignedColor32 {
+    fn from(c: ecolor::Color32) -> Self {
+        Self(c.to_array())
+    }
+}
+
+impl From<UnalignedColor32> for ecolor::Color32 {
+    fn from(c: UnalignedColor32) -> Self {
+        let [r, g, b, a] = c.0;
+
+        // We aren't hard-coding any colors here.
+        #[expect(clippy::disallowed_methods)]
+        Self::from_rgba_premultiplied(r, g, b, a)
+    }
+}

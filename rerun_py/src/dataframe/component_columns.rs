@@ -117,7 +117,11 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 ///     The entity path to select.
 /// component : str
 ///     The component to select
-#[pyclass(frozen, name = "ComponentColumnSelector")]
+#[pyclass(
+    frozen,
+    name = "ComponentColumnSelector",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
 pub struct PyComponentColumnSelector(pub ComponentColumnSelector);
 

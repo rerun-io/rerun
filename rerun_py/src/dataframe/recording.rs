@@ -25,7 +25,7 @@ use super::{PyRecordingView, PySchema};
 /// You can examine the [`.schema()`][rerun.dataframe.Recording.schema] of the recording to see
 /// what data is available, or create a [`RecordingView`][rerun.dataframe.RecordingView] to
 /// to retrieve the data.
-#[pyclass(name = "Recording")]
+#[pyclass(name = "Recording", module = "rerun_bindings.rerun_bindings")]
 pub struct PyRecording {
     pub(crate) store: ChunkStoreHandle,
     pub(crate) cache: re_dataframe::QueryCacheHandle,

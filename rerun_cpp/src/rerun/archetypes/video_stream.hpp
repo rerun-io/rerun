@@ -43,9 +43,12 @@ namespace rerun::archetypes {
         /// that there is no support for B-frames.
         /// See <https://github.com/rerun-io/rerun/issues/10090> for more details.
         ///
-        /// Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
-        /// as this may break live video playback.
-        /// I.e. any appended sample should have a timestamp greater than all previously logged samples.
+        /// Rerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,
+        /// but may cause the video playback in the Viewer to reset.
+        /// It is recommended to have all chunks for a video stream to be ordered temporally order.
+        ///
+        /// Logging separate videos on the same entity is allowed iff they share the exact same
+        /// codec parameters & resolution.
         ///
         /// The samples are expected to be encoded using the `codec` field.
         /// Each video sample must contain enough data for exactly one video frame
@@ -137,9 +140,12 @@ namespace rerun::archetypes {
         /// that there is no support for B-frames.
         /// See <https://github.com/rerun-io/rerun/issues/10090> for more details.
         ///
-        /// Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
-        /// as this may break live video playback.
-        /// I.e. any appended sample should have a timestamp greater than all previously logged samples.
+        /// Rerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,
+        /// but may cause the video playback in the Viewer to reset.
+        /// It is recommended to have all chunks for a video stream to be ordered temporally order.
+        ///
+        /// Logging separate videos on the same entity is allowed iff they share the exact same
+        /// codec parameters & resolution.
         ///
         /// The samples are expected to be encoded using the `codec` field.
         /// Each video sample must contain enough data for exactly one video frame

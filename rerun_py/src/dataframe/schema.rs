@@ -13,7 +13,7 @@ use super::{
 };
 use crate::catalog::to_py_err;
 
-#[pyclass]
+#[pyclass(module = "rerun_bindings.rerun_bindings")]
 pub struct SchemaIterator {
     iter: std::vec::IntoIter<PyObject>,
 }
@@ -29,7 +29,7 @@ impl SchemaIterator {
     }
 }
 
-#[pyclass(frozen, name = "Schema")]
+#[pyclass(frozen, name = "Schema", module = "rerun_bindings.rerun_bindings")]
 #[derive(Clone)]
 //TODO(#9457): improve this object and use it for `Dataset.schema()`.
 pub struct PySchema {
