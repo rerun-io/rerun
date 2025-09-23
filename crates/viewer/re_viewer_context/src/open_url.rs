@@ -521,7 +521,10 @@ impl ViewerOpenUrl {
             }
             Self::RedapProxy(proxy_uri) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(
-                    LogDataSource::RedapProxy(proxy_uri),
+                    LogDataSource::RedapProxy(proxy_uri.clone()),
+                ));
+                command_sender.send_system(SystemCommand::SetSelection(
+                    Item::RedapServer(proxy_uri.origin).into(),
                 ));
             }
             Self::RedapCatalog(uri) => {
