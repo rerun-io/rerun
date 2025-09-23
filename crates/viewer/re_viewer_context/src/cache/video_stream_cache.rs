@@ -134,6 +134,9 @@ pub enum VideoStreamProcessingError {
 
     #[error("Failed to read codec - {0}")]
     FailedReadingCodec(Box<re_chunk::ChunkError>),
+
+    #[error("Recieved video samples were not in chronological order.")]
+    OutOfOrderSamples,
 }
 
 const _: () = assert!(
@@ -256,8 +259,31 @@ fn load_video_data_from_chunks(
         mp4_tracks: Default::default(),
     };
 
-    for chunk in sample_chunks {
-        read_samples_from_chunk(timeline, chunk, &mut video_descr, &mut video_sample_buffers)?;
+    let mut chunks = sample_chunks.iter().enumerate().collect::<Vec<_>>();
+
+    chunks.sort_by_cached_key(|(_, c)| {
+        c.time_range_per_component()
+            .get(&timeline)
+            .and_then(|t| Some(t.get(&sample_descr)?.max().as_i64()))
+    });
+
+    if !chunks.is_sorted_by_key(|(i, _)| *i) {
+        re_log::info!("Chunks were sorted");
+    }
+
+    for (_, chunk) in chunks {
+        if let Err(err) =
+            read_samples_from_chunk(timeline, chunk, &mut video_descr, &mut video_sample_buffers)
+        {
+            match err {
+                VideoStreamProcessingError::OutOfOrderSamples => {
+                    re_log::error_once!(
+                        "Out of order video stream samples, some chunks of samples have been ignored."
+                    );
+                }
+                err => return Err(err),
+            }
+        }
     }
 
     Ok((video_descr, video_sample_buffers))
@@ -317,10 +343,7 @@ fn read_samples_from_chunk(
     {
         Some(time_range) => {
             if time_range.min().as_i64() < previous_max_presentation_timestamp.0 {
-                re_log::warn_once!(
-                    "Out of order logging on video streams is not supported. Ignoring any out of order samples."
-                );
-                return Ok(());
+                return Err(VideoStreamProcessingError::OutOfOrderSamples);
             }
         }
         None => {
@@ -616,12 +639,27 @@ impl Cache for VideoStreamCache {
                             video_data,
                             video_sample_buffers,
                         ) {
-                            re_log::error_once!(
-                                "Failed to read process additional incoming video samples: {err}"
-                            );
+                            match err {
+                                VideoStreamProcessingError::OutOfOrderSamples => {
+                                    drop(video_stream);
+                                    // We found out of order samples, discard this video stream cache entry
+                                    // to reconstruct it with all data in mind.
+                                    self.0.remove(&key);
+                                    continue;
+                                }
+                                err => {
+                                    re_log::error_once!(
+                                        "Failed to read process additional incoming video samples: {err}"
+                                    );
+                                }
+                            }
                         }
 
                         if encoding_details_before != video_data.encoding_details {
+                            re_log::error_once!(
+                                "The video stream codec details on {} changed over time, which is not supported.",
+                                event.chunk.entity_path()
+                            );
                             video_renderer.reset_all_decoders();
                         }
                     }
