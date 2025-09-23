@@ -2538,7 +2538,12 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     #[inline]
     pub fn set_duration_secs(&self, timeline: impl Into<TimelineName>, secs: impl Into<f64>) {
-        self.set_time(timeline, std::time::Duration::from_secs_f64(secs.into()));
+        let secs = secs.into();
+        if let Ok(duration) = std::time::Duration::try_from_secs_f64(secs) {
+            self.set_time(timeline, duration);
+        } else {
+            re_log::error_once!("set_duration_secs: can't set time to {secs}");
+        }
     }
 
     /// Set a timestamp as seconds since Unix epoch (1970-01-01 00:00:00 UTC).
