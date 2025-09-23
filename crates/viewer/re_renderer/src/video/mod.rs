@@ -16,14 +16,33 @@ use crate::{
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
 };
 
+/// Detailed error for lack of sample data.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum InsufficientSampleDataError {
+    #[error("Video doesn't have any key frames.")]
+    NoKeyFrames,
+
+    #[error("Video doesn't have any samples.")]
+    NoSamples,
+
+    #[error("No key frames prior to current time.")]
+    NoKeyFramesPriorToRequestedTimestamp,
+
+    #[error("No frames prior to current time.")]
+    NoSamplesPriorToRequestedTimestamp,
+
+    #[error("The requested frame data is not, or no longer, available.")]
+    ExpectedSampleNotAvailable,
+}
+
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum VideoPlayerError {
     #[error("The decoder is lagging behind")]
     EmptyBuffer,
 
-    #[error("Video is empty.")]
-    EmptyVideo,
+    #[error(transparent)]
+    InsufficientSampleData(#[from] InsufficientSampleDataError),
 
     /// e.g. unsupported codec
     #[error("Failed to create video chunk: {0}")]
@@ -39,9 +58,6 @@ pub enum VideoPlayerError {
 
     #[error("The timestamp passed was negative.")]
     NegativeTimestamp,
-
-    #[error("The requested frame data is not, or no longer, available.")]
-    MissingSample,
 
     /// e.g. bad mp4, or bug in mp4 parse
     #[error("Bad data.")]
