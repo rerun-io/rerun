@@ -386,6 +386,7 @@ pub fn instance_descriptor(force_backend: Option<&str>) -> wgpu::InstanceDescrip
             // cause us to run with arbitrary development versions of drivers.
             // (then again, if a user has such a driver they likely *want* us to run with it anyways!)
             .union(wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER),
+        memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
         backend_options: wgpu::BackendOptions::default(),
     }
     // Allow manipulation of all options via environment variables.

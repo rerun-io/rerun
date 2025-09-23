@@ -718,6 +718,7 @@ impl ViewBuilder {
                 label: DebugLabel::from(format!("{} - main pass", setup.name)).get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &setup.main_target_msaa.default_view,
+                    depth_slice: None,
                     resolve_target: needs_msaa_resolve
                         .then_some(&setup.main_target_resolved.default_view),
                     ops: wgpu::Operations {
