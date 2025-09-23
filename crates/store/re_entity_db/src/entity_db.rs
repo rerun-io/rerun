@@ -8,8 +8,9 @@ use re_chunk::{
     TimelineName,
 };
 use re_chunk_store::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
-    ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreCompactionConfig, ChunkStoreConfig,
+    ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber as _,
+    GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
@@ -128,7 +129,13 @@ impl Debug for EntityDb {
 
 impl EntityDb {
     pub fn new(store_id: StoreId) -> Self {
-        Self::with_store_config(store_id, ChunkStoreConfig::from_env().unwrap_or_default())
+        Self::with_store_config(
+            store_id,
+            ChunkStoreConfig {
+                compaction: ChunkStoreCompactionConfig::from_env().unwrap_or_default(),
+                ..Default::default()
+            },
+        )
     }
 
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
@@ -633,6 +640,10 @@ impl EntityDb {
     }
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
+        self.storage_engine
+            .write()
+            .store()
+            .set_cropping_range(store_info.info.cropping_range);
         self.set_store_info = Some(store_info);
     }
 

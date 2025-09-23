@@ -5,10 +5,10 @@ use arrow::array::Array as _;
 use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
-use re_chunk::{Chunk, EntityPath, RangeQuery, RowId};
+use re_chunk::{Chunk, EntityPath, RowId};
 
 use crate::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreError,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreCompactionConfig, ChunkStoreDiff, ChunkStoreError,
     ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState, store::ChunkIdSetPerTime,
 };
 
@@ -47,15 +47,9 @@ impl ChunkStore {
 
         // Crop chunk if requested. We do this via a range query on the cropping range.
         let cropped_chunk_arc;
-        dbg!(&self.store_info);
-        let chunk = if let Some(cropping_range) = self
-            .store_info
-            .as_ref()
-            .and_then(|info| info.cropping_range.as_ref())
-        {
-            dbg!(&cropping_range);
-
-            let range_query = RangeQuery::new(cropping_range.timeline, cropping_range.range);
+        let chunk = if let Some(cropping_range) = self.config.cropping_range {
+            let range_query =
+                re_chunk::RangeQuery::new(cropping_range.timeline, cropping_range.range);
             let cropped_chunk = chunk.range_all_components(&range_query);
             if cropped_chunk.is_empty() {
                 return Ok(vec![]);
@@ -483,12 +477,11 @@ impl ChunkStore {
             // Make sure to early exit if the newly added Chunk is already beyond the compaction thresholds
             // on its own.
 
-            let ChunkStoreConfig {
-                enable_changelog: _,
+            let ChunkStoreCompactionConfig {
                 chunk_max_bytes,
                 chunk_max_rows,
                 chunk_max_rows_if_unsorted,
-            } = self.config;
+            } = self.config.compaction;
 
             let total_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk);
             let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
@@ -508,12 +501,11 @@ impl ChunkStore {
         let mut candidates_below_threshold: HashMap<ChunkId, bool> = HashMap::default();
         let mut check_if_chunk_below_threshold =
             |store: &Self, candidate_chunk_id: ChunkId| -> bool {
-                let ChunkStoreConfig {
-                    enable_changelog: _,
+                let ChunkStoreCompactionConfig {
                     chunk_max_bytes,
                     chunk_max_rows,
                     chunk_max_rows_if_unsorted,
-                } = store.config;
+                } = store.config.compaction;
 
                 *candidates_below_threshold
                     .entry(candidate_chunk_id)
@@ -748,7 +740,7 @@ mod tests {
     };
     use similar_asserts::assert_eq;
 
-    use crate::ChunkStoreDiffKind;
+    use crate::{ChunkStoreDiffKind, store::ChunkStoreConfig};
 
     use super::*;
 
@@ -1197,9 +1189,12 @@ mod tests {
                 re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
                 ChunkStoreConfig {
                     enable_changelog: false,
-                    chunk_max_bytes: u64::MAX,
-                    chunk_max_rows: u64::MAX,
-                    chunk_max_rows_if_unsorted: u64::MAX,
+                    compaction: ChunkStoreCompactionConfig {
+                        chunk_max_bytes: u64::MAX,
+                        chunk_max_rows: u64::MAX,
+                        chunk_max_rows_if_unsorted: u64::MAX,
+                    },
+                    ..Default::default()
                 },
             );
 
@@ -1226,9 +1221,12 @@ mod tests {
                 re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
                 ChunkStoreConfig {
                     enable_changelog: false,
-                    chunk_max_bytes: u64::MAX,
-                    chunk_max_rows: u64::MAX,
-                    chunk_max_rows_if_unsorted: u64::MAX,
+                    compaction: ChunkStoreCompactionConfig {
+                        chunk_max_bytes: u64::MAX,
+                        chunk_max_rows: u64::MAX,
+                        chunk_max_rows_if_unsorted: u64::MAX,
+                    },
+                    ..Default::default()
                 },
             );
 

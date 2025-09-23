@@ -3,7 +3,7 @@ use std::io::{IsTerminal as _, Write as _};
 use anyhow::Context as _;
 use itertools::Either;
 
-use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreError};
+use re_chunk_store::{ChunkStore, ChunkStoreCompactionConfig, ChunkStoreConfig, ChunkStoreError};
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
 use re_sdk::StoreKind;
@@ -131,19 +131,23 @@ impl CompactCommand {
             );
         }
 
-        let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
+        let mut store_config = ChunkStoreConfig {
+            compaction: ChunkStoreCompactionConfig::from_env().unwrap_or_default(),
+            ..Default::default()
+        };
+
         // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
         // (massively) slow us down.
         store_config.enable_changelog = false;
 
         if let Some(max_bytes) = max_bytes {
-            store_config.chunk_max_bytes = *max_bytes;
+            store_config.compaction.chunk_max_bytes = *max_bytes;
         }
         if let Some(max_rows) = max_rows {
-            store_config.chunk_max_rows = *max_rows;
+            store_config.compaction.chunk_max_rows = *max_rows;
         }
         if let Some(max_rows_if_unsorted) = max_rows_if_unsorted {
-            store_config.chunk_max_rows_if_unsorted = *max_rows_if_unsorted;
+            store_config.compaction.chunk_max_rows_if_unsorted = *max_rows_if_unsorted;
         }
 
         merge_and_compact(
@@ -172,9 +176,9 @@ fn merge_and_compact(
 
     let now = std::time::Instant::now();
     re_log::info!(
-        max_rows = %re_format::format_uint(store_config.chunk_max_rows),
-        max_rows_if_unsorted = %re_format::format_uint(store_config.chunk_max_rows_if_unsorted),
-        max_bytes = %re_format::format_bytes(store_config.chunk_max_bytes as _),
+        max_rows = %re_format::format_uint(store_config.compaction.chunk_max_rows),
+        max_rows_if_unsorted = %re_format::format_uint(store_config.compaction.chunk_max_rows_if_unsorted),
+        max_bytes = %re_format::format_bytes(store_config.compaction.chunk_max_bytes as _),
         srcs = ?path_to_input_rrds,
         "merge/compaction started"
     );

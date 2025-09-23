@@ -440,21 +440,25 @@ impl DatastoreUi {
                         .value_bool(chunk_store.config().enable_changelog),
                 );
 
+                let compaction_config = &chunk_store.config().compaction;
+
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Chunk max byte").value_text(
-                        re_format::format_bytes(chunk_store.config().chunk_max_bytes as f64),
+                        re_format::format_bytes(compaction_config.chunk_max_bytes as f64),
                     ),
                 );
 
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Chunk max rows")
-                        .value_uint(chunk_store.config().chunk_max_rows),
+                        .value_uint(compaction_config.chunk_max_rows),
                 );
 
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Chunk max rows (unsorted)")
-                        .value_uint(chunk_store.config().chunk_max_rows_if_unsorted),
+                        .value_uint(compaction_config.chunk_max_rows_if_unsorted),
                 );
+
+                // TODO: cropping range
             });
         });
 
