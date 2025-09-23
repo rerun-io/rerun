@@ -26,7 +26,7 @@ enum TimestampFilterKind {
 /// This represents both the filter itself, and the state of the corresponding UI.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TimestampFilter {
-    /// The kind of temporal filter ot use.
+    /// The kind of temporal filter to use.
     kind: TimestampFilterKind,
 
     /// The low bound of the filter (for [`Operator::After`] and [`Operator::Between`]).
