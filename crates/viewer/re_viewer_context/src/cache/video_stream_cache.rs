@@ -135,7 +135,7 @@ pub enum VideoStreamProcessingError {
     #[error("Failed to read codec - {0}")]
     FailedReadingCodec(Box<re_chunk::ChunkError>),
 
-    #[error("Recieved video samples were not in chronological order.")]
+    #[error("Received video samples were not in chronological order.")]
     OutOfOrderSamples,
 }
 
