@@ -1,5 +1,7 @@
 use re_log_types::{StoreId, TableId};
 
+use crate::DisplayMode;
+
 #[derive(Clone, Debug)]
 pub enum RecordingOrTable {
     Recording {
@@ -35,6 +37,14 @@ impl RecordingOrTable {
         match self {
             Self::Table { table_id } => Some(table_id),
             Self::Recording { .. } => None,
+        }
+    }
+
+    /// The display mode this would equate to.
+    pub fn display_mode(&self) -> DisplayMode {
+        match self {
+            Self::Recording { store_id } => DisplayMode::LocalRecordings(store_id.clone()),
+            Self::Table { table_id } => DisplayMode::LocalTable(table_id.clone()),
         }
     }
 }

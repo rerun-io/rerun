@@ -9,6 +9,7 @@ use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
 use re_smart_channel::SmartChannelSource;
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
+use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     DisplayMode, Item, RecordingOrTable, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
@@ -40,7 +41,7 @@ pub fn recordings_panel_ui(
 
     egui::ScrollArea::both()
         .id_salt("recordings_scroll_area")
-        .auto_shrink([false, true])
+        .auto_shrink([false, false]) // shrinking forces to limit maximum height of the recording panel
         .show(ui, |ui| {
             ui.panel_content(|ui| {
                 re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
@@ -202,6 +203,9 @@ fn all_sections_ui(
     //
 
     loading_receivers_ui(ctx, ui, &recording_panel_data.loading_receivers);
+
+    // Add space at the end of the recordings panel
+    ui.add_space(8.0);
 }
 
 // ---
@@ -387,13 +391,28 @@ fn dataset_entry_ui(
         list_item.show_hierarchical(ui, list_item_content)
     };
 
+    let new_display_mode =
+        DisplayMode::RedapEntry(re_uri::EntryUri::new(origin.clone(), *entry_id));
+
+    item_response.context_menu(|ui| {
+        let url = ViewerOpenUrl::from_display_mode(ctx.storage_context.hub, &new_display_mode)
+            .and_then(|url| url.sharable_url(None));
+        if ui
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to dataset"))
+            .on_disabled_hover_text("Can't copy a link to this dataset")
+            .clicked()
+            && let Ok(url) = url
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+    });
+
     if item_response.clicked() {
         ctx.command_sender()
             .send_system(SystemCommand::SetSelection(item.into()));
         ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                re_uri::EntryUri::new(origin.clone(), *entry_id),
-            )));
+            .send_system(SystemCommand::ChangeDisplayMode(new_display_mode));
     }
 }
 

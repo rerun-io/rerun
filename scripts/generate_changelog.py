@@ -210,6 +210,7 @@ def main() -> None:
     enhancement = []
     examples = []
     log_api = []
+    mcap = []
     misc = []
     performance = []
     python = []
@@ -301,6 +302,8 @@ def main() -> None:
                     renderer.append(summary)
                 elif "🕸️ web" in labels:
                     web.append(summary)
+                elif "🧢 MCAP" in labels:
+                    mcap.append(summary)
                 elif "enhancement" in labels:
                     enhancement.append(summary)
                 elif "🚜 refactor" in labels:
@@ -346,6 +349,7 @@ def main() -> None:
     print_section("🖼 UI improvements", ui)
     print_section("🕸️ Web", web)
     print_section("🎨 Renderer improvements", renderer)
+    print_section("🧢 MCAP", mcap)
     print_section("✨ Other enhancement", enhancement)
     print_section("📈 Analytics", analytics)
     print_section("🗣 Merged RFCs", rfc)

@@ -44,7 +44,7 @@ crossbeam.workspace = true
 image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
-notify.workspace = true
+notify = { workspace = true, features = ["crossbeam-channel"] }
 mcap.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true

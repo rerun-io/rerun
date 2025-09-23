@@ -43,7 +43,10 @@ pub(crate) fn view_space_origin_widget_ui(
             let mut space_origin_string = view.space_origin.to_string();
             let output = egui::TextEdit::singleline(&mut space_origin_string).show(ui);
 
-            if output.response.gained_focus() {
+            // Delay opening the popup until the click is finished, otherwise the popup will close
+            // immediately because the popup thinks this is a clicked_elsewhere.
+            let click_finished = ui.ctx().input(|i| !i.pointer.any_down());
+            if output.response.has_focus() && click_finished {
                 state = SpaceOriginEditState::Editing(EditState {
                     origin_string: space_origin_string,
                     entered_editing: true,

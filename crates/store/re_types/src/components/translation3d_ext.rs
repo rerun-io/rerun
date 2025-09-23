@@ -9,7 +9,7 @@ impl From<Translation3D> for glam::Affine3A {
     fn from(v: Translation3D) -> Self {
         Self {
             matrix3: glam::Mat3A::IDENTITY,
-            translation: glam::Vec3A::from_slice(&v.0 .0),
+            translation: glam::Vec3A::from_slice(&v.0.0),
         }
     }
 }

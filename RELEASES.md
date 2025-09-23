@@ -92,6 +92,11 @@ from the previous release's tag.
 
 Note: you do not need to create a PR for this branch -- the release workflow will do that for you.
 
+For patch releases, immediately bump the crate versions to dev version, so that any testing done against this branch will not look like the old version:
+```sh
+pixi run python scripts/ci/crates.py version --exact 0.x.y --dev
+```
+
 ### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch.
 
 When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
@@ -110,18 +115,23 @@ Where `z` is the previous patch number.
 Note that the `cherry-pick` will fail if there are no additional `docs-latest` commits to include,
 which is fine.
 
-### 4. Update [`CHANGELOG.md`](./CHANGELOG.md) and clean ups.
+### 4. Update [`CHANGELOG.md`](./CHANGELOG.md).
 
 Update the change log. It should include:
 
 -   A one-line summary of the release
 -   A multi-line summary of the release
--   A gif showing a major new feature
+    - You may ask feature leads to write a summary for each highlighted item
+-   A gif or screenshot showing one or more major new features
+    - Try to avoid `mp4`s, gifs have a better experience on GitHub
+    - You can upload images to a PR, use the link it generates to use GitHub as an image hosting service.
 -   Run `pip install GitPython && scripts/generate_changelog.py > new_changelog.md`
 -   Edit PR descriptions/labels to improve the generated changelog
 -   Copy-paste the results into `CHANGELOG.md`.
 -   Editorialize the changelog if necessary
 -   Make sure the changelog includes instructions for handling any breaking changes
+
+### 5. Clean up documentation links.
 
 Remove all the `attr.docs.unreleased` attributes in all `.fbs` files, followed by `pixi run codegen`.
 
@@ -129,7 +139,7 @@ Remove the speculative link markers (`?speculative-link`).
 
 Once you're done, commit and push onto the release branch.
 
-### 5. Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml).
+### 6. Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml).
 
 In the UI:
 
@@ -146,14 +156,14 @@ In the UI:
 
 ![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
 
-### 6. Wait for the workflow to finish
+### 7. Wait for the workflow to finish
 
 The PR description will contain next steps.
 
 Note: there are two separate workflows running -- the one building the release artifacts, and the one running the PR checks.
 You will have to wait for the [former](https://github.com/rerun-io/rerun/actions/workflows/release.yml) in order to get a link to the artifacts.
 
-### 7. Merge changes to `main`
+### 8. Merge changes to `main`
 
 For minor release, merge the release branch to `main`.
 
@@ -163,3 +173,9 @@ first place.
 
 For alpha release, it's fine to merge **iff** the release job was successful. Otherwise, do not merge, as this would
 introduce broken links in the docs. If needed, cherry-pick any commit back to `main`.
+
+### 9. Optional: write a post mortem about the release
+
+Summarize your experience with the release process to our [Release Postmortems](https://www.notion.so/rerunio/Release-Postmortems-271b24554b1980589770df810d2e4ed5) Notion page.
+
+Create tickets if you think we can improve the process, put them into the `Actionable items` section.

@@ -46,7 +46,12 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
                             db,
                         );
                     }
-                    _ => arrow_ui(ui, ui_layout, component_raw),
+                    _ => arrow_ui(
+                        ui,
+                        ui_layout,
+                        ctx.app_options().timestamp_format,
+                        component_raw,
+                    ),
                 },
                 Err(err) => {
                     ui.error_with_details_on_hover("(failed to deserialize)")

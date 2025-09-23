@@ -38,6 +38,12 @@ struct TimeState {
     /// The current time (play marker).
     time: TimeReal,
 
+    /// The last time this timeline was paused at.
+    ///
+    /// Used for the web url.
+    #[serde(skip)]
+    last_paused_time: Option<TimeReal>,
+
     /// Frames per second, when playing sequences (they are often video recordings).
     fps: f32,
 
@@ -58,6 +64,7 @@ impl TimeState {
     fn new(time: impl Into<TimeReal>) -> Self {
         Self {
             time: time.into(),
+            last_paused_time: None,
             fps: 30.0, // TODO(emilk): estimate based on data
             loop_selection: Default::default(),
             view: None,
@@ -243,13 +250,15 @@ impl TimeControl {
                 // then the user decides to switch timelines.
                 // When they do so, it might be the case that they switch to a timeline they've
                 // never interacted with before, in which case we don't even have a time state yet.
-                self.states.entry(*self.timeline.name()).or_insert_with(|| {
+                let state = self.states.entry(*self.timeline.name()).or_insert_with(|| {
                     TimeStateEntry::new(if self.following {
                         full_range.max()
                     } else {
                         full_range.min()
                     })
                 });
+
+                state.current.last_paused_time = Some(state.current.time);
                 NeedsRepaint::No
             }
             PlayState::Playing => {
@@ -589,6 +598,16 @@ impl TimeControl {
         self.states
             .get(self.timeline().name())
             .map(|state| state.current.time)
+    }
+
+    pub fn last_paused_time(&self) -> Option<TimeReal> {
+        if matches!(self.play_state(), PlayState::Paused) {
+            self.time()
+        } else {
+            self.states
+                .get(self.timeline().name())
+                .and_then(|state| state.current.last_paused_time)
+        }
     }
 
     /// The current time & timeline.

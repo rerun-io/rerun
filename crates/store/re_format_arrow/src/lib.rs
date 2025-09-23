@@ -27,7 +27,18 @@ type CustomArrayFormatter<'a> = Box<dyn Fn(usize) -> Result<String, String> + 'a
 /// This is a `BTreeMap`, and not a `HashMap`, because we want a predictable order.
 type Metadata = std::collections::BTreeMap<String, String>;
 
-fn custom_array_formatter<'a>(field: &Field, array: &'a dyn Array) -> CustomArrayFormatter<'a> {
+/// The replacement string for non-deterministic values.
+const REDACT_STRING: &str = "[**REDACTED**]";
+
+/// Metadata fields that are non-deterministic.
+const NON_DETERMINISTIC_METADATA: &[&str] =
+    &["rerun:id", "rerun:heap_size_bytes", "sorbet:version"];
+
+fn custom_array_formatter<'a>(
+    field: &Field,
+    array: &'a dyn Array,
+    redact_non_deterministic: bool,
+) -> CustomArrayFormatter<'a> {
     if let Some(extension_name) = field.metadata().get("ARROW:extension:name") {
         // TODO(#1775): This should be registered dynamically.
         if extension_name.as_str() == Tuid::ARROW_EXTENSION_NAME {
@@ -45,7 +56,11 @@ fn custom_array_formatter<'a>(field: &Field, array: &'a dyn Array) -> CustomArra
 
             return Box::new(move |index| {
                 if let Some(tuid) = parse_tuid(array, index) {
-                    Ok(format!("{prefix}{tuid}"))
+                    if redact_non_deterministic {
+                        Ok(format!("{prefix}{REDACT_STRING}"))
+                    } else {
+                        Ok(format!("{prefix}{tuid}"))
+                    }
                 } else {
                     Err("Invalid RowId".to_owned())
                 }
@@ -81,6 +96,7 @@ struct DisplayMetadata {
     metadata: Metadata,
     trim_keys: bool,
     trim_values: bool,
+    redact_non_deterministic: bool,
 }
 
 impl std::fmt::Display for DisplayMetadata {
@@ -91,16 +107,20 @@ impl std::fmt::Display for DisplayMetadata {
             metadata,
             trim_keys,
             trim_values,
+            redact_non_deterministic,
         } = self;
         f.write_str(
             &metadata
                 .iter()
                 .map(|(key, value)| {
+                    let needs_redact = *redact_non_deterministic
+                        && NON_DETERMINISTIC_METADATA.contains(&key.as_str());
+
                     let key = if *trim_keys { trim_key(key) } else { key };
-                    let value = if *trim_values {
-                        trim_name(value)
-                    } else {
-                        value
+                    let value = match (needs_redact, *trim_values) {
+                        (true, _) => REDACT_STRING,
+                        (false, true) => trim_name(value),
+                        (false, false) => value,
                     };
                     format!("{prefix}{key}: {value}",)
                 })
@@ -158,6 +178,9 @@ pub struct RecordBatchFormatOpts {
 
     /// If `true`, trims known Rerun prefixes from metadata values.
     pub trim_metadata_values: bool,
+
+    /// If `true`, redacts known non-deterministic values.
+    pub redact_non_deterministic: bool,
 }
 
 impl Default for RecordBatchFormatOpts {
@@ -170,6 +193,7 @@ impl Default for RecordBatchFormatOpts {
             trim_field_names: true,
             trim_metadata_keys: true,
             trim_metadata_values: true,
+            redact_non_deterministic: false,
         }
     }
 }
@@ -212,6 +236,7 @@ pub fn format_record_batch_with_width(
             trim_field_names: true,
             trim_metadata_keys: true,
             trim_metadata_values: true,
+            redact_non_deterministic: false,
         },
     )
 }
@@ -230,6 +255,7 @@ fn format_dataframe_with_metadata(
         trim_field_names: _, // passed as part of `opts` below
         trim_metadata_keys: trim_keys,
         trim_metadata_values: trim_values,
+        redact_non_deterministic,
     } = opts;
 
     let (num_columns, table) = format_dataframe_without_metadata(fields, columns, opts);
@@ -254,6 +280,7 @@ fn format_dataframe_with_metadata(
                     metadata: metadata.clone(),
                     trim_keys,
                     trim_values,
+                    redact_non_deterministic,
                 }
             )));
             row
@@ -284,6 +311,7 @@ fn format_dataframe_without_metadata(
         trim_field_names,
         trim_metadata_keys: trim_keys,
         trim_metadata_values: trim_values,
+        redact_non_deterministic,
     } = opts;
 
     let mut table = Table::new();
@@ -297,7 +325,7 @@ fn format_dataframe_without_metadata(
     }
 
     let formatters = itertools::izip!(fields.iter(), columns.iter())
-        .map(|(field, array)| custom_array_formatter(field, &**array))
+        .map(|(field, array)| custom_array_formatter(field, &**array, redact_non_deterministic))
         .collect_vec();
 
     let num_columns = if transposed {
@@ -378,6 +406,7 @@ fn format_dataframe_without_metadata(
                             metadata: field.metadata().clone().into_iter().collect(),
                             trim_keys,
                             trim_values,
+                            redact_non_deterministic,
                         },
                     ))
                 }

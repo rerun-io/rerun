@@ -30,6 +30,7 @@ default = []
 
 [dependencies]
 # Rerun dependencies:
+re_arrow_util.workspace = true
 re_dataframe.workspace = true
 re_redap_client.workspace = true
 re_log_encoding.workspace = true
@@ -44,7 +45,7 @@ ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 async-stream.workspace = true
-async-trait = "0.1.83"
+async-trait.workspace = true
 datafusion.workspace = true
 futures.workspace = true
 futures-util.workspace = true

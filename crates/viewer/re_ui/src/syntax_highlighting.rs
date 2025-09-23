@@ -174,11 +174,19 @@ impl SyntaxHighlightedBuilder {
     );
 
     impl_style_fns!(
-        "Body text, e.g. normal text.",
+        "Body text, subdued (default label color).",
         body,
         with_body,
         append_body,
         Body
+    );
+
+    impl_style_fns!(
+        "Body text with default color (color of inactive buttons).",
+        body_default,
+        with_body_default,
+        append_body_default,
+        BodyDefault
     );
 
     impl_style_fns!(
@@ -267,6 +275,7 @@ enum SyntaxHighlightedStyle {
     Primitive,
     Syntax,
     Body,
+    BodyDefault,
     BodyItalics,
     Custom(Box<TextFormat>),
     CustomClosure(Box<dyn Fn(&Style) -> TextFormat>),
@@ -282,6 +291,7 @@ impl std::fmt::Debug for SyntaxHighlightedStyle {
             Self::Primitive => write!(f, "Primitive"),
             Self::Syntax => write!(f, "Syntax"),
             Self::Body => write!(f, "Body"),
+            Self::BodyDefault => write!(f, "BodyDefault"),
             Self::BodyItalics => write!(f, "BodyItalics"),
             Self::Custom(_) => write!(f, "Custom(…)"),
             Self::CustomClosure(_) => write!(f, "CustomClosure(…)"),
@@ -331,6 +341,14 @@ impl SyntaxHighlightedStyle {
             }
             Self::Syntax => Self::monospace_with_color(style, style.tokens().text_strong),
             Self::Body => Self::body(style),
+            Self::BodyDefault => {
+                let mut format = Self::body(style);
+                format.color = style
+                    .visuals
+                    .override_text_color
+                    .unwrap_or(style.tokens().text_default);
+                format
+            }
             Self::BodyItalics => {
                 let mut format = Self::body(style);
                 format.italics = true;
@@ -390,7 +408,7 @@ impl SyntaxHighlighting for ComponentType {
 
 impl SyntaxHighlighting for ArchetypeName {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(self.as_str());
+        builder.append_identifier(self.short_name());
     }
 }
 

@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 import psutil
 import pyarrow as pa
 import pytest
-import rerun as rr
 from datafusion import col, functions as f
+from rerun.catalog import CatalogClient
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -102,8 +102,15 @@ def wait_for_server_ready(timeout: int = 30) -> None:
         raise TimeoutError(f"Server port {PORT} not ready within {timeout}s")
 
 
+class ServerInstance:
+    def __init__(self, proc: subprocess.Popen[str], client: CatalogClient, dataset: DatasetEntry) -> None:
+        self.proc = proc
+        self.client = client
+        self.dataset = dataset
+
+
 @pytest.fixture(scope="module")
-def server_instance() -> Generator[tuple[subprocess.Popen[str], DatasetEntry], None, None]:
+def server_instance() -> Generator[ServerInstance, None, None]:
     assert DATASET_FILEPATH.is_dir()
 
     env = os.environ.copy()
@@ -120,30 +127,30 @@ def server_instance() -> Generator[tuple[subprocess.Popen[str], DatasetEntry], N
     except Exception as e:
         print(f"Error during waiting for server to start: {e}")
 
-    client = rr.catalog.CatalogClient(CATALOG_URL)
+    client = CatalogClient(CATALOG_URL)
     dataset = client.get_dataset(name=DATASET_NAME)
 
-    resource = (server_process, dataset)
+    resource = ServerInstance(server_process, client, dataset)
     yield resource
 
     shutdown_process(server_process)
 
 
-def test_df_count(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:
+def test_df_count(server_instance: ServerInstance) -> None:
     """
     Tests count() on a dataframe which ensures we collect empty batches properly.
 
     See issue https://github.com/rerun-io/rerun/issues/10894 for additional context.
     """
-    (_process, dataset) = server_instance
+    dataset = server_instance.dataset
 
     count = dataset.dataframe_query_view(index="time_1", contents="/**").df().count()
 
     assert count > 0
 
 
-def test_df_aggregation(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:
-    (_process, dataset) = server_instance
+def test_df_aggregation(server_instance: ServerInstance) -> None:
+    dataset = server_instance.dataset
 
     results = (
         dataset.dataframe_query_view(index="time_1", contents="/**")
@@ -163,7 +170,7 @@ def test_df_aggregation(server_instance: tuple[subprocess.Popen[str], DatasetEnt
     assert results[0][1][0] == pa.scalar(50.0, type=pa.float32())
 
 
-def test_component_filtering(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:
+def test_component_filtering(server_instance: ServerInstance) -> None:
     """
     Cover the case where a user specifies a component filter on the client.
 
@@ -171,7 +178,7 @@ def test_component_filtering(server_instance: tuple[subprocess.Popen[str], Datas
     pushed into the query. Verify these both give the same results and that we don't
     get any nulls in that column.
     """
-    (_process, dataset) = server_instance
+    dataset = server_instance.dataset
 
     component_path = "/obj2:Points3D:positions"
 
@@ -197,8 +204,8 @@ def test_component_filtering(server_instance: tuple[subprocess.Popen[str], Datas
     assert filter_on_query == filter_on_dataframe
 
 
-def test_partition_ordering(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:
-    (_process, dataset) = server_instance
+def test_partition_ordering(server_instance: ServerInstance) -> None:
+    dataset = server_instance.dataset
 
     for time_index in ["time_1", "time_2", "time_3"]:
         streams = (
@@ -234,10 +241,24 @@ def test_partition_ordering(server_instance: tuple[subprocess.Popen[str], Datase
                         prior_timestamp = timestamp
 
 
-def test_url_generation(server_instance: tuple[subprocess.Popen[str], DatasetEntry]) -> None:
+def test_tables_to_arrow_reader(server_instance: ServerInstance) -> None:
+    dataset = server_instance.dataset
+
+    for rb in dataset.dataframe_query_view(index="time_1", contents="/**").to_arrow_reader():
+        assert rb.num_rows > 0
+
+    for partition_batch in dataset.partition_table().to_arrow_reader():
+        assert partition_batch.num_rows > 0
+
+    # TODO(tsaucer) Once OSS server supports table entries, uncomment this test
+    # for table_entry in client.table_entries()[0].to_arrow_reader():
+    #     assert table_entry.num_rows > 0
+
+
+def test_url_generation(server_instance: ServerInstance) -> None:
     from rerun.utilities.datafusion.functions import url_generation
 
-    (_process, dataset) = server_instance
+    dataset = server_instance.dataset
 
     udf = url_generation.partition_url_with_timeref_udf(dataset, "time_1")
 

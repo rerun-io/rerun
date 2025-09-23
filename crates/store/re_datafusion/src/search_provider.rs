@@ -113,7 +113,9 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
-        let request = self.request.clone();
+        let request = tonic::Request::new(self.request.clone())
+            .with_entry_id(self.dataset_id)
+            .map_err(|err| DataFusionError::External(Box::new(err)))?;
 
         let mut client = self.client.clone();
 

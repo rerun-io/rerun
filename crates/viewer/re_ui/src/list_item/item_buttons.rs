@@ -199,6 +199,8 @@ where
     /// The `alt_text` will also be used for the tooltip.
     ///
     /// See [`Self::with_button`] for more information.
+    ///
+    /// Sets [`Self::with_always_show_buttons`] to `true` (TODO(emilk/egui#7531)).
     #[inline]
     fn with_menu_button(
         self,
@@ -207,7 +209,7 @@ where
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
         let hover_text = alt_text.into();
-        self.with_button(|ui: &mut egui::Ui| {
+        self.with_always_show_buttons(true).with_button(|ui: &mut egui::Ui| {
             ui.add(
                 ui.small_icon_button_widget(icon, &hover_text)
                     .on_hover_text(hover_text)
@@ -217,6 +219,8 @@ where
     }
 
     /// Set the help text tooltip to be shown in the header.
+    ///
+    /// Sets [`Self::with_always_show_buttons`] to `true` (TODO(emilk/egui#7531)).
     #[inline]
     fn with_help_text(self, help: impl Into<egui::WidgetText> + 'a) -> Self {
         self.with_help_ui(|ui| {
@@ -225,6 +229,8 @@ where
     }
 
     /// Set the help markdown tooltip to be shown in the header.
+    ///
+    /// Sets [`Self::with_always_show_buttons`] to `true` (TODO(emilk/egui#7531)).
     #[inline]
     fn with_help_markdown(self, help: &'a str) -> Self {
         self.with_help_ui(|ui| {
@@ -233,8 +239,21 @@ where
     }
 
     /// Set the help UI closure to be shown in the header.
+    ///
+    /// Sets [`Self::with_always_show_buttons`] to `true` (TODO(emilk/egui#7531)).
     #[inline]
     fn with_help_ui(self, help: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
-        self.with_button(|ui: &mut egui::Ui| ui.help_button(help))
+        self.with_always_show_buttons(true)
+            .with_button(|ui: &mut egui::Ui| ui.help_button(help))
+    }
+}
+
+impl<'a> ListItemContentButtonsExt<'a> for ItemButtons<'a> {
+    fn buttons(&self) -> &Self {
+        self
+    }
+
+    fn buttons_mut(&mut self) -> &mut Self {
+        self
     }
 }

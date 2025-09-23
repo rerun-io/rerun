@@ -333,10 +333,6 @@ impl App {
             "remove copied text formatting",
             Arc::new(|ctx| {
                 ctx.output_mut(|o| {
-                    #[expect(deprecated)]
-                    if !o.copied_text.is_empty() {
-                        o.copied_text = re_format::remove_number_formatting(&o.copied_text);
-                    }
                     for command in &mut o.commands {
                         if let egui::output::OutputCommand::CopyText(text) = command {
                             *text = re_format::remove_number_formatting(text);
@@ -561,16 +557,25 @@ impl App {
         let Ok(url) = ViewerOpenUrl::from_context_expanded(
             store_hub,
             display_mode,
-            time_ctrl
-                .as_deref()
-                // Only update `when` fragment when paused.
-                .filter(|time_ctrl| matches!(time_ctrl.play_state(), PlayState::Paused)),
+            time_ctrl.as_deref(),
             selection,
         )
-        // We don't want the time range in the web url, as that actually leads
-        // to a subset of the current data! And is not in the fragment so
-        // would be added to history.
         .map(|mut url| {
+            // We don't want to update the url while playing, so we use the last paused time.
+            if let Some(fragment) = url.fragment_mut() {
+                fragment.when = time_ctrl.as_deref().and_then(|time_ctrl| {
+                    Some((
+                        *time_ctrl.timeline().name(),
+                        re_log_types::TimeCell {
+                            typ: time_ctrl.time_type(),
+                            value: time_ctrl.last_paused_time()?.floor().into(),
+                        },
+                    ))
+                });
+            }
+            // We don't want the time range in the web url, as that actually leads
+            // to a subset of the current data! And is not in the fragment so
+            // would be added to history.
             url.clear_time_range();
             url
         })
@@ -635,25 +640,29 @@ impl App {
                 }
             }
             SystemCommand::ActivateApp(app_id) => {
-                self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
+                if let Some(recording_id) = store_hub.active_store_id() {
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::LocalRecordings(recording_id.clone()));
+                } else {
+                    self.state.navigation.push_start_mode();
+                }
             }
 
             SystemCommand::CloseApp(app_id) => {
                 store_hub.close_app(&app_id);
             }
 
-            SystemCommand::ActivateRecordingOrTable(entry) => match &entry {
-                RecordingOrTable::Recording { store_id } => {
-                    self.state.navigation.replace(DisplayMode::LocalRecordings);
-                    store_hub.set_active_recording_id(store_id.clone());
+            SystemCommand::ActivateRecordingOrTable(entry) => {
+                match &entry {
+                    RecordingOrTable::Recording { store_id } => {
+                        store_hub.set_active_recording_id(store_id.clone());
+                    }
+                    RecordingOrTable::Table { .. } => {}
                 }
-                RecordingOrTable::Table { table_id } => {
-                    self.state
-                        .navigation
-                        .replace(DisplayMode::LocalTable(table_id.clone()));
-                }
-            },
+                self.state.navigation.replace(entry.display_mode());
+            }
 
             SystemCommand::CloseRecordingOrTable(entry) => {
                 // TODO(#9464): Find a better successor here.
@@ -726,6 +735,11 @@ impl App {
                 }
 
                 self.state.navigation.replace(display_mode);
+
+                egui_ctx.request_repaint(); // Make sure we actually see the new mode.
+            }
+            SystemCommand::ResetDisplayMode => {
+                self.state.navigation.push_start_mode();
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
@@ -848,7 +862,9 @@ impl App {
                         }
 
                         Item::StoreId(store_id) => {
-                            self.state.navigation.replace(DisplayMode::LocalRecordings);
+                            self.state
+                                .navigation
+                                .replace(DisplayMode::LocalRecordings(store_id.clone()));
                             store_hub.set_active_recording_id(store_id.clone());
                         }
 
@@ -858,9 +874,7 @@ impl App {
                         | Item::ComponentPath(_)
                         | Item::Container(_)
                         | Item::View(_)
-                        | Item::DataResult(_, _) => {
-                            self.state.navigation.replace(DisplayMode::LocalRecordings);
-                        }
+                        | Item::DataResult(_, _) => {}
                     }
                 }
 
@@ -1369,7 +1383,7 @@ impl App {
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.navigation.peek() {
-                DisplayMode::LocalRecordings
+                DisplayMode::LocalRecordings(_)
                 | DisplayMode::RedapEntry(_)
                 | DisplayMode::RedapServer(_) => {
                     self.state.navigation.push(DisplayMode::ChunkStoreBrowser);

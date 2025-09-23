@@ -1,8 +1,8 @@
 use re_types::{
+    Archetype as _, AsComponents as _, ComponentBatch as _,
     archetypes::DepthImage,
     components::{DepthMeter, ImageBuffer, ImageFormat},
     datatypes::{self, ChannelDatatype},
-    Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]
