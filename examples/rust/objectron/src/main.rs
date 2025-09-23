@@ -310,7 +310,7 @@ struct Args {
     per_frame_sleep: Option<Duration>,
 }
 
-fn parse_duration(arg: &str) -> Result<std::time::Duration, anyhow::Error> {
+fn parse_duration(arg: &str) -> anyhow::Result<std::time::Duration> {
     let seconds = arg.parse()?;
     Ok(std::time::Duration::try_from_secs_f64(seconds)?)
 }
