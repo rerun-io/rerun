@@ -30,10 +30,12 @@ pub struct TimestampFilter {
     /// The kind of temporal filter to use.
     kind: TimestampFilterKind,
 
-    /// The low bound of the filter (for [`Operator::After`] and [`Operator::Between`]).
+    /// The low bound of the filter (for [`TimestampFilterKind::After`] and
+    /// [`TimestampFilterKind::Between`]).
     low_bound_timestamp: EditableTimestamp,
 
-    /// The high bound of the filter (for [`Operator::Before`] and [`Operator::Between`]).
+    /// The high bound of the filter (for [`TimestampFilterKind::Before`] and
+    /// [`TimestampFilterKind::Between`]).
     high_bound_timestamp: EditableTimestamp,
 }
 
