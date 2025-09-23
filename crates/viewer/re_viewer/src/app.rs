@@ -17,7 +17,7 @@ use re_viewer_context::{
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, RecordingOrTable,
     StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
     ViewClassRegistry, ViewClassRegistryError, command_channel,
-    open_url::{ViewerOpenUrl, combine_with_base_url},
+    open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
     santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
@@ -431,14 +431,14 @@ impl App {
 
     /// Open a content URL in the viewer.
     pub fn open_url_or_file(&self, url: &str) {
-        let follow_if_http = false;
-        let select_redap_source_when_loaded = true;
-
         if let Ok(url) = ViewerOpenUrl::from_str(url) {
             url.open(
                 &self.egui_ctx,
-                follow_if_http,
-                select_redap_source_when_loaded,
+                &OpenUrlOptions {
+                    follow_if_http: false,
+                    select_redap_source_when_loaded: true,
+                    show_loader: true,
+                },
                 &self.command_sender,
             );
         } else {
@@ -734,7 +734,14 @@ impl App {
                     return;
                 }
 
-                self.state.navigation.replace(display_mode);
+                if matches!(display_mode, DisplayMode::Loading(_)) {
+                    self.state
+                        .selection_state
+                        .set_selection(re_viewer_context::ItemCollection::default());
+                    self.state.navigation.push(display_mode);
+                } else {
+                    self.state.navigation.replace(display_mode);
+                }
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
@@ -1393,7 +1400,7 @@ impl App {
                     self.state.navigation.pop();
                 }
 
-                DisplayMode::Settings | DisplayMode::LocalTable(_) => {
+                DisplayMode::Settings | DisplayMode::Loading(_) | DisplayMode::LocalTable(_) => {
                     re_log::debug!(
                         "Cannot toggle chunk store browser from current display mode: {:?}",
                         self.state.navigation.peek()
@@ -2747,7 +2754,11 @@ impl eframe::App for App {
 
         // Make sure some app is active
         // Must be called before `read_context` below.
-        if store_hub.active_app().is_none() {
+        if let DisplayMode::Loading(source) = self.state.navigation.peek() {
+            if !self.msg_receive_set().contains(source) {
+                self.state.navigation.pop();
+            }
+        } else if store_hub.active_app().is_none() {
             let apps: std::collections::BTreeSet<&ApplicationId> = store_hub
                 .store_bundle()
                 .entity_dbs()
@@ -2821,15 +2832,15 @@ impl eframe::App for App {
                         self.command_sender.send_ui(cmd);
                     }
                     re_ui::CommandPaletteAction::OpenUrl(url_desc) => {
-                        let follow_if_http = false;
-                        let select_redap_source_when_loaded = true;
-
                         match url_desc.url.parse::<ViewerOpenUrl>() {
                             Ok(url) => {
                                 url.open(
                                     egui_ctx,
-                                    follow_if_http,
-                                    select_redap_source_when_loaded,
+                                    &OpenUrlOptions {
+                                        follow_if_http: false,
+                                        select_redap_source_when_loaded: true,
+                                        show_loader: true,
+                                    },
                                     &self.command_sender,
                                 );
                             }

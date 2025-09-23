@@ -201,18 +201,6 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    fn loading_ui(ui: &mut egui::Ui) -> egui::Response {
-        Frame::new()
-            .inner_margin(16.0)
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.spinner();
-                    ui.label("Loading table…");
-                });
-            })
-            .response
-    }
-
     /// Display the table.
     pub fn show(
         self,
@@ -232,13 +220,17 @@ impl<'a> DataFusionTableWidget<'a> {
         match session_ctx.table_exist(table_ref.clone()) {
             Ok(true) => {}
             Ok(false) => {
-                Self::loading_ui(ui).on_hover_text("Waiting…");
+                ui.loading_screen(
+                    "Loading table:",
+                    url.as_deref().or(title.as_deref()).unwrap_or(""),
+                );
                 return;
             }
             Err(err) => {
-                Self::loading_ui(ui).on_hover_ui(|ui| {
-                    ui.label(err.to_string());
-                });
+                ui.loading_screen(
+                    "Error while loading table:",
+                    RichText::from(err.to_string()).color(ui.style().visuals.error_fg_color),
+                );
                 return;
             }
         }
@@ -291,7 +283,10 @@ impl<'a> DataFusionTableWidget<'a> {
                 // still processing, nothing yet to show
                 //TODO(ab): it can happen that we're stuck in the state. We should detect it and
                 //produce an error
-                Self::loading_ui(ui);
+                ui.loading_screen(
+                    "Loading table:",
+                    url.as_deref().or(title.as_deref()).unwrap_or(""),
+                );
                 return;
             }
         };

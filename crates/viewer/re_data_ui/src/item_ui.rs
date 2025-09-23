@@ -280,11 +280,11 @@ fn instance_path_button_to_ex(
         ui.selectable_label_with_icon(
             instance_path_icon(&query.timeline(), db, instance_path),
             text,
-            ctx.selection().contains_item(&item),
+            ctx.is_selected_or_loading(&item),
             re_ui::LabelStyle::Normal,
         )
     } else {
-        ui.selectable_label(ctx.selection().contains_item(&item), text)
+        ui.selectable_label(ctx.is_selected_or_loading(&item), text)
     };
 
     let response = response.on_hover_ui(|ui| {
@@ -472,7 +472,7 @@ pub fn data_blueprint_button_to(
 ) -> egui::Response {
     let item = Item::DataResult(view_id, InstancePath::entity_all(entity_path.clone()));
     let response = ui
-        .selectable_label(ctx.selection().contains_item(&item), text)
+        .selectable_label(ctx.is_selected_or_loading(&item), text)
         .on_hover_ui(|ui| {
             let include_subtree = false;
             entity_hover_card_ui(ui, ctx, query, db, entity_path, include_subtree);
@@ -624,7 +624,7 @@ pub fn app_id_button_ui(
     let response = ui.selectable_label_with_icon(
         &icons::APPLICATION,
         app_id.to_string(),
-        ctx.selection().contains_item(&item),
+        ctx.is_selected_or_loading(&item),
         re_ui::LabelStyle::Normal,
     );
 
@@ -645,7 +645,7 @@ pub fn data_source_button_ui(
     let response = ui.selectable_label_with_icon(
         &icons::DATA_SOURCE,
         data_source.to_string(),
-        ctx.selection().contains_item(&item),
+        ctx.is_selected_or_loading(&item),
         re_ui::LabelStyle::Normal,
     );
 
@@ -756,7 +756,7 @@ pub fn entity_db_button_ui(
     let mut list_item = ui
         .list_item()
         .active(ctx.store_context.is_active(&store_id))
-        .selected(ctx.selection().contains_item(&item));
+        .selected(ctx.is_selected_or_loading(&item));
 
     if ctx.hovered().contains_item(&item) {
         list_item = list_item.force_hovered(true);
@@ -841,7 +841,7 @@ pub fn table_id_button_ui(
 
     let mut list_item = ui
         .list_item()
-        .selected(ctx.selection().contains_item(&item))
+        .selected(ctx.is_selected_or_loading(&item))
         .active(ctx.active_table_id() == Some(table_id));
 
     if ctx.hovered().contains_item(&item) {

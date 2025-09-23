@@ -1,4 +1,4 @@
-use std::str::FromStr as _;
+use std::{borrow::Cow, str::FromStr as _};
 
 use ahash::HashMap;
 use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
@@ -17,7 +17,8 @@ use re_viewer_context::{
     ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
     RecordingConfig, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
     SystemCommandSender as _, TableStore, ViewClassRegistry, ViewStates, ViewerContext,
-    blueprint_timeline, open_url,
+    blueprint_timeline,
+    open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -25,7 +26,7 @@ use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
     app::web_viewer_base_url, app_blueprint::AppBlueprint, event::ViewerEventDispatcher,
-    navigation::Navigation, ui::settings_screen_ui,
+    navigation::Navigation, open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -548,7 +549,8 @@ impl AppState {
                             DisplayMode::LocalRecordings(..)
                             | DisplayMode::LocalTable(..)
                             | DisplayMode::RedapEntry(..)
-                            | DisplayMode::RedapServer(..) => {
+                            | DisplayMode::RedapServer(..)
+                            | DisplayMode::Loading(..) => {
                                 let show_blueprints =
                                     matches!(display_mode, DisplayMode::LocalRecordings(_));
                                 let resizable = show_blueprints;
@@ -647,6 +649,18 @@ impl AppState {
                                 } else {
                                     redap_servers.server_central_panel_ui(&ctx, ui, origin);
                                 }
+                            }
+
+                            DisplayMode::Loading(source) => {
+                                let source = if let Ok(url) =
+                                    ViewerOpenUrl::from_data_source(source)
+                                {
+                                    Cow::Owned(ViewerOpenUrlDescription::from_url(&url).to_string())
+                                } else {
+                                    // In practice this shouldn't happen.
+                                    Cow::Borrowed("<unknown>")
+                                };
+                                ui.loading_screen("Loading data source:", &*source);
                             }
 
                             DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // Handled above
@@ -877,17 +891,17 @@ pub(crate) fn recording_config_entry<'cfgs>(
 ///
 /// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
 fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &CommandSender) {
-    let follow_if_http = false;
-
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 if let Ok(url) = open_url::ViewerOpenUrl::from_str(&open_url.url) {
-                    let select_redap_source_when_loaded = !open_url.new_tab;
                     url.open(
                         egui_ctx,
-                        follow_if_http,
-                        select_redap_source_when_loaded,
+                        &open_url::OpenUrlOptions {
+                            follow_if_http: false,
+                            select_redap_source_when_loaded: !open_url.new_tab,
+                            show_loader: !open_url.new_tab,
+                        },
                         command_sender,
                     );
 
