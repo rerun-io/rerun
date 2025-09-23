@@ -480,7 +480,7 @@ impl ViewerOpenUrl {
         if options.show_loader
             && let Some(data_source) = self.get_data_source()
         {
-            // It doesn't matter if this is overriden by some command below, as that most likely
+            // It doesn't matter if this is overridden by some command below, as that most likely
             // means we want to skip the loading screen anyway.
             command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::Loading(
                 Box::new(data_source),
