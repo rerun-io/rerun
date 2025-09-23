@@ -304,6 +304,7 @@ impl EditableTimestamp {
         }
     }
 
+    /// UI for a single timestamp entry.
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
