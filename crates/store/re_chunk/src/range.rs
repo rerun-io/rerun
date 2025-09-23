@@ -193,6 +193,8 @@ impl Chunk {
     /// See [`RangeQueryOptions::keep_extra_timelines`], [`RangeQueryOptions::keep_extra_components`],
     /// [`Self::timeline_sliced`] and [`Self::component_sliced`] if you do want to filter this
     /// extra data.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     //
     // TODO(apache/arrow-rs#5375): Since we don't have access to arrow's ListView yet, we must actually clone the
     // data if the chunk requires sorting.
@@ -271,10 +273,26 @@ impl Chunk {
         }
     }
 
-    /// TODO: doc string
-    /// TODO: add tests
+    /// Runs a [`RangeQuery`] filter on all components of a [`Chunk`].
+    ///
+    /// This behaves as a row-based filter: the result is a new [`Chunk`] that is vertically
+    /// sliced, sorted and filtered in order to only contain the row(s) relevant for the
+    /// specified `query`.
+    ///
+    /// The resulting [`Chunk`] is guaranteed to contain all the same columns has the queried
+    /// chunk: there is no horizontal slicing going on.
+    ///
+    /// An empty [`Chunk`] (i.e. 0 rows, but N columns) is returned if the `query` yields nothing.
+    ///
+    /// Unless specified otherwise in the query's options, the resulting chunk doesn't discard any column information.
+    /// Therefore, you can find extra relevant information by inspecting the data, for examples timestamps on other timelines.
+    /// See [`RangeQueryOptions::keep_extra_timelines`].
+    /// [`Self::timeline_sliced`] if you do want to filter this extra data.
     ///
     /// Returns an owned chunk only if any slicing on any timeline was required.
+    /// If the chunk was static or otherwise fully contained in the query's range, the returned chunk is `self`.
+    ///
+    /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     pub fn range_all_components(&self, query: &RangeQuery) -> Cow<'_, Self> {
         if self.is_empty() {
             return Cow::Borrowed(self);
