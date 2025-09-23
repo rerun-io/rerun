@@ -4,7 +4,7 @@ order: 984
 ---
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
-## Python SDK: Removed `blocking` argument for `flush`
+## Python SDK: removed `blocking` argument for `flush`
 Use the new `timeout_sec` argument instead.
 For non-blocking, use `timeout_sec=0`.
 Mostly you can just call `.flush()` with no arguments.
