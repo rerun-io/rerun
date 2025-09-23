@@ -2,6 +2,7 @@
 
 use std::time::Duration;
 
+use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
 
 use re_viewer::viewer_test_utils;
@@ -35,4 +36,48 @@ async fn settings_screen() {
         Duration::from_secs(5),
     );
     harness.snapshot("settings_screen");
+}
+
+/// Tests the colormap selector UI with snapshot testing.
+#[tokio::test]
+async fn colormap_selector_ui() {
+    use re_test_context::TestContext;
+    use re_types::components::Colormap;
+    use re_viewer_context::{MaybeMutRef, ViewerContext};
+
+    let mut test_context = TestContext::new();
+    test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
+    re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering()
+        .with_size((200.0, 300.0))
+        .build_ui(|ui| {
+            test_context.run(&ui.ctx().clone(), |ctx: &ViewerContext<'_>| {
+                ui.horizontal(|ui| {
+                    ui.label("Colormap:");
+
+                    let mut test_colormap = Colormap::Spectral;
+                    let mut colormap_ref = MaybeMutRef::MutRef(&mut test_colormap);
+
+                    re_viewer_context::gpu_bridge::colormap_edit_or_view_ui(
+                        ctx,
+                        ui,
+                        &mut colormap_ref,
+                    );
+                });
+            });
+        });
+
+    harness.run();
+    harness.fit_contents();
+    harness.snapshot("colormap_selector_closed");
+
+    harness.set_size(egui::Vec2::new(200.0, 250.0));
+    harness.get_by_role(Role::ComboBox).click(); // open combo box
+    harness.run();
+
+    harness.fit_contents();
+    harness.run();
+    harness.snapshot("colormap_selector_open");
 }

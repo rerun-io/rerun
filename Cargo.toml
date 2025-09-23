@@ -802,13 +802,13 @@ egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
 emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 
 # Useful while developing:
-# ecolor = { path = "../../egui/crates/ecolor" }
-# eframe = { path = "../../egui/crates/eframe" }
-# egui = { path = "../../egui/crates/egui" }
-# egui_extras = { path = "../../egui/crates/egui_extras" }
-# egui_kittest = { path = "../../egui/crates/egui_kittest" }
-# egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
-# emath = { path = "../../egui/crates/emath" }
+# ecolor = { path = "../egui/crates/ecolor" }
+# eframe = { path = "../egui/crates/eframe" }
+# egui = { path = "../egui/crates/egui" }
+# egui_extras = { path = "../egui/crates/egui_extras" }
+# egui_kittest = { path = "../egui/crates/egui_kittest" }
+# egui-wgpu = { path = "../egui/crates/egui-wgpu" }
+# emath = { path = "../egui/crates/emath" }
 # wgpu = { path = "../../wgpu/wgpu" }
 
 egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
