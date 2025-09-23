@@ -38,6 +38,7 @@ def write_dataframe_to_rrd(dataset: DatasetEntry, output_dir: Path, partitions: 
 
 
 def mark_as_scalars(contents: pa.Array, item: ComponentColumnDescriptor) -> tuple[pa.Array, str, ComponentDescriptor]:
+    # TODO(nick): Check if we need to mangle the entity path?
     entity_path = str(Path(item.entity_path) / item.component.replace(":", "/"))
     component_content = contents.to_arrow_table()[item.name].combine_chunks()
     descriptor = ComponentDescriptor(
@@ -60,8 +61,60 @@ def cast_to_scalars(contents: pa.Array, item: ComponentColumnDescriptor) -> tupl
         )
     else:
         component_content = component_content.flatten()
-    print(f"{component_content=}")
     return component_content, entity_path, descriptor
+
+
+def mark_as_video(contents: pa.Array, item: ComponentColumnDescriptor) -> tuple[pa.Array, str, ComponentDescriptor]:
+    # TODO(nick): Check if we need to mangle the entity path?
+    entity_path = str(Path(item.entity_path) / item.component.replace(":", "/"))
+    component_content = contents.to_arrow_table()[item.name].combine_chunks()
+    descriptor = ComponentDescriptor(
+        component="VideoStream:sample",
+        component_type="rerun.components.VideoSample",
+        archetype="rerun.archetypes.VideoStream",
+    )
+    try:
+        # Attempt 1
+        # component_content = pa.UInt8Array.from_buffers(
+        #     pa.uint8(),
+        #     len(component_content),
+        #     [None, component_content.buffers()[2]],
+        # )
+        # Attempt 2
+        # component_content = component_content.flatten().cast(pa.uint8())
+        # Attempt N + 1
+        all_bytes = []
+        for blob in component_content:
+            blob_bytes = []
+            for byte in blob[0].as_py():
+                blob_bytes.append(byte)
+            all_bytes.append([blob_bytes])
+        component_content = pa.array(all_bytes, pa.list_(pa.list_(pa.uint8())))
+        print(f"{component_content.type=}")
+    except Exception as e:
+        raise e
+        raise ValueError(f"Could not convert {item.name} to UInt8Array: {component_content}") from e
+
+    return component_content, entity_path, descriptor
+
+
+def get_codec(contents: pa.Array, item: ComponentColumnDescriptor) -> tuple[pa.Array, str, ComponentDescriptor]:
+    entity_path = str(Path(item.entity_path) / item.component.replace(":", "/").replace("format", "data"))
+    component_content = contents.to_arrow_table()[item.name].combine_chunks()
+    codec_descriptor = ComponentDescriptor(
+        component="VideoStream:codec",
+        component_type="rerun.components.VideoCodec",
+        archetype="rerun.archetypes.VideoStream",
+    )
+    format = component_content[0][0].as_py().lower()
+    print(f"{component_content=}")
+    if "h264" in format:
+        codec_content = pa.array([rr.components.VideoCodec.auto(format).value], type=pa.uint32())
+    elif "h265" in format:
+        codec_content = pa.array([rr.components.VideoCodec.auto(format).value], type=pa.uint32())
+    else:
+        raise ValueError(f"Could not infer codec from {item.name}")
+    return codec_content, entity_path, codec_descriptor
 
 
 def write_partition_to_rrd(dataset: DatasetEntry, output_dir: Path, partition: str) -> None:
@@ -102,7 +155,7 @@ def write_partition_to_rrd(dataset: DatasetEntry, output_dir: Path, partition: s
             entity_path = item.entity_path
             try:
                 if False:
-                    component_content, entity_path, descriptor = cast_to_scalars(contents, item)
+                    timelines = {}
                 else:
                     descriptor = ComponentDescriptor(
                         component=item.component,
