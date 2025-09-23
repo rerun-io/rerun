@@ -184,10 +184,10 @@ impl ::re_types_core::Loggable for Mat4x4 {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
-        if let Some(nulls) = arrow_data.nulls() {
-            if nulls.null_count() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
+        if let Some(nulls) = arrow_data.nulls()
+            && nulls.null_count() != 0
+        {
+            return Err(DeserializationError::missing_data());
         }
         Ok({
             let slice = {
