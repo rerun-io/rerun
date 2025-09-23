@@ -167,8 +167,8 @@ fn colormap_cyan_to_yellow_srgb(t: f32) -> vec3f {
 }
 
 /// Returns a gamma-space sRGB in 0-1 range.
-/// This is a polynomial approximation from Spectral color map, assuming `t` is
-/// normalized (it will be saturated no matter what).
+/// The input (`t`) must be in the 0-1 range.
+/// This is a polynomial approximation from Spectral color map.
 fn colormap_spectral_srgb(t: f32) -> vec3f {
     let c0 = vec3f(0.584384543712538, 0.006424432561482, 0.231061410304836);
     let c1 = vec3f(3.768572852617221, 2.487082885717158, 2.821174312084977);
