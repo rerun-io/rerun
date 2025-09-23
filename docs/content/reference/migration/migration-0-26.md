@@ -7,3 +7,5 @@ order: 984
 ## Python SDK: Removed `blocking` argument for `flush`
 Use the new `timeout_sec` argument instead.
 For non-blocking, use `timeout_sec=0`.
+Mostly you can just call `.flush()` with no arguments.
+That will block until all writes either finishes or an error occurs (e.g. the gRPC connection is severed).
