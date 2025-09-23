@@ -182,7 +182,10 @@ impl ComparisonOperator {
 /// The UI state for a filter operation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum FilterOperation {
-    //TODO: order by complexity
+    NullableBoolean(NullableBooleanFilter),
+
+    NonNullableBoolean(NonNullableBooleanFilter),
+
     /// Compare an integer value to a constant.
     ///
     /// For columns of lists of integers, only the first value is considered.
@@ -209,10 +212,6 @@ pub enum FilterOperation {
 
     //TODO(ab): parameterise that over multiple string ops, e.g. "contains", "starts with", etc.
     StringContains(String),
-
-    NullableBoolean(NullableBooleanFilter),
-
-    NonNullableBoolean(NonNullableBooleanFilter),
 
     Timestamp(TimestampFilter),
 }
@@ -351,7 +350,6 @@ impl FilterOperationUdf {
                 TypeSignature::Numeric(1)
             }
 
-            //TODO: is that correct?
             FilterOperation::Timestamp(_) => TypeSignature::Any(1),
 
             // TODO(ab): add support for other filter types?
@@ -457,7 +455,7 @@ impl FilterOperationUdf {
                 let array = datafusion::common::cast::$conv_fun(array)?;
                 let result: BooleanArray = array
                     .iter()
-                    .map(|x| x.map(|v| timestamp_filter.resolve().$apply_fun(v)))
+                    .map(|x| x.map(|v| timestamp_filter.$apply_fun(v)))
                     .collect();
 
                 Ok(result)

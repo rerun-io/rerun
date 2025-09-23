@@ -137,13 +137,12 @@ impl FilterState {
                         // so we must invalidate if the filter at a given index changes its
                         // nature
                         let filter_id = ui.make_persistent_id(egui::Id::new(index).with(
-                            //TODO: order by complexity
                             match filter.operation {
+                                FilterOperation::NonNullableBoolean(_) => "non_nullable_bool",
+                                FilterOperation::NullableBoolean(_) => "nullable_bool",
                                 FilterOperation::IntCompares { .. } => "int",
                                 FilterOperation::FloatCompares { .. } => "float",
                                 FilterOperation::StringContains(_) => "string",
-                                FilterOperation::NonNullableBoolean(_) => "non_nullable_bool",
-                                FilterOperation::NullableBoolean(_) => "nullable_bool",
                                 FilterOperation::Timestamp(_) => "timestamp",
                             },
                         ));
@@ -319,7 +318,14 @@ impl SyntaxHighlighting for TimestampFormatted<'_, FilterOperation> {
         builder.append_keyword(" ");
 
         match self.inner {
-            //TODO: order by complexity
+            FilterOperation::NonNullableBoolean(boolean_filter) => {
+                builder.append_primitive(&boolean_filter.operand_text());
+            }
+
+            FilterOperation::NullableBoolean(boolean_filter) => {
+                builder.append_primitive(&boolean_filter.operand_text());
+            }
+
             FilterOperation::IntCompares { value, operator: _ } => {
                 if let Some(value) = value {
                     builder.append_primitive(&re_format::format_int(*value));
@@ -338,14 +344,6 @@ impl SyntaxHighlighting for TimestampFormatted<'_, FilterOperation> {
 
             FilterOperation::StringContains(query) => {
                 builder.append_string_value(query);
-            }
-
-            FilterOperation::NonNullableBoolean(boolean_filter) => {
-                builder.append_primitive(&boolean_filter.operand_text());
-            }
-
-            FilterOperation::NullableBoolean(boolean_filter) => {
-                builder.append_primitive(&boolean_filter.operand_text());
             }
 
             FilterOperation::Timestamp(timestamp_filter) => {
@@ -505,9 +503,7 @@ impl FilterOperation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::filters::{
-        NonNullableBooleanFilter, NullableBooleanFilter, ResolvedTimestampFilter,
-    };
+    use crate::filters::{NonNullableBooleanFilter, NullableBooleanFilter, TimestampFilter};
 
     fn test_cases() -> Vec<(FilterOperation, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
@@ -516,18 +512,36 @@ mod tests {
             use FilterOperation::*;
             let _op = StringContains(String::new());
             match _op {
-                //TODO: order by complexity
-                IntCompares { .. }
+                NonNullableBoolean(_)
+                | NullableBoolean(_)
+                | IntCompares { .. }
                 | FloatCompares { .. }
                 | StringContains(_)
-                | NonNullableBoolean(_)
-                | NullableBoolean(_)
                 | Timestamp(_) => {}
             }
         };
 
         [
-            //TODO: order by complexity
+            (
+                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
+                "boolean_equals_true",
+            ),
+            (
+                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
+                "boolean_equals_false",
+            ),
+            (
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsTrue),
+                "nullable_boolean_equals_true",
+            ),
+            (
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsFalse),
+                "nullable_boolean_equals_false",
+            ),
+            (
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
+                "nullable_boolean_equals_null",
+            ),
             (
                 FilterOperation::IntCompares {
                     operator: ComparisonOperator::Eq,
@@ -565,32 +579,16 @@ mod tests {
                 "string_contains_empty",
             ),
             (
-                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
-                "boolean_equals_true",
+                FilterOperation::Timestamp(TimestampFilter::after(
+                    jiff::Timestamp::from_millisecond(1_000_000_000).unwrap(),
+                )),
+                "timestamp_after",
             ),
             (
-                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
-                "boolean_equals_false",
-            ),
-            (
-                FilterOperation::NullableBoolean(NullableBooleanFilter::IsTrue),
-                "nullable_boolean_equals_true",
-            ),
-            (
-                FilterOperation::NullableBoolean(NullableBooleanFilter::IsFalse),
-                "nullable_boolean_equals_false",
-            ),
-            (
-                FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
-                "nullable_boolean_equals_null",
-            ),
-            (
-                FilterOperation::Timestamp(
-                    ResolvedTimestampFilter::After(
-                        jiff::Timestamp::from_millisecond(1_000_000_000).unwrap(),
-                    )
-                    .into(),
-                ),
+                FilterOperation::Timestamp(TimestampFilter::between(
+                    jiff::Timestamp::from_millisecond(1_000_000_000).unwrap(),
+                    jiff::Timestamp::from_millisecond(1_000_000_000).unwrap(),
+                )),
                 "timestamp_after",
             ),
             //TODO: add more
