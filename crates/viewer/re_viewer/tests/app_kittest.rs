@@ -42,7 +42,7 @@ async fn settings_screen() {
 }
 
 /// Tests the colormap selector UI with snapshot testing.
-/// This is defined here instead of in re_viewer/tests because it depends on `re_test_context`,
+/// This is defined here instead of in `re_viewer/tests` because it depends on `re_test_context`,
 /// which depends on `re_viewer_context`.
 #[test]
 fn colormap_selector_ui() {
