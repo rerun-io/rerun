@@ -573,6 +573,8 @@ fn receiver_ui(
         return;
     };
 
+    let selected = ctx.is_selected_or_loading(&Item::DataSource(receiver.clone()));
+
     let label_content = re_ui::list_item::LabelContent::new(string)
         .with_icon_fn(|ui, rect, _| {
             ui.put(rect, egui::Spinner::new());
@@ -587,7 +589,6 @@ fn receiver_ui(
             }
         });
 
-    let selected = ctx.is_selected_or_loading(&Item::DataSource(receiver.clone()));
     if show_hierarchal {
         ui.list_item()
             .selected(selected)

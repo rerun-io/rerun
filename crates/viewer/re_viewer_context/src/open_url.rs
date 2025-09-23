@@ -437,13 +437,16 @@ impl ViewerOpenUrl {
         self.sharable_url(None).map(SystemCommand::CopyViewerUrl)
     }
 
+    /// Get the data source related to this link, if any.
     pub fn get_data_source(&self) -> Option<SmartChannelSource> {
         match &self {
             Self::RedapCatalog(_) | Self::RedapEntry(_) | Self::IntraRecordingSelection(_) => None,
+
             Self::RrdHttpUrl(url) => Some(SmartChannelSource::RrdHttpStream {
                 url: url.to_string(),
                 follow: false,
             }),
+            #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path_buf) => Some(SmartChannelSource::File(path_buf.clone())),
             Self::RedapDatasetPartition(uri) => Some(SmartChannelSource::RedapGrpcStream {
                 uri: uri.clone(),

@@ -742,9 +742,10 @@ impl App {
                     self.state
                         .selection_state
                         .set_selection(re_viewer_context::ItemCollection::default());
+                    self.state.navigation.push(display_mode);
+                } else {
+                    self.state.navigation.replace(display_mode);
                 }
-
-                self.state.navigation.replace(display_mode);
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
@@ -2757,7 +2758,11 @@ impl eframe::App for App {
 
         // Make sure some app is active
         // Must be called before `read_context` below.
-        if store_hub.active_app().is_none() {
+        if let DisplayMode::Loading(source) = self.state.navigation.peek() {
+            if !self.msg_receive_set().contains(source) {
+                self.state.navigation.pop();
+            }
+        } else if store_hub.active_app().is_none() {
             let apps: std::collections::BTreeSet<&ApplicationId> = store_hub
                 .store_bundle()
                 .entity_dbs()
