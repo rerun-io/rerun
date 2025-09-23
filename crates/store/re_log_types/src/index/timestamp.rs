@@ -168,7 +168,7 @@ impl Timestamp {
             TimestampFormatKind::UnixEpoch => {
                 format!(
                     "{}{}",
-                    timestamp.as_second(),
+                    re_format::format_int(timestamp.as_second()),
                     format_fractional_nanos(timestamp.subsec_nanosecond())
                 )
             }
