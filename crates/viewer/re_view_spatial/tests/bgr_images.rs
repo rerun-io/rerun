@@ -10,7 +10,7 @@ use re_test_context::{
 };
 use re_test_viewport::TestContextExt as _;
 use re_types::{
-    Archetype, blueprint::components::BackgroundKind, datatypes::ColorModel,
+    Archetype as _, blueprint::components::BackgroundKind, datatypes::ColorModel,
     image::ImageChannelType,
 };
 use re_viewer_context::{ViewClass as _, ViewId};
