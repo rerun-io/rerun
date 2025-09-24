@@ -200,7 +200,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         if fallback_token:
             self._fallback_token = fallback_token
 
-        def handle_msg(_widget: Any, content: Any, _buffers: list[bytes]) -> None:
+        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:  # noqa: ARG002
             if isinstance(content, str):
                 if content == "ready":
                     self._on_ready()
