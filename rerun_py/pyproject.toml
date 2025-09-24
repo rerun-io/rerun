@@ -145,8 +145,8 @@ lint.select = [
   "ANN", # Ensure all code is properly annotated.
   "ARG", # Detect unused arguments
   "B",   # flake8-bugbear lints
-  "COM", # Trailing-comma-related rules
   "C4",  # Comprehension-related rules
+  "COM", # Trailing-comma-related rules
   "D",   # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
   "E",   # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   # "ERA",   # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)
@@ -154,14 +154,14 @@ lint.select = [
   "FA",      # Force from __future__ import annotations
   "I",       # Isort
   "ISC",     # Ensure implicit string concat syntax
-  "TC",      # Ensure that all type comments are valid
-  "TID",     # flake8-tidy-imports
-  "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-  "UP",      # pyupgrade (ensures idomatic code for supported python version)
   "PIE",     # flake8-pic: various idomatic python lints
   "PLW1514", # Force setting `encoding` for open calls. This is in order to prevent issues when opening utf8 files on windows where the default encoding may depend on the active locale. https://docs.astral.sh/ruff/rules/unspecified-encoding/
-  "YTT",     # Various checks on the use of `sys.version_info` and related.
   "RUF027",  # Ensure that strings which look like format-strings have the `f` prefix
+  "TC",      # Ensure that all type comments are valid
+  "TID",     # flake8-tidy-imports
+  "UP",      # pyupgrade (ensures idomatic code for supported python version)
+  "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  "YTT",     # Various checks on the use of `sys.version_info` and related.
 ]
 
 lint.unfixable = [

@@ -14561,19 +14561,6 @@ packages:
   version: 1.2.5
   sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
   requires_dist:
-  - grpclib
-  - stringcase
-  - dataclasses ; python_full_version < '3.7'
-  - backports-datetime-fromisoformat ; python_full_version < '3.7'
-  - black ; extra == 'compiler'
-  - jinja2 ; extra == 'compiler'
-  - protobuf ; extra == 'compiler'
-  requires_python: '>=3.6'
-- pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
-  name: betterproto
-  version: 1.2.5
-  sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
-  requires_dist:
   - dataclasses ; python_full_version < '3.7'
   - backports-datetime-fromisoformat ; python_full_version < '3.7'
   - grpclib
@@ -33876,7 +33863,7 @@ packages:
 - pypi: rerun_py
   name: rerun-sdk
   version: 0.26.0a1+dev
-  sha256: 5cdad29621e4e66384a5655c35205f44aebfe9e30f2c900c8aa92521b18a1059
+  sha256: ccc72212cec266e8609ef5b0144daa0ed59af63fdea2478fa066adb4b138da49
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
