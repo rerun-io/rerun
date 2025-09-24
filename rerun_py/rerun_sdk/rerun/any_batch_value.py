@@ -155,7 +155,7 @@ class AnyBatchValue(ComponentBatchLike):
         value:
             The data to be logged as a component.
         drop_untyped_nones:
-            If True, any components that are None will be dropped unless they have been
+            If True, any components that are either None or `[]` will be dropped unless they have been
             previously logged with a type.
 
         """
@@ -176,9 +176,9 @@ class AnyBatchValue(ComponentBatchLike):
                 self.pa_array = value.as_arrow_array()
             else:
                 if pa_type is None:
-                    if value is None:
+                    if value is None or value == []:
                         if not drop_untyped_nones:
-                            raise ValueError("Cannot convert None to arrow array. Type is unknown.")
+                            raise ValueError(f"Cannot convert {value} to arrow array without an explicit type")
                     else:
                         self.pa_array = _parse_arrow_array(value, pa_type=None, np_type=np_type, descriptor=descriptor)
                 else:
@@ -239,7 +239,7 @@ class AnyBatchValue(ComponentBatchLike):
         value:
             The data to be logged as a component.
         drop_untyped_nones:
-            If True, any components that are None will be dropped unless they have been
+            If True, any components that are either None or `[]` will be dropped unless they have been
             previously logged with a type.
 
         """
