@@ -86,6 +86,9 @@ def _fallback_parse(
     np_value = np.atleast_1d(np.asarray(value, dtype=np_type))
     try:
         pa_array = pa.array(np_value, type=pa_type)
+    except pa.lib.ArrowInvalid as e:
+        # Improve the error message a bit:
+        raise ValueError(f"Cannot convert {np_value} to arrow array of type {pa_type}. descriptor: {descriptor}") from e
     except pa.lib.ArrowNotImplementedError as e:
         if np_type is None and descriptor is None:
             raise ValueError(
