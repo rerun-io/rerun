@@ -65,7 +65,23 @@ fn parse_schema_name(line: &str) -> Option<&str> {
     line.trim().strip_prefix("MSG: ").map(str::trim)
 }
 
-/// A message field.
+/// A message field definition.
+/// Includes type, name, and optional default value.
+///
+/// Examples:
+/// ```text
+/// // Simple int32 field with no default value
+/// int32 field_name
+///
+/// // Bounded string with max length 10, default value "default"
+/// string<=10 name "default"
+///
+/// // Array of 3 float64s with default value [0.0, 0.0, 0.0]
+/// float64[3] position [0.0, 0.0, 0.0]
+///
+/// // Unbounded array of complex types
+/// pkg/Type[] items
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
     pub ty: Type,
@@ -179,7 +195,7 @@ impl Type {
             let len_str = &s["string<=".len()..s.len() - 1];
             let len = len_str
                 .parse::<usize>()
-                .context("failed to parse bounded string length")?;
+                .with_context(|| "failed to parse bounded string length")?;
             Ok(Self::String(Some(len)))
         } else {
             bail!("invalid string type specifier: `{s}`");
@@ -187,9 +203,22 @@ impl Type {
     }
 }
 
+/// A complex (non-primitive) type, possibly qualified with a package path.
+///
+/// Examples:
+/// ```text
+/// // Absolute type with package
+/// pkg/Type
+///
+/// // Relative type without package
+/// Type
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ComplexType {
+    /// An absolute type with package, e.g. `pkg/Type`
     Absolute { package: String, name: String },
+
+    /// A relative type without package, e.g. `Type`
     Relative { name: String },
 }
 
@@ -211,12 +240,14 @@ impl ComplexType {
                     "invalid complex type specifier: `{s}`, expected `some_package/SomeMessage` or `SomeMessage` format"
                 );
             }
+
             Ok(Self::Relative { name: s.to_owned() })
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+/// Size specifier for array types.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArraySize {
     Fixed(usize),
     Bounded(usize),
@@ -227,7 +258,8 @@ impl ArraySize {
     fn parse(array_part: &str) -> Result<Self> {
         let array_part = array_part
             .strip_suffix(']')
-            .context("missing closing ']' in array type")?;
+            .with_context(|| "Missing closing ']' in array type")?;
+
         let array_size = if array_part.is_empty() {
             Self::Unbounded
         } else if let Ok(size) = array_part.parse::<usize>() {
@@ -236,7 +268,7 @@ impl ArraySize {
             let size_str = &array_part[1..array_part.len() - 1];
             let size = size_str
                 .parse::<usize>()
-                .context("failed to parse bounded array size")?;
+                .with_context(|| "Failed to parse bounded array size")?;
             Self::Bounded(size)
         } else {
             bail!("invalid array size specifier: `{array_part}`");
@@ -245,6 +277,8 @@ impl ArraySize {
     }
 }
 
+/// A literal value, used for default values and constant definitions.
+/// Can be a primitive, string, or array of literals.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
     Bool(bool),
@@ -272,25 +306,21 @@ impl Literal {
                 | PrimitiveType::Int8
                 | PrimitiveType::Int16
                 | PrimitiveType::Int32
-                | PrimitiveType::Int64 => {
-                    let v = s
-                        .parse::<i64>()
-                        .context("failed to parse integer literal")?;
-                    Ok(Self::Int(v))
-                }
+                | PrimitiveType::Int64 => s
+                    .parse::<i64>()
+                    .map(Self::Int)
+                    .with_context(|| "failed to parse integer literal"),
                 PrimitiveType::UInt8
                 | PrimitiveType::UInt16
                 | PrimitiveType::UInt32
-                | PrimitiveType::UInt64 => {
-                    let v = s
-                        .parse::<u64>()
-                        .context("failed to parse unsigned integer literal")?;
-                    Ok(Self::UInt(v))
-                }
-                PrimitiveType::Float32 | PrimitiveType::Float64 => {
-                    let v = s.parse::<f64>().context("failed to parse float literal")?;
-                    Ok(Self::Float(v))
-                }
+                | PrimitiveType::UInt64 => s
+                    .parse::<u64>()
+                    .map(Self::UInt)
+                    .with_context(|| "failed to parse unsigned integer literal"),
+                PrimitiveType::Float32 | PrimitiveType::Float64 => s
+                    .parse::<f64>()
+                    .map(Self::Float)
+                    .with_context(|| "failed to parse float literal"),
             },
             Type::String(_) => {
                 let s = s.trim_matches('"');
@@ -301,6 +331,7 @@ impl Literal {
                 size: _,
             } => {
                 let s = s.trim();
+
                 if !s.starts_with('[') || !s.ends_with(']') {
                     bail!("array literal must start with '[' and end with ']': `{s}`");
                 }
@@ -311,6 +342,7 @@ impl Literal {
                     let elem = Self::parse(elem_str, elem_ty)?;
                     elems.push(elem);
                 }
+
                 Ok(Self::Array(elems))
             }
             Type::Complex(_) => bail!("cannot parse literal for named type"),
@@ -319,6 +351,19 @@ impl Literal {
 }
 
 /// A compile-time constant defined alongside fields.
+/// Includes type, name, and value.
+///
+/// Examples:
+/// ```text
+/// // Integer constant
+/// int32 CONST_NAME=42
+///
+/// // String constant
+/// string CONST_STR="hello"
+///
+/// // Float constant
+/// float64 CONST_FLOAT=3.14
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Constant {
     pub ty: Type,
@@ -354,11 +399,11 @@ impl Constant {
     fn parse(line: &str) -> anyhow::Result<Self> {
         let (type_and_name, value_str) = line
             .split_once('=')
-            .context("constant definition missing '='")?;
+            .with_context(|| "constant definition missing '='")?;
         let (type_str, name) = type_and_name
             .trim()
             .rsplit_once(' ')
-            .context("constant definition missing space between type and name")?;
+            .with_context(|| "constant definition missing space between type and name")?;
 
         let ty = Type::parse(type_str)?;
         let value = Literal::parse(value_str.trim(), &ty)?;
@@ -471,13 +516,8 @@ fn parse_section(lines: &[&str]) -> Option<(String, String)> {
 
 #[cfg(test)]
 mod tests {
+    use crate::parsers::dds;
     use cdr_encoding::CdrDeserializer;
-    use serde::Deserializer;
-
-    use crate::{
-        cdr,
-        parsers::{dds, ros2msg::definitions::sensor_msgs},
-    };
 
     use super::*;
 
