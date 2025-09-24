@@ -661,6 +661,7 @@ impl From<PanelState> for re_types::blueprint::components::PanelState {
 // Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
 pub struct AppOptions {
+    viewer_url: Option<String>,
     url: Option<StringOrStringArray>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
@@ -713,11 +714,13 @@ fn create_app(
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
+
     let app_env = crate::AppEnvironment::Web {
         url: cc.integration_info.web_info.location.url.clone(),
     };
 
     let AppOptions {
+        viewer_url,
         url,
         manifest_url,
         render_backend,
@@ -781,6 +784,7 @@ fn create_app(
         panel_state_overrides: panel_state_overrides.unwrap_or_default().into(),
 
         enable_history,
+        viewer_url,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 

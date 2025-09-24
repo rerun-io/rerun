@@ -471,22 +471,19 @@ class RecordingStream:
     def to_native(self) -> bindings.PyRecordingStream:
         return self.inner
 
-    # TODO(#11294): remove `blocking` argument
-    def flush(self, blocking: bool = True, *, timeout_sec: float = 1e38) -> None:
+    def flush(self, *, timeout_sec: float = 1e38) -> None:
         """
         Initiates a flush the batching pipeline and optionally waits for it to propagate to the underlying file descriptor (if any).
 
         Parameters
         ----------
-        blocking:
-            If true, the flush will block until the flush is complete.
         timeout_sec:
             Wait at most this many seconds.
             If the timeout is reached, an error is raised.
             If set to zero, the flush will be started but not waited for.
 
         """
-        bindings.flush(blocking=blocking, recording=self.to_native(), timeout_sec=timeout_sec)
+        bindings.flush(timeout_sec=timeout_sec, recording=self.to_native())
 
     def __del__(self) -> None:  # type: ignore[no-untyped-def]
         recording = self.to_native()

@@ -112,7 +112,7 @@ impl Callback {
 }
 
 // Deserializes from JS string or array of strings.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StringOrStringArray(Vec<String>);
 
 impl StringOrStringArray {

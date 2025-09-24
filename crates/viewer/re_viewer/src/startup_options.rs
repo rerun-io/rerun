@@ -78,6 +78,10 @@ pub struct StartupOptions {
     /// open example or redap recording, see [`crate::history`].
     #[cfg(target_arch = "wasm32")]
     pub enable_history: bool,
+
+    /// The base viewer url that's used when sharing a link in this viewer.
+    #[cfg(target_arch = "wasm32")]
+    pub viewer_url: Option<String>,
 }
 
 impl StartupOptions {
@@ -92,6 +96,24 @@ impl StartupOptions {
         #[cfg(not(target_arch = "wasm32"))]
         {
             false
+        }
+    }
+
+    /// The url to use for the web viewer when sharing links.
+    #[allow(clippy::unused_self)] // Only used on web.
+    pub fn web_viewer_base_url(&self) -> Option<url::Url> {
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.viewer_url
+                .as_ref()
+                .and_then(|url| url.parse().ok())
+                .or_else(|| crate::web_tools::current_base_url().ok())
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
+            url::Url::parse("https://rerun.io/viewer").ok()
         }
     }
 }
@@ -130,6 +152,9 @@ impl Default for StartupOptions {
 
             #[cfg(target_arch = "wasm32")]
             enable_history: false,
+
+            #[cfg(target_arch = "wasm32")]
+            viewer_url: None,
         }
     }
 }
