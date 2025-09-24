@@ -1,10 +1,10 @@
 use re_chunk_store::RowId;
-use re_log_types::TimePoint;
+use re_log_types::{EntityPath, TimePoint};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_types::{archetypes, datatypes::TensorBuffer};
 use re_view_tensor::TensorView;
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
 
 // Fun little xor texture for testing
@@ -19,6 +19,26 @@ fn make_test_tensor_2d(size: usize) -> archetypes::Tensor {
     ))
 }
 
+fn run_test_with_origin(test_context: &mut TestContext, origin: &str, snapshot_name: &str) {
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_id(
+            TensorView::identifier(),
+            RecommendedView {
+                origin: EntityPath::from(origin),
+                query_filter: "$origin/**".parse().expect("invalid entity filter"),
+            },
+            ViewId::hashed_from_str("test-view-id"),
+        ))
+    });
+
+    run_view_ui_and_save_snapshot(
+        test_context,
+        view_id,
+        &format!("tensor_2d_{snapshot_name}"),
+        egui::vec2(300.0, 300.0),
+    );
+}
+
 #[test]
 fn test_tensor() {
     let mut test_context = TestContext::new_with_view_class::<TensorView>();
@@ -30,21 +50,10 @@ fn test_tensor() {
         builder.with_archetype(RowId::new(), TimePoint::STATIC, &make_test_tensor_2d(8))
     });
 
-    let view_id = setup_blueprint(&mut test_context);
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
-        view_id,
-        "tensor_2d",
-        egui::vec2(300.0, 300.0),
-    );
-}
-
-fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(
-            TensorView::identifier(),
-        ))
-    })
+    run_test_with_origin(&mut test_context, "tensors/t1", "t1");
+    run_test_with_origin(&mut test_context, "tensors/t2", "t2");
+    run_test_with_origin(&mut test_context, "tensors", "both");
+    run_test_with_origin(&mut test_context, "", "root");
 }
 
 fn run_view_ui_and_save_snapshot(
