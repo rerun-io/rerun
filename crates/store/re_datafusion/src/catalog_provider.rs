@@ -48,6 +48,11 @@ fn get_table_refs(client: &ConnectionClient) -> DataFusionResult<Vec<TableRefere
 
 impl GrpcCatalogProvider {
     pub fn new(name: Option<&str>, client: ConnectionClient) -> Self {
+        let name = if let Some(DEFAULT_CATALOG_NAME) = name {
+            None
+        } else {
+            name
+        };
         let default_schema = Arc::new(GrpcSchemaProvider {
             catalog_name: name.map(ToOwned::to_owned),
             schema_name: None,
