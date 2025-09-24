@@ -88,6 +88,15 @@ class Colormap(Enum):
     It interpolates from cyan to blue to dark gray to brass to yellow.
     """
 
+    Spectral = 8
+    """
+    The Spectral colormap from Matplotlib.
+
+    This is a diverging colormap, often used to visualize data with a meaningful center point,
+    where deviations from that center are important to highlight.
+    It interpolates from red to orange to yellow to green to blue to violet.
+    """
+
     @classmethod
     def auto(cls, val: str | int | Colormap) -> Colormap:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -117,6 +126,7 @@ ColormapLike = Union[
         "Inferno",
         "Magma",
         "Plasma",
+        "Spectral",
         "Turbo",
         "Viridis",
         "cyantoyellow",
@@ -124,6 +134,7 @@ ColormapLike = Union[
         "inferno",
         "magma",
         "plasma",
+        "spectral",
         "turbo",
         "viridis",
     ],
