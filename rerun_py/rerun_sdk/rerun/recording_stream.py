@@ -710,6 +710,7 @@ class RecordingStream:
             default_blueprint=default_blueprint,
             server_memory_limit=server_memory_limit,
             recording=self,
+            newest_first=newest_first,
         )
 
     @deprecated(
