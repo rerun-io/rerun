@@ -48,9 +48,9 @@ def get_line_number() -> int:
 
 def expected_warnings(warnings: Any, mem: Any, starting_msgs: int, count: int, expected_line: int) -> None:
     for w in warnings:
-        assert w.lineno == expected_line
-        assert w.filename == __file__
-        assert "some value error" in str(w.message)
+        assert w.lineno == expected_line, f"mem: {mem}, starting_msgs: {starting_msgs}, count: {count}"
+        assert w.filename == __file__, f"mem: {mem}, starting_msgs: {starting_msgs}, count: {count}"
+        assert "some value error" in str(w.message), f"mem: {mem}, starting_msgs: {starting_msgs}, count: {count}"
 
 
 def test_stack_tracking() -> None:
