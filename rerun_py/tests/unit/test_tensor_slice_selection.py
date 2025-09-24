@@ -57,10 +57,10 @@ def test_tensor_slice_selection() -> None:
 
         print(
             f"rr.TensorSliceSelection(\n"
-            f"    width={width!r}\n"  #
-            f"    height={height!r}\n"  #
-            f"    indices={indices!r}\n"  #
-            f"    slider={slider!r}\n"  #
+            f"    width={width!r}\n"
+            f"    height={height!r}\n"
+            f"    indices={indices!r}\n"
+            f"    slider={slider!r}\n"
             f")",
         )
         arch = rrb.TensorSliceSelection(

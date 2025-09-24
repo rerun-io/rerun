@@ -33,7 +33,7 @@ def run(
 
 def detect_target() -> str:
     arch = platform.machine()
-    if arch == "x86_64" or arch == "aarch64":
+    if arch in {"x86_64", "aarch64"}:
         pass  # leave it as is
     elif arch == "arm64":
         arch = "aarch64"

@@ -33,7 +33,7 @@ def test_depth_image() -> None:
             img = IMAGE_INPUTS[0]
 
         print(
-            f"rr.DepthImage(\n"  #
+            f"rr.DepthImage(\n"
             f"    {img}\n"
             f"    meter={meter!r}\n"
             f"    depth_range={depth_range!r}\n"

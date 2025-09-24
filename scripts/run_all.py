@@ -73,7 +73,7 @@ def start_process(args: list[str], *, wait: bool) -> Any:
             print(output_from_process(process))
             print()
             print(f"process exited with error code {returncode}")
-            exit(returncode)
+            sys.exit(returncode)
     return process
 
 

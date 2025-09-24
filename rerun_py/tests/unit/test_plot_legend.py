@@ -37,7 +37,7 @@ def test_scalar_axis() -> None:
 
         print(
             f"rr.PlotLegend(\n"
-            f"    corner={corner!r}\n"  #
+            f"    corner={corner!r}\n"
             f"    visible={visible!r}\n"
             f")",
         )

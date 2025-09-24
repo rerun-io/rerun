@@ -46,7 +46,7 @@ def get_divisor(unit: str) -> int:
 
 def render_table_dict(data: list[dict[str, str]]) -> str:
     keys = data[0].keys()
-    column_widths = [max(len(key), max(len(str(row[key])) for row in data)) for key in keys]
+    column_widths = [max(len(key), *(len(str(row[key])) for row in data)) for key in keys]
     separator = "|" + "|".join("-" * (width + 2) for width in column_widths)
     header_row = "|".join(f" {key.center(width)} " for key, width in zip(keys, column_widths))
 

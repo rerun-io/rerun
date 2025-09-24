@@ -422,12 +422,11 @@ def main() -> None:
 
         for t in threads:
             t.join()
-    else:
-        if args.split_recordings:
-            with rr.script_setup(args, f"rerun_example_test_api/{args.test}"):
-                tests[args.test]()
-        else:
+    elif args.split_recordings:
+        with rr.script_setup(args, f"rerun_example_test_api/{args.test}"):
             tests[args.test]()
+    else:
+        tests[args.test]()
 
     rr.script_teardown(args)
 

@@ -281,7 +281,7 @@ class Context:
             print("Encountered some errors:")
             for error in self.errors:
                 print(error)
-            exit(1)
+            sys.exit(1)
         else:
             print("The following operations will be performed:")
             for op in self.ops:
@@ -584,7 +584,7 @@ def get_version(target: Target | None, skip_prerelease: bool = False) -> Version
         except ValueError:
             print(f"the current branch `{branch_name}` does not specify a valid version.")
             print("this script expects the format `release-x.y.z-meta.N`")
-            exit(1)
+            sys.exit(1)
     elif target is Target.CratesIo:
         latest_published_version = get_latest_published_version("rerun", skip_prerelease)
         if not latest_published_version:

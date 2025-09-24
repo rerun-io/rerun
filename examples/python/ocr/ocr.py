@@ -10,7 +10,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
-import cv2 as cv2
+import cv2
 import numpy as np
 import numpy.typing as npt
 import pandas as pd

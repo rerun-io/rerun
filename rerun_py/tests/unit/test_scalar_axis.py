@@ -37,7 +37,7 @@ def test_scalar_axis() -> None:
 
         print(
             f"rr.ScalarAxis(\n"
-            f"    range={range!r}\n"  #
+            f"    range={range!r}\n"
             f"    zoom_lock={zoom_lock!r}\n"
             f")",
         )

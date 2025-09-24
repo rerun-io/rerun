@@ -106,13 +106,13 @@ def test_transform3d() -> None:
 
         print(
             f"rr.Transform3D(\n"
-            f"    translation={translation!r}\n"  #
-            f"    rotation_axis_angle={rotation_axis_angle!r}\n"  #
-            f"    quaternion={quaternion!r}\n"  #
-            f"    scale={scale!r}\n"  #
-            f"    mat3x3={mat3x3!r}\n"  #
-            f"    relation={relation!r}\n"  #
-            f"    axis_length={axis_length!r}\n"  #
+            f"    translation={translation!r}\n"
+            f"    rotation_axis_angle={rotation_axis_angle!r}\n"
+            f"    quaternion={quaternion!r}\n"
+            f"    scale={scale!r}\n"
+            f"    mat3x3={mat3x3!r}\n"
+            f"    relation={relation!r}\n"
+            f"    axis_length={axis_length!r}\n"
             f")",
         )
         arch = rr.Transform3D(

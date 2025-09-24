@@ -77,7 +77,7 @@ def _download_dataset(root: Path, dataset_url: str = DATASET_URL) -> None:
                 pb.update(len(data))
                 file.write(data)
 
-    if total_size != 0 and pb.n != total_size:
+    if total_size not in (0, pb.n):
         raise RuntimeError("Failed to download complete dataset!")
 
     print("Extracting dataset…")

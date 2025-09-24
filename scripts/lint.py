@@ -265,12 +265,12 @@ def lint_line(
 
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn deref(&self)" in line or "fn deref_mut(&mut self)" in line:
-        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+        if prev_line_stripped not in {"#[inline]", "#[inline(always)]"}:
             return "Deref/DerefMut impls should be marked #[inline]"
 
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn as_ref(&self)" in line or "fn borrow(&self)" in line:
-        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+        if prev_line_stripped not in {"#[inline]", "#[inline(always)]"}:
             return "as_ref/borrow implementations should be marked #[inline]"
 
     if any(

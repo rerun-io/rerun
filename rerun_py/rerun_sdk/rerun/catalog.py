@@ -4,14 +4,11 @@ from typing import TYPE_CHECKING
 
 from rerun_bindings import (
     CatalogClientInternal,
-    DataframeQueryView as DataframeQueryView,
-    DatasetEntry as DatasetEntry,
-    Entry as Entry,
-    EntryId as EntryId,
-    EntryKind as EntryKind,
-    TableEntry as TableEntry,
-    Task as Task,
-    VectorDistanceMetric as VectorDistanceMetric,
+    DatasetEntry,
+    Entry,
+    EntryId,
+    EntryKind,
+    TableEntry,
 )
 
 from .error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError

@@ -7,7 +7,7 @@ import math
 import uuid
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
-from rerun_bindings import ChunkBatcherConfig as ChunkBatcherConfig  # noqa: TC002
+from rerun_bindings import ChunkBatcherConfig  # noqa: TC002
 from typing_extensions import deprecated
 
 import rerun as rr
