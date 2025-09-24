@@ -15,22 +15,27 @@ ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any] = {}
 
 
 def _parse_arrow_array(
-    value: Any, pa_type: Any | None = None, np_type: Any | None = None, descriptor: ComponentDescriptor | None = None
+    value: Any, *, pa_type: Any | None = None, np_type: Any | None = None, descriptor: ComponentDescriptor | None = None
 ) -> pa.Array:
-    possible_array = _try_parse_dlpack(value, pa_type, descriptor)
+    possible_array = _try_parse_dlpack(value, pa_type=pa_type, descriptor=descriptor)
     if possible_array is not None:
         return possible_array
-    possible_array = _try_parse_string(value, pa_type, descriptor)
+    possible_array = _try_parse_string(value, pa_type=pa_type, descriptor=descriptor)
     if possible_array is not None:
         return possible_array
-    possible_array = _try_parse_scalar(value, pa_type, descriptor)
+    possible_array = _try_parse_scalar(value, pa_type=pa_type, descriptor=descriptor)
     if possible_array is not None:
         return possible_array
-    return _fallback_parse(value, pa_type, None, descriptor)
+    return _fallback_parse(
+        value,
+        pa_type=pa_type,
+        np_type=None,  # TODO(emilk): np_type=None looks VERY suspicious here
+        descriptor=descriptor,
+    )
 
 
 def _try_parse_dlpack(
-    value: Any, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
+    value: Any, *, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
 ) -> pa.Array | None:
     # If the value has a __dlpack__ method, we can convert it to numpy without copy
     # then to arrow
@@ -46,7 +51,7 @@ def _try_parse_dlpack(
 
 
 def _try_parse_string(
-    value: Any, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
+    value: Any, *, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
 ) -> pa.Array | None:
     # Special case: strings are iterables so pyarrow will not
     # handle them properly
@@ -62,7 +67,7 @@ def _try_parse_string(
 
 
 def _try_parse_scalar(
-    value: Any, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
+    value: Any, *, pa_type: Any | None = None, descriptor: ComponentDescriptor | None = None
 ) -> pa.Array | None:
     try:
         pa_scalar = pa.scalar(value)
@@ -77,6 +82,7 @@ def _try_parse_scalar(
 
 def _fallback_parse(
     value: Any,
+    *,
     pa_type: Any | None = None,
     np_type: Any | None = None,
     descriptor: ComponentDescriptor | None = None,
@@ -169,11 +175,11 @@ class AnyBatchValue(ComponentBatchLike):
                         if not drop_untyped_nones:
                             raise ValueError("Cannot convert None to arrow array. Type is unknown.")
                     else:
-                        self.pa_array = _parse_arrow_array(value, pa_type, np_type, descriptor=descriptor)
+                        self.pa_array = _parse_arrow_array(value, pa_type=None, np_type=np_type, descriptor=descriptor)
                 else:
                     if value is None:
                         value = []
-                    self.pa_array = _parse_arrow_array(value, pa_type, np_type, None)
+                    self.pa_array = _parse_arrow_array(value, pa_type=pa_type, np_type=np_type, descriptor=None)
 
     def is_valid(self) -> bool:
         return self.pa_array is not None
