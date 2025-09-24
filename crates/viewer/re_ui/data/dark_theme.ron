@@ -158,7 +158,7 @@
     },
 
     "floating_color": {
-      "color": "{Gray.250}"
+      "color": "{Gray.200}"
     },
     "faint_bg_color": {
       "color": "{Gray.150}"
