@@ -7,7 +7,7 @@ import math
 import uuid
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 
-from rerun_bindings import ChunkBatcherConfig as ChunkBatcherConfig  # noqa: TC001, TC002
+from rerun_bindings import ChunkBatcherConfig as ChunkBatcherConfig  # noqa: TC002
 from typing_extensions import deprecated
 
 import rerun as rr
@@ -1567,7 +1567,7 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
     """
 
     def decorator(func: _TFunc) -> _TFunc:
-        if inspect.isgeneratorfunction(func):  # noqa: F821
+        if inspect.isgeneratorfunction(func):
 
             @functools.wraps(func)
             def generator_wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -1637,7 +1637,7 @@ def recording_stream_generator_ctx(func: _TFunc) -> _TFunc:
     ```
 
     """
-    if inspect.isgeneratorfunction(func):  # noqa: F821
+    if inspect.isgeneratorfunction(func):
 
         @functools.wraps(func)
         def generator_wrapper(*args: Any, **kwargs: Any) -> Any:

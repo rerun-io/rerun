@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, cast
 import tomlkit
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../scripts/")
-from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
+from roundtrip_utils import roundtrip_env, run, run_comparison
 
 if TYPE_CHECKING:
     from tomlkit.container import Container
@@ -148,7 +148,7 @@ def main() -> None:
             if name == "__init__.py":
                 continue
             name, extension = os.path.splitext(name)
-            if extension == ".cpp" and not args.no_cpp or extension == ".py" and not args.no_py or extension == ".rs":
+            if (extension == ".cpp" and not args.no_cpp) or (extension == ".py" and not args.no_py) or extension == ".rs":
                 subdir = os.path.relpath(os.path.dirname(file), dir)
                 examples += [Example(subdir.replace("\\", "/"), name)]
 
@@ -331,7 +331,7 @@ def run_python(example: Example) -> str:
     if python_executable is None:
         python_executable = "python3"
 
-    cmd = [python_executable, main_path] + example.extra_args()
+    cmd = [python_executable, main_path, *example.extra_args()]
 
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
@@ -368,7 +368,7 @@ def run_prebuilt_cpp(example: Example) -> str:
     output_path = example.output_path("cpp")
 
     extension = ".exe" if os.name == "nt" else ""
-    cmd = [f"./build/debug/docs/snippets/{example.name}{extension}"] + example.extra_args()
+    cmd = [f"./build/debug/docs/snippets/{example.name}{extension}", *example.extra_args()]
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
 

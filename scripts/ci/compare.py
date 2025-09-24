@@ -59,7 +59,7 @@ def render_table_dict(data: list[dict[str, str]]) -> str:
 
 
 def render_table_rows(rows: list[Any], headers: list[str]) -> str:
-    column_widths = [max(len(str(item)) for item in col) for col in zip(*([tuple(headers)] + rows))]
+    column_widths = [max(len(str(item)) for item in col) for col in zip(*([tuple(headers), *rows]))]
     separator = "|" + "|".join("-" * (width + 2) for width in column_widths)
     header_row = "|".join(f" {header.center(width)} " for header, width in zip(headers, column_widths))
 

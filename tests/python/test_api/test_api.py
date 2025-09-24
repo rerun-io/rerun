@@ -375,7 +375,7 @@ def main() -> None:
         type=str,
         default="most",
         help="What test to run",
-        choices=["most", "all"] + list(tests.keys()),
+        choices=["most", "all", *list(tests.keys())],
     )
     parser.add_argument(
         "--multithread",

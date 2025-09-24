@@ -79,11 +79,11 @@ def test_transform3d() -> None:
     ]
 
     all_arrays = itertools.zip_longest(
-        VEC_3D_INPUT + [None],
+        [*VEC_3D_INPUT, None],
         rotation_axis_angle_original,
         quaternion_arrays,
         scale_arrays,
-        MAT_3X3_INPUT + [None],
+        [*MAT_3X3_INPUT, None],
         relations,
         axis_lengths,
     )

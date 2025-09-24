@@ -164,9 +164,7 @@ def test_annotation_context_component(ctx: Sequence[ClassDescriptionMapElem]) ->
     assert_correct_annotation_context(AnnotationContext(ctx))
 
 
-ANNOTATION_ARCH_INPUTS: Sequence[ClassDescriptionArrayLike] = [
-    ClassDescription(info=(1, "label1", [1, 2, 3])),
-] + ANNOTATION_CONTEXT_INPUTS
+ANNOTATION_ARCH_INPUTS: Sequence[ClassDescriptionArrayLike] = [ClassDescription(info=(1, "label1", [1, 2, 3])), *ANNOTATION_CONTEXT_INPUTS]
 
 
 @pytest.mark.parametrize("ctx", ANNOTATION_ARCH_INPUTS)

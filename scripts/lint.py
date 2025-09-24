@@ -1145,8 +1145,7 @@ def lint_crate_docs() -> int:
         crate = cargo_toml.parent
         crate_name = crate.name
 
-        if crate_name in listed_crates:
-            del listed_crates[crate_name]
+        listed_crates.pop(crate_name, None)
 
         if not re.search(r"\b" + crate_name + r"\b", architecture_md):
             print(f"{architecture_md_file}: missing documentation for crate {crate.name}")

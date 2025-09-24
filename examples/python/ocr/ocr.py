@@ -226,7 +226,7 @@ class Layout:
             return markdown_table  # type: ignore[no-any-return]
 
         except Exception as e:
-            return f"Error processing the table: {str(e)}"
+            return f"Error processing the table: {e!s}"
 
 
 def process_layout_records(layout: Layout, page_path: str) -> LayoutStructure:
@@ -311,7 +311,7 @@ def update_zoom_paths(
         # Add to zoom paths
         view = rrb.Spatial2DView(
             name=record["name"].title(),
-            contents=[f"{page_path}/Image/**"] + current_paths,
+            contents=[f"{page_path}/Image/**", *current_paths],
             visual_bounds=bounds,
         )
         zoom_paths.append(view)
@@ -351,7 +351,7 @@ def generate_blueprint(
                     rrb.Spatial2DView(
                         name="Layout",
                         origin=f"{page_path}/Image/",
-                        contents=[f"{page_path}/Image/**"] + detections_paths,
+                        contents=[f"{page_path}/Image/**", *detections_paths],
                     ),
                     rrb.Spatial2DView(name="Detections", contents=[f"{page_path}/Image/**"]),
                     rrb.TextDocumentView(name="Recovery", contents=f"{page_path}/Recovery"),

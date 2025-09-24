@@ -79,9 +79,9 @@ class LintJob:
                 pattern = re.compile(self.filter_files)
                 files = [f for f in files if not pattern.match(f)]
 
-        cmd_arr = ["pixi", "run"] + cmd
+        cmd_arr = ["pixi", "run", *cmd]
 
-        cmd_preview = subprocess.list2cmdline(cmd_arr + ["<FILES>"]) if files else subprocess.list2cmdline(cmd_arr)
+        cmd_preview = subprocess.list2cmdline([*cmd_arr, "<FILES>"]) if files else subprocess.list2cmdline(cmd_arr)
 
         full_cmd = cmd_arr + files
         proc = subprocess.run(full_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
