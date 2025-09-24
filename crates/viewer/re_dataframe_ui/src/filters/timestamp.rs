@@ -4,7 +4,7 @@ use jiff::{Timestamp, ToSpan as _};
 
 use re_log_types::TimestampFormat;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
-use re_ui::{SyntaxHighlighting, UiExt as _};
+use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 
 use super::{FilterUiAction, TimestampFormatted, parse_timestamp};
 
@@ -228,8 +228,20 @@ impl TimestampFilter {
             }
         };
 
+        ui.add_space(4.0);
+
+        let from_to_header_ui = |ui: &mut egui::Ui, s: &str| {
+            ui.label(
+                egui::RichText::new(s)
+                    .color(ui.tokens().text_default)
+                    .size(DesignTokens::list_header_font_size()),
+            );
+
+            ui.add_space(-2.0);
+        };
+
         if low_visible {
-            ui.label("From:");
+            from_to_header_ui(ui, "From:");
 
             let response = self.low_bound_timestamp.ui(
                 ui,
@@ -242,7 +254,7 @@ impl TimestampFilter {
         }
 
         if high_visible {
-            ui.label("To:");
+            from_to_header_ui(ui, "To:");
 
             let response = self.high_bound_timestamp.ui(
                 ui,
@@ -353,6 +365,8 @@ impl EditableTimestamp {
                 response
             })
             .inner;
+
+        ui.add_space(-4.0);
 
         match &self.resolved_timestamp {
             Ok(timestamp) => ui.label(format_timestamp(*timestamp, timestamp_format)),
