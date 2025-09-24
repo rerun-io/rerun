@@ -9035,13 +9035,16 @@ dependencies = [
  "egui",
  "egui_commonmark",
  "re_chunk_store",
+ "re_log_types",
  "re_renderer",
  "re_test_context",
+ "re_test_viewport",
  "re_tracing",
  "re_types",
  "re_ui",
  "re_view",
  "re_viewer_context",
+ "re_viewport_blueprint",
 ]
 
 [[package]]

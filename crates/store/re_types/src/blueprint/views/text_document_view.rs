@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: A view of a single text document, for use with [`archetypes::TextDocument`][crate::archetypes::TextDocument].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct TextDocumentView {}
 
 impl ::re_types_core::View for TextDocumentView {
