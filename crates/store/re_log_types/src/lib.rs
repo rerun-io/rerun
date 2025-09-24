@@ -560,7 +560,7 @@ pub struct SetStoreInfo {
 /// Describes how a store should crop/discard incoming data.
 // TODO(#11315): In the future we will want to reduce this to a mere highlighting feature and no longer need this at the store level
 // as all data will be pulled on-demand from a server.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct StoreCroppingRange {
     /// On which timeline to crop.
     pub timeline: TimelineName,
