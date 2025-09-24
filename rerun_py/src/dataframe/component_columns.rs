@@ -11,10 +11,12 @@ use re_sorbet::{ComponentColumnDescriptor, ComponentColumnSelector};
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
 #[pyclass(
     frozen,
+    hash,
+    eq,
     name = "ComponentColumnDescriptor",
     module = "rerun_bindings.rerun_bindings"
 )]
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct PyComponentColumnDescriptor(pub ComponentColumnDescriptor);
 
 impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
@@ -41,17 +43,13 @@ impl PyComponentColumnDescriptor {
              \tArchetype: {arch}\n\
              \tComponent type: {ctype}\n\
              \tComponent: {comp}{static_info}",
-            col = self.0.column_name(re_sorbet::BatchType::Dataframe),
+            col = self.name(),
             path = self.entity_path(),
             arch = self.archetype().unwrap_or("None"),
             ctype = self.component_type().unwrap_or(""),
             comp = self.component(),
             static_info = static_info,
         )
-    }
-
-    fn __eq__(&self, other: &Self) -> bool {
-        self.0 == other.0
     }
 
     /// The entity path.
@@ -92,6 +90,14 @@ impl PyComponentColumnDescriptor {
     #[getter]
     fn is_static(&self) -> bool {
         self.0.is_static
+    }
+
+    /// The name of this column.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn name(&self) -> String {
+        self.0.column_name(re_sorbet::BatchType::Dataframe)
     }
 }
 
