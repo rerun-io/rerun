@@ -35,10 +35,10 @@ pub use file_sink::{FileFlushError, FileSink, FileSinkError};
 // ----------------------------------------------------------------------------
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
-const RRD_HEADER: &[u8; 4] = b"RRF2";
+const RRD_FOURCC: [u8; 4] = *b"RRF2";
 
 #[cfg(feature = "decoder")]
-const OLD_RRD_HEADERS: &[[u8; 4]] = &[*b"RRF0", *b"RRF1"];
+const OLD_RRD_FOURCC: &[[u8; 4]] = &[*b"RRF0", *b"RRF1"];
 
 // ----------------------------------------------------------------------------
 
@@ -130,7 +130,8 @@ pub enum OptionsError {
 #[cfg(any(feature = "encoder", feature = "decoder"))]
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct FileHeader {
-    pub magic: [u8; 4],
+    #[allow(dead_code)] // only used with the "encoder" feature
+    pub fourcc: [u8; 4],
     pub version: [u8; 4],
     pub options: EncodingOptions,
 }
@@ -143,7 +144,7 @@ impl FileHeader {
     #[cfg(feature = "encoder")]
     pub fn encode(&self, write: &mut impl std::io::Write) -> Result<(), encoder::EncodeError> {
         write
-            .write_all(&self.magic)
+            .write_all(&self.fourcc)
             .map_err(encoder::EncodeError::Write)?;
         write
             .write_all(&self.version)
@@ -161,11 +162,24 @@ impl FileHeader {
         let mut buffer = [0_u8; Self::SIZE];
         read.read_exact(&mut buffer)
             .map_err(decoder::DecodeError::Read)?;
-        let magic = to_array_4b(&buffer[0..4]);
+        let fourcc = to_array_4b(&buffer[0..4]);
+
+        // Check magic bytes FIRST
+        if OLD_RRD_FOURCC.contains(&fourcc) {
+            return Err(decoder::DecodeError::OldRrdVersion);
+        } else if fourcc != crate::RRD_FOURCC {
+            return Err(decoder::DecodeError::NotAnRrd(
+                crate::decoder::NotAnRrdError {
+                    expected_fourcc: crate::RRD_FOURCC,
+                    actual_fourcc: fourcc,
+                },
+            ));
+        }
+
         let version = to_array_4b(&buffer[4..8]);
         let options = EncodingOptions::from_bytes(to_array_4b(&buffer[8..]))?;
         Ok(Self {
-            magic,
+            fourcc,
             version,
             options,
         })

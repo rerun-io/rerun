@@ -47,7 +47,7 @@ fn colormap_preview_ui(
         texture: horizontal_gradient,
         range: [0.0, 1.0],
         decode_srgb: false,
-        multiply_rgb_with_alpha: false,
+        texture_alpha: re_renderer::renderer::TextureAlpha::Opaque,
         gamma: 1.0,
         shader_decoding: None,
         color_mapper: re_renderer::renderer::ColorMapper::Function(colormap_to_re_renderer(
@@ -157,5 +157,6 @@ pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_r
         re_types::components::Colormap::Turbo => re_renderer::Colormap::Turbo,
         re_types::components::Colormap::Viridis => re_renderer::Colormap::Viridis,
         re_types::components::Colormap::CyanToYellow => re_renderer::Colormap::CyanToYellow,
+        re_types::components::Colormap::Spectral => re_renderer::Colormap::Spectral,
     }
 }

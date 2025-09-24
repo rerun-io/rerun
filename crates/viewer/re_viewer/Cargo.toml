@@ -130,6 +130,7 @@ emath.workspace = true
 glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
+jiff.workspace = true
 parking_lot.workspace = true
 poll-promise = { workspace = true, features = ["web"] }
 rfd.workspace = true
@@ -140,7 +141,6 @@ serde-wasm-bindgen.workspace = true
 tap.workspace = true
 thiserror.workspace = true
 url.workspace = true
-vec1.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
 
@@ -151,7 +151,6 @@ re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys.workspace = true
-percent-encoding.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 wasm-bindgen-futures.workspace = true

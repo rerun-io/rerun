@@ -14,7 +14,7 @@ mod docker_detection;
 pub mod env_vars;
 pub mod event;
 mod navigation;
-mod open_url;
+mod open_url_description;
 mod saving;
 mod screenshotter;
 mod startup_options;
@@ -170,7 +170,7 @@ impl AppEnvironment {
 
     pub fn url(&self) -> Option<&String> {
         match self {
-            Self::Web { url } => Some(url),
+            Self::Web { url, .. } => Some(url),
             _ => None,
         }
     }

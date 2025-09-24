@@ -132,7 +132,7 @@ impl Timeline {
     /// Returns a formatted string of `time_range` on this `Timeline`.
     #[inline]
     pub fn format_time_range_utc(&self, time_range: &AbsoluteTimeRange) -> String {
-        self.format_time_range(time_range, TimestampFormat::Utc)
+        self.format_time_range(time_range, TimestampFormat::utc())
     }
 
     /// Returns the appropriate arrow datatype to represent this timeline.

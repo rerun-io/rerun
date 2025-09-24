@@ -8,13 +8,14 @@ use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
 use re_log_types::{ApplicationId, EntityPath};
 use re_ui::filter_widget::format_matching_text;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
     ContextExt as _, DesignTokens, UiExt as _, drag_and_drop::DropTarget, filter_widget, list_item,
 };
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
-    Item, ItemCollection, ItemContext, SystemCommandSender as _, ViewId, ViewerContext,
-    VisitorControlFlow, contents_name_style, icon_for_container_kind,
+    Item, ItemCollection, ItemContext, SystemCommand, SystemCommandSender as _, ViewId,
+    ViewerContext, VisitorControlFlow, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
@@ -165,7 +166,8 @@ impl BlueprintTree {
 
                     // clear selection upon clicking on empty space
                     if empty_space_response.clicked() {
-                        ctx.selection_state().clear_selection();
+                        ctx.command_sender()
+                            .send_system(SystemCommand::clear_selection());
                     }
 
                     // handle drag and drop interaction on empty space
@@ -299,15 +301,12 @@ impl BlueprintTree {
             .label_style(contents_name_style(&container_data.name))
             .with_icon(icon_for_container_kind(&container_data.kind))
             .with_buttons(|ui| {
-                let vis_response = visibility_button_ui(ui, parent_visible, &mut visible);
+                visibility_button_ui(ui, parent_visible, &mut visible);
 
-                let remove_response = remove_button_ui(ui, "Remove container");
-                if remove_response.clicked() {
+                if remove_button_ui(ui, "Remove container").clicked() {
                     viewport_blueprint.mark_user_interaction(ctx);
                     viewport_blueprint.remove_contents(content);
                 }
-
-                remove_response | vis_response
             });
 
         // Globally unique id - should only be one of these in view at one time.
@@ -390,15 +389,12 @@ impl BlueprintTree {
             .with_icon(class.icon())
             .subdued(!view_visible)
             .with_buttons(|ui| {
-                let vis_response = visibility_button_ui(ui, container_visible, &mut visible);
+                visibility_button_ui(ui, container_visible, &mut visible);
 
-                let response = remove_button_ui(ui, "Remove view from the viewport");
-                if response.clicked() {
+                if remove_button_ui(ui, "Remove view from the viewport").clicked() {
                     viewport_blueprint.mark_user_interaction(ctx);
                     viewport_blueprint.remove_contents(Contents::View(view_data.id));
                 }
-
-                response | vis_response
             });
 
         // Globally unique id - should only be one of these in view at one time.
@@ -517,22 +513,20 @@ impl BlueprintTree {
                         .subdued(!view_visible || !data_result_data.visible)
                         .with_buttons(|ui: &mut egui::Ui| {
                             let mut visible_after = data_result_data.visible;
-                            let vis_response =
-                                visibility_button_ui(ui, view_visible, &mut visible_after);
+                            visibility_button_ui(ui, view_visible, &mut visible_after);
                             if visible_after != data_result_data.visible {
                                 data_result_data.update_visibility(ctx, visible_after);
                             }
 
-                            let response = remove_button_ui(
+                            if remove_button_ui(
                                 ui,
                                 "Remove this entity and all its children from the view",
-                            );
-                            if response.clicked() {
+                            )
+                            .clicked()
+                            {
                                 data_result_data
                                     .remove_data_result_from_view(ctx, viewport_blueprint);
                             }
-
-                            response | vis_response
                         })
                 }
             }
@@ -554,7 +548,8 @@ impl BlueprintTree {
                     )
                     .clicked()
                 {
-                    ctx.selection_state().set_selection(item);
+                    ctx.command_sender()
+                        .send_system(SystemCommand::SetSelection(item.into()));
                 }
 
                 return;
@@ -724,7 +719,8 @@ impl BlueprintTree {
             });
 
             if let ControlFlow::Break(Some(item)) = result {
-                ctx.selection_state().set_selection(item.clone());
+                ctx.command_sender()
+                    .send_system(SystemCommand::SetSelection(item.clone().into()));
                 self.scroll_to_me_item = Some(item.clone());
                 self.range_selection_anchor_item = Some(item);
             }
@@ -753,7 +749,8 @@ impl BlueprintTree {
             });
 
             if let ControlFlow::Break(Some(item)) = result {
-                ctx.selection_state().set_selection(item.clone());
+                ctx.command_sender()
+                    .send_system(SystemCommand::SetSelection(item.clone().into()));
                 self.scroll_to_me_item = Some(item.clone());
                 self.range_selection_anchor_item = Some(item);
             }
@@ -802,9 +799,14 @@ impl BlueprintTree {
                     );
 
                     if modifiers.command {
-                        ctx.selection_state.extend_selection(items);
+                        // We extend into the current selection to append new items at the end.
+                        let mut selection = ctx.selection().clone();
+                        selection.extend(items);
+                        ctx.command_sender()
+                            .send_system(SystemCommand::SetSelection(selection));
                     } else {
-                        ctx.selection_state.set_selection(items);
+                        ctx.command_sender()
+                            .send_system(SystemCommand::SetSelection(items));
                     }
                 }
             }

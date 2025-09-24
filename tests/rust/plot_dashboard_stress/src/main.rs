@@ -12,6 +12,8 @@
 //! pixi run rs-plot-dashboard --num-plots 10 --num-series-per-plot 5 --num-points-per-series 5000 --freq 1000
 //! ```
 
+#![expect(clippy::disallowed_methods)]
+
 use rerun::external::re_log;
 
 #[derive(Debug, clap::ValueEnum, Clone)]

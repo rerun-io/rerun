@@ -448,7 +448,7 @@ class RecordingStream:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        self.flush(blocking=True)
+        self.flush()
 
         current_recording = active_recording_stream.get(None)
 
@@ -471,17 +471,19 @@ class RecordingStream:
     def to_native(self) -> bindings.PyRecordingStream:
         return self.inner
 
-    def flush(self, blocking: bool = True) -> None:
+    def flush(self, *, timeout_sec: float = 1e38) -> None:
         """
         Initiates a flush the batching pipeline and optionally waits for it to propagate to the underlying file descriptor (if any).
 
         Parameters
         ----------
-        blocking:
-            If true, the flush will block until the flush is complete.
+        timeout_sec:
+            Wait at most this many seconds.
+            If the timeout is reached, an error is raised.
+            If set to zero, the flush will be started but not waited for.
 
         """
-        bindings.flush(blocking, recording=self.to_native())
+        bindings.flush(timeout_sec=timeout_sec, recording=self.to_native())
 
     def __del__(self) -> None:  # type: ignore[no-untyped-def]
         recording = self.to_native()
@@ -491,7 +493,7 @@ class RecordingStream:
         #
         # See: https://github.com/rerun-io/rerun/issues/6223 for context on why this is necessary.
         if not recording.is_forked_child():
-            bindings.flush(blocking=False, recording=recording)  # NOLINT
+            bindings.flush(timeout_sec=0.0, recording=recording)  # NOLINT
 
     # any free function taking a `RecordingStream` as the first argument can also be a method
     binary_stream = binary_stream

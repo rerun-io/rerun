@@ -5,7 +5,7 @@ use re_log_types::{Timeline, TimelineName};
 use crate::MetadataExt as _;
 
 #[derive(thiserror::Error, Debug)]
-#[error("Unsupported time type: {datatype:?}")]
+#[error("Unsupported time type: {datatype}")]
 pub struct UnsupportedTimeType {
     pub datatype: ArrowDatatype,
 }

@@ -134,6 +134,9 @@ pub enum VideoStreamProcessingError {
 
     #[error("Failed to read codec - {0}")]
     FailedReadingCodec(Box<re_chunk::ChunkError>),
+
+    #[error("Received video samples were not in chronological order.")]
+    OutOfOrderSamples,
 }
 
 const _: () = assert!(
@@ -145,8 +148,6 @@ pub type SharablePlayableVideoStream = Arc<RwLock<PlayableVideoStream>>;
 
 impl VideoStreamCache {
     /// Looks up a video stream + players.
-    ///
-    /// Returns `None` if there was no video data for this entity on the given timeline.
     ///
     /// The first time a video stream that is looked up that isn't in the cache,
     /// it creates all the necessary metadata.
@@ -259,7 +260,18 @@ fn load_video_data_from_chunks(
     };
 
     for chunk in sample_chunks {
-        read_samples_from_chunk(timeline, chunk, &mut video_descr, &mut video_sample_buffers)?;
+        if let Err(err) =
+            read_samples_from_chunk(timeline, chunk, &mut video_descr, &mut video_sample_buffers)
+        {
+            match err {
+                VideoStreamProcessingError::OutOfOrderSamples => {
+                    re_log::warn_once!(
+                        "Late insertions of video frames within an established video stream is not supported, some video data has been ignored."
+                    );
+                }
+                err => return Err(err),
+            }
+        }
     }
 
     Ok((video_descr, video_sample_buffers))
@@ -319,10 +331,7 @@ fn read_samples_from_chunk(
     {
         Some(time_range) => {
             if time_range.min().as_i64() < previous_max_presentation_timestamp.0 {
-                re_log::warn_once!(
-                    "Out of order logging on video streams is not supported. Ignoring any out of order samples."
-                );
-                return Ok(());
+                return Err(VideoStreamProcessingError::OutOfOrderSamples);
             }
         }
         None => {
@@ -367,20 +376,25 @@ fn read_samples_from_chunk(
         chunk
             .iter_component_offsets(&sample_descr)
             .zip(chunk.iter_component_indices(&timeline, &sample_descr))
-            .filter_map(move |(Span { start, len }, (time, _row_id))| {
-                if len == 0 {
+            .enumerate()
+            .filter_map(move |(idx, (component_offset, (time, _row_id)))| {
+                if component_offset.len == 0 {
                     // Ignore empty samples.
                     return None;
                 }
-                if len != 1 {
+                if component_offset.len != 1 {
                     re_log::warn_once!(
                         "Expected only a single VideoSample per row (it is a mono-component)"
                     );
                     return None;
                 }
 
-                let sample_idx = sample_base_idx + start;
-                let byte_span = Span { start:offsets[start] as usize, len: lengths[start] };
+                // Do **not** use the `component_offset.start` for determining the sample index
+                // as it is only for the offset in the underlying arrow arrays which means that
+                // it may in theory step arbitrarily through the data.
+                let sample_idx = sample_base_idx + idx;
+
+                let byte_span = Span { start:offsets[component_offset.start] as usize, len: lengths[component_offset.start] };
                 let sample_bytes = &values[byte_span.range()];
 
                 // Note that the conversion of this time value is already handled by `VideoDataDescription::timescale`:
@@ -618,12 +632,27 @@ impl Cache for VideoStreamCache {
                             video_data,
                             video_sample_buffers,
                         ) {
-                            re_log::error_once!(
-                                "Failed to read process additional incoming video samples: {err}"
-                            );
+                            match err {
+                                VideoStreamProcessingError::OutOfOrderSamples => {
+                                    drop(video_stream);
+                                    // We found out of order samples, discard this video stream cache entry
+                                    // to reconstruct it with all data in mind.
+                                    self.0.remove(&key);
+                                    continue;
+                                }
+                                err => {
+                                    re_log::error_once!(
+                                        "Failed to read process additional incoming video samples: {err}"
+                                    );
+                                }
+                            }
                         }
 
                         if encoding_details_before != video_data.encoding_details {
+                            re_log::error_once!(
+                                "The video stream codec details on {} changed over time, which is not supported.",
+                                event.chunk.entity_path()
+                            );
                             video_renderer.reset_all_decoders();
                         }
                     }

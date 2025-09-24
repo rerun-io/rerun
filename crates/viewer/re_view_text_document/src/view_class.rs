@@ -3,9 +3,9 @@ use egui::{Label, Sense};
 use re_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
-    Item, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewerContext, external::re_log_types::EntityPath,
-    suggest_view_for_each_entity,
+    Item, SystemCommand, SystemCommandSender as _, ViewClass, ViewClassRegistryError, ViewId,
+    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    external::re_log_types::EntityPath, suggest_view_for_each_entity,
 };
 
 use crate::visualizer_system::{TextDocumentEntry, TextDocumentSystem};
@@ -151,8 +151,10 @@ impl ViewClass for TextDocumentView {
         }
 
         if clicked {
-            ctx.selection_state()
-                .set_selection(Item::View(query.view_id));
+            ctx.command_sender()
+                .send_system(SystemCommand::SetSelection(
+                    Item::View(query.view_id).into(),
+                ));
         }
 
         Ok(())

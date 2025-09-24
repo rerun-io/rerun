@@ -26,6 +26,10 @@ pub enum UiCommand {
         timeline: re_log_types::Timeline,
         time_range: re_log_types::AbsoluteTimeRangeF,
     },
+    SetUrlFragment {
+        recording_id: re_log_types::StoreId,
+        fragment: re_uri::Fragment,
+    },
 }
 
 /// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
@@ -278,10 +282,84 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
         })
 }
 
+/// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.
+//
+// TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
+// TODO(cmc): we should compute contiguous runs of the same partition here, and return a `(String, Vec<Chunk>)`
+// instead. Because of how the server performs the computation, this will very likely work out well
+// in practice.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn fetch_chunks_response_to_chunk_and_partition_id(
+    response: tonic::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>,
+) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
+    response
+        .then(|resp| {
+            // We want to make sure to offload that compute-heavy work to the compute worker pool: it's
+            // not going to make this one single pipeline any faster, but it will prevent starvation of
+            // the Tokio runtime (which would slow down every other futures currently scheduled!).
+            tokio::task::spawn_blocking(move || {
+                let r = resp.map_err(Into::<StreamError>::into)?;
+                let _span =
+                    tracing::trace_span!("get_chunks::batch_decode", num_chunks = r.chunks.len())
+                        .entered();
+
+                r.chunks
+                    .into_iter()
+                    .map(|arrow_msg| {
+                        let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+
+                        let arrow_msg =
+                            re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
+                                .map_err(Into::<StreamError>::into)?;
+
+                        let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                            .map_err(Into::<StreamError>::into)?;
+
+                        Ok((chunk, partition_id))
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+            })
+        })
+        .map(|res| {
+            res.map_err(Into::<StreamError>::into)
+                .and_then(std::convert::identity)
+        })
+}
+
 // This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
 #[cfg(target_arch = "wasm32")]
 pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::cloud::v1alpha1::GetChunksResponse>,
+) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
+    response.map(|resp| {
+        let resp = resp?;
+
+        let _span =
+            tracing::trace_span!("get_chunks::batch_decode", num_chunks = resp.chunks.len())
+                .entered();
+
+        resp.chunks
+            .into_iter()
+            .map(|arrow_msg| {
+                let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+
+                let arrow_msg =
+                    re_log_encoding::protobuf_conversions::arrow_msg_from_proto(&arrow_msg)
+                        .map_err(Into::<StreamError>::into)?;
+
+                let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch)
+                    .map_err(Into::<StreamError>::into)?;
+
+                Ok((chunk, partition_id))
+            })
+            .collect::<Result<Vec<_>, _>>()
+    })
+}
+
+// This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
+#[cfg(target_arch = "wasm32")]
+pub fn fetch_chunks_response_to_chunk_and_partition_id(
+    response: tonic::Streaming<re_protos::cloud::v1alpha1::FetchChunksResponse>,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, StreamError>> {
     response.map(|resp| {
         let resp = resp?;
@@ -355,6 +433,7 @@ pub async fn stream_blueprint_and_partition_from_server(
             blueprint_dataset,
             blueprint_partition,
             None,
+            re_uri::Fragment::default(),
             on_ui_cmd.as_deref(),
             on_msg.as_deref(),
         )
@@ -389,7 +468,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         dataset_id,
         partition_id,
         time_range,
-        fragment: _,
+        fragment,
     } = uri;
 
     stream_partition_from_server(
@@ -399,6 +478,7 @@ pub async fn stream_blueprint_and_partition_from_server(
         dataset_id.into(),
         partition_id.into(),
         time_range,
+        fragment,
         on_ui_cmd.as_deref(),
         on_msg.as_deref(),
     )
@@ -416,6 +496,7 @@ async fn stream_partition_from_server(
     dataset_id: EntryId,
     partition_id: PartitionId,
     time_range: Option<TimeSelection>,
+    fragment: re_uri::Fragment,
     on_ui_cmd: Option<&(dyn Fn(UiCommand) + Send + Sync)>,
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), StreamError> {
@@ -476,14 +557,20 @@ async fn stream_partition_from_server(
 
     let store_id = store_info.store_id.clone();
 
-    if let Some(time_range) = time_range
-        && let Some(on_ui_cmd) = on_ui_cmd
-    {
-        on_ui_cmd(UiCommand::SetLoopSelection {
-            recording_id: store_id.clone(),
-            timeline: time_range.timeline,
-            time_range: time_range.into(),
-        });
+    if let Some(on_ui_cmd) = on_ui_cmd {
+        if let Some(time_range) = time_range {
+            on_ui_cmd(UiCommand::SetLoopSelection {
+                recording_id: store_id.clone(),
+                timeline: time_range.timeline,
+                time_range: time_range.into(),
+            });
+        }
+        if !fragment.is_empty() {
+            on_ui_cmd(UiCommand::SetUrlFragment {
+                recording_id: store_id.clone(),
+                fragment,
+            });
+        }
     }
 
     if tx

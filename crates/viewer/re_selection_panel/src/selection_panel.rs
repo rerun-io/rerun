@@ -9,13 +9,15 @@ use re_data_ui::{
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_types::ComponentDescriptor;
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
     SyntaxHighlighting as _, UiExt as _, icons,
     list_item::{self, PropertyContent},
 };
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, UiLayout,
-    ViewContext, ViewId, ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SystemCommand,
+    SystemCommandSender as _, UiLayout, ViewContext, ViewId, ViewStates, ViewerContext,
+    contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
@@ -427,7 +429,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
         if let Some(view) = viewport.view(view_id) {
             ui.section_collapsing_header("Entity path filter")
-                .button(
+                .with_button(
                     list_item::ItemActionButton::new(
                         &re_ui::icons::EDIT,
                         "Add new entity…",
@@ -437,7 +439,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                     )
                     .hover_text("Modify the entity query using the editor"),
                 )
-                .help_markdown(markdown)
+                .with_help_markdown(markdown)
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                     ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
@@ -571,7 +573,8 @@ fn clone_view_button_ui(
         list_item::ButtonContent::new("Clone this view")
             .on_click(|| {
                 if let Some(new_view_id) = viewport.duplicate_view(&view_id, ctx) {
-                    ctx.selection_state().set_selection(Item::View(new_view_id));
+                    ctx.command_sender()
+                        .send_system(SystemCommand::SetSelection(Item::View(new_view_id).into()));
                     viewport.mark_user_interaction(ctx);
                 }
             })
@@ -628,7 +631,7 @@ fn entity_path_filter_ui(
         let mut layout_job =
             syntax_highlight_entity_path_filter(ui.tokens(), ui.style(), text.as_str());
         layout_job.wrap.max_width = wrap_width;
-        ui.fonts(|f| f.layout_job(layout_job))
+        ui.fonts_mut(|f| f.layout_job(layout_job))
     }
 
     // We store the string we are temporarily editing in the `Ui`'s temporary data storage.
@@ -708,7 +711,7 @@ fn container_children(
     };
 
     ui.section_collapsing_header("Contents")
-        .button(
+        .with_button(
             list_item::ItemActionButton::new(&re_ui::icons::ADD, "Add to container", || {
                 show_add_view_or_container_modal(*container_id);
             })
@@ -997,8 +1000,6 @@ fn show_list_item_for_container_child(
                         if response.clicked() {
                             remove_contents = true;
                         }
-
-                        response
                     }),
             )
         }
@@ -1023,8 +1024,6 @@ fn show_list_item_for_container_child(
                         if response.clicked() {
                             remove_contents = true;
                         }
-
-                        response
                     }),
             )
         }

@@ -594,16 +594,6 @@ impl RerunCloudService for RerunCloudHandler {
         Err(tonic::Status::unimplemented("create_index not implemented"))
     }
 
-    async fn re_index(
-        &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::ReIndexRequest>,
-    ) -> std::result::Result<
-        tonic::Response<re_protos::cloud::v1alpha1::ReIndexResponse>,
-        tonic::Status,
-    > {
-        Err(tonic::Status::unimplemented("re_index not implemented"))
-    }
-
     /* Queries */
 
     type SearchDatasetStream = SearchDatasetResponseStream;
@@ -871,10 +861,125 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn fetch_chunks(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::FetchChunksRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::FetchChunksRequest>,
     ) -> std::result::Result<tonic::Response<Self::FetchChunksStream>, tonic::Status> {
-        // TODO(zehiko) implement fetch_chunks
-        Err(tonic::Status::unimplemented("fetch_chunks not implemented"))
+        // worth noting that FetchChunks is not per-dataset request, it simply contains chunk infos
+        let request = request.into_inner();
+
+        let mut chunk_partition_pairs = Vec::new();
+
+        for chunk_info_data in request.chunk_infos {
+            let chunk_info_batch = chunk_info_data.decode().map_err(|err| {
+                tonic::Status::internal(format!("Failed to decode chunk_info: {err:#}"))
+            })?;
+
+            let schema = chunk_info_batch.schema();
+            let chunk_id_col = schema
+                .column_with_name("chunk_id")
+                .ok_or_else(|| tonic::Status::invalid_argument("Missing chunk_id column"))?;
+            let partition_id_col = schema
+                .column_with_name("chunk_partition_id")
+                .or_else(|| schema.column_with_name("partition_id"))
+                .ok_or_else(|| tonic::Status::invalid_argument("Missing partition_id column"))?;
+
+            let chunk_ids = chunk_info_batch.column(chunk_id_col.0);
+            let partition_ids = chunk_info_batch
+                .column(partition_id_col.0)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .ok_or_else(|| {
+                    tonic::Status::invalid_argument("partition_id must be string array")
+                })?;
+
+            use re_log_types::external::re_types_core::ChunkId;
+            let chunk_id_array = ChunkId::from_arrow(chunk_ids).map_err(|err| {
+                tonic::Status::internal(format!("Failed to parse chunk_id column: {err:#}"))
+            })?;
+
+            for (i, chunk_id) in chunk_id_array.into_iter().enumerate() {
+                if let Some(partition_id_str) = partition_ids.value(i).to_owned().into() {
+                    let partition_id = PartitionId::from(partition_id_str);
+                    chunk_partition_pairs.push((chunk_id, partition_id));
+                }
+            }
+        }
+
+        // get storage engines only for the partitions we actually need
+        let store = self.store.read().await;
+        let storage_engines: std::collections::HashMap<_, _> = store
+            .iter_datasets()
+            .flat_map(|dataset| {
+                let dataset_id = dataset.id();
+                let chunk_partition_pairs = &chunk_partition_pairs;
+                dataset.partition_ids().filter_map(move |partition_id| {
+                    if chunk_partition_pairs
+                        .iter()
+                        .any(|(_, pid)| pid == &partition_id)
+                    {
+                        dataset.partition(&partition_id).map(|partition| {
+                            #[expect(unsafe_code)]
+                            // Safety: no viewer is running, and we've locked the store for the duration
+                            // of the handler already.
+                            let storage_engine = unsafe { partition.storage_engine_raw() }.clone();
+                            (partition_id, (dataset_id, storage_engine))
+                        })
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect();
+        drop(store);
+
+        let mut chunks = Vec::new();
+        let compression = re_log_encoding::Compression::Off;
+
+        for (chunk_id, partition_id) in chunk_partition_pairs {
+            let (dataset_id, storage_engine) =
+                storage_engines.get(&partition_id).ok_or_else(|| {
+                    tonic::Status::internal(format!(
+                        "Storage engine not found for partition {partition_id}"
+                    ))
+                })?;
+
+            let storage_read = storage_engine.read();
+            let chunk_store = storage_read.store();
+
+            if let Some(chunk) = chunk_store.chunk(&chunk_id) {
+                let store_id = StoreId::new(
+                    StoreKind::Recording,
+                    dataset_id.to_string(),
+                    partition_id.id.as_str(),
+                );
+
+                let arrow_msg = re_log_types::ArrowMsg {
+                    chunk_id: *chunk.id(),
+                    batch: chunk.to_record_batch().map_err(|err| {
+                        tonic::Status::internal(format!(
+                            "failed to convert chunk to record batch: {err:#}"
+                        ))
+                    })?,
+                    on_release: None,
+                };
+
+                let proto_msg = re_log_encoding::protobuf_conversions::arrow_msg_to_proto(
+                    &arrow_msg,
+                    store_id,
+                    compression,
+                )
+                .map_err(|err| tonic::Status::internal(format!("encoding failed: {err:#}")))?;
+
+                chunks.push(proto_msg);
+            }
+        }
+
+        let response = re_protos::cloud::v1alpha1::FetchChunksResponse { chunks };
+
+        let stream = futures::stream::once(async move { Ok(response) });
+
+        Ok(tonic::Response::new(
+            Box::pin(stream) as Self::FetchChunksStream
+        ))
     }
 
     // --- Table APIs ---
@@ -954,6 +1059,18 @@ impl RerunCloudService for RerunCloudHandler {
     {
         Err(tonic::Status::unimplemented(
             "do_maintenance not implemented",
+        ))
+    }
+
+    async fn do_global_maintenance(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::DoGlobalMaintenanceRequest>,
+    ) -> Result<
+        tonic::Response<re_protos::cloud::v1alpha1::DoGlobalMaintenanceResponse>,
+        tonic::Status,
+    > {
+        Err(tonic::Status::unimplemented(
+            "do_global_maintenance not implemented",
         ))
     }
 }

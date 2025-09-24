@@ -1,8 +1,8 @@
 use re_types::{
+    Archetype as _, AsComponents as _, Loggable as _,
     archetypes::Tensor,
     datatypes::{TensorBuffer, TensorData},
     tensor_data::TensorCastError,
-    Archetype as _, AsComponents as _, Loggable as _,
 };
 
 #[test]

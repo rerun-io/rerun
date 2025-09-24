@@ -19,10 +19,11 @@ pub enum Colormap {
     Turbo = 5,
     Viridis = 6,
     CyanToYellow = 7,
+    Spectral = 8,
 }
 
 impl Colormap {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Grayscale,
         Self::Inferno,
         Self::Magma,
@@ -30,6 +31,7 @@ impl Colormap {
         Self::Turbo,
         Self::Viridis,
         Self::CyanToYellow,
+        Self::Spectral,
     ];
 }
 
@@ -43,6 +45,7 @@ impl std::fmt::Display for Colormap {
             Self::Turbo => write!(f, "Turbo"),
             Self::Viridis => write!(f, "Viridis"),
             Self::CyanToYellow => write!(f, "CyanToYellow"),
+            Self::Spectral => write!(f, "Spectral"),
         }
     }
 }
@@ -56,6 +59,7 @@ pub fn colormap_srgb(which: Colormap, t: f32) -> [u8; 4] {
         Colormap::Magma => colormap_magma_srgb(t),
         Colormap::Inferno => colormap_inferno_srgb(t),
         Colormap::CyanToYellow => colormap_cyan_to_yellow_srgb(t),
+        Colormap::Spectral => colormap_spectral_srgb(t),
     }
 }
 
@@ -210,4 +214,26 @@ pub fn colormap_cyan_to_yellow_srgb(t: f32) -> [u8; 4] {
         ((1. - 3. * t) * (255. / 4.)).max(0.) as u8,
         255,
     ]
+}
+
+/// Returns sRGB polynomial approximation from Spectral color map, assuming `t` is normalized.
+pub fn colormap_spectral_srgb(t: f32) -> [u8; 4] {
+    const C0: Vec3A = Vec3A::new(0.584384543712538, 0.006424432561482, 0.231061410304836);
+    const C1: Vec3A = Vec3A::new(3.768572852617221, 2.487082885717158, 2.821174312084977);
+    const C2: Vec3A = Vec3A::new(-16.262574054760623, -6.243215992229093, -37.292187460541960);
+    const C3: Vec3A = Vec3A::new(39.821464952234010, 39.932449794574126, 186.340471613899751);
+    const C4: Vec3A = Vec3A::new(
+        -46.140976850412727,
+        -99.423798167148249,
+        -388.532539629914481,
+    );
+    const C5: Vec3A = Vec3A::new(12.716626092708825, 96.954180217298671, 360.627239851094203);
+    const C6: Vec3A = Vec3A::new(5.942343111972585, -33.440386037285862, -123.635206049211334);
+
+    debug_assert!((0.0..=1.0).contains(&t));
+
+    let c = C0 + t * (C1 + t * (C2 + t * (C3 + t * (C4 + t * (C5 + t * C6)))));
+
+    let c = c * 255.0;
+    [c.x as u8, c.y as u8, c.z as u8, 255]
 }

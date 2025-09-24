@@ -1,17 +1,24 @@
-use arrow::{array::Array, error::ArrowError, util::display::FormatOptions};
+use arrow::{array::Array, error::ArrowError};
+
+use re_log_types::TimestampFormat;
 use re_ui::list_item::list_item_scope;
 use re_ui::{UiExt as _, UiLayout};
 
 use crate::datatype_ui::DataTypeUi;
-use crate::show_index::ArrayUi;
+use crate::show_index::{ArrayUi, DisplayOptions};
 
-pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
+pub fn arrow_ui(
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    timestamp_format: TimestampFormat,
+    array: &dyn Array,
+) {
     re_tracing::profile_function!();
 
     ui.scope(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-        match make_ui(array) {
+        match make_ui(timestamp_format, array) {
             Ok(array_formatter) => match ui_layout {
                 UiLayout::SelectionPanel => {
                     // Data type has a separate scope to prevent items from being aligned.
@@ -50,10 +57,16 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn Array) {
     });
 }
 
-pub(crate) fn make_ui(array: &dyn Array) -> Result<ArrayUi<'_>, ArrowError> {
-    let options = FormatOptions::default()
-        .with_null("null")
-        .with_display_error(true);
-    let array_ui = ArrayUi::try_new(array, &options)?;
+pub(crate) fn make_ui(
+    timestamp_format: TimestampFormat,
+    array: &dyn Array,
+) -> Result<ArrayUi<'_>, ArrowError> {
+    let array_ui = ArrayUi::try_new(
+        array,
+        &DisplayOptions {
+            timestamp_format,
+            ..Default::default()
+        },
+    )?;
     Ok(array_ui)
 }

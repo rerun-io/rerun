@@ -15,10 +15,7 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
-use re_viewer_context::{
-    AsyncRuntimeHandle, DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _,
-    ViewerContext,
-};
+use re_viewer_context::{AsyncRuntimeHandle, GlobalContext, ViewerContext};
 
 use crate::context::Context;
 use crate::entries::{Dataset, Entries, Entry, Table};
@@ -460,11 +457,7 @@ impl RedapServers {
                 server.server_ui(viewer_ctx, ctx, ui);
             });
         } else {
-            viewer_ctx
-                .command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(
-                    DisplayMode::LocalRecordings,
-                ));
+            viewer_ctx.revert_to_default_display_mode();
         }
     }
 
@@ -483,9 +476,17 @@ impl RedapServers {
                 match entry.inner() {
                     Ok(crate::entries::EntryInner::Dataset(dataset)) => {
                         server.dataset_entry_ui(viewer_ctx, ui, dataset);
+
+                        // If we're connected twice to the same server, we will find this entry
+                        // multiple times. We avoid it by returning here.
+                        return;
                     }
                     Ok(crate::entries::EntryInner::Table(table)) => {
                         server.table_entry_ui(viewer_ctx, ui, table);
+
+                        // If we're connected twice to the same server, we will find this entry
+                        // multiple times. We avoid it by returning here.
+                        return;
                     }
                     Err(err) => {
                         Frame::new().inner_margin(16.0).show(ui, |ui| {

@@ -130,16 +130,24 @@ impl SmartChannelSource {
         }
     }
 
+    /// Same as [`Self::redap_uri`], but strips any extra query or fragment from the uri.
+    pub fn stripped_redap_uri(&self) -> Option<RedapUri> {
+        self.redap_uri().map(|uri| match uri {
+            RedapUri::Catalog(_) | RedapUri::Entry(_) | RedapUri::Proxy(_) => uri,
+            RedapUri::DatasetData(uri) => RedapUri::DatasetData(uri.without_query_and_fragment()),
+        })
+    }
+
     /// Loading text for sources that load data from a specific source (e.g. a file or a URL).
     ///
     /// Returns `None` for any source that receives data dynamically through SDK calls or similar.
     /// For a status string that applies to all sources, see [`Self::status_string`].
-    pub fn loading_string(&self) -> Option<String> {
+    pub fn loading_name(&self) -> Option<String> {
         match self {
             // We only show things we know are very-soon-to-be recordings:
-            Self::File(path) => Some(format!("Loading {}…", path.display())),
-            Self::RrdHttpStream { url, .. } => Some(format!("Loading {url}…")),
-            Self::RedapGrpcStream { uri, .. } => Some(format!("Loading {uri}…")),
+            Self::File(path) => Some(path.to_string_lossy().into_owned()),
+            Self::RrdHttpStream { url, .. } => Some(url.clone()),
+            Self::RedapGrpcStream { uri, .. } => Some(uri.partition_id.clone()),
 
             Self::RrdWebEventListener
             | Self::JsChannel { .. }

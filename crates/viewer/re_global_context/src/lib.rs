@@ -8,6 +8,7 @@ mod command_sender;
 mod contents;
 mod file_dialog;
 mod item;
+mod item_collection;
 mod recording_or_table;
 
 pub use self::{
@@ -19,10 +20,11 @@ pub use self::{
     contents::{Contents, ContentsName, blueprint_id_to_tile_id},
     file_dialog::santitize_file_name,
     item::{Item, resolve_mono_instance_path, resolve_mono_instance_path_item},
+    item_collection::{ItemCollection, ItemContext},
     recording_or_table::RecordingOrTable,
 };
 
-use re_log_types::TableId;
+use re_log_types::{StoreId, TableId};
 
 /// Application context that is shared across all parts of the viewer.
 pub struct GlobalContext<'a> {
@@ -65,8 +67,13 @@ pub enum DisplayMode {
     /// The settings dialog for application-wide configuration.
     Settings,
 
+    // TODO(isse): It would be nice to only switch to newly loaded items if we
+    // are on the loading screen for that specific item.
+    /// A loading screen to some source.
+    Loading(Box<re_smart_channel::SmartChannelSource>),
+
     /// Regular view of the local recordings, including the current recording's viewport.
-    LocalRecordings,
+    LocalRecordings(StoreId),
 
     LocalTable(TableId),
 

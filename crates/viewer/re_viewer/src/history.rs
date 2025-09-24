@@ -15,13 +15,11 @@ use std::sync::{Arc, OnceLock};
 
 use js_sys::wasm_bindgen;
 use parking_lot::Mutex;
+use re_viewer_context::open_url;
 use wasm_bindgen::{JsCast as _, JsError, JsValue, closure::Closure, prelude::wasm_bindgen};
 use web_sys::{History, UrlSearchParams};
 
-use crate::{
-    open_url,
-    web_tools::{JsResultExt as _, window},
-};
+use crate::web_tools::{JsResultExt as _, window};
 use re_viewer_context::CommandSender;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -158,14 +156,15 @@ fn handle_popstate(
         unreachable!();
     };
 
-    let follow_if_http = false;
-    let select_redap_source_when_loaded = true;
     match entry.url.parse::<open_url::ViewerOpenUrl>() {
         Ok(url) => {
             url.open(
                 egui_ctx,
-                follow_if_http,
-                select_redap_source_when_loaded,
+                &open_url::OpenUrlOptions {
+                    follow_if_http: false,
+                    select_redap_source_when_loaded: true,
+                    show_loader: true,
+                },
                 command_sender,
             );
         }
@@ -263,7 +262,6 @@ pub trait HistoryExt: private::Sealed {
     ///
     /// Use this to update the current url with a new fragment (selection, time, etc.)
     /// to which browser history doesn't need to go back to.
-    #[allow(unused)]
     fn replace_entry(&self, entry: HistoryEntry) -> Result<(), JsValue>;
 
     /// Get the latest entry.

@@ -32,7 +32,9 @@ impl Navigation {
     ///
     /// This is defined in the default implementation for [`Navigation`]
     pub fn push_start_mode(&mut self) {
-        self.push(self.start_mode.clone());
+        if *self.peek() != self.start_mode {
+            self.push(self.start_mode.clone());
+        }
     }
 
     pub fn replace(&mut self, new_mode: DisplayMode) -> Option<DisplayMode> {

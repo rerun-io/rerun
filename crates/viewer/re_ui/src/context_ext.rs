@@ -88,7 +88,7 @@ pub trait ContextExt {
         egui::RichText::new(text).color(style.visuals.error_fg_color)
     }
 
-    fn top_bar_style(&self, style_like_web: bool) -> TopBarStyle {
+    fn top_bar_style(&self, _frame: &eframe::Frame, style_like_web: bool) -> TopBarStyle {
         let tokens = self.tokens();
         let egui_zoom_factor = self.ctx().zoom_factor();
         let fullscreen = self
@@ -103,7 +103,31 @@ pub trait ContextExt {
             && crate::fullsize_content(self.ctx().os())
             && !fullscreen;
 
-        let native_buttons_size_in_native_scale = egui::vec2(64.0, 24.0); // source: I measured /emilk
+        let traffic_button_sizes_fallback = egui::vec2(64.0, 24.0); // source: I measured /emilk
+
+        #[cfg(target_os = "macos")]
+        let native_buttons_size_in_native_scale = {
+            use crate::egui_ext::WindowChromeMetrics;
+            use raw_window_handle::HasWindowHandle as _;
+
+            let metrics = _frame
+                .window_handle()
+                .ok()
+                .and_then(|handle| WindowChromeMetrics::from_window_handle(&handle.as_raw()));
+            if let Some(metrics) = metrics {
+                let WindowChromeMetrics {
+                    traffic_lights_size,
+                } = metrics;
+                traffic_lights_size
+            } else {
+                if cfg!(debug_assertions) {
+                    re_log::warn_once!("Failed to measure the size of the mac traffic light area");
+                }
+                traffic_button_sizes_fallback
+            }
+        };
+        #[cfg(not(target_os = "macos"))]
+        let native_buttons_size_in_native_scale = traffic_button_sizes_fallback;
 
         let height = if make_room_for_window_buttons {
             // On mac we want to match the height of the native red/yellow/green close/minimize/maximize buttons.

@@ -62,4 +62,6 @@ crossbeam.workspace = true
 
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
+
+insta = { workspace = true, features = ["filters", "redactions"] }
 similar-asserts.workspace = true

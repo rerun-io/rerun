@@ -49,6 +49,9 @@ perf.data*
 
 **/dataset/
 
+# insta snapshot temp file:
+*.pending-snap
+
 # Screenshots from samples etc.
 screenshot*.png
 
@@ -58,6 +61,9 @@ example_data
 # Various builds
 dist
 wheels
+
+# VSCode local tasks
+.vscode/tasks.json
 
 # Screenshot comparison build
 /compare_screenshot

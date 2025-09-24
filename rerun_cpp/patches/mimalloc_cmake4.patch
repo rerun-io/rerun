@@ -1,0 +1,29 @@
+diff --git a/cpp/cmake_modules/ThirdpartyToolchain.cmake b/cpp/cmake_modules/ThirdpartyToolchain.cmake
+index db151b4e0f..5127744637 100644
+--- a/cpp/cmake_modules/ThirdpartyToolchain.cmake
++++ b/cpp/cmake_modules/ThirdpartyToolchain.cmake
+@@ -2254,6 +2254,13 @@ if(ARROW_MIMALLOC)
+       "${MIMALLOC_PREFIX}/lib/mimalloc-2.0/${CMAKE_STATIC_LIBRARY_PREFIX}${MIMALLOC_LIB_BASE_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}"
+   )
+ 
++  if (CMAKE_POLICY_VERSION_MINIMUM)
++    set(MIMALLOC_POLICY_ARGS
++        -DCMAKE_POLICY_VERSION_MINIMUM=${CMAKE_POLICY_VERSION_MINIMUM})
++  else()
++    set(MIMALLOC_POLICY_ARGS "")
++  endif()
++
+   set(MIMALLOC_CMAKE_ARGS
+       ${EP_COMMON_CMAKE_ARGS}
+       "-DCMAKE_INSTALL_PREFIX=${MIMALLOC_PREFIX}"
+@@ -2261,7 +2268,9 @@ if(ARROW_MIMALLOC)
+       -DMI_LOCAL_DYNAMIC_TLS=ON
+       -DMI_BUILD_OBJECT=OFF
+       -DMI_BUILD_SHARED=OFF
+-      -DMI_BUILD_TESTS=OFF)
++      -DMI_BUILD_TESTS=OFF
++      ${MIMALLOC_POLICY_ARGS}
++  )
+ 
+   externalproject_add(mimalloc_ep
+                       ${EP_COMMON_OPTIONS}

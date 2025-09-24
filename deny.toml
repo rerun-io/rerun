@@ -52,20 +52,23 @@ deny = [
   #{ name = "egui_kittest", reason = "Only allowed as a dev-dependency for testing." },
 ]
 skip = [
-  { name = "base64" },           # Too popular
-  { name = "block2" },           # Old version via rfd
-  { name = "cargo_metadata" },   # Older version used by ply-rs. It's small, and it's build-time only!
-  { name = "core-foundation" },  # Currently, e.g. `webbrowser` and `winit` use different versions.
-  { name = "hashbrown" },        # Old version used by polar-rs
-  { name = "libloading" },       # datafusion-ffi needs an older version than wgpu
-  { name = "objc2-app-kit" },    # `accesskit_macos` uses a different version than `arboard`
-  { name = "objc2-foundation" }, # `accesskit_macos` uses a different version than `arboard`
-  { name = "objc2" },            # `accesskit_macos` uses a different version than `arboard`
-  { name = "ordered-float" },    # Old version being used by parquet, but super small!
-  { name = "pollster" },         # rfd is still on 0.3
-  { name = "pulldown-cmark" },   # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
-  { name = "redox_syscall" },    # Plenty of versions in the wild
-  { name = "rustc-hash" },       # numpy with compatible pyo3 requires different version than wgpu
+  { name = "base64" },              # Too popular
+  { name = "block2" },              # Old version via rfd
+  { name = "cargo-platform" },      # Older version used by ply-rs. It's build-time only!
+  { name = "cargo_metadata" },      # Older version used by ply-rs. It's small, and it's build-time only!
+  { name = "core-foundation" },     # Currently, e.g. `webbrowser` and `winit` use different versions.
+  { name = "core-graphics-types" }, # wgpu requires 0.2 while winit is still on 0.1
+  { name = "hashbrown" },           # Old version used by polar-rs
+  { name = "libloading" },          # datafusion-ffi needs an older version than wgpu
+  { name = "objc2-app-kit" },       # `accesskit_macos` uses a different version than `arboard`
+  { name = "objc2-foundation" },    # `accesskit_macos` uses a different version than `arboard`
+  { name = "objc2" },               # `accesskit_macos` uses a different version than `arboard`
+  { name = "ordered-float" },       # Old version being used by parquet, but super small!
+  { name = "pollster" },            # rfd is still on 0.3
+  { name = "pulldown-cmark" },      # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
+  { name = "redox_syscall" },       # Plenty of versions in the wild
+  { name = "rustc-hash" },          # numpy with compatible pyo3 requires different version than wgpu
+  { name = "unicode-width" },       # walkers depends on 0.1 via http-cache-request / cacache
 ]
 skip-tree = [
   { name = "re_perf_telemetry" }, # All the telemetry stack (tracing, otel, etc) carry a lot of old dependencies, it's all feature flagged though.

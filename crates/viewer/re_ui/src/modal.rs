@@ -60,6 +60,11 @@ impl ModalHandler {
             None
         }
     }
+
+    /// Whether the modal is currently open.
+    pub fn is_open(&self) -> bool {
+        self.modal.is_some()
+    }
 }
 
 /// Show a modal window with Rerun style using [`egui::Modal`].
@@ -192,6 +197,8 @@ impl ModalWrapper {
                     }
                     if let Some(max_width) = self.max_width {
                         ui.set_max_width(max_width);
+                    } else {
+                        ui.set_max_width(tokens.default_modal_width);
                     }
 
                     if let Some(min_height) = self.min_height {

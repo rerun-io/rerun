@@ -49,6 +49,8 @@ impl ChunkUi {
 
     // Return `true` if the user wants to exit the chunk viewer.
     pub(crate) fn ui(&mut self, ui: &mut egui::Ui, timestamp_format: TimestampFormat) -> bool {
+        ui.sanity_check();
+
         let tokens = ui.tokens();
 
         let table_style = re_ui::TableStyle::Dense;
@@ -83,7 +85,7 @@ impl ChunkUi {
             .map(|(component_desc, list_array)| {
                 (
                     component_desc.clone(),
-                    format!("{:#?}", list_array.data_type()),
+                    re_arrow_util::format_data_type(list_array.data_type()),
                 )
             })
             .collect::<BTreeMap<_, _>>();
@@ -151,7 +153,12 @@ impl ChunkUi {
                     let component_data = chunk.component_batch_raw(component_desc, row_index);
                     match component_data {
                         Some(Ok(data)) => {
-                            re_arrow_ui::arrow_ui(ui, re_ui::UiLayout::List, &*data);
+                            re_arrow_ui::arrow_ui(
+                                ui,
+                                re_ui::UiLayout::List,
+                                timestamp_format,
+                                &*data,
+                            );
                         }
                         Some(Err(err)) => {
                             ui.error_with_details_on_hover(err.to_string());
@@ -206,7 +213,7 @@ impl ChunkUi {
                 ui.push_id(field.name().clone(), |ui| {
                     ui.list_item_collapsible_noninteractive_label(field.name(), false, |ui| {
                         ui.list_item_collapsible_noninteractive_label("Data type", false, |ui| {
-                            ui.label(format!("{:#?}", field.data_type()));
+                            ui.label(re_arrow_util::format_data_type(field.data_type()));
                         });
 
                         ui.list_item_collapsible_noninteractive_label("Metadata", false, |ui| {

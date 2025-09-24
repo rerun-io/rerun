@@ -31,6 +31,25 @@ pub trait UiExt {
         crate::design_tokens_of(self.theme())
     }
 
+    #[inline]
+    #[track_caller]
+    fn sanity_check(&self) {
+        // TODO(emilk/egui#7537): add the contents of this function as a callback in egui instead.
+        let ui = self.ui();
+
+        if cfg!(debug_assertions)
+            && ui.is_tooltip()
+            && ui.spacing().tooltip_width + 1000.0 < ui.max_rect().width()
+        {
+            panic!("DEBUG ASSERT: Huge tooltip: {}", ui.max_rect().size());
+        }
+    }
+
+    #[inline]
+    fn is_tooltip(&self) -> bool {
+        self.ui().layer_id().order == egui::Order::Tooltip
+    }
+
     /// Shows a success label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
@@ -160,7 +179,7 @@ pub trait UiExt {
         }
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
-        response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ImageButton));
+        response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::Button));
 
         if ui.is_rect_visible(rect) {
             let visuals = ui.style().interact(&response);
@@ -763,6 +782,25 @@ pub trait UiExt {
         }
 
         response
+    }
+
+    fn loading_screen(
+        &mut self,
+        header: impl Into<egui::RichText>,
+        source: impl Into<egui::RichText>,
+    ) {
+        self.ui_mut().center("loading spinner", |ui| {
+            ui.vertical_centered(|ui| {
+                ui.spinner();
+                ui.label(
+                    header
+                        .into()
+                        .heading()
+                        .color(ui.style().visuals.weak_text_color()),
+                );
+                ui.strong(source);
+            });
+        });
     }
 
     /// Paints a time cursor for indicating the time on a time axis along x.

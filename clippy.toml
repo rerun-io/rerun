@@ -52,6 +52,9 @@ disallowed-methods = [
   { path = "std::panic::catch_unwind", reason = "We compile with `panic = 'abort'`" },
   { path = "std::thread::spawn", reason = "Use `std::thread::Builder` and name the thread" },
 
+  { path = "std::time::Duration::from_secs_f32", reason = "Use try_from_secs_f32 instead to avoid panics" },
+  { path = "std::time::Duration::from_secs_f64", reason = "Use try_from_secs_f64 instead to avoid panics" },
+
   { path = "arrow::compute::concat", reason = "Use `re_arrow_util::arrow_util::concat_arrays` instead, which has better memory management" },
   { path = "arrow::compute::filter", reason = "Use `re_arrow_util::arrow_util::filter_array` instead" },
   { path = "arrow::compute::take", reason = "Use `re_arrow_util::arrow_util::take_array` instead" },
@@ -96,12 +99,14 @@ disallowed-types = [
 doc-valid-idents = [
   # You must also update the same list in `scripts/clippy_wasm/clippy.toml`!
   "AOMedia",
+  "GiB",
   "GitHub",
   "GLB",
   "GLTF",
   "iOS",
   "macOS",
   "MessagePack",
+  "MiB",
   "MiMalloc",
   "NaN",
   "OBJ",

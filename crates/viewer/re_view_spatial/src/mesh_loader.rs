@@ -95,7 +95,7 @@ impl LoadedMesh {
             }
         }
 
-        let bbox = cpu_model.calculate_bounding_box();
+        let bbox = cpu_model.bbox;
         let mesh_instances = cpu_model.into_gpu_meshes(render_ctx)?;
 
         Ok(Self {
@@ -198,6 +198,7 @@ impl LoadedMesh {
                 albedo,
                 albedo_factor: albedo_factor.unwrap_or(datatypes::Rgba32::WHITE).into(),
             }],
+            bbox,
         };
 
         let mesh_instances = vec![re_renderer::renderer::GpuMeshInstance::new(

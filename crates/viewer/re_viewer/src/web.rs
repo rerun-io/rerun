@@ -13,11 +13,10 @@ use wasm_bindgen::prelude::*;
 use re_log::ResultExt as _;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
-use re_viewer_context::AsyncRuntimeHandle;
+use re_viewer_context::{AsyncRuntimeHandle, open_url};
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
-use crate::open_url;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]
@@ -202,16 +201,16 @@ impl WebHandle {
             return;
         };
 
-        // TODO(andreas): should follow_if_http be part of the fragments?
-        let follow_if_http = follow_if_http.unwrap_or(false);
-        let select_redap_source_when_loaded = true;
-
         match url.parse::<open_url::ViewerOpenUrl>() {
             Ok(url) => {
                 url.open(
                     &app.egui_ctx,
-                    follow_if_http,
-                    select_redap_source_when_loaded,
+                    &open_url::OpenUrlOptions {
+                        // TODO(andreas): should follow_if_http be part of the fragments?
+                        follow_if_http: follow_if_http.unwrap_or(false),
+                        select_redap_source_when_loaded: true,
+                        show_loader: false,
+                    },
                     &app.command_sender,
                 );
             }
@@ -662,6 +661,7 @@ impl From<PanelState> for re_types::blueprint::components::PanelState {
 // Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
 pub struct AppOptions {
+    viewer_url: Option<String>,
     url: Option<StringOrStringArray>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
@@ -714,11 +714,13 @@ fn create_app(
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
+
     let app_env = crate::AppEnvironment::Web {
         url: cc.integration_info.web_info.location.url.clone(),
     };
 
     let AppOptions {
+        viewer_url,
         url,
         manifest_url,
         render_backend,
@@ -782,6 +784,7 @@ fn create_app(
         panel_state_overrides: panel_state_overrides.unwrap_or_default().into(),
 
         enable_history,
+        viewer_url,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
@@ -804,16 +807,16 @@ fn create_app(
     }
 
     if let Some(urls) = url {
-        let follow_if_http = false;
-        let select_redap_source_when_loaded = true;
-
         for url in urls.into_inner() {
             match url.parse::<open_url::ViewerOpenUrl>() {
                 Ok(url) => {
                     url.open(
                         &app.egui_ctx,
-                        follow_if_http,
-                        select_redap_source_when_loaded,
+                        &open_url::OpenUrlOptions {
+                            follow_if_http: false,
+                            select_redap_source_when_loaded: true,
+                            show_loader: true,
+                        },
                         &app.command_sender,
                     );
                 }

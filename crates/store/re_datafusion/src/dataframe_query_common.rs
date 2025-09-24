@@ -7,7 +7,7 @@ use std::sync::Arc;
 use arrow::array::{
     ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
     TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
-    TimestampSecondArray, UInt64Array, new_null_array,
+    TimestampSecondArray, new_null_array,
 };
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
 use arrow::record_batch::RecordBatchOptions;
@@ -19,20 +19,17 @@ use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 
-use re_dataframe::external::re_chunk::ChunkId;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
-use re_log_types::external::re_types_core::Loggable as _;
 use re_protos::cloud::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
-use re_protos::cloud::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest};
+use re_protos::cloud::v1alpha1::{GetDatasetSchemaRequest, QueryDatasetRequest};
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
-use re_tuid::Tuid;
 use re_uri::Origin;
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
@@ -49,7 +46,6 @@ pub struct DataframeQueryTableProvider {
     sort_index: Option<Index>,
     chunk_info_batches: Arc<Vec<RecordBatch>>,
     client: ConnectionClient,
-    chunk_request: GetChunksRequest,
 }
 
 impl DataframeQueryTableProvider {
@@ -109,33 +105,15 @@ impl DataframeQueryTableProvider {
 
         let query = query_from_query_expression(query_expression);
 
-        let mut fields_of_interest = [
+        let fields_of_interest = [
             "chunk_partition_id",
-            "chunk_entity_path",
             "chunk_id",
-            "chunk_is_static",
-            "chunk_byte_len",
+            "rerun_partition_layer",
+            "chunk_key",
         ]
         .into_iter()
         .map(String::from)
         .collect::<Vec<_>>();
-
-        if let Some(index) = query_expression.filtered_index {
-            fields_of_interest.push(format!("{}:start", index.as_str()));
-            fields_of_interest.push(format!("{}:end", index.as_str()));
-        }
-
-        let chunk_request = GetChunksRequest {
-            dataset_id: Some(dataset_id.into()),
-            partition_ids: vec![],
-            chunk_ids: vec![],
-            entity_paths: entity_paths.iter().map(|p| (*p).clone().into()).collect(),
-            select_all_entity_paths,
-            fuzzy_descriptors: fuzzy_descriptors.clone(),
-            exclude_static_data: false,
-            exclude_temporal_data: false,
-            query: Some(query.clone().into()),
-        };
 
         let dataset_query = QueryDatasetRequest {
             partition_ids: partition_ids
@@ -199,7 +177,6 @@ impl DataframeQueryTableProvider {
             sort_index: query_expression.filtered_index,
             chunk_info_batches,
             client,
-            chunk_request,
         })
     }
 
@@ -295,7 +272,6 @@ impl TableProvider for DataframeQueryTableProvider {
             Arc::clone(&self.chunk_info_batches),
             query_expression,
             self.client.clone(),
-            self.chunk_request.clone(),
         )
         .map(Arc::new)
         .map(|exec| {
@@ -429,86 +405,54 @@ pub fn align_record_batch_to_schema(
 /// underlying execution code from `DataFusion`'s `RepartitionExec` to compute
 /// these partition IDs, just to be certain they match partitioning generated
 /// from sources other than Rerun gRPC services.
+/// This function will do the relevant grouping of chunk infos by chunk's partition id
+/// and we will eventually fire individual queries for each group. Partitions must be ordered,
+/// see `PartitionStreamExec::try_new` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
-pub(crate) fn compute_partition_stream_chunk_info(
+pub(crate) fn group_chunk_infos_by_partition_id(
     chunk_info_batches: &Arc<Vec<RecordBatch>>,
-) -> Result<Arc<BTreeMap<String, Vec<ChunkInfo>>>, DataFusionError> {
+) -> Result<Arc<BTreeMap<String, Vec<RecordBatch>>>, DataFusionError> {
     let mut results = BTreeMap::new();
 
     for batch in chunk_info_batches.as_ref() {
-        // TODO(tsaucer) see comment below
-        // let schema = batch.schema();
-        // let end_time_col = schema
-        //     .fields()
-        //     .iter()
-        //     .map(|f| f.name())
-        //     .find(|name| name.ends_with(":end"))
-        //     .ok_or(exec_datafusion_err!("Unable to identify time index"))?;
-        // let start_time_col = schema
-        //     .fields()
-        //     .iter()
-        //     .map(|f| f.name())
-        //     .find(|name| name.ends_with(":start"))
-        //     .ok_or(exec_datafusion_err!("Unable to identify time index"))?;
-
-        let partition_id_arr = batch
+        let partition_ids = batch
             .column_by_name("chunk_partition_id")
             .ok_or(exec_datafusion_err!(
-                "Unable to return chunk_partition_id as expected"
+                "Unable to find chunk_partition_id column"
             ))?
             .as_any()
             .downcast_ref::<StringArray>()
-            .ok_or(exec_datafusion_err!("Unexpected type for chunk_id"))?;
-
-        let chunk_id_arr = batch
-            .column_by_name("chunk_id")
             .ok_or(exec_datafusion_err!(
-                "Unable to return chunk_id as expected"
-            ))
-            .and_then(|arr| Tuid::from_arrow(arr).map_err(|err| exec_datafusion_err!("{err}")))?;
+                "chunk_partition_id must be string type"
+            ))?;
 
-        let chunk_byte_len_arr = batch
-            .column_by_name("chunk_byte_len")
-            .ok_or(exec_datafusion_err!(
-                "Unable to return chunk_byte_len as expected"
-            ))?
-            .as_any()
-            .downcast_ref::<UInt64Array>()
-            .ok_or(exec_datafusion_err!("Unexpected type for chunk_id"))?;
+        // group rows by partition ID
+        let mut partition_rows: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+        for (row_idx, partition_id) in partition_ids.iter().enumerate() {
+            let pid = partition_id.ok_or(exec_datafusion_err!(
+                "Found null partition_id in chunk_partition_id column at row {row_idx}"
+            ))?;
+            partition_rows
+                .entry(pid.to_owned())
+                .or_default()
+                .push(row_idx);
+        }
 
-        // TODO(tsaucer) uncomment and ensure this can still work with no timeline selected
-        // Below we are setting the start time to the index, because we are not yet
-        // processing the times for when it is okay to send the next row.
+        for (partition_id, row_indices) in partition_rows {
+            if row_indices.is_empty() {
+                continue;
+            }
 
-        // let end_time_arr = batch
-        //     .column_by_name(end_time_col)
-        //     .ok_or(exec_datafusion_err!(
-        //         "Unable to return end time column as expected"
-        //     ))?;
-        // let end_time_arr = time_array_ref_to_i64(end_time_arr)?;
-        // let start_time_arr = batch
-        //     .column_by_name(start_time_col)
-        //     .ok_or(exec_datafusion_err!(
-        //         "Unable to return start time column as expected"
-        //     ))?;
-        // let start_time_arr = time_array_ref_to_i64(start_time_arr)?;
+            // Create indices array for take operation
+            let indices = arrow::array::UInt32Array::from(
+                row_indices.iter().map(|&i| i as u32).collect::<Vec<_>>(),
+            );
+            let partition_batch = arrow::compute::take_record_batch(batch, &indices)?;
 
-        for (idx, chunk_id) in chunk_id_arr.iter().enumerate() {
-            let partition_id = partition_id_arr.value(idx).to_owned();
-            let chunk_id = ChunkId::from_tuid(*chunk_id);
-            let byte_len = chunk_byte_len_arr.value(idx);
-            let start_time = idx as i64;
-            let end_time = idx as i64 + 1;
-
-            let chunk_info = ChunkInfo {
-                start_time,
-                end_time,
-                chunk_id,
-                byte_len,
-            };
-
-            let chunks_vec = results.entry(partition_id).or_insert(vec![]);
-            chunks_vec.push(chunk_info);
+            results
+                .entry(partition_id)
+                .or_insert_with(Vec::new)
+                .push(partition_batch);
         }
     }
 
@@ -577,36 +521,129 @@ pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query 
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct ChunkInfo {
-    pub start_time: i64,
-    pub end_time: i64,
-    pub chunk_id: ChunkId,
-    pub byte_len: u64,
-}
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
 
-impl Ord for ChunkInfo {
-    fn cmp(&self, other: &Self) -> Ordering {
-        let start_time_cmp = self.start_time.cmp(&other.start_time);
-        let Ordering::Equal = start_time_cmp else {
-            return start_time_cmp;
-        };
-        let end_time_cmp = self.end_time.cmp(&other.end_time);
-        let Ordering::Equal = end_time_cmp else {
-            return end_time_cmp;
-        };
-        let chunk_id_cmp = self.chunk_id.cmp(&other.chunk_id);
-        let Ordering::Equal = chunk_id_cmp else {
-            return chunk_id_cmp;
-        };
+    use arrow::array::{Array as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder};
 
-        // We should never get here
-        self.byte_len.cmp(&other.byte_len)
-    }
-}
+    use super::*;
 
-impl PartialOrd for ChunkInfo {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
+    #[test]
+    fn test_batches_grouping() {
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![
+                Field::new("chunk_partition_id", DataType::Utf8, false),
+                Field::new("chunk_id", DataType::FixedSizeBinary(32), false),
+            ],
+            HashMap::default(),
+        ));
+
+        let capacity = 4;
+        let byte_width = 32;
+        let mut chunk_id_builder = FixedSizeBinaryBuilder::with_capacity(capacity, byte_width);
+        chunk_id_builder.append_value([0u8; 32]).unwrap();
+        chunk_id_builder.append_value([1u8; 32]).unwrap();
+        chunk_id_builder.append_value([2u8; 32]).unwrap();
+        chunk_id_builder.append_value([3u8; 32]).unwrap();
+        let chunk_id_array = Arc::new(chunk_id_builder.finish());
+
+        let batch1 = RecordBatch::try_new_with_options(
+            schema.clone(),
+            vec![
+                Arc::new(StringArray::from(vec![
+                    Some("A"),
+                    Some("B"),
+                    Some("A"),
+                    Some("C"),
+                ])),
+                chunk_id_array,
+            ],
+            &RecordBatchOptions::new().with_row_count(Some(4)),
+        )
+        .unwrap();
+
+        let mut chunk_id_builder = FixedSizeBinaryBuilder::with_capacity(capacity, byte_width);
+        chunk_id_builder.append_value([4u8; 32]).unwrap();
+        chunk_id_builder.append_value([5u8; 32]).unwrap();
+        chunk_id_builder.append_value([6u8; 32]).unwrap();
+        let chunk_id_array = Arc::new(chunk_id_builder.finish());
+
+        let batch2 = RecordBatch::try_new_with_options(
+            schema.clone(),
+            vec![
+                Arc::new(StringArray::from(vec![Some("B"), Some("C"), Some("D")])),
+                chunk_id_array,
+            ],
+            &RecordBatchOptions::new().with_row_count(Some(3)),
+        )
+        .unwrap();
+
+        let chunk_info_batches = Arc::new(vec![batch1, batch2]);
+
+        let grouped = group_chunk_infos_by_partition_id(&chunk_info_batches).unwrap();
+
+        assert_eq!(grouped.len(), 4);
+
+        let group_a = grouped.get("A").unwrap();
+        assert_eq!(group_a.len(), 1);
+        let chunk_ids_a = group_a[0]
+            .column_by_name("chunk_id")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
+        assert_eq!(chunk_ids_a.len(), 2);
+        assert_eq!(chunk_ids_a.value(0), [0u8; 32]);
+        assert_eq!(chunk_ids_a.value(1), [2u8; 32]);
+
+        let group_b = grouped.get("B").unwrap();
+        assert_eq!(group_b.len(), 2);
+        let chunk_ids_b1 = group_b[0]
+            .column_by_name("chunk_id")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
+        assert_eq!(chunk_ids_b1.len(), 1);
+        assert_eq!(chunk_ids_b1.value(0), [1u8; 32]);
+        let chunk_ids_b2 = group_b[1]
+            .column_by_name("chunk_id")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
+        assert_eq!(chunk_ids_b2.len(), 1);
+        assert_eq!(chunk_ids_b2.value(0), [4u8; 32]);
+
+        let group_c = grouped.get("C").unwrap();
+        assert_eq!(group_c.len(), 2);
+        let chunk_ids_c1 = group_c[0]
+            .column_by_name("chunk_id")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
+        assert_eq!(chunk_ids_c1.len(), 1);
+        assert_eq!(chunk_ids_c1.value(0), [3u8; 32]);
+        let chunk_ids_c2 = group_c[1]
+            .column_by_name("chunk_id")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
+        assert_eq!(chunk_ids_c2.len(), 1);
+        assert_eq!(chunk_ids_c2.value(0), [5u8; 32]);
+
+        let group_d = grouped.get("D").unwrap();
+        assert_eq!(group_d.len(), 1);
+        let chunk_ids_d = group_d[0]
+            .column_by_name("chunk_id")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<FixedSizeBinaryArray>()
+            .unwrap();
+        assert_eq!(chunk_ids_d.len(), 1);
+        assert_eq!(chunk_ids_d.value(0), [6u8; 32]);
     }
 }

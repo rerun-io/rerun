@@ -2,6 +2,7 @@
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
+use re_entity_db::entity_db::EntityDbClass;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
@@ -9,7 +10,9 @@ use re_types::{
     archetypes::RecordingInfo,
     components::{Name, Timestamp},
 };
+use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
+use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
 };
@@ -100,7 +103,7 @@ pub fn entity_path_parts_buttons(
                     db,
                     ui,
                     view_id,
-                    &InstancePath::entity_all(accumulated.clone().into()),
+                    &InstancePath::entity_all(accumulated.clone()),
                     part.syntax_highlighted(ui.style()),
                     with_individual_icons,
                 );
@@ -277,11 +280,11 @@ fn instance_path_button_to_ex(
         ui.selectable_label_with_icon(
             instance_path_icon(&query.timeline(), db, instance_path),
             text,
-            ctx.selection().contains_item(&item),
+            ctx.is_selected_or_loading(&item),
             re_ui::LabelStyle::Normal,
         )
     } else {
-        ui.selectable_label(ctx.selection().contains_item(&item), text)
+        ui.selectable_label(ctx.is_selected_or_loading(&item), text)
     };
 
     let response = response.on_hover_ui(|ui| {
@@ -320,7 +323,7 @@ pub fn instance_path_parts_buttons(
                 db,
                 ui,
                 view_id,
-                &InstancePath::entity_all(accumulated.clone().into()),
+                &InstancePath::entity_all(accumulated.clone()),
                 part.syntax_highlighted(ui.style()),
                 with_icon,
             );
@@ -469,7 +472,7 @@ pub fn data_blueprint_button_to(
 ) -> egui::Response {
     let item = Item::DataResult(view_id, InstancePath::entity_all(entity_path.clone()));
     let response = ui
-        .selectable_label(ctx.selection().contains_item(&item), text)
+        .selectable_label(ctx.is_selected_or_loading(&item), text)
         .on_hover_ui(|ui| {
             let include_subtree = false;
             entity_hover_card_ui(ui, ctx, query, db, entity_path, include_subtree);
@@ -621,7 +624,7 @@ pub fn app_id_button_ui(
     let response = ui.selectable_label_with_icon(
         &icons::APPLICATION,
         app_id.to_string(),
-        ctx.selection().contains_item(&item),
+        ctx.is_selected_or_loading(&item),
         re_ui::LabelStyle::Normal,
     );
 
@@ -642,7 +645,7 @@ pub fn data_source_button_ui(
     let response = ui.selectable_label_with_icon(
         &icons::DATA_SOURCE,
         data_source.to_string(),
-        ctx.selection().contains_item(&item),
+        ctx.is_selected_or_loading(&item),
         re_ui::LabelStyle::Normal,
     );
 
@@ -692,10 +695,17 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
+    // We try to use a name that has the most chance to be familiar to the user:
+    // - The recording name has to be explicitly set by the user, so use it if it exists.
+    // - For remote data, partition id have a lot of visibility too, so good fall-back.
+    // - Lacking anything better, the start time is better than a random id and caters to the local
+    //   workflow where the same logging process is run repeatedly.
     let recording_name = if let Some(recording_name) =
         entity_db.recording_info_property::<Name>(&RecordingInfo::descriptor_name())
     {
         Some(recording_name.to_string())
+    } else if let EntityDbClass::DatasetPartition(url) = entity_db.store_class() {
+        Some(url.partition_id.clone())
     } else {
         entity_db
             .recording_info_property::<Timestamp>(&RecordingInfo::descriptor_start_time())
@@ -740,14 +750,13 @@ pub fn entity_db_button_ui(
                         store_id.clone().into(),
                     ));
             }
-            resp
         });
     }
 
     let mut list_item = ui
         .list_item()
         .active(ctx.store_context.is_active(&store_id))
-        .selected(ctx.selection().contains_item(&item));
+        .selected(ctx.is_selected_or_loading(&item));
 
     if ctx.hovered().contains_item(&item) {
         list_item = list_item.force_hovered(true);
@@ -771,6 +780,23 @@ pub fn entity_db_button_ui(
         ctx.selection_state().set_hovered(item.clone());
     }
 
+    let new_entry: re_viewer_context::RecordingOrTable = store_id.clone().into();
+
+    response.context_menu(|ui| {
+        let url =
+            ViewerOpenUrl::from_display_mode(ctx.storage_context.hub, &new_entry.display_mode())
+                .and_then(|url| url.sharable_url(None));
+        if ui
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to partition"))
+            .on_disabled_hover_text("Can't copy a link to this partition")
+            .clicked()
+            && let Ok(url) = url
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+    });
+
     if response.clicked() {
         // When we click on a recording, we directly activate it. This is safe to do because
         // it's non-destructive and recordings are immutable. Switching back is easy.
@@ -781,9 +807,7 @@ pub fn entity_db_button_ui(
         // for the blueprint.
         if store_id.is_recording() {
             ctx.command_sender()
-                .send_system(SystemCommand::ActivateRecordingOrTable(
-                    store_id.clone().into(),
-                ));
+                .send_system(SystemCommand::ActivateRecordingOrTable(new_entry));
         }
     }
 
@@ -812,13 +836,12 @@ pub fn table_id_button_ui(
                         table_id.clone().into(),
                     ));
             }
-            resp
         });
     }
 
     let mut list_item = ui
         .list_item()
-        .selected(ctx.selection().contains_item(&item))
+        .selected(ctx.is_selected_or_loading(&item))
         .active(ctx.active_table_id() == Some(table_id));
 
     if ctx.hovered().contains_item(&item) {

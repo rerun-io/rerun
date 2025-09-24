@@ -1,7 +1,7 @@
-use std::str::FromStr as _;
+use std::{borrow::Cow, str::FromStr as _};
 
 use ahash::HashMap;
-use egui::{NumExt as _, Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
+use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
@@ -18,14 +18,15 @@ use re_viewer_context::{
     RecordingConfig, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
     SystemCommandSender as _, TableStore, ViewClassRegistry, ViewStates, ViewerContext,
     blueprint_timeline,
+    open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
-    app_blueprint::AppBlueprint, event::ViewerEventDispatcher, navigation::Navigation, open_url,
-    ui::settings_screen_ui,
+    StartupOptions, app_blueprint::AppBlueprint, event::ViewerEventDispatcher,
+    navigation::Navigation, open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
 };
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -61,6 +62,8 @@ pub struct AppState {
 
     #[serde(skip)]
     pub(crate) open_url_modal: crate::ui::OpenUrlModal,
+    #[serde(skip)]
+    pub(crate) share_modal: crate::ui::ShareModal,
 
     /// A stack of display modes that represents tab-like navigation of the user.
     #[serde(skip)]
@@ -106,6 +109,7 @@ impl Default for AppState {
             datastore_ui: Default::default(),
             redap_servers: Default::default(),
             open_url_modal: Default::default(),
+            share_modal: Default::default(),
             navigation: Default::default(),
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -155,6 +159,7 @@ impl AppState {
     pub fn show(
         &mut self,
         app_env: &crate::AppEnvironment,
+        startup_options: &StartupOptions,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
@@ -426,7 +431,7 @@ impl AppState {
                 //
 
                 if app_options.inspect_blueprint_timeline
-                    && *display_mode == DisplayMode::LocalRecordings
+                    && matches!(display_mode, DisplayMode::LocalRecordings(_))
                 {
                     let blueprint_db = ctx.store_context.blueprint;
 
@@ -492,7 +497,7 @@ impl AppState {
                 // Time panel
                 //
 
-                if *display_mode == DisplayMode::LocalRecordings {
+                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
                     time_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -508,7 +513,7 @@ impl AppState {
                 // Selection Panel
                 //
 
-                if *display_mode == DisplayMode::LocalRecordings {
+                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
                     selection_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -542,26 +547,33 @@ impl AppState {
                         ui.spacing_mut().item_spacing.y = 0.0;
 
                         match display_mode {
-                            DisplayMode::LocalRecordings
+                            DisplayMode::LocalRecordings(..)
                             | DisplayMode::LocalTable(..)
                             | DisplayMode::RedapEntry(..)
-                            | DisplayMode::RedapServer(..) => {
-                                let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
-                                let resizable = ctx.storage_context.bundle.recordings().count() > 3
-                                    && show_blueprints;
-
+                            | DisplayMode::RedapServer(..)
+                            | DisplayMode::Loading(..) => {
+                                let show_blueprints =
+                                    matches!(display_mode, DisplayMode::LocalRecordings(_));
+                                let resizable = show_blueprints;
                                 if resizable {
-                                    // Don't shrink either recordings panel or blueprint panel below this height
-                                    let min_height_each =
-                                        90.0_f32.at_most(ui.available_height() / 2.0);
+                                    // Ensure Blueprint panel has at least 150px minimum height, because now it doesn't autogrow (as it does without resizing=active)
+                                    let blueprint_min_height = 150.0;
+                                    let recordings_min_height = 104.0; // Minimum for recordings panel = top panel + 1 opened recording + extra space before bluprint
+                                    let available_height = ui.available_height();
+
+                                    // Calculate the maximum height for recordings panel
+                                    // Allow full space usage minus the blueprint minimum height, so that the blueprint panel can grow below existing content
+                                    let max_recordings_height = (available_height
+                                        - blueprint_min_height)
+                                        .max(recordings_min_height);
 
                                     egui::TopBottomPanel::top("recording_panel")
                                         .frame(egui::Frame::new())
                                         .resizable(resizable)
                                         .show_separator_line(false)
-                                        .min_height(min_height_each)
-                                        .default_height(210.0)
-                                        .max_height(ui.available_height() - min_height_each)
+                                        .min_height(recordings_min_height)
+                                        .max_height(max_recordings_height)
+                                        .default_height(160.0_f32.max(recordings_min_height))
                                         .show_inside(ui, |ui| {
                                             re_recording_panel::recordings_panel_ui(
                                                 &ctx,
@@ -578,8 +590,6 @@ impl AppState {
                                         welcome_screen_state.hide_examples,
                                     );
                                 }
-
-                                ui.add_space(4.0);
 
                                 if show_blueprints {
                                     blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
@@ -615,7 +625,7 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::LocalRecordings => {
+                            DisplayMode::LocalRecordings(_) => {
                                 // If we are here and the "default" app id is selected,
                                 // we should instead switch to the welcome screen.
                                 if ctx.store_context.application_id()
@@ -642,6 +652,18 @@ impl AppState {
                                 }
                             }
 
+                            DisplayMode::Loading(source) => {
+                                let source = if let Ok(url) =
+                                    ViewerOpenUrl::from_data_source(source)
+                                {
+                                    Cow::Owned(ViewerOpenUrlDescription::from_url(&url).to_string())
+                                } else {
+                                    // In practice this shouldn't happen.
+                                    Cow::Borrowed("<unknown>")
+                                };
+                                ui.loading_screen("Loading data source:", &*source);
+                            }
+
                             DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // Handled above
                         }
                     });
@@ -654,6 +676,8 @@ impl AppState {
 
                 self.redap_servers.modals_ui(&ctx.global_context, ui);
                 self.open_url_modal.ui(ui);
+                self.share_modal
+                    .ui(&ctx, ui, startup_options.web_viewer_base_url().as_ref());
             }
         }
 
@@ -670,7 +694,7 @@ impl AppState {
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
-            self.selection_state.clear_selection();
+            command_sender.send_system(SystemCommand::clear_selection());
         }
 
         // If there's no text edit or label selected, and the user triggers a copy command, copy a description of the current selection.
@@ -678,7 +702,11 @@ impl AppState {
             .memory(|mem| mem.focused())
             .and_then(|id| TextEditState::load(ui.ctx(), id))
             .is_none()
-            && !LabelSelectionState::load(ui.ctx()).has_selection()
+            && ui
+                .ctx()
+                .plugin::<LabelSelectionState>()
+                .lock()
+                .has_selection()
             && ui.input(|input| input.events.iter().any(|e| e == &egui::Event::Copy))
         {
             self.selection_state
@@ -690,7 +718,6 @@ impl AppState {
         self.focused_item = None;
     }
 
-    #[cfg(target_arch = "wasm32")] // Only used in Wasm
     pub fn recording_config(&self, rec_id: &StoreId) -> Option<&RecordingConfig> {
         self.recording_configs.get(rec_id)
     }
@@ -865,17 +892,17 @@ pub(crate) fn recording_config_entry<'cfgs>(
 ///
 /// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
 fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &CommandSender) {
-    let follow_if_http = false;
-
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 if let Ok(url) = open_url::ViewerOpenUrl::from_str(&open_url.url) {
-                    let select_redap_source_when_loaded = !open_url.new_tab;
                     url.open(
                         egui_ctx,
-                        follow_if_http,
-                        select_redap_source_when_loaded,
+                        &open_url::OpenUrlOptions {
+                            follow_if_http: false,
+                            select_redap_source_when_loaded: !open_url.new_tab,
+                            show_loader: !open_url.new_tab,
+                        },
                         command_sender,
                     );
 

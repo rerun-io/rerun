@@ -13,8 +13,8 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
@@ -102,6 +102,8 @@ pub struct Capsules3D {
     pub quaternions: Option<SerializedComponentBatch>,
 
     /// Optional colors for the capsules.
+    ///
+    /// Alpha channel is used for transparency for solid fill-mode.
     pub colors: Option<SerializedComponentBatch>,
 
     /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
@@ -672,6 +674,8 @@ impl Capsules3D {
     }
 
     /// Optional colors for the capsules.
+    ///
+    /// Alpha channel is used for transparency for solid fill-mode.
     #[inline]
     pub fn with_colors(
         mut self,

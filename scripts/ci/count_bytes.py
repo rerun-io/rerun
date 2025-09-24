@@ -9,10 +9,10 @@ Use the script:
     python3 scripts/ci/count_bytes.py --help
 
     python3 scripts/ci/count_bytes.py \
-        "Wasm":web_viewer/re_viewer_bg.wasm
+        "Wasm":crates/viewer/re_web_viewer_server/web_viewer/re_viewer_bg.wasm
 
     python3 scripts/ci/count_bytes.py --format=github \
-        "Wasm":web_viewer/re_viewer_bg.wasm
+        "Wasm":crates/viewer/re_web_viewer_server/web_viewer/re_viewer_bg.wasm
 """
 
 from __future__ import annotations

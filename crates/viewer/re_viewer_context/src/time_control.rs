@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 
 use re_chunk::TimelineName;
-use re_entity_db::{TimeCounts, TimesPerTimeline};
+use re_entity_db::{TimeCounts, TimelineStats, TimesPerTimeline};
 use re_log_types::{
-    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, Timeline,
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeCell, TimeInt, TimeReal, TimeType,
+    Timeline,
 };
 
 use crate::NeedsRepaint;
@@ -37,6 +38,12 @@ struct TimeState {
     /// The current time (play marker).
     time: TimeReal,
 
+    /// The last time this timeline was paused at.
+    ///
+    /// Used for the web url.
+    #[serde(skip)]
+    last_paused_time: Option<TimeReal>,
+
     /// Frames per second, when playing sequences (they are often video recordings).
     fps: f32,
 
@@ -57,6 +64,7 @@ impl TimeState {
     fn new(time: impl Into<TimeReal>) -> Self {
         Self {
             time: time.into(),
+            last_paused_time: None,
             fps: 30.0, // TODO(emilk): estimate based on data
             loop_selection: Default::default(),
             view: None,
@@ -242,13 +250,15 @@ impl TimeControl {
                 // then the user decides to switch timelines.
                 // When they do so, it might be the case that they switch to a timeline they've
                 // never interacted with before, in which case we don't even have a time state yet.
-                self.states.entry(*self.timeline.name()).or_insert_with(|| {
+                let state = self.states.entry(*self.timeline.name()).or_insert_with(|| {
                     TimeStateEntry::new(if self.following {
                         full_range.max()
                     } else {
                         full_range.min()
                     })
                 });
+
+                state.current.last_paused_time = Some(state.current.time);
                 NeedsRepaint::No
             }
             PlayState::Playing => {
@@ -563,7 +573,8 @@ impl TimeControl {
         if matches!(self.timeline, ActiveTimeline::Auto(_))
             || !is_timeline_valid(self.timeline(), times_per_timeline)
         {
-            self.timeline = ActiveTimeline::Auto(default_timeline(times_per_timeline.timelines()));
+            self.timeline =
+                ActiveTimeline::Auto(default_timeline(times_per_timeline.timelines_with_stats()));
         }
     }
 
@@ -589,6 +600,22 @@ impl TimeControl {
             .map(|state| state.current.time)
     }
 
+    pub fn last_paused_time(&self) -> Option<TimeReal> {
+        if matches!(self.play_state(), PlayState::Paused) {
+            self.time()
+        } else {
+            self.states
+                .get(self.timeline().name())
+                .and_then(|state| state.current.last_paused_time)
+        }
+    }
+
+    /// The current time & timeline.
+    pub fn time_cell(&self) -> Option<TimeCell> {
+        self.time()
+            .map(|t| TimeCell::new(self.timeline().typ(), t.floor().as_i64()))
+    }
+
     /// The current time.
     pub fn time_int(&self) -> Option<TimeInt> {
         self.time().map(|t| t.floor())
@@ -607,7 +634,7 @@ impl TimeControl {
         )
     }
 
-    /// The current loop range, iff selection looping is turned on.
+    /// The current loop range, if selection looping is turned on.
     pub fn active_loop_selection(&self) -> Option<AbsoluteTimeRangeF> {
         if self.looping == Looping::Selection {
             self.states
@@ -733,23 +760,26 @@ fn range(values: &TimeCounts) -> AbsoluteTimeRange {
     AbsoluteTimeRange::new(min(values), max(values))
 }
 
-/// Pick the timeline that should be the default, prioritizing user-defined ones.
-fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a Timeline>) -> Timeline {
-    let mut found_log_tick = false;
-    let mut found_log_time = false;
+/// Pick the timeline that should be the default, by number of elements and prioritizing user-defined ones.
+fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a TimelineStats>) -> Timeline {
+    re_tracing::profile_function!();
 
-    for timeline in timelines {
-        if timeline == &Timeline::log_tick() {
-            found_log_tick = true;
-        } else if timeline == &Timeline::log_time() {
-            found_log_time = true;
-        } else {
-            return *timeline;
+    // Helper function that acts as a tie-breaker.
+    fn timeline_priority(timeline: &Timeline) -> u8 {
+        match timeline {
+            t if *t == Timeline::log_tick() => 0, // lowest priority
+            t if *t == Timeline::log_time() => 1, // medium priority
+            _ => 2,                               // user-defined, highest priority
         }
     }
+    let most_events = timelines.into_iter().max_by(|a, b| {
+        a.num_events()
+            .cmp(&b.num_events())
+            .then_with(|| timeline_priority(&a.timeline).cmp(&timeline_priority(&b.timeline)))
+    });
 
-    if found_log_tick && !found_log_time {
-        Timeline::log_tick()
+    if let Some(most_events) = most_events {
+        most_events.timeline
     } else {
         Timeline::log_time()
     }
@@ -816,50 +846,62 @@ fn step_back_time_looped(
 mod tests {
     use super::*;
 
+    fn with_events(timeline: Timeline, num: u64) -> TimelineStats {
+        TimelineStats {
+            timeline,
+            // Dummy `TimeInt` because were only interested in the counts.
+            per_time: std::iter::once((TimeInt::ZERO, num)).collect(),
+            total_count: num,
+        }
+    }
+
     #[test]
     fn test_default_timeline() {
-        let log_time = Timeline::log_time();
-        let log_tick = Timeline::log_tick();
-        let custom_timeline0 = Timeline::new("my_timeline0", TimeType::DurationNs);
-        let custom_timeline1 = Timeline::new("my_timeline1", TimeType::DurationNs);
+        let log_time = with_events(Timeline::log_time(), 42);
+        let log_tick = with_events(Timeline::log_tick(), 42);
+        let custom_timeline0 = with_events(Timeline::new("my_timeline0", TimeType::DurationNs), 42);
+        let custom_timeline1 = with_events(Timeline::new("my_timeline1", TimeType::DurationNs), 43);
 
-        assert_eq!(default_timeline([]), log_time);
-        assert_eq!(default_timeline([&log_tick]), log_tick);
-        assert_eq!(default_timeline([&log_time]), log_time);
-        assert_eq!(default_timeline([&log_time, &log_tick]), log_time);
+        assert_eq!(default_timeline([]), log_time.timeline);
+        assert_eq!(default_timeline([&log_tick]), log_tick.timeline);
+        assert_eq!(default_timeline([&log_time]), log_time.timeline);
+        assert_eq!(default_timeline([&log_time, &log_tick]), log_time.timeline);
         assert_eq!(
             default_timeline([&log_time, &log_tick, &custom_timeline0]),
-            custom_timeline0
+            custom_timeline0.timeline
         );
         assert_eq!(
             default_timeline([&custom_timeline0, &log_time, &log_tick]),
-            custom_timeline0
+            custom_timeline0.timeline
         );
         assert_eq!(
             default_timeline([&log_time, &custom_timeline0, &log_tick]),
-            custom_timeline0
+            custom_timeline0.timeline
         );
         assert_eq!(
             default_timeline([&custom_timeline0, &log_time]),
-            custom_timeline0
+            custom_timeline0.timeline
         );
         assert_eq!(
             default_timeline([&custom_timeline0, &log_tick]),
-            custom_timeline0
+            custom_timeline0.timeline
         );
         assert_eq!(
             default_timeline([&log_time, &custom_timeline0]),
-            custom_timeline0
+            custom_timeline0.timeline
         );
         assert_eq!(
             default_timeline([&log_tick, &custom_timeline0]),
-            custom_timeline0
+            custom_timeline0.timeline
         );
 
         assert_eq!(
             default_timeline([&custom_timeline0, &custom_timeline1]),
-            custom_timeline0
+            custom_timeline1.timeline
         );
-        assert_eq!(default_timeline([&custom_timeline0]), custom_timeline0);
+        assert_eq!(
+            default_timeline([&custom_timeline0]),
+            custom_timeline0.timeline
+        );
     }
 }

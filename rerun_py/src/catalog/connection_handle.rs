@@ -12,7 +12,7 @@ use re_chunk_store::{ChunkStore, QueryExpression};
 use re_dataframe::ChunkStoreHandle;
 use re_datafusion::query_from_query_expression;
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::{EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
     cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
@@ -300,12 +300,13 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    #[allow(clippy::fn_params_excessive_bools)]
+    #[allow(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
     pub fn do_maintenance(
         &self,
         py: Python<'_>,
         dataset_id: EntryId,
-        build_scalar_indexes: bool,
+        optimize_indexes: bool,
+        retrain_indexes: bool,
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
         unsafe_allow_recent_cleanup: bool,
@@ -317,11 +318,27 @@ impl ConnectionHandle {
                     .await?
                     .do_maintenance(
                         dataset_id,
-                        build_scalar_indexes,
+                        optimize_indexes,
+                        retrain_indexes,
                         compact_fragments,
                         cleanup_before,
                         unsafe_allow_recent_cleanup,
                     )
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn do_global_maintenance(&self, py: Python<'_>) -> PyResult<()> {
+        wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .do_global_maintenance()
                     .await
                     .map_err(to_py_err)
             }
@@ -609,25 +626,11 @@ impl ConnectionHandle {
 
                                 let store =
                                     stores.entry(partition_id.clone()).or_insert_with(|| {
-                                        let store_info = StoreInfo {
-                                            // Note: normally we use dataset name as application id,
-                                            // but we don't have it here, and it doesn't really
-                                            // matter since this is just a temporary store.
-                                            store_id: StoreId::random(
-                                                StoreKind::Recording,
-                                                dataset_id.to_string(),
-                                            ),
-                                            cloned_from: None,
-                                            store_source: StoreSource::Unknown,
-                                            store_version: None,
-                                        };
-
-                                        let mut store = ChunkStore::new(
-                                            store_info.store_id.clone(),
-                                            Default::default(),
+                                        let store_id = StoreId::random(
+                                            StoreKind::Recording,
+                                            dataset_id.to_string(),
                                         );
-                                        store.set_store_info(store_info);
-                                        ChunkStoreHandle::new(store)
+                                        ChunkStore::new_handle(store_id, Default::default())
                                     });
 
                                 store

@@ -124,7 +124,7 @@ impl crate::DataLoader for RrdLoader {
             Ok(decoder) => decoder,
             Err(err) => match err {
                 // simply not interested
-                re_log_encoding::decoder::DecodeError::NotAnRrd
+                re_log_encoding::decoder::DecodeError::NotAnRrd { .. }
                 | re_log_encoding::decoder::DecodeError::Options(_) => return Ok(()),
                 _ => return Err(err.into()),
             },
@@ -204,7 +204,17 @@ fn decode_and_stream<R: std::io::Read>(
                 }
 
                 re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
-                    re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command)
+                    let mut blueprint_id = blueprint_activation_command.blueprint_id.clone();
+                    if let Some(forced_application_id) = forced_application_id {
+                        blueprint_id =
+                            blueprint_id.with_application_id(forced_application_id.clone());
+                    }
+                    re_log_types::LogMsg::BlueprintActivationCommand(
+                        re_log_types::BlueprintActivationCommand {
+                            blueprint_id,
+                            ..blueprint_activation_command
+                        },
+                    )
                 }
             }
         } else {

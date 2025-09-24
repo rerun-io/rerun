@@ -6,8 +6,9 @@ use re_log_types::EntityPath;
 use re_types_core::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
-    Item, SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    Item, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewClass,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewerContext,
 };
 
 use crate::{
@@ -204,7 +205,8 @@ fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: Vi
         )
         .clicked()
     {
-        ctx.selection_state.set_selection(Item::View(view_id));
+        ctx.command_sender()
+            .send_system(SystemCommand::SetSelection(Item::View(view_id).into()));
     }
 }
 

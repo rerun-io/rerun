@@ -1,8 +1,8 @@
 use re_types::{
+    Archetype as _, AsComponents as _,
     archetypes::AnnotationContext,
     components,
     datatypes::{ClassDescription, KeypointPair, Rgba32},
-    Archetype as _, AsComponents as _,
 };
 
 #[test]

@@ -97,7 +97,7 @@ impl DataLoader for LeRobotDatasetLoader {
                     re_log::info!(
                         "Loading LeRobot dataset from {:?}, with {} episode(s)",
                         dataset.path,
-                        dataset.metadata.episodes.len(),
+                        dataset.metadata.episode_count(),
                     );
                     load_and_stream(&dataset, &application_id, &tx);
                 }
@@ -177,8 +177,8 @@ fn prepare_episode_chunks(
 ) -> Vec<(EpisodeIndex, StoreId)> {
     let mut store_ids = vec![];
 
-    for episode in &dataset.metadata.episodes {
-        let episode = episode.index;
+    for episode_index in dataset.metadata.episodes.keys() {
+        let episode = *episode_index;
 
         let store_id = StoreId::recording(application_id.clone(), format!("episode_{}", episode.0));
         let set_store_info = LoadedData::LogMsg(
@@ -600,7 +600,7 @@ fn make_scalar_entity_chunk(
 fn extract_scalar_slices_as_f64(data: &ArrayRef) -> anyhow::Result<Vec<ArrayRef>> {
     // cast the slice to f64 first, as scalars need an f64
     let scalar_values = cast(&data, &DataType::Float64)
-        .with_context(|| format!("Failed to cast {:?} to Float64", data.data_type()))?;
+        .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))?;
 
     Ok((0..data.len())
         .map(|idx| scalar_values.slice(idx, 1))
@@ -613,7 +613,7 @@ fn extract_fixed_size_list_array_elements_as_f64(
     (0..data.len())
         .map(|idx| {
             cast(&data.value(idx), &DataType::Float64)
-                .with_context(|| format!("Failed to cast {:?} to Float64", data.data_type()))
+                .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))
         })
         .collect::<Result<Vec<_>, _>>()
 }
@@ -624,7 +624,7 @@ fn extract_list_array_elements_as_f64(
     (0..data.len())
         .map(|idx| {
             cast(&data.value(idx), &DataType::Float64)
-                .with_context(|| format!("Failed to cast {:?} to Float64", data.data_type()))
+                .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))
         })
         .collect::<Result<Vec<_>, _>>()
 }

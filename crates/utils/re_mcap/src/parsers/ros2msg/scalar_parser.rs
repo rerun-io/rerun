@@ -1,13 +1,12 @@
 use anyhow::Context as _;
 use arrow::array::{FixedSizeListBuilder, Float64Builder};
 use re_chunk::{Chunk, ChunkId, ChunkResult, EntityPath, RowId, TimePoint};
-use re_log_types::TimeCell;
 use re_types::archetypes::{Scalars, SeriesLines};
 
 use crate::parsers::{
     cdr,
     decode::{MessageParser, ParserContext},
-    ros2msg::definitions::std_msgs::Header,
+    ros2msg::{Ros2MessageParser, definitions::std_msgs::Header},
     util::fixed_size_list_builder,
 };
 
@@ -38,17 +37,6 @@ pub struct ScalarMessageParser<T: ScalarExtractor> {
 }
 
 impl<T: ScalarExtractor> ScalarMessageParser<T> {
-    /// Create a new [`ScalarMessageParser`] for the given message type.
-    pub fn new(num_rows: usize) -> Self {
-        // We'll determine the number of fields from the first message
-        Self {
-            scalars: fixed_size_list_builder(1, num_rows), // Start with 1, will be recreated if needed
-            field_names: Vec::new(),
-            num_rows,
-            _marker: std::marker::PhantomData,
-        }
-    }
-
     fn init_field_names(&mut self, scalar_values: &Vec<(&str, f64)>) {
         self.field_names = scalar_values
             .iter()
@@ -73,6 +61,19 @@ impl<T: ScalarExtractor> ScalarMessageParser<T> {
     }
 }
 
+impl<T: ScalarExtractor> Ros2MessageParser for ScalarMessageParser<T> {
+    /// Create a new [`ScalarMessageParser`] for the given message type.
+    fn new(num_rows: usize) -> Self {
+        // We'll determine the number of fields from the first message
+        Self {
+            scalars: fixed_size_list_builder(1, num_rows), // Start with 1, will be recreated if needed
+            field_names: Vec::new(),
+            num_rows,
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
 impl<T: ScalarExtractor> MessageParser for ScalarMessageParser<T> {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
@@ -85,10 +86,9 @@ impl<T: ScalarExtractor> MessageParser for ScalarMessageParser<T> {
         })?;
 
         // Add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_time_cell(
-            "timestamp",
-            TimeCell::from_timestamp_nanos_since_epoch(message.header().stamp.as_nanos()),
-        );
+        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
+            message.header().stamp.as_nanos() as u64,
+        ));
 
         let scalar_values = message.extract_scalars();
 

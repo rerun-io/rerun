@@ -7,8 +7,9 @@ use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
 use re_smart_channel::SmartChannelSource;
-use re_ui::list_item::{ItemButton as _, ItemMenuButton, LabelContent};
+use re_ui::list_item::{ItemMenuButton, LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{UiExt as _, UiLayout, icons, list_item};
+use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     DisplayMode, Item, RecordingOrTable, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
@@ -40,7 +41,7 @@ pub fn recordings_panel_ui(
 
     egui::ScrollArea::both()
         .id_salt("recordings_scroll_area")
-        .auto_shrink([false, true])
+        .auto_shrink([false, false]) // shrinking forces to limit maximum height of the recording panel
         .show(ui, |ui| {
             ui.panel_content(|ui| {
                 re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
@@ -166,7 +167,7 @@ fn all_sections_ui(
 
     if recording_panel_data.show_example_section {
         let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
-        let selected = ctx.selection().contains_item(&item);
+        let selected = ctx.is_selected_or_loading(&item);
         let active = matches!(
             ctx.display_mode(),
             DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
@@ -201,6 +202,9 @@ fn all_sections_ui(
     //
 
     loading_receivers_ui(ctx, ui, &recording_panel_data.loading_receivers);
+
+    // Add space at the end of the recordings panel
+    ui.add_space(8.0);
 }
 
 // ---
@@ -219,9 +223,9 @@ fn server_section_ui(
     } = server_data;
 
     let content = list_item::LabelContent::header(origin.host.to_string())
-        .always_show_buttons(true)
+        .with_always_show_buttons(true)
         .with_buttons(|ui| {
-            Box::new(ItemMenuButton::new(&icons::MORE, "Actions", move |ui| {
+            ItemMenuButton::new(&icons::MORE, "Actions", move |ui| {
                 if icons::RESET
                     .as_button_with_label(ui.tokens(), "Refresh")
                     .ui(ui)
@@ -243,8 +247,8 @@ fn server_section_ui(
                 {
                     servers.send_command(Command::RemoveServer(origin.clone()));
                 }
-            }))
-            .ui(ui)
+            })
+            .ui(ui);
         });
 
     let item_response = ui
@@ -358,8 +362,6 @@ fn dataset_entry_ui(
                         ));
                 }
             }
-
-            resp
         });
     }
 
@@ -388,13 +390,28 @@ fn dataset_entry_ui(
         list_item.show_hierarchical(ui, list_item_content)
     };
 
+    let new_display_mode =
+        DisplayMode::RedapEntry(re_uri::EntryUri::new(origin.clone(), *entry_id));
+
+    item_response.context_menu(|ui| {
+        let url = ViewerOpenUrl::from_display_mode(ctx.storage_context.hub, &new_display_mode)
+            .and_then(|url| url.sharable_url(None));
+        if ui
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to dataset"))
+            .on_disabled_hover_text("Can't copy a link to this dataset")
+            .clicked()
+            && let Ok(url) = url
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+    });
+
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
+            .send_system(SystemCommand::SetSelection(item.into()));
         ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                re_uri::EntryUri::new(origin.clone(), *entry_id),
-            )));
+            .send_system(SystemCommand::ChangeDisplayMode(new_display_mode));
     }
 }
 
@@ -424,7 +441,7 @@ fn remote_table_entry_ui(
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
+            .send_system(SystemCommand::SetSelection(item.into()));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
                 re_uri::EntryUri::new(origin.clone(), *entry_id),
@@ -459,7 +476,7 @@ fn failed_entry_ui(
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
+            .send_system(SystemCommand::SetSelection(item.into()));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
                 re_uri::EntryUri::new(origin.clone(), *entry_id),
@@ -498,7 +515,6 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
                 ctx.command_sender()
                     .send_system(SystemCommand::CloseApp(app_id.clone()));
             }
-            resp
         });
     }
 
@@ -553,25 +569,33 @@ fn receiver_ui(
     receiver: &SmartChannelSource,
     show_hierarchal: bool,
 ) {
-    let Some(string) = receiver.loading_string() else {
+    let Some(string) = receiver.loading_name() else {
         return;
     };
 
-    let label_content = re_ui::list_item::LabelContent::new(string).with_buttons(|ui| {
-        let resp = ui
-            .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
-            .on_hover_text("Disconnect from this source");
+    let selected = ctx.is_selected_or_loading(&Item::DataSource(receiver.clone()));
 
-        if resp.clicked() {
-            ctx.connected_receivers.remove(receiver);
-        }
+    let label_content = re_ui::list_item::LabelContent::new(string)
+        .with_icon_fn(|ui, rect, _| {
+            ui.put(rect, egui::Spinner::new());
+        })
+        .with_buttons(|ui| {
+            let resp = ui
+                .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
+                .on_hover_text("Disconnect from this source");
 
-        resp
-    });
+            if resp.clicked() {
+                ctx.connected_receivers.remove(receiver);
+            }
+        });
 
     if show_hierarchal {
-        ui.list_item().show_hierarchical(ui, label_content);
+        ui.list_item()
+            .selected(selected)
+            .show_hierarchical(ui, label_content);
     } else {
-        ui.list_item().show_flat(ui, label_content);
+        ui.list_item()
+            .selected(selected)
+            .show_flat(ui, label_content);
     }
 }
