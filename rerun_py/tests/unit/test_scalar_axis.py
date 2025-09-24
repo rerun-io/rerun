@@ -36,10 +36,7 @@ def test_scalar_axis() -> None:
         zoom_lock = cast("Optional[rr.datatypes.Bool]", zoom_lock)
 
         print(
-            f"rr.ScalarAxis(\n"
-            f"    range={range!r}\n"
-            f"    zoom_lock={zoom_lock!r}\n"
-            f")",
+            f"rr.ScalarAxis(\n    range={range!r}\n    zoom_lock={zoom_lock!r}\n)",
         )
         arch = rrb.ScalarAxis(
             range=range,
