@@ -140,7 +140,7 @@ class Layout:
         bounding_box: list[int],
         detections: Iterable[dict[str, Any]] | None = None,
         table: str | None = None,
-        figure: dict[str, Any] | None = None,
+        img: dict[str, Any] | None = None,  # noqa: ARG002 - TODO(#6517): log img
     ) -> None:
         if layout_type in LayoutType:
             self.counts[layout_type] += 1
@@ -156,7 +156,6 @@ class Layout:
             if layout_type != LayoutType.UNKNOWN or self.show_unknown:  # Discards the unknown layout types detections
                 path = f"recording://page_{self.page_number}/Image/{layout_type.type.title()}/{name.title()}"
                 self.recovery += f"\n\n## [{name.title()}]({path})\n\n"  # Log Type as Heading
-                # Enhancement - Logged image for Figure type TODO(#6517)
                 if layout_type == LayoutType.TABLE:
                     if table:
                         self.recovery += table  # Log details (table)
@@ -194,7 +193,7 @@ class Layout:
             img = line.get("img")  # Currently not in use
         else:
             detections = self.get_detections(line)
-        self.add(layout_type, box, detections=detections, table=table, figure=img)
+        self.add(layout_type, box, detections=detections, table=table, img=img)
 
     @staticmethod
     def get_detections(line: dict[str, Any]) -> list[dict[str, Any]]:

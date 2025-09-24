@@ -14561,10 +14561,10 @@ packages:
   version: 1.2.5
   sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
   requires_dist:
-  - grpclib
-  - stringcase
   - dataclasses ; python_full_version < '3.7'
   - backports-datetime-fromisoformat ; python_full_version < '3.7'
+  - grpclib
+  - stringcase
   - black ; extra == 'compiler'
   - jinja2 ; extra == 'compiler'
   - protobuf ; extra == 'compiler'
@@ -33863,7 +33863,7 @@ packages:
 - pypi: rerun_py
   name: rerun-sdk
   version: 0.26.0a1+dev
-  sha256: 348705bc9c52d9a64a53e48906579cce0c177154c5bddd1b44a8b166e1a0f1dd
+  sha256: ccc72212cec266e8609ef5b0144daa0ed59af63fdea2478fa066adb4b138da49
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2

@@ -120,6 +120,14 @@ class ComponentColumnDescriptor:
         This property is read-only.
         """
 
+    @property
+    def name(self) -> str:
+        """
+        The name of this column.
+
+        This property is read-only.
+        """
+
 class ComponentColumnSelector:
     """
     A selector for a component column.
@@ -1327,6 +1335,9 @@ class DatasetEntry(Entry):
 
         Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
         """
+
+    def schema(self) -> Schema:
+        """Return the schema of the data contained in the dataset."""
 
     def partition_ids(self) -> list[str]:
         """Returns a list of partitions IDs for the dataset."""
