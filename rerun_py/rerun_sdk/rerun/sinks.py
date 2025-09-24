@@ -374,6 +374,7 @@ def serve_grpc(
         server_memory_limit=server_memory_limit,
         default_blueprint=blueprint_storage,
         recording=recording.to_native() if recording is not None else None,
+        newest_first=newest_first,
     )
 
 
