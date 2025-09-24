@@ -12,7 +12,6 @@ use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{DataQueryResult, ViewId, ViewerContext};
 use re_viewport_blueprint::{
     CanAddToView, EntityAddInfo, ViewBlueprint, ViewportBlueprint, create_entity_add_info,
-    entity_path_for_view_property,
 };
 
 /// Window for adding/removing entities from a view.
@@ -195,10 +194,10 @@ fn add_entities_line_ui(
     let entity_path = &entity_data.entity_path;
     let name = &entity_data.label;
 
-    let add_info = if let Some(add_info) = entities_add_info.get(entity_path) {
-        add_info
-    } else {
-        &EntityAddInfo::default()
+    let Some(add_info) = entities_add_info.get(entity_path) else {
+        // No add info implies that there can't be an add line ui, shouldn't get here.
+        debug_assert!(false, "No add info for entity path: {entity_path:?}");
+        return;
     };
 
     let is_explicitly_excluded = entity_path_filter.is_explicitly_excluded(entity_path);
