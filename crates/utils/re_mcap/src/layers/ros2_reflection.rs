@@ -46,8 +46,6 @@ impl Ros2ReflectionMessageParser {
     fn new(num_rows: usize, message_schema: MessageSchema) -> Self {
         let mut fields = Vec::new();
 
-        println!("{message_schema:#?}");
-
         // Build Arrow builders for each field in the message, preserving order
         for field in &message_schema.spec.fields {
             let name = field.name.clone();
@@ -339,11 +337,6 @@ fn datatype_from_type(ty: &Type, dependencies: &[MessageSpec]) -> DataType {
         },
         Type::String(_) => DataType::Utf8,
         Type::Complex(complex_type) => {
-            println!(
-                "Resolving complex type: {:?}, resolved to: {:?}",
-                complex_type,
-                resolve_complex_type(complex_type, dependencies)
-            );
             if let Some(spec) = resolve_complex_type(complex_type, dependencies) {
                 let fields = spec
                     .fields

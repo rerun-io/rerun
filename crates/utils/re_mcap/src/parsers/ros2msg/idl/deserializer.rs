@@ -1,4 +1,4 @@
-use anyhow::{Context, bail};
+use anyhow::{Context as _, bail};
 use cdr_encoding::CdrDeserializer;
 use serde::de::{self, DeserializeSeed, Visitor};
 use std::collections::BTreeMap;
@@ -12,7 +12,7 @@ use crate::parsers::{
 pub fn decode_bytes(top: &MessageSchema, buf: &[u8]) -> anyhow::Result<Value> {
     // 4-byte encapsulation header
     if buf.len() < 4 {
-        return bail!("short encapsulation");
+        bail!("short encapsulation");
     }
 
     let representation_identifier = dds::RepresentationIdentifier::from_bytes([buf[0], buf[1]])
@@ -265,7 +265,6 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
                 }
             },
             Type::Complex(complex_ty) => {
-                println!("Resolving complex type: {complex_ty:?}");
                 let msg = self.r.resolve(complex_ty).ok_or_else(|| {
                     de::Error::custom(format!("unknown ComplexType: {complex_ty:?}"))
                 })?;
@@ -340,18 +339,35 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SeqSeed<'_, R> {
             fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "cdr seq/array")
             }
+
             fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
             where
                 A: serde::de::SeqAccess<'de>,
             {
-                let mut out = self.fixed_len.map(Vec::with_capacity).unwrap_or_default();
-                while let Some(v) = seq.next_element_seed(SchemaSeed {
-                    ty: self.elem,
-                    r: self.type_resolver,
-                })? {
-                    out.push(v);
+                let cap = self.fixed_len.or_else(|| seq.size_hint()).unwrap_or(0);
+                let mut out = Vec::with_capacity(cap);
+
+                if let Some(n) = self.fixed_len.or_else(|| seq.size_hint()) {
+                    for _ in 0..n {
+                        let v = seq
+                            .next_element_seed(SchemaSeed {
+                                ty: self.elem,
+                                r: self.type_resolver,
+                            })?
+                            .ok_or_else(|| serde::de::Error::custom("short sequence"))?;
+                        out.push(v);
+                    }
+                    Ok(out)
+                } else {
+                    // Fallback for truly unbounded streams
+                    while let Some(v) = seq.next_element_seed(SchemaSeed {
+                        ty: self.elem,
+                        r: self.type_resolver,
+                    })? {
+                        out.push(v);
+                    }
+                    Ok(out)
                 }
-                Ok(out)
             }
         }
         match self.fixed_len {
