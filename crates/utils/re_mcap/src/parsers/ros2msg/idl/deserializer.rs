@@ -62,27 +62,27 @@ pub enum Value {
 impl std::fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Bool(v) => write!(f, "Bool({})", v),
-            Value::I8(v) => write!(f, "I8({})", v),
-            Value::U8(v) => write!(f, "U8({})", v),
-            Value::I16(v) => write!(f, "I16({})", v),
-            Value::U16(v) => write!(f, "U16({})", v),
-            Value::I32(v) => write!(f, "I32({})", v),
-            Value::U32(v) => write!(f, "U32({})", v),
-            Value::I64(v) => write!(f, "I64({})", v),
-            Value::U64(v) => write!(f, "U64({})", v),
-            Value::F32(v) => write!(f, "F32({})", v),
-            Value::F64(v) => write!(f, "F64({})", v),
-            Value::String(v) => write!(f, "String({:?})", v),
-            Value::Array(v) => write!(f, "Array({})", v.len()),
-            Value::Seq(v) => write!(f, "Seq({})", v.len()),
-            Value::Message(v) => {
+            Self::Bool(v) => write!(f, "Bool({v})"),
+            Self::I8(v) => write!(f, "I8({v})"),
+            Self::U8(v) => write!(f, "U8({v})"),
+            Self::I16(v) => write!(f, "I16({v})"),
+            Self::U16(v) => write!(f, "U16({v})"),
+            Self::I32(v) => write!(f, "I32({v})"),
+            Self::U32(v) => write!(f, "U32({v})"),
+            Self::I64(v) => write!(f, "I64({v})"),
+            Self::U64(v) => write!(f, "U64({v})"),
+            Self::F32(v) => write!(f, "F32({v})"),
+            Self::F64(v) => write!(f, "F64({v})"),
+            Self::String(v) => write!(f, "String({v:?})"),
+            Self::Array(v) => write!(f, "Array({})", v.len()),
+            Self::Seq(v) => write!(f, "Seq({})", v.len()),
+            Self::Message(v) => {
                 write!(f, "Message({{")?;
                 for (i, (key, value)) in v.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}: {:?}", key, value)?;
+                    write!(f, "{key}: {value:?}")?;
                 }
                 write!(f, "}}")
             }
@@ -104,7 +104,14 @@ impl TypeResolver for MapResolver<'_> {
             ComplexType::Absolute { package, name } => {
                 self.0.get(&format!("{package}/{name}")).copied()
             }
-            ComplexType::Relative { name } => self.0.get(name).copied(),
+            ComplexType::Relative { name } => {
+                for (k, v) in &self.0 {
+                    if k.ends_with(&format!("/{name}")) || k == name {
+                        return Some(*v);
+                    }
+                }
+                None
+            }
         }
     }
 }
@@ -128,7 +135,7 @@ struct SeqSeed<'a, R: TypeResolver> {
 
 struct PrimitiveVisitor<T>(std::marker::PhantomData<T>);
 
-impl<'de> Visitor<'de> for PrimitiveVisitor<bool> {
+impl Visitor<'_> for PrimitiveVisitor<bool> {
     type Value = bool;
     fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "bool")
@@ -145,7 +152,7 @@ impl<'de> Visitor<'de> for PrimitiveVisitor<bool> {
 }
 macro_rules! impl_primitive_visitor {
     ($t:ty, $m:ident) => {
-        impl<'de> Visitor<'de> for PrimitiveVisitor<$t> {
+        impl Visitor<'_> for PrimitiveVisitor<$t> {
             type Value = $t;
             fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 write!(f, stringify!($t))
@@ -169,7 +176,7 @@ impl_primitive_visitor!(f64, visit_f64);
 
 struct StringVisitor;
 
-impl<'de> Visitor<'de> for StringVisitor {
+impl Visitor<'_> for StringVisitor {
     type Value = String;
     fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "string")
@@ -185,14 +192,17 @@ impl<'de> Visitor<'de> for StringVisitor {
     }
 }
 
-impl<'a, 'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'a, R> {
+impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
     type Value = Value;
     fn deserialize<D>(self, de: D) -> Result<Self::Value, D::Error>
     where
         D: de::Deserializer<'de>,
     {
-        use super::ArraySize::*;
-        use super::PrimitiveType::*;
+        use super::ArraySize::{Bounded, Fixed, Unbounded};
+        use super::PrimitiveType::{
+            Bool, Byte, Char, Float32, Float64, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32,
+            UInt64,
+        };
         use super::Type;
 
         match self.ty {
@@ -255,6 +265,7 @@ impl<'a, 'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'a, R> {
                 }
             },
             Type::Complex(complex_ty) => {
+                println!("Resolving complex type: {complex_ty:?}");
                 let msg = self.r.resolve(complex_ty).ok_or_else(|| {
                     de::Error::custom(format!("unknown ComplexType: {complex_ty:?}"))
                 })?;
