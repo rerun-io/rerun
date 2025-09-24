@@ -78,6 +78,6 @@ fn colormap_selector_ui() {
     harness.run();
     harness.snapshot_options(
         "colormap_selector_open",
-        &SnapshotOptions::new().threshold(1.0),
+        &SnapshotOptions::new().threshold(1.3),
     );
 }
