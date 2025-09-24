@@ -13,7 +13,7 @@ use re_types::{
     Archetype as _, blueprint::components::BackgroundKind, datatypes::ColorModel,
     image::ImageChannelType,
 };
-use re_viewer_context::{ViewClass as _, ViewId};
+use re_viewer_context::ViewClass as _;
 use re_viewport_blueprint::ViewBlueprint;
 
 fn convert_pixels_to<T: From<u8> + Copy>(u8s: &[u8]) -> Vec<T> {
@@ -21,7 +21,10 @@ fn convert_pixels_to<T: From<u8> + Copy>(u8s: &[u8]) -> Vec<T> {
 }
 
 fn run_bgr_test<T: ImageChannelType>(image: &[T], size: [u32; 2], color_model: ColorModel) {
-    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>()
+        .set_snapshot_options(
+            SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(2)),
+        );
     test_context.log_entity("bgr_image", |builder| {
         builder.with_archetype(
             RowId::new(),
@@ -55,31 +58,7 @@ fn run_bgr_test<T: ImageChannelType>(image: &[T], size: [u32; 2], color_model: C
         color_model.to_string().to_lowercase(),
     );
 
-    run_view_ui_and_save_snapshot(
-        &mut test_context,
-        view_id,
-        &snapshot_name,
-        egui::vec2(160.0, 120.0),
-    );
-}
-
-fn run_view_ui_and_save_snapshot(
-    test_context: &mut TestContext,
-    view_id: ViewId,
-    name: &str,
-    size: egui::Vec2,
-) {
-    let mut harness = test_context
-        .setup_kittest_for_rendering()
-        .with_size(size)
-        .build_ui(|ui| {
-            test_context.run_with_single_view(ui, view_id);
-        });
-    harness.run();
-    harness.snapshot_options(
-        name,
-        &SnapshotOptions::new().failed_pixel_count_threshold(OsThreshold::new(2)),
-    );
+    test_context.run_view_ui_and_save_snapshot(view_id, &snapshot_name, egui::vec2(160.0, 120.0));
 }
 
 fn run_all_formats(image: &[u8], size: [u32; 2], color_model: ColorModel) {
