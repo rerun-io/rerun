@@ -6,6 +6,7 @@ use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
+use re_log_types::external::re_tuid::Tuid;
 
 use crate::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreCompactionConfig, ChunkStoreDiff, ChunkStoreError,
@@ -30,6 +31,8 @@ impl ChunkStore {
     ///
     /// If the store has a cropping range, each incoming chunk will be range queried
     /// to the specified cropping range on the specified timeline.
+    /// If a chunk that was previously cropped is inserted again,
+    /// the previous cropped chunk will first be removed from the store.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
         if chunk.components().is_empty() {
             // This can happen in 2 scenarios: A) a badly manually crafted chunk or B) an Indicator
@@ -45,6 +48,14 @@ impl ChunkStore {
             return Ok(vec![]);
         }
 
+        if !chunk.is_sorted() {
+            return Err(ChunkStoreError::UnsortedChunk);
+        }
+
+        re_tracing::profile_function!();
+
+        let mut diffs = Vec::new();
+
         // If this chunk was previously cropped, remove it from the store.
         // This is not just needed to keep memory usage down, but also to avoid row id collisions.
         //
@@ -55,10 +66,24 @@ impl ChunkStore {
             .cropped_chunk_id_per_source_chunk_id
             .remove(&chunk.id())
         {
-            self.remove_chunk(cropped_chunk_id);
+            re_log::debug!("Removing previously cropped chunk #{}", cropped_chunk_id);
+            diffs.extend(self.remove_chunk(cropped_chunk_id));
         }
 
-        // Crop chunk if requested. We do this via a range query on the cropping range.
+        if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
+            // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
+            re_log::debug_once!(
+                "Chunk #{} was inserted more than once (this has no effect)",
+                chunk.id()
+            );
+            return Ok(self.diffs_to_events_if_enabled(diffs));
+        }
+
+        // Crop chunk if requested.
+        // We do this via a range query on the cropping range.
+        //
+        // Note that this happens *after* we check whether the full chunk was already inserted.
+        // I.e. we don't perform cropping in that case as it would only add more duplicated data.
         let cropped_chunk_arc;
         let chunk = if let Some(cropping_range) = self.config.cropping_range {
             let range_query = re_chunk::RangeQuery {
@@ -73,16 +98,35 @@ impl ChunkStore {
 
             let cropped_chunk = chunk.range_all_components(&range_query);
             if cropped_chunk.is_empty() {
-                return Ok(vec![]);
+                return Ok(self.diffs_to_events_if_enabled(diffs));
             }
 
             match cropped_chunk {
                 std::borrow::Cow::Borrowed(_) => chunk,
                 std::borrow::Cow::Owned(new_chunk) => {
-                    // Give the new chunk a new unique chunk ID and memorize where it came from.
-                    let new_chunk_id = ChunkId::new();
+                    // Give the new chunk a new unique chunk ID that's derived from its parent
+                    // and memorize where it came from.
+                    let source_chunk_id = chunk.id();
+                    let new_chunk_id = ChunkId::from_tuid(Tuid::from_nanos_and_inc(
+                        source_chunk_id.as_tuid().nanos_since_epoch(),
+                        re_log_types::hash::Hash64::hash((
+                            source_chunk_id.as_tuid().inc(),
+                            cropping_range,
+                        ))
+                        .hash64(),
+                    ));
+
+                    // Did we already insert this cropped chunk?
+                    if self.chunks_per_chunk_id.contains_key(&new_chunk_id) {
+                        re_log::debug_once!(
+                            "Cropped chunk #{} was inserted more than once (this has no effect)",
+                            new_chunk_id
+                        );
+                        return Ok(self.diffs_to_events_if_enabled(diffs));
+                    }
+
                     self.cropped_chunk_id_per_source_chunk_id
-                        .insert(chunk.id(), new_chunk_id);
+                        .insert(source_chunk_id, new_chunk_id);
                     let new_chunk = new_chunk.with_id(new_chunk_id);
                     cropped_chunk_arc = Arc::new(new_chunk);
                     &cropped_chunk_arc
@@ -92,24 +136,9 @@ impl ChunkStore {
             chunk
         };
 
-        if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
-            // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
-            re_log::debug_once!(
-                "Chunk #{} was inserted more than once (this has no effect)",
-                chunk.id()
-            );
-            return Ok(Vec::new());
-        }
-
-        if !chunk.is_sorted() {
-            return Err(ChunkStoreError::UnsortedChunk);
-        }
-
         let Some(row_id_range) = chunk.row_id_range() else {
-            return Ok(Vec::new());
+            return Ok(self.diffs_to_events_if_enabled(diffs));
         };
-
-        re_tracing::profile_function!();
 
         self.insert_id += 1;
 
@@ -469,27 +498,30 @@ impl ChunkStore {
             }
         }
 
-        let events = if self.config.enable_changelog {
-            let events: Vec<_> = diffs
-                .into_iter()
-                .map(|diff| ChunkStoreEvent {
-                    store_id: self.id.clone(),
-                    store_generation: self.generation(),
-                    event_id: self
-                        .event_id
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                    diff,
-                })
-                .collect();
+        Ok(self.diffs_to_events_if_enabled(diffs))
+    }
 
-            Self::on_events(&events);
+    /// If the store has changelog enabled, convert the diffs to events and send them to the subscribers.
+    fn diffs_to_events_if_enabled(&self, diffs: Vec<ChunkStoreDiff>) -> Vec<ChunkStoreEvent> {
+        if !self.config.enable_changelog {
+            return Vec::new();
+        }
 
-            events
-        } else {
-            Vec::new()
-        };
+        let events: Vec<_> = diffs
+            .into_iter()
+            .map(|diff| ChunkStoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect();
 
-        Ok(events)
+        Self::on_events(&events);
+
+        events
     }
 
     /// Finds the most appropriate candidate for compaction.
