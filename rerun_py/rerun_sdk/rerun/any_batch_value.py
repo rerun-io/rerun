@@ -19,7 +19,7 @@ def _parse_arrow_array(
     value: Any,
     *,
     pa_type: Any | None = None,
-    np_type: Any | None = None,  # noqa: ARG001 - TODO(ntjohnson1)
+    np_type: Any | None = None,
     descriptor: ComponentDescriptor | None = None,
 ) -> pa.Array:
     possible_array = _try_parse_dlpack(value, pa_type=pa_type, descriptor=descriptor)
