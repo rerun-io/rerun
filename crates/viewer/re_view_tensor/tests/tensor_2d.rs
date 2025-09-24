@@ -35,7 +35,7 @@ fn run_test_with_origin(test_context: &mut TestContext, origin: &str, snapshot_n
         test_context,
         view_id,
         &format!("tensor_2d_{snapshot_name}"),
-        egui::vec2(300.0, 300.0),
+        egui::vec2(256.0, 256.0),
     );
 }
 
