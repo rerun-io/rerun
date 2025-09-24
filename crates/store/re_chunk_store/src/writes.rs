@@ -90,9 +90,9 @@ impl ChunkStore {
                 timeline: cropping_range.timeline,
                 range: cropping_range.range,
                 options: re_chunk::RangeQueryOptions {
-                    keep_extra_timelines: true,     // Don't change other timelines.
-                    keep_extra_components: true,    // Not applicable, as we query all components.
-                    include_extended_bounds: false, // Not needed.
+                    keep_extra_timelines: true,    // Don't change other timelines.
+                    keep_extra_components: true,   // Not applicable, as we query all components.
+                    include_extended_bounds: true, // Needed to make latest-at queries work as expected.
                 },
             };
 
