@@ -4,6 +4,23 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
+from rerun_bindings import (
+    ComponentColumnDescriptor as ComponentColumnDescriptor,
+    ComponentColumnSelector as ComponentColumnSelector,
+    IndexColumnDescriptor as IndexColumnDescriptor,
+    IndexColumnSelector as IndexColumnSelector,
+    Recording as Recording,
+    RecordingView as RecordingView,
+    RRDArchive as RRDArchive,
+    Schema as Schema,
+    load_archive as load_archive,
+    load_recording as load_recording,
+)
+from rerun_bindings.types import (
+    AnyColumn as AnyColumn,
+    AnyComponentColumn as AnyComponentColumn,
+    ViewContentsLike as ViewContentsLike,
+)
 
 from ._baseclasses import ComponentColumn, ComponentDescriptor
 from ._send_columns import TimeColumnLike, send_columns
