@@ -55,6 +55,7 @@ exclude_path = [
   "rerun_cpp/_deps",
   "rerun_cpp/docs/html",
   "rerun_cpp/docs/xml",
+  "rerun_cpp/src/rerun/third_party/",
   "rerun_cpp/tmp/",
   "rerun_js/node_modules/",
   "rerun_notebook/node_modules/",
