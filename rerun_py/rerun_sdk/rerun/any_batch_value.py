@@ -164,16 +164,16 @@ class AnyBatchValue(ComponentBatchLike):
             elif hasattr(value, "as_arrow_array"):
                 self.pa_array = value.as_arrow_array()
             else:
-                if pa_type is not None:
-                    if value is None:
-                        value = []
-                    self.pa_array = _parse_arrow_array(value, pa_type, np_type, None)
-                else:
+                if pa_type is None:
                     if value is None:
                         if not drop_untyped_nones:
                             raise ValueError("Cannot convert None to arrow array. Type is unknown.")
                     else:
                         self.pa_array = _parse_arrow_array(value, pa_type, np_type, descriptor=descriptor)
+                else:
+                    if value is None:
+                        value = []
+                    self.pa_array = _parse_arrow_array(value, pa_type, np_type, None)
 
     def is_valid(self) -> bool:
         return self.pa_array is not None
