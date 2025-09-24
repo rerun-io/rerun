@@ -241,7 +241,14 @@ impl TimestampFilter {
         };
 
         if low_visible {
-            from_to_header_ui(ui, "From:");
+            from_to_header_ui(
+                ui,
+                if self.kind == TimestampFilterKind::After {
+                    "After:"
+                } else {
+                    "From:"
+                },
+            );
 
             let response = self.low_bound_timestamp.ui(
                 ui,
@@ -254,7 +261,14 @@ impl TimestampFilter {
         }
 
         if high_visible {
-            from_to_header_ui(ui, "To:");
+            from_to_header_ui(
+                ui,
+                if self.kind == TimestampFilterKind::Before {
+                    "Before:"
+                } else {
+                    "To:"
+                },
+            );
 
             let response = self.high_bound_timestamp.ui(
                 ui,
