@@ -388,12 +388,18 @@ impl EditableTimestamp {
         ui.add_space(-4.0);
 
         match &self.resolved_timestamp {
-            Ok(timestamp) => ui.label(format_timestamp(*timestamp, timestamp_format)),
+            Ok(timestamp) => {
+                ui.label(format_timestamp(*timestamp, timestamp_format));
+            }
 
-            Err(err) => ui
-                .label("YYYY-MM-DD HH:MM:SS")
-                .on_hover_text(err.to_string()),
-        };
+            Err(err) => {
+                let response = ui.label("YYYY-MM-DD HH:MM:SS");
+
+                if is_editable {
+                    response.on_hover_text(err.to_string());
+                }
+            }
+        }
 
         response
     }

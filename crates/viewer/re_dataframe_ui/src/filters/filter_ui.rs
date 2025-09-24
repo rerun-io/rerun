@@ -503,14 +503,14 @@ impl FilterOperation {
     /// representation of the parsed timestamp.
     fn on_commit(&mut self) {
         match self {
-            FilterOperation::NullableBoolean(_)
-            | FilterOperation::NonNullableBoolean(_)
-            | FilterOperation::IntCompares { .. }
-            | FilterOperation::FloatCompares { .. }
-            | FilterOperation::StringContains(_) => {}
+            Self::NullableBoolean(_)
+            | Self::NonNullableBoolean(_)
+            | Self::IntCompares { .. }
+            | Self::FloatCompares { .. }
+            | Self::StringContains(_) => {}
 
-            FilterOperation::Timestamp(timestamp_filter) => timestamp_filter.on_commit(),
-        };
+            Self::Timestamp(timestamp_filter) => timestamp_filter.on_commit(),
+        }
     }
 
     /// Display text of the operator.
