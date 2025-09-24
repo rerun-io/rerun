@@ -1,11 +1,5 @@
-use std::{
-    collections::{BTreeSet, HashMap, hash_map::Entry},
-    fs::File,
-    path::Path,
-};
-
 use arrow::{array::RecordBatch, datatypes::Schema};
-
+use datafusion::catalog::TableProvider;
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
@@ -16,6 +10,13 @@ use re_protos::{
     },
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
+use std::sync::Arc;
+use std::{
+    collections::{BTreeSet, HashMap, hash_map::Entry},
+    fs::File,
+    path::Path,
+};
+use arrow::array::TimestampNanosecondArray;
 
 #[derive(thiserror::Error, Debug)]
 #[expect(clippy::enum_variant_names)]
@@ -205,10 +206,41 @@ impl Dataset {
     }
 }
 
+pub struct Table {
+    id: EntryId,
+    name: String,
+    // pub(crate) provider: Arc<dyn TableProvider>,
+    url: String,
+
+    created_at: jiff::Timestamp,
+    updated_at: jiff::Timestamp,
+}
+
+impl Table {
+    pub fn id(&self) -> EntryId {
+        self.id
+    }
+
+    pub fn as_entry_details(&self) -> EntryDetails {
+        EntryDetails {
+            id: self.id,
+            name: self.name.clone(),
+            kind: EntryKind::Table,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+        }
+    }
+
+    pub fn url(&self) -> &str {
+        &self.url
+    }
+}
+
 #[derive(Default)]
 pub struct InMemoryStore {
     // TODO(ab): track created/modified time
     datasets: HashMap<EntryId, Dataset>,
+    tables: HashMap<EntryId, Table>,
     id_by_name: HashMap<String, EntryId>,
 }
 
@@ -249,6 +281,73 @@ impl InMemoryStore {
                     dataset.load_rrd(&entry.path(), on_duplicate)?;
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    pub async fn load_directory_as_table(
+        &mut self,
+        directory: &std::path::Path,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<(), Error> {
+        let directory = directory.canonicalize()?;
+        if !directory.is_dir() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Expected a directory, got: {}", directory.display()),
+            )
+                .into());
+        }
+
+        let entry_name = directory
+            .file_name()
+            .expect("the directory should have a name and the path was canonicalized")
+            .to_string_lossy();
+
+        // Verify it is a valid lance table
+        let path = directory.to_str().ok_or(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("Expected a valid path, got: {}", directory.display()),
+        ))?;
+
+        let table = lance::Dataset::open(path)
+            .await
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+
+        let entry_id = EntryId::new();
+
+        match self.table_by_name(entry_name.as_ref()) {
+            None => {
+                self.id_by_name.insert(entry_name.to_string(), entry_id);
+                self.tables.insert(entry_id.clone(), Table {
+                    id: entry_id,
+                    name: entry_name.to_string(),
+                    url: format!("file://{path}"),
+                    created_at: jiff::Timestamp::now(),
+                    updated_at: jiff::Timestamp::now(),
+                });
+            }
+            Some(_) => match on_duplicate {
+                IfDuplicateBehavior::Overwrite => {
+                    re_log::info!("Overwriting {entry_name}");
+
+                    self.id_by_name.insert(entry_name.to_string(), entry_id);
+                    self.tables.insert(entry_id.clone(), Table {
+                        id: entry_id,
+                        name: entry_name.to_string(),
+                        url: format!("file://{path}"),
+                        created_at: jiff::Timestamp::now(),
+                        updated_at: jiff::Timestamp::now(),
+                    });
+                }
+                IfDuplicateBehavior::Skip => {
+                    re_log::info!("Ignoring {entry_name}: it already exists");
+                }
+                IfDuplicateBehavior::Error => {
+                    return Err(Error::DuplicateEntryNameError(entry_name.to_string()));
+                }
+            },
         }
 
         Ok(())
@@ -298,5 +397,22 @@ impl InMemoryStore {
 
     pub fn iter_datasets(&self) -> impl Iterator<Item = &Dataset> {
         self.datasets.values()
+    }
+
+    pub fn table(&self, entry_id: EntryId) -> Option<&Table> {
+        self.tables.get(&entry_id)
+    }
+
+    pub fn table_mut(&mut self, entry_id: EntryId) -> Option<&mut Table> {
+        self.tables.get_mut(&entry_id)
+    }
+
+    pub fn table_by_name(&self, name: &str) -> Option<&Table> {
+        let entry_id = self.id_by_name.get(name).copied()?;
+        self.table(entry_id)
+    }
+
+    pub fn iter_tables(&self) -> impl Iterator<Item = &Table> {
+        self.tables.values()
     }
 }

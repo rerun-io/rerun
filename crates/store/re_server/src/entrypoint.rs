@@ -25,6 +25,10 @@ pub struct Args {
     /// Load a directory of RRD as dataset (can be specified multiple times).
     #[clap(long = "dataset", short = 'd')]
     pub datasets: Vec<PathBuf>,
+
+    /// Load a lance file as a table (can be specified multiple times).
+    #[clap(long = "table", short = 't')]
+    pub tables: Vec<PathBuf>,
 }
 
 impl Args {
@@ -44,6 +48,13 @@ impl Args {
                     dataset,
                     re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
                 )?;
+            }
+
+            for table in &self.tables {
+                builder = builder.with_directory_as_table(
+                    table,
+                    re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
+                ).await?;
             }
 
             RerunCloudServiceServer::new(builder.build())

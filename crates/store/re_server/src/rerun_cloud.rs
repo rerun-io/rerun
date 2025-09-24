@@ -8,8 +8,6 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use nohash_hasher::IntSet;
-use tokio_stream::StreamExt as _;
-
 use re_chunk_store::Chunk;
 use re_chunk_store::external::re_chunk::external::re_byte_size::SizeBytes as _;
 use re_entity_db::EntityDb;
@@ -19,8 +17,8 @@ use re_log_types::external::re_types_core::{ChunkId, Loggable as _};
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::GetChunksRequest;
 use re_protos::cloud::v1alpha1::{
-    GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
-    QueryDatasetResponse, ScanPartitionTableResponse,
+    EntryDetails, GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
+    QueryDatasetResponse, ScanPartitionTableResponse, ScanTableResponse,
 };
 use re_protos::headers::RerunHeadersExtractorExt as _;
 use re_protos::{cloud::v1alpha1::RegisterWithDatasetResponse, common::v1alpha1::ext::PartitionId};
@@ -41,8 +39,11 @@ use re_protos::{
     },
     common::v1alpha1::ext::IfDuplicateBehavior,
 };
+use tokio_stream::StreamExt as _;
+use tonic::Status;
+use tonic::service::LayerExt;
 
-use crate::store::{Dataset, InMemoryStore};
+use crate::store::{Dataset, InMemoryStore, Table};
 
 #[derive(Debug, Default)]
 pub struct RerunCloudHandlerSettings {}
@@ -66,6 +67,18 @@ impl RerunCloudHandlerBuilder {
     ) -> Result<Self, crate::store::Error> {
         self.store
             .load_directory_as_dataset(directory, on_duplicate)?;
+
+        Ok(self)
+    }
+
+    pub async fn with_directory_as_table(
+        mut self,
+        path: &std::path::Path,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<Self, crate::store::Error> {
+        self.store
+            .load_directory_as_table(path, on_duplicate)
+            .await?;
 
         Ok(self)
     }
@@ -171,49 +184,12 @@ decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
 decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
 
-#[tonic::async_trait]
-impl RerunCloudService for RerunCloudHandler {
-    async fn version(
+impl RerunCloudHandler {
+    async fn find_datasets(
         &self,
-        request: tonic::Request<re_protos::cloud::v1alpha1::VersionRequest>,
-    ) -> std::result::Result<
-        tonic::Response<re_protos::cloud::v1alpha1::VersionResponse>,
-        tonic::Status,
-    > {
-        let re_protos::cloud::v1alpha1::VersionRequest {} = request.into_inner();
-
-        // NOTE: Reminder that this is only fully filled iff CI=1.
-        let build_info = re_build_info::build_info!();
-
-        Ok(tonic::Response::new(
-            re_protos::cloud::v1alpha1::VersionResponse {
-                build_info: Some(build_info.into()),
-            },
-        ))
-    }
-
-    // --- Catalog ---
-
-    async fn find_entries(
-        &self,
-        request: tonic::Request<re_protos::cloud::v1alpha1::FindEntriesRequest>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::FindEntriesResponse>, tonic::Status>
-    {
-        let filter = request.into_inner().filter;
-        let entry_id = filter
-            .as_ref()
-            .and_then(|filter| filter.id)
-            .map(TryInto::try_into)
-            .transpose()?;
-        let name = filter.as_ref().and_then(|filter| filter.name.clone());
-        let kind = filter.and_then(|filter| filter.entry_kind);
-
-        if kind.is_some_and(|kind| kind != EntryKind::Dataset as i32) {
-            return Err(tonic::Status::unimplemented(
-                "find_entries: only datasets are implemented",
-            ));
-        }
-
+        entry_id: Option<EntryId>,
+        name: Option<String>,
+    ) -> Result<Vec<EntryDetails>, Status> {
         let store = self.store.read().await;
 
         let dataset = match (entry_id, name) {
@@ -258,12 +234,121 @@ impl RerunCloudService for RerunCloudHandler {
             itertools::Either::Right(store.iter_datasets())
         };
 
-        let response = re_protos::cloud::v1alpha1::FindEntriesResponse {
-            entries: dataset_iter
-                .map(Dataset::as_entry_details)
-                .map(Into::into)
-                .collect(),
+        Ok(dataset_iter
+            .map(Dataset::as_entry_details)
+            .map(Into::into)
+            .collect())
+    }
+
+    async fn find_tables(
+        &self,
+        entry_id: Option<EntryId>,
+        name: Option<String>,
+    ) -> Result<Vec<EntryDetails>, Status> {
+        let store = self.store.read().await;
+
+        let table = match (entry_id, name) {
+            (None, None) => None,
+
+            (Some(entry_id), None) => {
+                let Some(table) = store.table(entry_id) else {
+                    return Err(tonic::Status::not_found(format!(
+                        "Table with ID {entry_id} not found"
+                    )));
+                };
+                Some(table)
+            }
+
+            (None, Some(name)) => {
+                let Some(table) = store.table_by_name(&name) else {
+                    return Err(tonic::Status::not_found(format!(
+                        "Table with name {name} not found"
+                    )));
+                };
+                Some(table)
+            }
+
+            (Some(entry_id), Some(name)) => {
+                let Some(table) = store.table_by_name(&name) else {
+                    return Err(tonic::Status::not_found(format!(
+                        "Table with name {name} not found"
+                    )));
+                };
+                if table.id() != entry_id {
+                    return Err(tonic::Status::not_found(format!(
+                        "Table with ID {entry_id} not found"
+                    )));
+                }
+                Some(table)
+            }
         };
+
+        let table_iter = if let Some(table) = table {
+            itertools::Either::Left(std::iter::once(table))
+        } else {
+            itertools::Either::Right(store.iter_tables())
+        };
+
+        Ok(table_iter
+            .map(Table::as_entry_details)
+            .map(Into::into)
+            .collect())
+    }
+}
+
+#[tonic::async_trait]
+impl RerunCloudService for RerunCloudHandler {
+    async fn version(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::VersionRequest>,
+    ) -> std::result::Result<
+        tonic::Response<re_protos::cloud::v1alpha1::VersionResponse>,
+        tonic::Status,
+    > {
+        let re_protos::cloud::v1alpha1::VersionRequest {} = request.into_inner();
+
+        // NOTE: Reminder that this is only fully filled iff CI=1.
+        let build_info = re_build_info::build_info!();
+
+        Ok(tonic::Response::new(
+            re_protos::cloud::v1alpha1::VersionResponse {
+                build_info: Some(build_info.into()),
+            },
+        ))
+    }
+
+    // --- Catalog ---
+
+    async fn find_entries(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::FindEntriesRequest>,
+    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::FindEntriesResponse>, tonic::Status>
+    {
+        let filter = request.into_inner().filter;
+        let entry_id = filter
+            .as_ref()
+            .and_then(|filter| filter.id)
+            .map(TryInto::try_into)
+            .transpose()?;
+        let name = filter.as_ref().and_then(|filter| filter.name.clone());
+        let kind = filter
+            .and_then(|filter| filter.entry_kind)
+            .map(EntryKind::try_from)
+            .transpose()
+            .map_err(|err| Status::invalid_argument("find_entries: invalid entry kind {err}"))?
+            .unwrap_or(EntryKind::Dataset);
+
+        let entries = match kind {
+            EntryKind::Dataset => self.find_datasets(entry_id, name).await?,
+            EntryKind::Table => self.find_tables(entry_id, name).await?,
+            _ => {
+                return Err(Status::unimplemented(
+                    "find_entries: only datasets and tables are implemented",
+                ));
+            }
+        };
+
+        let response = re_protos::cloud::v1alpha1::FindEntriesResponse { entries };
 
         Ok(tonic::Response::new(response))
     }
@@ -995,13 +1080,32 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn get_table_schema(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::GetTableSchemaRequest>,
-    ) -> std::result::Result<
-        tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>,
-        tonic::Status,
-    > {
-        Err(tonic::Status::unimplemented(
-            "get_table_schema not implemented",
+        request: tonic::Request<re_protos::cloud::v1alpha1::GetTableSchemaRequest>,
+    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>, Status> {
+        let store = self.store.read().await;
+        let Some(entry_id) = request.into_inner().table_id else {
+            return Err(Status::not_found(format!(
+                "Table ID not specified in request"
+            )));
+        };
+        let entry_id = entry_id.try_into()?;
+
+        let table = store
+            .table(entry_id)
+            .ok_or_else(|| Status::not_found(format!("Entry with ID {entry_id} not found")))?;
+
+        let lance_table = lance::Dataset::open(table.url())
+            .await
+            .map_err(|err| tonic::Status::from_error(Box::new(err)))?;
+
+        let schema: Schema = lance_table.schema().into();
+
+        Ok(tonic::Response::new(
+            re_protos::cloud::v1alpha1::GetTableSchemaResponse {
+                schema: Some((&schema).try_into().map_err(|err| {
+                    Status::internal(format!("Unable to serialize Arrow schema: {err:#}"))
+                })?),
+            },
         ))
     }
 
@@ -1009,9 +1113,42 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn scan_table(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::ScanTableRequest>,
-    ) -> std::result::Result<tonic::Response<Self::ScanTableStream>, tonic::Status> {
-        Err(tonic::Status::unimplemented("scan_table not implemented"))
+        request: tonic::Request<re_protos::cloud::v1alpha1::ScanTableRequest>,
+    ) -> Result<tonic::Response<Self::ScanTableStream>, Status> {
+        let store = self.store.read().await;
+        let Some(entry_id) = request.into_inner().table_id else {
+            return Err(Status::not_found(format!(
+                "Table ID not specified in request"
+            )));
+        };
+        let entry_id = entry_id.try_into()?;
+
+        let table = store
+            .table(entry_id)
+            .ok_or_else(|| Status::not_found(format!("Entry with ID {entry_id} not found")))?;
+        let lance_table = lance::Dataset::open(table.url())
+            .await
+            .map_err(|err| tonic::Status::from_error(Box::new(err)))?;
+
+        let stream = lance_table
+            .scan()
+            .try_into_stream()
+            .await
+            .map_err(|err| tonic::Status::from_error(Box::new(err)))?;
+
+        let resp_stream = stream.map(|batch| {
+            batch
+                .map_err(|err| tonic::Status::from_error(Box::new(err)))?
+                .encode()
+                .map(|batch| ScanTableResponse {
+                    dataframe_part: Some(batch),
+                })
+                .map_err(|err| tonic::Status::internal(format!("Error encoding chunk: {err:#}")))
+        });
+
+        Ok(tonic::Response::new(
+            Box::pin(resp_stream) as Self::ScanTableStream
+        ))
     }
 
     // --- Tasks service ---
