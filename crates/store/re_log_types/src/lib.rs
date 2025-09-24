@@ -586,6 +586,37 @@ pub struct StoreInfo {
 }
 
 impl StoreInfo {
+    /// Creates a new store info using the current crate version.
+    pub fn new(store_id: StoreId, store_source: StoreSource) -> Self {
+        Self {
+            store_id,
+            cloned_from: None,
+            store_source,
+            store_version: Some(CrateVersion::LOCAL),
+        }
+    }
+
+    /// Creates a new store info without any versioning information.
+    pub fn new_unversioned(store_id: StoreId, store_source: StoreSource) -> Self {
+        Self {
+            store_id,
+            cloned_from: None,
+            store_source,
+            store_version: None,
+        }
+    }
+
+    /// Creates a new store info for testing purposes.
+    pub fn testing() -> Self {
+        // Don't use a version for testing since it may show up in snapshots that then would change on every version.
+        Self::new_unversioned(
+            StoreId::new(StoreKind::Recording, ApplicationId::unknown(), "test"),
+            StoreSource::Other("test".to_owned()),
+        )
+    }
+}
+
+impl StoreInfo {
     /// Whether this `StoreInfo` is the default used when a user is not explicitly
     /// creating their own blueprint.
     pub fn is_app_default_blueprint(&self) -> bool {

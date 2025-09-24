@@ -749,12 +749,7 @@ impl RecordingStreamBuilder {
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         });
 
-        let store_info = StoreInfo {
-            store_id,
-            cloned_from: None,
-            store_source,
-            store_version: Some(re_build_info::CrateVersion::LOCAL),
-        };
+        let store_info = StoreInfo::new(store_id, store_source);
 
         (
             enabled,
