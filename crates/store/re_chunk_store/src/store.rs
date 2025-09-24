@@ -88,7 +88,7 @@ pub struct ChunkStoreCompactionConfig {
     /// What is the threshold, in rows, after which a [`Chunk`] cannot be compacted any further?
     ///
     /// This specifically applies to time-sorted chunks.
-    /// See also [`ChunkStoreConfig::chunk_max_rows_if_unsorted`].
+    /// See also [`Self::chunk_max_rows_if_unsorted`].
     ///
     /// This is a multi-dimensional trade-off:
     /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
@@ -106,7 +106,7 @@ pub struct ChunkStoreCompactionConfig {
     /// What is the threshold, in rows, after which a [`Chunk`] cannot be compacted any further?
     ///
     /// This specifically applies to _non_ time-sorted chunks.
-    /// See also [`ChunkStoreConfig::chunk_max_rows`].
+    /// See also [`Self::chunk_max_rows`].
     ///
     /// This is a multi-dimensional trade-off:
     /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
@@ -187,8 +187,7 @@ impl ChunkStoreCompactionConfig {
     /// Returns a copy of `self`, overriding existing fields with values from the environment if
     /// they are present.
     ///
-    /// See [`Self::ENV_STORE_ENABLE_CHANGELOG`], [`Self::ENV_CHUNK_MAX_BYTES`], [`Self::ENV_CHUNK_MAX_ROWS`]
-    /// and [`Self::ENV_CHUNK_MAX_ROWS_IF_UNSORTED`].
+    /// See [`Self::ENV_CHUNK_MAX_BYTES`], [`Self::ENV_CHUNK_MAX_ROWS`] and [`Self::ENV_CHUNK_MAX_ROWS_IF_UNSORTED`].
     pub fn apply_env(&self) -> ChunkStoreResult<Self> {
         let mut new = self.clone();
 
