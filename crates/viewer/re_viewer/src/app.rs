@@ -630,16 +630,20 @@ impl App {
                 self.go_to_dataset_data(store_id, fragment);
             }
             SystemCommand::CopyViewerUrl(url) => {
-                match combine_with_base_url(
-                    self.startup_options.web_viewer_base_url().as_ref(),
-                    [url],
-                ) {
-                    Ok(url) => {
-                        self.copy_text(url);
+                if cfg!(target_arch = "wasm32") {
+                    match combine_with_base_url(
+                        self.startup_options.web_viewer_base_url().as_ref(),
+                        [url],
+                    ) {
+                        Ok(url) => {
+                            self.copy_text(url);
+                        }
+                        Err(err) => {
+                            re_log::error!("{err}");
+                        }
                     }
-                    Err(err) => {
-                        re_log::error!("{err}");
-                    }
+                } else {
+                    self.copy_text(url);
                 }
             }
             SystemCommand::ActivateApp(app_id) => {
