@@ -14,7 +14,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ci.frontmatter import load_frontmatter
 from gitignore_parser import parse_gitignore
@@ -946,7 +946,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
     return errors, lines_out
 
 
-def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
+def lint_example_description(filepath: str) -> list[str]:
     # only applies to examples' readme
 
     if not filepath.startswith("./examples/python") or not filepath.endswith("README.md"):
@@ -963,15 +963,11 @@ def lint_frontmatter(filepath: str, content: str) -> list[str]:
         return errors
 
     try:
-        fm = load_frontmatter(content)
+        load_frontmatter(content)
     except Exception as e:
         errors.append(f"Error parsing frontmatter: {e}")
-        return errors
 
-    if fm is None:
-        return []
-
-    errors += lint_example_description(filepath, fm)
+    errors += lint_example_description(filepath)
 
     return errors
 
@@ -1129,7 +1125,7 @@ def lint_file(filepath: str, args: Any) -> int:
     return num_errors
 
 
-def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
+def lint_crate_docs() -> int:
     """Make sure ARCHITECTURE.md talks about every single crate we have."""
 
     crates_dir = Path("crates")
@@ -1290,7 +1286,7 @@ def main() -> None:
                     num_errors += lint_file(filepath, args)
 
         # Since no files have been specified, we also run the global lints.
-        num_errors += lint_crate_docs(should_ignore)
+        num_errors += lint_crate_docs()
 
     if num_errors == 0:
         print(f"{sys.argv[0]} finished without error")

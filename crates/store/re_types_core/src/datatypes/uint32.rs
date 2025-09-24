@@ -102,10 +102,10 @@ impl crate::Loggable for UInt32 {
         #![allow(clippy::wildcard_imports)]
         use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
-        if let Some(nulls) = arrow_data.nulls() {
-            if nulls.null_count() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
+        if let Some(nulls) = arrow_data.nulls()
+            && nulls.null_count() != 0
+        {
+            return Err(DeserializationError::missing_data());
         }
         Ok({
             let slice = arrow_data

@@ -248,7 +248,13 @@ impl ChunkBatcherConfig {
                     err: Box::new(err),
                 })?;
 
-            new.flush_tick = Duration::from_secs_f64(flush_duration_secs);
+            new.flush_tick = Duration::try_from_secs_f64(flush_duration_secs).map_err(|err| {
+                ChunkBatcherError::ParseConfig {
+                    name: Self::ENV_FLUSH_TICK,
+                    value: s.clone(),
+                    err: Box::new(err),
+                }
+            })?;
         }
 
         if let Ok(s) = std::env::var(Self::ENV_FLUSH_NUM_BYTES) {

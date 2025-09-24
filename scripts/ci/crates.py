@@ -276,7 +276,7 @@ class Context:
     def error(self, *e: str) -> None:
         self.errors.append("\n".join(e))
 
-    def finish(self, dry_run: bool) -> None:
+    def finish(self) -> None:
         if len(self.errors) > 0:
             print("Encountered some errors:")
             for error in self.errors:
@@ -367,7 +367,7 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
         #    Here the version may also be pinned by prefixing it with `=`.
         bump_dependency_versions(ctx, name, new_version, crate.manifest, crates)
 
-    ctx.finish(dry_run)
+    ctx.finish()
 
     # Save after bumping all versions
     if not dry_run:
@@ -527,7 +527,7 @@ def publish(dry_run: bool, token: str) -> None:
 
     for name in crates.keys():
         ctx.publish(name, version)
-    ctx.finish(dry_run)
+    ctx.finish()
 
     if not dry_run:
         publish_unpublished_crates_in_parallel(crates, version, token)

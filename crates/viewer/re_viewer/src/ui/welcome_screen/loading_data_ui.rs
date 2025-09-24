@@ -25,8 +25,8 @@ pub fn loading_data_ui(ui: &mut egui::Ui, loading_text: &str) {
 pub fn loading_text_for_data_sources(log_sources: &[Arc<SmartChannelSource>]) -> Option<String> {
     // If there's several data sources that should show a loading text, pick the first one.
     for source in log_sources {
-        if let Some(loading_text) = source.loading_string() {
-            return Some(loading_text);
+        if let Some(loading_name) = source.loading_name() {
+            return Some(format!("Loading {loading_name}"));
         }
     }
 

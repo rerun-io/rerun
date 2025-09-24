@@ -3068,7 +3068,7 @@ checksum = "d6add3b8cff394282be81f3fc1a0605db594ed69890078ca6e2cab1c408bcf04"
 [[package]]
 name = "ecolor"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#48d903d8797d0869b5d2b43a22346dede7d471d2"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -3085,7 +3085,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#48d903d8797d0869b5d2b43a22346dede7d471d2"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3123,7 +3123,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#48d903d8797d0869b5d2b43a22346dede7d471d2"
 dependencies = [
  "accesskit",
  "ahash",
@@ -3143,7 +3143,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#48d903d8797d0869b5d2b43a22346dede7d471d2"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3162,7 +3162,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#48d903d8797d0869b5d2b43a22346dede7d471d2"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -3225,7 +3225,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#48d903d8797d0869b5d2b43a22346dede7d471d2"
 dependencies = [
  "ahash",
  "egui",
@@ -3242,7 +3242,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#48d903d8797d0869b5d2b43a22346dede7d471d2"
 dependencies = [
  "bytemuck",
  "egui",
@@ -3258,7 +3258,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#48d903d8797d0869b5d2b43a22346dede7d471d2"
 dependencies = [
  "dify",
  "eframe",
@@ -3332,7 +3332,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 [[package]]
 name = "emath"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#48d903d8797d0869b5d2b43a22346dede7d471d2"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3449,7 +3449,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#48d903d8797d0869b5d2b43a22346dede7d471d2"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -3468,7 +3468,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.32.3"
-source = "git+https://github.com/emilk/egui.git?branch=main#c97c065a575ec6e657bb42872890a00d0fb391c1"
+source = "git+https://github.com/emilk/egui.git?branch=main#48d903d8797d0869b5d2b43a22346dede7d471d2"
 
 [[package]]
 name = "equivalent"
@@ -8965,6 +8965,7 @@ dependencies = [
  "bytemuck",
  "egui",
  "glam",
+ "half",
  "hexasphere",
  "image",
  "insta",
@@ -9034,13 +9035,16 @@ dependencies = [
  "egui",
  "egui_commonmark",
  "re_chunk_store",
+ "re_log_types",
  "re_renderer",
  "re_test_context",
+ "re_test_viewport",
  "re_tracing",
  "re_types",
  "re_ui",
  "re_view",
  "re_viewer_context",
+ "re_viewport_blueprint",
 ]
 
 [[package]]

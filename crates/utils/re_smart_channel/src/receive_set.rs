@@ -31,6 +31,14 @@ impl<T: Send> ReceiveSet<T> {
         rx.push(r);
     }
 
+    /// Are we currently receiving this source?
+    pub fn contains(&self, source: &SmartChannelSource) -> bool {
+        self.receivers
+            .lock()
+            .iter()
+            .any(|src| src.source.is_same_ignoring_uri_fragments(source))
+    }
+
     /// Disconnect from any channel with the given source.
     pub fn remove(&self, source: &SmartChannelSource) {
         self.receivers.lock().retain(|r| r.source() != source);

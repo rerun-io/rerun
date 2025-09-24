@@ -14,7 +14,8 @@ impl Colormap {
             | Self::Plasma
             | Self::Turbo
             | Self::Viridis
-            | Self::CyanToYellow => {}
+            | Self::CyanToYellow
+            | Self::Spectral => {}
         }
 
         match value {
@@ -25,6 +26,7 @@ impl Colormap {
             v if v == Self::Turbo as u8 => Some(Self::Turbo),
             v if v == Self::Viridis as u8 => Some(Self::Viridis),
             v if v == Self::CyanToYellow as u8 => Some(Self::CyanToYellow),
+            v if v == Self::Spectral as u8 => Some(Self::Spectral),
             _ => None,
         }
     }

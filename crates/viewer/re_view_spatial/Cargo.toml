@@ -74,6 +74,7 @@ re_component_ui.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true
 
+half.workspace = true
 insta.workspace = true
 ndarray.workspace = true
 

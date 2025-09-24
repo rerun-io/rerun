@@ -186,7 +186,7 @@ class TensorDataExt:
             fields=data_type.fields,
         ).cast(data_type)
 
-    def numpy(self: Any, force: bool) -> npt.NDArray[Any]:
+    def numpy(self: Any, force: bool) -> npt.NDArray[Any]:  # noqa: ARG002 TODO(jleibs): why is `force` here?
         """Convert the TensorData back to a numpy array."""
         dims = list(self.shape)
         return self.buffer.inner.reshape(dims)  # type: ignore[no-any-return]

@@ -96,7 +96,7 @@ class DAG(Generic[_T]):
             done_queue: Queue[_T] = Queue()
             shutdown: EventClass = Event()
 
-            def worker(n: int) -> None:
+            def worker(_index: int) -> None:
                 # Attempt to grab a task from the queue,
                 # execute it, then put it in the done queue.
                 while not shutdown.is_set():

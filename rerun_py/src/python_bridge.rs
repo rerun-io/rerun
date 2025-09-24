@@ -298,7 +298,13 @@ impl DurationLike {
     fn into_duration(self) -> Duration {
         match self {
             Self::Int(i) => Duration::from_secs(i as u64),
-            Self::Float(f) => Duration::from_secs_f64(f),
+            Self::Float(f) => match duration_from_sec(f) {
+                Ok(duration) => duration,
+                Err(err) => {
+                    re_log::error_once!("{err}");
+                    Duration::ZERO
+                }
+            },
             Self::Duration(d) => d,
         }
     }
@@ -1374,7 +1380,7 @@ impl PyBinarySinkStorage {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| -> PyResult<_> {
             if flush {
-                let timeout = timeout_from_sec(flush_timeout_sec)?;
+                let timeout = duration_from_sec(flush_timeout_sec as _)?;
                 self.inner
                     .flush(timeout)
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -1405,7 +1411,7 @@ impl PyBinarySinkStorage {
     fn flush(&self, py: Python<'_>, timeout_sec: f32) -> PyResult<()> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| -> PyResult<_> {
-            let timeout = timeout_from_sec(timeout_sec)?;
+            let timeout = duration_from_sec(timeout_sec as _)?;
             self.inner
                 .flush(timeout)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -1415,13 +1421,13 @@ impl PyBinarySinkStorage {
     }
 }
 
-fn timeout_from_sec(seconds: f32) -> PyResult<Duration> {
+fn duration_from_sec(seconds: f64) -> PyResult<Duration> {
     if seconds.is_nan() {
-        Err(PyRuntimeError::new_err("timeout_sec must not be NaN"))
+        Err(PyRuntimeError::new_err("duration must not be NaN"))
     } else if seconds < 0.0 {
-        Err(PyRuntimeError::new_err("timeout_sec must be non-negative"))
+        Err(PyRuntimeError::new_err("duration must be non-negative"))
     } else {
-        Ok(Duration::try_from_secs_f32(seconds).unwrap_or(Duration::MAX))
+        Ok(Duration::try_from_secs_f64(seconds).unwrap_or(Duration::MAX))
     }
 }
 
@@ -1608,23 +1614,26 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
 
 /// Block until outstanding data has been flushed to the sink.
 #[pyfunction]
-#[pyo3(signature = (blocking, recording=None))]
-fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+#[pyo3(signature = (*, timeout_sec = 1e38, recording = None))] // Can't use infinity here because of python_check_signatures.py
+fn flush(py: Python<'_>, timeout_sec: f32, recording: Option<&PyRecordingStream>) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
 
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
-    py.allow_threads(|| -> Result<(), SinkFlushError> {
-        if blocking {
-            recording.flush_blocking()?;
+    py.allow_threads(|| -> PyResult<()> {
+        if timeout_sec == 0.0 {
+            recording
+                .flush_async()
+                .map_err(|err: SinkFlushError| PyRuntimeError::new_err(err.to_string()))?;
         } else {
-            recording.flush_async()?;
+            recording
+                .flush_with_timeout(duration_from_sec(timeout_sec as _)?)
+                .map_err(|err: SinkFlushError| PyRuntimeError::new_err(err.to_string()))?;
         }
         flush_garbage_queue();
         Ok(())
     })
-    .map_err(|err: SinkFlushError| PyRuntimeError::new_err(err.to_string()))
 }
 
 // --- Components ---

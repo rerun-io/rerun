@@ -341,7 +341,7 @@ impl NotificationUi {
 }
 
 fn base_ttl() -> Duration {
-    Duration::from_secs_f64(4.0)
+    Duration::from_secs(4)
 }
 
 struct Toasts {
@@ -363,7 +363,9 @@ impl Toasts {
 
     /// Shows and updates all toasts
     fn show(&self, egui_ctx: &egui::Context, notifications: &mut [Notification]) {
-        let dt = Duration::from_secs_f32(egui_ctx.input(|i| i.unstable_dt));
+        let dt = Duration::try_from_secs_f32(egui_ctx.input(|i| i.unstable_dt))
+            .unwrap_or(std::time::Duration::from_millis(100));
+
         let mut offset = egui::vec2(-8.0, 32.0);
 
         let mut first_nonzero_ttl = None;

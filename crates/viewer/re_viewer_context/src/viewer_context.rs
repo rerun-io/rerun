@@ -163,6 +163,22 @@ impl ViewerContext<'_> {
         self.selection_state.selected_items()
     }
 
+    /// Returns if this item should be displayed as selected or not.
+    ///
+    /// This does not always line up with [`Self::selection`], if we
+    /// are currently loading something that will be prioritized here.
+    pub fn is_selected_or_loading(&self, item: &Item) -> bool {
+        if let DisplayMode::Loading(source) = self.display_mode() {
+            if let Item::DataSource(other_source) = item {
+                source.is_same_ignoring_uri_fragments(other_source)
+            } else {
+                false
+            }
+        } else {
+            self.selection().contains_item(item)
+        }
+    }
+
     /// Returns the currently hovered objects.
     pub fn hovered(&self) -> &ItemCollection {
         self.selection_state.hovered_items()
