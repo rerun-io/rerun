@@ -258,6 +258,10 @@ impl Filter {
             .open_bool(&mut popup_open);
 
         let popup_response = popup.show(|ui| {
+            // The default text edit background is too dark for the (lighter) background of popups,
+            // so we switch to a lighter shade.
+            ui.visuals_mut().text_edit_bg_color = Some(ui.visuals().widgets.inactive.bg_fill);
+
             let action = self.operation.popup_ui(
                 ui,
                 timestamp_format,
@@ -626,7 +630,25 @@ mod tests {
                 .build_ui(|ui| {
                     re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                    let _res = filter_op.popup_ui(ui, TimestampFormat::utc(), "column:name", true);
+                    egui::Popup::new(
+                        ui.id().with("popup"),
+                        ui.ctx().clone(),
+                        egui::Rect::from_min_size(
+                            egui::pos2(0., 0.),
+                            egui::vec2(ui.available_width(), 0.0),
+                        ),
+                        ui.layer_id(),
+                    )
+                    .open(true)
+                    .show(|ui| {
+                        ui.visuals_mut().text_edit_bg_color =
+                            Some(ui.visuals().widgets.inactive.bg_fill);
+
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+
+                        let _res =
+                            filter_op.popup_ui(ui, TimestampFormat::utc(), "column:name", true);
+                    });
                 });
 
             harness.run();
