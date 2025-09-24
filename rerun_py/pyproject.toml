@@ -141,15 +141,14 @@ lint.ignore = [
 
 line-length = 120
 lint.select = [
-  "A",   # Avoid shadowing built-ins
-  "ANN", # Ensure all code is properly annotated.
-  "ARG", # Detect unused arguments
-  "B",   # flake8-bugbear lints
-  "C4",  # Comprehension-related rules
-  "COM", # Trailing-comma-related rules
-  "D",   # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
-  "E",   # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-  # "ERA",   # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)
+  "A",       # Avoid shadowing built-ins
+  "ANN",     # Ensure all code is properly annotated.
+  "ARG",     # Detect unused arguments
+  "B",       # flake8-bugbear lints
+  "C4",      # Comprehension-related rules
+  "COM",     # Trailing-comma-related rules
+  "D",       # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
+  "E",       # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   "F",       # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
   "FA",      # Force from __future__ import annotations
   "FURB",    # refurb (Python code modernization)
@@ -157,12 +156,20 @@ lint.select = [
   "ISC",     # Ensure implicit string concat syntax
   "PIE",     # flake8-pic: various idomatic python lints
   "PLW1514", # Force setting `encoding` for open calls. This is in order to prevent issues when opening utf8 files on windows where the default encoding may depend on the active locale. https://docs.astral.sh/ruff/rules/unspecified-encoding/
+  "RUF",     # Ruff-specific rules
   "RUF027",  # Ensure that strings which look like format-strings have the `f` prefix
   "TC",      # Ensure that all type comments are valid
   "TID",     # flake8-tidy-imports
   "UP",      # pyupgrade (ensures idomatic code for supported python version)
   "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   "YTT",     # Various checks on the use of `sys.version_info` and related.
+
+  # TODO(emilk): Enable more of these lints:
+  # "ERA",   # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)
+  # "LOG", # flake8-logging (logging best practices) # NOT SURE
+  # "PERF", # Perflint (performance anti-patterns) # MAYBE
+  # "PL",      # Pylint (comprehensive linting)
+  # "SIM",     # flake8-simplify (simplify code) # TODO
 ]
 
 lint.unfixable = [
@@ -179,6 +186,10 @@ lint.unfixable = [
   "I002",
 ]
 "__init__.py" = ["F401", "F403"]
+"examples/python/notebook_neural_field_2d/neural_field_2d.ipynb" = [
+  # Intentional use of  `σ`
+  "RUF001",
+]
 
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
