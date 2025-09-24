@@ -10,11 +10,12 @@ from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     from .rerun_bindings import (
-        ComponentColumnDescriptor,
-        ComponentColumnSelector,
-        IndexColumnDescriptor,
-        IndexColumnSelector,
-        VectorDistanceMetric,
+        ComponentColumnDescriptor as ComponentColumnDescriptor,
+        ComponentColumnSelector as ComponentColumnSelector,
+        ComponentDescriptor as ComponentDescriptor,
+        IndexColumnDescriptor as IndexColumnDescriptor,
+        IndexColumnSelector as IndexColumnSelector,
+        VectorDistanceMetric as VectorDistanceMetric,
     )
 
 AnyColumn: TypeAlias = Union[
