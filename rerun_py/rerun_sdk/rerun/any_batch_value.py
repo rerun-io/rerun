@@ -9,7 +9,7 @@ from pyarrow import ArrowInvalid
 from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentBatchLike, ComponentColumn
-from .error_utils import catch_and_log_exceptions
+from .error_utils import catch_and_log_exceptions, strict_mode
 
 ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any] = {}
 
@@ -58,6 +58,11 @@ def _try_parse_string(
     if not isinstance(value, (str, bytes)):
         try:
             pa_array = pa.array(value, type=pa_type)
+            if strict_mode():
+                assert pa_array.type != pa.null(), (
+                    f"pa.array of value {value} and type {pa_type} resulted in type {pa_array.type}"
+                )
+
             if descriptor is not None:
                 ANY_VALUE_TYPE_REGISTRY[descriptor] = (None, pa_array.type)
             return pa_array
