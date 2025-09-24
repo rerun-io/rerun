@@ -112,6 +112,7 @@ pub enum SystemCommand {
         store_id: StoreId,
         timeline: re_chunk::Timeline,
         time: Option<re_log_types::TimeReal>,
+
         /// If this is true the timeline will persist even if it is invalid at the moment.
         pending: bool,
     },
