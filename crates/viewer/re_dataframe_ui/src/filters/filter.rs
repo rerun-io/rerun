@@ -217,47 +217,7 @@ pub enum FilterOperation {
 }
 
 impl FilterOperation {
-    fn default_for_primitive_datatype(
-        data_type: &DataType,
-        metadata: &HashMap<String, String>,
-        nullability: Nullability,
-    ) -> Option<Self> {
-        match data_type {
-            DataType::Int64
-                if metadata.get(FIELD_METADATA_KEY_COMPONENT_TYPE)
-                    == Some(&re_types::components::Timestamp::name().to_string()) =>
-            {
-                Some(Self::Timestamp(TimestampFilter::default()))
-            }
-
-            data_type if data_type.is_integer() => Some(Self::IntCompares {
-                operator: ComparisonOperator::Eq,
-                value: None,
-            }),
-
-            DataType::Float16 | DataType::Float32 | DataType::Float64 => {
-                Some(Self::FloatCompares {
-                    operator: ComparisonOperator::Eq,
-                    value: None,
-                })
-            }
-
-            DataType::Utf8 | DataType::Utf8View => Some(Self::StringContains(String::new())),
-
-            DataType::Boolean => {
-                if nullability.is_either() {
-                    Some(Self::NullableBoolean(NullableBooleanFilter::IsTrue))
-                } else {
-                    Some(Self::NonNullableBoolean(NonNullableBooleanFilter::IsTrue))
-                }
-            }
-
-            DataType::Timestamp(_, _) => Some(Self::Timestamp(TimestampFilter::default())),
-
-            _ => None,
-        }
-    }
-
+    /// Create a filter suitable for this column datatype (if any).
     pub fn default_for_column(field: &Field) -> Option<Self> {
         let nullability = Nullability::from_field(field);
         match field.data_type() {
@@ -279,6 +239,47 @@ impl FilterOperation {
         }
     }
 
+    fn default_for_primitive_datatype(
+        data_type: &DataType,
+        metadata: &HashMap<String, String>,
+        nullability: Nullability,
+    ) -> Option<Self> {
+        match data_type {
+            DataType::Boolean => {
+                if nullability.is_either() {
+                    Some(Self::NullableBoolean(NullableBooleanFilter::IsTrue))
+                } else {
+                    Some(Self::NonNullableBoolean(NonNullableBooleanFilter::IsTrue))
+                }
+            }
+
+            DataType::Int64
+                if metadata.get(FIELD_METADATA_KEY_COMPONENT_TYPE)
+                    == Some(&re_types::components::Timestamp::name().to_string()) =>
+            {
+                Some(Self::Timestamp(TimestampFilter::default()))
+            }
+
+            data_type if data_type.is_integer() => Some(Self::IntCompares {
+                operator: ComparisonOperator::Eq,
+                value: None,
+            }),
+
+            DataType::Float16 | DataType::Float32 | DataType::Float64 => {
+                Some(Self::FloatCompares {
+                    operator: ComparisonOperator::Eq,
+                    value: None,
+                })
+            }
+
+            DataType::Utf8 | DataType::Utf8View => Some(Self::StringContains(String::new())),
+
+            DataType::Timestamp(_, _) => Some(Self::Timestamp(TimestampFilter::default())),
+
+            _ => None,
+        }
+    }
+
     /// Convert to an [`Expr`].
     ///
     /// The expression is used for filtering and should thus evaluate to a boolean.
@@ -288,6 +289,13 @@ impl FilterOperation {
         field: &Field,
     ) -> Result<Expr, FilterError> {
         match self {
+            Self::NullableBoolean(boolean_filter) => {
+                boolean_filter.as_filter_expression(column, field)
+            }
+            Self::NonNullableBoolean(boolean_filter) => {
+                boolean_filter.as_filter_expression(column, field)
+            }
+
             Self::IntCompares { .. } | Self::FloatCompares { .. } | Self::Timestamp(_) => {
                 let udf = FilterOperationUdf::new(self.clone());
                 let udf = ScalarUDF::new_from_impl(udf);
@@ -323,13 +331,6 @@ impl FilterOperation {
                 };
 
                 Ok(contains_patch(lower(operand), lower(lit(query_string))))
-            }
-
-            Self::NullableBoolean(boolean_filter) => {
-                boolean_filter.as_filter_expression(column, field)
-            }
-            Self::NonNullableBoolean(boolean_filter) => {
-                boolean_filter.as_filter_expression(column, field)
             }
         }
     }
@@ -520,6 +521,10 @@ impl FilterOperationUdf {
             .map(|array| array.as_list())
             .unwrap_or(list_array);
 
+        // TODO(ab): we probably should do this in two steps:
+        // 1) Convert the list array to a bool array (with same offsets and nulls)
+        // 2) Apply the ANY (or, in the future, another) semantics to "merge" each row's instances
+        //    into the final bool.
         cast_list_array
             .iter()
             .map(|maybe_row| {

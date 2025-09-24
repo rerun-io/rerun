@@ -24,7 +24,7 @@ pub enum FilterUiAction {
 }
 
 impl FilterUiAction {
-    fn merge(self, other: Self) -> Self {
+    pub fn merge(self, other: Self) -> Self {
         // We only consider the first non-noop action. There should never be more than one in a
         // frame anyway.
         match (self, other) {
@@ -135,17 +135,19 @@ impl FilterState {
                     for (index, filter) in self.filters.iter_mut().enumerate() {
                         // egui uses this id to store the popup openness and size information,
                         // so we must invalidate if the filter at a given index changes its
-                        // nature
-                        let filter_id = ui.make_persistent_id(egui::Id::new(index).with(
-                            match filter.operation {
-                                FilterOperation::NonNullableBoolean(_) => "non_nullable_bool",
-                                FilterOperation::NullableBoolean(_) => "nullable_bool",
-                                FilterOperation::IntCompares { .. } => "int",
-                                FilterOperation::FloatCompares { .. } => "float",
-                                FilterOperation::StringContains(_) => "string",
-                                FilterOperation::Timestamp(_) => "timestamp",
-                            },
-                        ));
+                        // name or nature.
+                        let filter_id = ui.make_persistent_id(
+                            egui::Id::new(index).with(&filter.column_name).with(
+                                match filter.operation {
+                                    FilterOperation::NonNullableBoolean(_) => "non_nullable_bool",
+                                    FilterOperation::NullableBoolean(_) => "nullable_bool",
+                                    FilterOperation::IntCompares { .. } => "int",
+                                    FilterOperation::FloatCompares { .. } => "float",
+                                    FilterOperation::StringContains(_) => "string",
+                                    FilterOperation::Timestamp(_) => "timestamp",
+                                },
+                            ),
+                        );
 
                         let result =
                             filter.ui(ui, timestamp_format, filter_id, Some(index) == active_index);
@@ -351,7 +353,6 @@ impl SyntaxHighlighting for TimestampFormatted<'_, FilterOperation> {
             }
 
             FilterOperation::Timestamp(timestamp_filter) => {
-                //timestamp_filter.syntax_highlighted(timestamp_filter)
                 builder.append(&self.convert(timestamp_filter));
             }
         }
@@ -434,6 +435,14 @@ impl FilterOperation {
         // TODO(ab): this is getting unwieldy. All arms should have an independent inner struct,
         // which all handle their own UI.
         match self {
+            Self::NonNullableBoolean(boolean_filter) => {
+                boolean_filter.popup_ui(ui, column_name, &mut action);
+            }
+
+            Self::NullableBoolean(boolean_filter) => {
+                boolean_filter.popup_ui(ui, column_name, &mut action);
+            }
+
             Self::IntCompares { operator, value } => {
                 numerical_comparison_operator_ui(ui, column_name, &operator_text, operator);
 
@@ -472,14 +481,6 @@ impl FilterOperation {
                 let response = ui.text_edit_singleline(query);
 
                 process_text_edit_response(ui, &response);
-            }
-
-            Self::NonNullableBoolean(boolean_filter) => {
-                boolean_filter.popup_ui(ui, column_name, &mut action);
-            }
-
-            Self::NullableBoolean(boolean_filter) => {
-                boolean_filter.popup_ui(ui, column_name, &mut action);
             }
 
             Self::Timestamp(timestamp_filter) => {

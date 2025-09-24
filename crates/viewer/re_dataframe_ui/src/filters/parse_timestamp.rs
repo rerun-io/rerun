@@ -7,7 +7,8 @@ use re_log_types::{TimestampFormat, TimestampFormatKind};
 /// The primary design goal of this function is to successfully parse any partial timestamp, such
 /// that as the user types, we never display an error (so long as the timestamp is valid).
 ///
-/// We also try to useful extrapolate. For example, use today if the date is missing, etc.
+/// We also try to usefully extrapolate. For example, use today if the date is missing, etc.
+//TODO(ab): support min/max boundary, such that we dont suggest inverted "Between" timestamp?
 pub fn parse_timestamp(
     value: &str,
     timestamp_format: TimestampFormat,
@@ -43,7 +44,11 @@ pub fn parse_timestamp(
     // try to parse the date and time separately
     //
 
-    let value = value.trim().trim_end_matches('-').trim_end_matches(':');
+    let value = value
+        .trim()
+        .trim_end_matches('-')
+        .trim_end_matches(':')
+        .trim_end_matches('+');
     let (date_part, time_part) = split_date_time(value);
     let (date, time) = match (date_part, time_part) {
         ("", "") => return Err(jiff::Error::from_args(format_args!("nothing to parse"))),
@@ -419,7 +424,8 @@ mod tests {
         assert!(parse_timestamp("25:00:00", format).is_err()); // Invalid hour
         assert!(parse_timestamp("12:60:00", format).is_err()); // Invalid minute
 
-        // Invalid second (note that 60 sec is accepted because it can actually happen)
+        // Invalid second (note that 60 sec is accepted because it can actually happen because of
+        // leap seconds).
         assert!(parse_timestamp("12:00:61", format).is_err());
     }
 

@@ -213,7 +213,20 @@ impl TimestampFilter {
         let high_is_editable =
             self.kind == TimestampFilterKind::Between || self.kind == TimestampFilterKind::Before;
 
-        let mut validated = false;
+        // handle hitting enter/escape when editing a text field.
+        let mut process_text_edit_response = |ui: &egui::Ui, response: &egui::Response| {
+            if response.lost_focus() {
+                *action = action.merge(ui.input(|i| {
+                    if i.key_pressed(egui::Key::Enter) {
+                        FilterUiAction::CommitStateToBlueprint
+                    } else if i.key_pressed(egui::Key::Escape) {
+                        FilterUiAction::CancelStateEdit
+                    } else {
+                        FilterUiAction::None
+                    }
+                }));
+            }
+        };
 
         if low_visible {
             ui.label("From:");
@@ -225,9 +238,7 @@ impl TimestampFilter {
                 low_is_editable,
             );
 
-            if response.lost_focus() && self.low_bound_timestamp.resolved().is_ok() {
-                validated = true;
-            }
+            process_text_edit_response(ui, &response);
         }
 
         if high_visible {
@@ -240,13 +251,7 @@ impl TimestampFilter {
                 high_is_editable,
             );
 
-            if response.lost_focus() && self.high_bound_timestamp.resolved().is_ok() {
-                validated = true;
-            }
-        }
-
-        if validated {
-            *action = FilterUiAction::CommitStateToBlueprint;
+            process_text_edit_response(ui, &response);
         }
     }
 }
@@ -495,6 +500,7 @@ impl ResolvedTimestampFilter {
         }
     }
 
+    /// Is the provided timestamp accepted by this filter?
     fn apply(&self, timestamp: jiff::Timestamp) -> bool {
         let (low, high) = self.timestamp_range();
 

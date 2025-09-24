@@ -36,7 +36,7 @@ impl NonNullableBooleanFilter {
             DataType::List(field) | DataType::ListView(field)
                 if field.data_type() == &DataType::Boolean =>
             {
-                // `ANY` semantics""
+                // `ANY` semantics
                 Ok(array_has(col(column.clone()), lit(self.as_bool())))
             }
 
