@@ -30,7 +30,7 @@ from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 import git
 import requests
@@ -248,8 +248,8 @@ def is_pinned(version: str) -> bool:
 
 
 class Context:
-    ops: list[str] = []
-    errors: list[str] = []
+    ops: ClassVar[list[str]] = []
+    errors: ClassVar[list[str]] = []
 
     def bump(self, path: str, prev: str, new: VersionInfo) -> None:
         # fmt: off

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import ClassVar
 
 from .components import TextLogLevel
 
@@ -12,7 +13,7 @@ class LoggingHandler(logging.Handler):
     [Read more about logging handlers](https://docs.python.org/3/howto/logging.html#handlers).
     """
 
-    LVL2NAME: dict[int, TextLogLevel] = {
+    LVL2NAME: ClassVar[dict[int, TextLogLevel]] = {
         logging.CRITICAL: TextLogLevel.CRITICAL,
         logging.ERROR: TextLogLevel.ERROR,
         logging.WARNING: TextLogLevel.WARN,
