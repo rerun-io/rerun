@@ -1,3 +1,19 @@
+//! Implement a filter for timestamp columns.
+//!
+//! ## Note on handling of [`arrow::datatypes::DataType::Timestamp`] timezone
+//!
+//! The arrow documentation specifies that a `Timestamp` datatype with a `None` timezone is a
+//! timestamp in an unknown time zone and is thus ambiguous. If the time zone is specified, the
+//! physical timestamp is in UTC, the specified time zone is a "hint" about acquisition and,
+//! possibly, intended display.
+//!
+//! Our belief is that the timestamp is actually intended to be UTC in the overwhelming majority of
+//! the cases where the time zone is `None`.
+//!
+//! As a result, this filter is designed such that:
+//! - We always consider the physical timestamp to be UTC, even with the time zone is `None`.
+//! - We ignore the time zone hint and use instead our global [`TimestampFormat`] for display.
+
 use std::str::FromStr as _;
 
 use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
