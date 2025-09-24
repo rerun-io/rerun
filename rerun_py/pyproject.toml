@@ -155,7 +155,6 @@ lint.select = [
   "I",       # Isort
   "ISC",     # Ensure implicit string concat syntax
   "PIE",     # flake8-pic: various idomatic python lints
-  "PL",      # Pylint (comprehensive linting)
   "PLW1514", # Force setting `encoding` for open calls. This is in order to prevent issues when opening utf8 files on windows where the default encoding may depend on the active locale. https://docs.astral.sh/ruff/rules/unspecified-encoding/
   "RUF",     # Ruff-specific rules
   "RUF027",  # Ensure that strings which look like format-strings have the `f` prefix
@@ -165,11 +164,12 @@ lint.select = [
   "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
   "YTT",     # Various checks on the use of `sys.version_info` and related.
 
-  # TODO(emilk): Enable more of these lints:
-  # "ERA",   # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)
-  # "LOG", # flake8-logging (logging best practices) # NOT SURE
-  # "PERF", # Perflint (performance anti-patterns) # MAYBE
-  # "SIM",     # flake8-simplify (simplify code) # TODO
+  # TODO(emilk): Consider enable more of these lints:
+  # "ERA",     # eradicate dead code (WONT DO: we have lots of dead-looking code in comments)
+  # "LOG",     # flake8-logging (logging best practices) # NOT SURE
+  # "PERF",    # Perflint (performance anti-patterns) # MAYBE
+  # "PL",      # Pylint (comprehensive linting)
+  # "SIM",     # flake8-simplify (simplify code) # I'm not sure about this one… it makes some code more confusing imho
 ]
 
 lint.unfixable = [
