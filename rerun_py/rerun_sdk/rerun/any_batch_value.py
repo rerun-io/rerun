@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sized
 from typing import Any
 
 import numpy as np
@@ -29,7 +30,7 @@ def _parse_arrow_array(
     return _fallback_parse(
         value,
         pa_type=pa_type,
-        np_type=None,  # TODO(emilk): np_type=None looks VERY suspicious here
+        np_type=np_type,
         descriptor=descriptor,
     )
 
@@ -155,7 +156,7 @@ class AnyBatchValue(ComponentBatchLike):
         value:
             The data to be logged as a component.
         drop_untyped_nones:
-            If True, any components that are either None or `[]` will be dropped unless they have been
+            If True, any components that are either None or empty will be dropped unless they have been
             previously logged with a type.
 
         """
@@ -176,7 +177,7 @@ class AnyBatchValue(ComponentBatchLike):
                 self.pa_array = value.as_arrow_array()
             else:
                 if pa_type is None:
-                    if value is None or value == []:
+                    if value is None or isinstance(value, Sized) and len(value) == 0:
                         if not drop_untyped_nones:
                             raise ValueError(f"Cannot convert {value} to arrow array without an explicit type")
                     else:
@@ -239,7 +240,7 @@ class AnyBatchValue(ComponentBatchLike):
         value:
             The data to be logged as a component.
         drop_untyped_nones:
-            If True, any components that are either None or `[]` will be dropped unless they have been
+            If True, any components that are either None or empty will be dropped unless they have been
             previously logged with a type.
 
         """

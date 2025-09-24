@@ -71,7 +71,7 @@ class AnyValues(AsComponents):
         Parameters
         ----------
         drop_untyped_nones:
-            If True, any components that are either None or `[]` will be dropped unless they
+            If True, any components that are either None or empty will be dropped unless they
             have been previously logged with a type.
         kwargs:
             The components to be logged.
@@ -168,7 +168,7 @@ class AnyValues(AsComponents):
         Parameters
         ----------
         drop_untyped_nones:
-            If True, any components that are either None or `[]` will be dropped unless they
+            If True, any components that are either None or empty will be dropped unless they
             have been previously logged with a type.
         kwargs:
             The components to be logged.
