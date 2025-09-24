@@ -610,7 +610,7 @@ impl StoreInfo {
     pub fn testing() -> Self {
         // Don't use a version for testing since it may show up in snapshots that then would change on every version.
         Self::new_unversioned(
-            StoreId::new(StoreKind::Recording, ApplicationId::unknown(), "test"),
+            StoreId::new(StoreKind::Recording, "test_app", "test_recording"),
             StoreSource::Other("test".to_owned()),
         )
     }
