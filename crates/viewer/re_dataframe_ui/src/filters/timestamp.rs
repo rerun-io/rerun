@@ -1,6 +1,6 @@
 use std::str::FromStr as _;
 
-use jiff::{Timestamp, ToSpan as _};
+use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
 
 use re_log_types::TimestampFormat;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -494,7 +494,19 @@ impl ResolvedTimestampFilter {
 
             Self::Yesterday => day_range_to_timestamp_range(today.yesterday().ok(), Some(today)),
 
-            Self::Last24Hours => (Some(now - 24.hours()), Some(now)),
+            Self::Last24Hours => {
+                // More than one-second accuracy is impossible to get because of how little control
+                // the user has over _when_ the filtering is actually executed. So we might as well
+                // just round it to the next second to make the UI less weird.
+                let next_second = now
+                    .round(
+                        TimestampRound::new()
+                            .smallest(jiff::Unit::Second)
+                            .mode(RoundMode::Ceil),
+                    )
+                    .unwrap_or(now);
+                (Some(next_second - 24.hours()), Some(next_second))
+            }
 
             Self::ThisWeek => {
                 let days_since_monday = today.weekday().to_monday_zero_offset();
@@ -715,7 +727,6 @@ mod tests {
         let filter = ResolvedTimestampFilter::Last24Hours;
         let now = Timestamp::now();
 
-        std::thread::sleep(std::time::Duration::from_millis(100));
         // Should accept timestamps within the last 24 hours
         assert!(filter.apply(now));
         assert!(filter.apply(now.checked_sub(1.hours()).unwrap()));
