@@ -97,6 +97,11 @@ impl FilterState {
             FilterUiAction::None => {}
 
             FilterUiAction::CommitStateToBlueprint => {
+                // give a chance to filters to clean themselves up before committing to the table
+                // blueprint
+                for filter in &mut self.filters {
+                    filter.operation.on_commit();
+                }
                 table_blueprint.filters = self.filters.clone();
             }
 
@@ -489,6 +494,23 @@ impl FilterOperation {
         }
 
         action
+    }
+
+    /// Given a chance to the underlying filter struct to update/clean itself upon committing the
+    /// filter state to the table blueprint.
+    ///
+    /// This is used e.g. by the timestamp filter to normalize the user entry to the proper
+    /// representation of the parsed timestamp.
+    fn on_commit(&mut self) {
+        match self {
+            FilterOperation::NullableBoolean(_)
+            | FilterOperation::NonNullableBoolean(_)
+            | FilterOperation::IntCompares { .. }
+            | FilterOperation::FloatCompares { .. }
+            | FilterOperation::StringContains(_) => {}
+
+            FilterOperation::Timestamp(timestamp_filter) => timestamp_filter.on_commit(),
+        };
     }
 
     /// Display text of the operator.

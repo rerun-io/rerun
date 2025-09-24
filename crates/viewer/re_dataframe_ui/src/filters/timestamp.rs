@@ -280,6 +280,11 @@ impl TimestampFilter {
             process_text_edit_response(ui, &response);
         }
     }
+
+    pub fn on_commit(&mut self) {
+        self.low_bound_timestamp.invalidate_timestamp_string();
+        self.high_bound_timestamp.invalidate_timestamp_string();
+    }
 }
 
 /// A timestamp that can be entered/edited by the user.
@@ -418,6 +423,16 @@ impl EditableTimestamp {
         let timestamp_string = timestamp_string.into();
         self.resolved_timestamp = parse_timestamp(&timestamp_string, timestamp_format);
         self.timestamp_string = Some(timestamp_string);
+    }
+
+    /// Forget about the timestamp string if the resolved timestamp is valid, such that its
+    /// normalized next time it is displayed.
+    ///
+    /// This happens on commit, to cleanup up user input.
+    fn invalidate_timestamp_string(&mut self) {
+        if self.resolved_timestamp.is_ok() {
+            self.timestamp_string = None;
+        }
     }
 
     pub fn resolved(&self) -> Result<jiff::Timestamp, &jiff::Error> {
