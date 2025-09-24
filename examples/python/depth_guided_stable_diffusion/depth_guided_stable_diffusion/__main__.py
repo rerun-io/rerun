@@ -52,8 +52,7 @@ def get_downloaded_path(dataset_dir: Path, image_name: str) -> str:
     with requests.get(image_url, stream=True) as req:
         req.raise_for_status()
         with open(destination_path, "wb") as f:
-            for chunk in req.iter_content(chunk_size=8192):
-                f.write(chunk)
+            f.writelines(req.iter_content(chunk_size=8192))
     return str(destination_path)
 
 

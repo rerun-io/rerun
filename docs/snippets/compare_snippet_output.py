@@ -299,7 +299,7 @@ def build_rust_snippets(build_env: dict[str, str], release: bool, target: str | 
     run(cmd, env=build_env, timeout=12000)
     elapsed = time.time() - start_time
     print(f"Snippets built in {elapsed:.1f} seconds")
-    print("")
+    print()
 
 
 def build_python_sdk(build_env: dict[str, str]) -> None:
@@ -309,7 +309,7 @@ def build_python_sdk(build_env: dict[str, str]) -> None:
     run(["pixi", "run", "py-build", "--quiet"], env=build_env, timeout=12000)
     elapsed = time.time() - start_time
     print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
-    print("")
+    print()
 
 
 def build_cpp_snippets() -> None:
@@ -319,7 +319,7 @@ def build_cpp_snippets() -> None:
     run(["pixi", "run", "-e", "cpp", "cpp-build-snippets"], timeout=12000)
     elapsed = time.time() - start_time
     print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
-    print("")
+    print()
 
 
 def run_python(example: Example) -> str:

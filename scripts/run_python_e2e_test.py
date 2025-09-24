@@ -40,7 +40,7 @@ def main() -> None:
         subprocess.Popen(["pixi", "run", "py-build", "--quiet"], env=build_env).wait()
         elapsed = time.time() - start_time
         print(f"rerun-sdk built in {elapsed:.1f} seconds")
-        print("")
+        print()
 
     examples = [
         # Trivial examples that don't require weird dependencies, or downloading data
@@ -61,7 +61,7 @@ def main() -> None:
         subprocess.run(args, check=True)
         elapsed = time.time() - start_time
         print(f"pip install in {elapsed:.1f} seconds")
-        print("")
+        print()
 
     for example, args in examples:
         print("----------------------------------------------------------")
