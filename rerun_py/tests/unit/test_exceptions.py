@@ -11,7 +11,7 @@ from rerun.error_utils import RerunWarning, catch_and_log_exceptions
 
 
 @catch_and_log_exceptions()
-def outer(strict: bool | None = None) -> int:
+def outer(strict: bool | None = None) -> int:  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
     """Calls an inner decorated function."""
     inner(3)
 
@@ -19,7 +19,7 @@ def outer(strict: bool | None = None) -> int:
 
 
 @catch_and_log_exceptions()
-def two_calls(strict: bool | None = None) -> None:
+def two_calls(strict: bool | None = None) -> None:  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
     """Calls an inner decorated function twice."""
     inner(3)
     inner(3)
@@ -34,7 +34,7 @@ def inner(count: int) -> None:
 
 
 @catch_and_log_exceptions()
-def uses_context(strict: bool | None = None) -> None:
+def uses_context(strict: bool | None = None) -> None:  # noqa: ARG001 - `strict` handled by `@catch_and_log_exceptions`
     """Uses a context manager instead of a function."""
     with catch_and_log_exceptions("inner context"):
         raise ValueError("some value error")
