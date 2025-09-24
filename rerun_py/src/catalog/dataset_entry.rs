@@ -15,7 +15,7 @@ use tracing::instrument;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
 use re_log_encoding::codec::wire::encoder::Encode as _;
-use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
+use re_log_types::{StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::DatasetDetails;
 use re_protos::cloud::v1alpha1::ext::IndexProperties;
 use re_protos::cloud::v1alpha1::{CreateIndexRequest, GetChunksRequest, SearchDatasetRequest};
@@ -380,15 +380,7 @@ impl PyDatasetEntry {
                 .into_inner();
 
             let store_id = StoreId::new(StoreKind::Recording, dataset_name, partition_id.clone());
-            let store_info = StoreInfo {
-                store_id: store_id.clone(),
-                cloned_from: None,
-                store_source: StoreSource::Unknown,
-                store_version: None,
-            };
-
             let mut store = ChunkStore::new(store_id, Default::default());
-            store.set_store_info(store_info);
 
             let mut chunk_stream =
                 get_chunks_response_to_chunk_and_partition_id(catalog_chunk_stream);

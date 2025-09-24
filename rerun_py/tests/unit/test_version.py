@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import rerun as rr
 import semver
+import tomli
 
 
 def test_version() -> None:
+    cargo_toml_path = Path(__file__).parent.parent.parent.parent / "Cargo.toml"
+    cargo_toml = tomli.loads(cargo_toml_path.read_text())
+    assert rr.__version__ == cargo_toml["workspace"]["package"]["version"]
+
     ver = semver.VersionInfo.parse(rr.__version__)
 
     assert len(rr.__version_info__) == 4

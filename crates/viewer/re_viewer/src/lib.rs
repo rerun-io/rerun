@@ -170,7 +170,7 @@ impl AppEnvironment {
 
     pub fn url(&self) -> Option<&String> {
         match self {
-            Self::Web { url } => Some(url),
+            Self::Web { url, .. } => Some(url),
             _ => None,
         }
     }

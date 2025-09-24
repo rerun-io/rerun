@@ -48,6 +48,8 @@ Rerun has experimental, partial support for importing data from MCAP files. We s
 
 We removed the `--serve`, `--drop-at-latency` and `-o` CLI arguments, deprecated Python 3.9 and changed `archetype` specification in `AnyValues`.
 
+We also removed `flush_timeout_sec` parameter to out connect functions. Instead you can specify a maximum wait time in the calls to `flush`, but usually this isn't needed, as the new blocking behavior is also much smarter.
+
 See the
 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-25) for more details.
 

@@ -55,6 +55,7 @@ exclude_path = [
   "rerun_cpp/_deps",
   "rerun_cpp/docs/html",
   "rerun_cpp/docs/xml",
+  "rerun_cpp/src/rerun/third_party/",
   "rerun_cpp/tmp/",
   "rerun_js/node_modules/",
   "rerun_notebook/node_modules/",
@@ -101,7 +102,7 @@ exclude = [
   'recording:/',          # rrd recording link.
   'ws:/',
 
-  # Api endpoints.
+  # API endpoints.
   'https://fonts.googleapis.com/',                                               # Font API entrypoint, not a link.
   'https://fonts.gstatic.com/',                                                  # Font API entrypoint, not a link.
   'https://tel.rerun.io/',                                                       # Analytics endpoint.
@@ -147,6 +148,7 @@ exclude = [
   'https://pixabay.com/photos/brother-sister-girl-family-boy-977170/', # Gives 403 forbidden on CI.
   'https://stackoverflow.com/',                                        # Stackoverflow links are no longer accessible from CI.
   'https://vimeo.com/',                                                # Gives 403 forbidden on CI.
+  'https://www.npmjs.com/*',                                           # Gives 403 forbidden on CI.
   'https://www.reddit.com/',                                           # Gives 403 forbidden on CI.
   'https://www.tensorflow.org/',                                       # tensorflow.org apparently blocks CI.
 

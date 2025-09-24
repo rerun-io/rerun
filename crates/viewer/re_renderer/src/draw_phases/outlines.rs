@@ -341,6 +341,7 @@ impl OutlineMaskProcessor {
             label: DebugLabel::from(format!("{} - mask pass", self.label)).get(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.mask_texture.default_view,
+                depth_slice: None,
                 resolve_target: None, // We're going to do a manual resolve.
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
@@ -376,6 +377,7 @@ impl OutlineMaskProcessor {
                 label: DebugLabel::from(format!("{} - jumpflooding_init", self.label)).get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &self.voronoi_textures[0].default_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops,
                 })],
@@ -398,6 +400,7 @@ impl OutlineMaskProcessor {
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     // Start with texture 1 since the init step wrote to texture 0
                     view: &self.voronoi_textures[(i + 1) % 2].default_view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops,
                 })],

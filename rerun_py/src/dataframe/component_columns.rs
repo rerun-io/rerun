@@ -9,8 +9,14 @@ use re_sorbet::{ComponentColumnDescriptor, ComponentColumnSelector};
 /// Column descriptors are used to describe the columns in a
 /// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select a component
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
-#[pyclass(frozen, name = "ComponentColumnDescriptor")]
-#[derive(Clone)]
+#[pyclass(
+    frozen,
+    hash,
+    eq,
+    name = "ComponentColumnDescriptor",
+    module = "rerun_bindings.rerun_bindings"
+)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct PyComponentColumnDescriptor(pub ComponentColumnDescriptor);
 
 impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
@@ -22,22 +28,28 @@ impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
 #[pymethods]
 impl PyComponentColumnDescriptor {
     pub fn __repr__(&self) -> String {
+        // We could print static state all the time
+        // but in schema non-static print out with IndexColumnDescriptors
+        // so it looks a bit noisy.
+        let static_info = if self.is_static() {
+            "\n\tStatic: true"
+        } else {
+            ""
+        };
+
         format!(
             "Column name: {col}\n\
              \tEntity path: {path}\n\
              \tArchetype: {arch}\n\
              \tComponent type: {ctype}\n\
-             \tComponent: {comp}",
-            col = self.0.column_name(re_sorbet::BatchType::Dataframe),
+             \tComponent: {comp}{static_info}",
+            col = self.name(),
             path = self.entity_path(),
             arch = self.archetype().unwrap_or("None"),
             ctype = self.component_type().unwrap_or(""),
             comp = self.component(),
+            static_info = static_info,
         )
-    }
-
-    fn __eq__(&self, other: &Self) -> bool {
-        self.0 == other.0
     }
 
     /// The entity path.
@@ -79,6 +91,14 @@ impl PyComponentColumnDescriptor {
     fn is_static(&self) -> bool {
         self.0.is_static
     }
+
+    /// The name of this column.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn name(&self) -> String {
+        self.0.column_name(re_sorbet::BatchType::Dataframe)
+    }
 }
 
 impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
@@ -97,7 +117,11 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 ///     The entity path to select.
 /// component : str
 ///     The component to select
-#[pyclass(frozen, name = "ComponentColumnSelector")]
+#[pyclass(
+    frozen,
+    name = "ComponentColumnSelector",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
 pub struct PyComponentColumnSelector(pub ComponentColumnSelector);
 

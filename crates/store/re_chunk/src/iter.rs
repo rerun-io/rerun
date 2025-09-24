@@ -191,10 +191,10 @@ impl Chunk {
         }
     }
 
-    /// Returns an iterator over the offsets (`(offset, len)`) of a [`Chunk`], for a given
+    /// Returns an iterator over the offsets & lengths of component arrays within [`Chunk`], for a given
     /// component.
     ///
-    /// I.e. each `(offset, len)` pair describes the position of a component batch in the
+    /// I.e. each span describes the position of a component batch in the
     /// underlying arrow array of values.
     pub fn iter_component_offsets<'a>(
         &'a self,
