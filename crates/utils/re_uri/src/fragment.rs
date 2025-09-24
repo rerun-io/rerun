@@ -58,7 +58,7 @@ impl std::str::FromStr for Fragment {
                     "selection" => match value.parse() {
                         Ok(path) => {
                             if selection.is_some() {
-                                re_log::warn_once!(
+                                re_log::debug_once!(
                                     "Multiple paths set in uri #fragment {fragment:?}. Ignoring all but last."
                                 );
                             }
@@ -74,7 +74,7 @@ impl std::str::FromStr for Fragment {
                             match time.parse::<TimeCell>() {
                                 Ok(time_cell) => {
                                     if when.is_some() {
-                                        re_log::warn_once!(
+                                        re_log::debug_once!(
                                             "Multiple times set in uri #fragment {fragment:?}. Ignoring all but last."
                                         );
                                     }
@@ -93,7 +93,7 @@ impl std::str::FromStr for Fragment {
                     }
                 }
             } else {
-                re_log::warn_once!("Contained a part {part:?} without any equal sign in it");
+                re_log::debug_once!("Contained a part {part:?} without any equal sign in it");
             }
         }
 
@@ -107,7 +107,7 @@ impl Fragment {
         match fragment.parse() {
             Ok(fragment) => fragment,
             Err(err) => {
-                re_log::warn_once!("Failed to parse #fragment {fragment:?}: {err}");
+                re_log::debug_once!("Failed to parse #fragment {fragment:?}: {err}");
                 Self::default()
             }
         }
