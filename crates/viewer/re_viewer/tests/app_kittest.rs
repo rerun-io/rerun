@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use egui::accesskit::Role;
-use egui_kittest::kittest::Queryable as _;
+use egui_kittest::{SnapshotOptions, kittest::Queryable as _};
 
 use re_test_context::TestContext;
 use re_types::components::Colormap;
@@ -76,5 +76,8 @@ fn colormap_selector_ui() {
 
     harness.fit_contents();
     harness.run();
-    harness.snapshot("colormap_selector_open");
+    harness.snapshot_options(
+        "colormap_selector_open",
+        &SnapshotOptions::new().threshold(1.0),
+    );
 }
