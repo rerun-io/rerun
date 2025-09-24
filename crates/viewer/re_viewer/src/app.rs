@@ -630,7 +630,10 @@ impl App {
                 self.go_to_dataset_data(store_id, fragment);
             }
             SystemCommand::CopyViewerUrl(url) => {
-                match combine_with_base_url(self.app_env.web_viewer_base_url().as_ref(), [url]) {
+                match combine_with_base_url(
+                    self.startup_options.web_viewer_base_url().as_ref(),
+                    [url],
+                ) {
                     Ok(url) => {
                         self.copy_text(url);
                     }
@@ -1683,7 +1686,7 @@ impl App {
     }
 
     fn run_copy_link_command(&mut self, content_url: &ViewerOpenUrl) {
-        let base_url = self.app_env.web_viewer_base_url();
+        let base_url = self.startup_options.web_viewer_base_url();
 
         match content_url.sharable_url(base_url.as_ref()) {
             Ok(url) => {
@@ -1857,6 +1860,7 @@ impl App {
 
                         self.state.show(
                             &self.app_env,
+                            &self.startup_options,
                             app_blueprint,
                             ui,
                             render_ctx,
