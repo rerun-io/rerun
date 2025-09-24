@@ -171,6 +171,15 @@ impl TimestampFilter {
     ) {
         super::basic_operation_ui(ui, column_name, "is");
 
+        // Note on prefilling value for `Before`. Since `Before` generally uses the "high" boundary
+        // for computation, it would seem to make sense that the prefilling logic also use the
+        // "high" boundary, e.g. when switching from "today" to "before".
+        //
+        // After testing, we decided to instead use the "low" boundary, because:
+        // - visually it makes more sense (it's the "first" one in the UI)
+        // - semantically it also kind of makes sense (e.g. if you go from "today" to
+        //   "before", you want "before today")
+
         // these are used as default when:
         // - switching from e.g. "today" to "between"
         // - the user didn't previously enter a value
@@ -182,8 +191,15 @@ impl TimestampFilter {
             }
             TimestampFilterKind::ThisWeek => ResolvedTimestampFilter::ThisWeek.timestamp_range(),
             TimestampFilterKind::LastWeek => ResolvedTimestampFilter::LastWeek.timestamp_range(),
-            _ => (None, None),
+            // See note above on `Before`
+            TimestampFilterKind::Before => (self.high_bound_timestamp.resolved().ok(), None),
+            TimestampFilterKind::After => (self.low_bound_timestamp.resolved().ok(), None),
+            TimestampFilterKind::Between => (
+                self.low_bound_timestamp.resolved().ok(),
+                self.high_bound_timestamp.resolved().ok(),
+            ),
         };
+
         let (default_low_string, default_high_string) = (
             default_timestamp_range
                 .0
@@ -273,7 +289,12 @@ impl TimestampFilter {
             let response = self.high_bound_timestamp.ui(
                 ui,
                 timestamp_format,
-                default_high_string.as_deref(),
+                // See note above on `Before`
+                if self.kind == TimestampFilterKind::Before {
+                    default_low_string.as_deref()
+                } else {
+                    default_high_string.as_deref()
+                },
                 high_is_editable,
             );
 
