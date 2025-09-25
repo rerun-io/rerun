@@ -450,10 +450,23 @@ fn show_notification(
                 ui.horizontal_top(|ui| {
                     ui.add(level.image(ui));
 
-                    ui.horizontal_top(|ui| {
+                    ui.vertical(|ui| {
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                         ui.set_width(270.0);
-                        ui.label(egui::RichText::new(text.clone()));
+                        let (split_text, details) = text.split_once("<details>").unzip();
+                        let text = split_text
+                            .map(|text| match mode {
+                                DisplayMode::Panel => text.to_owned(),
+                                DisplayMode::Toast => format!("{text}…"),
+                            })
+                            .unwrap_or_else(|| text.clone());
+                        ui.label(egui::RichText::new(text));
+
+                        if mode == DisplayMode::Panel
+                            && let Some(details) = details
+                        {
+                            ui.collapsing_header("Details", false, |ui| ui.label(details));
+                        }
                     });
 
                     ui.add_space(4.0);
