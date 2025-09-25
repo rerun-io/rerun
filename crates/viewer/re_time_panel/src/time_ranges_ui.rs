@@ -13,6 +13,8 @@ use itertools::Itertools as _;
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeInt, TimeReal};
 use re_viewer_context::{PlayState, TimeControl, TimeView};
 
+use crate::time_axis::LinearTimeRange;
+
 /// The ideal gap between time segments.
 ///
 /// This is later shrunk via [`GAP_EXPANSION_FRACTION`].
@@ -24,7 +26,7 @@ const MAX_GAP: f64 = 40.0;
 const GAP_EXPANSION_FRACTION: f64 = 1.0 / 4.0;
 
 /// Sze of the gap between time segments.
-pub fn gap_width(x_range: &Rangef, segments: &[AbsoluteTimeRange]) -> f64 {
+pub fn gap_width(x_range: &Rangef, segments: &[LinearTimeRange]) -> f64 {
     let num_gaps = segments.len().saturating_sub(1);
     if num_gaps == 0 {
         // gap width doesn't matter when there are no gaps
@@ -50,6 +52,9 @@ pub struct Segment {
 
     /// Does NOT match any of the above. Instead this is a tight bound.
     pub tight_time: AbsoluteTimeRange,
+
+    /// Is data in this segment considered invalid?
+    pub data_considered_valid: bool,
 }
 
 /// Represents a compressed view of time.
@@ -94,7 +99,7 @@ impl Default for TimeRangesUi {
 }
 
 impl TimeRangesUi {
-    pub fn new(x_range: Rangef, time_view: TimeView, time_ranges: &[AbsoluteTimeRange]) -> Self {
+    pub fn new(x_range: Rangef, time_view: TimeView, time_ranges: &[LinearTimeRange]) -> Self {
         re_tracing::profile_function!();
 
         debug_assert!(x_range.min < x_range.max);
@@ -124,8 +129,16 @@ impl TimeRangesUi {
                 .iter()
                 .tuple_windows()
                 .fold(f64::INFINITY, |shortest, (a, b)| {
-                    debug_assert!(a.max() < b.min(), "Overlapping time ranges: {a:?}, {b:?}");
-                    let time_gap = b.min() - a.max();
+                    // Time ranges are allowed to have a zero time gap iff they differ in validity.
+                    // Care only about "real" time gaps here.
+                    if a.time_range.max() == b.time_range.min() {
+                        return shortest;
+                    }
+                    debug_assert!(
+                        a.time_range.max() < b.time_range.min(),
+                        "Overlapping time ranges: {a:?}, {b:?}"
+                    );
+                    let time_gap = b.time_range.min() - a.time_range.max();
                     time_gap.as_f64().min(shortest)
                 });
 
@@ -138,28 +151,42 @@ impl TimeRangesUi {
         let mut left = 0.0; // we will translate things left/right later to align x_range with time_view
         let segments = time_ranges
             .iter()
-            .map(|&tight_time_range| {
-                let range_width = tight_time_range.abs_length() as f64 * points_per_time;
-                let right = left + range_width;
-                let x_range = left..=right;
-                left = right + gap_width_in_ui;
+            .map(
+                |&LinearTimeRange {
+                     time_range: tight_time_range,
+                     data_considered_valid,
+                 }| {
+                    let range_width = tight_time_range.abs_length() as f64 * points_per_time;
+                    let right = left + range_width;
+                    let x_range = left..=right;
+                    left = right + gap_width_in_ui;
 
-                // expand each span outwards a bit to make selection of outer data points easier.
-                // Also gives zero-width segments some width!
-                let x_range =
-                    (*x_range.start() - expansion_in_ui)..=(*x_range.end() + expansion_in_ui);
+                    // expand each span outwards a bit to make selection of outer data points easier.
+                    // Also gives zero-width segments some width!
+                    //
+                    // Don't do this along invalid ranges since they don't render any additional borders.
+                    let (time_range, x_range) = if data_considered_valid {
+                        let x_range = (*x_range.start() - expansion_in_ui)
+                            ..=(*x_range.end() + expansion_in_ui);
 
-                let time_range = AbsoluteTimeRangeF::new(
-                    tight_time_range.min() - expansion_in_time,
-                    tight_time_range.max() + expansion_in_time,
-                );
+                        let time_range = AbsoluteTimeRangeF::new(
+                            tight_time_range.min() - expansion_in_time,
+                            tight_time_range.max() + expansion_in_time,
+                        );
 
-                Segment {
-                    x: x_range,
-                    time: time_range,
-                    tight_time: tight_time_range,
-                }
-            })
+                        (time_range, x_range)
+                    } else {
+                        (tight_time_range.into(), x_range)
+                    };
+
+                    Segment {
+                        x: x_range,
+                        time: time_range,
+                        tight_time: tight_time_range,
+                        data_considered_valid,
+                    }
+                },
+            )
             .collect();
 
         let mut slf = Self {
@@ -183,10 +210,19 @@ impl TimeRangesUi {
                 a.x.end() < b.x.start(),
                 "Overlapping x in segments: {a:#?}, {b:#?}"
             );
-            debug_assert!(
-                a.tight_time.max() < b.tight_time.min(),
-                "Overlapping time in segments: {a:#?}, {b:#?}"
-            );
+
+            // Time ranges are allowed to have a zero time gap iff they differ in validity.
+            if a.data_considered_valid == b.data_considered_valid {
+                debug_assert!(
+                    a.tight_time.max() < b.tight_time.min(),
+                    "Overlapping time in segments of different data validity: {a:#?}, {b:#?}"
+                );
+            } else {
+                debug_assert!(
+                    a.tight_time.max() <= b.tight_time.min(),
+                    "Overlapping time in segments of the same data validity: {a:#?}, {b:#?}"
+                );
+            }
         }
 
         slf
@@ -363,9 +399,9 @@ fn test_time_ranges_ui() {
             time_spanned: 14.2,
         },
         &[
-            AbsoluteTimeRange::new(0, 0),
-            AbsoluteTimeRange::new(1, 5),
-            AbsoluteTimeRange::new(10, 100),
+            LinearTimeRange::new_valid(AbsoluteTimeRange::new(0, 0)),
+            LinearTimeRange::new_valid(AbsoluteTimeRange::new(1, 5)),
+            LinearTimeRange::new_valid(AbsoluteTimeRange::new(10, 100)),
         ],
     );
 
@@ -405,8 +441,8 @@ fn test_time_ranges_ui_2() {
             time_spanned: 50.0,
         },
         &[
-            AbsoluteTimeRange::new(10, 20),
-            AbsoluteTimeRange::new(30, 40),
+            LinearTimeRange::new_valid(AbsoluteTimeRange::new(10, 20)),
+            LinearTimeRange::new_valid(AbsoluteTimeRange::new(30, 40)),
         ],
     );
 

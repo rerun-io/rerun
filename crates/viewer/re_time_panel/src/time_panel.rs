@@ -1574,7 +1574,7 @@ fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
         1.0 // too narrow to fit everything anyway
     };
 
-    let min = timeline_axis.min();
+    let min = timeline_axis.min_valid();
     let time_spanned = timeline_axis.sum_time_lengths() as f64 * factor as f64;
 
     TimeView {
@@ -1685,8 +1685,14 @@ fn paint_time_ranges_gaps(
 
     let zig_zag_first_and_last_edges = true;
 
-    if let Some(segment) = time_ranges_ui.segments.first() {
-        let gap_edge = *segment.x.start() as f32;
+    let valid_segment_ranges = time_ranges_ui
+        .segments
+        .iter()
+        .filter_map(|s| s.data_considered_valid.then_some(s.x.clone()))
+        .collect::<Vec<_>>();
+
+    if let Some(segment) = valid_segment_ranges.first() {
+        let gap_edge = *segment.start() as f32;
 
         if zig_zag_first_and_last_edges {
             // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
@@ -1703,12 +1709,12 @@ fn paint_time_ranges_gaps(
         }
     }
 
-    for (a, b) in time_ranges_ui.segments.iter().tuple_windows() {
-        paint_time_gap(*a.x.end() as f32, *b.x.start() as f32);
+    for (a, b) in valid_segment_ranges.iter().tuple_windows() {
+        paint_time_gap(*a.end() as f32, *b.start() as f32);
     }
 
-    if let Some(segment) = time_ranges_ui.segments.last() {
-        let gap_edge = *segment.x.end() as f32;
+    if let Some(segment) = valid_segment_ranges.last() {
+        let gap_edge = *segment.end() as f32;
         if zig_zag_first_and_last_edges {
             // Right side of last segment - paint as a very wide gap that we only see the left side of
             paint_time_gap(gap_edge, gap_edge + 100_000.0);
