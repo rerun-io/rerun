@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pyarrow as pa
 import pytest
@@ -97,7 +99,7 @@ def test_none_any_value() -> None:
         assert len(warnings) == running_warning_count
 
         assert (
-            "Converting data for 'none_data': ValueError(Cannot convert None to arrow array. Type is unknown.)"
+            "Converting data for 'none_data': ValueError(Cannot convert None to arrow array without an explicit type)"
             in str(warnings[running_warning_count - 2].message)
         )
 
@@ -145,6 +147,29 @@ def test_iterable_any_value() -> None:
     assert len(batches) == 2
     assert batches[0].as_arrow_array() == pa.array([SHORT_TEXT, LONG_TEXT], type=pa.string())
     assert batches[1].as_arrow_array() == pa.array([SHORT_BYTES, LONG_BYTES], type=pa.binary())
+
+
+@pytest.mark.parametrize("container_type", [list, tuple, set, np.array])
+def test_empty_any_values(container_type: type[Any]) -> None:
+    values = rr.AnyValues(**{
+        f"int_array_{container_type.__name__}": container_type([]),
+        f"float_array_{container_type.__name__}": container_type([]),
+        f"str_array_{container_type.__name__}": container_type([]),
+    })
+    new_values = rr.AnyValues(**{
+        f"int_array_{container_type.__name__}": container_type([1]),
+        f"float_array_{container_type.__name__}": container_type([1.0]),
+        f"str_array_{container_type.__name__}": container_type(["str"]),
+    })
+
+    with pytest.warns(RerunWarning) as warnings:
+        batches = list(values.as_component_batches())
+        assert len(batches) == 0
+
+        assert "No valid component batches" in str(warnings[0].message)
+
+    batches = list(new_values.as_component_batches())
+    assert len(batches) == 3
 
 
 def test_any_values_numpy() -> None:
