@@ -23,6 +23,7 @@ use crate::{
 pub enum UiCommand {
     AddValidTimeRange {
         store_id: StoreId,
+
         /// If `None`, signals that all timelines are valid entirely.
         timeline: Option<TimelineName>,
         time_range: AbsoluteTimeRange,
