@@ -629,6 +629,19 @@ impl TestContext {
                     }
                 }
 
+                SystemCommand::AddValidTimeRange {
+                    store_id: rec_id,
+                    timeline,
+                    time_range,
+                } => {
+                    assert_eq!(
+                        &rec_id,
+                        self.store_hub.lock().active_recording().unwrap().store_id()
+                    );
+                    let mut time_ctrl = self.recording_config.time_ctrl.write();
+                    time_ctrl.mark_time_range_valid(timeline, time_range);
+                }
+
                 // not implemented
                 SystemCommand::ActivateApp(_)
                 | SystemCommand::ActivateRecordingOrTable(_)

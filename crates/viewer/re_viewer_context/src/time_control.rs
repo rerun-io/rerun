@@ -1,5 +1,8 @@
 use std::collections::BTreeMap;
 
+use nohash_hasher::IntMap;
+use vec1::Vec1;
+
 use re_chunk::TimelineName;
 use re_entity_db::{TimeCounts, TimelineStats, TimesPerTimeline};
 use re_log_types::{
@@ -158,6 +161,11 @@ pub struct TimeControl {
 
     states: BTreeMap<TimelineName, TimeStateEntry>,
 
+    /// Valid time ranges for each timeline.
+    ///
+    /// If a timeline is not in the map, all it's ranges are considered to be valid.
+    valid_time_ranges: IntMap<TimelineName, Vec1<AbsoluteTimeRange>>,
+
     /// If true, we are either in [`PlayState::Playing`] or [`PlayState::Following`].
     playing: bool,
 
@@ -182,6 +190,7 @@ impl Default for TimeControl {
             last_frame: Default::default(),
             timeline: ActiveTimeline::Auto(default_timeline([])),
             states: Default::default(),
+            valid_time_ranges: Default::default(),
             playing: true,
             following: true,
             speed: 1.0,
@@ -591,6 +600,46 @@ impl TimeControl {
 
     pub fn set_timeline(&mut self, timeline: Timeline) {
         self.timeline = ActiveTimeline::UserEdited(timeline);
+    }
+
+    /// Mark up a time range as valid.
+    ///
+    /// Everything outside can still be navigated to, but will be considered potentially lacking some data and therefore "invalid".
+    /// Visually, it is outside of the normal time range and shown greyed out.
+    ///
+    /// If timeline is `None`, this signals that all timelines are considered to be valid entirely.
+    //
+    // TODO(andreas): The source of truth for this should probably in recording properties as it is just that,
+    // a property of the data!
+    // However, as of writing it's hard to inject _additional_ properties upon recording loading.
+    // For an attempt of modelling this as a serialized recordign property see `andreas/valid-ranges-rec-props` branch.
+    pub fn mark_time_range_valid(
+        &mut self,
+        timeline: Option<TimelineName>,
+        time_range: AbsoluteTimeRange,
+    ) {
+        if let Some(timeline) = timeline {
+            match self.valid_time_ranges.entry(timeline) {
+                std::collections::hash_map::Entry::Vacant(entry) => {
+                    entry.insert(Vec1::new(time_range));
+                }
+                std::collections::hash_map::Entry::Occupied(mut entry) => {
+                    entry.get_mut().push(time_range);
+                }
+            }
+        } else {
+            self.valid_time_ranges.clear();
+        }
+    }
+
+    /// Returns the valid time ranges for a given timeline.
+    ///
+    /// If everything is valid, returns a single `AbsoluteTimeRange::EVERYTHING)`.
+    pub fn valid_time_ranges_for(&self, timeline: TimelineName) -> Vec1<AbsoluteTimeRange> {
+        self.valid_time_ranges
+            .get(&timeline)
+            .cloned()
+            .unwrap_or_else(|| Vec1::new(AbsoluteTimeRange::EVERYTHING))
     }
 
     /// The current time.
