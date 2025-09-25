@@ -1,9 +1,11 @@
 use std::any::Any;
+use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::sync::Arc;
 
-use arrow::array::{Array as _, ArrayRef, BooleanArray, ListArray, as_list_array};
-use arrow::datatypes::{DataType, Field};
+use arrow::array::{Array as _, ArrayRef, AsArray as _, BooleanArray, ListArray, as_list_array};
+use arrow::compute::cast;
+use arrow::datatypes::{DataType, Field, TimeUnit};
 use datafusion::common::ExprSchema as _;
 use datafusion::common::{DFSchema, Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
@@ -12,7 +14,10 @@ use datafusion::logical_expr::{
 };
 use datafusion::prelude::{Column, Expr, array_to_string, col, contains, lit, lower};
 
-use super::{NonNullableBooleanFilter, NullableBooleanFilter};
+use re_types_core::datatypes::TimeInt;
+use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE, Loggable as _};
+
+use super::{NonNullableBooleanFilter, NullableBooleanFilter, TimestampFilter};
 
 /// The nullability of a nested arrow datatype.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -86,7 +91,7 @@ pub enum FilterError {
     ColumnNotFound(Column),
 
     #[error("invalid filter operation {0:?} for field {1}")]
-    InvalidFilterOperation(FilterOperation, Box<Field>),
+    InvalidFilterOperation(Box<FilterOperation>, Box<Field>),
 
     #[error("invalid non-nullable boolean filter operation {0:?} for field {1}")]
     InvalidNonNullableBooleanFilterOperation(NonNullableBooleanFilter, Box<Field>),
@@ -178,6 +183,10 @@ impl ComparisonOperator {
 /// The UI state for a filter operation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum FilterOperation {
+    NullableBoolean(NullableBooleanFilter),
+
+    NonNullableBoolean(NonNullableBooleanFilter),
+
     /// Compare an integer value to a constant.
     ///
     /// For columns of lists of integers, only the first value is considered.
@@ -205,17 +214,53 @@ pub enum FilterOperation {
     //TODO(ab): parameterise that over multiple string ops, e.g. "contains", "starts with", etc.
     StringContains(String),
 
-    NullableBoolean(NullableBooleanFilter),
-
-    NonNullableBoolean(NonNullableBooleanFilter),
+    Timestamp(TimestampFilter),
 }
 
 impl FilterOperation {
+    /// Create a filter suitable for this column datatype (if any).
+    pub fn default_for_column(field: &Field) -> Option<Self> {
+        let nullability = Nullability::from_field(field);
+        match field.data_type() {
+            DataType::List(inner_field) | DataType::ListView(inner_field) => {
+                // Note: we do not support double-nested types
+                Self::default_for_primitive_datatype(
+                    inner_field.data_type(),
+                    field.metadata(),
+                    nullability,
+                )
+            }
+
+            //TODO(ab): support other nested types
+            _ => Self::default_for_primitive_datatype(
+                field.data_type(),
+                field.metadata(),
+                nullability,
+            ),
+        }
+    }
+
     fn default_for_primitive_datatype(
         data_type: &DataType,
+        metadata: &HashMap<String, String>,
         nullability: Nullability,
     ) -> Option<Self> {
         match data_type {
+            DataType::Boolean => {
+                if nullability.is_either() {
+                    Some(Self::NullableBoolean(NullableBooleanFilter::IsTrue))
+                } else {
+                    Some(Self::NonNullableBoolean(NonNullableBooleanFilter::IsTrue))
+                }
+            }
+
+            DataType::Int64
+                if metadata.get(FIELD_METADATA_KEY_COMPONENT_TYPE)
+                    == Some(&re_types::components::Timestamp::name().to_string()) =>
+            {
+                Some(Self::Timestamp(TimestampFilter::default()))
+            }
+
             data_type if data_type.is_integer() => Some(Self::IntCompares {
                 operator: ComparisonOperator::Eq,
                 value: None,
@@ -230,28 +275,9 @@ impl FilterOperation {
 
             DataType::Utf8 | DataType::Utf8View => Some(Self::StringContains(String::new())),
 
-            DataType::Boolean => {
-                if nullability.is_either() {
-                    Some(Self::NullableBoolean(NullableBooleanFilter::IsTrue))
-                } else {
-                    Some(Self::NonNullableBoolean(NonNullableBooleanFilter::IsTrue))
-                }
-            }
+            DataType::Timestamp(_, _) => Some(Self::Timestamp(TimestampFilter::default())),
 
             _ => None,
-        }
-    }
-
-    pub fn default_for_column(field: &Field) -> Option<Self> {
-        let nullability = Nullability::from_field(field);
-        match field.data_type() {
-            DataType::List(inner_field) | DataType::ListView(inner_field) => {
-                // Note: we do not support double-nested types
-                Self::default_for_primitive_datatype(inner_field.data_type(), nullability)
-            }
-
-            //TODO(ab): support other nested types
-            _ => Self::default_for_primitive_datatype(field.data_type(), nullability),
         }
     }
 
@@ -264,7 +290,14 @@ impl FilterOperation {
         field: &Field,
     ) -> Result<Expr, FilterError> {
         match self {
-            Self::IntCompares { .. } | Self::FloatCompares { .. } => {
+            Self::NullableBoolean(boolean_filter) => {
+                boolean_filter.as_filter_expression(column, field)
+            }
+            Self::NonNullableBoolean(boolean_filter) => {
+                boolean_filter.as_filter_expression(column, field)
+            }
+
+            Self::IntCompares { .. } | Self::FloatCompares { .. } | Self::Timestamp(_) => {
                 let udf = FilterOperationUdf::new(self.clone());
                 let udf = ScalarUDF::new_from_impl(udf);
 
@@ -292,20 +325,13 @@ impl FilterOperation {
 
                     _ => {
                         return Err(FilterError::InvalidFilterOperation(
-                            self.clone(),
+                            self.clone().into(),
                             field.clone().into(),
                         ));
                     }
                 };
 
                 Ok(contains(lower(operand), lower(lit(query_string))))
-            }
-
-            Self::NullableBoolean(boolean_filter) => {
-                boolean_filter.as_filter_expression(column, field)
-            }
-            Self::NonNullableBoolean(boolean_filter) => {
-                boolean_filter.as_filter_expression(column, field)
             }
         }
     }
@@ -321,21 +347,21 @@ struct FilterOperationUdf {
 
 impl FilterOperationUdf {
     fn new(op: FilterOperation) -> Self {
-        debug_assert!(matches!(
-            op,
-            FilterOperation::IntCompares { .. } | FilterOperation::FloatCompares { .. }
-        ));
+        let type_signature = match op {
+            FilterOperation::IntCompares { .. } | FilterOperation::FloatCompares { .. } => {
+                TypeSignature::Numeric(1)
+            }
 
-        let type_signature = TypeSignature::Numeric(1);
+            FilterOperation::Timestamp(_) => TypeSignature::Any(1),
 
-        // TODO(ab): add support for other filter types?
-        // let type_signature = match &op {
-        //     FilterOperation::IntCompares { .. } | FilterOperation::FloatCompares { .. } => {
-        //         TypeSignature::Numeric(1)
-        //     }
-        //     FilterOperation::StringContains(_) => TypeSignature::String(1),
-        //     FilterOperation::BooleanEquals(_) => TypeSignature::Exact(vec![DataType::Boolean]),
-        // };
+            // TODO(ab): add support for other filter types?
+            // FilterOperation::StringContains(_) => TypeSignature::String(1),
+            // FilterOperation::BooleanEquals(_) => TypeSignature::Exact(vec![DataType::Boolean]),
+            _ => {
+                debug_assert!(false, "Invalid filter operation");
+                TypeSignature::Any(1)
+            }
+        };
 
         let signature = Signature::one_of(
             vec![
@@ -354,6 +380,14 @@ impl FilterOperationUdf {
     /// Check if the provided _primitive_ type is valid.
     fn is_valid_primitive_input_type(&self, data_type: &DataType) -> bool {
         match data_type {
+            _data_type if _data_type == &TimeInt::arrow_datatype() => {
+                // TimeInt special case: we allow filtering by timestamp on Int64 columns
+                matches!(
+                    &self.op,
+                    FilterOperation::IntCompares { .. } | FilterOperation::Timestamp(_)
+                )
+            }
+
             _data_type if data_type.is_integer() => {
                 matches!(&self.op, FilterOperation::IntCompares { .. })
             }
@@ -361,6 +395,10 @@ impl FilterOperationUdf {
             //TODO(ab): float16 support (use `is_floating()`)
             DataType::Float32 | DataType::Float64 => {
                 matches!(&self.op, FilterOperation::FloatCompares { .. })
+            }
+
+            DataType::Timestamp(_, _) => {
+                matches!(&self.op, FilterOperation::Timestamp(_))
             }
 
             _ => false,
@@ -407,10 +445,32 @@ impl FilterOperationUdf {
             }};
         }
 
+        macro_rules! timestamp_case {
+            ($apply_fun:ident, $conv_fun:ident, $op:expr) => {{
+                let FilterOperation::Timestamp(timestamp_filter) = &$op else {
+                    return exec_err!(
+                        "Incompatible operation and data types {:?} - {}",
+                        $op,
+                        array.data_type()
+                    );
+                };
+                let array = datafusion::common::cast::$conv_fun(array)?;
+                let result: BooleanArray = array
+                    .iter()
+                    .map(|x| x.map(|v| timestamp_filter.$apply_fun(v)))
+                    .collect();
+
+                Ok(result)
+            }};
+        }
+
         match array.data_type() {
             DataType::Int8 => int_float_case!(IntCompares, as_int8_array, self.op),
             DataType::Int16 => int_float_case!(IntCompares, as_int16_array, self.op),
             DataType::Int32 => int_float_case!(IntCompares, as_int32_array, self.op),
+
+            // Note: although `TimeInt` is Int64, by now we casted it to `Timestamp`, see
+            // `invoke_list_array` impl.
             DataType::Int64 => int_float_case!(IntCompares, as_int64_array, self.op),
             DataType::UInt8 => int_float_case!(IntCompares, as_uint8_array, self.op),
             DataType::UInt16 => int_float_case!(IntCompares, as_uint16_array, self.op),
@@ -421,14 +481,52 @@ impl FilterOperationUdf {
             DataType::Float32 => int_float_case!(FloatCompares, as_float32_array, self.op),
             DataType::Float64 => int_float_case!(FloatCompares, as_float64_array, self.op),
 
+            DataType::Timestamp(TimeUnit::Second, _) => {
+                timestamp_case!(apply_seconds, as_timestamp_second_array, self.op)
+            }
+            DataType::Timestamp(TimeUnit::Millisecond, _) => {
+                timestamp_case!(apply_milliseconds, as_timestamp_millisecond_array, self.op)
+            }
+            DataType::Timestamp(TimeUnit::Microsecond, _) => {
+                timestamp_case!(apply_microseconds, as_timestamp_microsecond_array, self.op)
+            }
+            DataType::Timestamp(TimeUnit::Nanosecond, _) => {
+                timestamp_case!(apply_nanoseconds, as_timestamp_nanosecond_array, self.op)
+            }
+
             _ => {
                 exec_err!("Unsupported data type {}", array.data_type())
             }
         }
     }
 
-    fn invoke_list_array(&self, array: &ListArray) -> DataFusionResult<BooleanArray> {
-        array
+    fn invoke_list_array(&self, list_array: &ListArray) -> DataFusionResult<BooleanArray> {
+        // TimeInt special case: we cast the Int64 array TimestampNano
+        let cast_list_array = if list_array.values().data_type() == &TimeInt::arrow_datatype()
+            && matches!(self.op, FilterOperation::Timestamp(_))
+        {
+            let DataType::List(field) = list_array.data_type() else {
+                unreachable!("ListArray must have a List data type");
+            };
+            let new_field = Arc::new(Arc::unwrap_or_clone(field.clone()).with_data_type(
+                DataType::Timestamp(TimeUnit::Nanosecond, Some("+00:00".into())),
+            ));
+
+            Some(cast(list_array, &DataType::List(new_field))?)
+        } else {
+            None
+        };
+
+        let cast_list_array = cast_list_array
+            .as_ref()
+            .map(|array| array.as_list())
+            .unwrap_or(list_array);
+
+        // TODO(ab): we probably should do this in two steps:
+        // 1) Convert the list array to a bool array (with same offsets and nulls)
+        // 2) Apply the ANY (or, in the future, another) semantics to "merge" each row's instances
+        //    into the final bool.
+        cast_list_array
             .iter()
             .map(|maybe_row| {
                 maybe_row.map(|row| {
@@ -485,31 +583,28 @@ impl ScalarUDFImpl for FilterOperationUdf {
         let ColumnarValue::Array(input_array) = &args.args[0] else {
             return exec_err!("FilterOperation expected array inputs, not scalar values");
         };
-        match input_array.data_type() {
+
+        let results = match input_array.data_type() {
             DataType::List(_field) => {
                 let array = as_list_array(input_array);
-                let results = self.invoke_list_array(array)?;
-
-                Ok(ColumnarValue::Array(Arc::new(results)))
+                self.invoke_list_array(array)?
             }
 
             //TODO(ab): float16 support (use `is_floating()`)
-            DataType::Float32 | DataType::Float64 => {
-                let results = self.invoke_primitive_array(input_array)?;
-                Ok(ColumnarValue::Array(Arc::new(results)))
+            DataType::Float32 | DataType::Float64 | DataType::Timestamp(_, _) => {
+                self.invoke_primitive_array(input_array)?
             }
 
-            _data_type if _data_type.is_integer() => {
-                let results = self.invoke_primitive_array(input_array)?;
-                Ok(ColumnarValue::Array(Arc::new(results)))
-            }
+            _data_type if _data_type.is_integer() => self.invoke_primitive_array(input_array)?,
 
             _ => {
-                exec_err!(
+                return exec_err!(
                     "DataType not implemented for FilterOperationUdf: {}",
                     input_array.data_type()
-                )
+                );
             }
-        }
+        };
+
+        Ok(ColumnarValue::Array(Arc::new(results)))
     }
 }

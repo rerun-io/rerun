@@ -2,9 +2,10 @@ use std::mem;
 
 use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense};
 
+use re_log_types::TimestampFormat;
 use re_ui::{SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
-use super::{ComparisonOperator, Filter, FilterOperation};
+use super::{ComparisonOperator, Filter, FilterOperation, TimestampFormatted};
 use crate::TableBlueprint;
 
 /// Action to take based on the user interaction.
@@ -23,7 +24,7 @@ pub enum FilterUiAction {
 }
 
 impl FilterUiAction {
-    fn merge(self, other: Self) -> Self {
+    pub fn merge(self, other: Self) -> Self {
         // We only consider the first non-noop action. There should never be more than one in a
         // frame anyway.
         match (self, other) {
@@ -80,13 +81,27 @@ impl FilterState {
     /// Display the filter bar UI.
     ///
     /// This handles committing and/or restoring the state from the blueprint.
-    pub fn filter_bar_ui(&mut self, ui: &mut egui::Ui, table_blueprint: &mut TableBlueprint) {
-        let action = self.filter_bar_ui_impl(ui);
+    pub fn filter_bar_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
+        table_blueprint: &mut TableBlueprint,
+    ) {
+        // From there on, we always want to show the "today" date, because not doing so leads
+        // to some very confusing display.
+        let timestamp_format = timestamp_format.with_hide_today_date(false);
+
+        let action = self.filter_bar_ui_impl(ui, timestamp_format);
 
         match action {
             FilterUiAction::None => {}
 
             FilterUiAction::CommitStateToBlueprint => {
+                // give a chance to filters to clean themselves up before committing to the table
+                // blueprint
+                for filter in &mut self.filters {
+                    filter.operation.on_commit();
+                }
                 table_blueprint.filters = self.filters.clone();
             }
 
@@ -98,7 +113,11 @@ impl FilterState {
     }
 
     #[must_use]
-    fn filter_bar_ui_impl(&mut self, ui: &mut egui::Ui) -> FilterUiAction {
+    fn filter_bar_ui_impl(
+        &mut self,
+        ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
+    ) -> FilterUiAction {
         if self.filters.is_empty() {
             return Default::default();
         }
@@ -121,18 +140,12 @@ impl FilterState {
                     for (index, filter) in self.filters.iter_mut().enumerate() {
                         // egui uses this id to store the popup openness and size information,
                         // so we must invalidate if the filter at a given index changes its
-                        // nature
-                        let filter_id = ui.make_persistent_id(egui::Id::new(index).with(
-                            match filter.operation {
-                                FilterOperation::IntCompares { .. } => "int",
-                                FilterOperation::FloatCompares { .. } => "float",
-                                FilterOperation::StringContains(_) => "string",
-                                FilterOperation::NonNullableBoolean(_) => "non_nullable_bool",
-                                FilterOperation::NullableBoolean(_) => "nullable_bool",
-                            },
-                        ));
+                        // name.
+                        let filter_id =
+                            ui.make_persistent_id(egui::Id::new(index).with(&filter.column_name));
 
-                        let result = filter.ui(ui, filter_id, Some(index) == active_index);
+                        let result =
+                            filter.ui(ui, timestamp_format, filter_id, Some(index) == active_index);
 
                         action = action.merge(result.filter_action);
 
@@ -169,6 +182,7 @@ impl Filter {
     fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
         filter_id: egui::Id,
         activate_filter: bool,
     ) -> DisplayFilterUiResult {
@@ -180,7 +194,7 @@ impl Filter {
         let layout_job = SyntaxHighlightedBuilder::new()
             .with_body_default(&self.column_name)
             .with_keyword(" ")
-            .with(&self.operation)
+            .with(&TimestampFormatted::new(&self.operation, timestamp_format))
             .into_job(ui.style());
 
         atoms.push_right(layout_job);
@@ -241,9 +255,16 @@ impl Filter {
             .open_bool(&mut popup_open);
 
         let popup_response = popup.show(|ui| {
-            let action = self
-                .operation
-                .popup_ui(ui, self.column_name.as_ref(), popup_was_closed);
+            // The default text edit background is too dark for the (lighter) background of popups,
+            // so we switch to a lighter shade.
+            ui.visuals_mut().text_edit_bg_color = Some(ui.visuals().widgets.inactive.bg_fill);
+
+            let action = self.operation.popup_ui(
+                ui,
+                timestamp_format,
+                self.column_name.as_ref(),
+                popup_was_closed,
+            );
 
             // Ensure we close the popup if the popup ui decided on an action.
             if action != FilterUiAction::None {
@@ -292,13 +313,21 @@ impl Filter {
     }
 }
 
-impl SyntaxHighlighting for FilterOperation {
+impl SyntaxHighlighting for TimestampFormatted<'_, FilterOperation> {
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_keyword(&self.operator_text());
+        builder.append_keyword(&self.inner.operator_text());
         builder.append_keyword(" ");
 
-        match self {
-            Self::IntCompares { value, operator: _ } => {
+        match self.inner {
+            FilterOperation::NonNullableBoolean(boolean_filter) => {
+                builder.append_primitive(&boolean_filter.operand_text());
+            }
+
+            FilterOperation::NullableBoolean(boolean_filter) => {
+                builder.append_primitive(&boolean_filter.operand_text());
+            }
+
+            FilterOperation::IntCompares { value, operator: _ } => {
                 if let Some(value) = value {
                     builder.append_primitive(&re_format::format_int(*value));
                 } else {
@@ -306,7 +335,7 @@ impl SyntaxHighlighting for FilterOperation {
                 }
             }
 
-            Self::FloatCompares { value, operator: _ } => {
+            FilterOperation::FloatCompares { value, operator: _ } => {
                 if let Some(value) = value {
                     builder.append_primitive(&re_format::format_f64(*value));
                 } else {
@@ -314,16 +343,12 @@ impl SyntaxHighlighting for FilterOperation {
                 }
             }
 
-            Self::StringContains(query) => {
+            FilterOperation::StringContains(query) => {
                 builder.append_string_value(query);
             }
 
-            Self::NonNullableBoolean(boolean_filter) => {
-                builder.append_primitive(&boolean_filter.operand_text());
-            }
-
-            Self::NullableBoolean(boolean_filter) => {
-                builder.append_primitive(&boolean_filter.operand_text());
+            FilterOperation::Timestamp(timestamp_filter) => {
+                builder.append(&self.convert(timestamp_filter));
             }
         }
     }
@@ -372,6 +397,7 @@ impl FilterOperation {
     fn popup_ui(
         &mut self,
         ui: &mut egui::Ui,
+        timestamp_format: TimestampFormat,
         column_name: &str,
         popup_just_opened: bool,
     ) -> FilterUiAction {
@@ -404,6 +430,14 @@ impl FilterOperation {
         // TODO(ab): this is getting unwieldy. All arms should have an independent inner struct,
         // which all handle their own UI.
         match self {
+            Self::NonNullableBoolean(boolean_filter) => {
+                boolean_filter.popup_ui(ui, column_name, &mut action);
+            }
+
+            Self::NullableBoolean(boolean_filter) => {
+                boolean_filter.popup_ui(ui, column_name, &mut action);
+            }
+
             Self::IntCompares { operator, value } => {
                 numerical_comparison_operator_ui(ui, column_name, &operator_text, operator);
 
@@ -444,16 +478,29 @@ impl FilterOperation {
                 process_text_edit_response(ui, &response);
             }
 
-            Self::NonNullableBoolean(boolean_filter) => {
-                boolean_filter.popup_ui(ui, column_name, &mut action);
-            }
-
-            Self::NullableBoolean(boolean_filter) => {
-                boolean_filter.popup_ui(ui, column_name, &mut action);
+            Self::Timestamp(timestamp_filter) => {
+                timestamp_filter.popup_ui(ui, column_name, &mut action, timestamp_format);
             }
         }
 
         action
+    }
+
+    /// Given a chance to the underlying filter struct to update/clean itself upon committing the
+    /// filter state to the table blueprint.
+    ///
+    /// This is used e.g. by the timestamp filter to normalize the user entry to the proper
+    /// representation of the parsed timestamp.
+    fn on_commit(&mut self) {
+        match self {
+            Self::NullableBoolean(_)
+            | Self::NonNullableBoolean(_)
+            | Self::IntCompares { .. }
+            | Self::FloatCompares { .. }
+            | Self::StringContains(_) => {}
+
+            Self::Timestamp(timestamp_filter) => timestamp_filter.on_commit(),
+        }
     }
 
     /// Display text of the operator.
@@ -463,7 +510,9 @@ impl FilterOperation {
                 operator.to_string()
             }
             Self::StringContains(_) => "contains".to_owned(),
-            Self::NonNullableBoolean(_) | Self::NullableBoolean(_) => "is".to_owned(),
+            Self::NonNullableBoolean(_) | Self::NullableBoolean(_) | Self::Timestamp(_) => {
+                "is".to_owned()
+            }
         }
     }
 }
@@ -471,7 +520,7 @@ impl FilterOperation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::filters::{NonNullableBooleanFilter, NullableBooleanFilter};
+    use crate::filters::{NonNullableBooleanFilter, NullableBooleanFilter, TimestampFilter};
 
     fn test_cases() -> Vec<(FilterOperation, &'static str)> {
         // Let's remember to update this test when adding new filter operations.
@@ -480,15 +529,36 @@ mod tests {
             use FilterOperation::*;
             let _op = StringContains(String::new());
             match _op {
-                IntCompares { .. }
+                NonNullableBoolean(_)
+                | NullableBoolean(_)
+                | IntCompares { .. }
                 | FloatCompares { .. }
                 | StringContains(_)
-                | NonNullableBoolean(_)
-                | NullableBoolean(_) => {}
+                | Timestamp(_) => {}
             }
         };
 
         [
+            (
+                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
+                "boolean_equals_true",
+            ),
+            (
+                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
+                "boolean_equals_false",
+            ),
+            (
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsTrue),
+                "nullable_boolean_equals_true",
+            ),
+            (
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsFalse),
+                "nullable_boolean_equals_false",
+            ),
+            (
+                FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
+                "nullable_boolean_equals_null",
+            ),
             (
                 FilterOperation::IntCompares {
                     operator: ComparisonOperator::Eq,
@@ -526,24 +596,17 @@ mod tests {
                 "string_contains_empty",
             ),
             (
-                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsTrue),
-                "boolean_equals_true",
+                FilterOperation::Timestamp(TimestampFilter::after(
+                    jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
+                )),
+                "timestamp_after",
             ),
             (
-                FilterOperation::NonNullableBoolean(NonNullableBooleanFilter::IsFalse),
-                "boolean_equals_false",
-            ),
-            (
-                FilterOperation::NullableBoolean(NullableBooleanFilter::IsTrue),
-                "nullable_boolean_equals_true",
-            ),
-            (
-                FilterOperation::NullableBoolean(NullableBooleanFilter::IsFalse),
-                "nullable_boolean_equals_false",
-            ),
-            (
-                FilterOperation::NullableBoolean(NullableBooleanFilter::IsNull),
-                "nullable_boolean_equals_null",
+                FilterOperation::Timestamp(TimestampFilter::between(
+                    jiff::Timestamp::from_millisecond(100_000_000_000).unwrap(),
+                    jiff::Timestamp::from_millisecond(110_000_000_000).unwrap(),
+                )),
+                "timestamp_between",
             ),
         ]
         .into_iter()
@@ -554,7 +617,7 @@ mod tests {
     fn test_filter_ui() {
         for (filter_op, test_name) in test_cases() {
             let mut harness = egui_kittest::Harness::builder()
-                .with_size(egui::Vec2::new(500.0, 80.0))
+                .with_size(egui::Vec2::new(800.0, 80.0))
                 .build_ui(|ui| {
                     re_ui::apply_style_and_install_loaders(ui.ctx());
 
@@ -563,7 +626,7 @@ mod tests {
                         active_filter: None,
                     };
 
-                    let _res = filter_state.filter_bar_ui_impl(ui);
+                    let _res = filter_state.filter_bar_ui_impl(ui, TimestampFormat::utc());
                 });
 
             harness.run();
@@ -580,7 +643,25 @@ mod tests {
                 .build_ui(|ui| {
                     re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                    let _res = filter_op.popup_ui(ui, "column:name", true);
+                    egui::Popup::new(
+                        ui.id().with("popup"),
+                        ui.ctx().clone(),
+                        egui::Rect::from_min_size(
+                            egui::pos2(0., 0.),
+                            egui::vec2(ui.available_width(), 0.0),
+                        ),
+                        ui.layer_id(),
+                    )
+                    .open(true)
+                    .show(|ui| {
+                        ui.visuals_mut().text_edit_bg_color =
+                            Some(ui.visuals().widgets.inactive.bg_fill);
+
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+
+                        let _res =
+                            filter_op.popup_ui(ui, TimestampFormat::utc(), "column:name", true);
+                    });
                 });
 
             harness.run();
@@ -624,7 +705,7 @@ mod tests {
             .build_ui(|ui| {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
-                filters.filter_bar_ui(ui, &mut TableBlueprint::default());
+                filters.filter_bar_ui(ui, TimestampFormat::utc(), &mut TableBlueprint::default());
             });
 
         harness.run();
