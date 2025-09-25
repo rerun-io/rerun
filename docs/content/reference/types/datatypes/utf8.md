@@ -19,6 +19,7 @@ utf8
 
 ## Used by
 
+* [`AbsoluteTimeRange`](../datatypes/absolute_time_range.md?speculative-link)
 * [`AnnotationInfo`](../datatypes/annotation_info.md)
 * [`GraphNode`](../components/graph_node.md)
 * [`MediaType`](../components/media_type.md)

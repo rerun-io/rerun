@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from .absolute_time_range import (
+    AbsoluteTimeRange,
+    AbsoluteTimeRangeArrayLike,
+    AbsoluteTimeRangeBatch,
+    AbsoluteTimeRangeLike,
+)
 from .angle import Angle, AngleArrayLike, AngleBatch, AngleLike
 from .annotation_info import AnnotationInfo, AnnotationInfoArrayLike, AnnotationInfoBatch, AnnotationInfoLike
 from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike
@@ -77,6 +83,10 @@ from .view_coordinates import ViewCoordinates, ViewCoordinatesArrayLike, ViewCoo
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeArrayLike, VisibleTimeRangeBatch, VisibleTimeRangeLike
 
 __all__ = [
+    "AbsoluteTimeRange",
+    "AbsoluteTimeRangeArrayLike",
+    "AbsoluteTimeRangeBatch",
+    "AbsoluteTimeRangeLike",
     "Angle",
     "AngleArrayLike",
     "AngleBatch",

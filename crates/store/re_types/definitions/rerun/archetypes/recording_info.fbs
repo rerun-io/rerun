@@ -16,4 +16,13 @@ table RecordingInfo (
 
   /// A user-chosen name for the recording.
   name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 2000);
+
+  /// List of time ranges that are considered valid.
+  ///
+  /// Experimental. May change in the future.
+  ///
+  /// If not provided, all data is considered valid.
+  /// Data outside the provided ranges may exist but any query outside there may have incomplete data.
+  /// In the Viewer, this is expressed by greyed out/hidden zones in the timeline.
+  valid_time_ranges: [rerun.components.AbsoluteTimeRange] ("attr.rerun.component_optional", nullable, order: 3000);
 }

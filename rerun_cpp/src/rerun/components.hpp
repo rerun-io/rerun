@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "components/absolute_time_range.hpp"
 #include "components/aggregation_policy.hpp"
 #include "components/albedo_factor.hpp"
 #include "components/annotation_context.hpp"

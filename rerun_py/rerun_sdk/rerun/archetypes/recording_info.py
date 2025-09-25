@@ -26,7 +26,11 @@ class RecordingInfo(Archetype):
     """**Archetype**: A list of properties associated with a recording."""
 
     def __init__(
-        self: Any, *, start_time: datatypes.TimeIntLike | None = None, name: datatypes.Utf8Like | None = None
+        self: Any,
+        *,
+        start_time: datatypes.TimeIntLike | None = None,
+        name: datatypes.Utf8Like | None = None,
+        valid_time_ranges: datatypes.AbsoluteTimeRangeArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the RecordingInfo archetype.
@@ -39,12 +43,20 @@ class RecordingInfo(Archetype):
             Should be an absolute time, i.e. relative to Unix Epoch.
         name:
             A user-chosen name for the recording.
+        valid_time_ranges:
+            List of time ranges that are considered valid.
+
+            Experimental. May change in the future.
+
+            If not provided, all data is considered valid.
+            Data outside the provided ranges may exist but any query outside there may have incomplete data.
+            In the Viewer, this is expressed by greyed out/hidden zones in the timeline.
 
         """
 
         # You can define your own __init__ function as a member of RecordingInfoExt in recording_info_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(start_time=start_time, name=name)
+            self.__attrs_init__(start_time=start_time, name=name, valid_time_ranges=valid_time_ranges)
             return
         self.__attrs_clear__()
 
@@ -53,6 +65,7 @@ class RecordingInfo(Archetype):
         self.__attrs_init__(
             start_time=None,
             name=None,
+            valid_time_ranges=None,
         )
 
     @classmethod
@@ -69,6 +82,7 @@ class RecordingInfo(Archetype):
         clear_unset: bool = False,
         start_time: datatypes.TimeIntLike | None = None,
         name: datatypes.Utf8Like | None = None,
+        valid_time_ranges: datatypes.AbsoluteTimeRangeArrayLike | None = None,
     ) -> RecordingInfo:
         """
         Update only some specific fields of a `RecordingInfo`.
@@ -83,6 +97,14 @@ class RecordingInfo(Archetype):
             Should be an absolute time, i.e. relative to Unix Epoch.
         name:
             A user-chosen name for the recording.
+        valid_time_ranges:
+            List of time ranges that are considered valid.
+
+            Experimental. May change in the future.
+
+            If not provided, all data is considered valid.
+            Data outside the provided ranges may exist but any query outside there may have incomplete data.
+            In the Viewer, this is expressed by greyed out/hidden zones in the timeline.
 
         """
 
@@ -91,6 +113,7 @@ class RecordingInfo(Archetype):
             kwargs = {
                 "start_time": start_time,
                 "name": name,
+                "valid_time_ranges": valid_time_ranges,
             }
 
             if clear_unset:
@@ -113,6 +136,7 @@ class RecordingInfo(Archetype):
         *,
         start_time: datatypes.TimeIntArrayLike | None = None,
         name: datatypes.Utf8ArrayLike | None = None,
+        valid_time_ranges: datatypes.AbsoluteTimeRangeArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -130,6 +154,14 @@ class RecordingInfo(Archetype):
             Should be an absolute time, i.e. relative to Unix Epoch.
         name:
             A user-chosen name for the recording.
+        valid_time_ranges:
+            List of time ranges that are considered valid.
+
+            Experimental. May change in the future.
+
+            If not provided, all data is considered valid.
+            Data outside the provided ranges may exist but any query outside there may have incomplete data.
+            In the Viewer, this is expressed by greyed out/hidden zones in the timeline.
 
         """
 
@@ -138,13 +170,18 @@ class RecordingInfo(Archetype):
             inst.__attrs_init__(
                 start_time=start_time,
                 name=name,
+                valid_time_ranges=valid_time_ranges,
             )
 
         batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"RecordingInfo:start_time": start_time, "RecordingInfo:name": name}
+        kwargs = {
+            "RecordingInfo:start_time": start_time,
+            "RecordingInfo:name": name,
+            "RecordingInfo:valid_time_ranges": valid_time_ranges,
+        }
         columns = []
 
         for batch in batches:
@@ -191,6 +228,21 @@ class RecordingInfo(Archetype):
         converter=components.NameBatch._converter,  # type: ignore[misc]
     )
     # A user-chosen name for the recording.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    valid_time_ranges: components.AbsoluteTimeRangeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.AbsoluteTimeRangeBatch._converter,  # type: ignore[misc]
+    )
+    # List of time ranges that are considered valid.
+    #
+    # Experimental. May change in the future.
+    #
+    # If not provided, all data is considered valid.
+    # Data outside the provided ranges may exist but any query outside there may have incomplete data.
+    # In the Viewer, this is expressed by greyed out/hidden zones in the timeline.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

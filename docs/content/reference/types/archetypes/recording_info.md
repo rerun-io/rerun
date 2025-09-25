@@ -9,6 +9,7 @@ A list of properties associated with a recording.
 ### Optional
 * `start_time`: [`Timestamp`](../components/timestamp.md)
 * `name`: [`Name`](../components/name.md)
+* `valid_time_ranges`: [`AbsoluteTimeRange`](../components/absolute_time_range.md)
 
 
 ## Can be shown in

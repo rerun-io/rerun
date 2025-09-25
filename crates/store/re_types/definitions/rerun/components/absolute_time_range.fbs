@@ -1,0 +1,11 @@
+namespace rerun.components;
+
+/// Absolute time range bounds for a specific timeline.
+table AbsoluteTimeRange (
+  "attr.arrow.transparent",
+  "attr.docs.unreleased",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "Default, PartialEq, Eq"
+) {
+  value: rerun.datatypes.AbsoluteTimeRange (order: 100);
+}

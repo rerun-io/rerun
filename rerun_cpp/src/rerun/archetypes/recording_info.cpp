@@ -13,17 +13,24 @@ namespace rerun::archetypes {
                 .value_or_throw();
         archetype.name =
             ComponentBatch::empty<rerun::components::Name>(Descriptor_name).value_or_throw();
+        archetype.valid_time_ranges =
+            ComponentBatch::empty<rerun::components::AbsoluteTimeRange>(Descriptor_valid_time_ranges
+            )
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> RecordingInfo::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(3);
         if (start_time.has_value()) {
             columns.push_back(start_time.value().partitioned(lengths_).value_or_throw());
         }
         if (name.has_value()) {
             columns.push_back(name.value().partitioned(lengths_).value_or_throw());
+        }
+        if (valid_time_ranges.has_value()) {
+            columns.push_back(valid_time_ranges.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -34,6 +41,9 @@ namespace rerun::archetypes {
         }
         if (name.has_value()) {
             return columns(std::vector<uint32_t>(name.value().length(), 1));
+        }
+        if (valid_time_ranges.has_value()) {
+            return columns(std::vector<uint32_t>(valid_time_ranges.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -46,13 +56,16 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(2);
+        cells.reserve(3);
 
         if (archetype.start_time.has_value()) {
             cells.push_back(archetype.start_time.value());
         }
         if (archetype.name.has_value()) {
             cells.push_back(archetype.name.value());
+        }
+        if (archetype.valid_time_ranges.has_value()) {
+            cells.push_back(archetype.valid_time_ranges.value());
         }
 
         return rerun::take_ownership(std::move(cells));

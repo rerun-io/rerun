@@ -19,5 +19,6 @@ int64
 
 ## Used by
 
+* [`AbsoluteTimeRange`](../datatypes/absolute_time_range.md?speculative-link)
 * [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
 * [`Timestamp`](../components/timestamp.md)

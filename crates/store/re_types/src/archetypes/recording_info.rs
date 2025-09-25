@@ -29,6 +29,15 @@ pub struct RecordingInfo {
 
     /// A user-chosen name for the recording.
     pub name: Option<SerializedComponentBatch>,
+
+    /// List of time ranges that are considered valid.
+    ///
+    /// Experimental. May change in the future.
+    ///
+    /// If not provided, all data is considered valid.
+    /// Data outside the provided ranges may exist but any query outside there may have incomplete data.
+    /// In the Viewer, this is expressed by greyed out/hidden zones in the timeline.
+    pub valid_time_ranges: Option<SerializedComponentBatch>,
 }
 
 impl RecordingInfo {
@@ -55,6 +64,18 @@ impl RecordingInfo {
             component_type: Some("rerun.components.Name".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::valid_time_ranges`].
+    ///
+    /// The corresponding component is [`crate::components::AbsoluteTimeRange`].
+    #[inline]
+    pub fn descriptor_valid_time_ranges() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.RecordingInfo".into()),
+            component: "RecordingInfo:valid_time_ranges".into(),
+            component_type: Some("rerun.components.AbsoluteTimeRange".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -63,25 +84,27 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
             RecordingInfo::descriptor_start_time(),
             RecordingInfo::descriptor_name(),
+            RecordingInfo::descriptor_valid_time_ranges(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
             RecordingInfo::descriptor_start_time(),
             RecordingInfo::descriptor_name(),
+            RecordingInfo::descriptor_valid_time_ranges(),
         ]
     });
 
 impl RecordingInfo {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 impl ::re_types_core::Archetype for RecordingInfo {
@@ -130,7 +153,16 @@ impl ::re_types_core::Archetype for RecordingInfo {
         let name = arrays_by_descr
             .get(&Self::descriptor_name())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_name()));
-        Ok(Self { start_time, name })
+        let valid_time_ranges = arrays_by_descr
+            .get(&Self::descriptor_valid_time_ranges())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_valid_time_ranges())
+            });
+        Ok(Self {
+            start_time,
+            name,
+            valid_time_ranges,
+        })
     }
 }
 
@@ -138,10 +170,14 @@ impl ::re_types_core::AsComponents for RecordingInfo {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.start_time.clone(), self.name.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        [
+            self.start_time.clone(),
+            self.name.clone(),
+            self.valid_time_ranges.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 
@@ -154,6 +190,7 @@ impl RecordingInfo {
         Self {
             start_time: None,
             name: None,
+            valid_time_ranges: None,
         }
     }
 
@@ -175,6 +212,10 @@ impl RecordingInfo {
             name: Some(SerializedComponentBatch::new(
                 crate::components::Name::arrow_empty(),
                 Self::descriptor_name(),
+            )),
+            valid_time_ranges: Some(SerializedComponentBatch::new(
+                crate::components::AbsoluteTimeRange::arrow_empty(),
+                Self::descriptor_valid_time_ranges(),
             )),
         }
     }
@@ -204,6 +245,9 @@ impl RecordingInfo {
             self.name
                 .map(|name| name.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.valid_time_ranges
+                .map(|valid_time_ranges| valid_time_ranges.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -218,7 +262,12 @@ impl RecordingInfo {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_start_time = self.start_time.as_ref().map(|b| b.array.len());
         let len_name = self.name.as_ref().map(|b| b.array.len());
-        let len = None.or(len_start_time).or(len_name).unwrap_or(0);
+        let len_valid_time_ranges = self.valid_time_ranges.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_start_time)
+            .or(len_name)
+            .or(len_valid_time_ranges)
+            .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
 
@@ -263,11 +312,30 @@ impl RecordingInfo {
         self.name = try_serialize_field(Self::descriptor_name(), name);
         self
     }
+
+    /// List of time ranges that are considered valid.
+    ///
+    /// Experimental. May change in the future.
+    ///
+    /// If not provided, all data is considered valid.
+    /// Data outside the provided ranges may exist but any query outside there may have incomplete data.
+    /// In the Viewer, this is expressed by greyed out/hidden zones in the timeline.
+    #[inline]
+    pub fn with_valid_time_ranges(
+        mut self,
+        valid_time_ranges: impl IntoIterator<Item = impl Into<crate::components::AbsoluteTimeRange>>,
+    ) -> Self {
+        self.valid_time_ranges =
+            try_serialize_field(Self::descriptor_valid_time_ranges(), valid_time_ranges);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for RecordingInfo {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.start_time.heap_size_bytes() + self.name.heap_size_bytes()
+        self.start_time.heap_size_bytes()
+            + self.name.heap_size_bytes()
+            + self.valid_time_ranges.heap_size_bytes()
     }
 }

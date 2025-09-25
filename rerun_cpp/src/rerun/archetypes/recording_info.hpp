@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
+#include "../components/absolute_time_range.hpp"
 #include "../components/name.hpp"
 #include "../components/timestamp.hpp"
 #include "../result.hpp"
@@ -26,6 +27,15 @@ namespace rerun::archetypes {
         /// A user-chosen name for the recording.
         std::optional<ComponentBatch> name;
 
+        /// List of time ranges that are considered valid.
+        ///
+        /// Experimental. May change in the future.
+        ///
+        /// If not provided, all data is considered valid.
+        /// Data outside the provided ranges may exist but any query outside there may have incomplete data.
+        /// In the Viewer, this is expressed by greyed out/hidden zones in the timeline.
+        std::optional<ComponentBatch> valid_time_ranges;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.RecordingInfo";
@@ -38,6 +48,11 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `name` field.
         static constexpr auto Descriptor_name = ComponentDescriptor(
             ArchetypeName, "RecordingInfo:name", Loggable<rerun::components::Name>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `valid_time_ranges` field.
+        static constexpr auto Descriptor_valid_time_ranges = ComponentDescriptor(
+            ArchetypeName, "RecordingInfo:valid_time_ranges",
+            Loggable<rerun::components::AbsoluteTimeRange>::ComponentType
         );
 
       public:
@@ -88,6 +103,22 @@ namespace rerun::archetypes {
         /// be used when logging a single row's worth of data.
         RecordingInfo with_many_name(const Collection<rerun::components::Name>& _name) && {
             name = ComponentBatch::from_loggable(_name, Descriptor_name).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// List of time ranges that are considered valid.
+        ///
+        /// Experimental. May change in the future.
+        ///
+        /// If not provided, all data is considered valid.
+        /// Data outside the provided ranges may exist but any query outside there may have incomplete data.
+        /// In the Viewer, this is expressed by greyed out/hidden zones in the timeline.
+        RecordingInfo with_valid_time_ranges(
+            const Collection<rerun::components::AbsoluteTimeRange>& _valid_time_ranges
+        ) && {
+            valid_time_ranges =
+                ComponentBatch::from_loggable(_valid_time_ranges, Descriptor_valid_time_ranges)
+                    .value_or_throw();
             return std::move(*this);
         }
 

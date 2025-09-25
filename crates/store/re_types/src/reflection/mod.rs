@@ -427,6 +427,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <AbsoluteTimeRange as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Absolute time range bounds for a specific timeline.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(AbsoluteTimeRange::default().to_arrow()?),
+                datatype: AbsoluteTimeRange::arrow_datatype(),
+                verify_arrow_array: AbsoluteTimeRange::verify_arrow_array,
+            },
+        ),
+        (
             <AggregationPolicy as Component>::name(),
             ComponentReflection {
                 docstring_md: "Policy for aggregation of multiple scalar plot values.\n\nThis is used for lines in plots when the X axis distance of individual points goes below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
@@ -2788,6 +2798,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Name",
                         component_type: "rerun.components.Name".into(),
                         docstring_md: "A user-chosen name for the recording.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "valid_time_ranges",
+                        display_name: "Valid time ranges",
+                        component_type: "rerun.components.AbsoluteTimeRange".into(),
+                        docstring_md: "List of time ranges that are considered valid.\n\nExperimental. May change in the future.\n\nIf not provided, all data is considered valid.\nData outside the provided ranges may exist but any query outside there may have incomplete data.\nIn the Viewer, this is expressed by greyed out/hidden zones in the timeline.",
                         is_required: false,
                     },
                 ],

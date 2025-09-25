@@ -13,6 +13,7 @@ For more information on the relationship between **archetypes** and **components
 on [Entities and Components](../../concepts/entity-component.md).
 
 
+* [`AbsoluteTimeRange`](components/absolute_time_range.md): Absolute time range bounds for a specific timeline.
 * [`AggregationPolicy`](components/aggregation_policy.md): Policy for aggregation of multiple scalar plot values.
 * [`AlbedoFactor`](components/albedo_factor.md): A color multiplier, usually applied to a whole entity, e.g. a mesh.
 * [`AnnotationContext`](components/annotation_context.md): The annotation context provides additional information on how to display entities.

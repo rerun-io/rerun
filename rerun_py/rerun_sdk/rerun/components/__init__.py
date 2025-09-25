@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .absolute_time_range import AbsoluteTimeRange, AbsoluteTimeRangeBatch
 from .aggregation_policy import (
     AggregationPolicy,
     AggregationPolicyArrayLike,
@@ -110,6 +111,8 @@ from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
 from .visible import Visible, VisibleBatch
 
 __all__ = [
+    "AbsoluteTimeRange",
+    "AbsoluteTimeRangeBatch",
     "AggregationPolicy",
     "AggregationPolicyArrayLike",
     "AggregationPolicyBatch",
